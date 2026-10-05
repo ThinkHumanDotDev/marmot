@@ -1,6 +1,8 @@
 node_modules
 .next
 .git
+.github
+.claude
 .env
 .env.*
 uploads
@@ -9,6 +11,9 @@ data
 test-results
 playwright-report
 coverage
+tests
 docs
+docker/*.yml
+docker/.env*
 *.md
 !README.md

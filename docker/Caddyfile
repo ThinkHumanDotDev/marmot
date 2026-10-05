@@ -1,20 +1,37 @@
-# Zero-config HTTPS for self-hosters. Set DOMAIN=status.example.com (DNS must point here).
-# With DOMAIN unset Caddy serves plain HTTP on :80 (useful behind another proxy or locally).
+# Marmot edge proxy.
+#
+# Zero-config HTTPS: set DOMAIN=status.example.com in .env (DNS must point at this host and ports 80/443
+# must be reachable) and Caddy obtains and renews certificates automatically. Set ACME_EMAIL to receive
+# certificate expiry notices from the CA. Without DOMAIN, Caddy serves plain HTTP on :80 — use that when
+# Marmot runs behind another reverse proxy (see docs/deployment.md).
+#
+# SITE_ADDRESS is derived from DOMAIN by docker-compose.yml; when running Caddy by hand set it directly
+# (e.g. SITE_ADDRESS=status.example.com or SITE_ADDRESS=:80).
 {
-  email {$ACME_EMAIL:}
+	# Empty when ACME_EMAIL is unset; Caddy then registers with the CA without a contact address.
+	email "{$ACME_EMAIL}"
 }
 
-{$DOMAIN:http://localhost} {
-  encode zstd gzip
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
 
-  @realtime path /socket.io/*
-  handle @realtime {
-    reverse_proxy realtime:3001 {
-      stream_close_delay 5m
-    }
-  }
+	header {
+		# Don't advertise the proxy.
+		-Server
+	}
 
-  handle {
-    reverse_proxy web:3000
-  }
+	# socket.io: long-polling and the WebSocket upgrade go to the realtime process.
+	# reverse_proxy passes Upgrade/Connection headers through by default.
+	@realtime path /socket.io/*
+	handle @realtime {
+		reverse_proxy realtime:3001 {
+			# Keep established websockets open for a while across config reloads.
+			stream_close_delay 5m
+		}
+	}
+
+	# Everything else: Next.js + Payload (UI, admin, REST/GraphQL, badges, push, health).
+	handle {
+		reverse_proxy web:3000
+	}
 }

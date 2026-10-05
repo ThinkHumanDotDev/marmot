@@ -29,16 +29,18 @@ monitors it is built for organizations: multiple teams, role-based access, invit
 
 ```bash
 mkdir marmot && cd marmot
-curl -fsSL https://raw.githubusercontent.com/ThinkHumanDotDev/marmot/main/docker/docker-compose.yml -o docker-compose.yml
-curl -fsSL https://raw.githubusercontent.com/ThinkHumanDotDev/marmot/main/docker/Caddyfile -o Caddyfile
-curl -fsSL https://raw.githubusercontent.com/ThinkHumanDotDev/marmot/main/.env.example -o .env
+base=https://raw.githubusercontent.com/ThinkHumanDotDev/marmot/main/docker
+curl -fsSL $base/docker-compose.yml -o docker-compose.yml
+curl -fsSL $base/Caddyfile -o Caddyfile
+curl -fsSL $base/.env.example -o .env
 # edit .env: set PAYLOAD_SECRET, NEXT_PUBLIC_SERVER_URL and (for HTTPS) DOMAIN
-docker compose up -d
+docker compose up -d --wait
 ```
 
 Open `https://$DOMAIN` (or `http://localhost`) and follow the setup wizard. To run on MongoDB instead of
-Postgres add `-f docker-compose.mongo.yml`. See [docs/configuration.md](docs/configuration.md) for every
-environment variable.
+Postgres add `-f docker-compose.mongo.yml`. See [docs/deployment.md](docs/deployment.md) for reverse
+proxies, backups and upgrades, and [docs/configuration.md](docs/configuration.md) for every environment
+variable.
 
 ## Development
 
