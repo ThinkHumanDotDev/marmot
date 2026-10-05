@@ -94,24 +94,25 @@ afterEach(() => {
 })
 
 describe('notification provider registry', () => {
-  it('registers the ten built-in providers with renderable schemas', () => {
-    const names = listNotificationProviders()
-      .map((p) => p.name)
-      .sort()
-    expect(names).toEqual([
-      'discord',
-      'gotify',
-      'matrix',
-      'ntfy',
-      'pushover',
-      'slack',
-      'smtp',
-      'teams',
-      'telegram',
-      'webhook',
-    ])
+  it('registers the first ten built-in providers with renderable schemas', () => {
+    const names = listNotificationProviders().map((p) => p.name)
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'discord',
+        'gotify',
+        'matrix',
+        'ntfy',
+        'pushover',
+        'slack',
+        'smtp',
+        'teams',
+        'telegram',
+        'webhook',
+      ]),
+    )
+    // The full list (including wave 2) is asserted in providers-2.test.ts.
     const descriptors = describeNotificationProviders()
-    expect(descriptors).toHaveLength(10)
+    expect(descriptors).toHaveLength(names.length)
     const discord = descriptors.find((d) => d.name === 'discord')!
     expect(discord.group).toBe('chat')
     expect(discord.fields.find((f) => f.name === 'webhookUrl')).toMatchObject({
