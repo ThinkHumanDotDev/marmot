@@ -72,6 +72,7 @@ export interface Config {
     invitations: Invitation;
     media: Media;
     monitors: Monitor;
+    heartbeats: Heartbeat;
     'stat-minutely': StatMinutely;
     'stat-hourly': StatHourly;
     'stat-daily': StatDaily;
@@ -87,6 +88,7 @@ export interface Config {
     invitations: InvitationsSelect<false> | InvitationsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     monitors: MonitorsSelect<false> | MonitorsSelect<true>;
+    heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
     'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
     'stat-hourly': StatHourlySelect<false> | StatHourlySelect<true>;
     'stat-daily': StatDailySelect<false> | StatDailySelect<true>;
@@ -238,9 +240,150 @@ export interface Invitation {
  */
 export interface Monitor {
   id: number;
+  organization?: (number | null) | Organization;
   name: string;
+  type: 'http' | 'keyword' | 'json-query' | 'port' | 'ping' | 'dns' | 'push' | 'group' | 'manual';
+  /**
+   * Paused monitors are not checked.
+   */
+  active?: boolean | null;
+  /**
+   * Group this monitor belongs to.
+   */
+  parent?: (number | null) | Monitor;
+  description?: string | null;
+  /**
+   * Sort order on status pages.
+   */
+  weight?: number | null;
+  url?: string | null;
+  hostname?: string | null;
+  /**
+   * DNS monitors: port of the resolver (default 53).
+   */
+  port?: number | null;
+  /**
+   * Seconds between checks (UI minimum 20).
+   */
+  interval: number;
+  /**
+   * Seconds between checks while pending (retrying).
+   */
+  retryInterval: number;
+  /**
+   * Retries before the monitor is marked DOWN.
+   */
+  maxRetries: number;
+  /**
+   * Re-notify every N consecutive DOWN beats (0 = never).
+   */
+  resendInterval: number;
+  /**
+   * Request timeout in seconds (0 = 80% of the interval).
+   */
+  timeout: number;
+  /**
+   * Flip status: a failed check counts as UP and vice versa.
+   */
+  upsideDown?: boolean | null;
+  method?: ('GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS') | null;
+  httpBodyEncoding?: ('json' | 'form' | 'xml') | null;
+  maxRedirects?: number | null;
+  body?: string | null;
+  /**
+   * JSON object of extra request headers.
+   */
+  headers?: string | null;
+  /**
+   * Status codes or ranges counted as UP, e.g. 200-299, 304.
+   */
+  acceptedStatusCodes?: string[] | null;
+  ignoreTls?: boolean | null;
+  /**
+   * Notify before the TLS certificate expires.
+   */
+  expiryNotification?: boolean | null;
+  keyword?: string | null;
+  /**
+   * UP when the keyword is absent.
+   */
+  invertKeyword?: boolean | null;
+  /**
+   * JSONata expression, e.g. `$.status` or `data[0].ok`.
+   */
+  jsonPath?: string | null;
+  jsonPathOperator?: ('==' | '!=' | '<' | '>' | '<=' | '>=' | 'contains') | null;
+  expectedValue?: string | null;
+  authMethod?: ('none' | 'basic' | 'bearer' | 'oauth2-cc' | 'ntlm' | 'mtls') | null;
+  basicAuthUser?: string | null;
+  basicAuthPass?: string | null;
+  authDomain?: string | null;
+  authWorkstation?: string | null;
+  bearerToken?: string | null;
+  oauthTokenUrl?: string | null;
+  oauthClientId?: string | null;
+  oauthClientSecret?: string | null;
+  oauthScopes?: string | null;
+  oauthAuthMethod?: ('client_secret_basic' | 'client_secret_post') | null;
+  tlsCert?: string | null;
+  tlsKey?: string | null;
+  tlsCa?: string | null;
+  /**
+   * Comma-separated resolver IPs or hostnames.
+   */
+  dnsResolveServer?: string | null;
+  dnsResolveType?: ('A' | 'AAAA' | 'CAA' | 'CNAME' | 'MX' | 'NS' | 'PTR' | 'SOA' | 'SRV' | 'TXT') | null;
+  /**
+   * Generated automatically. Call /api/push/<token> to report a heartbeat.
+   */
+  pushToken?: string | null;
+  manualStatus?: ('up' | 'down' | 'pending') | null;
+  /**
+   * Maintained by the worker. Mirrors the latest heartbeat.
+   */
+  status?: {
+    lastStatus?: ('up' | 'down' | 'pending' | 'maintenance') | null;
+    lastCheckAt?: string | null;
+    lastPing?: number | null;
+    lastMsg?: string | null;
+    retries?: number | null;
+    downCount?: number | null;
+    /**
+     * Push monitors: time of the last call to the push endpoint.
+     */
+    lastPushAt?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "heartbeats".
+ */
+export interface Heartbeat {
+  id: number;
+  monitor: number | Monitor;
+  /**
+   * Denormalised from the monitor for org-scoped queries.
+   */
+  organization?: (number | null) | Organization;
+  status: 'up' | 'down' | 'pending' | 'maintenance';
+  msg?: string | null;
+  /**
+   * Response time in milliseconds (null when not measured).
+   */
+  ping?: number | null;
+  /**
+   * Seconds since the previous heartbeat of this monitor.
+   */
+  duration?: number | null;
+  /**
+   * True when the status changed compared to the previous heartbeat.
+   */
+  important?: boolean | null;
+  retries?: number | null;
+  downCount?: number | null;
+  time: string;
 }
 /**
  * Per-monitor heartbeat aggregates, one row per minute.
@@ -392,6 +535,10 @@ export interface PayloadLockedDocument {
         value: number | Monitor;
       } | null)
     | ({
+        relationTo: 'heartbeats';
+        value: number | Heartbeat;
+      } | null)
+    | ({
         relationTo: 'stat-minutely';
         value: number | StatMinutely;
       } | null)
@@ -534,9 +681,82 @@ export interface MediaSelect<T extends boolean = true> {
  * via the `definition` "monitors_select".
  */
 export interface MonitorsSelect<T extends boolean = true> {
+  organization?: T;
   name?: T;
+  type?: T;
+  active?: T;
+  parent?: T;
+  description?: T;
+  weight?: T;
+  url?: T;
+  hostname?: T;
+  port?: T;
+  interval?: T;
+  retryInterval?: T;
+  maxRetries?: T;
+  resendInterval?: T;
+  timeout?: T;
+  upsideDown?: T;
+  method?: T;
+  httpBodyEncoding?: T;
+  maxRedirects?: T;
+  body?: T;
+  headers?: T;
+  acceptedStatusCodes?: T;
+  ignoreTls?: T;
+  expiryNotification?: T;
+  keyword?: T;
+  invertKeyword?: T;
+  jsonPath?: T;
+  jsonPathOperator?: T;
+  expectedValue?: T;
+  authMethod?: T;
+  basicAuthUser?: T;
+  basicAuthPass?: T;
+  authDomain?: T;
+  authWorkstation?: T;
+  bearerToken?: T;
+  oauthTokenUrl?: T;
+  oauthClientId?: T;
+  oauthClientSecret?: T;
+  oauthScopes?: T;
+  oauthAuthMethod?: T;
+  tlsCert?: T;
+  tlsKey?: T;
+  tlsCa?: T;
+  dnsResolveServer?: T;
+  dnsResolveType?: T;
+  pushToken?: T;
+  manualStatus?: T;
+  status?:
+    | T
+    | {
+        lastStatus?: T;
+        lastCheckAt?: T;
+        lastPing?: T;
+        lastMsg?: T;
+        retries?: T;
+        downCount?: T;
+        lastPushAt?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "heartbeats_select".
+ */
+export interface HeartbeatsSelect<T extends boolean = true> {
+  monitor?: T;
+  organization?: T;
+  status?: T;
+  msg?: T;
+  ping?: T;
+  duration?: T;
+  important?: T;
+  retries?: T;
+  downCount?: T;
+  time?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

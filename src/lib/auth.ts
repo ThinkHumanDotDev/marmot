@@ -16,10 +16,8 @@ export interface OrgMembership {
   role?: string
 }
 
-export interface CurrentUser extends User {
-  /** Added by the multi-tenant/members issue; typed loosely here and read defensively. */
-  organizations?: unknown
-}
+/** The authenticated Payload user, including organization memberships. */
+export type CurrentUser = User
 
 /**
  * Resolves the Payload user for the current request (cookie or Authorization header).
