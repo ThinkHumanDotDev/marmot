@@ -1,6 +1,9 @@
 import { notFound, redirect } from 'next/navigation'
+import { getPayload } from 'payload'
 import React from 'react'
 
+import config from '@payload-config'
+import { SocketProvider } from '@/components/realtime/socket-provider'
 import { AppShell } from '@/components/shell/app-shell'
 import { getUserOrganizations, homePathFor, requireUser, type OrgMembership } from '@/lib/auth'
 
@@ -21,8 +24,18 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
 
   if (!currentOrg) {
     if (user.superadmin) {
-      // Instance admins may inspect any organization; show the slug until the real record loads.
-      currentOrg = { id: orgSlug, slug: orgSlug, name: orgSlug, role: 'superadmin' }
+      // Instance admins may inspect any organization they are not a member of.
+      const payload = await getPayload({ config })
+      const { docs } = await payload.find({
+        collection: 'organizations',
+        where: { slug: { equals: orgSlug } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+      const org = docs[0]
+      if (!org) notFound()
+      currentOrg = { id: org.id, slug: org.slug, name: org.name, role: 'superadmin' }
     } else if (organizations.length > 0) {
       redirect(homePathFor(organizations))
     } else {
@@ -46,7 +59,7 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
       }
       currentOrg={currentOrg}
     >
-      {children}
+      <SocketProvider organizationId={currentOrg.id}>{children}</SocketProvider>
     </AppShell>
   )
 }
