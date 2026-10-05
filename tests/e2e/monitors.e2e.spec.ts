@@ -10,7 +10,7 @@ let monitorId: DocId
 test.describe('Monitors', () => {
   test.beforeAll(async ({ adminApi }) => {
     const organization = await adminApi.organizationId(SETUP_ORG.slug)
-    const monitor = await adminApi.create('monitors', {
+    const monitor = await adminApi.createMonitor({
       name: monitorName,
       type: 'http',
       url: targetUrl('/health'),

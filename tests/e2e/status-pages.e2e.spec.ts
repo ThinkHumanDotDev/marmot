@@ -31,7 +31,7 @@ test.describe('Status pages', () => {
 
     const monitor = track(
       'monitors',
-      await adminApi.create('monitors', {
+      await adminApi.createMonitor({
         name: 'Marketing site',
         type: 'http',
         url: monitorUrl,

@@ -112,8 +112,28 @@ export class AdminApi {
     return (await this.json<{ doc: T }>('POST', `/${collection}?depth=0`, data)).doc
   }
 
+  async update<T extends { id: DocId } = { id: DocId }>(
+    collection: string,
+    id: DocId,
+    data: Record<string, unknown>,
+  ): Promise<T> {
+    return (await this.json<{ doc: T }>('PATCH', `/${collection}/${id}?depth=0`, data)).doc
+  }
+
   async delete(collection: string, id: DocId): Promise<void> {
     await this.json('DELETE', `/${collection}/${id}`)
+  }
+
+  /**
+   * Creates a monitor whose checks the worker will run. The `monitors` afterChange hook upserts the
+   * BullMQ scheduler before the create transaction commits, so an idle worker can pick up the first
+   * job, not find the monitor yet and drop the scheduler. Saving the (now committed) monitor once
+   * more re-creates the scheduler.
+   */
+  async createMonitor(data: Record<string, unknown>): Promise<{ id: DocId }> {
+    const monitor = await this.create('monitors', data)
+    await this.update('monitors', monitor.id, { active: data.active ?? true })
+    return monitor
   }
 
   async organizationId(slug: string): Promise<DocId> {
@@ -133,20 +153,27 @@ export class AdminApi {
     return invitation.token
   }
 
-  /** Waits until the worker has recorded a heartbeat with `status` for the monitor. */
+  /**
+   * Waits until the worker has checked the monitor: a heartbeat with `status` exists and the
+   * monitor's `status.lastStatus` (written after the heartbeat, read by status pages) matches.
+   */
   async waitForHeartbeat(monitorId: DocId, status = 'up', timeout = 45_000): Promise<void> {
     await expect
       .poll(
-        async () =>
-          (
-            await this.find('heartbeats', {
-              monitor: { equals: String(monitorId) },
-              status: { equals: status },
-            })
-          ).length,
+        async () => {
+          const beats = await this.find('heartbeats', {
+            monitor: { equals: String(monitorId) },
+            status: { equals: status },
+          })
+          if (beats.length === 0) return 'no heartbeat'
+          const [monitor] = await this.find<{ status?: { lastStatus?: string } }>('monitors', {
+            id: { equals: String(monitorId) },
+          })
+          return monitor?.status?.lastStatus ?? 'unknown'
+        },
         { timeout, message: `heartbeat "${status}" for monitor ${monitorId}` },
       )
-      .toBeGreaterThan(0)
+      .toBe(status)
   }
 }
 

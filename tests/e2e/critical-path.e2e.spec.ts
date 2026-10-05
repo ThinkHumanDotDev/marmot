@@ -88,7 +88,11 @@ test.describe('Critical path', () => {
 
   test('creates and publishes a status page', async () => {
     await page.goto(`/${org.slug}/status-pages`)
-    await page.getByRole('button', { name: /new status page/i }).click()
+    // The empty state repeats the header's button.
+    await page
+      .getByRole('button', { name: /new status page/i })
+      .first()
+      .click()
     const dialog = page.getByRole('dialog')
     await dialog.getByLabel('Title').fill(statusPage.title)
     await dialog.getByLabel('Slug').fill(statusPage.slug)
