@@ -246,8 +246,14 @@ docker compose up -d --wait
 
 `web` applies pending migrations before it starts serving; `worker` and `realtime` restart with the new
 image. Pin `MARMOT_VERSION` in `.env` (e.g. `MARMOT_VERSION=1.2`) to control when upgrades happen, and
-take a database backup before a major version. Release notes list breaking changes; the
-[release checklist](release-checklist.md) describes what a release has been through.
+take a database backup before a major version. Release notes list breaking changes.
+
+Images are published for `linux/amd64` and `linux/arm64` on every release tag: `X.Y.Z`, `X.Y` and
+`latest` (final releases only; prereleases such as `X.Y.Z-rc.1` get their full version only). The
+compose file of a release defaults `MARMOT_VERSION` to that release, so `docker compose pull` alone does
+not jump to a newer version until you update `docker-compose.yml` or set `MARMOT_VERSION`. Changes per
+version are in [`CHANGELOG.md`](../CHANGELOG.md); maintainers follow the
+[release checklist](release-checklist.md).
 
 ## Troubleshooting
 
