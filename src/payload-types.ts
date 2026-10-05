@@ -101,8 +101,12 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: null;
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    'instance-settings': InstanceSetting;
+  };
+  globalsSelect: {
+    'instance-settings': InstanceSettingsSelect<false> | InstanceSettingsSelect<true>;
+  };
   locale: null;
   widgets: {
     collections: CollectionsWidget;
@@ -854,6 +858,69 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "instance-settings".
+ */
+export interface InstanceSetting {
+  id: number;
+  /**
+   * Public URL of this instance, used in notifications and status page links. Defaults to NEXT_PUBLIC_SERVER_URL.
+   */
+  primaryBaseUrl?: string | null;
+  /**
+   * Allow anyone to create an account. When off, only invited users can register. Defaults to the inverse of DISABLE_SIGNUP.
+   */
+  allowSignup?: boolean | null;
+  /**
+   * What visitors of the root URL see.
+   */
+  entryPage?: ('dashboard' | 'status-page') | null;
+  /**
+   * Notify this many days before a TLS certificate expires.
+   */
+  tlsExpiryNotifyDays?: number[] | null;
+  /**
+   * Notify this many days before a domain registration expires.
+   */
+  domainExpiryNotifyDays?: number[] | null;
+  /**
+   * Retention of daily aggregates and important heartbeats, in days (0 disables pruning). Defaults to KEEP_DATA_PERIOD_DAYS.
+   */
+  keepDataPeriodDays?: number | null;
+  /**
+   * Trust X-Forwarded-* headers from the reverse proxy when determining client IPs.
+   */
+  trustProxy?: boolean | null;
+  /**
+   * Steam Web API key for Steam Game Server monitors.
+   */
+  steamApiKey?: string | null;
+  /**
+   * Globalping API token for remote ping/HTTP checks.
+   */
+  globalpingApiToken?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "instance-settings_select".
+ */
+export interface InstanceSettingsSelect<T extends boolean = true> {
+  primaryBaseUrl?: T;
+  allowSignup?: T;
+  entryPage?: T;
+  tlsExpiryNotifyDays?: T;
+  domainExpiryNotifyDays?: T;
+  keepDataPeriodDays?: T;
+  trustProxy?: T;
+  steamApiKey?: T;
+  globalpingApiToken?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

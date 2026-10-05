@@ -1,7 +1,20 @@
+import { redirect } from 'next/navigation'
+import { getPayload } from 'payload'
 import React from 'react'
 
-/** Centered card layout for sign-in, sign-up and password flows. */
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+import config from '@payload-config'
+import { needsSetup } from '@/server/setup'
+
+export const dynamic = 'force-dynamic'
+
+/**
+ * Centered card layout for sign-in, sign-up and password flows. While the instance has no user
+ * yet, every auth page hands over to the first-run wizard.
+ */
+export default async function AuthLayout({ children }: { children: React.ReactNode }) {
+  const payload = await getPayload({ config })
+  if (await needsSetup(payload)) redirect('/setup')
+
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-sidebar px-4 py-10 text-foreground">
       {children}

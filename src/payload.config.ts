@@ -7,6 +7,7 @@ import sharp from 'sharp'
 import { collections } from './collections'
 import { getDatabaseAdapter } from './db/adapter'
 import { env, runsRole } from './env'
+import { globals } from './globals'
 import { getPlugins } from './plugins'
 import { getEmailAdapter } from './server/email/adapter'
 
@@ -25,6 +26,7 @@ export default buildConfig({
     },
   },
   collections,
+  globals,
   editor: lexicalEditor(),
   email: getEmailAdapter(),
   secret: env.PAYLOAD_SECRET,
