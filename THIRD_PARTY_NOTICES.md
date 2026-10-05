@@ -45,6 +45,39 @@ attribution comment and are listed here:
 - `src/server/status-pages/public.ts`, `src/server/status-pages/rss.ts` — public status page data,
   `overallStatus` / status descriptions and the RSS feed shape (`server/model/status_page.js`,
   `server/routers/status-page-router.js`)
+- `src/server/notification-providers/mattermost.ts` — `server/notification-providers/mattermost.js`
+- `src/server/notification-providers/rocket-chat.ts` — `server/notification-providers/rocket-chat.js`
+- `src/server/notification-providers/google-chat.ts` — `server/notification-providers/google-chat.js`
+- `src/server/notification-providers/pagerduty.ts` — `server/notification-providers/pagerduty.js`
+- `src/server/notification-providers/opsgenie.ts` — `server/notification-providers/opsgenie.js`
+- `src/server/notification-providers/apprise.ts` — `server/notification-providers/apprise.js`
+- `src/server/notification-providers/signal.ts` — `server/notification-providers/signal.js`
+- `src/server/notification-providers/home-assistant.ts` — `server/notification-providers/home-assistant.js`
+- `src/server/notification-providers/pushbullet.ts` — `server/notification-providers/pushbullet.js`
+- `src/server/notification-providers/twilio.ts` — `server/notification-providers/twilio.js`
+- `src/server/notification-providers/sendgrid.ts` — `server/notification-providers/send-grid.js`
+- `src/server/notification-providers/resend.ts` — `server/notification-providers/resend.js`
+- `src/server/notification-providers/bark.ts` — `server/notification-providers/bark.js`
+- `src/server/notification-providers/pushdeer.ts` — `server/notification-providers/pushdeer.js`
+- `src/server/notification-providers/serverchan.ts` — `server/notification-providers/serverchan.js`
+- `src/server/notification-providers/splunk.ts` — `server/notification-providers/splunk.js`
+- `src/server/notification-providers/squadcast.ts` — `server/notification-providers/squadcast.js`
+- `src/server/notification-providers/webpush.ts` — `server/notification-providers/Webpush.js`
+- `src/server/notification-providers/line-messaging.ts` — `server/notification-providers/line.js`
+- `src/server/notification-providers/pumble.ts` — `server/notification-providers/pumble.js`
+- `src/server/notification-providers/zoho-cliq.ts` — `server/notification-providers/zoho-cliq.js`
+- `src/server/notification-providers/clicksend.ts` — `server/notification-providers/clicksendsms.js`
+- `src/server/notification-providers/alerta.ts` — `server/notification-providers/alerta.js`
+- `src/server/notification-providers/grafana-oncall.ts` — `server/notification-providers/grafana-oncall.js`
+- `src/server/notification-providers/heii-oncall.ts` — `server/notification-providers/heii-oncall.js`
+- `src/server/notification-providers/nextcloud-talk.ts` — `server/notification-providers/nextcloudtalk.js`
+- `src/server/notification-providers/techulus-push.ts` — `server/notification-providers/techulus-push.js`
+- `src/server/notification-providers/pushy.ts` — `server/notification-providers/pushy.js`
+- `src/server/notification-providers/onebot.ts` — `server/notification-providers/onebot.js`
+- `src/server/notification-providers/wecom.ts` — `server/notification-providers/wecom.js`
+- `src/server/notification-providers/dingding.ts` — `server/notification-providers/dingding.js`
+- `src/server/notification-providers/feishu.ts` — `server/notification-providers/feishu.js`
+- `src/server/notification-providers/bitrix24.ts` — `server/notification-providers/bitrix24.js`
 
 The MIT license text is reproduced below.
 
