@@ -19,6 +19,17 @@ import {
 let payload: Payload
 let monitorId: string | number
 let otherMonitorId: string | number
+/** Required monitor fields (defaults are not applied at the type level). */
+const MONITOR_DEFAULTS = {
+  type: 'manual' as const,
+  active: false,
+  interval: 60,
+  retryInterval: 60,
+  maxRetries: 0,
+  resendInterval: 0,
+  timeout: 48,
+}
+
 let organizationId: string | number
 
 // Fixed "now" so bucket boundaries are deterministic: 2026-03-10T10:30:00Z
@@ -49,12 +60,12 @@ describe('stats: time-series aggregation', () => {
     organizationId = org.id
     const monitor = await payload.create({
       collection: 'monitors',
-      data: { name: 'stats-int-monitor' },
+      data: { ...MONITOR_DEFAULTS, name: 'stats-int-monitor' },
     })
     monitorId = monitor.id
     const other = await payload.create({
       collection: 'monitors',
-      data: { name: 'stats-int-other' },
+      data: { ...MONITOR_DEFAULTS, name: 'stats-int-other' },
     })
     otherMonitorId = other.id
   })
@@ -195,7 +206,10 @@ describe('stats: time-series aggregation', () => {
   })
 
   it('returns zero/null for a monitor without any data', async () => {
-    const fresh = await payload.create({ collection: 'monitors', data: { name: 'stats-empty' } })
+    const fresh = await payload.create({
+      collection: 'monitors',
+      data: { ...MONITOR_DEFAULTS, name: 'stats-empty' },
+    })
     try {
       expect(await getStats(payload, fresh.id, '24h', { now: NOW })).toMatchObject({
         uptime: 0,

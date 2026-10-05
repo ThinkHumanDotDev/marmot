@@ -1,13 +1,16 @@
 /**
- * Polling engine (BullMQ + Redis). Implemented in issue "Polling engine".
+ * Polling engine (BullMQ + Redis).
  *
- * Responsibilities:
- * - one BullMQ job scheduler per active monitor (`monitor:<id>`, `every: interval * 1000`)
- * - a `checks` worker that runs the monitor type's `check()` and feeds the heartbeat state machine
- * - resync of all schedulers on worker boot
+ * - one BullMQ job scheduler per active monitor (`monitor:<id>`, `every: interval * 1000`,
+ *   `retryInterval` while the monitor is PENDING) — `scheduler.ts`
+ * - a `check` worker that runs the monitor type's `check()` and feeds the heartbeat state machine
+ *   (`beat.ts`), persists `heartbeats`, refreshes `monitors.status` and emits to listeners — `worker.ts`
+ * - listener registry for stats / realtime / notifications — `hooks.ts`
+ * - resync of all schedulers on worker boot — `scheduler.ts` (`resyncAll`)
  */
-export const QUEUE_NAMES = {
-  checks: 'marmot:checks',
-  notifications: 'marmot:notifications',
-  maintenance: 'marmot:maintenance',
-} as const
+export * from './names'
+export * from './beat'
+export * from './hooks'
+export * from './queues'
+export * from './scheduler'
+export * from './worker'

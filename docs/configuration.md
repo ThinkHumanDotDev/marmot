@@ -21,6 +21,8 @@ All configuration is via environment variables (see `.env.example`). Variables a
 | `OIDC_DISPLAY_NAME`                                                                                        | `Single sign-on`         | Label of the SSO button.                                |
 | `OIDC_AUTO_PROVISION`                                                                                      | `true`                   | Create users on first SSO login.                        |
 | `KEEP_DATA_PERIOD_DAYS`                                                                                    | `365`                    | Retention of daily aggregates and important heartbeats. |
+| `WORKER_CONCURRENCY`                                                                                       | `10`                     | Parallel monitor checks per worker process.             |
+| `MARMOT_DISABLE_ENGINE_HOOKS`                                                                              | `false`                  | Skip BullMQ sync in `monitors` hooks (tests w/o Redis). |
 | `BILLING_ENABLED`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                                            | off                      | Billing scaffold.                                       |
 | `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`                                                      | off                      | Opt-in analytics; nothing is sent without a key.        |
 | `LOG_LEVEL`                                                                                                | `info`                   | pino log level.                                         |
