@@ -1,5 +1,6 @@
 import { changeMemberRole, removeMember } from '@/server/members'
 import { getRequestContext, parseId, readJson, unauthorized, withErrors } from '@/server/http'
+import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +20,13 @@ export const PATCH = withErrors(async (request: Request, { params }: RouteContex
     userId: parseId(payload, userId),
     role,
   })
+  await recordRequestAuditEvent(payload, request, {
+    action: 'member.role_changed',
+    actor: user.id,
+    organization: parseId(payload, orgId),
+    target: auditTarget('users', member.id),
+    metadata: { role: member.role },
+  })
   return Response.json({ member })
 })
 
@@ -33,6 +41,13 @@ export const DELETE = withErrors(async (request: Request, { params }: RouteConte
     actor: user,
     orgId: parseId(payload, orgId),
     userId: parseId(payload, userId),
+  })
+  await recordRequestAuditEvent(payload, request, {
+    action: 'member.removed',
+    actor: user.id,
+    organization: parseId(payload, orgId),
+    target: auditTarget('users', result.removed),
+    metadata: { self: result.self },
   })
   return Response.json(result)
 })
