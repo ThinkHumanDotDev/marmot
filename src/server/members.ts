@@ -1,8 +1,8 @@
 import { APIError, type Payload, type PayloadRequest } from 'payload'
 
 import { toMembershipData } from '@/access/memberships'
+import { canInOrg } from '@/access/overrides'
 import {
-  can,
   canManageRole,
   getUserRole,
   isRole,
@@ -140,7 +140,7 @@ export async function changeMemberRole({
   req,
 }: MemberArgs & { role: unknown }): Promise<MemberSummary> {
   if (!isRole(role)) throw new APIError('Invalid role.', 400)
-  if (!can(actor, orgId, 'member:update-role')) {
+  if (!(await canInOrg(payload, actor, orgId, 'member:update-role'))) {
     throw new APIError('You cannot change roles in this organization.', 403)
   }
   const manager = actorRole(actor, orgId) as Role
@@ -177,7 +177,7 @@ export async function removeMember({ payload, actor, orgId, userId, req }: Membe
   const { user, role: current } = await loadMember(payload, orgId, userId, req)
 
   if (!self) {
-    if (!can(actor, orgId, 'member:remove')) {
+    if (!(await canInOrg(payload, actor, orgId, 'member:remove'))) {
       throw new APIError('You cannot remove members from this organization.', 403)
     }
     if (!canManageRole(actorRole(actor, orgId) as Role, current)) {

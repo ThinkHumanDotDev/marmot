@@ -3,9 +3,12 @@ import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
+import { getTwoFactorStatus } from '@/auth/two-factor/service'
 import { AccountForm } from '@/components/settings/account-form'
+import { AppearanceCard } from '@/components/settings/appearance-card'
 import { ChangePasswordForm } from '@/components/settings/change-password-form'
 import { DeleteAccountCard } from '@/components/settings/delete-account-card'
+import { TwoFactorCard } from '@/components/settings/two-factor-card'
 import { requireUser } from '@/lib/auth'
 import { getOrgBySlug } from '@/lib/org'
 import type { Media } from '@/payload-types'
@@ -25,14 +28,20 @@ export default async function AccountSettingsPage({
   if (!org) notFound()
 
   const payload = await getPayload({ config })
-  const blocking = await soleOwnerships(payload, user)
+  const [blocking, twoFactor] = await Promise.all([
+    soleOwnerships(payload, user),
+    getTwoFactorStatus(payload, user.id),
+  ])
   const avatarUrl =
     user.avatar && typeof user.avatar === 'object' ? ((user.avatar as Media).url ?? null) : null
+  const hasPassword = user.authProvider !== 'oidc'
 
   return (
     <>
       <AccountForm user={{ id: user.id, email: user.email, name: user.name ?? '', avatarUrl }} />
-      <ChangePasswordForm />
+      <AppearanceCard userId={user.id} theme={user.theme ?? 'system'} />
+      <TwoFactorCard status={twoFactor} hasPassword={hasPassword} />
+      {hasPassword && <ChangePasswordForm />}
       <DeleteAccountCard email={user.email} soleOwnerOf={blocking.map((o) => o.name)} />
     </>
   )

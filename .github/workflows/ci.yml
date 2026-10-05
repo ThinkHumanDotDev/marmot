@@ -51,10 +51,9 @@ jobs:
   test:
     name: Tests (${{ matrix.db }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
-      actions: read
-      checks: write
     strategy:
       fail-fast: false
       matrix:
@@ -85,6 +84,9 @@ jobs:
       # into a separate database so `payload migrate` never sees a dev-pushed schema.
       DATABASE_URL: ${{ matrix.db == 'postgres' && 'postgres://marmot:marmot@localhost:5432/marmot' || 'mongodb://localhost:27017/marmot' }}
       INT_DATABASE_URL: ${{ matrix.db == 'postgres' && 'postgres://marmot:marmot@localhost:5432/marmot_test' || 'mongodb://localhost:27017/marmot_test' }}
+      # Inlined into the client bundle at build time: the browser talks to the realtime process
+      # directly (no Caddy in CI). Must match the ports in tests/e2e/e2e-env.ts.
+      NEXT_PUBLIC_REALTIME_URL: http://localhost:3001
       CI: true
     steps:
       - uses: actions/checkout@v7
@@ -114,21 +116,29 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: E2E tests
         run: pnpm test:e2e
+        timeout-minutes: 10
         env:
+          # Production builds of web, worker and realtime against the migrated database; the bundled
+          # reset script (tests/e2e/support/reset-db.ts) must not dev-push the schema either.
+          NODE_ENV: production
           E2E_WEB_COMMAND: pnpm start
-      - name: Test report
-        uses: dorny/test-reporter@v3
+      # Check runs are created by .github/workflows/test-report.yml (workflow_run), which also works
+      # for pull requests from forks, where this workflow's token cannot write checks.
+      - name: Upload JUnit results
+        uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: Test results (${{ matrix.db }})
+          name: junit-${{ matrix.db }}
           path: test-results/*-junit.xml
-          reporter: java-junit
-          fail-on-error: false
-      - uses: actions/upload-artifact@v4
+          retention-days: 7
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
           name: playwright-report-${{ matrix.db }}
-          path: playwright-report
+          path: |
+            playwright-report
+            test-results/e2e
           retention-days: 7
 
   docker:

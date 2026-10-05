@@ -3,27 +3,39 @@ import http from 'node:http'
 import net from 'node:net'
 import type { AddressInfo } from 'node:net'
 import { Redis } from 'ioredis'
-import { getPayload, type Payload, type RequiredDataFromCollectionSlug } from 'payload'
+import {
+  createLocalReq,
+  getPayload,
+  type Payload,
+  type PayloadRequest,
+  type RequiredDataFromCollectionSlug,
+} from 'payload'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import config from '@payload-config'
+import { afterCommit } from '@/db/after-commit'
 import { MONITOR_TYPE_NAMES } from '@/lib/validation/monitor'
 import type { Monitor } from '@/payload-types'
 import {
   clearHeartbeatListeners,
   createQueue,
+  createWorker,
   monitorSchedulerId,
   processCheckJob,
   QUEUE_NAMES,
   registerHeartbeatListener,
+  removeMonitorAfterCommit,
   removeMonitorSchedule,
   resyncAll,
   startCheckWorker,
   syncMonitor,
+  syncMonitorAfterCommit,
+  type CheckJobData,
   type ChecksQueue,
   type HeartbeatEvent,
 } from '@/server/engine'
 import { getMonitorType, listMonitorTypes } from '@/server/monitor-types'
+import { closeEmitter, configureEmitter } from '@/server/realtime/emitter'
 import { checkStatusCode } from '@/server/monitor-types/http-request'
 import { evaluateJsonQuery } from '@/server/monitor-types/json-query'
 import { parsePingTime } from '@/server/monitor-types/ping'
@@ -57,11 +69,15 @@ type MonitorInput = RequiredDataFromCollectionSlug<'monitors'>
 /** Monitors are org-scoped (`organization` is required); every fixture lives in this organization. */
 let organizationId: string | number
 
-async function createMonitor(data: Partial<Monitor> & { name: string; type: Monitor['type'] }) {
+async function createMonitor(
+  data: Partial<Monitor> & { name: string; type: Monitor['type'] },
+  req?: PayloadRequest,
+) {
   return (await payload.create({
     collection: 'monitors',
     overrideAccess: true,
     depth: 0,
+    req,
     data: {
       organization: organizationId,
       interval: 60,
@@ -76,6 +92,22 @@ async function createMonitor(data: Partial<Monitor> & { name: string; type: Moni
 
 /** Default stub so no DB test ever touches the shared `marmot:` Redis namespace. */
 const defaultQueue = fakeQueue().queue
+
+/**
+ * A Local API request bound to a fresh transaction, like the one a REST create runs in, or `null`
+ * when the adapter has no transactions (MongoDB without a replica set): writes are then visible at
+ * once and the commit race this guards against cannot happen.
+ */
+async function transactionalReq(): Promise<{ req: PayloadRequest; id: string | number } | null> {
+  const id = await payload.db.beginTransaction()
+  if (!id) return null
+  const req = await createLocalReq({}, payload)
+  req.transactionID = id
+  return { req, id }
+}
+
+const findMonitor = (id: string | number) =>
+  payload.findByID({ collection: 'monitors', id, depth: 0, overrideAccess: true }).catch(() => null)
 
 const run = (monitorId: string | number, queue: ChecksQueue = defaultQueue) =>
   processCheckJob(payload, { data: { monitorId: String(monitorId) } }, { queue })
@@ -581,6 +613,98 @@ describe('check pipeline (processCheckJob with a fake job)', () => {
   })
 })
 
+describe('engine side effects wait for the transaction to commit', () => {
+  /** Records realtime publishes without Redis. */
+  const published: string[] = []
+  beforeAll(async () => {
+    const redis = {
+      publish: vi.fn(async (channel: string) => {
+        published.push(channel)
+        return 1
+      }),
+    } as unknown as Redis
+    await configureEmitter({ key: `engine-int-${Date.now().toString(36)}`, redis })
+  })
+  afterAll(async () => {
+    await configureEmitter()
+    await closeEmitter()
+  })
+  afterEach(() => {
+    published.length = 0
+  })
+
+  it('afterCommit runs at once without a transaction', async () => {
+    const req = await createLocalReq({}, payload)
+    const calls: string[] = []
+    await afterCommit(req, () => calls.push('ran'))
+    expect(calls).toEqual(['ran'])
+  })
+
+  it('afterCommit runs after commit, when the row is visible to other connections', async (ctx) => {
+    const tx = await transactionalReq()
+    if (!tx) return ctx.skip()
+    const monitor = await createMonitor({ name: 'tx-commit', type: 'manual' }, tx.req)
+    const seen: (Monitor | null)[] = []
+    await afterCommit(tx.req, async () => {
+      seen.push(await findMonitor(monitor.id))
+    })
+
+    // Not committed yet: the worker's lookup (no transaction) would miss the monitor.
+    expect(await findMonitor(monitor.id)).toBeNull()
+    expect(seen).toEqual([])
+
+    await payload.db.commitTransaction(tx.id)
+    expect(seen).toHaveLength(1)
+    expect(seen[0]?.id).toBe(monitor.id)
+  })
+
+  it('afterCommit drops callbacks of a rolled-back transaction', async (ctx) => {
+    const tx = await transactionalReq()
+    if (!tx) return ctx.skip()
+    await createMonitor({ name: 'tx-rollback', type: 'manual' }, tx.req)
+    const calls: string[] = []
+    await afterCommit(tx.req, () => calls.push('ran'))
+    await payload.db.rollbackTransaction(tx.id)
+    expect(calls).toEqual([])
+  })
+
+  it('a create in a transaction upserts the scheduler and emits only after commit', async (ctx) => {
+    const tx = await transactionalReq()
+    if (!tx) return ctx.skip()
+    const { queue, upserts } = fakeQueue()
+    const monitor = await createMonitor({ name: 'tx-sync', type: 'manual', interval: 30 }, tx.req)
+
+    // What the monitors afterChange hook does (engine hooks are disabled in int tests).
+    await syncMonitorAfterCommit(tx.req, monitor, queue)
+    expect(upserts).toEqual([])
+    expect(published).toEqual([])
+
+    await payload.db.commitTransaction(tx.id)
+    expect(upserts).toEqual([{ key: monitorSchedulerId(monitor.id), every: 30_000 }])
+    expect(published).toHaveLength(1)
+  })
+
+  it('a rolled-back create or delete leaves the scheduler alone', async (ctx) => {
+    const { queue, upserts, removals } = fakeQueue()
+
+    const created = await transactionalReq()
+    if (!created) return ctx.skip()
+    const monitor = await createMonitor({ name: 'tx-sync-rb', type: 'manual' }, created.req)
+    await syncMonitorAfterCommit(created.req, monitor, queue)
+    await payload.db.rollbackTransaction(created.id)
+
+    const kept = await createMonitor({ name: 'tx-delete-rb', type: 'manual' })
+    const deleted = await transactionalReq()
+    if (!deleted) return ctx.skip()
+    await removeMonitorAfterCommit(deleted.req, kept, queue)
+    await payload.db.rollbackTransaction(deleted.id)
+
+    expect(upserts).toEqual([])
+    expect(removals).toEqual([])
+    expect(published).toEqual([])
+  })
+})
+
 describe('BullMQ job schedulers', () => {
   let redisAvailable = false
   let queue: ChecksQueue | undefined
@@ -611,6 +735,95 @@ describe('BullMQ job schedulers', () => {
     if (queue) {
       await queue.obliterate({ force: true })
       await queue.close()
+    }
+  })
+
+  /**
+   * A check worker whose scheduler removals and re-plans hit the test queue (`startCheckWorker`
+   * talks to the default `marmot:` queue for those).
+   */
+  const testWorker = () =>
+    createWorker<CheckJobData, void, 'check'>(
+      QUEUE_NAMES.checks,
+      async (job) => {
+        await processCheckJob(payload, job, { queue })
+      },
+      { prefix, concurrency: 1 },
+    )
+
+  /** Wait until the worker has finished `count` jobs. */
+  const completedJobs = (worker: ReturnType<typeof testWorker>, count: number) =>
+    new Promise<void>((resolve, reject) => {
+      let done = 0
+      const timer = setTimeout(() => reject(new Error('worker did not process the job')), 15_000)
+      const onDone = () => {
+        if (++done >= count) {
+          clearTimeout(timer)
+          resolve()
+        }
+      }
+      worker.on('completed', onDone)
+      worker.on('failed', onDone)
+    })
+
+  const hasScheduler = async (id: string | number) =>
+    (await queue!.getJobSchedulers()).some((s) => s.key === monitorSchedulerId(id))
+
+  it("reproduces the race: upserting before commit loses the new monitor's scheduler", async (ctx) => {
+    if (!queue) return ctx.skip()
+    const tx = await transactionalReq()
+    if (!tx) return ctx.skip()
+    const worker = testWorker()
+    try {
+      await worker.waitUntilReady()
+      const monitor = await createMonitor(
+        { name: 'race-old', type: 'manual', manualStatus: 'up', interval: 3600 },
+        tx.req,
+      )
+      const processed = completedJobs(worker, 1)
+      // The old hook: upsert inside the create transaction. The idle worker runs the first job
+      // right away, cannot see the uncommitted monitor and deletes the scheduler.
+      await syncMonitor(monitor, queue)
+      await processed
+      await payload.db.commitTransaction(tx.id)
+
+      expect(await findMonitor(monitor.id)).not.toBeNull()
+      expect(await hasScheduler(monitor.id)).toBe(false)
+    } finally {
+      await worker.close()
+    }
+  })
+
+  it('upserting after commit keeps the scheduler and the first check runs', async (ctx) => {
+    if (!queue) return ctx.skip()
+    const tx = await transactionalReq()
+    if (!tx) return ctx.skip()
+    const worker = testWorker()
+    let monitorId: string | number | undefined
+    try {
+      await worker.waitUntilReady()
+      const monitor = await createMonitor(
+        { name: 'race-new', type: 'manual', manualStatus: 'up', interval: 3600 },
+        tx.req,
+      )
+      monitorId = monitor.id
+      const processed = completedJobs(worker, 1)
+      await syncMonitorAfterCommit(tx.req, monitor, queue)
+      expect(await hasScheduler(monitor.id)).toBe(false)
+
+      await payload.db.commitTransaction(tx.id)
+      await processed
+
+      expect(await hasScheduler(monitor.id)).toBe(true)
+      const { totalDocs } = await payload.count({
+        collection: 'heartbeats',
+        where: { monitor: { equals: monitor.id } },
+        overrideAccess: true,
+      })
+      expect(totalDocs).toBe(1)
+    } finally {
+      await worker.close()
+      if (monitorId !== undefined) await removeMonitorSchedule(monitorId, queue)
     }
   })
 

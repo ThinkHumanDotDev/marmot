@@ -257,6 +257,51 @@
           "primaryKey": false,
           "notNull": false
         },
+        "theme": {
+          "name": "theme",
+          "type": "enum_users_theme",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'system'"
+        },
+        "two_factor_enabled": {
+          "name": "two_factor_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "two_factor_verified_at": {
+          "name": "two_factor_verified_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "two_factor_secret": {
+          "name": "two_factor_secret",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "two_factor_pending_secret": {
+          "name": "two_factor_pending_secret",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "two_factor_backup_codes": {
+          "name": "two_factor_backup_codes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "two_factor_last_used_step": {
+          "name": "two_factor_last_used_step",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -488,6 +533,12 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'member'"
+        },
+        "permission_overrides": {
+          "name": "permission_overrides",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         },
         "settings_timezone": {
           "name": "settings_timezone",
@@ -1309,266 +1360,6 @@
           "name": "manual_status",
           "type": "enum_monitors_manual_status",
           "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "database_connection_string": {
-          "name": "database_connection_string",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "database_query": {
-          "name": "database_query",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mqtt_topic": {
-          "name": "mqtt_topic",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mqtt_username": {
-          "name": "mqtt_username",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mqtt_password": {
-          "name": "mqtt_password",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mqtt_check_type": {
-          "name": "mqtt_check_type",
-          "type": "enum_monitors_mqtt_check_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'keyword'"
-        },
-        "mqtt_success_message": {
-          "name": "mqtt_success_message",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "kafka_producer_topic": {
-          "name": "kafka_producer_topic",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "kafka_producer_message": {
-          "name": "kafka_producer_message",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "kafka_producer_ssl": {
-          "name": "kafka_producer_ssl",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "kafka_producer_allow_auto_topic_creation": {
-          "name": "kafka_producer_allow_auto_topic_creation",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "kafka_producer_sasl_options": {
-          "name": "kafka_producer_sasl_options",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "grpc_url": {
-          "name": "grpc_url",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "grpc_service_name": {
-          "name": "grpc_service_name",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "grpc_method": {
-          "name": "grpc_method",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "grpc_enable_tls": {
-          "name": "grpc_enable_tls",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "grpc_protobuf": {
-          "name": "grpc_protobuf",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "grpc_body": {
-          "name": "grpc_body",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "grpc_metadata": {
-          "name": "grpc_metadata",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "radius_username": {
-          "name": "radius_username",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "radius_password": {
-          "name": "radius_password",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "radius_secret": {
-          "name": "radius_secret",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "radius_called_station_id": {
-          "name": "radius_called_station_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "radius_calling_station_id": {
-          "name": "radius_calling_station_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "snmp_oid": {
-          "name": "snmp_oid",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "snmp_version": {
-          "name": "snmp_version",
-          "type": "enum_monitors_snmp_version",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'2c'"
-        },
-        "snmp_community": {
-          "name": "snmp_community",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'public'"
-        },
-        "smtp_security": {
-          "name": "smtp_security",
-          "type": "enum_monitors_smtp_security",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'opportunistic'"
-        },
-        "ssh_username": {
-          "name": "ssh_username",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ssh_auth_method": {
-          "name": "ssh_auth_method",
-          "type": "enum_monitors_ssh_auth_method",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'password'"
-        },
-        "ssh_password": {
-          "name": "ssh_password",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ssh_private_key": {
-          "name": "ssh_private_key",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ssh_passphrase": {
-          "name": "ssh_passphrase",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sftp_path": {
-          "name": "sftp_path",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rabbitmq_username": {
-          "name": "rabbitmq_username",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rabbitmq_password": {
-          "name": "rabbitmq_password",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ws_subprotocol": {
-          "name": "ws_subprotocol",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ws_ignore_sec_websocket_accept_header": {
-          "name": "ws_ignore_sec_websocket_accept_header",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "game": {
-          "name": "game",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "gamedig_given_port_only": {
-          "name": "gamedig_given_port_only",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": true
-        },
-        "remote_browser": {
-          "name": "remote_browser",
-          "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
@@ -4822,6 +4613,15 @@
         "oidc"
       ]
     },
+    "public.enum_users_theme": {
+      "name": "enum_users_theme",
+      "schema": "public",
+      "values": [
+        "system",
+        "light",
+        "dark"
+      ]
+    },
     "public.enum_organizations_plan": {
       "name": "enum_organizations_plan",
       "schema": "public",
@@ -4894,26 +4694,7 @@
         "dns",
         "push",
         "group",
-        "manual",
-        "grpc-keyword",
-        "websocket-upgrade",
-        "mqtt",
-        "kafka-producer",
-        "rabbitmq",
-        "smtp",
-        "snmp",
-        "ntp",
-        "sftp",
-        "radius",
-        "tailscale-ping",
-        "real-browser",
-        "mysql",
-        "postgres",
-        "sqlserver",
-        "mongodb",
-        "redis",
-        "steam",
-        "gamedig"
+        "manual"
       ]
     },
     "public.enum_monitors_method": {
@@ -4996,40 +4777,6 @@
         "pending"
       ]
     },
-    "public.enum_monitors_mqtt_check_type": {
-      "name": "enum_monitors_mqtt_check_type",
-      "schema": "public",
-      "values": [
-        "keyword",
-        "json-query"
-      ]
-    },
-    "public.enum_monitors_snmp_version": {
-      "name": "enum_monitors_snmp_version",
-      "schema": "public",
-      "values": [
-        "1",
-        "2c"
-      ]
-    },
-    "public.enum_monitors_smtp_security": {
-      "name": "enum_monitors_smtp_security",
-      "schema": "public",
-      "values": [
-        "opportunistic",
-        "starttls",
-        "secure",
-        "nostarttls"
-      ]
-    },
-    "public.enum_monitors_ssh_auth_method": {
-      "name": "enum_monitors_ssh_auth_method",
-      "schema": "public",
-      "values": [
-        "password",
-        "privateKey"
-      ]
-    },
     "public.enum_monitors_status_last_status": {
       "name": "enum_monitors_status_last_status",
       "schema": "public",
@@ -5088,6 +4835,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "0f209c08-6a22-4158-a454-e050c1e5441f",
+  "id": "0a1f33a8-66f9-475a-a400-1f8f8e90941e",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

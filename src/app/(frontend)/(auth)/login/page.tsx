@@ -19,9 +19,9 @@ export const dynamic = 'force-dynamic'
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>
+  searchParams: Promise<{ next?: string; error?: string; two_factor?: string }>
 }) {
-  const { next, error } = await searchParams
+  const { next, error, two_factor } = await searchParams
   const user = await getCurrentUser()
   if (user) redirect(safeNextPath(next))
   const signupEnabled = await isSignupAllowed(await getPayload({ config }))
@@ -60,7 +60,7 @@ export default async function LoginPage({
         {providers.oidc.enabled && (
           <SsoButton displayName={providers.oidc.displayName} next={next} />
         )}
-        <LoginForm next={next} />
+        <LoginForm next={next} twoFactor={two_factor === '1'} />
       </div>
     </AuthCard>
   )

@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
-import { can, isSuperadmin, type OrgId } from '@/access/permissions'
+import { canInOrg } from '@/access/overrides'
+import { isSuperadmin, type OrgId } from '@/access/permissions'
 import { EmptyState } from '@/components/empty-state'
 import { NotificationsView } from '@/components/notifications/notifications-view'
 import { toNotificationRow } from '@/components/notifications/types'
@@ -40,8 +41,8 @@ export default async function NotificationsPage({ params }: PageProps) {
   }
   if (orgId === undefined) notFound()
 
-  const canRead = isSuperadmin(user) || can(user, orgId, 'notification:read')
-  const canManage = isSuperadmin(user) || can(user, orgId, 'notification:update')
+  const canRead = await canInOrg(payload, user, orgId, 'notification:read')
+  const canManage = await canInOrg(payload, user, orgId, 'notification:update')
 
   if (!canRead) {
     return (

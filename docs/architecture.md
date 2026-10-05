@@ -16,7 +16,12 @@ Shared infrastructure: the Payload database (Postgres by default, MongoDB suppor
 Payload does not poll anything by itself. On `monitors` `afterChange`/`afterDelete` hooks the web process
 calls `syncMonitor(monitor)` / `removeMonitorSchedule(id)` (`src/server/engine/scheduler.ts`), which upserts
 or removes a BullMQ **job scheduler** named `monitor:<id>` with `every = interval * 1000` (`retryInterval`
-while the monitor is PENDING). Queues live under the Redis prefix `marmot:` (`marmot:checks`). The worker
+while the monitor is PENDING). Both run, together with the `updateMonitorIntoList` / `deleteMonitorFromList` realtime emits,
+only **after the operation's transaction commits** (`afterCommit()` in `src/db/after-commit.ts`, which hooks
+the adapter's `commitTransaction` / `rollbackTransaction`; without a transaction they run at once). Otherwise an
+idle worker could run the new scheduler's first job before the monitor row is visible, take the "monitor not
+found" path and delete the scheduler; a rolled-back change now leaves the scheduler untouched. Queues live
+under the Redis prefix `marmot:` (`marmot:checks`). The worker
 consumes the `checks` queue, runs the monitor type's `check()` and feeds the result through the heartbeat
 state machine (`src/server/engine/beat.ts`, ported from Uptime Kuma's `Monitor.beat`):
 
@@ -139,6 +144,22 @@ check and are the only users allowed into the Payload admin panel (`users.access
 an account (`POST /api/users`) while `DISABLE_SIGNUP` is false (`canSignUp` in `src/collections/Users.ts`);
 field-level access strips `superadmin` and `organizations` from requests that are not made by a superadmin.
 
+### Permission overrides
+
+An organization may raise or lower the minimum role of any permission except `organization:delete`
+(`LOCKED_PERMISSIONS`) through `organizations.permissionOverrides`, a JSON diff from `PERMISSIONS` such as
+`{ "monitor:create": "admin", "notification:create": "member" }`. Owners edit it in **Settings →
+Permissions** (`GET/PUT /api/orgs/:orgId/permissions`); the field's own access only lets owners and
+superadmins write it, and `validatePermissionOverrides` refuses unknown permissions, roles and locked keys.
+
+Resolution: `minRoleFor(permission, overrides)` → `canWithOverrides(user, org, permission)` when the
+organization document is at hand (settings pages, `getOrgPageContext`), `canInOrg(payload, user, orgId,
+permission)` (`src/access/overrides.ts`) in route handlers that only know the id (one lookup, used by
+`resolveOrgRequest`, the monitors `authorize` helper, members and invite helpers). `orgScoped` loads the
+overrides of the user's organizations once per request (`req.context`) so collection access and the route
+checks agree; the plain `can(user, orgId, permission)` keeps the defaults and remains for code that cannot
+afford a lookup (`toClientNotification` secret masking, field-level access on `inviteLinkToken`).
+
 | Permission                                                          | viewer | member | admin | owner |
 | ------------------------------------------------------------------- | :----: | :----: | :---: | :---: |
 | `organization:read`                                                 |   ✓    |   ✓    |   ✓   |   ✓   |
@@ -194,6 +215,37 @@ UI goes through dedicated route handlers backed by `src/server/members.ts` (`lis
 
 An organization always keeps at least one owner: the last owner cannot be demoted, removed or leave, and
 deleting an organization first removes its invitations and memberships (`beforeDelete` hooks).
+
+## Account security: two-factor authentication
+
+`src/auth/two-factor/` implements TOTP (RFC 6238, `otplib`) after Uptime Kuma's `login` / `prepare2FA` /
+`save2FA` / `disable2FA` handlers: a one-step tolerance window and a replay check (the matched time step must
+be after the last accepted one, `users.twoFactorLastUsedStep`).
+
+- **Storage** (`src/collections/Users.ts`): `twoFactorEnabled` and `twoFactorVerifiedAt` are readable;
+  `twoFactorSecret`, `twoFactorPendingSecret` (AES-256-GCM, key derived from `PAYLOAD_SECRET`, `crypto.ts`),
+  `twoFactorBackupCodes` (HMAC digests of ten single-use codes, `backup-codes.ts`) and
+  `twoFactorLastUsedStep` are `hidden` with read access `false`: only `loadTwoFactorUser` (Local API with
+  `showHiddenFields`) sees them and every write happens server-side with `overrideAccess: true`.
+- **Enrolment** (`service.ts`, routes `/api/account/2fa/{setup,verify,disable,backup-codes}`): `setup`
+  (password re-check for local accounts via `verifyPassword`, `src/auth/password.ts`) stores a pending
+  secret and returns the otpauth URL, a QR data URL and the base32 key; `verify` confirms a code, enables
+  2FA and returns the backup codes once; `backup-codes` regenerates them after a TOTP code; `disable`
+  needs password + a current code. UI: `TwoFactorCard` on Settings → Account.
+- **Login** (`handlers.ts`, routes `POST /api/auth/login` and `POST /api/auth/2fa`): the wrapper calls
+  `payload.login` with the `twoFactorGate` context flag; for a protected account it revokes the session
+  Payload just created and answers `{ requiresTwoFactor: true, challenge }` plus an encrypted
+  `marmot-2fa` challenge cookie (`challenge.ts`, 5 minutes, 5 attempts, path `/api/auth`). `/api/auth/2fa`
+  verifies a TOTP or backup code against the challenge and creates the session with
+  `createPayloadSessionCookie`. A `beforeLogin` hook on `users` rejects `POST /api/users/login` and
+  `payload.login` without the gate flag for protected accounts, so the Payload REST login (and the admin
+  panel's login form) cannot bypass the second step; a superadmin with 2FA signs in through the Marmot
+  login page and then opens `/admin` with the shared cookie.
+- **Single sign-on**: the OIDC callback issues the same challenge (redirect to `/login?two_factor=1`) when
+  a linked account enabled 2FA; accounts that did not are signed in by the identity provider alone. SSO
+  accounts have no Marmot password, so their setup/disable steps rely on the session plus a code.
+- **Known gap**: Payload's `reset-password` endpoint signs the user in as part of a successful reset without
+  offering a hook, so a password reset through the email link bypasses the second step for that session.
 
 ## Billing (future)
 
