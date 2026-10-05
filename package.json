@@ -32,7 +32,7 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test:int",
     "test": "pnpm test:int && pnpm test:e2e",
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
-    "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --import=tsx/esm\" playwright test --config=playwright.config.ts",
+    "test:e2e": "cross-env NODE_OPTIONS=--no-deprecation playwright test --config=playwright.config.ts",
     "services:up": "bash scripts/dev-services.sh up",
     "services:down": "bash scripts/dev-services.sh down",
     "release:prepare": "bash scripts/release.sh"
