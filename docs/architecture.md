@@ -62,10 +62,45 @@ non-important heartbeats older than 24 h.
 
 ## Realtime
 
-Web and worker publish events with `@socket.io/redis-emitter`; the realtime process uses
-`@socket.io/redis-adapter` so several realtime instances can run. Clients open one socket, authenticate with
-the Payload cookie, and receive `heartbeat`, `heartbeatList`, `uptime`, `avgPing`, `monitorList`,
-`maintenanceList`, … into Zustand stores with bounded ring buffers.
+The realtime process (`src/realtime.ts` → `createRealtimeServer()` in `src/server/realtime/server.ts`) is
+a socket.io server on `REALTIME_PORT` with `@socket.io/redis-adapter`, so several replicas can run. Web and
+worker never hold sockets: they publish with `@socket.io/redis-emitter` through the helpers in
+`src/server/realtime/emitter.ts` (`emitHeartbeat`, `emitMonitorUpdated`, `emitMonitorDeleted`, `emitUptime`,
+`emitAvgPing`, `emitMaintenanceList`, `emitNotificationList`, `emitCertInfo`). The emitter connects to Redis
+lazily and swallows (logs) failures, so a Redis outage degrades live updates but never breaks a request or a
+check.
+
+**Authentication.** The browser connects with `withCredentials`, so the handshake carries the
+`payload-token` cookie. An `io.use` middleware builds WHATWG `Headers` from `socket.handshake.headers` and
+calls `payload.auth({ headers })`; sockets without a user are rejected (`connect_error: unauthorized`). The
+socket then joins `org:<id>` for every organization in `user.organizations`. Clients may ask for more rooms
+with `joinOrg(orgId, ack)` / `leaveOrg(orgId)`; membership is checked again (superadmins may join any
+existing organization).
+
+**Initial state.** On every room join the server sends, from the Local API with `overrideAccess: true`
+(membership was verified already): `info { version, serverTime }`, `monitorList { organizationId,
+monitors[] }` (active and paused monitors), then per monitor `heartbeatList` (last 100 beats, oldest →
+newest), `importantHeartbeatList` (last 50 status transitions), `uptime` and `avgPing` for `24h` and `30d`
+(`src/server/stats/uptime-calculator.ts`). `loadOrgState()` in `src/server/realtime/state.ts` builds that
+state and is reused by server components (with the request user and `overrideAccess: false`).
+
+**Live events.** The worker registers `registerRealtimeListener()` (`src/server/realtime/listener.ts`) after
+the stats listener, so each beat publishes `heartbeat { organizationId, monitorId, heartbeat }` followed by
+the refreshed `uptime`/`avgPing` for `24h`. The `monitors` collection hooks publish `updateMonitorIntoList
+{ organizationId, monitor }` and `deleteMonitorFromList { organizationId, monitorId }` next to the BullMQ
+scheduler sync (both skipped when `MARMOT_DISABLE_ENGINE_HOOKS=1`). Event names and payload types live in
+`src/server/realtime/events.ts`, which is also imported by the client; every payload carries
+`organizationId` and string ids.
+
+**Client.** `src/lib/socket.ts` holds one `socket.io-client` instance (`path: /socket.io`, same origin unless
+`NEXT_PUBLIC_REALTIME_URL` is set, `autoConnect: false`). `SocketProvider`
+(`src/components/realtime/socket-provider.tsx`, mounted by the `[orgSlug]` layout) connects on mount, emits
+`joinOrg` for the current organization and streams the events of that organization into
+`useMonitorStore` (`src/stores/monitor-store.ts`: monitors, 100-beat ring buffers, important beats, uptime,
+avgPing); events of other organizations the user belongs to are ignored and the store is reset when the
+organization changes. Server status strings map to the store's `HeartbeatStatus` enum in
+`src/lib/realtime.ts`. Pages load the same state server-side (`/{orgSlug}/monitors` uses `loadOrgState`),
+render it, seed the store and let the socket take over.
 
 ## Organizations and RBAC
 

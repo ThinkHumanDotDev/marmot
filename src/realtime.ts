@@ -1,15 +1,18 @@
 /**
  * Realtime entrypoint: socket.io server backed by the Redis adapter.
  * Runs as its own process so the Next.js app can keep `output: 'standalone'`-style builds.
- * Run with `pnpm dev:realtime` (payload run) or `pnpm start:realtime`.
+ * Run with `pnpm dev:realtime` or `pnpm start:realtime` (both use `scripts/run-ts.mjs`).
  */
 import 'dotenv/config'
 import { createServer } from 'http'
-import { Server } from 'socket.io'
 import { createAdapter } from '@socket.io/redis-adapter'
+import { getPayload } from 'payload'
 
+import config from '@payload-config'
+import pkg from '../package.json' with { type: 'json' }
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
+import { createRealtimeServer } from '@/server/realtime/server'
 import { createRedis } from '@/server/redis'
 
 const log = childLogger('realtime')
@@ -25,29 +28,44 @@ async function main() {
     res.end()
   })
 
+  // Payload is needed to authenticate sockets and to load the initial state of each organization.
+  const payload = await getPayload({ config })
+
   const pub = createRedis()
   const sub = pub.duplicate()
 
-  const io = new Server(httpServer, {
+  const io = createRealtimeServer({
+    payload,
+    httpServer,
     cors: { origin: env.NEXT_PUBLIC_SERVER_URL, credentials: true },
     adapter: createAdapter(pub, sub),
-  })
-
-  io.on('connection', (socket) => {
-    log.debug({ id: socket.id }, 'socket connected')
-    socket.on('disconnect', (reason) => log.debug({ id: socket.id, reason }, 'socket disconnected'))
+    version: pkg.version,
   })
 
   httpServer.listen(env.REALTIME_PORT, () => {
-    log.info({ port: env.REALTIME_PORT }, 'realtime server listening')
+    log.info({ port: env.REALTIME_PORT, adapter: payload.db.name }, 'realtime server listening')
   })
 
+  let stopping = false
   const shutdown = async (signal: string) => {
+    if (stopping) return
+    stopping = true
     log.info({ signal }, 'realtime shutting down')
-    io.close()
-    pub.disconnect()
-    sub.disconnect()
-    process.exit(0)
+    const timer = setTimeout(() => {
+      log.warn('shutdown timed out; exiting')
+      process.exit(1)
+    }, 10_000)
+    try {
+      await io.close()
+      pub.disconnect()
+      sub.disconnect()
+      await payload.db.destroy?.()
+    } catch (err) {
+      log.error({ err }, 'error during shutdown')
+    } finally {
+      clearTimeout(timer)
+      process.exit(0)
+    }
   }
   process.on('SIGINT', () => void shutdown('SIGINT'))
   process.on('SIGTERM', () => void shutdown('SIGTERM'))

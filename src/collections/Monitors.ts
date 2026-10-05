@@ -3,6 +3,7 @@ import type { CollectionConfig, Field, Where } from 'payload'
 
 import { HEARTBEAT_STATUSES } from './Heartbeats'
 import { childLogger } from '@/lib/logger'
+import { relationId } from '@/server/realtime/serialize'
 
 const log = childLogger('monitors')
 
@@ -98,6 +99,12 @@ export const Monitors: CollectionConfig = {
           } else {
             await removeMonitorSchedule(doc.id)
           }
+          // Live dashboards: `updateMonitorIntoList` delta to the organization room.
+          const organizationId = relationId(doc.organization)
+          if (organizationId) {
+            const { emitMonitorUpdated } = await import('@/server/realtime/emitter')
+            emitMonitorUpdated(organizationId, doc)
+          }
         } catch (err) {
           log.warn({ err, monitorId: doc.id }, 'failed to sync monitor schedule')
         }
@@ -111,6 +118,11 @@ export const Monitors: CollectionConfig = {
             await import('@/server/engine/scheduler')
           if (!engineHooksEnabled()) return doc
           await removeMonitorSchedule(doc.id)
+          const organizationId = relationId(doc.organization)
+          if (organizationId) {
+            const { emitMonitorDeleted } = await import('@/server/realtime/emitter')
+            emitMonitorDeleted(organizationId, doc.id)
+          }
         } catch (err) {
           log.warn({ err, monitorId: doc.id }, 'failed to remove monitor schedule')
         }
