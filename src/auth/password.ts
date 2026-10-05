@@ -27,7 +27,7 @@ export async function verifyPassword(
       context: { [TWO_FACTOR_GATE_CONTEXT]: true },
     })
     token = result.token
-    userId = result.user.id
+    userId = result.user?.id
   } catch {
     return false
   }

@@ -2,6 +2,7 @@ import * as oidc from 'openid-client'
 import { getPayload, type Payload } from 'payload'
 
 import config from '@payload-config'
+import { issueTwoFactorChallenge } from '@/auth/two-factor/handlers'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import { safeNextPath } from '@/lib/utils'
@@ -153,6 +154,15 @@ export async function handleOidcCallback(request: Request): Promise<Response> {
       autoProvision: settings.autoProvision,
       signupDisabled: env.DISABLE_SIGNUP,
     })
+
+    if (user.twoFactorEnabled === true) {
+      // The account opted into Marmot's own second factor on top of the identity provider: no
+      // session yet, the login page asks for the code (`POST /api/auth/2fa`).
+      const { cookie } = await issueTwoFactorChallenge(user.id)
+      log.info({ user: user.id }, 'OIDC login needs a second factor')
+      const params = new URLSearchParams({ two_factor: '1', next: transaction.next })
+      return redirect(`/login?${params}`, [cookie, clearState], 303)
+    }
 
     const session = await createPayloadSessionCookie({ payload, userId: user.id })
     log.info({ user: user.id }, 'OIDC login succeeded')
