@@ -136,7 +136,7 @@ These are read by `docker/entrypoint.sh`, `docker/docker-compose.yml` or the Cad
 | `ACME_EMAIL`            | —        | compose → Caddy  | Contact address passed to the certificate authority.                                                      |
 | `SITE_ADDRESS`          | `:80`    | Caddyfile        | Derived from `DOMAIN` by compose; set it directly when running Caddy by hand.                             |
 | `POSTGRES_PASSWORD`     | `marmot` | compose          | Password of the bundled Postgres; the default `DATABASE_URL` picks it up.                                 |
-| `MARMOT_VERSION`        | `latest` | compose          | Image tag of `ghcr.io/thinkhumandotdev/marmot` to run. Pin it to control upgrades.                        |
+| `MARMOT_VERSION`        | release  | compose          | Image tag of `ghcr.io/thinkhumandotdev/marmot` to run; a release's compose file defaults to that release. |
 | `PORT`                  | `3000`   | entrypoint (web) | Port of the Next.js server inside the container.                                                          |
 | `SKIP_MIGRATIONS`       | `false`  | entrypoint (web) | `true` skips `migrate` on start, for when you run migrations yourself (init container, CI/CD step).       |
 | `WORKER_SCHEMA_WAIT_MS` | `120000` | worker           | How long the worker waits for the database schema (migrations running in `web`) before giving up on boot. |

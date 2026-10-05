@@ -100,6 +100,13 @@ from the index must exist (a test checks it). Write for the reader of that page:
 _(landing in the current release)_ and the marker is removed at release time
 ([docs/release-checklist.md](docs/release-checklist.md)).
 
+## Releases
+
+Maintainers cut releases with `pnpm release:prepare <version>` and a `vX.Y.Z` tag; the
+[release checklist](docs/release-checklist.md) has every step. `CHANGELOG.md` and the GitHub Release notes
+are generated from commit messages by git-cliff (`cliff.toml`), so a clear Conventional Commit subject is
+your changelog entry.
+
 ## Licensing
 
 By contributing you agree that your contributions are licensed under the AGPL-3.0-only license.

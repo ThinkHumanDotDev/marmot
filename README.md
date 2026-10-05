@@ -104,8 +104,8 @@ time it ports individual pieces of Uptime Kuma (MIT) — the heartbeat state mac
 monitor checks, notification providers — with attribution in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 [docs/comparison.md](docs/comparison.md) tracks feature parity.
 
-**Can I import my Uptime Kuma data?** Not yet; an importer for Uptime Kuma's JSON backup is planned (#28).
-Field names follow Uptime Kuma's, so scripting the migration through the REST API is straightforward.
+**Can I import my Uptime Kuma data?** Yes: Settings → Import / Export reads an Uptime Kuma JSON backup
+(with a dry run first); see [docs/import-export.md](docs/import-export.md).
 
 **Postgres or MongoDB?** Either. Postgres is the default and ships in the compose file; MongoDB is a
 one-line override. Every collection is written to work on both, and CI runs the whole suite on both.

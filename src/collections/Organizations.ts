@@ -13,6 +13,7 @@ import { addOrgMembership, toMembershipData } from '@/access/memberships'
 import { can, isSuperadmin, ROLES } from '@/access/permissions'
 import { PLANS, SUBSCRIPTION_STATUSES } from '@/lib/entitlements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
+import { captureServerEvent, hashAnalyticsId } from '@/server/analytics'
 
 import type { Organization, User } from '@/payload-types'
 
@@ -93,6 +94,17 @@ const syncStripeCustomer: CollectionAfterChangeHook<Organization> = async ({
 }
 
 /**
+ * Opt-in telemetry (docs/telemetry.md): counts new organizations. The only identifier is a keyed
+ * hash of the organization id; a no-op unless `NEXT_PUBLIC_POSTHOG_KEY` is set.
+ */
+const trackOrgCreated: CollectionAfterChangeHook<Organization> = ({ doc, operation }) => {
+  if (operation === 'create') {
+    captureServerEvent('org_created', { orgId: hashAnalyticsId(doc.id) })
+  }
+  return doc
+}
+
+/**
  * Remove the organization from every member before the row is deleted. The multi-tenant plugin does
  * the same in `afterDelete`, but on Postgres the membership relationship is a NOT NULL column whose
  * foreign key would otherwise fail (`ON DELETE SET NULL`) before that hook runs.
@@ -159,7 +171,7 @@ export const Organizations: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [normalizeSlug],
-    afterChange: [grantOwnerMembership, syncStripeCustomer],
+    afterChange: [grantOwnerMembership, syncStripeCustomer, trackOrgCreated],
     beforeDelete: [removeInvitations, removeMemberships],
   },
   fields: [
