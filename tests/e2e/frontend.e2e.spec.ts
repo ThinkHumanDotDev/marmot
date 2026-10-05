@@ -1,4 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { ANONYMOUS, expect, test } from './fixtures'
+
+test.use({ storageState: ANONYMOUS })
 
 test.describe('Frontend', () => {
   test('redirects signed-out visitors to the login page', async ({ page }) => {
