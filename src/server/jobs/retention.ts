@@ -31,9 +31,12 @@ export const RETENTION_INTERVAL_MS = 60 * 60 * 1000
 export const MINUTELY_KEEP_SECONDS = 24 * 60 * 60
 export const HOURLY_KEEP_SECONDS = 30 * 24 * 60 * 60
 export const HEARTBEAT_KEEP_SECONDS = 24 * 60 * 60
+/** Security audit rows (`audit-logs`) are kept for a year regardless of `KEEP_DATA_PERIOD_DAYS`. */
+export const AUDIT_LOG_KEEP_DAYS = 365
 
 /** Slug of the engine's raw heartbeat collection (delivered by the engine issue). */
 const HEARTBEATS_SLUG = 'heartbeats'
+const AUDIT_LOGS_SLUG = 'audit-logs'
 
 export type RetentionOptions = {
   /** Days to keep daily aggregates and important heartbeats. Defaults to `KEEP_DATA_PERIOD_DAYS`. */
@@ -46,6 +49,7 @@ export type RetentionResult = {
   daily: number
   heartbeats: number
   importantHeartbeats: number
+  auditLogs: number
 }
 
 const subtractSeconds = (date: Date, seconds: number): Date =>
@@ -59,6 +63,7 @@ export function retentionCutoffs(now: Date, keepDataPeriodDays: number) {
     daily: getDailyKey(subtractSeconds(now, keepDataPeriodDays * 86400)),
     heartbeats: subtractSeconds(now, HEARTBEAT_KEEP_SECONDS),
     importantHeartbeats: subtractSeconds(now, keepDataPeriodDays * 86400),
+    auditLogs: subtractSeconds(now, AUDIT_LOG_KEEP_DAYS * 86400),
   }
 }
 
@@ -90,6 +95,7 @@ export async function runRetention(
     daily: 0,
     heartbeats: 0,
     importantHeartbeats: 0,
+    auditLogs: 0,
   }
 
   result.minutely = await deleteWhere(payload, 'stat-minutely', {
@@ -123,6 +129,12 @@ export async function runRetention(
         ],
       })
     }
+  }
+
+  if (hasCollection(payload, AUDIT_LOGS_SLUG)) {
+    result.auditLogs = await deleteWhere(payload, AUDIT_LOGS_SLUG, {
+      createdAt: { less_than: cutoffs.auditLogs.toISOString() },
+    })
   }
 
   log.info({ ...result, keepDays }, 'retention run finished')

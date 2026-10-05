@@ -10,7 +10,8 @@ import * as migration_20261005_045549_notifications from './20261005_045549_noti
 import * as migration_20261005_051201_status_pages from './20261005_051201_status_pages';
 import * as migration_20261005_133533_billing from './20261005_133533_billing';
 import * as migration_20261005_222624_settings_2fa_permissions from './20261005_222624_settings_2fa_permissions';
-import * as migration_20261005_232701_tags_proxies_docker from './20261005_232701_tags_proxies_docker';
+import * as migration_20261005_225041_audit_logs from './20261005_225041_audit_logs';
+import * as migration_20261005_234305_tags_proxies_docker from './20261005_234305_tags_proxies_docker';
 
 export const migrations = [
   {
@@ -74,8 +75,13 @@ export const migrations = [
     name: '20261005_222624_settings_2fa_permissions',
   },
   {
-    up: migration_20261005_232701_tags_proxies_docker.up,
-    down: migration_20261005_232701_tags_proxies_docker.down,
-    name: '20261005_232701_tags_proxies_docker'
+    up: migration_20261005_225041_audit_logs.up,
+    down: migration_20261005_225041_audit_logs.down,
+    name: '20261005_225041_audit_logs',
+  },
+  {
+    up: migration_20261005_234305_tags_proxies_docker.up,
+    down: migration_20261005_234305_tags_proxies_docker.down,
+    name: '20261005_234305_tags_proxies_docker'
   },
 ];

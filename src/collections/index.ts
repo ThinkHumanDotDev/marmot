@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { DockerHosts } from './DockerHosts'
+import { AuditLogs } from './AuditLogs'
 import { Heartbeats } from './Heartbeats'
 import { Incidents } from './Incidents'
 import { Invitations } from './Invitations'
@@ -36,4 +37,5 @@ export const collections: CollectionConfig[] = [
   StatDaily,
   StatusPages,
   Incidents,
+  AuditLogs,
 ]
