@@ -52,7 +52,10 @@ const numbers = (value: unknown, fallback: number[]): number[] => {
   return list.length > 0 ? list : fallback
 }
 
-function withDefaults(doc: Partial<InstanceSetting> | null | undefined): InstanceSettings {
+/** The stored global with env defaults applied to every unset field. */
+export function resolveInstanceSettings(
+  doc: Partial<InstanceSetting> | null | undefined,
+): InstanceSettings {
   const defaults = defaultInstanceSettings()
   if (!doc) return defaults
   return {
@@ -87,7 +90,7 @@ export async function getInstanceSettings(payload: Payload): Promise<InstanceSet
     payload.logger.warn({ err: error }, 'could not read instance settings; using env defaults')
   }
 
-  const value = withDefaults(doc)
+  const value = resolveInstanceSettings(doc)
   cached = { value, expiresAt: now + INSTANCE_SETTINGS_CACHE_MS }
   return value
 }

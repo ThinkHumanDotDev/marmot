@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { authApi } from '@/lib/api'
+import { accountApi } from '@/lib/org-api'
 import { cn, initials } from '@/lib/utils'
 
 import type { ShellUser } from './types'
@@ -33,6 +34,16 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
   const { theme, setTheme } = useTheme()
   const [signingOut, setSigningOut] = React.useState(false)
   const displayName = user.name?.trim() || user.email
+
+  /** Applies the theme and remembers it on the account (`users.theme`). */
+  function chooseTheme(value: string) {
+    setTheme(value)
+    if (value === 'system' || value === 'light' || value === 'dark') {
+      accountApi.update(user.id, { theme: value }).catch(() => {
+        // Applied locally anyway; the next sign-in on another device falls back to the saved one.
+      })
+    }
+  }
 
   async function signOut() {
     setSigningOut(true)
@@ -86,7 +97,7 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs text-muted-foreground">Theme</DropdownMenuLabel>
-        <DropdownMenuRadioGroup value={theme ?? 'system'} onValueChange={setTheme}>
+        <DropdownMenuRadioGroup value={theme ?? 'system'} onValueChange={chooseTheme}>
           <DropdownMenuRadioItem value="light">
             <Sun className="size-4" aria-hidden /> Light
           </DropdownMenuRadioItem>

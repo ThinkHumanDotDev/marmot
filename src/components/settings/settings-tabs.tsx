@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, UserRound, Users } from 'lucide-react'
+import { Bell, Building2, Server, ShieldCheck, UserRound, Users } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -8,18 +8,25 @@ import { cn } from '@/lib/utils'
 
 interface SettingsTabsProps {
   orgSlug: string
+  /** Shows the instance tab (superadmins only). */
+  superadmin?: boolean
 }
 
 /**
- * Link-based tab strip for the settings area. Future tabs (Permissions, API keys, Billing) slot in
- * here once their issues land.
+ * Link-based tab strip for the settings area. Future tabs (API keys, Billing) slot in here once
+ * their issues land.
  */
-export function SettingsTabs({ orgSlug }: SettingsTabsProps) {
+export function SettingsTabs({ orgSlug, superadmin = false }: SettingsTabsProps) {
   const pathname = usePathname()
   const tabs = [
     { href: `/${orgSlug}/settings/account`, label: 'Account', icon: UserRound },
     { href: `/${orgSlug}/settings/organization`, label: 'Organization', icon: Building2 },
     { href: `/${orgSlug}/members`, label: 'Members', icon: Users },
+    { href: `/${orgSlug}/settings/permissions`, label: 'Permissions', icon: ShieldCheck },
+    { href: `/${orgSlug}/settings/notifications`, label: 'Notifications', icon: Bell },
+    ...(superadmin
+      ? [{ href: `/${orgSlug}/settings/instance`, label: 'Instance', icon: Server }]
+      : []),
   ]
 
   return (

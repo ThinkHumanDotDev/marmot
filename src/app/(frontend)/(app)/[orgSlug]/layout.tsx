@@ -5,6 +5,7 @@ import React from 'react'
 import config from '@payload-config'
 import { SocketProvider } from '@/components/realtime/socket-provider'
 import { AppShell } from '@/components/shell/app-shell'
+import { ThemeSync } from '@/components/theme-sync'
 import { getUserOrganizations, homePathFor, requireUser, type OrgMembership } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -51,6 +52,7 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
         name: user.name,
         superadmin: !!user.superadmin,
         authProvider: user.authProvider,
+        theme: user.theme ?? 'system',
       }}
       organizations={
         currentOrg && !organizations.includes(currentOrg)
@@ -59,6 +61,7 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
       }
       currentOrg={currentOrg}
     >
+      <ThemeSync theme={user.theme} />
       <SocketProvider organizationId={currentOrg.id}>{children}</SocketProvider>
     </AppShell>
   )

@@ -2,15 +2,17 @@ import React from 'react'
 
 import { PageHeader } from '@/components/page-header'
 import { SettingsTabs } from '@/components/settings/settings-tabs'
+import { getCurrentUser } from '@/lib/auth'
 
 interface SettingsLayoutProps {
   children: React.ReactNode
   params: Promise<{ orgSlug: string }>
 }
 
-/** Settings frame: header + tab strip (Account · Organization · Members). */
+/** Settings frame: header + tab strip (Account · Organization · Members · Permissions · …). */
 export default async function SettingsLayout({ children, params }: SettingsLayoutProps) {
   const { orgSlug } = await params
+  const user = await getCurrentUser()
   return (
     <>
       <PageHeader
@@ -19,7 +21,7 @@ export default async function SettingsLayout({ children, params }: SettingsLayou
         className="border-b-0 pb-2"
       />
       <div className="border-b px-6 md:px-8">
-        <SettingsTabs orgSlug={orgSlug} />
+        <SettingsTabs orgSlug={orgSlug} superadmin={user?.superadmin === true} />
       </div>
       <section className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-6 md:p-8">
         {children}
