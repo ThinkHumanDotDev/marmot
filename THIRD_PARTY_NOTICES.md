@@ -28,6 +28,25 @@ attribution comment and are listed here:
 - `src/server/monitor-types/push.ts` — `push` branch of `server/model/monitor.js`
 - `src/server/monitor-types/group.ts` — `server/monitor-types/group.js`
 - `src/server/monitor-types/manual.ts` — `server/monitor-types/manual.js`
+- `src/server/monitor-types/sql.ts`, `mysql.ts`, `postgres.ts`, `sqlserver.ts` —
+  `server/monitor-types/{mysql,postgres,mssql}.js`
+- `src/server/monitor-types/redis.ts` — `server/monitor-types/redis.js`
+- `src/server/monitor-types/mongodb.ts` — `server/monitor-types/mongodb.js`
+- `src/server/monitor-types/mqtt.ts` — `server/monitor-types/mqtt.js`
+- `src/server/monitor-types/kafka-producer.ts` — `kafkaProducerAsync` from `server/util-server.js` and the
+  `kafka-producer` branch of `server/model/monitor.js`
+- `src/server/monitor-types/grpc-keyword.ts` — `server/monitor-types/grpc.js`
+- `src/server/monitor-types/websocket-upgrade.ts` — `server/monitor-types/websocket-upgrade.js`
+- `src/server/monitor-types/smtp.ts` — `server/monitor-types/smtp.js`
+- `src/server/monitor-types/snmp.ts` — `server/monitor-types/snmp.js`
+- `src/server/monitor-types/ntp.ts` — `server/monitor-types/ntp.js`
+- `src/server/monitor-types/sftp.ts` — `server/monitor-types/sftp.js`
+- `src/server/monitor-types/rabbitmq.ts` — `server/monitor-types/rabbitmq.js`
+- `src/server/monitor-types/radius.ts` — `server/radius-client.js` and `radius` from `server/util-server.js`
+- `src/server/monitor-types/tailscale-ping.ts` — `server/monitor-types/tailscale-ping.js`
+- `src/server/monitor-types/steam.ts` — `server/monitor-types/steam.js`
+- `src/server/monitor-types/gamedig.ts` — `server/monitor-types/gamedig.js`
+- `src/server/monitor-types/real-browser.ts` — `server/monitor-types/real-browser-monitor-type.js`
 - `src/server/notification-providers/http.ts` — error formatting and `extractAddress` from
   `server/notification-providers/notification-provider.js`
 - `src/server/notifications/message.ts` — default message text from `Monitor.sendNotification`
