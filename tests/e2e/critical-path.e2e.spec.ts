@@ -132,7 +132,8 @@ test.describe('Critical path', () => {
 
   test('invites a member who signs up and accepts', async ({ browser, adminApi }) => {
     await page.goto(`/${org.slug}/members`)
-    await expect(page.getByTestId('member-row')).toHaveCount(1)
+    // A hidden copy of the page can be in the DOM while the router swaps trees: count visible rows.
+    await expect(page.getByTestId('member-row').filter({ visible: true })).toHaveCount(1)
     await page.getByRole('button', { name: /invite member/i }).click()
     const dialog = page.getByRole('dialog')
     await dialog.getByLabel('Email').fill(invitee.email)
@@ -163,7 +164,9 @@ test.describe('Critical path', () => {
 
     // The owner sees the new member; the invitation is gone.
     await page.reload()
-    await expect(page.getByTestId('member-row').filter({ hasText: invitee.email })).toBeVisible()
-    await expect(page.getByTestId('invitation-row')).toHaveCount(0)
+    await expect(
+      page.getByTestId('member-row').filter({ hasText: invitee.email, visible: true }),
+    ).toBeVisible()
+    await expect(page.getByTestId('invitation-row').filter({ visible: true })).toHaveCount(0)
   })
 })

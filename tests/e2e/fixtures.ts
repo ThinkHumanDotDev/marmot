@@ -127,12 +127,13 @@ export class AdminApi {
   /**
    * Creates a monitor whose checks the worker will run. The `monitors` afterChange hook upserts the
    * BullMQ scheduler before the create transaction commits, so an idle worker can pick up the first
-   * job, not find the monitor yet and drop the scheduler. Saving the (now committed) monitor once
-   * more re-creates the scheduler.
+   * job, not find the monitor yet and drop the scheduler. So the monitor is created paused and
+   * activated once the row is committed (activating before any beat also means the update cannot
+   * write a stale `status` over the worker's first result).
    */
   async createMonitor(data: Record<string, unknown>): Promise<{ id: DocId }> {
-    const monitor = await this.create('monitors', data)
-    await this.update('monitors', monitor.id, { active: data.active ?? true })
+    const monitor = await this.create('monitors', { ...data, active: false })
+    if (data.active ?? true) await this.update('monitors', monitor.id, { active: true })
     return monitor
   }
 
