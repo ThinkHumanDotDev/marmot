@@ -10,6 +10,7 @@ import {
 import { orgScoped } from '@/access/org-scoped'
 import { getOrgIdsWithPermission, isSuperadmin, type UserLike } from '@/access/permissions'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
+import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 
 import type { StatusPage } from '@/payload-types'
 
@@ -167,7 +168,8 @@ export const StatusPages: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [normalize],
-    beforeChange: [validateReferences],
+    // Plan limits (no-op unless BILLING_ENABLED).
+    beforeChange: [validateReferences, enforceEntitlementOnCreate('statusPages')],
   },
   indexes: [{ fields: ['organization', 'published'] }],
   fields: [

@@ -1,9 +1,11 @@
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
+import { stripePlugin } from '@payloadcms/plugin-stripe'
 import { s3Storage } from '@payloadcms/storage-s3'
 import type { Plugin } from 'payload'
 
 import { ROLES } from '@/access/permissions'
 import { env } from '@/env'
+import { stripeWebhookHandlers } from '@/server/billing/webhooks'
 
 import type { Config } from '@/payload-types'
 
@@ -58,6 +60,23 @@ export function getPlugins(): Plugin[] {
               ? { accessKeyId: env.S3_ACCESS_KEY_ID, secretAccessKey: env.S3_SECRET_ACCESS_KEY }
               : undefined,
         },
+      }),
+    )
+  }
+
+  // Billing (hosted offering only). The plugin verifies and dispatches Stripe webhooks at
+  // `POST /api/stripe/webhooks`; the handlers in `src/server/billing/webhooks.ts` map subscriptions
+  // to `organizations.plan`. The plugin's `sync` option is deliberately not used: it would add
+  // columns to `organizations` only when the key is set, which the shared migrations cannot track.
+  // Customers are created on demand instead (`src/server/billing/stripe.ts`).
+  if (env.STRIPE_SECRET_KEY) {
+    plugins.push(
+      stripePlugin({
+        stripeSecretKey: env.STRIPE_SECRET_KEY,
+        stripeWebhooksEndpointSecret: env.STRIPE_WEBHOOK_SECRET,
+        isTestKey: env.STRIPE_SECRET_KEY.startsWith('sk_test_'),
+        webhooks: stripeWebhookHandlers,
+        logs: env.NODE_ENV !== 'production',
       }),
     )
   }
