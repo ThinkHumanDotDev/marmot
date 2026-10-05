@@ -3,12 +3,7 @@ import type { AddressInfo } from 'node:net'
 import radius from 'radius'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import {
-  CLOSED_HOST,
-  CLOSED_PORT,
-  makeMonitor,
-  runCheck,
-} from '../../../tests/helpers/monitor-check'
+import { CLOSED_HOST, CLOSED_PORT, makeMonitor, runCheck } from './test-helpers'
 import { radiusAttributes } from './radius'
 import './index'
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { makeMonitor, runCheck } from '../../../tests/helpers/monitor-check'
+import { makeMonitor, runCheck } from './test-helpers'
 import { parseTailscaleOutput, runTailscalePing } from './tailscale-ping'
 import './index'
 

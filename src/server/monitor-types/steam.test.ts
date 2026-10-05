@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { resetInstanceSettingsCache } from '@/server/settings'
 
-import { makeMonitor, runCheck } from '../../../tests/helpers/monitor-check'
+import { makeMonitor, runCheck } from './test-helpers'
 import { resolveSteamHostname, STEAM_API_URL } from './steam'
 import './index'
 

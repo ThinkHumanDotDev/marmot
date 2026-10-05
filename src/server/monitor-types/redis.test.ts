@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  CLOSED_HOST,
-  CLOSED_PORT,
-  makeMonitor,
-  runCheck,
-} from '../../../tests/helpers/monitor-check'
+import { CLOSED_HOST, CLOSED_PORT, makeMonitor, runCheck } from './test-helpers'
 import './index'
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
