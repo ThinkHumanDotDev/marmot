@@ -78,6 +78,9 @@ attribution comment and are listed here:
 - `src/server/notification-providers/dingding.ts` — `server/notification-providers/dingding.js`
 - `src/server/notification-providers/feishu.ts` — `server/notification-providers/feishu.js`
 - `src/server/notification-providers/bitrix24.ts` — `server/notification-providers/bitrix24.js`
+- `src/auth/two-factor/totp.ts`, `src/auth/two-factor/handlers.ts` — two-factor login flow (`login`,
+  `prepare2FA`, `save2FA`, `disable2FA`, `verifyToken` handlers in `server/server.js`: one-step TOTP
+  window and last-token replay check)
 
 The MIT license text is reproduced below.
 
