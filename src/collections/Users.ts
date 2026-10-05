@@ -2,7 +2,7 @@ import type { CollectionConfig, FieldAccess } from 'payload'
 
 import { authenticated, selfOrSuperadmin, superadminOnly } from '@/access/org-scoped'
 import { isSuperadmin, type UserLike } from '@/access/permissions'
-import { env } from '@/env'
+import { isSignupAllowed } from '@/server/settings'
 
 const superadminField: FieldAccess = ({ req }) => isSuperadmin(req.user)
 
@@ -11,7 +11,8 @@ export type AuthProvider = (typeof AUTH_PROVIDERS)[number]
 
 /**
  * Who may create a user. Superadmins always can; anyone (including anonymous visitors on the
- * signup page, which posts to `POST /api/users`) can while `DISABLE_SIGNUP` is false. Invitation
+ * signup page, which posts to `POST /api/users`) can while signup is allowed: the
+ * `instance-settings` global's `allowSignup`, which defaults to `!DISABLE_SIGNUP`. Invitation
  * acceptance for an existing account does not create users; a future invite-signup flow creates
  * them server-side with `overrideAccess: true`.
  */
@@ -36,7 +37,7 @@ export const Users: CollectionConfig = {
     admin: ({ req }) => Boolean(req.user?.superadmin),
     // Anonymous creation is allowed for signup; field-level access below (and the multi-tenant
     // plugin's access on `organizations`) strips `superadmin` and memberships from such requests.
-    create: ({ req }) => canSignUp(req.user, env.DISABLE_SIGNUP),
+    create: async ({ req }) => canSignUp(req.user, !(await isSignupAllowed(req.payload))),
     read: authenticated, // the multi-tenant plugin narrows this to users who share an organization
     update: selfOrSuperadmin,
     delete: superadminOnly,
