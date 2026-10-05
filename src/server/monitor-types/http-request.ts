@@ -6,9 +6,11 @@
  * See THIRD_PARTY_NOTICES.md. Uses undici instead of axios.
  */
 import { STATUS_CODES } from 'node:http'
-import { Agent, interceptors, request, type Dispatcher } from 'undici'
+import type { TLSSocket } from 'node:tls'
+import { Agent, buildConnector, interceptors, request, type Dispatcher } from 'undici'
 
 import type { Monitor } from '@/payload-types'
+import { captureFromSocket, fetchCertificate, type TlsInfo } from '@/server/engine/tls'
 import type { MonitorCheckContext } from './types'
 
 const DEFAULT_ACCEPT =
@@ -50,7 +52,7 @@ export function checkStatusCode(
 const encodeBase64 = (user: string, pass: string) =>
   Buffer.from(`${user}:${pass}`).toString('base64')
 
-/** Two long-lived agents: strict TLS and `ignoreTls`. No session reuse, like Uptime Kuma. */
+/** Two long-lived agents (strict TLS and `ignoreTls`) for auxiliary requests such as OAuth tokens. */
 const agents: Partial<Record<'strict' | 'insecure', Agent>> = {}
 
 function baseAgent(ignoreTls: boolean): Agent {
@@ -60,6 +62,97 @@ function baseAgent(ignoreTls: boolean): Agent {
     allowH2: false,
   })
   return agents[key]
+}
+
+/** Certificate seen on the request's TLS socket (filled by the capturing connector). */
+export interface TlsCapture {
+  tlsInfo: TlsInfo | null
+}
+
+const isTlsSocket = (socket: unknown): socket is TLSSocket =>
+  !!socket && typeof (socket as TLSSocket).getPeerCertificate === 'function'
+
+/**
+ * A throw-away agent whose connector records the peer certificate of every TLS socket it opens
+ * (the last one wins, i.e. the final hop of a redirect chain) — Uptime Kuma reads the same from the
+ * `secureConnect` event of its https agent. No session reuse, like Uptime Kuma.
+ */
+export function capturingAgent(
+  connectOptions: buildConnector.BuildOptions,
+  capture: TlsCapture,
+): Agent {
+  const connector = buildConnector({ ...connectOptions, maxCachedSessions: 0 })
+  return new Agent({
+    allowH2: false,
+    connect: (opts, callback) => {
+      connector(opts, (err, socket) => {
+        if (socket && isTlsSocket(socket)) {
+          try {
+            capture.tlsInfo = captureFromSocket(socket, opts.servername || opts.hostname)
+          } catch {
+            // Certificate capture must never fail the check itself.
+          }
+        }
+        if (err) callback(err, null)
+        else callback(null, socket as NonNullable<typeof socket>)
+      })
+    },
+  })
+}
+
+/** Errors raised by the TLS handshake itself (as opposed to DNS / connection / HTTP failures). */
+export function isTlsHandshakeError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  const code = (err as NodeJS.ErrnoException).code ?? ''
+  return /CERT|TLS|SSL/i.test(code) || /certificate|altnames?|ssl|tls/i.test(err.message)
+}
+
+/**
+ * Attach the captured certificate to the check context. When the handshake was rejected (expired,
+ * self-signed, hostname mismatch, …) nothing was captured, so the certificate is fetched again
+ * without verification — the expiry panel is most useful exactly then.
+ */
+export async function recordTlsInfo(
+  ctx: MonitorCheckContext,
+  url: string,
+  capture: TlsCapture,
+  error?: unknown,
+): Promise<void> {
+  if (capture.tlsInfo) {
+    ctx.tlsInfo = capture.tlsInfo
+    return
+  }
+  if (!error || !isTlsHandshakeError(error) || ctx.signal.aborted) return
+  let target: URL
+  try {
+    target = new URL(url)
+  } catch {
+    return
+  }
+  if (target.protocol !== 'https:') return
+  try {
+    const info = await fetchCertificate(
+      target.hostname.replace(/^\[|\]$/g, ''),
+      Number(target.port) || 443,
+      {
+        servername: target.hostname,
+        rejectUnauthorized: false,
+        ca: ctx.monitor.authMethod === 'mtls' ? ctx.monitor.tlsCa : null,
+        cert: ctx.monitor.authMethod === 'mtls' ? ctx.monitor.tlsCert : null,
+        key: ctx.monitor.authMethod === 'mtls' ? ctx.monitor.tlsKey : null,
+        signal: ctx.signal,
+      },
+    )
+    const message = error instanceof Error ? error.message : String(error)
+    const code = (error as NodeJS.ErrnoException).code
+    ctx.tlsInfo = {
+      ...info,
+      valid: false,
+      authorizationError: code ? `${code}: ${message}` : message,
+    }
+  } catch {
+    // The server is unreachable or rejects the second handshake too; keep the previous certInfo.
+  }
 }
 
 interface OAuthToken {
@@ -116,7 +209,12 @@ async function oauthClientCredentials(monitor: Monitor, signal: AbortSignal): Pr
 export async function buildHttpRequest(
   monitor: Monitor,
   signal: AbortSignal,
-): Promise<{ url: string; options: Parameters<typeof request>[1]; cleanup: () => Promise<void> }> {
+): Promise<{
+  url: string
+  options: Parameters<typeof request>[1]
+  cleanup: () => Promise<void>
+  capture: TlsCapture
+}> {
   if (!monitor.url) {
     throw new Error('URL is required')
   }
@@ -179,24 +277,23 @@ export async function buildHttpRequest(
     }
   }
 
-  // Dispatcher: shared agent (or a throw-away mTLS agent) + redirect interceptor
-  let agent: Agent
-  let cleanup = async () => {}
-  if (monitor.authMethod === 'mtls') {
-    agent = new Agent({
-      connect: {
-        rejectUnauthorized: !monitor.ignoreTls,
-        maxCachedSessions: 0,
-        cert: monitor.tlsCert || undefined,
-        key: monitor.tlsKey || undefined,
-        ca: monitor.tlsCa || undefined,
-      },
-    })
-    cleanup = async () => {
-      await agent.close()
-    }
-  } else {
-    agent = baseAgent(Boolean(monitor.ignoreTls))
+  // Dispatcher: a per-check agent that records the TLS certificate + redirect interceptor
+  const capture: TlsCapture = { tlsInfo: null }
+  const agent = capturingAgent(
+    {
+      rejectUnauthorized: !monitor.ignoreTls,
+      ...(monitor.authMethod === 'mtls'
+        ? {
+            cert: monitor.tlsCert || undefined,
+            key: monitor.tlsKey || undefined,
+            ca: monitor.tlsCa || undefined,
+          }
+        : {}),
+    },
+    capture,
+  )
+  const cleanup = async () => {
+    await agent.close()
   }
   const maxRedirections = monitor.maxRedirects ?? 10
   const dispatcher: Dispatcher =
@@ -212,6 +309,7 @@ export async function buildHttpRequest(
       dispatcher,
     },
     cleanup,
+    capture,
   }
 }
 
@@ -220,12 +318,19 @@ export async function buildHttpRequest(
  * accepted, throws `"<status> - <text>"` otherwise.
  */
 export async function performHttpCheck(ctx: MonitorCheckContext): Promise<HttpCheckResponse> {
-  const { url, options, cleanup } = await buildHttpRequest(ctx.monitor, ctx.signal)
+  const { url, options, cleanup, capture } = await buildHttpRequest(ctx.monitor, ctx.signal)
   const startTime = Date.now()
   try {
-    const res = await request(url, options)
+    let res: Awaited<ReturnType<typeof request>>
+    try {
+      res = await request(url, options)
+    } catch (err) {
+      await recordTlsInfo(ctx, url, capture, err)
+      throw err
+    }
     const body = await res.body.text()
     const ping = Date.now() - startTime
+    await recordTlsInfo(ctx, url, capture)
     const statusText = STATUS_CODES[res.statusCode] ?? ''
     const response: HttpCheckResponse = {
       statusCode: res.statusCode,
