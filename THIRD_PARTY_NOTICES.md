@@ -28,6 +28,20 @@ attribution comment and are listed here:
 - `src/server/monitor-types/push.ts` — `push` branch of `server/model/monitor.js`
 - `src/server/monitor-types/group.ts` — `server/monitor-types/group.js`
 - `src/server/monitor-types/manual.ts` — `server/monitor-types/manual.js`
+- `src/server/notification-providers/http.ts` — error formatting and `extractAddress` from
+  `server/notification-providers/notification-provider.js`
+- `src/server/notifications/message.ts` — default message text from `Monitor.sendNotification`
+  (`server/model/monitor.js`)
+- `src/server/notification-providers/discord.ts` — `server/notification-providers/discord.js`
+- `src/server/notification-providers/slack.ts` — `server/notification-providers/slack.js`
+- `src/server/notification-providers/telegram.ts` — `server/notification-providers/telegram.js`
+- `src/server/notification-providers/teams.ts` — `server/notification-providers/teams.js`
+- `src/server/notification-providers/ntfy.ts` — `server/notification-providers/ntfy.js`
+- `src/server/notification-providers/gotify.ts` — `server/notification-providers/gotify.js`
+- `src/server/notification-providers/pushover.ts` — `server/notification-providers/pushover.js`
+- `src/server/notification-providers/matrix.ts` — `server/notification-providers/matrix.js`
+- `src/server/notification-providers/webhook.ts` — `server/notification-providers/webhook.js`
+- `src/server/notification-providers/smtp.ts` — `server/notification-providers/smtp.js`
 
 The MIT license text is reproduced below.
 
