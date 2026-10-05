@@ -12,7 +12,10 @@ attribution comment and are listed here:
 
 <!-- Keep this list current when porting a file. -->
 
-- (none yet)
+- `src/server/stats/uptime-calculator.ts` — port of `server/uptime-calculator.js` (bucket keys, running
+  averages, uptime/ping aggregation).
+- `src/server/jobs/retention.ts` — based on `server/jobs/clear-old-data.js` and the pruning logic of
+  `server/uptime-calculator.js`.
 
 The MIT license text is reproduced below.
 
