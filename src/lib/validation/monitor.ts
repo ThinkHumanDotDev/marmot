@@ -213,6 +213,7 @@ export const monitorFormSchema = z
     ignoreTls: z.boolean().default(false),
     expiryNotification: z.boolean().default(false),
     proxy: relationId,
+    domainExpiryNotification: z.boolean().default(false),
 
     // Keyword / JSON query
     keyword: optionalText(1000),
@@ -350,6 +351,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     ignoreTls: false,
     expiryNotification: false,
     proxy: null,
+    domainExpiryNotification: false,
     keyword: null,
     invertKeyword: false,
     jsonPath: null,

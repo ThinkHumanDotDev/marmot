@@ -174,6 +174,7 @@ function mapKumaMonitor(
     acceptedStatusCodes,
     ignoreTls: asBool(raw.ignoreTls) ?? false,
     expiryNotification: asBool(raw.expiryNotification) ?? false,
+    domainExpiryNotification: asBool(raw.domainExpiryNotification) ?? false,
 
     keyword: asText(raw.keyword),
     invertKeyword: asBool(raw.invertKeyword) ?? false,

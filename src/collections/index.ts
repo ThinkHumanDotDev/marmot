@@ -8,6 +8,7 @@ import { Invitations } from './Invitations'
 import { Media } from './Media'
 import { Monitors } from './Monitors'
 import { Notifications } from './Notifications'
+import { NotificationSentHistory } from './NotificationSentHistory'
 import { Organizations } from './Organizations'
 import { Proxies } from './Proxies'
 import { StatDaily } from './StatDaily'
@@ -31,6 +32,7 @@ export const collections: CollectionConfig[] = [
   Tags,
   Proxies,
   DockerHosts,
+  NotificationSentHistory,
   Heartbeats,
   StatMinutely,
   StatHourly,

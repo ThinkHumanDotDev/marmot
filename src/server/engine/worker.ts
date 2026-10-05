@@ -10,6 +10,7 @@ import { emitHeartbeat, isUnderMaintenance } from './hooks'
 import { QUEUE_NAMES } from './names'
 import { createWorker, type CheckJobData, type QueueFactoryOptions } from './queues'
 import { effectiveIntervalMs, removeMonitorSchedule, syncMonitor } from './scheduler'
+import { certificateChanged } from './tls'
 
 const log = childLogger('engine:worker')
 
@@ -80,6 +81,7 @@ export async function runCheck(
       msg,
       ping: ctx.heartbeat.ping ?? null,
       duration: typeof ctx.heartbeat.duration === 'number' ? ctx.heartbeat.duration : null,
+      tlsInfo: ctx.tlsInfo ?? null,
     }
   }
 
@@ -87,6 +89,7 @@ export async function runCheck(
     return {
       ok: false,
       msg: 'The monitor implementation is incorrect, non-UP error must throw error inside check()',
+      tlsInfo: ctx.tlsInfo ?? null,
     }
   }
 
@@ -96,6 +99,7 @@ export async function runCheck(
     msg: ctx.heartbeat.msg,
     ping: ctx.heartbeat.ping ?? Date.now() - startedAt,
     duration: typeof ctx.heartbeat.duration === 'number' ? ctx.heartbeat.duration : null,
+    tlsInfo: ctx.tlsInfo ?? null,
   }
 }
 
@@ -149,6 +153,10 @@ export async function processCheckJob(
     next.duration ??
     (lastCheckAt ? Math.round((now.getTime() - lastCheckAt.getTime()) / 1000) : null)
   const organizationId = relationId(monitor.organization)
+  // Certificate seen by this check (HTTPS types). Stored on the monitor so the detail page and the
+  // expiry notifications never have to re-connect; `certChanged` resets the "already notified" history.
+  const tlsInfo = result.tlsInfo ?? null
+  const certChanged = certificateChanged(monitor.certInfo, tlsInfo)
 
   const heartbeat = (await payload.create({
     collection: 'heartbeats',
@@ -184,6 +192,7 @@ export async function processCheckJob(
         retries: next.retries,
         downCount: next.downCount,
       },
+      ...(tlsInfo ? { certInfo: tlsInfo as unknown as Monitor['certInfo'] } : {}),
     },
   })) as Monitor
 
@@ -219,6 +228,8 @@ export async function processCheckJob(
     isFirstBeat: next.isFirstBeat,
     notify: next.notify,
     organizationId,
+    tlsInfo,
+    certChanged,
   })
 
   return { outcome: 'processed', heartbeat, next }
