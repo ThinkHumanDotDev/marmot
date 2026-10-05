@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, UserRound, Users } from 'lucide-react'
+import { Building2, KeyRound, UserRound, Users } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -11,8 +11,8 @@ interface SettingsTabsProps {
 }
 
 /**
- * Link-based tab strip for the settings area. Future tabs (Permissions, API keys, Billing) slot in
- * here once their issues land.
+ * Link-based tab strip for the settings area. Future tabs (Permissions, Billing) slot in here once
+ * their issues land.
  */
 export function SettingsTabs({ orgSlug }: SettingsTabsProps) {
   const pathname = usePathname()
@@ -20,6 +20,7 @@ export function SettingsTabs({ orgSlug }: SettingsTabsProps) {
     { href: `/${orgSlug}/settings/account`, label: 'Account', icon: UserRound },
     { href: `/${orgSlug}/settings/organization`, label: 'Organization', icon: Building2 },
     { href: `/${orgSlug}/members`, label: 'Members', icon: Users },
+    { href: `/${orgSlug}/settings/api-keys`, label: 'API keys', icon: KeyRound },
   ]
 
   return (

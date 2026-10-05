@@ -110,6 +110,17 @@ const removeInvitations: CollectionBeforeDeleteHook = async ({ id, req }) => {
   })
 }
 
+/** API keys carry a NOT NULL `organization` on Postgres; revoke them before the row goes. */
+const removeApiKeys: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  await req.payload.delete({
+    collection: 'api-keys',
+    where: { organization: { equals: id } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
+}
+
 /**
  * Tenant collection for `@payloadcms/plugin-multi-tenant`. Access is implemented here (the plugin's
  * own tenant-collection access is disabled) so that any authenticated user can create their first
@@ -132,7 +143,7 @@ export const Organizations: CollectionConfig = {
   hooks: {
     beforeValidate: [normalizeSlug],
     afterChange: [grantOwnerMembership],
-    beforeDelete: [removeInvitations, removeMemberships],
+    beforeDelete: [removeInvitations, removeApiKeys, removeMemberships],
   },
   fields: [
     {
