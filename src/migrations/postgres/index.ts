@@ -5,6 +5,7 @@ import * as migration_20261005_023920_monitors_heartbeats from './20261005_02392
 import * as migration_20261005_030513_add_oidc_fields from './20261005_030513_add_oidc_fields';
 import * as migration_20261005_032603_instance_settings from './20261005_032603_instance_settings';
 import * as migration_20261005_033951_add_invite_link from './20261005_033951_add_invite_link';
+import * as migration_20261005_042854_monitors_org_scoped from './20261005_042854_monitors_org_scoped';
 
 export const migrations = [
   {
@@ -40,6 +41,11 @@ export const migrations = [
   {
     up: migration_20261005_033951_add_invite_link.up,
     down: migration_20261005_033951_add_invite_link.down,
-    name: '20261005_033951_add_invite_link'
+    name: '20261005_033951_add_invite_link',
+  },
+  {
+    up: migration_20261005_042854_monitors_org_scoped.up,
+    down: migration_20261005_042854_monitors_org_scoped.down,
+    name: '20261005_042854_monitors_org_scoped'
   },
 ];
