@@ -1,30 +1,47 @@
-import { Globe, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 
-import { EmptyState } from '@/components/empty-state'
 import { PageHeader } from '@/components/page-header'
-import { Button } from '@/components/ui/button'
+import { CreateStatusPageDialog } from '@/components/status-pages/create-status-page-dialog'
+import { StatusPageList } from '@/components/status-pages/status-page-list'
+
+import { resolveOrg } from './resolve-org'
 
 export const metadata: Metadata = { title: 'Status pages' }
+export const dynamic = 'force-dynamic'
 
-export default function StatusPagesPage() {
+export default async function StatusPagesPage({
+  params,
+}: {
+  params: Promise<{ orgSlug: string }>
+}) {
+  const { orgSlug } = await params
+  const { payload, user, org, can } = await resolveOrg(orgSlug)
+
+  const { docs: pages } = await payload.find({
+    collection: 'status-pages',
+    where: { organization: { equals: org.id } },
+    sort: 'title',
+    limit: 200,
+    depth: 0,
+    user,
+    overrideAccess: false,
+  })
+
   return (
     <>
       <PageHeader
         title="Status pages"
         description="Public pages that show your customers what is up."
         actions={
-          <Button disabled>
-            <Plus /> New status page
-          </Button>
+          <CreateStatusPageDialog
+            orgId={org.id}
+            orgSlug={org.slug}
+            canCreate={can('status-page:create')}
+          />
         }
       />
       <section className="p-6 md:p-8">
-        <EmptyState
-          icon={Globe}
-          title="No status pages yet"
-          description="Publish a status page to share uptime, incidents and maintenance with the people who rely on you."
-        />
+        <StatusPageList pages={pages} orgSlug={org.slug} />
       </section>
     </>
   )

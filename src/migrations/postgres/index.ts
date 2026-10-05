@@ -7,6 +7,7 @@ import * as migration_20261005_032603_instance_settings from './20261005_032603_
 import * as migration_20261005_033951_add_invite_link from './20261005_033951_add_invite_link';
 import * as migration_20261005_042854_monitors_org_scoped from './20261005_042854_monitors_org_scoped';
 import * as migration_20261005_045549_notifications from './20261005_045549_notifications';
+import * as migration_20261005_051201_status_pages from './20261005_051201_status_pages';
 
 export const migrations = [
   {
@@ -52,6 +53,11 @@ export const migrations = [
   {
     up: migration_20261005_045549_notifications.up,
     down: migration_20261005_045549_notifications.down,
-    name: '20261005_045549_notifications'
+    name: '20261005_045549_notifications',
+  },
+  {
+    up: migration_20261005_051201_status_pages.up,
+    down: migration_20261005_051201_status_pages.down,
+    name: '20261005_051201_status_pages'
   },
 ];
