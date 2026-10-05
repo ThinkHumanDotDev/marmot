@@ -5,7 +5,7 @@ services:
     environment:
       DATABASE_ADAPTER: mongodb
       DATABASE_URL: mongodb://mongo:27017/marmot
-    depends_on:
+    depends_on: !override
       mongo:
         condition: service_healthy
       redis:
@@ -14,7 +14,7 @@ services:
     environment:
       DATABASE_ADAPTER: mongodb
       DATABASE_URL: mongodb://mongo:27017/marmot
-    depends_on:
+    depends_on: !override
       mongo:
         condition: service_healthy
       redis:
@@ -23,7 +23,7 @@ services:
     environment:
       DATABASE_ADAPTER: mongodb
       DATABASE_URL: mongodb://mongo:27017/marmot
-    depends_on:
+    depends_on: !override
       mongo:
         condition: service_healthy
       redis:
