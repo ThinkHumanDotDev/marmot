@@ -94,6 +94,60 @@ OIDC_CLIENT_SECRET=<client secret>
 OIDC_DISPLAY_NAME=Authentik
 ```
 
+## Microsoft Entra ID
+
+1. **Entra ID → App registrations → New registration**: name `Marmot`, supported account types _Single
+   tenant_ (or multi-tenant if you need it), platform **Web**, redirect URI
+   `https://status.example.com/api/auth/oidc/callback`.
+2. **Authentication**: add `https://status.example.com/login` under _Front-channel logout URL_ (optional)
+   and keep _ID tokens_ unchecked (the authorization code flow does not need implicit grants).
+3. **Certificates & secrets → New client secret**; copy the **value** (not the id).
+4. **API permissions**: `openid`, `email`, `profile` (Microsoft Graph delegated) are granted by default.
+   If your tenant restricts user consent, grant admin consent once.
+5. **Token configuration → Add optional claim → ID → `email`** so users without a mailbox still release an
+   email. Entra ID does not emit `email_verified`, so Marmot will **not** link an SSO login to an existing
+   password account by email (`/login?error=email_unverified`); it matches returning users by subject and
+   provisions new ones. For people who already have a password account, a superadmin can set
+   `oidcIssuer`/`oidcSubject` on their user in the admin panel, or they keep using the password.
+6. The issuer is `https://login.microsoftonline.com/<tenant-id>/v2.0` (from **Overview → Endpoints →
+   OpenID Connect metadata document**, without the `/.well-known/...` suffix).
+
+```env
+OIDC_ISSUER_URL=https://login.microsoftonline.com/<tenant-id>/v2.0
+OIDC_CLIENT_ID=<application (client) id>
+OIDC_CLIENT_SECRET=<client secret value>
+OIDC_DISPLAY_NAME=Microsoft
+```
+
+## Other providers
+
+Any provider with a discovery document works the same way: register a confidential web client with the
+callback URI, copy issuer, client id and secret. Known-good issuer shapes:
+
+| Provider         | `OIDC_ISSUER_URL`                                        |
+| ---------------- | -------------------------------------------------------- |
+| Zitadel          | `https://<instance>.zitadel.cloud`                       |
+| Okta             | `https://<org>.okta.com` (or `/oauth2/<server-id>`)      |
+| Google Workspace | `https://accounts.google.com`                            |
+| Dex              | `https://dex.example.com` (the `issuer` from its config) |
+| Auth0            | `https://<tenant>.auth0.com/`                            |
+
+## Auto-provisioning and invitations
+
+With `OIDC_AUTO_PROVISION=true` (default) the first SSO login creates the Marmot account. New accounts have
+no organization yet and land on `/onboarding` to create one; an invitation link received by email can be
+opened afterwards to join an existing organization. Operators who want SSO users to join **only** by
+invitation set `DISABLE_SIGNUP=true`: provisioning then requires a pending invitation for the email, that
+invitation is accepted during the login, and the user lands directly in the invited organization with the
+invited role; uninvited emails are refused with `signup_disabled`.
+
+## Logout
+
+Signing out (`POST /api/auth/oidc/logout`, used by the account menu for SSO sessions) revokes the Payload
+session and clears the cookie. When the provider advertises an `end_session_endpoint` the browser is sent
+there with `post_logout_redirect_uri=${NEXT_PUBLIC_SERVER_URL}/login` so the provider session ends too
+(register that URI at the provider); otherwise the browser goes straight to `/login`.
+
 ## Troubleshooting
 
 - `/login?error=oidc_state` — the browser returned without (or with a stale) `marmot-oidc` cookie:
