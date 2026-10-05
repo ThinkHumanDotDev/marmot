@@ -1,17 +1,28 @@
-# Marmot – production compose. Copy `.env.example` to `.env` next to this file and edit it.
+# Marmot – production compose: Caddy (TLS) → web + realtime, worker, Postgres, Redis.
+#
+#   cp .env.example .env   # the one in this directory; set PAYLOAD_SECRET, NEXT_PUBLIC_SERVER_URL, DOMAIN
 #   docker compose up -d
-# Set DOMAIN in .env to get automatic HTTPS from Caddy.
+#
+# MongoDB instead of Postgres:  docker compose -f docker-compose.yml -f docker-compose.mongo.yml up -d
+# Full guide: docs/deployment.md
 name: marmot
+
+# Environment shared by the three Marmot roles. `environment` wins over `.env` (env_file), so the
+# in-stack service addresses below are used unless DATABASE_URL / REDIS_URL are set in .env.
+x-marmot-env: &marmot-env
+  DATABASE_ADAPTER: ${DATABASE_ADAPTER:-postgres}
+  DATABASE_URL: ${DATABASE_URL:-postgres://marmot:${POSTGRES_PASSWORD:-marmot}@postgres:5432/marmot}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+  UPLOADS_DIR: /app/uploads
 
 x-marmot: &marmot
   image: ghcr.io/thinkhumandotdev/marmot:${MARMOT_VERSION:-latest}
   restart: unless-stopped
-  env_file: .env
-  environment:
-    DATABASE_ADAPTER: ${DATABASE_ADAPTER:-postgres}
-    DATABASE_URL: ${DATABASE_URL:-postgres://marmot:${POSTGRES_PASSWORD:-marmot}@postgres:5432/marmot}
-    REDIS_URL: redis://redis:6379
-    NEXT_PUBLIC_REALTIME_URL: ${NEXT_PUBLIC_REALTIME_URL:-}
+  env_file:
+    - path: .env
+      required: false
+  security_opt:
+    - no-new-privileges:true
   volumes:
     - uploads:/app/uploads
   depends_on:
@@ -21,20 +32,27 @@ x-marmot: &marmot
       condition: service_healthy
 
 services:
+  # Next.js + Payload: UI, admin, REST/GraphQL, status pages, badges, push, /api/health.
+  # Runs database migrations on start (SKIP_MIGRATIONS=true in .env to disable).
   web:
     <<: *marmot
     environment:
+      <<: *marmot-env
       MARMOT_ROLE: web
     expose: ['3000']
 
+  # BullMQ consumer: monitor checks, heartbeats, stats, notifications. Scale with `--scale worker=N`.
   worker:
     <<: *marmot
     environment:
+      <<: *marmot-env
       MARMOT_ROLE: worker
 
+  # socket.io server (/socket.io via Caddy); /healthz on :3001.
   realtime:
     <<: *marmot
     environment:
+      <<: *marmot-env
       MARMOT_ROLE: realtime
     expose: ['3001']
 
@@ -56,6 +74,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    # noeviction: BullMQ must never lose keys; save: persist queues/schedulers across restarts.
     command: ['redis-server', '--maxmemory-policy', 'noeviction', '--save', '60', '1']
     volumes:
       - redis:/data
@@ -65,6 +84,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # Edge proxy. With DOMAIN set: automatic HTTPS on 443 (+ HTTP→HTTPS redirect). Without: HTTP on 80.
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -73,7 +93,7 @@ services:
       - '443:443'
       - '443:443/udp'
     environment:
-      DOMAIN: ${DOMAIN:-}
+      SITE_ADDRESS: ${DOMAIN:-:80}
       ACME_EMAIL: ${ACME_EMAIL:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

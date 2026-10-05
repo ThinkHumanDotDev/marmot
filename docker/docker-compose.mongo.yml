@@ -1,35 +1,34 @@
 # Override to run Marmot on MongoDB instead of Postgres:
 #   docker compose -f docker-compose.yml -f docker-compose.mongo.yml up -d
+# (The environment maps merge with docker-compose.yml; depends_on is replaced so Postgres is not required.)
+x-mongo-env: &mongo-env
+  DATABASE_ADAPTER: mongodb
+  DATABASE_URL: ${DATABASE_URL:-mongodb://mongo:27017/marmot}
+
+x-mongo-deps: &mongo-deps
+  mongo:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+
 services:
   web:
-    environment:
-      DATABASE_ADAPTER: mongodb
-      DATABASE_URL: mongodb://mongo:27017/marmot
+    environment: *mongo-env
     depends_on: !override
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      <<: *mongo-deps
   worker:
-    environment:
-      DATABASE_ADAPTER: mongodb
-      DATABASE_URL: mongodb://mongo:27017/marmot
+    environment: *mongo-env
     depends_on: !override
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      <<: *mongo-deps
   realtime:
-    environment:
-      DATABASE_ADAPTER: mongodb
-      DATABASE_URL: mongodb://mongo:27017/marmot
+    environment: *mongo-env
     depends_on: !override
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      <<: *mongo-deps
+
+  # Postgres is not started in this variant.
   postgres:
     profiles: ['disabled']
+
   mongo:
     image: mongo:7
     restart: unless-stopped
