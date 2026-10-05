@@ -135,6 +135,10 @@ jobs:
     timeout-minutes: 30
     env:
       COMPOSE: docker compose -f docker/docker-compose.yml -f docker/docker-compose.ci.yml
+      # The workflow-level REDIS_URL/DATABASE_URL target the runner's localhost services; compose
+      # interpolates `${REDIS_URL:-...}` from the shell, so blank them here to use the in-stack defaults.
+      REDIS_URL: ''
+      DATABASE_URL: ''
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4

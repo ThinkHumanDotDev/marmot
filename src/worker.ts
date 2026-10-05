@@ -13,6 +13,25 @@ import { registerStatsListener } from '@/server/stats'
 
 const log = childLogger('worker')
 
+const SCHEMA_WAIT_MS = Number(process.env.WORKER_SCHEMA_WAIT_MS ?? 120_000)
+
+/** Retries `fn` while the database schema is still being migrated (or the DB is unreachable). */
+async function waitForSchema<T>(fn: () => Promise<T>): Promise<T> {
+  const deadline = Date.now() + SCHEMA_WAIT_MS
+  let attempt = 0
+  for (;;) {
+    try {
+      return await fn()
+    } catch (err) {
+      attempt += 1
+      if (Date.now() >= deadline) throw err
+      const message = err instanceof Error ? err.message : String(err)
+      log.warn({ attempt, err: message }, 'database not ready yet; retrying in 3s')
+      await new Promise((resolve) => setTimeout(resolve, 3_000))
+    }
+  }
+}
+
 async function main() {
   const payload = await getPayload({ config })
   log.info(
@@ -27,7 +46,9 @@ async function main() {
     log.error({ err: error }, 'failed to register the stats heartbeat listener')
   }
 
-  await resyncAll(payload)
+  // In a composed deployment the web container runs migrations while the worker is already
+  // booting, so the schema may not exist yet. Wait for it instead of crash-looping.
+  await waitForSchema(() => resyncAll(payload))
   const checkWorker = startCheckWorker(payload)
 
   // Keep the process alive until a shutdown signal arrives.
