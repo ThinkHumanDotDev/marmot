@@ -22,6 +22,7 @@ monitors it is built for organizations: multiple teams, role-based access, invit
   Pushover, PagerDuty, Opsgenie, Webhook, …).
 - **Status pages** – public pages with groups, incidents, maintenance banners, custom CSS and badges.
 - **Teams** – organizations, roles, invitations, generic OIDC [single sign-on](docs/sso.md).
+- **Hosting-ready** – optional per-organization plan limits and Stripe [billing](docs/billing.md); off by default.
 - **Live** – the dashboard updates in real time over WebSockets.
 - **Self-hosting first** – one Docker image, Postgres **or** MongoDB, Redis, Caddy for automatic HTTPS.
 
