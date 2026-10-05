@@ -79,6 +79,7 @@ export interface Config {
     'stat-daily': StatDaily;
     'status-pages': StatusPage;
     incidents: Incident;
+    'api-keys': ApiKey;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -98,6 +99,7 @@ export interface Config {
     'stat-daily': StatDailySelect<false> | StatDailySelect<true>;
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
+    'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -667,6 +669,35 @@ export interface Incident {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "api-keys".
+ */
+export interface ApiKey {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  /**
+   * SHA-256 of the plaintext key.
+   */
+  keyHash: string;
+  /**
+   * Public identifier shown in the UI (mk_<prefix>).
+   */
+  prefix: string;
+  /**
+   * Disabled keys are rejected.
+   */
+  active?: boolean | null;
+  /**
+   * Leave empty for a key that never expires.
+   */
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -736,6 +767,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'incidents';
         value: number | Incident;
+      } | null)
+    | ({
+        relationTo: 'api-keys';
+        value: number | ApiKey;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1069,6 +1104,22 @@ export interface IncidentsSelect<T extends boolean = true> {
   pinned?: T;
   active?: T;
   resolvedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "api-keys_select".
+ */
+export interface ApiKeysSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  keyHash?: T;
+  prefix?: T;
+  active?: T;
+  expiresAt?: T;
+  lastUsedAt?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
