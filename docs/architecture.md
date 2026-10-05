@@ -121,7 +121,34 @@ created by members with `member:invite`. A `beforeChange` hook mints a 24-byte `
 `${NEXT_PUBLIC_SERVER_URL}/invite/<token>` through the Payload email adapter (console when SMTP is not
 configured). `POST /api/invitations/:token/accept` (authenticated) calls `acceptInvitation()` from
 `src/collections/Invitations.ts`, which validates status and expiry, appends the membership to the user
-(an existing membership keeps its role) and marks the invitation `accepted`.
+(an existing membership keeps its role) and marks the invitation `accepted`. Updating an invitation with
+`context.resendInvitation` re-sends the email (`POST /api/orgs/:orgId/invitations/:id/resend` also extends
+the expiry); setting `status: 'revoked'` through the REST API withdraws it.
+
+Organizations also carry a shareable **invite link**: `inviteLinkToken` (readable only with
+`member:invite`, written only by the server) and `inviteLinkRole`. `POST /api/orgs/:orgId/invite-link`
+mints a new token (optionally changing the role), `DELETE` disables it. `/invite/<code>` resolves either an
+invitation token or an invite-link token (`src/server/invites.ts`: `resolveInviteCode`, `acceptInviteCode`)
+and, for signed-in users, joins through `POST /api/invite/:code/accept`.
+
+### Managing members
+
+Memberships live on `users.organizations`, which only superadmins may write through the Payload API, so the
+UI goes through dedicated route handlers backed by `src/server/members.ts` (`listOrgMembers`,
+`changeMemberRole`, `removeMember`, `transferOwnership`, `soleOwnerships`). They authorise the actor with
+`can()` / `canManageRole()` and then write with `overrideAccess: true`:
+
+| Endpoint                                              | Rule                                                                       |
+| ----------------------------------------------------- | -------------------------------------------------------------------------- |
+| `PATCH /api/orgs/:orgId/members/:userId` `{ role }`   | `member:update-role`; target and new role at or below the actor's rank     |
+| `DELETE /api/orgs/:orgId/members/:userId`             | own id: leave; otherwise `member:remove` and rank at or above the target   |
+| `POST /api/orgs/:orgId/transfer-ownership` `{userId}` | owner only; the target becomes `owner`, the caller `admin`                 |
+| `POST /api/account/password`                          | re-authenticates with the current password before writing the new one      |
+| `DELETE /api/account` `{ confirm: email }`            | deletes the caller unless they are the sole owner of any organization      |
+| `GET /api/orgs/slug-available?slug=`                  | reserved-word, format and uniqueness check used by onboarding and settings |
+
+An organization always keeps at least one owner: the last owner cannot be demoted, removed or leave, and
+deleting an organization first removes its invitations and memberships (`beforeDelete` hooks).
 
 ## Billing (future)
 

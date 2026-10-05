@@ -218,6 +218,14 @@ export interface Organization {
    * Self-hosted installs are unlimited regardless of plan.
    */
   plan?: ('free' | 'team' | 'pro' | 'enterprise') | null;
+  /**
+   * Secret of the shareable invite link. Regenerate from the members page.
+   */
+  inviteLinkToken?: string | null;
+  /**
+   * Role granted to people who join through the invite link.
+   */
+  inviteLinkRole?: ('owner' | 'admin' | 'member' | 'viewer') | null;
   settings?: {
     /**
      * IANA time zone, e.g. Europe/London.
@@ -650,6 +658,8 @@ export interface OrganizationsSelect<T extends boolean = true> {
   slug?: T;
   logo?: T;
   plan?: T;
+  inviteLinkToken?: T;
+  inviteLinkRole?: T;
   settings?:
     | T
     | {

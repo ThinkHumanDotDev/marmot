@@ -80,13 +80,19 @@ const escapeHtml = (value: string) =>
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
   )
 
-/** Email the invite link. Uses the configured Payload email adapter (console in dev/tests). */
+/**
+ * Email the invite link. Uses the configured Payload email adapter (console in dev/tests). Runs on
+ * create and again on any update made with `context.resendInvitation` (the "Resend" action).
+ */
 const sendInvitationEmail: CollectionAfterChangeHook<Invitation> = async ({
   doc,
   operation,
   req,
 }) => {
-  if (operation !== 'create' || req.context?.skipInvitationEmail || !doc.token) return doc
+  const resend = operation === 'update' && req.context?.resendInvitation === true
+  if ((operation !== 'create' && !resend) || req.context?.skipInvitationEmail || !doc.token) {
+    return doc
+  }
 
   try {
     const organization = await req.payload.findByID({
