@@ -9,6 +9,9 @@ import { readCookie } from '@/auth/oidc/state'
 import { TWO_FACTOR_GATE_CONTEXT } from '@/collections/Users'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
+import { loginLimiter } from '@/server/security/auth-hooks'
+import { createRateLimiter, tooManyRequests, type RateLimiter } from '@/server/security/rate-limit'
+import { requestMeta } from '@/server/security/request'
 import type { User } from '@/payload-types'
 
 import {
@@ -72,6 +75,27 @@ export async function issueTwoFactorChallenge(
   return { challenge, cookie: challengeCookie(challenge, { secure: cookiesAreSecure() }) }
 }
 
+/**
+ * Brute-force protection for the login routes. They sign in through the Local API, which the
+ * `users` `beforeOperation` limiter deliberately skips, so they consume limiter points themselves:
+ * passwords share the REST login bucket (per client IP behind a trusted proxy, otherwise per
+ * account); codes get a per-user bucket, because the challenge's own attempt counter travels with
+ * the client and a replayed challenge would reset it.
+ */
+export const TWO_FACTOR_RATE_LIMIT = { points: 20, duration: 10 * 60, blockDuration: 15 * 60 }
+export const twoFactorLimiter: RateLimiter = createRateLimiter('two-factor', TWO_FACTOR_RATE_LIMIT)
+
+async function limitAttempt(
+  limiter: RateLimiter,
+  payload: Payload,
+  request: Request,
+  account: string,
+): Promise<Response | null> {
+  const { ip } = await requestMeta(payload, request)
+  const decision = await limiter.consume(ip ? `ip:${ip}` : `account:${account}`)
+  return decision.allowed ? null : tooManyRequests(decision)
+}
+
 /** `POST /api/auth/login` */
 export async function handlePasswordLogin(request: Request): Promise<Response> {
   const { email, password } = await readBody(request)
@@ -80,6 +104,8 @@ export async function handlePasswordLogin(request: Request): Promise<Response> {
   }
 
   const payload = await getPayload({ config })
+  const limited = await limitAttempt(loginLimiter, payload, request, email.trim().toLowerCase())
+  if (limited) return limited
   let token: string
   let exp: number | undefined
   let user: User
@@ -160,6 +186,8 @@ export async function handleTwoFactorLogin(request: Request): Promise<Response> 
   if (!code) return jsonError('Enter the code from your authenticator app.', 400)
 
   const payload = await getPayload({ config })
+  const limited = await limitAttempt(twoFactorLimiter, payload, request, challenge.userId)
+  if (limited) return limited
   const userId = (
     payload.db.defaultIDType === 'number' ? Number(challenge.userId) : challenge.userId
   ) as User['id']

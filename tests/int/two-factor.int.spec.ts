@@ -8,7 +8,11 @@ import { addOrgMembership } from '@/access/memberships'
 import { canInOrg } from '@/access/overrides'
 import { verifyPassword } from '@/auth/password'
 import { TWO_FACTOR_CHALLENGE_COOKIE } from '@/auth/two-factor/challenge'
-import { handlePasswordLogin, handleTwoFactorLogin } from '@/auth/two-factor/handlers'
+import {
+  handlePasswordLogin,
+  handleTwoFactorLogin,
+  TWO_FACTOR_RATE_LIMIT,
+} from '@/auth/two-factor/handlers'
 import { getTwoFactorStatus, loadTwoFactorUser } from '@/auth/two-factor/service'
 import { POST as regenerateBackupCodes } from '@/app/api/account/2fa/backup-codes/route'
 import { POST as disableTwoFactorRoute } from '@/app/api/account/2fa/disable/route'
@@ -21,6 +25,8 @@ import {
 } from '@/app/api/orgs/[orgId]/permissions/route'
 import { GET as listNotifications } from '@/app/api/orgs/[orgId]/notifications/route'
 import type { Organization, User } from '@/payload-types'
+import { createRedis } from '@/server/redis'
+import { RATE_LIMIT_PREFIX } from '@/server/security/rate-limit'
 
 let payload: Payload
 
@@ -123,6 +129,11 @@ describe('two-factor authentication', () => {
   beforeAll(async () => {
     payload = await getPayload({ config })
     alice = await createUser('alice')
+    // User ids restart with a fresh test database; drop code-attempt buckets left by earlier runs.
+    const redis = createRedis()
+    const stale = await redis.keys(`${RATE_LIMIT_PREFIX}:two-factor*`)
+    if (stale.length) await redis.del(...stale)
+    await redis.quit()
   })
 
   afterAll(async () => {
@@ -295,6 +306,21 @@ describe('two-factor authentication', () => {
     )
     expect(other.status).toBe(200)
     expect((await getTwoFactorStatus(payload, alice.id)).backupCodesRemaining).toBe(8)
+  })
+
+  it('rate-limits code attempts even when the original challenge is replayed', async () => {
+    const start = await handlePasswordLogin(jsonRequest({ email: alice.email, password: PASSWORD }))
+    const { challenge } = (await start.json()) as { challenge: string }
+    // Re-sending the first challenge (attempts: 0) sidesteps the per-challenge counter; the login
+    // rate limiter must still stop the guessing.
+    let res: Response | undefined
+    for (let i = 0; i <= TWO_FACTOR_RATE_LIMIT.points; i += 1) {
+      res = await handleTwoFactorLogin(jsonRequest({ code: '000000', challenge }))
+      if (res.status === 429) break
+      expect(res.status).toBe(401)
+    }
+    expect(res?.status).toBe(429)
+    expect(Number(res?.headers.get('Retry-After'))).toBeGreaterThan(0)
   })
 
   it('regenerates backup codes with an authenticator code only', async () => {
