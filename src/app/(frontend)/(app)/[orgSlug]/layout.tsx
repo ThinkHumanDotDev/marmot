@@ -32,7 +32,13 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
 
   return (
     <AppShell
-      user={{ id: user.id, email: user.email, name: user.name, superadmin: !!user.superadmin }}
+      user={{
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        superadmin: !!user.superadmin,
+        authProvider: user.authProvider,
+      }}
       organizations={
         currentOrg && !organizations.includes(currentOrg)
           ? [currentOrg, ...organizations]

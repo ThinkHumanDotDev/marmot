@@ -20,6 +20,7 @@ All configuration is via environment variables (see `.env.example`). Variables a
 | `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`                                                  | —                        | Generic OIDC via discovery; all three enable SSO.       |
 | `OIDC_DISPLAY_NAME`                                                                                        | `Single sign-on`         | Label of the SSO button.                                |
 | `OIDC_AUTO_PROVISION`                                                                                      | `true`                   | Create users on first SSO login.                        |
+| `OIDC_SCOPES`                                                                                              | `openid email profile`   | Scopes requested from the OIDC provider.                |
 | `KEEP_DATA_PERIOD_DAYS`                                                                                    | `365`                    | Retention of daily aggregates and important heartbeats. |
 | `WORKER_CONCURRENCY`                                                                                       | `10`                     | Parallel monitor checks per worker process.             |
 | `MARMOT_DISABLE_ENGINE_HOOKS`                                                                              | `false`                  | Skip BullMQ sync in `monitors` hooks (tests w/o Redis). |

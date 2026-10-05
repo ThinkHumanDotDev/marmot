@@ -143,6 +143,15 @@ export interface User {
    * Instance administrator: can access the Payload admin panel and every organization.
    */
   superadmin?: boolean | null;
+  /**
+   * How the account was created: password signup or single sign-on.
+   */
+  authProvider?: ('local' | 'oidc') | null;
+  oidcIssuer?: string | null;
+  /**
+   * Stable `sub` claim of the linked single sign-on identity.
+   */
+  oidcSubject?: string | null;
   organizations?:
     | {
         organization: number | Organization;
@@ -600,6 +609,9 @@ export interface UsersSelect<T extends boolean = true> {
   name?: T;
   avatar?: T;
   superadmin?: T;
+  authProvider?: T;
+  oidcIssuer?: T;
+  oidcSubject?: T;
   organizations?:
     | T
     | {

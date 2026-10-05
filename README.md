@@ -21,7 +21,7 @@ monitors it is built for organizations: multiple teams, role-based access, invit
 - **Alerting** – extensible notification providers (SMTP, Discord, Slack, Telegram, Teams, ntfy, Gotify,
   Pushover, PagerDuty, Opsgenie, Webhook, …).
 - **Status pages** – public pages with groups, incidents, maintenance banners, custom CSS and badges.
-- **Teams** – organizations, roles, invitations, generic OIDC single sign-on.
+- **Teams** – organizations, roles, invitations, generic OIDC [single sign-on](docs/sso.md).
 - **Live** – the dashboard updates in real time over WebSockets.
 - **Self-hosting first** – one Docker image, Postgres **or** MongoDB, Redis, Caddy for automatic HTTPS.
 
