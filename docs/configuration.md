@@ -107,11 +107,12 @@ Full setup guide with provider walkthroughs: [sso.md](sso.md).
 A scaffold for hosted offerings. Self-hosted installs leave it off; every limit is then unlimited and no
 Stripe code is loaded. Details in [billing.md](billing.md) _(landing in the current release)_.
 
-| Variable                | Default | Read by | Description                                                        |
-| ----------------------- | ------- | ------- | ------------------------------------------------------------------ |
-| `BILLING_ENABLED`       | `false` | web     | Enforce plan limits and show the Billing settings tab.             |
-| `STRIPE_SECRET_KEY`     | —       | web     | Registers the Stripe plugin and enables Checkout / Billing Portal. |
-| `STRIPE_WEBHOOK_SECRET` | —       | web     | Signing secret of the Stripe webhook endpoint.                     |
+| Variable                 | Default | Read by | Description                                                        |
+| ------------------------ | ------- | ------- | ------------------------------------------------------------------ |
+| `BILLING_ENABLED`        | `false` | web     | Enforce plan limits and show the Billing settings tab.             |
+| `STRIPE_SECRET_KEY`      | —       | web     | Registers the Stripe plugin and enables Checkout / Billing Portal. |
+| `STRIPE_WEBHOOK_SECRET`  | —       | web     | Signing secret of the Stripe webhook endpoint.                     |
+| `STRIPE_PUBLISHABLE_KEY` | —       | web     | Reserved for a future Stripe Elements checkout; not needed today.  |
 
 ## Telemetry
 

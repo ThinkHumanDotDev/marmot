@@ -40,6 +40,7 @@ self-hosted install.
   CSS, custom domains, RSS; maintenance banners and badges landing.
 - **Teams** – organizations with owner/admin/member/viewer roles, email invitations, invite links,
   ownership transfer, generic OIDC [single sign-on](docs/sso.md), first-run setup wizard.
+- **Hosting-ready** – optional per-organization plan limits and Stripe [billing](docs/billing.md); off by default.
 - **Live** – the dashboard updates in real time over WebSockets.
 - **Integrations** – status badges, push endpoint, Prometheus metrics and organization API keys
   ([docs/integrations.md](docs/integrations.md), landing in the current release).
