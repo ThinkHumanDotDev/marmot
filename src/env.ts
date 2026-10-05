@@ -54,6 +54,10 @@ const schema = z.object({
 
   // Monitoring defaults
   KEEP_DATA_PERIOD_DAYS: z.coerce.number().int().default(365),
+  // Polling engine (worker): parallel checks per worker process.
+  WORKER_CONCURRENCY: z.coerce.number().int().positive().default(10),
+  // Skip the Redis side effects of the `monitors` hooks (tests without Redis).
+  MARMOT_DISABLE_ENGINE_HOOKS: booleanish.default(false),
 
   // Billing scaffold (disabled by default on self-host)
   BILLING_ENABLED: booleanish.default(false),
