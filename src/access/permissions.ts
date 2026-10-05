@@ -51,6 +51,8 @@ export const PERMISSIONS = {
   'api-key:read': 'admin',
   'api-key:create': 'admin',
   'api-key:delete': 'admin',
+
+  'audit-log:read': 'admin',
 } as const satisfies Record<string, Role>
 
 export type Permission = keyof typeof PERMISSIONS
