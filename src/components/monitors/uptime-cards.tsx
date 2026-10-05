@@ -16,9 +16,9 @@ export interface UptimeSummary {
 
 function tier(fraction: number | null): string {
   if (fraction === null) return 'text-muted-foreground'
-  if (fraction >= 0.999) return 'text-status-up'
-  if (fraction >= 0.95) return 'text-status-pending'
-  return 'text-status-down'
+  if (fraction >= 0.999) return 'text-status-up-text'
+  if (fraction >= 0.95) return 'text-status-pending-text'
+  return 'text-status-down-text'
 }
 
 function StatTile({

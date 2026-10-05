@@ -1,3 +1,4 @@
+import { describeBeats } from '@/components/status-dot'
 import { cn } from '@/lib/utils'
 
 export interface BeatBarBeat {
@@ -41,11 +42,7 @@ export function BeatBar({
     <div
       className={cn('flex h-6 items-center gap-px', className)}
       role="img"
-      aria-label={
-        shown.length
-          ? `Last ${shown.length} checks, ${shown.filter((b) => b.status === 'up').length} up`
-          : 'No checks yet'
-      }
+      aria-label={describeBeats(shown.map((beat) => beat.status))}
     >
       {Array.from({ length: padding }, (_, i) => (
         <span

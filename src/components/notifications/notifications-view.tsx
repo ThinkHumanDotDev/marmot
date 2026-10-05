@@ -99,11 +99,14 @@ export function NotificationsView({
   }
 
   async function toggleActive(row: NotificationRow, active: boolean) {
+    // Optimistic: flip the switch right away, restore the previous row if the update fails.
     setBusyId(row.id)
+    upsert({ ...row, active })
     try {
       upsert(await notificationsApi.update(orgId, row.id, { active }))
       toast.success(active ? 'Channel enabled' : 'Channel paused')
     } catch (error) {
+      upsert(row)
       toast.error(error instanceof Error ? error.message : 'Could not update the channel')
     } finally {
       setBusyId(null)
@@ -157,7 +160,7 @@ export function NotificationsView({
           ) : undefined
         }
       />
-      <section className="p-6 md:p-8">
+      <section className="p-4 sm:p-6 md:p-8">
         {rows.length === 0 ? (
           <EmptyState
             icon={Bell}
@@ -178,9 +181,13 @@ export function NotificationsView({
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Provider</TableHead>
-                  <TableHead>Last sent</TableHead>
+                  <TableHead className="hidden sm:table-cell">Last sent</TableHead>
                   <TableHead className="w-24">Active</TableHead>
-                  {canManage && <TableHead className="w-12" />}
+                  {canManage && (
+                    <TableHead className="w-12">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -210,12 +217,12 @@ export function NotificationsView({
                       <TableCell>
                         <span>{descriptor?.label ?? row.type}</span>
                         {descriptor && (
-                          <span className="ml-2 text-xs text-muted-foreground">
+                          <span className="ml-2 hidden text-xs text-muted-foreground md:inline">
                             {PROVIDER_GROUP_LABELS[descriptor.group]}
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="hidden text-muted-foreground sm:table-cell">
                         {row.lastSentAt ? (
                           <time
                             dateTime={row.lastSentAt}

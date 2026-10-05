@@ -41,7 +41,7 @@ export default async function EditMonitorPage({ params }: EditMonitorPageProps) 
         title="Edit monitor"
         description="Changes apply from the next check."
       />
-      <section className="p-6 md:p-8">
+      <section className="p-4 sm:p-6 md:p-8">
         <MonitorForm
           mode="edit"
           orgId={ctx.org.id}

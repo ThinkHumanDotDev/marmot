@@ -45,7 +45,7 @@ export default async function NewMonitorPage({ params, searchParams }: NewMonito
         title="New monitor"
         description="Marmot starts checking as soon as you save."
       />
-      <section className="p-6 md:p-8">
+      <section className="p-4 sm:p-6 md:p-8">
         <MonitorForm
           mode="create"
           orgId={ctx.org.id}

@@ -40,8 +40,16 @@ export default async function StatusPagesPage({
           />
         }
       />
-      <section className="p-6 md:p-8">
-        <StatusPageList pages={pages} orgSlug={org.slug} />
+      <section className="p-4 sm:p-6 md:p-8">
+        <StatusPageList
+          pages={pages}
+          orgSlug={org.slug}
+          emptyAction={
+            can('status-page:create') ? (
+              <CreateStatusPageDialog orgId={org.id} orgSlug={org.slug} />
+            ) : undefined
+          }
+        />
       </section>
     </>
   )

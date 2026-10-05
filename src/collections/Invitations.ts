@@ -24,6 +24,7 @@ import {
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
+import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 
 import type { Invitation } from '@/payload-types'
 
@@ -247,7 +248,8 @@ export const Invitations: CollectionConfig = {
     delete: orgScoped('member:invite'),
   },
   hooks: {
-    beforeChange: [prepareInvitation],
+    // Seats: members + pending invitations must fit the plan (no-op unless BILLING_ENABLED).
+    beforeChange: [prepareInvitation, enforceEntitlementOnCreate('members')],
     afterChange: [sendInvitationEmail, auditInvitationCreated],
   },
   endpoints: [
