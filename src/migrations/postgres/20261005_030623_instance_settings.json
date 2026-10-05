@@ -894,11 +894,354 @@
           "primaryKey": true,
           "notNull": true
         },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "name": {
           "name": "name",
           "type": "varchar",
           "primaryKey": false,
           "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "enum_monitors_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'http'"
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "weight": {
+          "name": "weight",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 2000
+        },
+        "url": {
+          "name": "url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hostname": {
+          "name": "hostname",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "port": {
+          "name": "port",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "interval": {
+          "name": "interval",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 60
+        },
+        "retry_interval": {
+          "name": "retry_interval",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 60
+        },
+        "max_retries": {
+          "name": "max_retries",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "resend_interval": {
+          "name": "resend_interval",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "timeout": {
+          "name": "timeout",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 48
+        },
+        "upside_down": {
+          "name": "upside_down",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "method": {
+          "name": "method",
+          "type": "enum_monitors_method",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'GET'"
+        },
+        "http_body_encoding": {
+          "name": "http_body_encoding",
+          "type": "enum_monitors_http_body_encoding",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'json'"
+        },
+        "max_redirects": {
+          "name": "max_redirects",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 10
+        },
+        "body": {
+          "name": "body",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "headers": {
+          "name": "headers",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ignore_tls": {
+          "name": "ignore_tls",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "expiry_notification": {
+          "name": "expiry_notification",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "keyword": {
+          "name": "keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "invert_keyword": {
+          "name": "invert_keyword",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "json_path": {
+          "name": "json_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "json_path_operator": {
+          "name": "json_path_operator",
+          "type": "enum_monitors_json_path_operator",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'=='"
+        },
+        "expected_value": {
+          "name": "expected_value",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "auth_method": {
+          "name": "auth_method",
+          "type": "enum_monitors_auth_method",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'none'"
+        },
+        "basic_auth_user": {
+          "name": "basic_auth_user",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "basic_auth_pass": {
+          "name": "basic_auth_pass",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "auth_domain": {
+          "name": "auth_domain",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "auth_workstation": {
+          "name": "auth_workstation",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bearer_token": {
+          "name": "bearer_token",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauth_token_url": {
+          "name": "oauth_token_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauth_client_id": {
+          "name": "oauth_client_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauth_client_secret": {
+          "name": "oauth_client_secret",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauth_scopes": {
+          "name": "oauth_scopes",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oauth_auth_method": {
+          "name": "oauth_auth_method",
+          "type": "enum_monitors_oauth_auth_method",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'client_secret_basic'"
+        },
+        "tls_cert": {
+          "name": "tls_cert",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tls_key": {
+          "name": "tls_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tls_ca": {
+          "name": "tls_ca",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dns_resolve_server": {
+          "name": "dns_resolve_server",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'1.1.1.1'"
+        },
+        "dns_resolve_type": {
+          "name": "dns_resolve_type",
+          "type": "enum_monitors_dns_resolve_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'A'"
+        },
+        "push_token": {
+          "name": "push_token",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "manual_status": {
+          "name": "manual_status",
+          "type": "enum_monitors_manual_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_last_status": {
+          "name": "status_last_status",
+          "type": "enum_monitors_status_last_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_last_check_at": {
+          "name": "status_last_check_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_last_ping": {
+          "name": "status_last_ping",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_last_msg": {
+          "name": "status_last_msg",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_retries": {
+          "name": "status_retries",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "status_down_count": {
+          "name": "status_down_count",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "status_last_push_at": {
+          "name": "status_last_push_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "updated_at": {
           "name": "updated_at",
@@ -916,6 +1259,66 @@
         }
       },
       "indexes": {
+        "monitors_organization_idx": {
+          "name": "monitors_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitors_active_idx": {
+          "name": "monitors_active_idx",
+          "columns": [
+            {
+              "expression": "active",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitors_parent_idx": {
+          "name": "monitors_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitors_push_token_idx": {
+          "name": "monitors_push_token_idx",
+          "columns": [
+            {
+              "expression": "push_token",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "monitors_updated_at_idx": {
           "name": "monitors_updated_at_idx",
           "columns": [
@@ -945,9 +1348,355 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "organization_active_idx": {
+          "name": "organization_active_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "active",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "monitors_organization_id_organizations_id_fk": {
+          "name": "monitors_organization_id_organizations_id_fk",
+          "tableFrom": "monitors",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitors_parent_id_monitors_id_fk": {
+          "name": "monitors_parent_id_monitors_id_fk",
+          "tableFrom": "monitors",
+          "tableTo": "monitors",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.monitors_texts": {
+      "name": "monitors_texts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "monitors_texts_order_parent": {
+          "name": "monitors_texts_order_parent",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "monitors_texts_parent_fk": {
+          "name": "monitors_texts_parent_fk",
+          "tableFrom": "monitors_texts",
+          "tableTo": "monitors",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.heartbeats": {
+      "name": "heartbeats",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "monitor_id": {
+          "name": "monitor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum_heartbeats_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "msg": {
+          "name": "msg",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ping": {
+          "name": "ping",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration": {
+          "name": "duration",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "important": {
+          "name": "important",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "retries": {
+          "name": "retries",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "down_count": {
+          "name": "down_count",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "time": {
+          "name": "time",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "heartbeats_monitor_idx": {
+          "name": "heartbeats_monitor_idx",
+          "columns": [
+            {
+              "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "heartbeats_organization_idx": {
+          "name": "heartbeats_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "heartbeats_important_idx": {
+          "name": "heartbeats_important_idx",
+          "columns": [
+            {
+              "expression": "important",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "heartbeats_time_idx": {
+          "name": "heartbeats_time_idx",
+          "columns": [
+            {
+              "expression": "time",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_time_idx": {
+          "name": "monitor_time_idx",
+          "columns": [
+            {
+              "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "time",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_important_time_idx": {
+          "name": "monitor_important_time_idx",
+          "columns": [
+            {
+              "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "important",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "time",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "heartbeats_monitor_id_monitors_id_fk": {
+          "name": "heartbeats_monitor_id_monitors_id_fk",
+          "tableFrom": "heartbeats",
+          "tableTo": "monitors",
+          "columnsFrom": [
+            "monitor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "heartbeats_organization_id_organizations_id_fk": {
+          "name": "heartbeats_organization_id_organizations_id_fk",
+          "tableFrom": "heartbeats",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1651,6 +2400,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "heartbeats_id": {
+          "name": "heartbeats_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "stat_minutely_id": {
           "name": "stat_minutely_id",
           "type": "integer",
@@ -1791,6 +2546,21 @@
           "method": "btree",
           "with": {}
         },
+        "payload_locked_documents_rels_heartbeats_id_idx": {
+          "name": "payload_locked_documents_rels_heartbeats_id_idx",
+          "columns": [
+            {
+              "expression": "heartbeats_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "payload_locked_documents_rels_stat_minutely_id_idx": {
           "name": "payload_locked_documents_rels_stat_minutely_id_idx",
           "columns": [
@@ -1909,6 +2679,19 @@
           "tableTo": "monitors",
           "columnsFrom": [
             "monitors_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_heartbeats_fk": {
+          "name": "payload_locked_documents_rels_heartbeats_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "heartbeats",
+          "columnsFrom": [
+            "heartbeats_id"
           ],
           "columnsTo": [
             "id"
@@ -2465,6 +3248,121 @@
         "expired"
       ]
     },
+    "public.enum_monitors_type": {
+      "name": "enum_monitors_type",
+      "schema": "public",
+      "values": [
+        "http",
+        "keyword",
+        "json-query",
+        "port",
+        "ping",
+        "dns",
+        "push",
+        "group",
+        "manual"
+      ]
+    },
+    "public.enum_monitors_method": {
+      "name": "enum_monitors_method",
+      "schema": "public",
+      "values": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "HEAD",
+        "OPTIONS"
+      ]
+    },
+    "public.enum_monitors_http_body_encoding": {
+      "name": "enum_monitors_http_body_encoding",
+      "schema": "public",
+      "values": [
+        "json",
+        "form",
+        "xml"
+      ]
+    },
+    "public.enum_monitors_json_path_operator": {
+      "name": "enum_monitors_json_path_operator",
+      "schema": "public",
+      "values": [
+        "==",
+        "!=",
+        "<",
+        ">",
+        "<=",
+        ">=",
+        "contains"
+      ]
+    },
+    "public.enum_monitors_auth_method": {
+      "name": "enum_monitors_auth_method",
+      "schema": "public",
+      "values": [
+        "none",
+        "basic",
+        "bearer",
+        "oauth2-cc",
+        "ntlm",
+        "mtls"
+      ]
+    },
+    "public.enum_monitors_oauth_auth_method": {
+      "name": "enum_monitors_oauth_auth_method",
+      "schema": "public",
+      "values": [
+        "client_secret_basic",
+        "client_secret_post"
+      ]
+    },
+    "public.enum_monitors_dns_resolve_type": {
+      "name": "enum_monitors_dns_resolve_type",
+      "schema": "public",
+      "values": [
+        "A",
+        "AAAA",
+        "CAA",
+        "CNAME",
+        "MX",
+        "NS",
+        "PTR",
+        "SOA",
+        "SRV",
+        "TXT"
+      ]
+    },
+    "public.enum_monitors_manual_status": {
+      "name": "enum_monitors_manual_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending"
+      ]
+    },
+    "public.enum_monitors_status_last_status": {
+      "name": "enum_monitors_status_last_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending",
+        "maintenance"
+      ]
+    },
+    "public.enum_heartbeats_status": {
+      "name": "enum_heartbeats_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending",
+        "maintenance"
+      ]
+    },
     "public.enum_instance_settings_entry_page": {
       "name": "enum_instance_settings_entry_page",
       "schema": "public",
@@ -2484,6 +3382,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "c0ed7bac-9d0c-4cc5-93cc-4a68a073d6ca",
+  "id": "d7b4390f-6a61-4af6-af75-f8e6c194afe2",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
