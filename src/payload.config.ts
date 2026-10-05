@@ -6,7 +6,7 @@ import sharp from 'sharp'
 
 import { collections } from './collections'
 import { getDatabaseAdapter } from './db/adapter'
-import { env } from './env'
+import { env, runsRole } from './env'
 import { getPlugins } from './plugins'
 import { getEmailAdapter } from './server/email/adapter'
 
@@ -32,6 +32,14 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   db: getDatabaseAdapter(),
+  // Payload Jobs: low-frequency background work (emails, cleanup). High-frequency monitor checks use
+  // BullMQ (src/server/engine). Register tasks here; Payload only creates the jobs collection and
+  // starts the cron once at least one task or workflow exists. Jobs run in the worker process only.
+  jobs: {
+    tasks: [],
+    autoRun: [{ cron: '* * * * *', queue: 'default', limit: 10 }],
+    shouldAutoRun: async () => runsRole('worker'),
+  },
   sharp,
   plugins: getPlugins(),
   telemetry: false,
