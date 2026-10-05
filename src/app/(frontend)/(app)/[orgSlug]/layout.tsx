@@ -6,6 +6,7 @@ import config from '@payload-config'
 import { AnalyticsIdentity } from '@/components/consent/analytics-identity'
 import { SocketProvider } from '@/components/realtime/socket-provider'
 import { AppShell } from '@/components/shell/app-shell'
+import { ThemeSync } from '@/components/theme-sync'
 import {
   getUserOrganizations,
   homePathFor,
@@ -72,6 +73,7 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
         name: user.name,
         superadmin: !!user.superadmin,
         authProvider: user.authProvider,
+        theme: user.theme ?? 'system',
       }}
       organizations={
         currentOrg && !organizations.includes(currentOrg)
@@ -80,6 +82,7 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
       }
       currentOrg={currentOrg}
     >
+      <ThemeSync theme={user.theme} />
       <SocketProvider organizationId={currentOrg.id}>{children}</SocketProvider>
       {isServerAnalyticsEnabled() && (
         // Only a keyed hash of the id reaches the browser/PostHog, never email or name.

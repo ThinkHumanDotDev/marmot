@@ -102,10 +102,23 @@ export interface SessionUser {
   name?: string | null
 }
 
+/**
+ * `POST /api/auth/login`: either a signed-in user, or `requiresTwoFactor` when the account needs a
+ * code (`POST /api/auth/2fa`). The challenge also travels in an HttpOnly cookie; the body copy is
+ * for clients without a cookie jar.
+ */
 export interface LoginResponse {
-  user: SessionUser
+  user?: SessionUser
   token?: string
   exp?: number
+  requiresTwoFactor?: boolean
+  challenge?: string
+}
+
+export interface TwoFactorLoginResponse {
+  user: SessionUser
+  exp?: number
+  method: 'totp' | 'backup'
 }
 
 export interface AuthConfig {
@@ -123,8 +136,12 @@ export const authApi = {
   providers: () => api.get<AuthProviders>('/api/auth/providers'),
   /** Ends the Payload session; `redirectTo` is the provider's end-session URL or `/login`. */
   oidcLogout: () => api.post<{ redirectTo: string }>('/api/auth/oidc/logout'),
+  /** Marmot's login wrapper: honours two-factor authentication (see `src/auth/two-factor`). */
   login: (data: { email: string; password: string }) =>
-    api.post<LoginResponse>('/api/users/login', data),
+    api.post<LoginResponse>('/api/auth/login', data),
+  /** Second step: TOTP or backup code for the pending challenge. */
+  twoFactor: (data: { code: string; challenge?: string }) =>
+    api.post<TwoFactorLoginResponse>('/api/auth/2fa', data),
   signup: (data: { email: string; password: string; name?: string }) =>
     api.post<{ doc: SessionUser }>('/api/users', data),
   logout: () => api.post<{ message?: string }>('/api/users/logout'),
