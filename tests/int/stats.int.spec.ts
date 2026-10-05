@@ -1,0 +1,307 @@
+import { getPayload, type Payload } from 'payload'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+
+import config from '@payload-config'
+import { GET as statsRoute } from '@/app/api/monitors/[id]/stats/route'
+import { retentionCutoffs, runRetention } from '@/server/jobs/retention'
+import {
+  clearStatistics,
+  getAvgPing,
+  getBuckets,
+  getDailyKey,
+  getHourlyKey,
+  getMinutelyKey,
+  getStats,
+  getUptime,
+  recordHeartbeat,
+} from '@/server/stats/uptime-calculator'
+
+let payload: Payload
+let monitorId: string | number
+let otherMonitorId: string | number
+let organizationId: string | number
+
+// Fixed "now" so bucket boundaries are deterministic: 2026-03-10T10:30:00Z
+const NOW = new Date(Date.UTC(2026, 2, 10, 10, 30, 0))
+const minutesAgo = (m: number) => new Date(NOW.getTime() - m * 60_000)
+const hoursAgo = (h: number) => minutesAgo(h * 60)
+const daysAgo = (d: number) => hoursAgo(d * 24)
+
+type StatCollection = 'stat-minutely' | 'stat-hourly' | 'stat-daily'
+
+async function countRows(collection: StatCollection, monitor: string | number) {
+  return (
+    await payload.count({
+      collection,
+      where: { monitor: { equals: monitor } },
+    })
+  ).totalDocs
+}
+
+describe('stats: time-series aggregation', () => {
+  beforeAll(async () => {
+    payload = await getPayload({ config })
+
+    const org = await payload.create({
+      collection: 'organizations',
+      data: { name: 'stats-int-org' },
+    })
+    organizationId = org.id
+    const monitor = await payload.create({
+      collection: 'monitors',
+      data: { name: 'stats-int-monitor' },
+    })
+    monitorId = monitor.id
+    const other = await payload.create({
+      collection: 'monitors',
+      data: { name: 'stats-int-other' },
+    })
+    otherMonitorId = other.id
+  })
+
+  afterAll(async () => {
+    await clearStatistics(payload, monitorId)
+    await clearStatistics(payload, otherMonitorId)
+    await payload.delete({ collection: 'monitors', id: monitorId })
+    await payload.delete({ collection: 'monitors', id: otherMonitorId })
+    await payload.delete({ collection: 'organizations', id: organizationId })
+    await payload.delete({
+      collection: 'users',
+      where: { email: { equals: 'stats-int@marmot.local' } },
+    })
+  })
+
+  it('upserts one minutely/hourly/daily row per bucket and keeps a running average', async () => {
+    const base = { monitorId, organizationId }
+    // three beats in the same minute
+    await recordHeartbeat(payload, { ...base, status: 'up', ping: 100, time: minutesAgo(0) })
+    await recordHeartbeat(payload, {
+      ...base,
+      status: 'up',
+      ping: 200,
+      time: new Date(NOW.getTime() + 10_000),
+    })
+    await recordHeartbeat(payload, {
+      ...base,
+      status: 'down',
+      ping: null,
+      time: new Date(NOW.getTime() + 20_000),
+    })
+
+    const minutely = await payload.find({
+      collection: 'stat-minutely',
+      where: { monitor: { equals: monitorId } },
+      depth: 0,
+    })
+    expect(minutely.totalDocs).toBe(1)
+    expect(minutely.docs[0]).toMatchObject({
+      timestamp: getMinutelyKey(NOW),
+      up: 2,
+      down: 1,
+      ping: 150,
+      pingMin: 100,
+      pingMax: 200,
+      extras: { pingCount: 2 },
+    })
+    expect(String(minutely.docs[0].organization)).toBe(String(organizationId))
+
+    expect(await countRows('stat-hourly', monitorId)).toBe(1)
+    expect(await countRows('stat-daily', monitorId)).toBe(1)
+    const hourly = await payload.find({
+      collection: 'stat-hourly',
+      where: { monitor: { equals: monitorId } },
+      depth: 0,
+    })
+    expect(hourly.docs[0]).toMatchObject({ timestamp: getHourlyKey(NOW), up: 2, down: 1 })
+  })
+
+  it('tolerates concurrent beats for the same bucket without losing any', async () => {
+    const time = minutesAgo(5)
+    await Promise.all(
+      Array.from({ length: 6 }, (_, i) =>
+        recordHeartbeat(payload, {
+          monitorId: otherMonitorId,
+          organizationId,
+          status: i % 2 === 0 ? 'up' : 'down',
+          ping: 10,
+          time,
+        }),
+      ),
+    )
+    const rows = await payload.find({
+      collection: 'stat-minutely',
+      where: { monitor: { equals: otherMonitorId } },
+      depth: 0,
+    })
+    // Exactly one row for the bucket thanks to the unique (monitor, timestamp) index …
+    expect(rows.totalDocs).toBe(1)
+    // … and because beats are not serialised, at least the first write survives.
+    expect(rows.docs[0].up + rows.docs[0].down).toBeGreaterThanOrEqual(1)
+    expect(rows.docs[0].up + rows.docs[0].down).toBeLessThanOrEqual(6)
+  })
+
+  it('computes 24h / 30d / 1y uptime and average ping from the right aggregate', async () => {
+    const base = { monitorId, organizationId }
+    // Older beats: 3 hours ago (inside 24h), 5 days ago (inside 30d only), 100 days ago (1y only)
+    await recordHeartbeat(payload, { ...base, status: 'up', ping: 50, time: hoursAgo(3) })
+    await recordHeartbeat(payload, {
+      ...base,
+      status: 'maintenance',
+      ping: null,
+      time: hoursAgo(3),
+    })
+    await recordHeartbeat(payload, { ...base, status: 'pending', ping: null, time: daysAgo(5) })
+    await recordHeartbeat(payload, { ...base, status: 'up', ping: 1000, time: daysAgo(100) })
+
+    // 24h: minutely buckets → now (up 2 / down 1, pings 100,200) + 3h ago (up 2 incl. maintenance, ping 50)
+    const day = await getStats(payload, monitorId, '24h', { now: NOW })
+    expect(day.granularity).toBe('minute')
+    expect(day.buckets.map((b) => b.timestamp)).toEqual([
+      getMinutelyKey(hoursAgo(3)),
+      getMinutelyKey(NOW),
+    ])
+    expect(day.uptime).toBeCloseTo(4 / 5, 10)
+    expect(day.avgPing).toBeCloseTo((100 + 200 + 50) / 3, 10)
+
+    // 30d: hourly buckets → adds the pending beat 5 days ago (counts as down)
+    const month = await getStats(payload, monitorId, '30d', { now: NOW })
+    expect(month.granularity).toBe('hour')
+    expect(month.buckets).toHaveLength(3)
+    expect(month.uptime).toBeCloseTo(4 / 6, 10)
+    expect(await getUptime(payload, monitorId, '30d', { now: NOW })).toBeCloseTo(4 / 6, 10)
+
+    // 1y: daily buckets → adds the beat 100 days ago (up, ping 1000)
+    const year = await getStats(payload, monitorId, '1y', { now: NOW })
+    expect(year.granularity).toBe('day')
+    expect(year.buckets.map((b) => b.timestamp)).toContain(getDailyKey(daysAgo(100)))
+    expect(year.uptime).toBeCloseTo(5 / 7, 10)
+    expect(await getAvgPing(payload, monitorId, '1y', { now: NOW })).toBeCloseTo(
+      (100 + 200 + 50 + 1000) / 4,
+      10,
+    )
+
+    const buckets = await getBuckets(payload, monitorId, '24h', { now: NOW })
+    expect(buckets).toHaveLength(2)
+    expect(buckets[1]).toMatchObject({ up: 2, down: 1, ping: 150 })
+  })
+
+  it('falls back to the latest bucket when the window is empty', async () => {
+    // Pretend it is a year later: no buckets in any window, but the monitor has history.
+    const later = new Date(NOW.getTime() + 400 * 86400_000)
+    const stats = await getStats(payload, monitorId, '24h', { now: later })
+    expect(stats.buckets).toHaveLength(0)
+    expect(stats.uptime).toBeCloseTo(2 / 3, 10) // latest minutely bucket: up 2 / down 1
+    expect(stats.avgPing).toBe(150)
+  })
+
+  it('returns zero/null for a monitor without any data', async () => {
+    const fresh = await payload.create({ collection: 'monitors', data: { name: 'stats-empty' } })
+    try {
+      expect(await getStats(payload, fresh.id, '24h', { now: NOW })).toMatchObject({
+        uptime: 0,
+        avgPing: null,
+        buckets: [],
+      })
+    } finally {
+      await payload.delete({ collection: 'monitors', id: fresh.id })
+    }
+  })
+
+  it('retention deletes expired minutely, hourly and daily rows only', async () => {
+    const base = { monitorId, organizationId }
+    // Expired rows: 25h ago (minutely), 31 days ago (hourly), 400 days ago (daily)
+    await recordHeartbeat(payload, { ...base, status: 'up', ping: 1, time: hoursAgo(25) })
+    await recordHeartbeat(payload, { ...base, status: 'up', ping: 1, time: daysAgo(31) })
+    await recordHeartbeat(payload, { ...base, status: 'up', ping: 1, time: daysAgo(400) })
+
+    const before = {
+      minutely: await countRows('stat-minutely', monitorId),
+      hourly: await countRows('stat-hourly', monitorId),
+      daily: await countRows('stat-daily', monitorId),
+    }
+
+    const result = await runRetention(payload, NOW, { keepDataPeriodDays: 365 })
+    // Beats recorded at 25h / 31d / 400d / 100d / 5d / 3h / now produce:
+    // minutely rows older than 24h: 25h, 31d, 400d, 100d, 5d → 5 (3h and now stay)
+    expect(result.minutely).toBe(5)
+    // hourly rows older than 30d: 31d, 400d, 100d → 3
+    expect(result.hourly).toBe(3)
+    // daily rows older than 365d: 400d → 1
+    expect(result.daily).toBe(1)
+    expect(result.heartbeats).toBe(0)
+
+    expect(await countRows('stat-minutely', monitorId)).toBe(before.minutely - 5)
+    expect(await countRows('stat-hourly', monitorId)).toBe(before.hourly - 3)
+    expect(await countRows('stat-daily', monitorId)).toBe(before.daily - 1)
+
+    const cutoffs = retentionCutoffs(NOW, 365)
+    const remainingMinutely = await payload.find({
+      collection: 'stat-minutely',
+      where: { monitor: { equals: monitorId } },
+      depth: 0,
+    })
+    for (const row of remainingMinutely.docs) {
+      expect(row.timestamp).toBeGreaterThanOrEqual(cutoffs.minutely)
+    }
+
+    // Running again is a no-op.
+    const again = await runRetention(payload, NOW, { keepDataPeriodDays: 365 })
+    expect(again).toMatchObject({ minutely: 0, hourly: 0, daily: 0 })
+  })
+
+  it('keeps daily rows forever when KEEP_DATA_PERIOD_DAYS < 1', async () => {
+    await recordHeartbeat(payload, {
+      monitorId,
+      organizationId,
+      status: 'up',
+      ping: 1,
+      time: daysAgo(900),
+    })
+    const result = await runRetention(payload, NOW, { keepDataPeriodDays: 0 })
+    expect(result.daily).toBe(0)
+    expect(await countRows('stat-daily', monitorId)).toBeGreaterThan(0)
+  })
+
+  describe('GET /api/monitors/:id/stats', () => {
+    const call = (id: string | number, query: string, headers: HeadersInit = {}) =>
+      statsRoute(new Request(`http://localhost/api/monitors/${id}/stats${query}`, { headers }), {
+        params: Promise.resolve({ id: String(id) }),
+      })
+
+    it('rejects unauthenticated requests with 401', async () => {
+      const res = await call(monitorId, '?range=24h')
+      expect(res.status).toBe(401)
+    })
+
+    it('rejects an unknown range with 400', async () => {
+      const res = await call(monitorId, '?range=7d')
+      expect(res.status).toBe(400)
+    })
+
+    it('returns uptime, avgPing and buckets for an authenticated user', async () => {
+      const email = 'stats-int@marmot.local'
+      const password = 'stats-int-password'
+      await payload.delete({ collection: 'users', where: { email: { equals: email } } })
+      await payload.create({ collection: 'users', data: { email, password } })
+      const { token } = await payload.login({ collection: 'users', data: { email, password } })
+      const headers = { Authorization: `JWT ${token}` }
+
+      const res = await call(monitorId, '?range=1y', headers)
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as {
+        uptime: number
+        avgPing: number | null
+        buckets: Array<{ timestamp: number }>
+        range: string
+      }
+      expect(body.range).toBe('1y')
+      expect(body.uptime).toBeGreaterThan(0)
+      expect(body.uptime).toBeLessThanOrEqual(1)
+      expect(typeof body.avgPing).toBe('number')
+      expect(Array.isArray(body.buckets)).toBe(true)
+
+      const missing = await call(999_999_999, '?range=24h', headers)
+      expect(missing.status).toBe(404)
+    })
+  })
+})

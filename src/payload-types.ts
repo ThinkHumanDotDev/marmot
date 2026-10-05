@@ -68,7 +68,12 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
+    organizations: Organization;
     media: Media;
+    monitors: Monitor;
+    'stat-minutely': StatMinutely;
+    'stat-hourly': StatHourly;
+    'stat-daily': StatDaily;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -77,7 +82,12 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
+    organizations: OrganizationsSelect<false> | OrganizationsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    monitors: MonitorsSelect<false> | MonitorsSelect<true>;
+    'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
+    'stat-hourly': StatHourlySelect<false> | StatHourlySelect<true>;
+    'stat-daily': StatDailySelect<false> | StatDailySelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -150,6 +160,16 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "organizations".
+ */
+export interface Organization {
+  id: number;
+  name: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
  */
 export interface Media {
@@ -166,6 +186,121 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "monitors".
+ */
+export interface Monitor {
+  id: number;
+  name: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Per-monitor heartbeat aggregates, one row per minute.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-minutely".
+ */
+export interface StatMinutely {
+  id: number;
+  monitor: number | Monitor;
+  organization: number | Organization;
+  /**
+   * Unix seconds, truncated to the start of the minute (UTC).
+   */
+  timestamp: number;
+  up: number;
+  down: number;
+  /**
+   * Average ping (ms) of UP beats.
+   */
+  ping?: number | null;
+  pingMin?: number | null;
+  pingMax?: number | null;
+  /**
+   * Additional counters, e.g. { maintenance, pingCount }.
+   */
+  extras?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+}
+/**
+ * Per-monitor heartbeat aggregates, one row per hour.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-hourly".
+ */
+export interface StatHourly {
+  id: number;
+  monitor: number | Monitor;
+  organization: number | Organization;
+  /**
+   * Unix seconds, truncated to the start of the hour (UTC).
+   */
+  timestamp: number;
+  up: number;
+  down: number;
+  /**
+   * Average ping (ms) of UP beats.
+   */
+  ping?: number | null;
+  pingMin?: number | null;
+  pingMax?: number | null;
+  /**
+   * Additional counters, e.g. { maintenance, pingCount }.
+   */
+  extras?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+}
+/**
+ * Per-monitor heartbeat aggregates, one row per day.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-daily".
+ */
+export interface StatDaily {
+  id: number;
+  monitor: number | Monitor;
+  organization: number | Organization;
+  /**
+   * Unix seconds, truncated to the start of the day (UTC).
+   */
+  timestamp: number;
+  up: number;
+  down: number;
+  /**
+   * Average ping (ms) of UP beats.
+   */
+  ping?: number | null;
+  pingMin?: number | null;
+  pingMax?: number | null;
+  /**
+   * Additional counters, e.g. { maintenance, pingCount }.
+   */
+  extras?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -196,8 +331,28 @@ export interface PayloadLockedDocument {
         value: number | User;
       } | null)
     | ({
+        relationTo: 'organizations';
+        value: number | Organization;
+      } | null)
+    | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'monitors';
+        value: number | Monitor;
+      } | null)
+    | ({
+        relationTo: 'stat-minutely';
+        value: number | StatMinutely;
+      } | null)
+    | ({
+        relationTo: 'stat-hourly';
+        value: number | StatHourly;
+      } | null)
+    | ({
+        relationTo: 'stat-daily';
+        value: number | StatDaily;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -268,6 +423,15 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "organizations_select".
+ */
+export interface OrganizationsSelect<T extends boolean = true> {
+  name?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
@@ -283,6 +447,60 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "monitors_select".
+ */
+export interface MonitorsSelect<T extends boolean = true> {
+  name?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-minutely_select".
+ */
+export interface StatMinutelySelect<T extends boolean = true> {
+  monitor?: T;
+  organization?: T;
+  timestamp?: T;
+  up?: T;
+  down?: T;
+  ping?: T;
+  pingMin?: T;
+  pingMax?: T;
+  extras?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-hourly_select".
+ */
+export interface StatHourlySelect<T extends boolean = true> {
+  monitor?: T;
+  organization?: T;
+  timestamp?: T;
+  up?: T;
+  down?: T;
+  ping?: T;
+  pingMin?: T;
+  pingMax?: T;
+  extras?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-daily_select".
+ */
+export interface StatDailySelect<T extends boolean = true> {
+  monitor?: T;
+  organization?: T;
+  timestamp?: T;
+  up?: T;
+  down?: T;
+  ping?: T;
+  pingMin?: T;
+  pingMax?: T;
+  extras?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
