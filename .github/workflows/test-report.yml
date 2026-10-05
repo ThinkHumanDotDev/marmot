@@ -1,0 +1,29 @@
+name: Test report
+
+# Turns the JUnit artifacts uploaded by CI (`junit-postgres`, `junit-mongodb`) into check runs.
+# Runs from the default branch with its own token, so pull requests from forks (whose CI token is
+# read-only) get test results too. The artifacts are only parsed, never executed.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  report:
+    name: Publish test results
+    if: ${{ github.event.workflow_run.conclusion != 'cancelled' && github.event.workflow_run.conclusion != 'skipped' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/test-reporter@v3
+        with:
+          artifact: /junit-(.*)/
+          name: Test results ($1)
+          path: '*-junit.xml'
+          reporter: java-junit
+          fail-on-error: false
+          fail-on-empty: false
