@@ -173,7 +173,8 @@ const dayIndexIn = (instant: Date, timezone: string): number => {
   return Math.floor(Date.parse(`${ymd}T00:00:00Z`) / DAY_MS)
 }
 
-const dateOfDayIndex = (index: number): string => new Date(index * DAY_MS).toISOString().slice(0, 10)
+const dateOfDayIndex = (index: number): string =>
+  new Date(index * DAY_MS).toISOString().slice(0, 10)
 
 /** `nextStart(after)` → the first occurrence starting strictly after `after`, or null. */
 type NextStart = (after: Date) => Date | null
@@ -258,7 +259,8 @@ export function computeMaintenanceTimeslots(
   if (doc.strategy === 'single') {
     if (!rangeStart || !rangeEnd) return result('unknown')
     const window = toWindow(rangeStart, rangeEnd)
-    if (nowMs < rangeStart.getTime()) return { status: 'scheduled', timezone, current: null, next: window }
+    if (nowMs < rangeStart.getTime())
+      return { status: 'scheduled', timezone, current: null, next: window }
     if (nowMs >= rangeEnd.getTime()) return result('ended')
     return { status: 'under-maintenance', timezone, current: window, next: null }
   }

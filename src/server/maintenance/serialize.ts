@@ -3,7 +3,11 @@ import type { Payload } from 'payload'
 import type { OrgId } from '@/access/permissions'
 import type { MaintenanceStatus, MaintenanceStrategy } from '@/lib/validation/maintenance'
 import type { Maintenance } from '@/payload-types'
-import { computeMaintenanceTimeslots, type MaintenanceTimeslots, type MaintenanceWindow } from './status'
+import {
+  computeMaintenanceTimeslots,
+  type MaintenanceTimeslots,
+  type MaintenanceWindow,
+} from './status'
 import { getOrganizationTimezone } from './timezone'
 
 export type { MaintenanceWindow }

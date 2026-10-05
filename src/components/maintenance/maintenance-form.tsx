@@ -74,7 +74,8 @@ type FormControlType = Control<MaintenanceFormInput, unknown, MaintenanceFormVal
 const STRATEGY_HELP: Record<MaintenanceStrategy, string> = {
   manual: 'Starts now and stays active until you pause or delete it.',
   single: 'One window between a start and an end date.',
-  'recurring-interval': 'Repeats every N days at the same time of day, counted from the start date.',
+  'recurring-interval':
+    'Repeats every N days at the same time of day, counted from the start date.',
   'recurring-weekday': 'Repeats on the chosen days of the week.',
   'recurring-day-of-month': 'Repeats on the chosen days of the month.',
   cron: 'Starts whenever the cron expression matches and lasts the given number of minutes.',
@@ -218,7 +219,9 @@ function ToggleGroupField<T extends string>({
           field.onChange(
             current.includes(value)
               ? current.filter((v) => v !== value)
-              : options.filter((o) => o.value === value || current.includes(o.value)).map((o) => o.value),
+              : options
+                  .filter((o) => o.value === value || current.includes(o.value))
+                  .map((o) => o.value),
           )
         return (
           <FormItem>
@@ -361,7 +364,11 @@ export function MaintenanceForm({
   }
 
   const dayOfMonthOptions = React.useMemo<{ value: DayOfMonthValue; label: string }[]>(
-    () => Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1) as DayOfMonthValue, label: String(i + 1) })),
+    () =>
+      Array.from({ length: 31 }, (_, i) => ({
+        value: String(i + 1) as DayOfMonthValue,
+        label: String(i + 1),
+      })),
     [],
   )
   const lastDayOptions = React.useMemo<{ value: DayOfMonthValue; label: string }[]>(
@@ -384,7 +391,12 @@ export function MaintenanceForm({
             <CardDescription>What visitors and teammates read about this window.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5">
-            <TextInputField control={control} name="title" label="Title" placeholder="Database upgrade" />
+            <TextInputField
+              control={control}
+              name="title"
+              label="Title"
+              placeholder="Database upgrade"
+            />
             <FormField
               control={control}
               name="description"
@@ -399,7 +411,9 @@ export function MaintenanceForm({
                       value={(field.value as string | null | undefined) ?? ''}
                     />
                   </FormControl>
-                  <FormDescription>Shown on the selected status pages. Markdown supported.</FormDescription>
+                  <FormDescription>
+                    Shown on the selected status pages. Markdown supported.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -411,7 +425,9 @@ export function MaintenanceForm({
                 <FormItem className="flex flex-row items-start justify-between gap-4 rounded-lg border p-3">
                   <div className="space-y-0.5">
                     <FormLabel>Active</FormLabel>
-                    <FormDescription>Paused maintenances never apply, whatever the schedule.</FormDescription>
+                    <FormDescription>
+                      Paused maintenances never apply, whatever the schedule.
+                    </FormDescription>
                   </div>
                   <FormControl>
                     <Switch checked={field.value !== false} onCheckedChange={field.onChange} />
@@ -426,7 +442,9 @@ export function MaintenanceForm({
         <Card>
           <CardHeader>
             <CardTitle>Date and time</CardTitle>
-            <CardDescription>{STRATEGY_HELP[(strategy as MaintenanceStrategy) ?? 'single']}</CardDescription>
+            <CardDescription>
+              {STRATEGY_HELP[(strategy as MaintenanceStrategy) ?? 'single']}
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5">
             <FormField
@@ -525,7 +543,12 @@ export function MaintenanceForm({
 
             {recurring && (
               <div className="grid gap-5 sm:grid-cols-2">
-                <TextInputField control={control} name="timeRange.start" label="Window starts" type="time" />
+                <TextInputField
+                  control={control}
+                  name="timeRange.start"
+                  label="Window starts"
+                  type="time"
+                />
                 <TextInputField
                   control={control}
                   name="timeRange.end"
@@ -572,7 +595,9 @@ export function MaintenanceForm({
                   name="dateRange.end"
                   label={strategy === 'single' ? 'Ends' : 'Effective until'}
                   type="datetime-local"
-                  description={strategy === 'single' ? undefined : 'Optional. Leave empty to repeat forever.'}
+                  description={
+                    strategy === 'single' ? undefined : 'Optional. Leave empty to repeat forever.'
+                  }
                 />
               </div>
             )}
@@ -634,7 +659,9 @@ export function MaintenanceForm({
         <Card>
           <CardHeader>
             <CardTitle>Status pages</CardTitle>
-            <CardDescription>Pages that announce the window to visitors, running or upcoming.</CardDescription>
+            <CardDescription>
+              Pages that announce the window to visitors, running or upcoming.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <FormField

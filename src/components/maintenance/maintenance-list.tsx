@@ -52,7 +52,9 @@ function scheduleText(item: MaintenanceSummary): string {
     default: {
       const time = `${item.timeRange.start ?? ''}–${item.timeRange.end ?? ''}`
       if (item.strategy === 'recurring-interval') {
-        return item.intervalDay === 1 ? `Every day ${time}` : `Every ${item.intervalDay} days ${time}`
+        return item.intervalDay === 1
+          ? `Every day ${time}`
+          : `Every ${item.intervalDay} days ${time}`
       }
       if (item.strategy === 'recurring-weekday') {
         const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

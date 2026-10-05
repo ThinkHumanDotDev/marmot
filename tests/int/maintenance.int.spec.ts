@@ -1,15 +1,13 @@
-import {
-  getPayload,
-  type Payload,
-  type RequiredDataFromCollectionSlug,
-  type Where,
-} from 'payload'
+import { getPayload, type Payload, type RequiredDataFromCollectionSlug, type Where } from 'payload'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import config from '@payload-config'
 import { addOrgMembership } from '@/access/memberships'
 import type { Role } from '@/access/permissions'
-import { GET as listMaintenance, POST as createMaintenance } from '@/app/api/orgs/[orgId]/maintenance/route'
+import {
+  GET as listMaintenance,
+  POST as createMaintenance,
+} from '@/app/api/orgs/[orgId]/maintenance/route'
 import {
   DELETE as deleteMaintenance,
   GET as readMaintenance,
@@ -122,8 +120,7 @@ async function createDoc(
   })) as Maintenance
 }
 
-const iso = (minutesFromNow: number) =>
-  new Date(Date.now() + minutesFromNow * 60_000).toISOString()
+const iso = (minutesFromNow: number) => new Date(Date.now() + minutesFromNow * 60_000).toISOString()
 
 let orgA: Organization
 let orgB: Organization
@@ -231,7 +228,9 @@ describe('maintenance windows', () => {
           dateRange: { start: iso(120), end: iso(60) },
         }),
       ).rejects.toThrow()
-      await expect(createDoc(orgA, { title: 'bad cron', strategy: 'cron', cron: 'nope' })).rejects.toThrow()
+      await expect(
+        createDoc(orgA, { title: 'bad cron', strategy: 'cron', cron: 'nope' }),
+      ).rejects.toThrow()
       await expect(
         createDoc(orgA, { title: 'no days', strategy: 'recurring-weekday', weekdays: [] }),
       ).rejects.toThrow()
@@ -240,9 +239,9 @@ describe('maintenance windows', () => {
 
     it('refuses monitors and status pages of another organization', async () => {
       const foreign = await createMonitor(orgB, { name: 'foreign' })
-      await expect(
-        createDoc(orgA, { title: 'cross-org', monitors: [foreign.id] }),
-      ).rejects.toThrow(/monitors/)
+      await expect(createDoc(orgA, { title: 'cross-org', monitors: [foreign.id] })).rejects.toThrow(
+        /monitors/,
+      )
       const page = await payload.create({
         collection: 'status-pages',
         data: { organization: orgB.id, title: 'B page', slug: `b-page-${run}` },
@@ -398,7 +397,10 @@ describe('maintenance windows', () => {
       expect(single.error?.issues.map((i) => i.path.join('.'))).toEqual(
         expect.arrayContaining(['dateRange.start', 'dateRange.end']),
       )
-      const weekday = maintenanceFormSchema.safeParse({ ...body('w'), strategy: 'recurring-weekday' })
+      const weekday = maintenanceFormSchema.safeParse({
+        ...body('w'),
+        strategy: 'recurring-weekday',
+      })
       expect(weekday.error?.issues.map((i) => i.path.join('.'))).toContain('weekdays')
       const cron = maintenanceFormSchema.safeParse({ ...body('c'), strategy: 'cron', cron: 'x' })
       expect(cron.error?.issues.map((i) => i.path.join('.'))).toContain('cron')
@@ -408,7 +410,8 @@ describe('maintenance windows', () => {
 
     it('rejects anonymous, viewer and foreign requests', async () => {
       expect(
-        (await createMaintenance(request('POST', body('anon')), { params: params(orgA.id) })).status,
+        (await createMaintenance(request('POST', body('anon')), { params: params(orgA.id) }))
+          .status,
       ).toBe(401)
       expect(
         (await createMaintenance(request('POST', body('v'), viewer), { params: params(orgA.id) }))

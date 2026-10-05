@@ -102,7 +102,10 @@ async function assertSameOrganization(
   label: string,
 ) {
   const wanted = new Set(
-    (ids ?? []).map(relId).filter((id): id is string | number => id !== null).map(String),
+    (ids ?? [])
+      .map(relId)
+      .filter((id): id is string | number => id !== null)
+      .map(String),
   )
   if (wanted.size === 0) return
   const { docs } = await req.payload.find({
@@ -115,7 +118,8 @@ async function assertSameOrganization(
     overrideAccess: true,
   })
   const foreign = docs.filter(
-    (doc) => String(relId((doc as { organization?: unknown }).organization)) !== String(organization),
+    (doc) =>
+      String(relId((doc as { organization?: unknown }).organization)) !== String(organization),
   )
   if (foreign.length > 0 || docs.length !== wanted.size) {
     fail(`Every ${label} must belong to the same organization.`, path)
@@ -128,7 +132,14 @@ const prepare: CollectionBeforeChangeHook<MaintenanceDoc> = async ({ data, origi
   const organization = relId(data.organization ?? originalDoc?.organization)
 
   if (data.monitors !== undefined) {
-    await assertSameOrganization(req, 'monitors', data.monitors, organization, 'monitors', 'monitor')
+    await assertSameOrganization(
+      req,
+      'monitors',
+      data.monitors,
+      organization,
+      'monitors',
+      'monitor',
+    )
   }
   if (data.statusPages !== undefined) {
     await assertSameOrganization(
@@ -321,7 +332,8 @@ export const Maintenance: CollectionConfig = {
       options: DAY_OF_MONTH_VALUES.map((value) => ({ value, label: dayOfMonthLabel(value) })),
       admin: {
         condition: onlyWhen(['recurring-day-of-month']),
-        description: 'Only "Last day of the month" has a cron equivalent; 2nd–4th last are ignored.',
+        description:
+          'Only "Last day of the month" has a cron equivalent; 2nd–4th last are ignored.',
       },
     },
     {

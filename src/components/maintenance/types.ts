@@ -17,7 +17,8 @@ export interface StatusPageOption {
   slug: string
 }
 
-const base = (orgId: string | number) => `/api/orgs/${encodeURIComponent(String(orgId))}/maintenance`
+const base = (orgId: string | number) =>
+  `/api/orgs/${encodeURIComponent(String(orgId))}/maintenance`
 const one = (orgId: string | number, id: string) => `${base(orgId)}/${encodeURIComponent(id)}`
 
 /** Client wrapper over `/api/orgs/:orgId/maintenance/**`; every call returns `MaintenanceSummary`. */

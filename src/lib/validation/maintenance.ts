@@ -158,7 +158,11 @@ export const maintenanceFormSchema = z
     daysOfMonth: z.array(z.enum(DAY_OF_MONTH_VALUES)).default([]),
     cron: z.string().trim().default('30 3 * * *'),
     duration: z.coerce.number().int().min(1).max(MAX_DURATION_MINUTES).default(60),
-    timezone: z.string().trim().default(SAME_AS_SERVER).refine(isValidTimezone, 'Unknown time zone'),
+    timezone: z
+      .string()
+      .trim()
+      .default(SAME_AS_SERVER)
+      .refine(isValidTimezone, 'Unknown time zone'),
     monitors: z.array(relationIdSchema).default([]),
     statusPages: z.array(relationIdSchema).default([]),
   })

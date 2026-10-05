@@ -69,7 +69,10 @@ export async function refreshMaintenanceStatuses(
       changed += 1
       const orgId = relationId(doc.organization)
       if (orgId !== null) changedOrgs.add(orgId)
-      log.info({ maintenanceId: doc.id, from: doc.status, to: status }, 'maintenance status changed')
+      log.info(
+        { maintenanceId: doc.id, from: doc.status, to: status },
+        'maintenance status changed',
+      )
     } catch (err) {
       log.error({ err, maintenanceId: doc.id }, 'failed to refresh maintenance status')
     }

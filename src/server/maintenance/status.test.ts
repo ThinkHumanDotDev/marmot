@@ -42,9 +42,11 @@ describe('helpers', () => {
   })
 
   it('generates cron patterns like Uptime Kuma', () => {
-    expect(buildCron(base({ strategy: 'recurring-interval', timeRange: { start: '04:15', end: '05:00' } }))).toBe(
-      '15 4 * * *',
-    )
+    expect(
+      buildCron(
+        base({ strategy: 'recurring-interval', timeRange: { start: '04:15', end: '05:00' } }),
+      ),
+    ).toBe('15 4 * * *')
     expect(buildCron(base({ strategy: 'recurring-weekday', weekdays: ['5', '1', 1] }))).toBe(
       '0 2 * * 1,5',
     )
@@ -63,22 +65,36 @@ describe('helpers', () => {
 
 describe('inactive / manual / unknown', () => {
   it('is inactive when paused, whatever the strategy', () => {
-    expect(getMaintenanceStatus(base({ strategy: 'manual', active: false }), at('2026-01-01T00:00:00Z'), utc)).toBe(
-      'inactive',
-    )
+    expect(
+      getMaintenanceStatus(
+        base({ strategy: 'manual', active: false }),
+        at('2026-01-01T00:00:00Z'),
+        utc,
+      ),
+    ).toBe('inactive')
   })
 
   it('manual is under maintenance until paused', () => {
-    const slots = computeMaintenanceTimeslots(base({ strategy: 'manual' }), at('2026-01-01T00:00:00Z'), utc)
+    const slots = computeMaintenanceTimeslots(
+      base({ strategy: 'manual' }),
+      at('2026-01-01T00:00:00Z'),
+      utc,
+    )
     expect(slots.status).toBe('under-maintenance')
     expect(slots.current).toBeNull()
   })
 
   it('is unknown when the schedule cannot be evaluated', () => {
-    expect(getMaintenanceStatus(base({ strategy: 'cron', cron: 'nope' }), at('2026-01-01T00:00:00Z'), utc)).toBe(
-      'unknown',
-    )
-    expect(getMaintenanceStatus(base({ strategy: 'single' }), at('2026-01-01T00:00:00Z'), utc)).toBe('unknown')
+    expect(
+      getMaintenanceStatus(
+        base({ strategy: 'cron', cron: 'nope' }),
+        at('2026-01-01T00:00:00Z'),
+        utc,
+      ),
+    ).toBe('unknown')
+    expect(
+      getMaintenanceStatus(base({ strategy: 'single' }), at('2026-01-01T00:00:00Z'), utc),
+    ).toBe('unknown')
   })
 })
 
@@ -95,7 +111,10 @@ describe('single window', () => {
     })
     expect(before.status).toBe('scheduled')
     // 09:00 JST is 00:00Z.
-    expect(before.next).toEqual({ start: '2026-01-01T00:00:00.000Z', end: '2026-01-01T01:30:00.000Z' })
+    expect(before.next).toEqual({
+      start: '2026-01-01T00:00:00.000Z',
+      end: '2026-01-01T01:30:00.000Z',
+    })
 
     const during = computeMaintenanceTimeslots(doc, at('2026-01-01T00:00:00Z'), {
       serverTimezone: 'America/Los_Angeles',
@@ -124,13 +143,19 @@ describe('recurring-interval', () => {
     const doc = base({ strategy: 'recurring-interval', intervalDay: 1 })
     const during = computeMaintenanceTimeslots(doc, at('2026-01-05T02:30:00Z'), utc)
     expect(during.status).toBe('under-maintenance')
-    expect(during.current).toEqual({ start: '2026-01-05T02:00:00.000Z', end: '2026-01-05T03:00:00.000Z' })
+    expect(during.current).toEqual({
+      start: '2026-01-05T02:00:00.000Z',
+      end: '2026-01-05T03:00:00.000Z',
+    })
     expect(during.next?.start).toBe('2026-01-06T02:00:00.000Z')
 
     const between = computeMaintenanceTimeslots(doc, at('2026-01-05T04:00:00Z'), utc)
     expect(between.status).toBe('scheduled')
     expect(between.current).toBeNull()
-    expect(between.next).toEqual({ start: '2026-01-06T02:00:00.000Z', end: '2026-01-06T03:00:00.000Z' })
+    expect(between.next).toEqual({
+      start: '2026-01-06T02:00:00.000Z',
+      end: '2026-01-06T03:00:00.000Z',
+    })
   })
 
   it('anchors "every N days" on the range start and handles windows across midnight', () => {
@@ -144,7 +169,10 @@ describe('recurring-interval', () => {
     expect(getMaintenanceStatus(doc, at('2026-01-04T23:00:00Z'), utc)).toBe('under-maintenance')
     const spill = computeMaintenanceTimeslots(doc, at('2026-01-05T00:30:00Z'), utc)
     expect(spill.status).toBe('under-maintenance')
-    expect(spill.current).toEqual({ start: '2026-01-04T22:00:00.000Z', end: '2026-01-05T01:00:00.000Z' })
+    expect(spill.current).toEqual({
+      start: '2026-01-04T22:00:00.000Z',
+      end: '2026-01-05T01:00:00.000Z',
+    })
 
     const skipDay = computeMaintenanceTimeslots(doc, at('2026-01-05T23:00:00Z'), utc)
     expect(skipDay.status).toBe('scheduled')
@@ -164,7 +192,10 @@ describe('recurring-interval', () => {
     // The last occurrence is clipped to the range end (Kuma `inferDuration`).
     const clipped = computeMaintenanceTimeslots(doc, at('2026-02-03T02:15:00Z'), utc)
     expect(clipped.status).toBe('under-maintenance')
-    expect(clipped.current).toEqual({ start: '2026-02-03T02:00:00.000Z', end: '2026-02-03T02:30:00.000Z' })
+    expect(clipped.current).toEqual({
+      start: '2026-02-03T02:00:00.000Z',
+      end: '2026-02-03T02:30:00.000Z',
+    })
     expect(clipped.next).toBeNull()
 
     expect(getMaintenanceStatus(doc, at('2026-02-03T02:30:00Z'), utc)).toBe('ended')
@@ -188,7 +219,10 @@ describe('recurring-interval', () => {
 
     const bst = computeMaintenanceTimeslots(doc, at('2026-03-31T02:30:00Z'), utc)
     expect(bst.status).toBe('under-maintenance')
-    expect(bst.current).toEqual({ start: '2026-03-31T02:00:00.000Z', end: '2026-03-31T03:00:00.000Z' })
+    expect(bst.current).toEqual({
+      start: '2026-03-31T02:00:00.000Z',
+      end: '2026-03-31T03:00:00.000Z',
+    })
   })
 })
 
@@ -204,7 +238,10 @@ describe('recurring-weekday', () => {
     // 2026-01-05 is a Monday; 10:30 EST = 15:30Z.
     const monday = computeMaintenanceTimeslots(doc, at('2026-01-05T15:30:00Z'), utc)
     expect(monday.status).toBe('under-maintenance')
-    expect(monday.current).toEqual({ start: '2026-01-05T15:00:00.000Z', end: '2026-01-05T16:00:00.000Z' })
+    expect(monday.current).toEqual({
+      start: '2026-01-05T15:00:00.000Z',
+      end: '2026-01-05T16:00:00.000Z',
+    })
 
     const tuesday = computeMaintenanceTimeslots(doc, at('2026-01-06T15:30:00Z'), utc)
     expect(tuesday.status).toBe('scheduled')
@@ -249,23 +286,34 @@ describe('cron', () => {
   it('opens a window of `duration` minutes at every match', () => {
     const inside = computeMaintenanceTimeslots(doc, at('2026-01-01T10:17:00Z'), utc)
     expect(inside.status).toBe('under-maintenance')
-    expect(inside.current).toEqual({ start: '2026-01-01T10:15:00.000Z', end: '2026-01-01T10:20:00.000Z' })
+    expect(inside.current).toEqual({
+      start: '2026-01-01T10:15:00.000Z',
+      end: '2026-01-01T10:20:00.000Z',
+    })
     expect(inside.next?.start).toBe('2026-01-01T10:30:00.000Z')
 
     const outside = computeMaintenanceTimeslots(doc, at('2026-01-01T10:22:00Z'), utc)
     expect(outside.status).toBe('scheduled')
-    expect(outside.next).toEqual({ start: '2026-01-01T10:30:00.000Z', end: '2026-01-01T10:35:00.000Z' })
+    expect(outside.next).toEqual({
+      start: '2026-01-01T10:30:00.000Z',
+      end: '2026-01-01T10:35:00.000Z',
+    })
   })
 
   it('uses SAME_AS_SERVER through the server timezone', () => {
-    const nightly = base({ strategy: 'cron', cron: '0 2 * * *', duration: 60, timezone: 'SAME_AS_SERVER' })
+    const nightly = base({
+      strategy: 'cron',
+      cron: '0 2 * * *',
+      duration: 60,
+      timezone: 'SAME_AS_SERVER',
+    })
     // 02:30 in Tokyo on Jan 2 is 17:30Z on Jan 1.
-    expect(getMaintenanceStatus(nightly, at('2026-01-01T17:30:00Z'), { serverTimezone: 'Asia/Tokyo' })).toBe(
-      'under-maintenance',
-    )
-    expect(getMaintenanceStatus(nightly, at('2026-01-01T17:30:00Z'), { serverTimezone: 'UTC' })).toBe(
-      'scheduled',
-    )
+    expect(
+      getMaintenanceStatus(nightly, at('2026-01-01T17:30:00Z'), { serverTimezone: 'Asia/Tokyo' }),
+    ).toBe('under-maintenance')
+    expect(
+      getMaintenanceStatus(nightly, at('2026-01-01T17:30:00Z'), { serverTimezone: 'UTC' }),
+    ).toBe('scheduled')
   })
 
   it('ends when the range end is reached and no occurrence remains', () => {
