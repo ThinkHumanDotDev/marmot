@@ -53,12 +53,16 @@ function fakeQueue() {
 
 type MonitorInput = RequiredDataFromCollectionSlug<'monitors'>
 
+/** Monitors are org-scoped (`organization` is required); every fixture lives in this organization. */
+let organizationId: string | number
+
 async function createMonitor(data: Partial<Monitor> & { name: string; type: Monitor['type'] }) {
   return (await payload.create({
     collection: 'monitors',
     overrideAccess: true,
     depth: 0,
     data: {
+      organization: organizationId,
       interval: 60,
       retryInterval: 20,
       maxRetries: 0,
@@ -109,6 +113,11 @@ function startDnsServer(): Promise<dgram.Socket> {
 
 beforeAll(async () => {
   payload = await getPayload({ config })
+  const org = await payload.create({
+    collection: 'organizations',
+    data: { name: 'engine-int-org', slug: `engine-int-org-${Date.now().toString(36)}` },
+  })
+  organizationId = org.id
   await payload.delete({ collection: 'heartbeats', where: {}, overrideAccess: true })
   await payload.delete({ collection: 'monitors', where: {}, overrideAccess: true })
 

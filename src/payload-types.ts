@@ -261,7 +261,7 @@ export interface Invitation {
  */
 export interface Monitor {
   id: number;
-  organization?: (number | null) | Organization;
+  organization: number | Organization;
   name: string;
   type: 'http' | 'keyword' | 'json-query' | 'port' | 'ping' | 'dns' | 'push' | 'group' | 'manual';
   /**

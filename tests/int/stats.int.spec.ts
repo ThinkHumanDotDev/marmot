@@ -2,6 +2,7 @@ import { getPayload, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import config from '@payload-config'
+import { addOrgMembership } from '@/access/memberships'
 import { GET as statsRoute } from '@/app/api/monitors/[id]/stats/route'
 import { retentionCutoffs, runRetention } from '@/server/jobs/retention'
 import { createStatsListener } from '@/server/stats'
@@ -61,12 +62,16 @@ describe('stats: time-series aggregation', () => {
     organizationId = org.id
     const monitor = await payload.create({
       collection: 'monitors',
-      data: { ...MONITOR_DEFAULTS, name: 'stats-int-monitor' },
+      data: {
+        ...MONITOR_DEFAULTS,
+        organization: organizationId as never,
+        name: 'stats-int-monitor',
+      },
     })
     monitorId = monitor.id
     const other = await payload.create({
       collection: 'monitors',
-      data: { ...MONITOR_DEFAULTS, name: 'stats-int-other' },
+      data: { ...MONITOR_DEFAULTS, organization: organizationId as never, name: 'stats-int-other' },
     })
     otherMonitorId = other.id
   })
@@ -231,7 +236,7 @@ describe('stats: time-series aggregation', () => {
   it('returns zero/null for a monitor without any data', async () => {
     const fresh = await payload.create({
       collection: 'monitors',
-      data: { ...MONITOR_DEFAULTS, name: 'stats-empty' },
+      data: { ...MONITOR_DEFAULTS, organization: organizationId as never, name: 'stats-empty' },
     })
     try {
       expect(await getStats(payload, fresh.id, '24h', { now: NOW })).toMatchObject({
@@ -319,7 +324,9 @@ describe('stats: time-series aggregation', () => {
       const email = 'stats-int@marmot.local'
       const password = 'stats-int-password'
       await payload.delete({ collection: 'users', where: { email: { equals: email } } })
-      await payload.create({ collection: 'users', data: { email, password } })
+      const user = await payload.create({ collection: 'users', data: { email, password } })
+      // Monitors are org-scoped: the caller must be a member of the monitor's organization.
+      await addOrgMembership({ payload, userId: user.id, orgId: organizationId, role: 'viewer' })
       const { token } = await payload.login({ collection: 'users', data: { email, password } })
       const headers = { Authorization: `JWT ${token}` }
 
