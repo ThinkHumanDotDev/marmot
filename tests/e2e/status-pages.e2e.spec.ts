@@ -1,34 +1,40 @@
-import { expect, test } from '@playwright/test'
-import { getPayload, type Payload } from 'payload'
-
-import config from '@payload-config'
+import { ANONYMOUS, expect, runId, targetUrl, test, type DocId } from './fixtures'
 
 /**
- * Public status page: seeded through the Local API, visited anonymously. Drafts must 404.
+ * Public status page details (incidents, API, RSS, manifest, drafts): seeded through the REST API as
+ * the setup admin, visited anonymously. Creating and publishing a page through the UI is part of
+ * the critical path (`critical-path.e2e.spec.ts`).
  */
-const run = Date.now().toString(36)
+const run = runId()
+const monitorUrl = targetUrl('/')
 const publishedSlug = `e2e-status-${run}`
 const draftSlug = `e2e-draft-${run}`
 
-let payload: Payload
-let orgId: string | number
+const created: { collection: string; id: DocId }[] = []
+
+test.use({ storageState: ANONYMOUS })
 
 test.describe('Status pages', () => {
-  test.beforeAll(async () => {
-    payload = await getPayload({ config })
+  test.beforeAll(async ({ adminApi }) => {
+    const track = <T extends { id: DocId }>(collection: string, doc: T): T => {
+      created.unshift({ collection, id: doc.id })
+      return doc
+    }
 
-    const org = await payload.create({
-      collection: 'organizations',
-      data: { name: 'E2E Status Org', slug: `e2e-status-org-${run}` },
-    })
-    orgId = org.id
+    const org = track(
+      'organizations',
+      await adminApi.create('organizations', {
+        name: 'E2E Status Org',
+        slug: `e2e-status-org-${run}`,
+      }),
+    )
 
-    const monitor = await payload.create({
-      collection: 'monitors',
-      data: {
+    const monitor = track(
+      'monitors',
+      await adminApi.create('monitors', {
         name: 'Marketing site',
         type: 'http',
-        url: 'https://example.com',
+        url: monitorUrl,
         active: true,
         interval: 60,
         retryInterval: 60,
@@ -36,57 +42,48 @@ test.describe('Status pages', () => {
         resendInterval: 0,
         timeout: 48,
         organization: org.id,
-        status: { lastStatus: 'up', lastCheckAt: new Date().toISOString(), lastPing: 120 },
-      },
-    })
+      }),
+    )
+    // The worker checks the local target server; the page reports it once a beat exists.
+    await adminApi.waitForHeartbeat(monitor.id, 'up')
 
-    await payload.create({
-      collection: 'heartbeats',
-      data: {
-        monitor: monitor.id,
-        organization: org.id,
-        status: 'up',
-        ping: 120,
-        time: new Date().toISOString(),
-      },
-    })
-
-    const page = await payload.create({
-      collection: 'status-pages',
-      data: {
+    const page = track(
+      'status-pages',
+      await adminApi.create('status-pages', {
         organization: org.id,
         title: 'E2E Acme Status',
         slug: publishedSlug,
         description: 'Everything we run, in one place.',
         published: true,
         groups: [{ name: 'Public services', monitors: [{ monitor: monitor.id, sendUrl: true }] }],
-      },
-    })
+      }),
+    )
 
-    await payload.create({
-      collection: 'incidents',
-      data: {
+    track(
+      'incidents',
+      await adminApi.create('incidents', {
         statusPage: page.id,
         organization: org.id,
         title: 'E2E planned maintenance',
         content: 'We are **upgrading** the database tonight.',
         style: 'warning',
-      },
-    })
+      }),
+    )
 
-    await payload.create({
-      collection: 'status-pages',
-      data: { organization: org.id, title: 'E2E Draft', slug: draftSlug, published: false },
-    })
+    track(
+      'status-pages',
+      await adminApi.create('status-pages', {
+        organization: org.id,
+        title: 'E2E Draft',
+        slug: draftSlug,
+        published: false,
+      }),
+    )
   })
 
-  test.afterAll(async () => {
-    if (!orgId) return
-    await payload.delete({ collection: 'incidents', where: { organization: { equals: orgId } } })
-    await payload.delete({ collection: 'status-pages', where: { organization: { equals: orgId } } })
-    await payload.delete({ collection: 'heartbeats', where: { organization: { equals: orgId } } })
-    await payload.delete({ collection: 'monitors', where: { organization: { equals: orgId } } })
-    await payload.delete({ collection: 'organizations', id: orgId })
+  test.afterAll(async ({ adminApi }) => {
+    // Newest first, so nothing is deleted while something still references it.
+    for (const { collection, id } of created) await adminApi.delete(collection, id)
   })
 
   test('renders a published page anonymously', async ({ page }) => {
@@ -98,7 +95,7 @@ test.describe('Status pages', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Public services' })).toBeVisible()
     await expect(page.getByRole('link', { name: /Marketing site/ })).toHaveAttribute(
       'href',
-      'https://example.com',
+      monitorUrl,
     )
     await expect(
       page.getByRole('heading', { level: 3, name: 'E2E planned maintenance' }),
