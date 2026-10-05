@@ -70,6 +70,7 @@
     "payload": "3.90.2",
     "pino": "^9.6.0",
     "radix-ui": "^1.6.7",
+    "rate-limiter-flexible": "^11.2.1",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-hook-form": "^7.89.0",

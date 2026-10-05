@@ -131,6 +131,12 @@ docker compose up -d --wait
 image. Pin `MARMOT_VERSION` in `.env` (e.g. `MARMOT_VERSION=1.2`) to control when upgrades happen, and
 take a database backup before a major version. Release notes list breaking changes.
 
+## Hardening
+
+Before exposing an instance to the internet, go through the checklist in [security.md](security.md): TLS,
+the `trustProxy` instance setting (rate limiting and the audit log need the real client address), a strong
+`PAYLOAD_SECRET`, closed signup and private database/Redis ports.
+
 ## Troubleshooting
 
 - `docker compose ps` shows `web` unhealthy: `docker compose logs web`. Most often `DATABASE_URL` points

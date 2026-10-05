@@ -8,6 +8,7 @@ import * as migration_20261005_033951_add_invite_link from './20261005_033951_ad
 import * as migration_20261005_042854_monitors_org_scoped from './20261005_042854_monitors_org_scoped';
 import * as migration_20261005_045549_notifications from './20261005_045549_notifications';
 import * as migration_20261005_051201_status_pages from './20261005_051201_status_pages';
+import * as migration_20261005_180918_audit_logs from './20261005_180918_audit_logs';
 
 export const migrations = [
   {
@@ -58,6 +59,11 @@ export const migrations = [
   {
     up: migration_20261005_051201_status_pages.up,
     down: migration_20261005_051201_status_pages.down,
-    name: '20261005_051201_status_pages'
+    name: '20261005_051201_status_pages',
+  },
+  {
+    up: migration_20261005_180918_audit_logs.up,
+    down: migration_20261005_180918_audit_logs.down,
+    name: '20261005_180918_audit_logs'
   },
 ];

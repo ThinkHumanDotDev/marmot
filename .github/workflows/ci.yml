@@ -40,6 +40,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Dependency audit (advisory; see docs/security.md)
+        run: pnpm audit --prod --audit-level=high
+        continue-on-error: true
       - run: pnpm format
       - run: pnpm lint
       - run: pnpm generate:types

@@ -2,6 +2,7 @@ import type { CollectionConfig, FieldAccess } from 'payload'
 
 import { authenticated, selfOrSuperadmin, superadminOnly } from '@/access/org-scoped'
 import { isSuperadmin, type UserLike } from '@/access/permissions'
+import { auditAuthFailure, auditLogin, rateLimitAuthOperations } from '@/server/security/auth-hooks'
 import { isSignupAllowed } from '@/server/settings'
 
 const superadminField: FieldAccess = ({ req }) => isSuperadmin(req.user)
@@ -41,6 +42,12 @@ export const Users: CollectionConfig = {
     read: authenticated, // the multi-tenant plugin narrows this to users who share an organization
     update: selfOrSuperadmin,
     delete: superadminOnly,
+  },
+  hooks: {
+    // Rate limits `login` / `forgot-password` (REST only) and records the attempts in `audit-logs`.
+    beforeOperation: [rateLimitAuthOperations],
+    afterLogin: [auditLogin],
+    afterError: [auditAuthFailure],
   },
   fields: [
     // email + password are added by `auth: true`

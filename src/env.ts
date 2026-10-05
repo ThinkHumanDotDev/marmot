@@ -18,6 +18,8 @@ const schema = z.object({
 
   PAYLOAD_SECRET: z.string().min(16, 'PAYLOAD_SECRET must be at least 16 characters'),
   NEXT_PUBLIC_SERVER_URL: z.string().url().default('http://localhost:3000'),
+  // Extra origins (comma-separated) allowed by Payload's CORS/CSRF checks besides the server URL.
+  ADDITIONAL_ORIGINS: z.string().default(''),
 
   DATABASE_ADAPTER: z.enum(['postgres', 'mongodb', 'sqlite']).default('postgres'),
   DATABASE_URL: z.string().min(1),

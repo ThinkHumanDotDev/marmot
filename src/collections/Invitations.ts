@@ -23,6 +23,7 @@ import {
 } from '@/access/permissions'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
+import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 
 import type { Invitation } from '@/payload-types'
 
@@ -119,6 +120,24 @@ const sendInvitationEmail: CollectionAfterChangeHook<Invitation> = async ({
   return doc
 }
 
+/** Audit row for every new invitation (who invited which address with which role). */
+const auditInvitationCreated: CollectionAfterChangeHook<Invitation> = async ({
+  doc,
+  operation,
+  req,
+}) => {
+  if (operation !== 'create') return doc
+  await recordRequestAuditEvent(req.payload, req, {
+    action: 'invitation.created',
+    actor: req.user?.collection === 'users' ? req.user.id : null,
+    organization: extractId(doc.organization),
+    target: auditTarget('invitations', doc.id),
+    metadata: { email: doc.email, role: doc.role },
+    req,
+  })
+  return doc
+}
+
 type AcceptInvitationArgs = {
   payload: Payload
   token: string
@@ -197,6 +216,15 @@ export async function acceptInvitation({
     context,
   })
 
+  await recordRequestAuditEvent(payload, req ?? { headers: new Headers() }, {
+    action: 'invitation.accepted',
+    actor: user.id,
+    organization: orgId,
+    target: auditTarget('invitations', invitation.id),
+    metadata: { email: invitation.email, role },
+    req,
+  })
+
   return { invitation: invitation.id, organization: orgId, role }
 }
 
@@ -220,7 +248,7 @@ export const Invitations: CollectionConfig = {
   },
   hooks: {
     beforeChange: [prepareInvitation],
-    afterChange: [sendInvitationEmail],
+    afterChange: [sendInvitationEmail, auditInvitationCreated],
   },
   endpoints: [
     {

@@ -6,7 +6,8 @@ All configuration is via environment variables (see `.env.example`). Variables a
 | Variable                                                                                                   | Default                  | Description                                             |
 | ---------------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------- |
 | `PAYLOAD_SECRET`                                                                                           | —                        | Required. ≥16 random chars; signs auth tokens.          |
-| `NEXT_PUBLIC_SERVER_URL`                                                                                   | `http://localhost:3000`  | Public base URL.                                        |
+| `NEXT_PUBLIC_SERVER_URL`                                                                                   | `http://localhost:3000`  | Public base URL. Also the CORS/CSRF origin.             |
+| `ADDITIONAL_ORIGINS`                                                                                       | _(empty)_                | Extra CORS/CSRF origins, comma-separated.               |
 | `MARMOT_ROLE`                                                                                              | `all`                    | `web`, `worker`, `realtime` or `all`.                   |
 | `DATABASE_ADAPTER`                                                                                         | `postgres`               | `postgres`, `mongodb` or `sqlite` (dev only).           |
 | `DATABASE_URL`                                                                                             | —                        | Connection string for the chosen adapter.               |
