@@ -9,6 +9,11 @@ import config from '@payload-config'
 import { childLogger } from '@/lib/logger'
 import { closeChecksQueue, resyncAll, startCheckWorker } from '@/server/engine'
 import { listMonitorTypes } from '@/server/monitor-types'
+import {
+  closeNotificationsQueue,
+  registerNotificationListener,
+  startNotificationWorker,
+} from '@/server/notifications'
 import { closeEmitter } from '@/server/realtime/emitter'
 import { registerRealtimeListener } from '@/server/realtime/listener'
 import { registerStatsListener } from '@/server/stats'
@@ -51,10 +56,14 @@ async function main() {
   // Registered after the stats listener so the figures already include the new beat.
   registerRealtimeListener()
 
+  // Notifications: enqueue one job per attached channel when a beat should notify.
+  registerNotificationListener(payload)
+
   // In a composed deployment the web container runs migrations while the worker is already
   // booting, so the schema may not exist yet. Wait for it instead of crash-looping.
   await waitForSchema(() => resyncAll(payload))
   const checkWorker = startCheckWorker(payload)
+  const notificationWorker = startNotificationWorker(payload)
 
   // Keep the process alive until a shutdown signal arrives.
   await new Promise<void>((resolve) => {
@@ -68,8 +77,8 @@ async function main() {
         process.exit(1)
       }, 30_000)
       try {
-        await checkWorker.close()
-        await closeChecksQueue()
+        await Promise.all([checkWorker.close(), notificationWorker.close()])
+        await Promise.all([closeChecksQueue(), closeNotificationsQueue()])
         await closeEmitter()
         await payload.db.destroy?.()
       } catch (err) {

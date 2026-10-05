@@ -60,6 +60,16 @@ Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ
 heartbeats older than `KEEP_DATA_PERIOD_DAYS` (long-term pruning is disabled when the value is `< 1`), and
 non-important heartbeats older than 24 h.
 
+## Notifications
+
+`notifications` documents (org-scoped: `name`, `type` = provider slug, `config` validated against the
+provider's zod schema, `isDefault`, `active`, `lastSentAt`, `lastError`) are attached to monitors through
+`monitors.notifications`. When a beat has `notify = true` the worker's heartbeat listener enqueues one BullMQ
+job per active attached channel on `marmot:notifications` (job id `notif:<channel>:<heartbeat>` dedupes, 3
+attempts with exponential backoff); the notification worker renders `[name] [🔴 Down] msg`, calls the
+provider's `send()` and records the outcome on the channel. Providers self-register in
+`src/server/notification-providers/`; see `docs/notifications.md`.
+
 ## Realtime
 
 The realtime process (`src/realtime.ts` → `createRealtimeServer()` in `src/server/realtime/server.ts`) is
