@@ -14,9 +14,10 @@ paging the on-call and without a red bar on your public status page.
 | Status   | `scheduled` (before the next start), `under-maintenance` (active now), `ended` (past its last occurrence), `inactive` (paused by you), `unknown` (the schedule cannot be evaluated).                                                                                                            |
 | Timezone | Schedules are evaluated in the window's IANA timezone, DST-aware. The default, _same as server_ (`SAME_AS_SERVER`), uses the organization's `settings.timezone`.                                                                                                                                |
 
-Maintenance is **org-scoped**: viewers can see windows (`maintenance:read`), members and above create, edit,
-pause and delete them (`maintenance:create|update|delete`). Monitors and status pages must belong to the same
-organization as the window.
+Maintenance is **org-scoped**: by default viewers can see windows (`maintenance:read`), members and above
+create, edit, pause and delete them (`maintenance:create|update|delete`); owners can change these minimums
+under **Settings → Permissions** ([organizations-and-members.md](organizations-and-members.md)). Monitors and
+status pages must belong to the same organization as the window.
 
 ## Effect on monitors and alerts
 

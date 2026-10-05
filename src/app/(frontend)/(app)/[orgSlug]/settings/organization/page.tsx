@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
-import { can } from '@/access/permissions'
+import { canWithOverrides } from '@/access/permissions'
 import { OrganizationDangerZone } from '@/components/settings/organization-danger-zone'
 import { OrganizationForm } from '@/components/settings/organization-form'
 import { requireUser } from '@/lib/auth'
@@ -31,7 +31,7 @@ export default async function OrganizationSettingsPage({
     <>
       <OrganizationForm
         org={summarizeOrg(org)}
-        canEdit={can(user, org.id, 'organization:update')}
+        canEdit={canWithOverrides(user, org, 'organization:update')}
       />
       <OrganizationDangerZone
         org={summarizeOrg(org)}

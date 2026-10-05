@@ -85,6 +85,9 @@ attribution comment and are listed here:
 - `src/server/maintenance/status-page.ts` — `StatusPage.getMaintenanceList` from `server/model/status_page.js`
 - `src/lib/validation/maintenance.ts`, `src/components/maintenance/maintenance-form.tsx` — form semantics
   and defaults of `src/pages/EditMaintenance.vue`
+- `src/auth/two-factor/totp.ts`, `src/auth/two-factor/handlers.ts` — two-factor login flow (`login`,
+  `prepare2FA`, `save2FA`, `disable2FA`, `verifyToken` handlers in `server/server.js`: one-step TOTP
+  window and last-token replay check)
 - `src/server/import-export/uptime-kuma.ts`, `src/server/import-export/kuma-notifications.ts` — backup
   JSON format and import semantics of the `uploadBackup` handler (`server/server.js`,
   `src/components/settings/Backup.vue` in Uptime Kuma 1.23), monitor field names from

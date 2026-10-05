@@ -49,7 +49,7 @@ async function resolve(
 
   const auth = await authenticate(payload, request)
   if (auth.response) return { response: auth.response }
-  const forbidden = authorize(auth.user, orgId, permission)
+  const forbidden = await authorize(payload, auth.user, orgId, permission)
   if (forbidden) return { response: forbidden }
 
   const doc = await loadOrgMaintenance(payload, auth.user, orgId, id)

@@ -257,6 +257,51 @@
           "primaryKey": false,
           "notNull": false
         },
+        "theme": {
+          "name": "theme",
+          "type": "enum_users_theme",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'system'"
+        },
+        "two_factor_enabled": {
+          "name": "two_factor_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "two_factor_verified_at": {
+          "name": "two_factor_verified_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "two_factor_secret": {
+          "name": "two_factor_secret",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "two_factor_pending_secret": {
+          "name": "two_factor_pending_secret",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "two_factor_backup_codes": {
+          "name": "two_factor_backup_codes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "two_factor_last_used_step": {
+          "name": "two_factor_last_used_step",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -488,6 +533,12 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'member'"
+        },
+        "permission_overrides": {
+          "name": "permission_overrides",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         },
         "settings_timezone": {
           "name": "settings_timezone",
@@ -5166,6 +5217,15 @@
         "oidc"
       ]
     },
+    "public.enum_users_theme": {
+      "name": "enum_users_theme",
+      "schema": "public",
+      "values": [
+        "system",
+        "light",
+        "dark"
+      ]
+    },
     "public.enum_organizations_plan": {
       "name": "enum_organizations_plan",
       "schema": "public",
@@ -5456,6 +5516,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "fbf0c50b-b9b6-4024-9440-4b124dc596af",
+  "id": "1fe0ad8e-456c-48e2-92ba-69cdc7f637b4",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

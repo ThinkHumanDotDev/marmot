@@ -18,7 +18,7 @@ export function setMaintenanceActiveHandler(active: boolean) {
 
     const auth = await authenticate(payload, request)
     if (auth.response) return auth.response
-    const forbidden = authorize(auth.user, orgId, 'maintenance:update')
+    const forbidden = await authorize(payload, auth.user, orgId, 'maintenance:update')
     if (forbidden) return forbidden
 
     const existing = await loadOrgMaintenance(payload, auth.user, orgId, id)
