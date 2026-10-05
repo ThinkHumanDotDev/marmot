@@ -29,10 +29,30 @@ Important beats (status transitions) trigger notifications; `resendInterval` re-
 
 ## Time-series storage
 
-Raw `heartbeats` are kept for 24 hours (important ones for the retention period). Each beat also upserts
-`stat-minutely` (24h), `stat-hourly` (30d) and `stat-daily` (`KEEP_DATA_PERIOD_DAYS`) rows keyed by
-`(monitor, timestamp)` with `up`, `down`, `ping`, `pingMin`, `pingMax`. An hourly job prunes expired rows.
-Uptime percentages and average pings for 24h / 30d / 1y are computed from these aggregates.
+Raw `heartbeats` are kept for 24 hours (important ones for `KEEP_DATA_PERIOD_DAYS`). Every beat is also
+folded into three aggregate collections, one row per `(monitor, timestamp)` where `timestamp` is the unix
+second of the bucket start (minute / hour / UTC day), guarded by a unique compound index:
+
+| Collection      | Bucket | Kept                    | Serves |
+| --------------- | ------ | ----------------------- | ------ |
+| `stat-minutely` | 1 min  | 24 hours                | `24h`  |
+| `stat-hourly`   | 1 hour | 30 days                 | `30d`  |
+| `stat-daily`    | 1 day  | `KEEP_DATA_PERIOD_DAYS` | `1y`   |
+
+Each row stores `up`, `down`, `ping` (average of UP beats), `pingMin`, `pingMax` and an `extras` JSON with
+`maintenance` (beats during maintenance, also counted as `up`) and `pingCount` (weight of `ping`). `pending`
+beats count as `down`. The maths is a port of Uptime Kuma's `UptimeCalculator`
+(`src/server/stats/uptime-calculator.ts`): the worker's heartbeat listener calls
+`recordHeartbeat(payload, { monitorId, organizationId, status, ping, time })`, which reads the three current
+buckets, applies the beat (running average, min/max) and writes them back through the Local API; an insert
+that loses the unique-index race is retried as an update. Reads (`getUptime`, `getAvgPing`, `getBuckets`,
+`getStats`) sum the buckets of the window `[now - range, now]`, falling back to the latest bucket when the
+window is empty, and are exposed at `GET /api/monitors/:id/stats?range=24h|30d|1y`.
+
+Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ job scheduler on the
+`marmot:maintenance` queue: minutely rows older than 24 h, hourly older than 30 d, daily and important
+heartbeats older than `KEEP_DATA_PERIOD_DAYS` (long-term pruning is disabled when the value is `< 1`), and
+non-important heartbeats older than 24 h.
 
 ## Realtime
 
