@@ -19,7 +19,7 @@ export default function MaintenancePage() {
           </Button>
         }
       />
-      <section className="p-6 md:p-8">
+      <section className="p-4 sm:p-6 md:p-8">
         <EmptyState
           icon={Wrench}
           title="No maintenance scheduled"

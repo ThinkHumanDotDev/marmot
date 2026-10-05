@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { api, ApiError } from '@/lib/api'
+import { useMonitorStore } from '@/stores/monitor-store'
 
 export interface MonitorActionsProps {
   orgId: string | number
@@ -49,21 +50,31 @@ export function MonitorActions({
   canDelete,
 }: MonitorActionsProps) {
   const router = useRouter()
-  const [busy, setBusy] = React.useState<null | 'toggle' | 'clone' | 'delete'>(null)
+  const [busy, setBusy] = React.useState<null | 'clone' | 'delete'>(null)
   const [confirmDelete, setConfirmDelete] = React.useState(false)
   const base = `/api/orgs/${orgId}/monitors/${monitor.id}`
 
-  async function toggleActive() {
-    setBusy('toggle')
-    try {
-      await api.post(`${base}/${monitor.active ? 'pause' : 'resume'}`)
-      toast.success(monitor.active ? 'Monitor paused' : 'Monitor resumed')
-      router.refresh()
-    } catch (error) {
-      toast.error(message(error, 'Could not update the monitor'))
-    } finally {
-      setBusy(null)
-    }
+  // Optimistic pause/resume: the button flips at once and falls back to the stored value if the
+  // request fails (useOptimistic reverts when the transition ends without a new prop).
+  const [active, setOptimisticActive] = React.useOptimistic(monitor.active)
+  const [toggling, startToggle] = React.useTransition()
+
+  function toggleActive() {
+    const next = !active
+    startToggle(async () => {
+      setOptimisticActive(next)
+      const store = useMonitorStore.getState()
+      const live = store.monitors[String(monitor.id)]
+      if (live) store.upsertMonitor({ ...live, active: next })
+      try {
+        await api.post(`${base}/${next ? 'resume' : 'pause'}`)
+        toast.success(next ? 'Monitor resumed' : 'Monitor paused')
+        router.refresh()
+      } catch (error) {
+        if (live) useMonitorStore.getState().upsertMonitor(live)
+        toast.error(message(error, 'Could not update the monitor'))
+      }
+    })
   }
 
   async function clone() {
@@ -100,17 +111,11 @@ export function MonitorActions({
         <Button
           variant="outline"
           onClick={toggleActive}
-          disabled={busy !== null}
+          disabled={busy !== null || toggling}
           data-testid="toggle-active"
         >
-          {busy === 'toggle' ? (
-            <Loader2 className="animate-spin" />
-          ) : monitor.active ? (
-            <Pause />
-          ) : (
-            <Play />
-          )}
-          {monitor.active ? 'Pause' : 'Resume'}
+          {active ? <Pause aria-hidden /> : <Play aria-hidden />}
+          {active ? 'Pause' : 'Resume'}
         </Button>
       )}
       {canEdit && (
