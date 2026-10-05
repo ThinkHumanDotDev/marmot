@@ -51,6 +51,7 @@ const schema = z.object({
   OIDC_CLIENT_SECRET: z.string().optional(),
   OIDC_DISPLAY_NAME: z.string().default('Single sign-on'),
   OIDC_AUTO_PROVISION: booleanish.default(true),
+  OIDC_SCOPES: z.string().default('openid email profile'),
 
   // Monitoring defaults
   KEEP_DATA_PERIOD_DAYS: z.coerce.number().int().default(365),
@@ -93,6 +94,14 @@ export const env: Env = new Proxy({} as Env, {
     return cached[prop]
   },
 })
+
+/**
+ * Forgets the parsed env so the next access re-reads `process.env`. Intended for tests that flip
+ * variables such as `DISABLE_SIGNUP` at runtime; production code never needs it.
+ */
+export function resetEnvCache(): void {
+  cached = undefined
+}
 
 export const isProduction = () => env.NODE_ENV === 'production'
 export const runsRole = (role: Exclude<Env['MARMOT_ROLE'], 'all'>) =>

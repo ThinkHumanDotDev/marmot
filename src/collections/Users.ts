@@ -6,6 +6,9 @@ import { env } from '@/env'
 
 const superadminField: FieldAccess = ({ req }) => isSuperadmin(req.user)
 
+export const AUTH_PROVIDERS = ['local', 'oidc'] as const
+export type AuthProvider = (typeof AUTH_PROVIDERS)[number]
+
 /**
  * Who may create a user. Superadmins always can; anyone (including anonymous visitors on the
  * signup page, which posts to `POST /api/users`) can while `DISABLE_SIGNUP` is false. Invitation
@@ -61,6 +64,46 @@ export const Users: CollectionConfig = {
       admin: {
         description:
           'Instance administrator: can access the Payload admin panel and every organization.',
+      },
+    },
+    // Single sign-on (src/auth/oidc). Set server-side by the OIDC callback with `overrideAccess`;
+    // clients can never write them, so a signup POST cannot claim somebody else's identity.
+    {
+      name: 'authProvider',
+      type: 'select',
+      defaultValue: 'local',
+      options: AUTH_PROVIDERS.map((provider) => ({ label: provider, value: provider })),
+      access: {
+        create: superadminField,
+        update: superadminField,
+      },
+      admin: {
+        position: 'sidebar',
+        description: 'How the account was created: password signup or single sign-on.',
+      },
+    },
+    {
+      name: 'oidcIssuer',
+      type: 'text',
+      access: {
+        create: superadminField,
+        update: superadminField,
+      },
+      admin: { position: 'sidebar', readOnly: true },
+    },
+    {
+      name: 'oidcSubject',
+      type: 'text',
+      unique: true,
+      index: true,
+      access: {
+        create: superadminField,
+        update: superadminField,
+      },
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Stable `sub` claim of the linked single sign-on identity.',
       },
     },
   ],
