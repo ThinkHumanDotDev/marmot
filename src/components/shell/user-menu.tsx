@@ -1,12 +1,13 @@
 'use client'
 
-import { LogOut, Monitor, Moon, ShieldCheck, Sun } from 'lucide-react'
+import { Cookie, LogOut, Monitor, Moon, ShieldCheck, Sun } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { toast } from 'sonner'
 
+import { openPrivacySettings } from '@/components/consent/privacy-settings'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -18,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { isAnalyticsEnabled, resetAnalytics } from '@/lib/analytics'
 import { authApi } from '@/lib/api'
 import { cn, initials } from '@/lib/utils'
 
@@ -36,6 +38,7 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
 
   async function signOut() {
     setSigningOut(true)
+    resetAnalytics()
     let redirectTo = '/login'
     try {
       if (user.authProvider === 'oidc') {
@@ -66,7 +69,7 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
         )}
       >
         <Avatar className="size-7 rounded-md">
-          <AvatarFallback className="rounded-md bg-primary/15 text-[11px] font-semibold text-primary">
+          <AvatarFallback className="rounded-md bg-primary/15 text-[11px] font-semibold text-foreground">
             {initials(displayName)}
           </AvatarFallback>
         </Avatar>
@@ -104,6 +107,14 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
               <Link href="/admin">
                 <ShieldCheck className="size-4" aria-hidden /> Admin panel
               </Link>
+            </DropdownMenuItem>
+          </>
+        )}
+        {isAnalyticsEnabled() && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={openPrivacySettings}>
+              <Cookie className="size-4" aria-hidden /> Privacy settings
             </DropdownMenuItem>
           </>
         )}

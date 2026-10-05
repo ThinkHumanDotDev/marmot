@@ -147,7 +147,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         }
       />
 
-      <section className="flex flex-col gap-6 p-6 md:p-8">
+      <section className="flex flex-col gap-6 p-4 sm:p-6 md:p-8">
         {!active && (
           <p className="rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
             This monitor is paused. Resume it to start checking again; history is kept.

@@ -1,19 +1,49 @@
-name: Release image
+name: Release
+
+# Pushing a tag `vX.Y.Z` (or a prerelease such as `vX.Y.Z-rc.1`) publishes the multi-arch image to GHCR,
+# smoke-tests the published image with the production compose stack and creates the GitHub Release with
+# git-cliff notes. Prepare the tag with `pnpm release:prepare <version>`; see docs/release-checklist.md.
 
 on:
   push:
     tags: ['v*.*.*']
-  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
-  packages: write
+
+env:
+  IMAGE: ghcr.io/thinkhumandotdev/marmot
 
 jobs:
   image:
+    name: Publish image (linux/amd64, linux/arm64)
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v7
+      - name: Check tag against package.json
+        id: version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p 'require("./package.json").version')"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match package.json version ${pkg} (run pnpm release:prepare)"
+            exit 1
+          fi
+          case "$tag" in
+            *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v3
@@ -23,12 +53,30 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
         uses: docker/metadata-action@v6
+        env:
+          # Put the OCI annotations on the multi-arch index as well as on each platform manifest.
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ${{ env.IMAGE }}
+          # `latest` is added explicitly below, only for final (non-prerelease) versions.
+          flavor: |
+            latest=false
+          # 0.1.0 and 0.1 for a final release; prereleases (0.2.0-rc.1) only get their full version,
+          # because metadata-action skips the {{major}}.{{minor}} pattern for prerelease tags.
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ steps.version.outputs.prerelease == 'false' }}
+          labels: |
+            org.opencontainers.image.title=Marmot
+            org.opencontainers.image.description=Self-hosted status monitor with team workspaces, built on Payload CMS
+            org.opencontainers.image.vendor=ThinkHumanDotDev
+            org.opencontainers.image.licenses=AGPL-3.0-only
+            org.opencontainers.image.documentation=https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/deployment.md
+          annotations: |
+            org.opencontainers.image.title=Marmot
+            org.opencontainers.image.description=Self-hosted status monitor with team workspaces, built on Payload CMS
+            org.opencontainers.image.licenses=AGPL-3.0-only
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -37,5 +85,107 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Summary
+        run: |
+          {
+            echo "### Published"
+            echo
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  smoke:
+    name: Smoke test published image
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    env:
+      MARMOT_VERSION: ${{ needs.image.outputs.version }}
+      COMPOSE: docker compose -f docker/docker-compose.yml -f docker/docker-compose.smoke.yml
+      PAYLOAD_SECRET: release-smoke-secret-release-smoke-secret
+    steps:
+      - uses: actions/checkout@v7
+      # The package is private until its visibility is changed in GHCR; logging in works either way.
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check the multi-arch manifest
+        run: |
+          set -euxo pipefail
+          docker buildx imagetools inspect "$IMAGE:$MARMOT_VERSION" | tee manifest.txt
+          grep -q 'linux/amd64' manifest.txt
+          grep -q 'linux/arm64' manifest.txt
+      - name: Prepare compose .env
+        run: |
+          sed -e "s#^PAYLOAD_SECRET=.*#PAYLOAD_SECRET=${PAYLOAD_SECRET}#" \
+              -e "s#^NEXT_PUBLIC_SERVER_URL=.*#NEXT_PUBLIC_SERVER_URL=http://localhost:8080#" \
+              docker/.env.example > docker/.env
+      - name: Pull the published image through compose
+        run: |
+          set -euxo pipefail
+          $COMPOSE config --images | grep -Fx "$IMAGE:$MARMOT_VERSION"
+          $COMPOSE pull --quiet
+      - name: Compose smoke test (postgres, web + worker + realtime + caddy)
+        run: scripts/smoke-test.sh compose
+      - name: Single-container smoke test (MARMOT_ROLE=all, clean shutdown)
+        run: scripts/smoke-test.sh single "$IMAGE:$MARMOT_VERSION"
+      - name: Container logs
+        if: failure()
+        run: scripts/smoke-test.sh logs
+      - name: Tear down
+        if: always()
+        run: scripts/smoke-test.sh down
+
+  release:
+    name: GitHub Release
+    needs: [image, smoke]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Generate release notes
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip all
+        env:
+          OUTPUT: RELEASE_NOTES.md
+      - name: Add image reference
+        env:
+          VERSION: ${{ needs.image.outputs.version }}
+        run: |
+          {
+            echo
+            echo '### Container image'
+            echo
+            echo '```bash'
+            echo "docker pull ${IMAGE}:${VERSION}"
+            echo '```'
+            echo
+            echo 'Multi-arch (linux/amd64, linux/arm64). Upgrade guide: [docs/deployment.md](https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/deployment.md#upgrading).'
+          } >> RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRERELEASE: ${{ needs.image.outputs.prerelease }}
+        run: |
+          flags=(--verify-tag --title "$GITHUB_REF_NAME" --notes-file RELEASE_NOTES.md)
+          if [ "$PRERELEASE" = "true" ]; then
+            flags+=(--prerelease --latest=false)
+          else
+            flags+=(--latest)
+          fi
+          gh release create "$GITHUB_REF_NAME" "${flags[@]}"

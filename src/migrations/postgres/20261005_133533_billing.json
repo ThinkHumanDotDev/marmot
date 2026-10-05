@@ -455,6 +455,26 @@
           "notNull": false,
           "default": "'free'"
         },
+        "subscription_status": {
+          "name": "subscription_status",
+          "type": "enum_organizations_subscription_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'none'"
+        },
+        "stripe_customer_id": {
+          "name": "stripe_customer_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stripe_subscription_id": {
+          "name": "stripe_subscription_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "invite_link_token": {
           "name": "invite_link_token",
           "type": "varchar",
@@ -520,6 +540,36 @@
           "columns": [
             {
               "expression": "logo_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organizations_stripe_customer_id_idx": {
+          "name": "organizations_stripe_customer_id_idx",
+          "columns": [
+            {
+              "expression": "stripe_customer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organizations_stripe_subscription_id_idx": {
+          "name": "organizations_stripe_subscription_id_idx",
+          "columns": [
+            {
+              "expression": "stripe_subscription_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1112,25 +1162,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": false
-        },
-        "domain_expiry_notification": {
-          "name": "domain_expiry_notification",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "cert_info": {
-          "name": "cert_info",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "domain_expiry": {
-          "name": "domain_expiry",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
         },
         "keyword": {
           "name": "keyword",
@@ -1894,179 +1925,6 @@
           "tableTo": "organizations",
           "columnsFrom": [
             "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.notification_sent_history": {
-      "name": "notification_sent_history",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "monitor_id": {
-          "name": "monitor_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "enum_notification_sent_history_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "days": {
-          "name": "days",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "notification_sent_history_organization_idx": {
-          "name": "notification_sent_history_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "notification_sent_history_monitor_idx": {
-          "name": "notification_sent_history_monitor_idx",
-          "columns": [
-            {
-              "expression": "monitor_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "notification_sent_history_updated_at_idx": {
-          "name": "notification_sent_history_updated_at_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "notification_sent_history_created_at_idx": {
-          "name": "notification_sent_history_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "type_monitor_days_idx": {
-          "name": "type_monitor_days_idx",
-          "columns": [
-            {
-              "expression": "type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "monitor_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "days",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "notification_sent_history_organization_id_organizations_id_fk": {
-          "name": "notification_sent_history_organization_id_organizations_id_fk",
-          "tableFrom": "notification_sent_history",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "notification_sent_history_monitor_id_monitors_id_fk": {
-          "name": "notification_sent_history_monitor_id_monitors_id_fk",
-          "tableFrom": "notification_sent_history",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "monitor_id"
           ],
           "columnsTo": [
             "id"
@@ -3790,12 +3648,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "notification_sent_history_id": {
-          "name": "notification_sent_history_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "heartbeats_id": {
           "name": "heartbeats_id",
           "type": "integer",
@@ -3959,21 +3811,6 @@
           "columns": [
             {
               "expression": "notifications_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "payload_locked_documents_rels_notification_sent_history__idx": {
-          "name": "payload_locked_documents_rels_notification_sent_history__idx",
-          "columns": [
-            {
-              "expression": "notification_sent_history_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -4160,19 +3997,6 @@
           "tableTo": "notifications",
           "columnsFrom": [
             "notifications_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_notification_sent_history_fk": {
-          "name": "payload_locked_documents_rels_notification_sent_history_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "notification_sent_history",
-          "columnsFrom": [
-            "notification_sent_history_id"
           ],
           "columnsTo": [
             "id"
@@ -4748,6 +4572,18 @@
         "enterprise"
       ]
     },
+    "public.enum_organizations_subscription_status": {
+      "name": "enum_organizations_subscription_status",
+      "schema": "public",
+      "values": [
+        "none",
+        "trialing",
+        "active",
+        "past_due",
+        "canceled",
+        "unpaid"
+      ]
+    },
     "public.enum_organizations_invite_link_role": {
       "name": "enum_organizations_invite_link_role",
       "schema": "public",
@@ -4891,14 +4727,6 @@
         "maintenance"
       ]
     },
-    "public.enum_notification_sent_history_type": {
-      "name": "enum_notification_sent_history_type",
-      "schema": "public",
-      "values": [
-        "certificate",
-        "domain"
-      ]
-    },
     "public.enum_heartbeats_status": {
       "name": "enum_heartbeats_status",
       "schema": "public",
@@ -4947,6 +4775,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "834b84ad-4a2a-45dc-914a-69948dab4b93",
+  "id": "26017c49-2dbd-4bc6-9c88-5e6b3bd8ebbb",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

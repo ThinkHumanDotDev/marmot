@@ -227,6 +227,12 @@ export interface Organization {
    */
   plan?: ('free' | 'team' | 'pro' | 'enterprise') | null;
   /**
+   * Maintained by Stripe webhooks when billing is enabled.
+   */
+  subscriptionStatus?: ('none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid') | null;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  /**
    * Secret of the shareable invite link. Regenerate from the members page.
    */
   inviteLinkToken?: string | null;
@@ -879,6 +885,9 @@ export interface OrganizationsSelect<T extends boolean = true> {
   slug?: T;
   logo?: T;
   plan?: T;
+  subscriptionStatus?: T;
+  stripeCustomerId?: T;
+  stripeSubscriptionId?: T;
   inviteLinkToken?: T;
   inviteLinkRole?: T;
   settings?:

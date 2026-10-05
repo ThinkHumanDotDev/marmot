@@ -55,7 +55,7 @@ export function MonitorRowView({ monitor, beats, uptime24h, href }: MonitorRowVi
         href={href}
         className={cn(
           'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-3 transition-colors outline-none',
-          'hover:bg-accent/50 focus-visible:bg-accent/50 md:grid-cols-[auto_minmax(0,1fr)_minmax(8rem,14rem)_5rem_5rem]',
+          'hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:grid-cols-[auto_minmax(0,1fr)_minmax(8rem,14rem)_5rem_5rem]',
         )}
         data-status={status}
       >

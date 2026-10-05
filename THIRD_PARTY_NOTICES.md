@@ -84,6 +84,11 @@ attribution comment and are listed here:
   `sendCertNotificationByTargetDays` / `updateTlsInfo` (`server/model/monitor.js`)
 - `src/server/jobs/domain-expiry.ts`, `src/server/jobs/expiry-history.ts` — `server/model/domain_expiry.js`
   and the `notification_sent_history` table
+- `src/server/import-export/uptime-kuma.ts`, `src/server/import-export/kuma-notifications.ts` — backup
+  JSON format and import semantics of the `uploadBackup` handler (`server/server.js`,
+  `src/components/settings/Backup.vue` in Uptime Kuma 1.23), monitor field names from
+  `Monitor.toJSON()` (`server/model/monitor.js`) and notification config keys from
+  `server/notification-providers/*.js`
 
 The MIT license text is reproduced below.
 
