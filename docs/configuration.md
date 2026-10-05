@@ -1,33 +1,144 @@
 # Configuration
 
-All configuration is via environment variables (see `.env.example`). Variables are validated at startup by
-`src/env.ts`.
+Marmot is configured through environment variables. Every variable is declared and validated in
+`src/env.ts` (zod) when a process starts, so a typo or a missing required value fails fast with a readable
+message instead of a half-working install. `.env.example` at the repository root lists all of them for local
+development; `docker/.env.example` is the shorter compose variant.
 
-| Variable                                                                                                   | Default                  | Description                                             |
-| ---------------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------- |
-| `PAYLOAD_SECRET`                                                                                           | —                        | Required. ≥16 random chars; signs auth tokens.          |
-| `NEXT_PUBLIC_SERVER_URL`                                                                                   | `http://localhost:3000`  | Public base URL.                                        |
-| `MARMOT_ROLE`                                                                                              | `all`                    | `web`, `worker`, `realtime` or `all`.                   |
-| `DATABASE_ADAPTER`                                                                                         | `postgres`               | `postgres`, `mongodb` or `sqlite` (dev only).           |
-| `DATABASE_URL`                                                                                             | —                        | Connection string for the chosen adapter.               |
-| `REDIS_URL`                                                                                                | `redis://localhost:6379` | BullMQ + socket.io. Use `maxmemory-policy noeviction`.  |
-| `REALTIME_PORT`                                                                                            | `3001`                   | Port of the realtime process.                           |
-| `NEXT_PUBLIC_REALTIME_URL`                                                                                 | _(empty)_                | Set only when the socket server is on another origin.   |
-| `UPLOADS_DIR`                                                                                              | `uploads`                | Local upload directory (when S3 is not configured).     |
-| `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE` | —                        | S3-compatible storage; enabled when `S3_BUCKET` is set. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, `EMAIL_FROM`                        | —                        | Generic SMTP. Without `SMTP_HOST` emails are logged.    |
-| `DISABLE_SIGNUP`                                                                                           | `false`                  | Default for the `allowSignup` instance setting.         |
-| `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`                                                  | —                        | Generic OIDC via discovery; all three enable SSO.       |
-| `OIDC_DISPLAY_NAME`                                                                                        | `Single sign-on`         | Label of the SSO button.                                |
-| `OIDC_AUTO_PROVISION`                                                                                      | `true`                   | Create users on first SSO login.                        |
-| `OIDC_SCOPES`                                                                                              | `openid email profile`   | Scopes requested from the OIDC provider.                |
-| `KEEP_DATA_PERIOD_DAYS`                                                                                    | `365`                    | Retention of daily aggregates and important heartbeats. |
-| `WORKER_CONCURRENCY`                                                                                       | `10`                     | Parallel monitor checks per worker process.             |
-| `MARMOT_DISABLE_ENGINE_HOOKS`                                                                              | `false`                  | Skip BullMQ sync in `monitors` hooks (tests w/o Redis). |
-| `BILLING_ENABLED`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                                            | off                      | Billing scaffold.                                       |
-| `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`                                                      | off                      | Opt-in analytics; nothing is sent without a key.        |
-| `LOG_LEVEL`                                                                                                | `info`                   | pino log level.                                         |
-| `DOMAIN`, `ACME_EMAIL`                                                                                     | —                        | Compose only: Caddy automatic HTTPS.                    |
+Three processes read the environment: **web** (Next.js + Payload: UI, API, status pages), **worker**
+(checks, heartbeats, notifications, retention) and **realtime** (socket.io). With `MARMOT_ROLE=all` one
+container runs all three. The _Read by_ column below tells you which process must see a change; in a
+compose stack the `.env` file is passed to all three, so you can simply restart the stack.
+
+Boolean variables accept `1`, `true`, `yes`, `on` (case-insensitive) as true and anything else as false.
+
+## Core
+
+| Variable                 | Default                 | Read by | Description                                                                                                                                                                                                                                  |
+| ------------------------ | ----------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PAYLOAD_SECRET`         | — (required)            | all     | Signs session tokens and encrypts secrets at rest. At least 16 characters; use `openssl rand -hex 32`. Changing it signs everyone out.                                                                                                       |
+| `NEXT_PUBLIC_SERVER_URL` | `http://localhost:3000` | all     | The URL users open Marmot at. Used for CORS/CSRF, invitation and password-reset emails, the OIDC redirect URI, status-page links, custom-domain detection and the realtime CORS origin. Must match the public `https://` URL behind a proxy. |
+| `MARMOT_ROLE`            | `all`                   | all     | Which process this container runs: `web`, `worker`, `realtime` or `all`. The compose file sets it per service.                                                                                                                               |
+| `NODE_ENV`               | `development`           | all     | `development`, `test` or `production`. The Docker image sets `production`, which enables HSTS, refuses plain-`http://` OIDC issuers and makes the database adapters require migrations instead of pushing the schema.                        |
+| `LOG_LEVEL`              | `info`                  | all     | pino level: `fatal`, `error`, `warn`, `info`, `debug`, `trace`. Logs are JSON lines on stdout.                                                                                                                                               |
+
+## Database
+
+| Variable           | Default      | Read by | Description                                                                                                                                                                                            |
+| ------------------ | ------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_ADAPTER` | `postgres`   | all     | `postgres`, `mongodb` or `sqlite`. SQLite is for local development only (no migrations, pushes its schema).                                                                                            |
+| `DATABASE_URL`     | — (required) | all     | Connection string for the adapter: `postgres://user:pass@host:5432/marmot`, `mongodb://host:27017/marmot`, `file:./data/marmot.db`. Inside compose the host is the service name (`postgres`, `mongo`). |
+
+Postgres migrations live in `src/migrations/postgres` and run when the `web` role starts (or with the image's
+`migrate` command). MongoDB needs no schema migrations; indexes are created on boot.
+
+## Redis
+
+| Variable    | Default                  | Read by | Description                                                                                                                                                                                              |
+| ----------- | ------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REDIS_URL` | `redis://localhost:6379` | all     | BullMQ queues and job schedulers (worker, and the web process when monitors change) plus socket.io pub/sub (realtime, and the emitters in web and worker). Run Redis with `maxmemory-policy noeviction`. |
+
+Redis holds only queue state and live socket rooms. It does not need a backup: the worker re-creates every
+job scheduler from the database on start.
+
+## Realtime
+
+| Variable                   | Default   | Read by          | Description                                                                                                                                                                                                                                                                        |
+| -------------------------- | --------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REALTIME_PORT`            | `3001`    | realtime         | Port the socket.io server listens on. `GET /healthz` on the same port is the health probe.                                                                                                                                                                                         |
+| `NEXT_PUBLIC_REALTIME_URL` | _(empty)_ | web (build time) | Origin of the socket server when it is **not** reachable at `/socket.io` on the web origin. Leave empty with the bundled Caddy or any proxy that routes `/socket.io/*` to the realtime process. Inlined into the browser bundle at `pnpm build`; the published image has it empty. |
+
+See [Realtime origin](#realtime-origin) below.
+
+## Storage
+
+Uploads (organization logos, status-page logos) go to local disk unless `S3_BUCKET` is set, in which case
+`@payloadcms/storage-s3` is registered and the other `S3_*` variables configure the client.
+
+| Variable               | Default   | Read by | Description                                                                                          |
+| ---------------------- | --------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| `UPLOADS_DIR`          | `uploads` | web     | Local upload directory, relative to the working directory. The image uses `/app/uploads` (a volume). |
+| `S3_BUCKET`            | —         | web     | Bucket name. Setting it switches storage to S3.                                                      |
+| `S3_REGION`            | —         | web     | Region (`auto` for Cloudflare R2 and most S3-compatible stores).                                     |
+| `S3_ENDPOINT`          | —         | web     | Custom endpoint for S3-compatible services (R2, MinIO, …). Leave unset for AWS.                      |
+| `S3_ACCESS_KEY_ID`     | —         | web     | Access key.                                                                                          |
+| `S3_SECRET_ACCESS_KEY` | —         | web     | Secret key.                                                                                          |
+| `S3_FORCE_PATH_STYLE`  | `false`   | web     | Use path-style URLs (`https://endpoint/bucket/key`), needed by MinIO and some proxies.               |
+
+## Email
+
+Marmot sends invitations and password-reset mail through the Payload email adapter. Without `SMTP_HOST` the
+messages are written to the web process log instead of being sent, which is enough to copy an invitation
+link during evaluation. The `smtp` notification provider can reuse these settings (**Use server SMTP**).
+
+| Variable        | Default                     | Read by     | Description                                                                     |
+| --------------- | --------------------------- | ----------- | ------------------------------------------------------------------------------- |
+| `SMTP_HOST`     | —                           | web, worker | SMTP server. Unset = log mail to the console.                                   |
+| `SMTP_PORT`     | `587`                       | web, worker | SMTP port.                                                                      |
+| `SMTP_USER`     | —                           | web, worker | Username (optional for unauthenticated relays).                                 |
+| `SMTP_PASSWORD` | —                           | web, worker | Password.                                                                       |
+| `SMTP_SECURE`   | `false`                     | web, worker | `true` for implicit TLS (usually port 465); `false` uses STARTTLS when offered. |
+| `EMAIL_FROM`    | `Marmot <marmot@localhost>` | web, worker | Sender address, `Name <address>` form allowed.                                  |
+
+## Authentication
+
+| Variable              | Default                | Read by | Description                                                                                                                                                                          |
+| --------------------- | ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DISABLE_SIGNUP`      | `false`                | web     | Default for the `allowSignup` instance setting. When sign-up is off, accounts are created only through the setup wizard, invitations, or SSO logins that match a pending invitation. |
+| `OIDC_ISSUER_URL`     | —                      | web     | Issuer of your OpenID Connect provider (its `iss` value). Discovery is read from `<issuer>/.well-known/openid-configuration`.                                                        |
+| `OIDC_CLIENT_ID`      | —                      | web     | Client id registered at the provider.                                                                                                                                                |
+| `OIDC_CLIENT_SECRET`  | —                      | web     | Client secret. All three `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` must be set to enable the SSO button.                                                          |
+| `OIDC_DISPLAY_NAME`   | `Single sign-on`       | web     | Label of the login button ("Continue with …").                                                                                                                                       |
+| `OIDC_AUTO_PROVISION` | `true`                 | web     | Create a Marmot account on first SSO login. `false` only lets existing users (matched by subject or verified email) in.                                                              |
+| `OIDC_SCOPES`         | `openid email profile` | web     | Scopes requested from the provider.                                                                                                                                                  |
+
+Full setup guide with provider walkthroughs: [sso.md](sso.md).
+
+## Monitoring
+
+| Variable                      | Default | Read by     | Description                                                                                                                                                                       |
+| ----------------------------- | ------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KEEP_DATA_PERIOD_DAYS`       | `365`   | web, worker | Default for the `keepDataPeriodDays` instance setting: how long daily aggregates and important heartbeats are kept. Raw heartbeats live 24 h, minutely buckets 24 h, hourly 30 d. |
+| `WORKER_CONCURRENCY`          | `10`    | worker      | Parallel checks (and notification deliveries) per worker process. Scale out with more worker replicas rather than very high values.                                               |
+| `MARMOT_DISABLE_ENGINE_HOOKS` | `false` | web         | Skip the BullMQ scheduler sync in the `monitors` collection hooks. Only for tests that run without Redis; the Vitest setup sets it.                                               |
+
+## Billing
+
+A scaffold for hosted offerings. Self-hosted installs leave it off; every limit is then unlimited and no
+Stripe code is loaded. Details in [billing.md](billing.md) _(landing in the current release)_.
+
+| Variable                | Default | Read by | Description                                                        |
+| ----------------------- | ------- | ------- | ------------------------------------------------------------------ |
+| `BILLING_ENABLED`       | `false` | web     | Enforce plan limits and show the Billing settings tab.             |
+| `STRIPE_SECRET_KEY`     | —       | web     | Registers the Stripe plugin and enables Checkout / Billing Portal. |
+| `STRIPE_WEBHOOK_SECRET` | —       | web     | Signing secret of the Stripe webhook endpoint.                     |
+
+## Telemetry
+
+Marmot sends nothing by default: no analytics SDK is loaded, no cookie banner appears and nothing calls
+home. Setting a PostHog key enables opt-in product analytics behind a consent banner; what is collected is
+documented in [telemetry.md](telemetry.md) _(landing in the current release)_.
+
+| Variable                   | Default                    | Read by                  | Description                                                                                                 |
+| -------------------------- | -------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_POSTHOG_KEY`  | —                          | web (build time), worker | PostHog project key. Unset = telemetry off.                                                                 |
+| `NEXT_PUBLIC_POSTHOG_HOST` | `https://us.i.posthog.com` | web (build time), worker | PostHog ingestion host (`https://eu.i.posthog.com` for the EU cloud). Also the target of the `/ph` rewrite. |
+
+## Container and compose variables
+
+These are read by `docker/entrypoint.sh`, `docker/docker-compose.yml` or the Caddyfile rather than by
+`src/env.ts`, so they only matter for Docker deployments.
+
+| Variable                | Default  | Used by          | Description                                                                                               |
+| ----------------------- | -------- | ---------------- | --------------------------------------------------------------------------------------------------------- |
+| `DOMAIN`                | —        | compose → Caddy  | Hostname for automatic HTTPS. Unset = Caddy serves plain HTTP on port 80 (for use behind your own proxy). |
+| `ACME_EMAIL`            | —        | compose → Caddy  | Contact address passed to the certificate authority.                                                      |
+| `SITE_ADDRESS`          | `:80`    | Caddyfile        | Derived from `DOMAIN` by compose; set it directly when running Caddy by hand.                             |
+| `POSTGRES_PASSWORD`     | `marmot` | compose          | Password of the bundled Postgres; the default `DATABASE_URL` picks it up.                                 |
+| `MARMOT_VERSION`        | `latest` | compose          | Image tag of `ghcr.io/thinkhumandotdev/marmot` to run. Pin it to control upgrades.                        |
+| `PORT`                  | `3000`   | entrypoint (web) | Port of the Next.js server inside the container.                                                          |
+| `SKIP_MIGRATIONS`       | `false`  | entrypoint (web) | `true` skips `migrate` on start, for when you run migrations yourself (init container, CI/CD step).       |
+| `WORKER_SCHEMA_WAIT_MS` | `120000` | worker           | How long the worker waits for the database schema (migrations running in `web`) before giving up on boot. |
 
 ## Instance settings
 
@@ -62,8 +173,9 @@ closed for good (`/setup` redirects to `/login`, the API answers `409`); further
 
 The browser opens one socket.io connection with credentials, so the realtime server must be reachable on a
 URL that receives the `payload-token` cookie. By default the client connects to the page's own origin at
-`/socket.io`, and Caddy (or your reverse proxy, see `docs/deployment.md`) forwards that path to the realtime
-process on `REALTIME_PORT`. Set `NEXT_PUBLIC_REALTIME_URL` (e.g. `https://realtime.example.com`) only when
-the realtime server is exposed on another origin; it must share the cookie's site (a subdomain of the web
-app is fine) and allows `NEXT_PUBLIC_SERVER_URL` in CORS. Being a `NEXT_PUBLIC_*` variable it is inlined at
-`pnpm build` time, so rebuild the web image after changing it.
+`/socket.io`, and Caddy (or your reverse proxy, see [deployment.md](deployment.md)) forwards that path to the
+realtime process on `REALTIME_PORT`. Set `NEXT_PUBLIC_REALTIME_URL` (e.g. `https://realtime.example.com`)
+only when the realtime server is exposed on another origin; it must share the cookie's site (a subdomain of
+the web app is fine) and allows `NEXT_PUBLIC_SERVER_URL` in CORS. Being a `NEXT_PUBLIC_*` variable it is
+inlined at `pnpm build` time, so it requires building your own image; the published image expects the
+same-origin layout.
