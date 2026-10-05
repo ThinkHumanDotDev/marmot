@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { track } from '@/lib/analytics'
 import type { Incident, StatusPage } from '@/payload-types'
 
 import { publicStatusPagePath, statusPagesApi, type MonitorOption, type OrgId } from '../api'
@@ -47,6 +48,7 @@ export function StatusPageEditor({
     try {
       const { doc } = await statusPagesApi.update(orgId, page.id, { published: next })
       setPage(doc)
+      if (next) track('status_page_published')
       toast.success(next ? 'Status page published' : 'Status page unpublished')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not update')

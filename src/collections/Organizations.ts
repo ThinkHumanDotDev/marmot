@@ -12,6 +12,7 @@ import { authenticated, orgScoped } from '@/access/org-scoped'
 import { addOrgMembership, toMembershipData } from '@/access/memberships'
 import { can, isSuperadmin, ROLES } from '@/access/permissions'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
+import { captureServerEvent, hashAnalyticsId } from '@/server/analytics'
 
 import type { Organization, User } from '@/payload-types'
 
@@ -61,6 +62,17 @@ const grantOwnerMembership: CollectionAfterChangeHook<Organization> = async ({
     req,
   })
 
+  return doc
+}
+
+/**
+ * Opt-in telemetry (docs/telemetry.md): counts new organizations. The only identifier is a keyed
+ * hash of the organization id; a no-op unless `NEXT_PUBLIC_POSTHOG_KEY` is set.
+ */
+const trackOrgCreated: CollectionAfterChangeHook<Organization> = ({ doc, operation }) => {
+  if (operation === 'create') {
+    captureServerEvent('org_created', { orgId: hashAnalyticsId(doc.id) })
+  }
   return doc
 }
 
@@ -131,7 +143,7 @@ export const Organizations: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [normalizeSlug],
-    afterChange: [grantOwnerMembership],
+    afterChange: [grantOwnerMembership, trackOrgCreated],
     beforeDelete: [removeInvitations, removeMemberships],
   },
   fields: [
