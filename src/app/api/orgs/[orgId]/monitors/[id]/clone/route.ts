@@ -27,7 +27,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const auth = await authenticate(payload, request)
   if (auth.response) return auth.response
-  const forbidden = authorize(auth.user, orgId, 'monitor:create')
+  const forbidden = await authorize(payload, auth.user, orgId, 'monitor:create')
   if (forbidden) return forbidden
 
   const source = await loadOrgMonitor(payload, auth.user, orgId, id)

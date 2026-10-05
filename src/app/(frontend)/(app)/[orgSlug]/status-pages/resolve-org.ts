@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation'
 import { getPayload, type Payload } from 'payload'
 
 import config from '@payload-config'
-import { can, type Permission } from '@/access/permissions'
+import { loadOrgPermissionOverrides } from '@/access/overrides'
+import { canWithOverrides, type Permission } from '@/access/permissions'
 import { getUserOrganizations, requireUser, type CurrentUser, type OrgMembership } from '@/lib/auth'
 
 export interface OrgContext {
@@ -39,11 +40,13 @@ export async function resolveOrg(orgSlug: string): Promise<OrgContext> {
 
   if (!org) notFound()
   const resolved = org
+  const permissionOverrides = await loadOrgPermissionOverrides(payload, resolved.id)
 
   return {
     payload,
     user,
     org: resolved,
-    can: (permission) => can(user, resolved.id, permission),
+    can: (permission) =>
+      canWithOverrides(user, { id: resolved.id, permissionOverrides }, permission),
   }
 }

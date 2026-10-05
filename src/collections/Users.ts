@@ -1,4 +1,9 @@
-import type { CollectionConfig, FieldAccess } from 'payload'
+import {
+  APIError,
+  type CollectionBeforeLoginHook,
+  type CollectionConfig,
+  type FieldAccess,
+} from 'payload'
 
 import { authenticated, selfOrSuperadmin, superadminOnly } from '@/access/org-scoped'
 import { isSuperadmin, type UserLike } from '@/access/permissions'
@@ -6,9 +11,37 @@ import { auditAuthFailure, auditLogin, rateLimitAuthOperations } from '@/server/
 import { isSignupAllowed } from '@/server/settings'
 
 const superadminField: FieldAccess = ({ req }) => isSuperadmin(req.user)
+/** Server-owned: written with `overrideAccess: true` only, never readable through the API. */
+const serverOnlyField = {
+  read: () => false,
+  create: () => false,
+  update: () => false,
+} satisfies Record<string, FieldAccess>
 
 export const AUTH_PROVIDERS = ['local', 'oidc'] as const
 export type AuthProvider = (typeof AUTH_PROVIDERS)[number]
+
+export const THEMES = ['system', 'light', 'dark'] as const
+export type Theme = (typeof THEMES)[number]
+
+/** `req.context` flag with which Marmot's own login flow (`src/auth/two-factor`) calls `payload.login`. */
+export const TWO_FACTOR_GATE_CONTEXT = 'twoFactorGate'
+
+/**
+ * Payload's own login (`POST /api/users/login`, `payload.login`) issues a session as soon as the
+ * password matches. Accounts with two-factor authentication must go through
+ * `POST /api/auth/login` → `POST /api/auth/2fa` instead, which call `payload.login` with the
+ * gate flag in `req.context` and withhold the session until the code is verified.
+ */
+const requireTwoFactorGate: CollectionBeforeLoginHook = ({ user, context }) => {
+  if (user?.twoFactorEnabled === true && context?.[TWO_FACTOR_GATE_CONTEXT] !== true) {
+    throw new APIError(
+      'This account uses two-factor authentication. Sign in through the Marmot login page.',
+      401,
+    )
+  }
+  return user
+}
 
 /**
  * Who may create a user. Superadmins always can; anyone (including anonymous visitors on the
@@ -46,6 +79,7 @@ export const Users: CollectionConfig = {
   hooks: {
     // Rate limits `login` / `forgot-password` (REST only) and records the attempts in `audit-logs`.
     beforeOperation: [rateLimitAuthOperations],
+    beforeLogin: [requireTwoFactorGate],
     afterLogin: [auditLogin],
     afterError: [auditAuthFailure],
   },
@@ -113,6 +147,70 @@ export const Users: CollectionConfig = {
         readOnly: true,
         description: 'Stable `sub` claim of the linked single sign-on identity.',
       },
+    },
+    {
+      name: 'theme',
+      type: 'select',
+      defaultValue: 'system',
+      options: THEMES.map((theme) => ({ label: theme, value: theme })),
+      admin: {
+        position: 'sidebar',
+        description: 'Colour scheme preference, applied on every device after sign-in.',
+      },
+    },
+    // Two-factor authentication (src/auth/two-factor). The flag is readable so the UI and the
+    // login flow know whether a code is required; the secret material is written server-side only
+    // and never leaves the database through the API (`hidden` + read access `false`).
+    {
+      name: 'twoFactorEnabled',
+      type: 'checkbox',
+      defaultValue: false,
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Managed from Settings → Account → Two-factor authentication.',
+      },
+    },
+    {
+      name: 'twoFactorVerifiedAt',
+      type: 'date',
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: { position: 'sidebar', readOnly: true },
+    },
+    {
+      // AES-256-GCM sealed TOTP secret (`src/auth/two-factor/crypto.ts`).
+      name: 'twoFactorSecret',
+      type: 'text',
+      hidden: true,
+      access: serverOnlyField,
+    },
+    {
+      // Sealed secret of a setup that has not been confirmed with a code yet.
+      name: 'twoFactorPendingSecret',
+      type: 'text',
+      hidden: true,
+      access: serverOnlyField,
+    },
+    {
+      // HMAC digests of the unused backup codes.
+      name: 'twoFactorBackupCodes',
+      type: 'json',
+      hidden: true,
+      access: serverOnlyField,
+    },
+    {
+      // Time step of the last accepted TOTP code; codes at or before it are replays.
+      name: 'twoFactorLastUsedStep',
+      type: 'number',
+      hidden: true,
+      access: serverOnlyField,
     },
   ],
 }

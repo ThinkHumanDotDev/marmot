@@ -11,7 +11,15 @@ import type {
 
 import { authenticated, orgScoped } from '@/access/org-scoped'
 import { addOrgMembership, toMembershipData } from '@/access/memberships'
-import { can, isSuperadmin, ROLES } from '@/access/permissions'
+import {
+  can,
+  getUserRole,
+  isPermission,
+  isRole,
+  isSuperadmin,
+  LOCKED_PERMISSIONS,
+  ROLES,
+} from '@/access/permissions'
 import { PLANS, SUBSCRIPTION_STATUSES } from '@/lib/entitlements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
@@ -38,6 +46,29 @@ const inviteLinkRead: FieldAccess = ({ req, doc }) => {
   if (isSuperadmin(req.user)) return true
   const id = doc && typeof doc === 'object' ? (doc as { id?: string | number }).id : undefined
   return id !== undefined && can(req.user, id, 'member:invite')
+}
+
+/** Only owners (and superadmins) may change who can do what; `PUT /api/orgs/:orgId/permissions`. */
+const ownerField: FieldAccess = ({ req, doc }) => {
+  if (isSuperadmin(req.user)) return true
+  const id = doc && typeof doc === 'object' ? (doc as { id?: string | number }).id : undefined
+  return id !== undefined && getUserRole(req.user, id) === 'owner'
+}
+
+/** `{ [permission]: minRole }` with known permissions and roles only; locked permissions refused. */
+export function validatePermissionOverrides(value: unknown): true | string {
+  if (value === undefined || value === null) return true
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    return 'Permission overrides must be an object of permission → role.'
+  }
+  for (const [permission, role] of Object.entries(value as Record<string, unknown>)) {
+    if (!isPermission(permission)) return `Unknown permission "${permission}".`
+    if (LOCKED_PERMISSIONS.includes(permission)) {
+      return `"${permission}" cannot be overridden.`
+    }
+    if (!isRole(role)) return `Invalid role for "${permission}".`
+  }
+  return true
 }
 
 /** Lowercase and trim the slug before validation so `My-Org ` becomes `my-org`. */
@@ -307,6 +338,18 @@ export const Organizations: CollectionConfig = {
       access: {
         create: () => false,
         update: () => false,
+      },
+    },
+    {
+      name: 'permissionOverrides',
+      type: 'json',
+      validate: (value: unknown) => validatePermissionOverrides(value),
+      access: {
+        update: ownerField,
+      },
+      admin: {
+        description:
+          'Per-organization minimum roles, e.g. { "monitor:create": "admin" }. Unset permissions use the defaults in src/access/permissions.ts.',
       },
     },
     {
