@@ -8,6 +8,8 @@ export interface ShellUser {
   superadmin?: boolean
   /** `users.authProvider`; SSO accounts sign out through the identity provider too. */
   authProvider?: 'local' | 'oidc' | null
+  /** `users.theme`, saved when changed from the user menu. */
+  theme?: 'system' | 'light' | 'dark' | null
 }
 
 export interface ShellContext {

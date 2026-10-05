@@ -4,6 +4,7 @@
 import { getPayload, type Payload } from 'payload'
 
 import config from '@payload-config'
+import { canInOrg } from '@/access/overrides'
 import { can, isSuperadmin, type OrgId, type Permission } from '@/access/permissions'
 import type { Notification, User } from '@/payload-types'
 import {
@@ -42,7 +43,7 @@ export async function resolveOrgRequest(
   if (!user || user.collection !== 'users') return jsonError(401, 'Unauthorized')
 
   const orgId = parseDocId(payload, rawOrgId)
-  if (!can(user, orgId, permission)) return jsonError(403, 'Forbidden')
+  if (!(await canInOrg(payload, user, orgId, permission))) return jsonError(403, 'Forbidden')
 
   return { payload, user: user as OrgRequestUser, orgId }
 }

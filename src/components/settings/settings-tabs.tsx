@@ -1,6 +1,15 @@
 'use client'
 
-import { ArrowDownUp, Building2, CreditCard, UserRound, Users } from 'lucide-react'
+import {
+  ArrowDownUp,
+  Bell,
+  Building2,
+  CreditCard,
+  Server,
+  ShieldCheck,
+  UserRound,
+  Users,
+} from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -10,13 +19,19 @@ interface SettingsTabsProps {
   orgSlug: string
   /** Billing tab: only when `BILLING_ENABLED` and the viewer is an admin or owner. */
   showBilling?: boolean
+  /** Shows the instance tab (superadmins only). */
+  superadmin?: boolean
 }
 
 /**
- * Link-based tab strip for the settings area. Future tabs (Permissions, API keys) slot in here
- * once their issues land.
+ * Link-based tab strip for the settings area. Future tabs (API keys) slot in here once their
+ * issues land.
  */
-export function SettingsTabs({ orgSlug, showBilling = false }: SettingsTabsProps) {
+export function SettingsTabs({
+  orgSlug,
+  showBilling = false,
+  superadmin = false,
+}: SettingsTabsProps) {
   const pathname = usePathname()
   const tabs = [
     { href: `/${orgSlug}/settings/account`, label: 'Account', icon: UserRound },
@@ -25,6 +40,11 @@ export function SettingsTabs({ orgSlug, showBilling = false }: SettingsTabsProps
     { href: `/${orgSlug}/settings/import-export`, label: 'Import / Export', icon: ArrowDownUp },
     ...(showBilling
       ? [{ href: `/${orgSlug}/settings/billing`, label: 'Billing', icon: CreditCard }]
+      : []),
+    { href: `/${orgSlug}/settings/permissions`, label: 'Permissions', icon: ShieldCheck },
+    { href: `/${orgSlug}/settings/notifications`, label: 'Notifications', icon: Bell },
+    ...(superadmin
+      ? [{ href: `/${orgSlug}/settings/instance`, label: 'Instance', icon: Server }]
       : []),
   ]
 
