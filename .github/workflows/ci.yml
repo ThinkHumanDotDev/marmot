@@ -81,7 +81,10 @@ jobs:
           --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_ADAPTER: ${{ matrix.db }}
+      # E2E runs against a migrated production-mode database; integration tests push their own schema
+      # into a separate database so `payload migrate` never sees a dev-pushed schema.
       DATABASE_URL: ${{ matrix.db == 'postgres' && 'postgres://marmot:marmot@localhost:5432/marmot' || 'mongodb://localhost:27017/marmot' }}
+      INT_DATABASE_URL: ${{ matrix.db == 'postgres' && 'postgres://marmot:marmot@localhost:5432/marmot_test' || 'mongodb://localhost:27017/marmot_test' }}
       CI: true
     steps:
       - uses: actions/checkout@v7
@@ -91,12 +94,18 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Create integration test database
+        if: matrix.db == 'postgres'
+        run: psql "$DATABASE_URL" -c 'CREATE DATABASE marmot_test'
       - name: Integration tests
         run: pnpm test:int --reporter=default --reporter=junit --outputFile=test-results/int-junit.xml
+        env:
+          DATABASE_URL: ${{ env.INT_DATABASE_URL }}
       - name: Build
         run: pnpm build
       - name: Run migrations
         run: pnpm migrate --force-accept-warning
+        timeout-minutes: 5
         env:
           NODE_ENV: production
       - name: Install Playwright browsers
