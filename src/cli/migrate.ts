@@ -7,7 +7,7 @@
  * schema push (the CLI asks interactively in that case; a container has no terminal to answer with).
  */
 import 'dotenv/config'
-import { getPayload } from 'payload'
+import { getPayload, type Migration } from 'payload'
 
 import config from '@payload-config'
 import { env } from '@/env'
@@ -40,7 +40,9 @@ async function main(): Promise<void> {
       }
     }
     // MongoDB has no migrations yet (src/migrations/mongodb is empty); its collections are schemaless.
-    const migrations = env.DATABASE_ADAPTER === 'postgres' ? postgresMigrations : []
+    // Payload types migration arguments as `unknown`; the generated files type them per adapter.
+    const migrations: Migration[] =
+      env.DATABASE_ADAPTER === 'postgres' ? (postgresMigrations as unknown as Migration[]) : []
     await payload.db.migrate({ migrations })
     log.info({ adapter: payload.db.name, migrations: migrations.length }, 'migrations complete')
   } finally {

@@ -22,12 +22,13 @@ export type HeartbeatContext = {
   monitor: { id: string | number }
   heartbeat: {
     status: HeartbeatStatus
-    ping: number | null
+    ping?: number | null
     /** The engine hands over the stored document, whose time is an ISO string. */
     time: Date | string
-    important: boolean
+    important?: boolean | null
   }
-  organizationId: string | number
+  /** Monitors are org-scoped, but the engine types the id as optional; beats without one are skipped. */
+  organizationId?: string | number | null
 }
 
 type HeartbeatListener = (ctx: HeartbeatContext) => Promise<void> | void
@@ -36,12 +37,19 @@ type HeartbeatListener = (ctx: HeartbeatContext) => Promise<void> | void
 export const createStatsListener =
   (payload: Payload): HeartbeatListener =>
   async (ctx) => {
+    if (ctx.organizationId === null || ctx.organizationId === undefined) {
+      log.warn(
+        { monitorId: ctx.monitor.id },
+        'heartbeat without an organization; stats not recorded',
+      )
+      return
+    }
     try {
       await recordHeartbeat(payload, {
         monitorId: ctx.monitor.id,
         organizationId: ctx.organizationId,
         status: ctx.heartbeat.status,
-        ping: ctx.heartbeat.ping,
+        ping: ctx.heartbeat.ping ?? null,
         time: new Date(ctx.heartbeat.time),
       })
     } catch (error) {
