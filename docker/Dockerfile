@@ -21,9 +21,9 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml .npmrc ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
-# Runtime dependencies only. `payload run` (worker/realtime) and `payload migrate` transpile TypeScript
-# with tsx, which is a regular dependency; `next start` loads next.config.ts through SWC. Neither needs
-# the `typescript` package, so devDependencies stay out of the final image.
+# Runtime dependencies only. The worker/realtime entrypoints (scripts/run-ts.mjs) and `payload migrate`
+# transpile TypeScript with tsx, which is a regular dependency; `next start` loads next.config.ts through
+# SWC. Neither needs the `typescript` package, so devDependencies stay out of the final image.
 FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml .npmrc ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prod
@@ -62,6 +62,7 @@ COPY --from=prod-deps --chown=marmot:marmot /app/node_modules ./node_modules
 COPY --from=builder --chown=marmot:marmot /app/.next ./.next
 COPY --from=builder --chown=marmot:marmot /app/public ./public
 COPY --from=builder --chown=marmot:marmot /app/src ./src
+COPY --chown=marmot:marmot scripts/run-ts.mjs ./scripts/run-ts.mjs
 COPY --chown=marmot:marmot --chmod=755 docker/entrypoint.sh /app/entrypoint.sh
 
 USER marmot

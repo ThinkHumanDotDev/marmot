@@ -20,6 +20,10 @@ export MARMOT_ROLE="$ROLE"
 
 PAYLOAD=node_modules/.bin/payload
 NEXT=node_modules/.bin/next
+# Long-running TypeScript entrypoints go through scripts/run-ts.mjs (tsx with a boot keep-alive).
+# `payload run` is for one-shot scripts: it calls process.exit(0) as soon as the module has been
+# imported, which would kill the worker/realtime servers.
+RUN_TS="node scripts/run-ts.mjs"
 
 log() { echo "[marmot] $*"; }
 
@@ -56,16 +60,16 @@ healthcheck() {
 }
 
 start_web() { exec "$NEXT" start -H 0.0.0.0 -p "$PORT"; }
-start_worker() { exec "$PAYLOAD" run src/worker.ts; }
-start_realtime() { exec "$PAYLOAD" run src/realtime.ts; }
+start_worker() { exec $RUN_TS src/worker.ts; }
+start_realtime() { exec $RUN_TS src/realtime.ts; }
 
 # Single-container mode: supervise the three processes and exit when any of them dies so the
 # orchestrator restarts the container instead of leaving it half-alive.
 start_all() {
   stopping=0
-  "$PAYLOAD" run src/worker.ts &
+  $RUN_TS src/worker.ts &
   worker_pid=$!
-  "$PAYLOAD" run src/realtime.ts &
+  $RUN_TS src/realtime.ts &
   realtime_pid=$!
   "$NEXT" start -H 0.0.0.0 -p "$PORT" &
   web_pid=$!
