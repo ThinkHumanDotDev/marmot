@@ -197,6 +197,7 @@ export const monitorFormSchema = z
       }),
     ignoreTls: z.boolean().default(false),
     expiryNotification: z.boolean().default(false),
+    domainExpiryNotification: z.boolean().default(false),
 
     // Keyword / JSON query
     keyword: optionalText(1000),
@@ -319,6 +320,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     acceptedStatusCodes: ['200-299'],
     ignoreTls: false,
     expiryNotification: false,
+    domainExpiryNotification: false,
     keyword: null,
     invertKeyword: false,
     jsonPath: null,
