@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { authApi } from '@/lib/api'
+import { safeNextPath } from '@/lib/utils'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'Enter your name').max(120),
@@ -28,7 +29,7 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>
 
-export function SignupForm() {
+export function SignupForm({ next }: { next?: string }) {
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
   const form = useForm<Values>({
@@ -42,7 +43,7 @@ export function SignupForm() {
       await authApi.signup(values)
       await authApi.login({ email: values.email, password: values.password })
       toast.success('Welcome to Marmot')
-      router.replace('/')
+      router.replace(safeNextPath(next))
       router.refresh()
     } catch (error) {
       form.setError('root', {

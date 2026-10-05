@@ -1,31 +1,66 @@
-import { UserPlus, Users } from 'lucide-react'
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import { getPayload } from 'payload'
 
-import { EmptyState } from '@/components/empty-state'
-import { PageHeader } from '@/components/page-header'
-import { Button } from '@/components/ui/button'
+import config from '@payload-config'
+import { can } from '@/access/permissions'
+import { MembersView } from '@/components/members/members-view'
+import { requireUser } from '@/lib/auth'
+import { effectiveRole, getOrgBySlug } from '@/lib/org'
+import type { InvitationRow, InviteLink } from '@/lib/org-api'
+import { inviteLinkUrl } from '@/server/invites'
+import { listOrgMembers } from '@/server/members'
 
 export const metadata: Metadata = { title: 'Members' }
+export const dynamic = 'force-dynamic'
 
-export default function MembersPage() {
+export default async function MembersPage({ params }: { params: Promise<{ orgSlug: string }> }) {
+  const { orgSlug } = await params
+  const user = await requireUser(`/${orgSlug}/members`)
+  const org = await getOrgBySlug(user, orgSlug)
+  if (!org) notFound()
+
+  const payload = await getPayload({ config })
+  const role = effectiveRole(user, org.id)
+  const canInvite = can(user, org.id, 'member:invite')
+
+  const members = await listOrgMembers(payload, org.id, { user, overrideAccess: false })
+
+  let invitations: InvitationRow[] = []
+  let inviteLink: InviteLink | null = null
+  if (canInvite) {
+    const { docs } = await payload.find({
+      collection: 'invitations',
+      where: {
+        and: [{ organization: { equals: org.id } }, { status: { equals: 'pending' } }],
+      },
+      depth: 0,
+      limit: 100,
+      sort: '-createdAt',
+      user,
+      overrideAccess: false,
+    })
+    invitations = docs.map((doc) => ({
+      id: doc.id,
+      email: doc.email,
+      role: doc.role,
+      expiresAt: doc.expiresAt ?? null,
+      createdAt: doc.createdAt,
+    }))
+    inviteLink = {
+      url: org.inviteLinkToken ? inviteLinkUrl(org.inviteLinkToken) : null,
+      role: org.inviteLinkRole ?? 'member',
+    }
+  }
+
   return (
-    <>
-      <PageHeader
-        title="Members"
-        description="People in this organization and what they can do."
-        actions={
-          <Button disabled>
-            <UserPlus /> Invite member
-          </Button>
-        }
-      />
-      <section className="p-6 md:p-8">
-        <EmptyState
-          icon={Users}
-          title="Just you for now"
-          description="Invite teammates as owners, admins, members or viewers."
-        />
-      </section>
-    </>
+    <MembersView
+      org={{ id: org.id, name: org.name, slug: org.slug }}
+      currentUserId={user.id}
+      role={role}
+      members={members}
+      invitations={invitations}
+      inviteLink={inviteLink}
+    />
   )
 }

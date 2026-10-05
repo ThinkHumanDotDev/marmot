@@ -7,15 +7,21 @@ import { AuthCard } from '@/components/auth/auth-card'
 import { SignupForm } from '@/components/auth/signup-form'
 import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth'
+import { safeNextPath } from '@/lib/utils'
 import { isSignupAllowed } from '@/server/settings'
 
 export const metadata: Metadata = { title: 'Create account' }
 export const dynamic = 'force-dynamic'
 
-export default async function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>
+}) {
+  const { next } = await searchParams
   if (!(await isSignupAllowed(await getPayload({ config })))) notFound()
   const user = await getCurrentUser()
-  if (user) redirect('/')
+  if (user) redirect(safeNextPath(next))
 
   return (
     <AuthCard
@@ -25,7 +31,7 @@ export default async function SignupPage() {
         <>
           Already have an account?{' '}
           <Link
-            href="/login"
+            href={next ? `/login?next=${encodeURIComponent(next)}` : '/login'}
             className="font-medium text-foreground underline-offset-4 hover:underline"
           >
             Sign in
@@ -33,7 +39,7 @@ export default async function SignupPage() {
         </>
       }
     >
-      <SignupForm />
+      <SignupForm next={next} />
     </AuthCard>
   )
 }
