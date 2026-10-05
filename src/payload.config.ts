@@ -10,12 +10,17 @@ import { env, runsRole } from './env'
 import { globals } from './globals'
 import { getPlugins } from './plugins'
 import { getEmailAdapter } from './server/email/adapter'
+import { allowedOrigins } from './server/security/origins'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 export default buildConfig({
   serverURL: env.NEXT_PUBLIC_SERVER_URL,
+  // Browsers may only use the auth cookie from these origins (CORS + CSRF). Extend with
+  // `ADDITIONAL_ORIGINS`; everything else gets a 403 from Payload instead of a session.
+  cors: allowedOrigins(),
+  csrf: allowedOrigins(),
   admin: {
     user: 'users',
     importMap: {

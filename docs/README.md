@@ -13,6 +13,7 @@ features whose pull requests are merging alongside this documentation.
 | [Configuration](configuration.md)     | Every environment variable (grouped, with defaults and the process that reads it), instance settings, first-run and realtime. |
 | [Deployment](deployment.md)           | Caddy auto-TLS, running behind nginx/Traefik, MongoDB, scaling workers, backups and restore, upgrades, single-container mode. |
 | [Single sign-on](sso.md)              | Generic OIDC with Keycloak, Authentik and Microsoft Entra ID examples, auto-provisioning and logout.                          |
+| [Security](security.md)               | Hardening checklist: TLS, trusted proxies, rate limiting, security headers, audit log and admin access.                       |
 | [Telemetry](telemetry.md)             | What the opt-in analytics collect and how consent works _(landing in the current release)_.                                   |
 | [Billing](billing.md)                 | The plan/entitlement scaffold for hosted offerings; off on self-hosted installs _(landing in the current release)_.           |
 

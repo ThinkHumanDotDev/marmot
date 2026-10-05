@@ -255,6 +255,12 @@ not jump to a newer version until you update `docker-compose.yml` or set `MARMOT
 version are in [`CHANGELOG.md`](../CHANGELOG.md); maintainers follow the
 [release checklist](release-checklist.md).
 
+## Hardening
+
+Before exposing an instance to the internet, go through the checklist in [security.md](security.md): TLS,
+the `trustProxy` instance setting (rate limiting and the audit log need the real client address), a strong
+`PAYLOAD_SECRET`, closed signup and private database/Redis ports.
+
 ## Troubleshooting
 
 - `docker compose ps` shows `web` unhealthy: `docker compose logs web`. Most often `DATABASE_URL` points

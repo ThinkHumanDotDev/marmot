@@ -80,6 +80,7 @@ export interface Config {
     'status-pages': StatusPage;
     incidents: Incident;
     maintenance: Maintenance;
+    'audit-logs': AuditLog;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -100,6 +101,7 @@ export interface Config {
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
     maintenance: MaintenanceSelect<false> | MaintenanceSelect<true>;
+    'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -812,6 +814,35 @@ export interface Maintenance {
   createdAt: string;
 }
 /**
+ * Security-relevant events. Rows are written by the server and cannot be edited.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-logs".
+ */
+export interface AuditLog {
+  id: number;
+  action: string;
+  actor?: (number | null) | User;
+  organization?: (number | null) | Organization;
+  /**
+   * Affected record, e.g. user:42.
+   */
+  target?: string | null;
+  ip?: string | null;
+  userAgent?: string | null;
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -886,6 +917,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'maintenance';
         value: number | Maintenance;
+      } | null)
+    | ({
+        relationTo: 'audit-logs';
+        value: number | AuditLog;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1264,6 +1299,21 @@ export interface MaintenanceSelect<T extends boolean = true> {
   duration?: T;
   monitors?: T;
   statusPages?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-logs_select".
+ */
+export interface AuditLogsSelect<T extends boolean = true> {
+  action?: T;
+  actor?: T;
+  organization?: T;
+  target?: T;
+  ip?: T;
+  userAgent?: T;
+  metadata?: T;
   updatedAt?: T;
   createdAt?: T;
 }

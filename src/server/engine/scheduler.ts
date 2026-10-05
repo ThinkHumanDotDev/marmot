@@ -1,8 +1,11 @@
-import type { Payload } from 'payload'
+import type { Payload, PayloadRequest } from 'payload'
 
+import { afterCommit } from '@/db/after-commit'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import type { Monitor } from '@/payload-types'
+import { emitMonitorDeleted, emitMonitorUpdated } from '@/server/realtime/emitter'
+import { relationId } from '@/server/realtime/serialize'
 import { nextIntervalSeconds, type MonitorSettings } from './beat'
 import { CHECK_JOB_NAME, monitorSchedulerId } from './names'
 import { getChecksQueue, type ChecksQueue } from './queues'
@@ -88,6 +91,48 @@ export async function removeMonitorSchedule(
   )
   log.debug({ monitorId: String(monitorId), removed }, 'scheduler removed')
   return removed
+}
+
+type HookRequest = Pick<PayloadRequest, 'payload' | 'transactionID'>
+
+/**
+ * `monitors` afterChange: upsert (active) or remove (paused) the scheduler and emit the realtime
+ * delta, **after the operation's transaction commits**. Upserting inside the transaction let an idle
+ * worker run the first job before the row was visible; it then hit the not-found path and deleted
+ * the brand-new scheduler, so the monitor was never checked. A rolled-back change touches nothing.
+ */
+export async function syncMonitorAfterCommit(
+  req: HookRequest,
+  monitor: Monitor,
+  queue?: ChecksQueue,
+): Promise<void> {
+  await afterCommit(req, async () => {
+    try {
+      if (monitor.active) await syncMonitor(monitor, queue)
+      else await removeMonitorSchedule(monitor.id, queue)
+      const organizationId = relationId(monitor.organization)
+      if (organizationId) emitMonitorUpdated(organizationId, monitor)
+    } catch (err) {
+      log.warn({ err, monitorId: monitor.id }, 'failed to sync monitor schedule')
+    }
+  })
+}
+
+/** `monitors` afterDelete: remove the scheduler and emit the deletion once the delete commits. */
+export async function removeMonitorAfterCommit(
+  req: HookRequest,
+  monitor: Pick<Monitor, 'id' | 'organization'>,
+  queue?: ChecksQueue,
+): Promise<void> {
+  await afterCommit(req, async () => {
+    try {
+      await removeMonitorSchedule(monitor.id, queue)
+      const organizationId = relationId(monitor.organization)
+      if (organizationId) emitMonitorDeleted(organizationId, monitor.id)
+    } catch (err) {
+      log.warn({ err, monitorId: monitor.id }, 'failed to remove monitor schedule')
+    }
+  })
 }
 
 /**
