@@ -15,7 +15,7 @@
  *   (`extras.pingCount`) rather than by `up`, which keeps it exact when pings are missing.
  * - Retention is a separate hourly job (`src/server/jobs/retention.ts`), not part of `update`.
  */
-import type { Payload, Where } from 'payload'
+import type { Payload, RequiredDataFromCollectionSlug, Where } from 'payload'
 
 import type { StatCollectionSlug } from '@/collections/StatFields'
 import { childLogger } from '@/lib/logger'
@@ -317,16 +317,15 @@ async function upsertBucket(
 
   const fresh = applyBeat(emptyBucket(), input.status, input.ping)
   try {
-    await payload.create({
-      collection,
-      data: {
-        monitor: input.monitorId as number,
-        organization: input.organizationId as number,
-        timestamp,
-        ...bucketToData(fresh),
-      },
-      depth: 0,
-    })
+    // Relationship ids are numbers on Postgres/SQLite and strings on MongoDB; the generated
+    // types follow the adapter the types were generated with, so cast the adapter-neutral ids.
+    const data = {
+      monitor: input.monitorId,
+      organization: input.organizationId,
+      timestamp,
+      ...bucketToData(fresh),
+    } as unknown as RequiredDataFromCollectionSlug<StatCollectionSlug>
+    await payload.create({ collection, data, depth: 0 })
     return { ...fresh, timestamp }
   } catch (error) {
     // Unique-violation race: another process created the row first. Re-read and update.
