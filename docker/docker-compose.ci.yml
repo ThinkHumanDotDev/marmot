@@ -1,5 +1,7 @@
-# CI override: run the stack from the locally built image and publish ports for the smoke test.
-#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.ci.yml up -d --wait
+# CI override: run the stack from the locally built image (`marmot:ci`) instead of pulling from GHCR.
+# Ports for the smoke test come from docker-compose.smoke.yml:
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.smoke.yml \
+#     -f docker/docker-compose.ci.yml up -d --wait
 x-ci-image: &ci-image
   image: marmot:ci
   pull_policy: never
@@ -7,13 +9,7 @@ x-ci-image: &ci-image
 services:
   web:
     <<: *ci-image
-    ports: ['3000:3000']
   worker:
     <<: *ci-image
   realtime:
     <<: *ci-image
-    ports: ['3001:3001']
-  caddy:
-    # HTTP only: no DOMAIN in CI, and 443 stays free on the runner.
-    ports: !override
-      - '8080:80'

@@ -38,6 +38,13 @@ Thanks for helping! Marmot is developed in the open; issues and pull requests ar
 - Porting code from Uptime Kuma (MIT) is encouraged where it saves time; keep a short attribution comment
   at the top of the file and list the file in `THIRD_PARTY_NOTICES.md`.
 
+## Releases
+
+Maintainers cut releases with `pnpm release:prepare <version>` and a `vX.Y.Z` tag; the
+[release checklist](docs/release-checklist.md) has every step. `CHANGELOG.md` and the GitHub Release notes
+are generated from commit messages by git-cliff (`cliff.toml`), so a clear Conventional Commit subject is
+your changelog entry.
+
 ## Licensing
 
 By contributing you agree that your contributions are licensed under the AGPL-3.0-only license.

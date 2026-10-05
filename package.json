@@ -34,7 +34,8 @@
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
     "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --import=tsx/esm\" playwright test --config=playwright.config.ts",
     "services:up": "bash scripts/dev-services.sh up",
-    "services:down": "bash scripts/dev-services.sh down"
+    "services:down": "bash scripts/dev-services.sh down",
+    "release:prepare": "bash scripts/release.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",

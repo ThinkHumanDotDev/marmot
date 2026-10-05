@@ -28,6 +28,7 @@ All configuration is via environment variables (see `.env.example`). Variables a
 | `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`                                                      | off                      | Opt-in analytics; nothing is sent without a key.        |
 | `LOG_LEVEL`                                                                                                | `info`                   | pino log level.                                         |
 | `DOMAIN`, `ACME_EMAIL`                                                                                     | —                        | Compose only: Caddy automatic HTTPS.                    |
+| `MARMOT_VERSION`                                                                                           | release version          | Compose only: image tag (`0.1.0`, `0.1`, `latest`).     |
 
 ## Instance settings
 
