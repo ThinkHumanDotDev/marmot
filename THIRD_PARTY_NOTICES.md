@@ -42,6 +42,9 @@ attribution comment and are listed here:
 - `src/server/notification-providers/matrix.ts` — `server/notification-providers/matrix.js`
 - `src/server/notification-providers/webhook.ts` — `server/notification-providers/webhook.js`
 - `src/server/notification-providers/smtp.ts` — `server/notification-providers/smtp.js`
+- `src/server/status-pages/public.ts`, `src/server/status-pages/rss.ts` — public status page data,
+  `overallStatus` / status descriptions and the RSS feed shape (`server/model/status_page.js`,
+  `server/routers/status-page-router.js`)
 
 The MIT license text is reproduced below.
 

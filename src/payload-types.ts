@@ -77,6 +77,8 @@ export interface Config {
     'stat-minutely': StatMinutely;
     'stat-hourly': StatHourly;
     'stat-daily': StatDaily;
+    'status-pages': StatusPage;
+    incidents: Incident;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -94,6 +96,8 @@ export interface Config {
     'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
     'stat-hourly': StatHourlySelect<false> | StatHourlySelect<true>;
     'stat-daily': StatDailySelect<false> | StatDailySelect<true>;
+    'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
+    incidents: IncidentsSelect<false> | IncidentsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -566,6 +570,103 @@ export interface StatDaily {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "status-pages".
+ */
+export interface StatusPage {
+  id: number;
+  organization: number | Organization;
+  title: string;
+  /**
+   * Public URL: /status/<slug>. Lowercase letters, numbers, hyphens.
+   */
+  slug: string;
+  description?: string | null;
+  logo?: (number | null) | Media;
+  theme?: ('auto' | 'light' | 'dark') | null;
+  /**
+   * Unpublished pages return 404 to visitors.
+   */
+  published?: boolean | null;
+  searchEngineIndex?: boolean | null;
+  showTags?: boolean | null;
+  showCertificateExpiry?: boolean | null;
+  showPoweredBy?: boolean | null;
+  /**
+   * Seconds between client refreshes; 0 disables auto refresh.
+   */
+  autoRefreshInterval?: number | null;
+  footerText?: string | null;
+  /**
+   * Injected into the public page as a <style> tag.
+   */
+  customCSS?: string | null;
+  googleAnalyticsId?: string | null;
+  /**
+   * Custom hostnames that serve this page at their root (CNAME them to this server).
+   */
+  domains?:
+    | {
+        hostname: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Monitors are shown in these groups, in this order.
+   */
+  groups?:
+    | {
+        name: string;
+        monitors?:
+          | {
+              monitor: number | Monitor;
+              /**
+               * Show the monitor's URL to visitors.
+               */
+              sendUrl?: boolean | null;
+              /**
+               * Link visitors to this URL instead.
+               */
+              customUrl?: string | null;
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "incidents".
+ */
+export interface Incident {
+  id: number;
+  /**
+   * Derived from the status page.
+   */
+  organization: number | Organization;
+  statusPage: number | StatusPage;
+  title: string;
+  /**
+   * Markdown: paragraphs, **bold**, _italics_, `code` and links.
+   */
+  content?: string | null;
+  style?: ('info' | 'warning' | 'danger' | 'primary') | null;
+  /**
+   * Pinned incidents are shown above the monitor groups.
+   */
+  pinned?: boolean | null;
+  /**
+   * Uncheck to resolve the incident.
+   */
+  active?: boolean | null;
+  resolvedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -627,6 +728,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'stat-daily';
         value: number | StatDaily;
+      } | null)
+    | ({
+        relationTo: 'status-pages';
+        value: number | StatusPage;
+      } | null)
+    | ({
+        relationTo: 'incidents';
+        value: number | Incident;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -903,6 +1012,65 @@ export interface StatDailySelect<T extends boolean = true> {
   pingMin?: T;
   pingMax?: T;
   extras?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "status-pages_select".
+ */
+export interface StatusPagesSelect<T extends boolean = true> {
+  organization?: T;
+  title?: T;
+  slug?: T;
+  description?: T;
+  logo?: T;
+  theme?: T;
+  published?: T;
+  searchEngineIndex?: T;
+  showTags?: T;
+  showCertificateExpiry?: T;
+  showPoweredBy?: T;
+  autoRefreshInterval?: T;
+  footerText?: T;
+  customCSS?: T;
+  googleAnalyticsId?: T;
+  domains?:
+    | T
+    | {
+        hostname?: T;
+        id?: T;
+      };
+  groups?:
+    | T
+    | {
+        name?: T;
+        monitors?:
+          | T
+          | {
+              monitor?: T;
+              sendUrl?: T;
+              customUrl?: T;
+              id?: T;
+            };
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "incidents_select".
+ */
+export interface IncidentsSelect<T extends boolean = true> {
+  organization?: T;
+  statusPage?: T;
+  title?: T;
+  content?: T;
+  style?: T;
+  pinned?: T;
+  active?: T;
+  resolvedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { Heartbeats } from './Heartbeats'
+import { Incidents } from './Incidents'
 import { Invitations } from './Invitations'
 import { Media } from './Media'
 import { Monitors } from './Monitors'
@@ -9,6 +10,7 @@ import { Organizations } from './Organizations'
 import { StatDaily } from './StatDaily'
 import { StatHourly } from './StatHourly'
 import { StatMinutely } from './StatMinutely'
+import { StatusPages } from './StatusPages'
 import { Users } from './Users'
 
 /**
@@ -26,4 +28,6 @@ export const collections: CollectionConfig[] = [
   StatMinutely,
   StatHourly,
   StatDaily,
+  StatusPages,
+  Incidents,
 ]
