@@ -1,9 +1,11 @@
 import { randomBytes } from 'node:crypto'
 import type { CollectionConfig, Field, Where } from 'payload'
 
-import { HEARTBEAT_STATUSES } from './Heartbeats'
+import { orgScoped } from '@/access/org-scoped'
 import { childLogger } from '@/lib/logger'
 import { relationId } from '@/server/realtime/serialize'
+
+import { HEARTBEAT_STATUSES } from './Heartbeats'
 
 const log = childLogger('monitors')
 
@@ -69,12 +71,12 @@ export const Monitors: CollectionConfig = {
     group: 'Monitoring',
     defaultColumns: ['name', 'type', 'active', 'status.lastStatus', 'interval'],
   },
-  // TODO(#1): replace with org-scoped RBAC access functions (`src/access/*`).
+  // Org-scoped RBAC: viewers read, members write (see `src/access/permissions.ts`).
   access: {
-    read: ({ req }) => Boolean(req.user),
-    create: ({ req }) => Boolean(req.user),
-    update: ({ req }) => Boolean(req.user),
-    delete: ({ req }) => Boolean(req.user),
+    read: orgScoped('monitor:read'),
+    create: orgScoped('monitor:create'),
+    update: orgScoped('monitor:update'),
+    delete: orgScoped('monitor:delete'),
   },
   indexes: [{ fields: ['organization', 'active'] }],
   hooks: {
@@ -111,6 +113,28 @@ export const Monitors: CollectionConfig = {
         return doc
       },
     ],
+    beforeDelete: [
+      // Heartbeats and stat rows carry a required `monitor` relationship (NOT NULL on Postgres), so
+      // they must go first; children of a group are detached rather than deleted.
+      async ({ id, req }) => {
+        const common = { req, overrideAccess: true, depth: 0 } as const
+        await req.payload.delete({
+          collection: 'heartbeats',
+          where: { monitor: { equals: id } },
+          ...common,
+        })
+        for (const collection of ['stat-minutely', 'stat-hourly', 'stat-daily'] as const) {
+          await req.payload.delete({ collection, where: { monitor: { equals: id } }, ...common })
+        }
+        await req.payload.update({
+          collection: 'monitors',
+          where: { parent: { equals: id } },
+          data: { parent: null },
+          context: { skipEngineSync: true },
+          ...common,
+        })
+      },
+    ],
     afterDelete: [
       async ({ doc }) => {
         try {
@@ -136,8 +160,7 @@ export const Monitors: CollectionConfig = {
       type: 'relationship',
       relationTo: 'organizations',
       index: true,
-      // TODO(#1): make required once the multi-tenant plugin sets it automatically.
-      required: false,
+      required: true,
       admin: { position: 'sidebar' },
     },
     {
