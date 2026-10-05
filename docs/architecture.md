@@ -63,10 +63,59 @@ the Payload cookie, and receive `heartbeat`, `heartbeatList`, `uptime`, `avgPing
 
 ## Organizations and RBAC
 
-`organizations` is the tenant collection (`@payloadcms/plugin-multi-tenant`). Users carry an
-`organizations` array with a `role` per membership (`owner`, `admin`, `member`, `viewer`). Collection access
-functions return `Where` filters scoped to the user's organizations and check `resource:action` permissions
-(`src/access/permissions.ts`). Instance `superadmin` users may use the Payload admin panel.
+`organizations` is the tenant collection (`@payloadcms/plugin-multi-tenant`, configured in
+`src/plugins/index.ts` with `tenantsSlug: 'organizations'`). The plugin adds an `organizations` array to
+`users`; each row is a membership `{ organization, role }` with `role` one of `owner`, `admin`, `member`,
+`viewer`. Only superadmins may edit that array through the API: everyone else joins by creating an
+organization (the creator becomes `owner`) or by accepting an invitation.
+
+Org-scoped collections carry an `organization` relationship (the plugin adds it, named `organization`,
+to every collection that opts in; collections outside the plugin such as `invitations` declare it
+themselves). Their access functions come from `src/access/org-scoped.ts`:
+
+- `orgScoped(permission, { field = 'organization' })` returns a Payload `Access`: `true` for
+  superadmins; otherwise `{ [field]: { in: <organizations where the user's role satisfies the
+permission> } }`, or `false` when there are none. When the request carries `data[field]` (create, or an
+  update that moves a document) the user must hold the permission in that organization.
+- `superadminOnly`, `authenticated`, `selfOrSuperadmin` cover the non-tenant cases.
+
+Permissions are `resource:action` strings mapped to the **minimum** role in `src/access/permissions.ts`
+(`PERMISSIONS`). Roles are ordered `owner > admin > member > viewer`; a role satisfies a permission when it
+ranks at or above the minimum. Helpers: `can(user, orgId, permission)`, `hasOrgRole(user, orgId,
+minRole)`, `getUserRole(user, orgId)`, `getUserOrgIds(user)`, `getOrgIdsWithPermission(user, permission)`,
+`isSuperadmin(user)`, `canManageRole(managerRole, targetRole)`. Instance `superadmin` users bypass every
+check and are the only users allowed into the Payload admin panel (`users.access.admin`). Anyone may create
+an account (`POST /api/users`) while `DISABLE_SIGNUP` is false (`canSignUp` in `src/collections/Users.ts`);
+field-level access strips `superadmin` and `organizations` from requests that are not made by a superadmin.
+
+| Permission                                                          | viewer | member | admin | owner |
+| ------------------------------------------------------------------- | :----: | :----: | :---: | :---: |
+| `organization:read`                                                 |   ✓    |   ✓    |   ✓   |   ✓   |
+| `organization:update`                                               |        |        |   ✓   |   ✓   |
+| `organization:delete`                                               |        |        |       |   ✓   |
+| `member:read`                                                       |   ✓    |   ✓    |   ✓   |   ✓   |
+| `member:invite`, `member:remove`, `member:update-role`              |        |        |   ✓   |   ✓   |
+| `monitor:read`                                                      |   ✓    |   ✓    |   ✓   |   ✓   |
+| `monitor:create`, `monitor:update`, `monitor:delete`                |        |   ✓    |   ✓   |   ✓   |
+| `notification:read`                                                 |        |   ✓    |   ✓   |   ✓   |
+| `notification:create`, `notification:update`, `notification:delete` |        |        |   ✓   |   ✓   |
+| `status-page:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
+| `status-page:create`, `status-page:update`, `status-page:delete`    |        |   ✓    |   ✓   |   ✓   |
+| `maintenance:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
+| `maintenance:create`, `maintenance:update`, `maintenance:delete`    |        |   ✓    |   ✓   |   ✓   |
+| `api-key:read`, `api-key:create`, `api-key:delete`                  |        |        |   ✓   |   ✓   |
+
+Nobody may invite or assign a role above their own (`canManageRole`); superadmins may.
+
+### Invitations
+
+`invitations` rows (`organization`, `email`, `role`, `token`, `status`, `expiresAt`, `invitedBy`) are
+created by members with `member:invite`. A `beforeChange` hook mints a 24-byte `base64url` token, sets
+`expiresAt` to seven days ahead and records the inviter; an `afterChange` hook emails
+`${NEXT_PUBLIC_SERVER_URL}/invite/<token>` through the Payload email adapter (console when SMTP is not
+configured). `POST /api/invitations/:token/accept` (authenticated) calls `acceptInvitation()` from
+`src/collections/Invitations.ts`, which validates status and expiry, appends the membership to the user
+(an existing membership keeps its role) and marks the invitation `accepted`.
 
 ## Billing (future)
 

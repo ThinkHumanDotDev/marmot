@@ -22,10 +22,10 @@ export async function seedTestUser(): Promise<void> {
     },
   })
 
-  // Create fresh test user
+  // Create fresh test user. Only superadmins may use the Payload admin panel (`users.access.admin`).
   await payload.create({
     collection: 'users',
-    data: testUser,
+    data: { ...testUser, superadmin: true },
   })
 }
 
