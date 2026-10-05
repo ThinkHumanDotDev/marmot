@@ -44,7 +44,7 @@ describe('stats: time-series aggregation', () => {
 
     const org = await payload.create({
       collection: 'organizations',
-      data: { name: 'stats-int-org' },
+      data: { name: 'stats-int-org', slug: `stats-int-org-${Date.now().toString(36)}` },
     })
     organizationId = org.id
     const monitor = await payload.create({
