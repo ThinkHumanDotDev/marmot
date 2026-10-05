@@ -4,6 +4,7 @@ import type { CollectionConfig, Field, Where } from 'payload'
 import { orgScoped } from '@/access/org-scoped'
 import { attachDefaultNotifications } from './Notifications'
 import { childLogger } from '@/lib/logger'
+import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 import { relationId } from '@/server/realtime/serialize'
 
 import { HEARTBEAT_STATUSES } from './Heartbeats'
@@ -136,6 +137,8 @@ export const Monitors: CollectionConfig = {
       },
       // New monitors without explicit channels get the organization's default channels.
       attachDefaultNotifications,
+      // Plan limits (no-op unless BILLING_ENABLED).
+      enforceEntitlementOnCreate('monitors'),
     ],
     afterChange: [
       async ({ doc, req }) => {

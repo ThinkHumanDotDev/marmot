@@ -1,6 +1,12 @@
 /**
  * Presentation helpers shared by the monitor pages. Pure functions, safe on server and client.
  */
+import {
+  isHostMonitorType,
+  isPortMonitorType,
+  isUrlMonitorType,
+  MONITOR_TYPE_GROUPS,
+} from '@/lib/validation/monitor'
 import type { Monitor } from '@/payload-types'
 import type { MonitorStatusKey } from '@/stores/monitor-store'
 
@@ -40,22 +46,17 @@ export function statusText(
 export function monitorTarget(
   monitor: Pick<Monitor, 'type' | 'url' | 'hostname' | 'port' | 'dnsResolveType'>,
 ): string | null {
-  switch (monitor.type) {
-    case 'http':
-    case 'keyword':
-    case 'json-query':
-      return monitor.url ?? null
-    case 'port':
-      return monitor.hostname ? `${monitor.hostname}:${monitor.port ?? ''}` : null
-    case 'ping':
-      return monitor.hostname ?? null
-    case 'dns':
-      return monitor.hostname
-        ? `${monitor.hostname}${monitor.dnsResolveType ? ` (${monitor.dnsResolveType})` : ''}`
-        : null
-    default:
-      return null
+  if (monitor.type === 'dns') {
+    return monitor.hostname
+      ? `${monitor.hostname}${monitor.dnsResolveType ? ` (${monitor.dnsResolveType})` : ''}`
+      : null
   }
+  if (isUrlMonitorType(monitor.type)) return monitor.url ?? null
+  if (isPortMonitorType(monitor.type)) {
+    return monitor.hostname ? `${monitor.hostname}:${monitor.port ?? ''}` : null
+  }
+  if (isHostMonitorType(monitor.type)) return monitor.hostname ?? null
+  return null
 }
 
 export function formatPing(ms: number | null | undefined): string {
@@ -87,17 +88,11 @@ export function formatDateTime(value: string | number | Date | null | undefined)
   return Number.isNaN(date.getTime()) ? '–' : dateTime.format(date)
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  http: 'HTTP(s)',
-  keyword: 'HTTP(s) - Keyword',
-  'json-query': 'HTTP(s) - Json Query',
-  port: 'TCP Port',
-  ping: 'Ping',
-  dns: 'DNS',
-  push: 'Push',
-  group: 'Group',
-  manual: 'Manual',
-}
+const TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  Object.values(MONITOR_TYPE_GROUPS).flatMap((group) =>
+    group.types.map((option) => [option.name, option.label]),
+  ),
+)
 
 /** Display label of a monitor type (falls back to the raw slug for types added later). */
 export function humanTypeLabel(type: string): string {

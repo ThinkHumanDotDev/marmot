@@ -64,6 +64,7 @@ const schema = z.object({
   BILLING_ENABLED: booleanish.default(false),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
 
   // Telemetry (opt-in)
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),

@@ -34,9 +34,11 @@
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
     "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --import=tsx/esm\" playwright test --config=playwright.config.ts",
     "services:up": "bash scripts/dev-services.sh up",
-    "services:down": "bash scripts/dev-services.sh down"
+    "services:down": "bash scripts/dev-services.sh down",
+    "release:prepare": "bash scripts/release.sh"
   },
   "dependencies": {
+    "@c15t/nextjs": "2.3.0",
     "@dnd-kit/core": "6.3.1",
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
@@ -47,6 +49,7 @@
     "@payloadcms/email-nodemailer": "3.90.2",
     "@payloadcms/next": "3.90.2",
     "@payloadcms/plugin-multi-tenant": "3.90.2",
+    "@payloadcms/plugin-stripe": "3.90.2",
     "@payloadcms/richtext-lexical": "3.90.2",
     "@payloadcms/storage-s3": "3.90.2",
     "@payloadcms/ui": "3.90.2",
@@ -69,6 +72,8 @@
     "openid-client": "^6.8.8",
     "payload": "3.90.2",
     "pino": "^9.6.0",
+    "posthog-js": "1.435.8",
+    "posthog-node": "5.55.0",
     "radix-ui": "^1.6.7",
     "react": "19.2.6",
     "react-dom": "19.2.6",
@@ -79,6 +84,7 @@
     "socket.io": "^4.8.4",
     "socket.io-client": "^4.8.4",
     "sonner": "^2.0.8",
+    "stripe": "10.17.0",
     "tailwind-merge": "^3.7.0",
     "tsx": "^4.22.4",
     "undici": "^8.11.2",
@@ -96,13 +102,14 @@
     "mysql2": "^3.24.5",
     "net-snmp": "^3.29.1",
     "pg": "8.20.0",
-    "playwright-core": "^1.63.0",
+    "playwright-core": "1.58.2",
     "protobufjs": "^8.8.0",
     "radius": "^1.1.4",
     "ssh2-sftp-client": "^12.1.1",
     "ws": "^8.22.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
     "@playwright/test": "1.58.2",

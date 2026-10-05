@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
+import { track } from '@/lib/analytics'
 import { ApiError } from '@/lib/api'
 
 import { ProviderField } from './provider-field'
@@ -160,6 +161,7 @@ export function ChannelDialog({
       const saved = channel
         ? await notificationsApi.update(orgId, channel.id, input)
         : await notificationsApi.create(orgId, input)
+      if (!channel) track('notification_channel_created', { provider: input.type })
       toast.success(channel ? 'Channel updated' : 'Channel created')
       onSaved(saved)
       onOpenChange(false)

@@ -455,6 +455,26 @@
           "notNull": false,
           "default": "'free'"
         },
+        "subscription_status": {
+          "name": "subscription_status",
+          "type": "enum_organizations_subscription_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'none'"
+        },
+        "stripe_customer_id": {
+          "name": "stripe_customer_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stripe_subscription_id": {
+          "name": "stripe_subscription_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "invite_link_token": {
           "name": "invite_link_token",
           "type": "varchar",
@@ -520,6 +540,36 @@
           "columns": [
             {
               "expression": "logo_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organizations_stripe_customer_id_idx": {
+          "name": "organizations_stripe_customer_id_idx",
+          "columns": [
+            {
+              "expression": "stripe_customer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organizations_stripe_subscription_id_idx": {
+          "name": "organizations_stripe_subscription_id_idx",
+          "columns": [
+            {
+              "expression": "stripe_subscription_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -4782,6 +4832,18 @@
         "enterprise"
       ]
     },
+    "public.enum_organizations_subscription_status": {
+      "name": "enum_organizations_subscription_status",
+      "schema": "public",
+      "values": [
+        "none",
+        "trialing",
+        "active",
+        "past_due",
+        "canceled",
+        "unpaid"
+      ]
+    },
     "public.enum_organizations_invite_link_role": {
       "name": "enum_organizations_invite_link_role",
       "schema": "public",
@@ -5026,6 +5088,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "b3b6d2c7-2fa3-4c48-af9d-6b5a4e22c6db",
+  "id": "0f209c08-6a22-4158-a454-e050c1e5441f",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

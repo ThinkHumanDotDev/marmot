@@ -97,6 +97,11 @@ attribution comment and are listed here:
 - `src/server/notification-providers/dingding.ts` — `server/notification-providers/dingding.js`
 - `src/server/notification-providers/feishu.ts` — `server/notification-providers/feishu.js`
 - `src/server/notification-providers/bitrix24.ts` — `server/notification-providers/bitrix24.js`
+- `src/server/import-export/uptime-kuma.ts`, `src/server/import-export/kuma-notifications.ts` — backup
+  JSON format and import semantics of the `uploadBackup` handler (`server/server.js`,
+  `src/components/settings/Backup.vue` in Uptime Kuma 1.23), monitor field names from
+  `Monitor.toJSON()` (`server/model/monitor.js`) and notification config keys from
+  `server/notification-providers/*.js`
 
 The MIT license text is reproduced below.
 

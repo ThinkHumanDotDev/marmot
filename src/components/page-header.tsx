@@ -23,7 +23,7 @@ export function PageHeader({
     <header
       data-slot="page-header"
       className={cn(
-        'flex flex-col gap-4 border-b px-6 py-5 md:flex-row md:items-end md:justify-between md:px-8',
+        'flex flex-col gap-4 border-b px-4 py-5 sm:px-6 md:flex-row md:items-end md:justify-between md:px-8',
         className,
       )}
       {...props}
@@ -33,7 +33,7 @@ export function PageHeader({
         <h1 className="truncate text-xl font-semibold tracking-tight md:text-2xl">{title}</h1>
         {description && <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>}
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2 md:shrink-0">{actions}</div>}
     </header>
   )
 }
