@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { track } from '@/lib/analytics'
 import type { Incident, StatusPage } from '@/payload-types'
 
 import { publicStatusPagePath, statusPagesApi, type MonitorOption, type OrgId } from '../api'
@@ -47,6 +48,7 @@ export function StatusPageEditor({
     try {
       const { doc } = await statusPagesApi.update(orgId, page.id, { published: next })
       setPage(doc)
+      if (next) track('status_page_published')
       toast.success(next ? 'Status page published' : 'Status page unpublished')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not update')
@@ -67,8 +69,8 @@ export function StatusPageEditor({
           </Link>
         }
         title={
-          <span className="inline-flex items-center gap-3">
-            {page.title}
+          <span className="inline-flex max-w-full items-center gap-3">
+            <span className="truncate">{page.title}</span>
             {page.published ? (
               <Badge className="bg-status-up/15 text-foreground">Published</Badge>
             ) : (
@@ -76,7 +78,7 @@ export function StatusPageEditor({
             )}
           </span>
         }
-        description={<span className="font-mono text-xs">{publicHref}</span>}
+        description={<span className="font-mono text-xs break-all">{publicHref}</span>}
         actions={
           <>
             <div className="flex items-center gap-2 pr-2">
@@ -92,13 +94,14 @@ export function StatusPageEditor({
             </div>
             <Button asChild variant="outline">
               <a href={publicHref} target="_blank" rel="noopener noreferrer">
-                {page.published ? 'View page' : 'Preview'} <ExternalLink />
+                {page.published ? 'View page' : 'Preview'} <ExternalLink aria-hidden />
+                <span className="sr-only">(opens in a new tab)</span>
               </a>
             </Button>
           </>
         }
       />
-      <section className="p-6 md:p-8">
+      <section className="p-4 sm:p-6 md:p-8">
         {!page.published && (
           <p className="mb-6 rounded-lg border border-dashed px-4 py-2 text-xs text-muted-foreground">
             Visitors get a 404 until the page is published. Signed-in members can preview it any
@@ -106,7 +109,7 @@ export function StatusPageEditor({
           </p>
         )}
         <Tabs defaultValue="settings">
-          <TabsList>
+          <TabsList className="no-scrollbar max-w-full justify-start overflow-x-auto">
             <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="groups">Groups &amp; monitors</TabsTrigger>
             <TabsTrigger value="incidents">Incidents</TabsTrigger>

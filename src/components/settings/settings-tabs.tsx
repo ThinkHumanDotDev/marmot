@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, KeyRound, UserRound, Users } from 'lucide-react'
+import { ArrowDownUp, Building2, CreditCard, KeyRound, UserRound, Users } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -8,19 +8,25 @@ import { cn } from '@/lib/utils'
 
 interface SettingsTabsProps {
   orgSlug: string
+  /** Billing tab: only when `BILLING_ENABLED` and the viewer is an admin or owner. */
+  showBilling?: boolean
 }
 
 /**
- * Link-based tab strip for the settings area. Future tabs (Permissions, Billing) slot in here once
- * their issues land.
+ * Link-based tab strip for the settings area. Future tabs (Permissions) slot in here once their
+ * issues land.
  */
-export function SettingsTabs({ orgSlug }: SettingsTabsProps) {
+export function SettingsTabs({ orgSlug, showBilling = false }: SettingsTabsProps) {
   const pathname = usePathname()
   const tabs = [
     { href: `/${orgSlug}/settings/account`, label: 'Account', icon: UserRound },
     { href: `/${orgSlug}/settings/organization`, label: 'Organization', icon: Building2 },
     { href: `/${orgSlug}/members`, label: 'Members', icon: Users },
     { href: `/${orgSlug}/settings/api-keys`, label: 'API keys', icon: KeyRound },
+    { href: `/${orgSlug}/settings/import-export`, label: 'Import / Export', icon: ArrowDownUp },
+    ...(showBilling
+      ? [{ href: `/${orgSlug}/settings/billing`, label: 'Billing', icon: CreditCard }]
+      : []),
   ]
 
   return (

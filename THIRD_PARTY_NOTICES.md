@@ -78,6 +78,11 @@ attribution comment and are listed here:
 - `src/server/notification-providers/dingding.ts` — `server/notification-providers/dingding.js`
 - `src/server/notification-providers/feishu.ts` — `server/notification-providers/feishu.js`
 - `src/server/notification-providers/bitrix24.ts` — `server/notification-providers/bitrix24.js`
+- `src/server/import-export/uptime-kuma.ts`, `src/server/import-export/kuma-notifications.ts` — backup
+  JSON format and import semantics of the `uploadBackup` handler (`server/server.js`,
+  `src/components/settings/Backup.vue` in Uptime Kuma 1.23), monitor field names from
+  `Monitor.toJSON()` (`server/model/monitor.js`) and notification config keys from
+  `server/notification-providers/*.js`
 - `src/server/badges/badge.ts` — badge handlers of `server/routers/api-router.js`, `badgeConstants`
   (`src/util.ts`), `percentageToColor` / `filterAndJoin` (`server/util-server.js`)
 - `src/server/push/index.ts`, `recordExternalBeat` in `src/server/engine/worker.ts` — `/api/push/:pushToken`
