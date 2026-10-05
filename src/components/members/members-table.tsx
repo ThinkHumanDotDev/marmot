@@ -112,7 +112,7 @@ export function MembersTable({
                   <div className="flex items-center gap-3">
                     <Avatar className="size-9 rounded-md">
                       {member.avatarUrl && <AvatarImage src={member.avatarUrl} alt="" />}
-                      <AvatarFallback className="rounded-md bg-primary/15 text-xs font-semibold text-primary">
+                      <AvatarFallback className="rounded-md bg-primary/15 text-xs font-semibold text-foreground">
                         {initials(label)}
                       </AvatarFallback>
                     </Avatar>

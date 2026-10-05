@@ -23,6 +23,8 @@ export type MonitorListInitialState = Pick<
 interface MonitorListProps {
   orgSlug: string
   initial: MonitorListInitialState
+  /** `monitor:create`; viewers get the empty state without the call to action. */
+  canCreate?: boolean
 }
 
 /** Write the server-rendered state into the store (runs once per organization). */
@@ -41,7 +43,7 @@ function hydrateStore(initial: MonitorListInitialState) {
  * Live list of the organization's monitors. The first render uses the server-loaded props so
  * SSR and hydration agree; after mount the store takes over and the socket keeps it fresh.
  */
-export function MonitorList({ orgSlug, initial }: MonitorListProps) {
+export function MonitorList({ orgSlug, initial, canCreate = true }: MonitorListProps) {
   const hydrated = useMonitorStore((s) => s.hydrated)
   const monitors = useMonitorStore((s) => s.monitors)
 
@@ -75,13 +77,19 @@ export function MonitorList({ orgSlug, initial }: MonitorListProps) {
       <EmptyState
         icon={Activity}
         title="No monitors yet"
-        description="Add an HTTP, TCP, ping or DNS monitor and Marmot starts checking it right away."
+        description={
+          canCreate
+            ? 'Add an HTTP, TCP, ping or DNS monitor and Marmot starts checking it right away.'
+            : 'Nothing is being monitored in this organization yet. Members can add monitors.'
+        }
         action={
-          <Button asChild>
-            <Link href={`/${orgSlug}/monitors/new`}>
-              <Plus /> New monitor
-            </Link>
-          </Button>
+          canCreate ? (
+            <Button asChild>
+              <Link href={`/${orgSlug}/monitors/new`}>
+                <Plus /> Add your first monitor
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
     )
@@ -89,14 +97,19 @@ export function MonitorList({ orgSlug, initial }: MonitorListProps) {
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
-      <div className="hidden grid-cols-[auto_minmax(0,1fr)_minmax(8rem,14rem)_5rem_5rem] items-center gap-x-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground md:grid">
+      <div
+        aria-hidden
+        className="hidden grid-cols-[auto_minmax(0,1fr)_minmax(8rem,14rem)_5rem_5rem] items-center gap-x-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground md:grid"
+      >
         <span className="w-2.5" aria-hidden />
         <span>Monitor</span>
         <span>Last {50} checks</span>
         <span className="text-right">24h</span>
         <span className="text-right">Ping</span>
       </div>
-      <ul className="divide-y">{rows}</ul>
+      <ul className="divide-y" aria-label="Monitors">
+        {rows}
+      </ul>
     </div>
   )
 }

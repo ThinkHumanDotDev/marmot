@@ -1,3 +1,4 @@
+import { describeBeats } from '@/components/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
@@ -39,7 +40,7 @@ export function HeartbeatBar({
     <div
       className={cn('flex h-8 items-center gap-px', className)}
       role="img"
-      aria-label={`Latest ${shown.length} heartbeats`}
+      aria-label={describeBeats(shown.map((beat) => beat.status))}
       data-testid="heartbeat-bar"
     >
       {Array.from({ length: missing }).map((_, i) => (
