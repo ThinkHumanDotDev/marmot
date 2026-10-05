@@ -147,10 +147,13 @@ describe('maintenance windows', () => {
     const orgIds = [orgA?.id, orgB?.id].filter(Boolean)
     if (orgIds.length) {
       // `delete({ where })` reports per-document failures instead of throwing; surface them.
-      const wipe = async (collection: 'maintenance' | 'status-pages' | 'monitors') => {
+      const wipe = async (
+        collection: 'maintenance' | 'status-pages' | 'monitors',
+        extra: Record<string, unknown> = {},
+      ) => {
         const result = await payload.delete({
           collection,
-          where: { organization: { in: orgIds } },
+          where: { and: [{ organization: { in: orgIds } }, extra] },
           depth: 0,
         })
         if (result.errors.length) {
@@ -159,6 +162,8 @@ describe('maintenance windows', () => {
       }
       await wipe('maintenance')
       await wipe('status-pages')
+      // Group children first: deleting a group and its child in one batch leaves the child behind.
+      await wipe('monitors', { parent: { exists: true } })
       await wipe('monitors')
       await payload.delete({ collection: 'organizations', where: { id: { in: orgIds } } })
     }
