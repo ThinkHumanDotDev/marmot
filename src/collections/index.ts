@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { ApiKeys } from './ApiKeys'
+import { AuditLogs } from './AuditLogs'
 import { Heartbeats } from './Heartbeats'
 import { Incidents } from './Incidents'
 import { Invitations } from './Invitations'
@@ -32,4 +33,5 @@ export const collections: CollectionConfig[] = [
   StatusPages,
   Incidents,
   ApiKeys,
+  AuditLogs,
 ]

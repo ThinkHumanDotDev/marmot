@@ -3503,8 +3503,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.api_keys": {
-      "name": "api_keys",
+    "public.audit_logs": {
+      "name": "audit_logs",
       "schema": "",
       "columns": {
         "id": {
@@ -3513,52 +3513,45 @@
           "primaryKey": true,
           "notNull": true
         },
+        "action": {
+          "name": "action",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_id": {
+          "name": "actor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "organization_id": {
           "name": "organization_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "name": {
-          "name": "name",
+        "target": {
+          "name": "target",
           "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "key_hash": {
-          "name": "key_hash",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "prefix": {
-          "name": "prefix",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "active": {
-          "name": "active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp(3) with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "last_used_at": {
-          "name": "last_used_at",
-          "type": "timestamp(3) with time zone",
+        "ip": {
+          "name": "ip",
+          "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
-        "created_by_id": {
-          "name": "created_by_id",
-          "type": "integer",
+        "user_agent": {
+          "name": "user_agent",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
@@ -3578,8 +3571,38 @@
         }
       },
       "indexes": {
-        "api_keys_organization_idx": {
-          "name": "api_keys_organization_idx",
+        "audit_logs_action_idx": {
+          "name": "audit_logs_action_idx",
+          "columns": [
+            {
+              "expression": "action",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "audit_logs_actor_idx": {
+          "name": "audit_logs_actor_idx",
+          "columns": [
+            {
+              "expression": "actor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "audit_logs_organization_idx": {
+          "name": "audit_logs_organization_idx",
           "columns": [
             {
               "expression": "organization_id",
@@ -3593,68 +3616,8 @@
           "method": "btree",
           "with": {}
         },
-        "api_keys_key_hash_idx": {
-          "name": "api_keys_key_hash_idx",
-          "columns": [
-            {
-              "expression": "key_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "api_keys_prefix_idx": {
-          "name": "api_keys_prefix_idx",
-          "columns": [
-            {
-              "expression": "prefix",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "api_keys_active_idx": {
-          "name": "api_keys_active_idx",
-          "columns": [
-            {
-              "expression": "active",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "api_keys_created_by_idx": {
-          "name": "api_keys_created_by_idx",
-          "columns": [
-            {
-              "expression": "created_by_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "api_keys_updated_at_idx": {
-          "name": "api_keys_updated_at_idx",
+        "audit_logs_updated_at_idx": {
+          "name": "audit_logs_updated_at_idx",
           "columns": [
             {
               "expression": "updated_at",
@@ -3668,8 +3631,8 @@
           "method": "btree",
           "with": {}
         },
-        "api_keys_created_at_idx": {
-          "name": "api_keys_created_at_idx",
+        "audit_logs_created_at_idx": {
+          "name": "audit_logs_created_at_idx",
           "columns": [
             {
               "expression": "created_at",
@@ -3682,36 +3645,15 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "organization_active_1_idx": {
-          "name": "organization_active_1_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "active",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
-        "api_keys_organization_id_organizations_id_fk": {
-          "name": "api_keys_organization_id_organizations_id_fk",
-          "tableFrom": "api_keys",
-          "tableTo": "organizations",
+        "audit_logs_actor_id_users_id_fk": {
+          "name": "audit_logs_actor_id_users_id_fk",
+          "tableFrom": "audit_logs",
+          "tableTo": "users",
           "columnsFrom": [
-            "organization_id"
+            "actor_id"
           ],
           "columnsTo": [
             "id"
@@ -3719,12 +3661,12 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
-        "api_keys_created_by_id_users_id_fk": {
-          "name": "api_keys_created_by_id_users_id_fk",
-          "tableFrom": "api_keys",
-          "tableTo": "users",
+        "audit_logs_organization_id_organizations_id_fk": {
+          "name": "audit_logs_organization_id_organizations_id_fk",
+          "tableFrom": "audit_logs",
+          "tableTo": "organizations",
           "columnsFrom": [
-            "created_by_id"
+            "organization_id"
           ],
           "columnsTo": [
             "id"
@@ -3971,8 +3913,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "api_keys_id": {
-          "name": "api_keys_id",
+        "audit_logs_id": {
+          "name": "audit_logs_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -4204,11 +4146,11 @@
           "method": "btree",
           "with": {}
         },
-        "payload_locked_documents_rels_api_keys_id_idx": {
-          "name": "payload_locked_documents_rels_api_keys_id_idx",
+        "payload_locked_documents_rels_audit_logs_id_idx": {
+          "name": "payload_locked_documents_rels_audit_logs_id_idx",
           "columns": [
             {
-              "expression": "api_keys_id",
+              "expression": "audit_logs_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -4390,12 +4332,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "payload_locked_documents_rels_api_keys_fk": {
-          "name": "payload_locked_documents_rels_api_keys_fk",
+        "payload_locked_documents_rels_audit_logs_fk": {
+          "name": "payload_locked_documents_rels_audit_logs_fk",
           "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "api_keys",
+          "tableTo": "audit_logs",
           "columnsFrom": [
-            "api_keys_id"
+            "audit_logs_id"
           ],
           "columnsTo": [
             "id"
@@ -5105,6 +5047,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "dff304b0-ab63-4a26-81b4-f752bca1d616",
+  "id": "6f9a259b-3000-4bb6-be39-8ec152f7513c",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
