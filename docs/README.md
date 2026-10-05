@@ -27,6 +27,7 @@ features whose pull requests are merging alongside this documentation.
 | [Maintenance](maintenance.md)                             | Maintenance windows and how they silence alerts _(landing in the current release)_.                                |
 | [Organizations and members](organizations-and-members.md) | Roles and permissions, invitations, invite links, ownership transfer, account settings.                            |
 | [Integrations](integrations.md)                           | Status badges, the push endpoint, Prometheus metrics and organization API keys _(landing in the current release)_. |
+| [Import and export](import-export.md)                     | Importing an Uptime Kuma backup or a Marmot export, and exporting an organization.                                 |
 
 ## Change it
 
