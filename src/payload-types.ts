@@ -69,6 +69,7 @@ export interface Config {
   collections: {
     users: User;
     organizations: Organization;
+    invitations: Invitation;
     media: Media;
     monitors: Monitor;
     'stat-minutely': StatMinutely;
@@ -83,6 +84,7 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     organizations: OrganizationsSelect<false> | OrganizationsSelect<true>;
+    invitations: InvitationsSelect<false> | InvitationsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     monitors: MonitorsSelect<false> | MonitorsSelect<true>;
     'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
@@ -134,10 +136,18 @@ export interface UserAuthOperations {
 export interface User {
   id: number;
   name?: string | null;
+  avatar?: (number | null) | Media;
   /**
    * Instance administrator: can access the Payload admin panel and every organization.
    */
   superadmin?: boolean | null;
+  organizations?:
+    | {
+        organization: number | Organization;
+        role: 'owner' | 'admin' | 'member' | 'viewer';
+        id?: string | null;
+      }[]
+    | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -160,16 +170,6 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "organizations".
- */
-export interface Organization {
-  id: number;
-  name: string;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
  */
 export interface Media {
@@ -186,6 +186,51 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "organizations".
+ */
+export interface Organization {
+  id: number;
+  name: string;
+  /**
+   * Lowercase letters, numbers and hyphens. Used in URLs.
+   */
+  slug: string;
+  logo?: (number | null) | Media;
+  /**
+   * Self-hosted installs are unlimited regardless of plan.
+   */
+  plan?: ('free' | 'team' | 'pro' | 'enterprise') | null;
+  settings?: {
+    /**
+     * IANA time zone, e.g. Europe/London.
+     */
+    timezone?: string | null;
+    weekStart?: ('monday' | 'sunday') | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "invitations".
+ */
+export interface Invitation {
+  id: number;
+  organization: number | Organization;
+  email: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  /**
+   * Generated on create.
+   */
+  token?: string | null;
+  status?: ('pending' | 'accepted' | 'revoked' | 'expired') | null;
+  expiresAt?: string | null;
+  invitedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -335,6 +380,10 @@ export interface PayloadLockedDocument {
         value: number | Organization;
       } | null)
     | ({
+        relationTo: 'invitations';
+        value: number | Invitation;
+      } | null)
+    | ({
         relationTo: 'media';
         value: number | Media;
       } | null)
@@ -402,7 +451,15 @@ export interface PayloadMigration {
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  avatar?: T;
   superadmin?: T;
+  organizations?:
+    | T
+    | {
+        organization?: T;
+        role?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -427,6 +484,30 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface OrganizationsSelect<T extends boolean = true> {
   name?: T;
+  slug?: T;
+  logo?: T;
+  plan?: T;
+  settings?:
+    | T
+    | {
+        timezone?: T;
+        weekStart?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "invitations_select".
+ */
+export interface InvitationsSelect<T extends boolean = true> {
+  organization?: T;
+  email?: T;
+  role?: T;
+  token?: T;
+  status?: T;
+  expiresAt?: T;
+  invitedBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
