@@ -25,7 +25,7 @@ export async function handleImportRequest(
   const orgId = parseId(payload, rawOrgId)
   const auth = await authenticate(payload, request)
   if (auth.response) return auth.response
-  const forbidden = authorize(auth.user, orgId, 'monitor:create')
+  const forbidden = await authorize(payload, auth.user, orgId, 'monitor:create')
   if (forbidden) return forbidden
 
   const declared = Number(request.headers.get('content-length') ?? 0)

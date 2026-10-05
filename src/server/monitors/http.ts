@@ -7,7 +7,8 @@
 import type { Payload } from 'payload'
 import type { ZodError } from 'zod'
 
-import { can, type Permission } from '@/access/permissions'
+import { canInOrg } from '@/access/overrides'
+import type { Permission } from '@/access/permissions'
 import type { Monitor, User } from '@/payload-types'
 
 export type RequestUser = User & { collection: 'users' }
@@ -35,13 +36,14 @@ export async function authenticate(payload: Payload, request: Request): Promise<
   return { user: user as RequestUser }
 }
 
-/** 403 unless the user holds `permission` in `orgId`. */
-export function authorize(
+/** 403 unless the user holds `permission` in `orgId` (honouring the organization's overrides). */
+export async function authorize(
+  payload: Payload,
   user: RequestUser,
   orgId: RouteId,
   permission: Permission,
-): Response | null {
-  return can(user, orgId, permission) ? null : jsonError(403, 'Forbidden')
+): Promise<Response | null> {
+  return (await canInOrg(payload, user, orgId, permission)) ? null : jsonError(403, 'Forbidden')
 }
 
 export async function readJson(request: Request): Promise<unknown> {
