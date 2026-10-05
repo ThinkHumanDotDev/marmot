@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, UserRound, Users } from 'lucide-react'
+import { ArrowDownUp, Building2, UserRound, Users } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -20,6 +20,7 @@ export function SettingsTabs({ orgSlug }: SettingsTabsProps) {
     { href: `/${orgSlug}/settings/account`, label: 'Account', icon: UserRound },
     { href: `/${orgSlug}/settings/organization`, label: 'Organization', icon: Building2 },
     { href: `/${orgSlug}/members`, label: 'Members', icon: Users },
+    { href: `/${orgSlug}/settings/import-export`, label: 'Import / Export', icon: ArrowDownUp },
   ]
 
   return (
