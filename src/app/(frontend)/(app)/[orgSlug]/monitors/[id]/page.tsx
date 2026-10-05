@@ -205,9 +205,10 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             basePath={`/${orgSlug}/monitors/${monitor.id}`}
           />
           <div className="flex flex-col gap-6">
-            {isHttpMonitorType(monitor.type) && (
-              <CertificatePanel expiryNotification={monitor.expiryNotification} />
-            )}
+            {(isHttpMonitorType(monitor.type) ||
+              monitor.certInfo ||
+              monitor.domainExpiry ||
+              monitor.domainExpiryNotification) && <CertificatePanel monitor={monitor} />}
             <Card className="gap-3">
               <CardHeader>
                 <CardTitle className="text-base">Description</CardTitle>
