@@ -95,7 +95,7 @@ export async function handlePasswordLogin(request: Request): Promise<Response> {
     exp = result.exp
     user = result.user as User
   } catch (error) {
-    const status = error instanceof APIError ? error.status : 500
+    const status = apiErrorStatus(error)
     if (status === 401 || status === 400) {
       return jsonError('Incorrect email or password.', 401)
     }
@@ -117,6 +117,20 @@ export async function handlePasswordLogin(request: Request): Promise<Response> {
 
   const cookie = sessionCookieForToken(payload, token)
   return json({ user: publicUser(user), exp }, [cookie])
+}
+
+/**
+ * HTTP status of an error thrown by a Payload operation. Not `instanceof APIError`: in the Next
+ * production build the route bundle and the Payload instance that `getPayload` cached (whichever
+ * route booted it first, e.g. the admin panel) can hold different copies of `payload`, so the
+ * thrown `AuthenticationError` fails the class check and a wrong password would surface as a 500.
+ */
+function apiErrorStatus(error: unknown): number {
+  if (error instanceof APIError) return error.status
+  if (error instanceof Error && 'status' in error && typeof error.status === 'number') {
+    return error.status
+  }
+  return 500
 }
 
 /** `Set-Cookie` for a token `payload.login` returned (same attributes as `POST /api/users/login`). */
