@@ -162,6 +162,27 @@ export interface User {
    * Stable `sub` claim of the linked single sign-on identity.
    */
   oidcSubject?: string | null;
+  /**
+   * Colour scheme preference, applied on every device after sign-in.
+   */
+  theme?: ('system' | 'light' | 'dark') | null;
+  /**
+   * Managed from Settings → Account → Two-factor authentication.
+   */
+  twoFactorEnabled?: boolean | null;
+  twoFactorVerifiedAt?: string | null;
+  twoFactorSecret?: string | null;
+  twoFactorPendingSecret?: string | null;
+  twoFactorBackupCodes?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  twoFactorLastUsedStep?: number | null;
   organizations?:
     | {
         organization: number | Organization;
@@ -238,6 +259,18 @@ export interface Organization {
    * Role granted to people who join through the invite link.
    */
   inviteLinkRole?: ('owner' | 'admin' | 'member' | 'viewer') | null;
+  /**
+   * Per-organization minimum roles, e.g. { "monitor:create": "admin" }. Unset permissions use the defaults in src/access/permissions.ts.
+   */
+  permissionOverrides?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   settings?: {
     /**
      * IANA time zone, e.g. Europe/London.
@@ -796,6 +829,13 @@ export interface UsersSelect<T extends boolean = true> {
   authProvider?: T;
   oidcIssuer?: T;
   oidcSubject?: T;
+  theme?: T;
+  twoFactorEnabled?: T;
+  twoFactorVerifiedAt?: T;
+  twoFactorSecret?: T;
+  twoFactorPendingSecret?: T;
+  twoFactorBackupCodes?: T;
+  twoFactorLastUsedStep?: T;
   organizations?:
     | T
     | {
@@ -835,6 +875,7 @@ export interface OrganizationsSelect<T extends boolean = true> {
   stripeSubscriptionId?: T;
   inviteLinkToken?: T;
   inviteLinkRole?: T;
+  permissionOverrides?: T;
   settings?:
     | T
     | {

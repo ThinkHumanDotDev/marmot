@@ -1,5 +1,6 @@
 import { APIError } from 'payload'
 
+import { verifyPassword } from '@/auth/password'
 import { getRequestContext, readJson, unauthorized, withErrors } from '@/server/http'
 
 export const dynamic = 'force-dynamic'
@@ -8,8 +9,8 @@ export const dynamic = 'force-dynamic'
  * POST /api/account/password  `{ currentPassword, password }`
  *
  * Payload has no "verify current password" step on update, so the handler re-authenticates with
- * the current password first and only then writes the new one (as the user, so `selfOrSuperadmin`
- * still applies).
+ * the current password first (`verifyPassword`, which leaves no extra session behind) and only
+ * then writes the new one (as the user, so `selfOrSuperadmin` still applies).
  */
 export const POST = withErrors(async (request: Request) => {
   const { payload, user } = await getRequestContext(request)
@@ -26,13 +27,7 @@ export const POST = withErrors(async (request: Request) => {
     throw new APIError('The new password must be at least 8 characters.', 400)
   }
 
-  try {
-    await payload.login({
-      collection: 'users',
-      data: { email: user.email, password: currentPassword },
-      depth: 0,
-    })
-  } catch {
+  if (!(await verifyPassword(payload, user.email, currentPassword))) {
     throw new APIError('Your current password is incorrect.', 401)
   }
 
