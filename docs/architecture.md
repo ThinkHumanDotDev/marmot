@@ -14,9 +14,11 @@ Shared infrastructure: the Payload database (Postgres by default, MongoDB suppor
 ## Polling engine
 
 Payload does not poll anything by itself. On `monitors` `afterChange`/`afterDelete` hooks the web process
-calls `engine.sync(monitor)`, which upserts or removes a BullMQ **job scheduler** named `monitor:<id>` with
-`every = interval * 1000`. The worker consumes the `checks` queue, runs the monitor type's `check()` and
-feeds the result through the heartbeat state machine (ported from Uptime Kuma's `Monitor.beat`):
+calls `syncMonitor(monitor)` / `removeMonitorSchedule(id)` (`src/server/engine/scheduler.ts`), which upserts
+or removes a BullMQ **job scheduler** named `monitor:<id>` with `every = interval * 1000` (`retryInterval`
+while the monitor is PENDING). Queues live under the Redis prefix `marmot:` (`marmot:checks`). The worker
+consumes the `checks` queue, runs the monitor type's `check()` and feeds the result through the heartbeat
+state machine (`src/server/engine/beat.ts`, ported from Uptime Kuma's `Monitor.beat`):
 
 ```
 maintenance?  → MAINTENANCE
@@ -26,6 +28,10 @@ upsideDown    → flip UP/DOWN
 ```
 
 Important beats (status transitions) trigger notifications; `resendInterval` re-notifies while down.
+
+After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
+`lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`) and calls every listener registered with
+`registerHeartbeatListener()` (`src/server/engine/hooks.ts`); stats, realtime and notifications plug in there.
 
 ## Time-series storage
 
