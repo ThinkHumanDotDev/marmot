@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import config from '@payload-config'
 import { GET as statsRoute } from '@/app/api/monitors/[id]/stats/route'
 import { retentionCutoffs, runRetention } from '@/server/jobs/retention'
+import { createStatsListener } from '@/server/stats'
 import {
   clearStatistics,
   getAvgPing,
@@ -124,6 +125,28 @@ describe('stats: time-series aggregation', () => {
       depth: 0,
     })
     expect(hourly.docs[0]).toMatchObject({ timestamp: getHourlyKey(NOW), up: 2, down: 1 })
+  })
+
+  it('records a beat whose time arrives as an ISO string (the engine passes the stored document)', async () => {
+    await clearStatistics(payload, otherMonitorId)
+    const when = new Date(Date.now() - 2 * 60 * 60 * 1000)
+    await createStatsListener(payload)({
+      monitor: { id: otherMonitorId },
+      organizationId,
+      heartbeat: { status: 'up', ping: 42, time: when.toISOString(), important: true },
+    })
+    const minutely = await payload.find({
+      collection: 'stat-minutely',
+      where: {
+        and: [
+          { monitor: { equals: otherMonitorId } },
+          { timestamp: { equals: getMinutelyKey(when) } },
+        ],
+      },
+    })
+    expect(minutely.totalDocs).toBe(1)
+    expect(minutely.docs[0].up).toBe(1)
+    await clearStatistics(payload, otherMonitorId)
   })
 
   it('tolerates concurrent beats for the same bucket without losing any', async () => {

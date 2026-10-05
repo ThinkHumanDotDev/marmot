@@ -2,12 +2,14 @@
  * Stats module entry point.
  *
  * `registerStatsListener(payload)` hooks `recordHeartbeat` into the polling engine's heartbeat
- * fan-out (`src/server/engine/hooks.ts`, delivered by the engine issue). The import is dynamic so
- * this module works — and the worker still boots — while the engine is not merged yet.
+ * fan-out (`src/server/engine/hooks.ts`). The engine hands listeners the stored heartbeat document,
+ * so `time` arrives as an ISO string and is converted before it reaches the calculator.
  */
 import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
+
+import { registerHeartbeatListener } from '@/server/engine/hooks'
 
 import { recordHeartbeat, type HeartbeatStatus } from './uptime-calculator'
 
@@ -21,17 +23,14 @@ export type HeartbeatContext = {
   heartbeat: {
     status: HeartbeatStatus
     ping: number | null
-    time: Date
+    /** The engine hands over the stored document, whose time is an ISO string. */
+    time: Date | string
     important: boolean
   }
   organizationId: string | number
 }
 
 type HeartbeatListener = (ctx: HeartbeatContext) => Promise<void> | void
-
-type EngineHooksModule = {
-  registerHeartbeatListener?: (fn: HeartbeatListener) => unknown
-}
 
 /** Build the listener the engine calls for every heartbeat. */
 export const createStatsListener =
@@ -43,7 +42,7 @@ export const createStatsListener =
         organizationId: ctx.organizationId,
         status: ctx.heartbeat.status,
         ping: ctx.heartbeat.ping,
-        time: ctx.heartbeat.time,
+        time: new Date(ctx.heartbeat.time),
       })
     } catch (error) {
       // Never let a stats failure break the heartbeat pipeline.
@@ -52,40 +51,10 @@ export const createStatsListener =
   }
 
 let registered = false
-let warnedMissingEngine = false
 
-/**
- * Register the stats listener with the engine. Returns true when registered, false when the
- * engine hooks module is not available (logged once).
- */
 export async function registerStatsListener(payload: Payload): Promise<boolean> {
   if (registered) return true
-
-  // Resolved at runtime on purpose: the module ships with the engine issue.
-  const hooksModulePath = '../engine/hooks'
-  let hooks: EngineHooksModule
-  try {
-    hooks = (await import(/* webpackIgnore: true */ hooksModulePath)) as EngineHooksModule
-  } catch (error) {
-    if (!warnedMissingEngine) {
-      warnedMissingEngine = true
-      log.warn(
-        { err: (error as Error).message },
-        'engine hooks module not found; heartbeat stats are not recorded',
-      )
-    }
-    return false
-  }
-
-  if (typeof hooks.registerHeartbeatListener !== 'function') {
-    if (!warnedMissingEngine) {
-      warnedMissingEngine = true
-      log.warn('engine hooks module has no registerHeartbeatListener export')
-    }
-    return false
-  }
-
-  hooks.registerHeartbeatListener(createStatsListener(payload))
+  registerHeartbeatListener(createStatsListener(payload))
   registered = true
   log.info('heartbeat stats listener registered')
   return true
