@@ -40,3 +40,6 @@ yarn-error.log*
 
 # agent worktrees
 .claude/worktrees/
+
+# bundled server entrypoints (scripts/build-server.mjs)
+/dist

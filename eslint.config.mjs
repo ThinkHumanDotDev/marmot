@@ -6,6 +6,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores([
     '.next/**',
+    'dist/**',
     'node_modules/**',
     'src/payload-types.ts',
     'src/payload-generated-schema.ts',

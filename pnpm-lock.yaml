@@ -165,6 +165,9 @@ importers:
       concurrently:
         specifier: ^9.1.0
         version: 9.2.4
+      esbuild:
+        specifier: ^0.25.12
+        version: 0.25.12
       eslint:
         specifier: ^9.16.0
         version: 9.39.5(jiti@2.7.0)

@@ -42,8 +42,9 @@ docker compose up -d --wait
 docker compose logs -f web      # watch migrations run and the server start
 ```
 
-Open `https://$DOMAIN` (or `http://<host>`) and create the first user. `web` runs `payload migrate` on
-every start, so the schema is created on first boot and upgraded on later ones.
+Open `https://$DOMAIN` (or `http://<host>`) and create the first user. `web` runs the database migrations
+(`dist/server/migrate.mjs`, bundled at image build time) on every start, so the schema is created on first
+boot and upgraded on later ones. The `worker` and `realtime` roles run from the same pre-built bundles.
 
 **MongoDB instead of Postgres**: download `docker-compose.mongo.yml` from the same place and add it to
 every compose command:

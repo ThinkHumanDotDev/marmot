@@ -18,12 +18,12 @@ REALTIME_PORT="${REALTIME_PORT:-3001}"
 ADAPTER="${DATABASE_ADAPTER:-postgres}"
 export MARMOT_ROLE="$ROLE"
 
-PAYLOAD=node_modules/.bin/payload
 NEXT=node_modules/.bin/next
-# Long-running TypeScript entrypoints go through scripts/run-ts.mjs (tsx with a boot keep-alive).
-# `payload run` is for one-shot scripts: it calls process.exit(0) as soon as the module has been
-# imported, which would kill the worker/realtime servers.
-RUN_TS="node scripts/run-ts.mjs"
+# The worker, realtime server and the migrate step are bundled to dist/server/*.mjs at image build time
+# (scripts/build-server.mjs), so they run on plain `node`: no TypeScript loader in the container.
+WORKER=dist/server/worker.mjs
+REALTIME=dist/server/realtime.mjs
+MIGRATE=dist/server/migrate.mjs
 
 log() { echo "[marmot] $*"; }
 
@@ -41,9 +41,9 @@ run_migrations() {
     return 0
   fi
   log "running database migrations ($ADAPTER)"
-  # --force-accept-warning answers the "database was pushed in dev mode" prompt so the
-  # container never blocks on stdin.
-  "$PAYLOAD" migrate --force-accept-warning
+  # --force-accept-warning clears Payload's "database was pushed in dev mode" marker instead of
+  # asking on stdin, which a container cannot answer.
+  node "$MIGRATE" --force-accept-warning
 }
 
 healthcheck() {
@@ -60,16 +60,16 @@ healthcheck() {
 }
 
 start_web() { exec "$NEXT" start -H 0.0.0.0 -p "$PORT"; }
-start_worker() { exec $RUN_TS src/worker.ts; }
-start_realtime() { exec $RUN_TS src/realtime.ts; }
+start_worker() { exec node "$WORKER"; }
+start_realtime() { exec node "$REALTIME"; }
 
 # Single-container mode: supervise the three processes and exit when any of them dies so the
 # orchestrator restarts the container instead of leaving it half-alive.
 start_all() {
   stopping=0
-  $RUN_TS src/worker.ts &
+  node "$WORKER" &
   worker_pid=$!
-  $RUN_TS src/realtime.ts &
+  node "$REALTIME" &
   realtime_pid=$!
   "$NEXT" start -H 0.0.0.0 -p "$PORT" &
   web_pid=$!

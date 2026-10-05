@@ -1,5 +1,4 @@
 import path from 'path'
-import { fileURLToPath } from 'url'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
@@ -7,7 +6,9 @@ import type { Config } from 'payload'
 
 import { env } from '@/env'
 
-const dirname = path.dirname(fileURLToPath(import.meta.url))
+// Resolved from the working directory rather than from this file's URL: the server entrypoints are
+// bundled into dist/server/*.mjs for the container, and every Marmot process runs from the repo root.
+const migrationDir = (adapter: string) => path.resolve(process.cwd(), 'src/migrations', adapter)
 
 /**
  * Database adapter factory. Marmot is database-agnostic in the same way Payload is:
@@ -27,20 +28,20 @@ export function getDatabaseAdapter(): Config['db'] {
     case 'mongodb':
       return mongooseAdapter({
         url: env.DATABASE_URL,
-        migrationDir: path.resolve(dirname, '../migrations/mongodb'),
+        migrationDir: migrationDir('mongodb'),
       })
     case 'sqlite':
       return sqliteAdapter({
         client: { url: env.DATABASE_URL },
         push: !isProd,
-        migrationDir: path.resolve(dirname, '../migrations/sqlite'),
+        migrationDir: migrationDir('sqlite'),
       })
     case 'postgres':
     default:
       return postgresAdapter({
         pool: { connectionString: env.DATABASE_URL },
         push: !isProd,
-        migrationDir: path.resolve(dirname, '../migrations/postgres'),
+        migrationDir: migrationDir('postgres'),
       })
   }
 }

@@ -196,10 +196,15 @@ jobs:
           # security headers from next.config.ts
           curl -fsSI http://localhost:8080/api/health | tr -d '\r' | grep -qi '^x-content-type-options: nosniff'
           curl -fsSI http://localhost:8080/api/health | tr -d '\r' | grep -qi '^strict-transport-security:'
-          # worker booted against the database (it waits for migrations, so allow up to 90s)
-          for i in $(seq 1 30); do
+          # worker booted against the database (it waits up to 120s for migrations; allow 150s)
+          for i in $(seq 1 50); do
             $COMPOSE logs worker | grep -q 'worker booted' && break
-            [ "$i" -eq 30 ] && { echo 'worker did not boot in time'; $COMPOSE logs worker; exit 1; }
+            if [ "$i" -eq 50 ]; then
+              echo 'worker did not boot in time'
+              $COMPOSE logs worker
+              $COMPOSE top worker || true
+              exit 1
+            fi
             sleep 3
           done
           # the image healthcheck used by compose/orchestrators

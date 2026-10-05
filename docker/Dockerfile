@@ -38,7 +38,7 @@ ENV NODE_ENV=production \
     DATABASE_URL=postgres://build:build@localhost:5432/build \
     DATABASE_ADAPTER=postgres \
     REDIS_URL=redis://localhost:6379
-RUN pnpm build
+RUN pnpm build && pnpm build:server
 
 # ---- runtime ---------------------------------------------------------------
 FROM base AS runner
@@ -62,7 +62,7 @@ COPY --from=prod-deps --chown=marmot:marmot /app/node_modules ./node_modules
 COPY --from=builder --chown=marmot:marmot /app/.next ./.next
 COPY --from=builder --chown=marmot:marmot /app/public ./public
 COPY --from=builder --chown=marmot:marmot /app/src ./src
-COPY --chown=marmot:marmot scripts/run-ts.mjs ./scripts/run-ts.mjs
+COPY --from=builder --chown=marmot:marmot /app/dist ./dist
 COPY --chown=marmot:marmot --chmod=755 docker/entrypoint.sh /app/entrypoint.sh
 
 USER marmot
