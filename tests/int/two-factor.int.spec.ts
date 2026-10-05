@@ -71,9 +71,11 @@ const jsonRequest = (body: unknown, headers: Record<string, string> = {}) =>
     body: JSON.stringify(body),
   })
 
-const params = (values: Record<string, string | number>) => ({
+const params = <T extends Record<string, string | number>>(values: T) => ({
   params: Promise.resolve(
-    Object.fromEntries(Object.entries(values).map(([k, v]) => [k, String(v)])),
+    Object.fromEntries(Object.entries(values).map(([k, v]) => [k, String(v)])) as {
+      [K in keyof T]: string
+    },
   ),
 })
 
