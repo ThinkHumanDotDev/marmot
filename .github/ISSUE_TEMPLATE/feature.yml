@@ -1,0 +1,21 @@
+name: Feature
+description: Propose a feature or improvement
+labels: ['type:feat']
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should Marmot do, and for whom?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Bullet list of verifiable outcomes.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Implementation notes
+      description: Files involved, references (Uptime Kuma / kan.bn), constraints.
