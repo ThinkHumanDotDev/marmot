@@ -66,6 +66,7 @@ describe('realtime status mapping', () => {
       url: 'https://example.com',
       hostname: null,
       organization: '3',
+      tags: [],
     })
   })
 })

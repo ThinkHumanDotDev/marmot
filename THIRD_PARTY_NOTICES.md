@@ -28,6 +28,9 @@ attribution comment and are listed here:
 - `src/server/monitor-types/push.ts` — `push` branch of `server/model/monitor.js`
 - `src/server/monitor-types/group.ts` — `server/monitor-types/group.js`
 - `src/server/monitor-types/manual.ts` — `server/monitor-types/manual.js`
+- `src/server/monitor-types/docker.ts`, `src/server/docker/client.ts` — `docker` branch of
+  `server/model/monitor.js` and `DockerHost.testDockerHost` / `patchDockerURL` from `server/docker.js`
+- `src/server/proxies/dispatcher.ts` — supported protocols and resolution semantics of `server/proxy.js`
 - `src/server/notification-providers/http.ts` — error formatting and `extractAddress` from
   `server/notification-providers/notification-provider.js`
 - `src/server/notifications/message.ts` — default message text from `Monitor.sendNotification`

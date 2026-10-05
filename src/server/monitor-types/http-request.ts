@@ -6,9 +6,11 @@
  * See THIRD_PARTY_NOTICES.md. Uses undici instead of axios.
  */
 import { STATUS_CODES } from 'node:http'
+import type { Payload } from 'payload'
 import { Agent, interceptors, request, type Dispatcher } from 'undici'
 
-import type { Monitor } from '@/payload-types'
+import type { Monitor, MonitorProxy } from '@/payload-types'
+import { createProxyDispatcher, type ProxyConfig } from '@/server/proxies/dispatcher'
 import type { MonitorCheckContext } from './types'
 
 const DEFAULT_ACCEPT =
@@ -112,10 +114,36 @@ async function oauthClientCredentials(monitor: Monitor, signal: AbortSignal): Pr
   return token
 }
 
-/** Build the request options from the monitor's HTTP settings. */
+/**
+ * The monitor's proxy when one is set and active (Uptime Kuma skips inactive proxies and connects
+ * directly). Read with `overrideAccess` so the password is available to the worker.
+ */
+export async function loadMonitorProxy(
+  payload: Payload,
+  monitor: Pick<Monitor, 'proxy'>,
+): Promise<ProxyConfig | null> {
+  const ref = monitor.proxy
+  if (ref === null || ref === undefined) return null
+  let proxy: MonitorProxy | null
+  if (typeof ref === 'object') {
+    proxy = ref
+  } else {
+    proxy = (await payload
+      .findByID({ collection: 'proxies', id: ref, depth: 0, overrideAccess: true })
+      .catch(() => null)) as MonitorProxy | null
+  }
+  if (!proxy || proxy.active === false) return null
+  return proxy
+}
+
+/**
+ * Build the request options from the monitor's HTTP settings. `proxy` (see `loadMonitorProxy`)
+ * routes the request through an HTTP(S) or SOCKS proxy.
+ */
 export async function buildHttpRequest(
   monitor: Monitor,
   signal: AbortSignal,
+  { proxy = null }: { proxy?: ProxyConfig | null } = {},
 ): Promise<{ url: string; options: Parameters<typeof request>[1]; cleanup: () => Promise<void> }> {
   if (!monitor.url) {
     throw new Error('URL is required')
@@ -179,11 +207,26 @@ export async function buildHttpRequest(
     }
   }
 
-  // Dispatcher: shared agent (or a throw-away mTLS agent) + redirect interceptor
-  let agent: Agent
+  // Dispatcher: shared agent (or a throw-away mTLS / proxy agent) + redirect interceptor
+  let agent: Dispatcher
   let cleanup = async () => {}
-  if (monitor.authMethod === 'mtls') {
-    agent = new Agent({
+  if (proxy) {
+    const proxyAgent = createProxyDispatcher(proxy, {
+      rejectUnauthorized: !monitor.ignoreTls,
+      ...(monitor.authMethod === 'mtls'
+        ? {
+            cert: monitor.tlsCert || undefined,
+            key: monitor.tlsKey || undefined,
+            ca: monitor.tlsCa || undefined,
+          }
+        : {}),
+    })
+    agent = proxyAgent
+    cleanup = async () => {
+      await proxyAgent.close()
+    }
+  } else if (monitor.authMethod === 'mtls') {
+    const mtlsAgent = new Agent({
       connect: {
         rejectUnauthorized: !monitor.ignoreTls,
         maxCachedSessions: 0,
@@ -192,8 +235,9 @@ export async function buildHttpRequest(
         ca: monitor.tlsCa || undefined,
       },
     })
+    agent = mtlsAgent
     cleanup = async () => {
-      await agent.close()
+      await mtlsAgent.close()
     }
   } else {
     agent = baseAgent(Boolean(monitor.ignoreTls))
@@ -220,7 +264,8 @@ export async function buildHttpRequest(
  * accepted, throws `"<status> - <text>"` otherwise.
  */
 export async function performHttpCheck(ctx: MonitorCheckContext): Promise<HttpCheckResponse> {
-  const { url, options, cleanup } = await buildHttpRequest(ctx.monitor, ctx.signal)
+  const proxy = await loadMonitorProxy(ctx.payload, ctx.monitor)
+  const { url, options, cleanup } = await buildHttpRequest(ctx.monitor, ctx.signal, { proxy })
   const startTime = Date.now()
   try {
     const res = await request(url, options)

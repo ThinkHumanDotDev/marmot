@@ -66,6 +66,15 @@ export interface RealtimeMonitor {
   hostname?: string | null
   parent?: RealtimeId | null
   organization?: RealtimeId | null
+  /** Resolved tags (name + colour) with the monitor's value. */
+  tags?: RealtimeTag[]
+}
+
+export interface RealtimeTag {
+  id: RealtimeId
+  name: string
+  color: string | null
+  value: string | null
 }
 
 export interface RealtimePayloads {

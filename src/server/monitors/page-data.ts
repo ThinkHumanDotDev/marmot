@@ -79,3 +79,39 @@ export async function getOrgGroups(
   })
   return docs.map((doc) => ({ id: doc.id, name: doc.name }))
 }
+
+export interface MonitorFormResources {
+  tags: { id: string | number; name: string; color: string }[]
+  proxies: { id: string | number; label: string; active: boolean; isDefault: boolean }[]
+  dockerHosts: { id: string | number; name: string }[]
+}
+
+/**
+ * Tags, proxies and Docker hosts of the organization for the monitor form selectors, read as the
+ * user (members see all three; proxies come without passwords).
+ */
+export async function getMonitorFormResources(ctx: OrgPageContext): Promise<MonitorFormResources> {
+  const common = {
+    where: { organization: { equals: ctx.org.id } },
+    depth: 0,
+    limit: 500,
+    user: ctx.requestUser,
+    overrideAccess: false,
+    disableErrors: true,
+  } as const
+  const [tags, proxies, dockerHosts] = await Promise.all([
+    ctx.payload.find({ collection: 'tags', sort: 'name', ...common }),
+    ctx.payload.find({ collection: 'proxies', ...common }),
+    ctx.payload.find({ collection: 'docker-hosts', sort: 'name', ...common }),
+  ])
+  return {
+    tags: tags.docs.map((doc) => ({ id: doc.id, name: doc.name, color: doc.color })),
+    proxies: proxies.docs.map((doc) => ({
+      id: doc.id,
+      label: `${doc.protocol}://${doc.host}:${doc.port}`,
+      active: doc.active !== false,
+      isDefault: Boolean(doc.default),
+    })),
+    dockerHosts: dockerHosts.docs.map((doc) => ({ id: doc.id, name: doc.name })),
+  }
+}

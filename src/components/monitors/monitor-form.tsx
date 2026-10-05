@@ -1,7 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, X } from 'lucide-react'
+import { Loader2, Plus, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
@@ -50,6 +50,9 @@ import {
   type MonitorFormValues,
   type MonitorTypeName,
 } from '@/lib/validation/monitor'
+import type { MonitorFormResources } from '@/server/monitors/page-data'
+
+import { TagChip } from './tag-chip'
 
 export interface MonitorTypeInfo {
   name: string
@@ -71,7 +74,11 @@ export interface MonitorFormProps {
   types: MonitorTypeInfo[]
   /** Group monitors of the organization, for the parent select. */
   groups: GroupOption[]
+  /** Tags, proxies and Docker hosts of the organization for the selectors. */
+  resources?: MonitorFormResources
 }
+
+const EMPTY_RESOURCES: MonitorFormResources = { tags: [], proxies: [], dockerHosts: [] }
 
 type Name = FieldPath<MonitorFormInput>
 type FormControlType = Control<MonitorFormInput, unknown, MonitorFormValues>
@@ -375,6 +382,191 @@ function StatusCodesField({ control }: { control: FormControlType }) {
   )
 }
 
+/** Tag rows: chips of the selected tags plus a tag select + value input to add one. */
+function TagsField({
+  control,
+  tags,
+  orgSlug,
+}: {
+  control: FormControlType
+  tags: MonitorFormResources['tags']
+  orgSlug: string
+}) {
+  const [draftTag, setDraftTag] = React.useState<string>('')
+  const [draftValue, setDraftValue] = React.useState('')
+  const byId = React.useMemo(() => new Map(tags.map((t) => [String(t.id), t])), [tags])
+
+  return (
+    <FormField
+      control={control}
+      name="tags"
+      render={({ field }) => {
+        const rows = (field.value as { tag: string | number; value?: string | null }[]) ?? []
+        const used = new Set(rows.map((row) => String(row.tag)))
+        const available = tags.filter((t) => !used.has(String(t.id)))
+        const add = () => {
+          const tag = byId.get(draftTag)
+          if (!tag) return
+          field.onChange([...rows, { tag: tag.id, value: draftValue.trim() || null }])
+          setDraftTag('')
+          setDraftValue('')
+        }
+        return (
+          <FormItem>
+            <FormLabel>Tags</FormLabel>
+            {rows.length > 0 && (
+              <div className="flex flex-wrap gap-1.5" data-testid="monitor-tags">
+                {rows.map((row) => {
+                  const tag = byId.get(String(row.tag))
+                  return (
+                    <TagChip
+                      key={String(row.tag)}
+                      tag={{
+                        name: tag?.name ?? 'Unknown tag',
+                        color: tag?.color,
+                        value: row.value,
+                      }}
+                      className="py-1 text-xs"
+                    >
+                      <button
+                        type="button"
+                        aria-label={`Remove ${tag?.name ?? 'tag'}`}
+                        className="rounded-full p-0.5 hover:bg-foreground/10"
+                        onClick={() =>
+                          field.onChange(rows.filter((r) => String(r.tag) !== String(row.tag)))
+                        }
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </TagChip>
+                  )
+                })}
+              </div>
+            )}
+            {tags.length === 0 ? (
+              <FormDescription>
+                No tags yet.{' '}
+                <Link href={`/${orgSlug}/settings/tags`} className="underline underline-offset-2">
+                  Create tags
+                </Link>{' '}
+                to label monitors.
+              </FormDescription>
+            ) : (
+              <>
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                  <Select value={draftTag} onValueChange={setDraftTag}>
+                    <SelectTrigger
+                      className="w-full"
+                      aria-label="Tag to add"
+                      disabled={available.length === 0}
+                    >
+                      <SelectValue
+                        placeholder={available.length ? 'Choose a tag' : 'All tags added'}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {available.map((t) => (
+                        <SelectItem key={String(t.id)} value={String(t.id)}>
+                          <span
+                            className="size-2.5 rounded-full"
+                            style={{ backgroundColor: t.color }}
+                            aria-hidden
+                          />
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    aria-label="Tag value (optional)"
+                    placeholder="Value (optional)"
+                    value={draftValue}
+                    maxLength={200}
+                    onChange={(e) => setDraftValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        add()
+                      }
+                    }}
+                  />
+                  <Button type="button" variant="outline" onClick={add} disabled={!draftTag}>
+                    <Plus /> Add
+                  </Button>
+                </div>
+                <FormDescription>
+                  Shown in the monitor list and on status pages that enable tags.{' '}
+                  <Link href={`/${orgSlug}/settings/tags`} className="underline underline-offset-2">
+                    Manage tags
+                  </Link>
+                </FormDescription>
+              </>
+            )}
+            <FormMessage />
+          </FormItem>
+        )
+      }}
+    />
+  )
+}
+
+/** Select for an optional relationship (`None` + options), storing the original id type. */
+function RelationSelectField({
+  control,
+  name,
+  label,
+  description,
+  options,
+  noneLabel = 'None',
+}: {
+  control: FormControlType
+  name: Name
+  label: string
+  description?: React.ReactNode
+  options: { id: string | number; label: string }[]
+  /** `null` hides the "none" entry (required relationship). */
+  noneLabel?: string | null
+}) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => {
+        const empty = field.value === null || field.value === undefined
+        return (
+          <FormItem>
+            <FormLabel>{label}</FormLabel>
+            <Select
+              value={empty ? (noneLabel === null ? '' : NONE) : String(field.value)}
+              onValueChange={(value) => {
+                if (value === NONE) return field.onChange(null)
+                const match = options.find((o) => String(o.id) === value)
+                field.onChange(match ? match.id : value)
+              }}
+            >
+              <FormControl>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Choose…" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {noneLabel !== null && <SelectItem value={NONE}>{noneLabel}</SelectItem>}
+                {options.map((o) => (
+                  <SelectItem key={String(o.id)} value={String(o.id)}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {description && <FormDescription>{description}</FormDescription>}
+            <FormMessage />
+          </FormItem>
+        )
+      }}
+    />
+  )
+}
+
 // ---- Form ---------------------------------------------------------------------------------------
 
 /** Defaults applied when the type changes so the target section is not left half-filled. */
@@ -399,6 +591,7 @@ export function MonitorForm({
   initialValues,
   types,
   groups,
+  resources = EMPTY_RESOURCES,
 }: MonitorFormProps) {
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
@@ -659,6 +852,39 @@ export function MonitorForm({
               />
             )}
 
+            {type === 'docker' && (
+              <div className="grid gap-5 sm:grid-cols-2">
+                <RelationSelectField
+                  control={control}
+                  name="dockerHost"
+                  label="Docker host"
+                  noneLabel={null}
+                  options={resources.dockerHosts.map((h) => ({ id: h.id, label: h.name }))}
+                  description={
+                    resources.dockerHosts.length === 0 ? (
+                      <>
+                        No Docker hosts yet; an admin can add one in{' '}
+                        <Link
+                          href={`/${orgSlug}/settings/docker-hosts`}
+                          className="underline underline-offset-2"
+                        >
+                          settings
+                        </Link>
+                        .
+                      </>
+                    ) : undefined
+                  }
+                />
+                <TextField
+                  control={control}
+                  name="dockerContainer"
+                  label="Container name / id"
+                  placeholder="my-app"
+                  autoComplete="off"
+                />
+              </div>
+            )}
+
             {type === 'push' && (
               <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
                 A push URL is generated when the monitor is saved. Call it at least every interval;
@@ -714,13 +940,7 @@ export function MonitorForm({
               placeholder="Shown on the detail page and status pages."
             />
 
-            <FormItem>
-              <FormLabel className="text-muted-foreground">Tags</FormLabel>
-              <Input disabled placeholder="Tags arrive with the tags & proxies release" />
-              <FormDescription>
-                Tag monitors to filter the list and group status pages.
-              </FormDescription>
-            </FormItem>
+            <TagsField control={control} tags={resources.tags} orgSlug={orgSlug} />
           </CardContent>
         </Card>
 
@@ -840,6 +1060,32 @@ export function MonitorForm({
                 description="JSON object of extra request headers."
               />
               <StatusCodesField control={control} />
+              <RelationSelectField
+                control={control}
+                name="proxy"
+                label="Proxy"
+                noneLabel="No proxy (direct connection)"
+                options={resources.proxies.map((p) => ({
+                  id: p.id,
+                  label: `${p.label}${p.isDefault ? ' (default)' : ''}${p.active ? '' : ' (inactive)'}`,
+                }))}
+                description={
+                  resources.proxies.length === 0 ? (
+                    <>
+                      No proxies yet; an admin can add one in{' '}
+                      <Link
+                        href={`/${orgSlug}/settings/proxies`}
+                        className="underline underline-offset-2"
+                      >
+                        settings
+                      </Link>
+                      .
+                    </>
+                  ) : (
+                    'Send the request through an HTTP(s) or SOCKS proxy.'
+                  )
+                }
+              />
               <div className="grid gap-3 sm:grid-cols-2">
                 <SwitchField
                   control={control}

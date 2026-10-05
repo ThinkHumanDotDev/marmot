@@ -22,7 +22,7 @@ importers:
         version: 5.9.1(@standard-schema/spec@1.1.0)(ajv@8.18.0)(react-hook-form@7.89.0(@types/react@19.2.14)(react@19.2.6))(zod@4.6.5)
       '@payloadcms/db-mongodb':
         specifier: 3.90.2
-        version: 3.90.2(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))
+        version: 3.90.2(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))(socks@2.8.10)
       '@payloadcms/db-postgres':
         specifier: 3.90.2
         version: 3.90.2(@libsql/client@0.14.0)(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))
@@ -131,6 +131,9 @@ importers:
       socket.io-client:
         specifier: ^4.8.4
         version: 4.8.4
+      socks:
+        specifier: ^2.8.10
+        version: 2.8.10
       sonner:
         specifier: ^2.0.8
         version: 2.0.8(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -4369,6 +4372,10 @@ packages:
     resolution: {integrity: sha512-ehuGcf94bQXhfagULNXrJdfnWO38v070jxSx/qE87Kjzmu2fU7ro5EFAb+OPituLqgfyuQaym5DlrNydW2sJ9A==}
     engines: {node: '>=12.22.0'}
 
+  ip-address@10.7.3:
+    resolution: {integrity: sha512-A1kdq/tSb5QjvKvAMgIoEvDBIgL7qaqVP/jkvSwYYRZ9iEzvPpopxp2wQfu3SuZRHtpHNxMn8Fs0bS+gf5Xmwg==}
+    engines: {node: '>= 12'}
+
   ipaddr.js@2.2.0:
     resolution: {integrity: sha512-Ag3wB2o37wslZS19hZqorUnrnzSkpOVy+IiiDEiTqNubEYpYuHWIf6K4psgN2ZWKExS4xhVCrRVfb/wfW8fWJA==}
     engines: {node: '>= 10'}
@@ -5623,6 +5630,10 @@ packages:
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
+  smart-buffer@4.2.0:
+    resolution: {integrity: sha512-94hK0Hh8rPqQl2xXc3HsaBoOXKV20MToPkcXvwbISWLEs+64sBq5kFgn2kJDHb1Pry9yrP0dxrCI9RRci7RXKg==}
+    engines: {node: '>= 6.0.0', npm: '>= 3.0.0'}
+
   socket.io-adapter@2.5.8:
     resolution: {integrity: sha512-6Oy52pbg+kvdCVvjcN+FnY7BvxZ7cIHNScbvztT/It5d0vbwoJoVZmF2gjJmnV0/4WlXRfG15zc45ySk9Ah8bw==}
 
@@ -5637,6 +5648,10 @@ packages:
   socket.io@4.8.4:
     resolution: {integrity: sha512-9ZV9zg8vN8hO3Y25DhR7nUkJ1VDnBhq5O/JrXhFT9s6+F0gqytSASTHVfCFc2mJXaTfARroErplXlzFWwETZqQ==}
     engines: {node: '>=10.2.0'}
+
+  socks@2.8.10:
+    resolution: {integrity: sha512-e0VyvkVTwVYViNovRkZ9aodhxVlyoMn7eJhVUPxZ+eK9P/7CBkxvvsBOHqFPEH416726W8tLXXXjKwqgTErrCQ==}
+    engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
 
   sonic-boom@4.2.1:
     resolution: {integrity: sha512-w6AxtubXa2wTXAUsZMMWERrsIRAdrK0Sc+FUytWvYAhBJLyuI4llrMIC1DtlNSdI99EI86KZum2MMq3EAZlF9Q==}
@@ -7704,10 +7719,10 @@ snapshots:
 
   '@nolyfill/is-core-module@1.0.39': {}
 
-  '@payloadcms/db-mongodb@3.90.2(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))':
+  '@payloadcms/db-mongodb@3.90.2(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))(socks@2.8.10)':
     dependencies:
-      mongoose: 8.24.1
-      mongoose-paginate-v2: 1.9.4(mongoose@8.24.1)
+      mongoose: 8.24.1(socks@2.8.10)
+      mongoose-paginate-v2: 1.9.4(mongoose@8.24.1(socks@2.8.10))
       payload: 3.90.2(graphql@16.14.2)(typescript@5.7.3)
       prompts: 2.4.2
       uuid: 13.0.2
@@ -10701,6 +10716,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  ip-address@10.7.3: {}
+
   ipaddr.js@2.2.0: {}
 
   is-alphabetical@2.0.1: {}
@@ -11335,28 +11352,30 @@ snapshots:
       '@types/whatwg-url': 11.0.5
       whatwg-url: 14.2.0
 
-  mongodb@6.20.0:
+  mongodb@6.20.0(socks@2.8.10):
     dependencies:
       '@mongodb-js/saslprep': 1.5.5
       bson: 6.10.4
       mongodb-connection-string-url: 3.0.2
+    optionalDependencies:
+      socks: 2.8.10
 
-  mongoose-lean-virtuals@1.1.1(mongoose@8.24.1):
+  mongoose-lean-virtuals@1.1.1(mongoose@8.24.1(socks@2.8.10)):
     dependencies:
-      mongoose: 8.24.1
+      mongoose: 8.24.1(socks@2.8.10)
       mpath: 0.8.4
 
-  mongoose-paginate-v2@1.9.4(mongoose@8.24.1):
+  mongoose-paginate-v2@1.9.4(mongoose@8.24.1(socks@2.8.10)):
     dependencies:
-      mongoose-lean-virtuals: 1.1.1(mongoose@8.24.1)
+      mongoose-lean-virtuals: 1.1.1(mongoose@8.24.1(socks@2.8.10))
     transitivePeerDependencies:
       - mongoose
 
-  mongoose@8.24.1:
+  mongoose@8.24.1(socks@2.8.10):
     dependencies:
       bson: 6.10.4
       kareem: 2.6.3
-      mongodb: 6.20.0
+      mongodb: 6.20.0(socks@2.8.10)
       mpath: 0.9.0
       mquery: 5.0.0
       ms: 2.1.3
@@ -12221,6 +12240,8 @@ snapshots:
 
   sisteransi@1.0.5: {}
 
+  smart-buffer@4.2.0: {}
+
   socket.io-adapter@2.5.8:
     dependencies:
       debug: 4.4.3
@@ -12260,6 +12281,11 @@ snapshots:
       - bufferutil
       - supports-color
       - utf-8-validate
+
+  socks@2.8.10:
+    dependencies:
+      ip-address: 10.7.3
+      smart-buffer: 4.2.0
 
   sonic-boom@4.2.1:
     dependencies:

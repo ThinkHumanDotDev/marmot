@@ -10,7 +10,11 @@ import {
   type MonitorTypeName,
 } from '@/lib/validation/monitor'
 import { listMonitorTypes } from '@/server/monitor-types'
-import { getOrgGroups, getOrgPageContext } from '@/server/monitors/page-data'
+import {
+  getMonitorFormResources,
+  getOrgGroups,
+  getOrgPageContext,
+} from '@/server/monitors/page-data'
 
 export const metadata: Metadata = { title: 'New monitor' }
 export const dynamic = 'force-dynamic'
@@ -31,7 +35,13 @@ export default async function NewMonitorPage({ params, searchParams }: NewMonito
   )
     ? (type as MonitorTypeName)
     : 'http'
-  const groups = await getOrgGroups(ctx)
+  const [groups, resources] = await Promise.all([getOrgGroups(ctx), getMonitorFormResources(ctx)])
+  // Uptime Kuma preselects the default proxy for new monitors.
+  const defaultProxy = resources.proxies.find((p) => p.isDefault && p.active)
+  const initialValues = {
+    ...defaultMonitorValues(initialType),
+    proxy: defaultProxy ? defaultProxy.id : null,
+  }
   const types = listMonitorTypes().map(({ name, label }) => ({ name, label }))
 
   return (
@@ -50,9 +60,10 @@ export default async function NewMonitorPage({ params, searchParams }: NewMonito
           mode="create"
           orgId={ctx.org.id}
           orgSlug={orgSlug}
-          initialValues={defaultMonitorValues(initialType)}
+          initialValues={initialValues}
           types={types}
           groups={groups}
+          resources={resources}
         />
       </section>
     </>

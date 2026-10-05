@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 
+import { DockerHosts } from './DockerHosts'
 import { Heartbeats } from './Heartbeats'
 import { Incidents } from './Incidents'
 import { Invitations } from './Invitations'
@@ -7,10 +8,12 @@ import { Media } from './Media'
 import { Monitors } from './Monitors'
 import { Notifications } from './Notifications'
 import { Organizations } from './Organizations'
+import { Proxies } from './Proxies'
 import { StatDaily } from './StatDaily'
 import { StatHourly } from './StatHourly'
 import { StatMinutely } from './StatMinutely'
 import { StatusPages } from './StatusPages'
+import { Tags } from './Tags'
 import { Users } from './Users'
 
 /**
@@ -24,6 +27,9 @@ export const collections: CollectionConfig[] = [
   Media,
   Monitors,
   Notifications,
+  Tags,
+  Proxies,
+  DockerHosts,
   Heartbeats,
   StatMinutely,
   StatHourly,

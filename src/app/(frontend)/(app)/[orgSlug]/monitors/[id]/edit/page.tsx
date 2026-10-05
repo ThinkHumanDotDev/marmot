@@ -6,7 +6,12 @@ import { MonitorForm } from '@/components/monitors/monitor-form'
 import { PageHeader } from '@/components/page-header'
 import { monitorToFormValues } from '@/lib/validation/monitor'
 import { listMonitorTypes } from '@/server/monitor-types'
-import { getOrgGroups, getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
+import {
+  getMonitorFormResources,
+  getOrgGroups,
+  getOrgMonitor,
+  getOrgPageContext,
+} from '@/server/monitors/page-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +32,7 @@ export default async function EditMonitorPage({ params }: EditMonitorPageProps) 
   const monitor = await getOrgMonitor(ctx, id, 0)
   if (!ctx.allowed('monitor:update')) redirect(`/${orgSlug}/monitors/${monitor.id}`)
 
-  const groups = await getOrgGroups(ctx)
+  const [groups, resources] = await Promise.all([getOrgGroups(ctx), getMonitorFormResources(ctx)])
   const types = listMonitorTypes().map(({ name, label }) => ({ name, label }))
 
   return (
@@ -50,6 +55,7 @@ export default async function EditMonitorPage({ params }: EditMonitorPageProps) 
           initialValues={monitorToFormValues(monitor)}
           types={types}
           groups={groups}
+          resources={resources}
         />
       </section>
     </>

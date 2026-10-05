@@ -38,7 +38,8 @@ export function statusText(
 
 /** What the monitor watches: URL for HTTP types, host[:port] for network types, nothing otherwise. */
 export function monitorTarget(
-  monitor: Pick<Monitor, 'type' | 'url' | 'hostname' | 'port' | 'dnsResolveType'>,
+  monitor: Pick<Monitor, 'type' | 'url' | 'hostname' | 'port' | 'dnsResolveType'> &
+    Partial<Pick<Monitor, 'dockerContainer'>>,
 ): string | null {
   switch (monitor.type) {
     case 'http':
@@ -53,6 +54,8 @@ export function monitorTarget(
       return monitor.hostname
         ? `${monitor.hostname}${monitor.dnsResolveType ? ` (${monitor.dnsResolveType})` : ''}`
         : null
+    case 'docker':
+      return monitor.dockerContainer ?? null
     default:
       return null
   }
@@ -97,6 +100,7 @@ const TYPE_LABELS: Record<string, string> = {
   push: 'Push',
   group: 'Group',
   manual: 'Manual',
+  docker: 'Docker Container',
 }
 
 /** Display label of a monitor type (falls back to the raw slug for types added later). */

@@ -8,6 +8,7 @@ import './dns'
 import './push'
 import './group'
 import './manual'
+import './docker'
 
 export * from './registry'
 export * from './types'

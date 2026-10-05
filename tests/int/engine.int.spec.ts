@@ -179,7 +179,18 @@ describe('monitor type registry', () => {
       .map((t) => t.name)
       .sort()
     expect(names).toEqual(
-      ['dns', 'group', 'http', 'json-query', 'keyword', 'manual', 'ping', 'port', 'push'].sort(),
+      [
+        'dns',
+        'docker',
+        'group',
+        'http',
+        'json-query',
+        'keyword',
+        'manual',
+        'ping',
+        'port',
+        'push',
+      ].sort(),
     )
     expect(getMonitorType('http')?.label).toBe('HTTP(s)')
   })

@@ -1,12 +1,21 @@
 import { randomBytes } from 'node:crypto'
-import type { CollectionConfig, Field, Where } from 'payload'
+import {
+  ValidationError,
+  type CollectionBeforeChangeHook,
+  type CollectionConfig,
+  type CollectionSlug,
+  type Field,
+  type Where,
+} from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
 import { attachDefaultNotifications } from './Notifications'
 import { childLogger } from '@/lib/logger'
+import type { Monitor } from '@/payload-types'
 import { relationId } from '@/server/realtime/serialize'
 
 import { HEARTBEAT_STATUSES } from './Heartbeats'
+import { relId } from './shared'
 
 const log = childLogger('monitors')
 
@@ -24,6 +33,7 @@ export const MONITOR_TYPES = [
   { label: 'Push', value: 'push' },
   { label: 'Group', value: 'group' },
   { label: 'Manual', value: 'manual' },
+  { label: 'Docker Container', value: 'docker' },
 ] as const
 
 export const HTTP_TYPES = ['http', 'keyword', 'json-query']
@@ -65,6 +75,70 @@ const statusGroup: Field = {
   ],
 }
 
+/** Restrict a relationship picker to documents of the monitor's organization. */
+const sameOrganization = ({ data }: { data?: { organization?: unknown } }): Where | boolean =>
+  data?.organization ? { organization: { equals: relId(data.organization) } } : true
+
+/**
+ * Tags, the proxy and the Docker host must belong to the monitor's organization. `filterOptions`
+ * only guards the admin UI; this hook guards every API so a member cannot attach another
+ * organization's proxy (and its credentials) or Docker host to their monitor.
+ */
+const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
+  data,
+  originalDoc,
+  req,
+}) => {
+  const organization = relId(data.organization ?? originalDoc?.organization)
+  const checks: { collection: CollectionSlug; ids: (string | number)[]; path: string }[] = []
+
+  if (Array.isArray(data.tags)) {
+    const ids = data.tags.map((row) => relId(row?.tag)).filter((id) => id !== null)
+    const unique = [...new Set(ids.map(String))]
+    if (unique.length !== ids.length) {
+      throw new ValidationError({
+        collection: 'monitors',
+        errors: [{ message: 'Each tag may only be added once.', path: 'tags' }],
+      })
+    }
+    if (ids.length > 0) checks.push({ collection: 'tags', ids, path: 'tags' })
+  }
+  const proxy = relId(data.proxy)
+  if (proxy !== null) checks.push({ collection: 'proxies', ids: [proxy], path: 'proxy' })
+  const dockerHost = relId(data.dockerHost)
+  if (dockerHost !== null) {
+    checks.push({ collection: 'docker-hosts', ids: [dockerHost], path: 'dockerHost' })
+  }
+
+  for (const check of checks) {
+    const { docs } = await req.payload.find({
+      collection: check.collection,
+      where: { id: { in: check.ids } },
+      select: { organization: true },
+      depth: 0,
+      limit: check.ids.length,
+      pagination: false,
+      req,
+      overrideAccess: true,
+    })
+    const ok =
+      docs.length === check.ids.length &&
+      docs.every(
+        (doc) =>
+          String(relId((doc as { organization?: unknown }).organization)) === String(organization),
+      )
+    if (!ok) {
+      throw new ValidationError({
+        collection: 'monitors',
+        errors: [
+          { message: 'Must belong to the same organization as the monitor.', path: check.path },
+        ],
+      })
+    }
+  }
+  return data
+}
+
 export const Monitors: CollectionConfig = {
   slug: 'monitors',
   admin: {
@@ -91,6 +165,7 @@ export const Monitors: CollectionConfig = {
       },
       // New monitors without explicit channels get the organization's default channels.
       attachDefaultNotifications,
+      validateOrgReferences,
     ],
     afterChange: [
       async ({ doc, req }) => {
@@ -108,7 +183,9 @@ export const Monitors: CollectionConfig = {
           const organizationId = relationId(doc.organization)
           if (organizationId) {
             const { emitMonitorUpdated } = await import('@/server/realtime/emitter')
-            emitMonitorUpdated(organizationId, doc)
+            const { populateMonitorTags } = await import('@/server/realtime/serialize')
+            const [withTags] = await populateMonitorTags(req.payload, [doc as Monitor])
+            emitMonitorUpdated(organizationId, withTags)
           }
         } catch (err) {
           log.warn({ err, monitorId: doc.id }, 'failed to sync monitor schedule')
@@ -199,6 +276,26 @@ export const Monitors: CollectionConfig = {
     },
     { name: 'description', type: 'textarea' },
     {
+      name: 'tags',
+      type: 'array',
+      admin: { description: 'Tags (optionally with a value, e.g. env: prod) shown as chips.' },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'tag',
+              type: 'relationship',
+              relationTo: 'tags',
+              required: true,
+              filterOptions: sameOrganization,
+            },
+            { name: 'value', type: 'text', maxLength: 200 },
+          ],
+        },
+      ],
+    },
+    {
       name: 'notifications',
       type: 'relationship',
       relationTo: 'notifications',
@@ -222,6 +319,34 @@ export const Monitors: CollectionConfig = {
       name: 'url',
       type: 'text',
       admin: { condition: (data) => isHttpType(data), placeholder: 'https://' },
+    },
+    {
+      name: 'proxy',
+      type: 'relationship',
+      relationTo: 'proxies',
+      filterOptions: sameOrganization,
+      admin: {
+        condition: (data) => isHttpType(data),
+        description: 'Send the request through this proxy (inactive proxies are skipped).',
+      },
+    },
+    {
+      type: 'row',
+      admin: { condition: (data) => data?.type === 'docker' },
+      fields: [
+        {
+          name: 'dockerHost',
+          type: 'relationship',
+          relationTo: 'docker-hosts',
+          filterOptions: sameOrganization,
+        },
+        {
+          name: 'dockerContainer',
+          type: 'text',
+          maxLength: 255,
+          admin: { description: 'Container name or id.' },
+        },
+      ],
     },
     {
       type: 'row',

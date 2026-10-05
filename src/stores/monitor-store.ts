@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 
+import type { MonitorTagChip } from '@/lib/monitor-resources'
 import { RingBuffer } from '@/lib/ring-buffer'
 
 /**
@@ -40,7 +41,7 @@ export interface MonitorSummary {
   interval: number
   url?: string | null
   hostname?: string | null
-  tags?: { name: string; color?: string | null; value?: string | null }[]
+  tags?: MonitorTagChip[]
   organization?: string | number | null
 }
 
