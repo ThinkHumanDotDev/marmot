@@ -13,7 +13,6 @@ import { attachDefaultNotifications } from './Notifications'
 import { childLogger } from '@/lib/logger'
 import type { Monitor } from '@/payload-types'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
-import { relationId } from '@/server/realtime/serialize'
 
 import { HEARTBEAT_STATUSES } from './Heartbeats'
 import { relId } from './shared'
@@ -174,22 +173,12 @@ export const Monitors: CollectionConfig = {
       async ({ doc, req }) => {
         if (req.context?.skipEngineSync) return doc
         try {
-          const { syncMonitor, removeMonitorSchedule, engineHooksEnabled } =
+          const { syncMonitorAfterCommit, engineHooksEnabled } =
             await import('@/server/engine/scheduler')
           if (!engineHooksEnabled()) return doc
-          if (doc.active) {
-            await syncMonitor(doc)
-          } else {
-            await removeMonitorSchedule(doc.id)
-          }
-          // Live dashboards: `updateMonitorIntoList` delta to the organization room.
-          const organizationId = relationId(doc.organization)
-          if (organizationId) {
-            const { emitMonitorUpdated } = await import('@/server/realtime/emitter')
-            const { populateMonitorTags } = await import('@/server/realtime/serialize')
-            const [withTags] = await populateMonitorTags(req.payload, [doc as Monitor])
-            emitMonitorUpdated(organizationId, withTags)
-          }
+          // Deferred until the transaction commits: the worker must be able to read the monitor
+          // when the scheduler fires its first job (see `syncMonitorAfterCommit`).
+          await syncMonitorAfterCommit(req, doc)
         } catch (err) {
           log.warn({ err, monitorId: doc.id }, 'failed to sync monitor schedule')
         }
@@ -219,17 +208,12 @@ export const Monitors: CollectionConfig = {
       },
     ],
     afterDelete: [
-      async ({ doc }) => {
+      async ({ doc, req }) => {
         try {
-          const { removeMonitorSchedule, engineHooksEnabled } =
+          const { removeMonitorAfterCommit, engineHooksEnabled } =
             await import('@/server/engine/scheduler')
           if (!engineHooksEnabled()) return doc
-          await removeMonitorSchedule(doc.id)
-          const organizationId = relationId(doc.organization)
-          if (organizationId) {
-            const { emitMonitorDeleted } = await import('@/server/realtime/emitter')
-            emitMonitorDeleted(organizationId, doc.id)
-          }
+          await removeMonitorAfterCommit(req, doc)
         } catch (err) {
           log.warn({ err, monitorId: doc.id }, 'failed to remove monitor schedule')
         }

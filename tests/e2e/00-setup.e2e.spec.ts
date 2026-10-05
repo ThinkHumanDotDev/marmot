@@ -1,27 +1,15 @@
-import { expect, test } from '@playwright/test'
-
-import { deleteAllUsers } from '../helpers/resetUsers'
+import { ADMIN, ADMIN_STATE, ANONYMOUS, expect, resetDatabase, SETUP_ORG, test } from './fixtures'
 
 /**
- * First-run wizard. Needs a server whose process has never seen a user (the status check caches
- * "setup complete"), which CI guarantees by booting `pnpm start` on a freshly migrated database.
- * The file is named `00-…` so Playwright (alphabetical order, one worker) runs it before the admin
- * spec seeds its superadmin.
+ * First-run wizard (the `setup` project; every other spec depends on it). Resets the database so
+ * the instance needs setup again, creates the superadmin and the first organization through the
+ * wizard and stores the signed-in session for the other specs.
  */
+test.use({ storageState: ANONYMOUS })
+
 test.describe('First-run setup', () => {
-  test.skip(!process.env.CI, 'requires a fresh database and server; runs in CI only')
-
-  const run = Date.now().toString(36)
-  const admin = {
-    name: 'Ada Lovelace',
-    email: `ada+${run}@marmot.local`,
-    password: 'correct-horse-battery',
-  }
-  const orgName = `Analytical Engines ${run}`
-  const orgSlug = `analytical-engines-${run}`
-
-  test.beforeAll(async () => {
-    await deleteAllUsers()
+  test.beforeAll(() => {
+    resetDatabase()
   })
 
   test('redirects a fresh instance to /setup and creates the admin and organization', async ({
@@ -38,16 +26,19 @@ test.describe('First-run setup', () => {
     await page.goto('/login')
     await expect(page).toHaveURL(/\/setup$/)
 
-    await page.getByLabel('Name', { exact: true }).fill(admin.name)
-    await page.getByLabel('Email').fill(admin.email)
-    await page.getByLabel('Password').fill(admin.password)
-    await page.getByLabel('Organization name').fill(orgName)
+    await page.getByLabel('Name', { exact: true }).fill(ADMIN.name)
+    await page.getByLabel('Email').fill(ADMIN.email)
+    await page.getByLabel('Password').fill(ADMIN.password)
+    await page.getByLabel('Organization name').fill(SETUP_ORG.name)
     // The slug is derived from the name until edited by hand.
-    await expect(page.getByLabel('URL slug')).toHaveValue(orgSlug)
+    await expect(page.getByLabel('URL slug')).toHaveValue(SETUP_ORG.slug)
     await page.getByRole('button', { name: /create admin account/i }).click()
 
-    await expect(page).toHaveURL(new RegExp(`/${orgSlug}/monitors$`))
+    await expect(page).toHaveURL(new RegExp(`/${SETUP_ORG.slug}/monitors$`))
     await expect(page.getByRole('heading', { level: 1, name: 'Monitors' })).toBeVisible()
+
+    // The wizard signed the admin in: keep that session for the other specs.
+    await page.context().storageState({ path: ADMIN_STATE })
 
     // Setup is now closed: the status flips and the wizard is gone.
     expect(await (await request.get('/api/setup/status')).json()).toEqual({ needsSetup: false })
@@ -57,10 +48,10 @@ test.describe('First-run setup', () => {
 
     const again = await request.post('/api/setup', {
       data: {
-        ...admin,
-        email: `again+${run}@marmot.local`,
-        organizationName: orgName,
-        organizationSlug: `${orgSlug}-2`,
+        ...ADMIN,
+        email: 'again@marmot.test',
+        organizationName: SETUP_ORG.name,
+        organizationSlug: `${SETUP_ORG.slug}-2`,
       },
     })
     expect(again.status()).toBe(409)

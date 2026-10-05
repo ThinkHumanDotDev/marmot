@@ -1,7 +1,7 @@
 import type { Access, Where } from 'payload'
 
+import { getRequestOverrides } from './overrides'
 import {
-  can,
   getOrgIdsWithPermission,
   isSuperadmin,
   type OrgId,
@@ -38,23 +38,27 @@ const extractId = (value: unknown): OrgId | null => {
  * - otherwise → `{ [field]: { in: <org ids where the role satisfies the permission> } }`,
  *   or `false` when there are none
  *
+ * The minimum role comes from `PERMISSIONS` adjusted by each organization's
+ * `permissionOverrides`, loaded once per request (`src/access/overrides.ts`).
+ *
  * The organization field of every org-scoped collection must be `required`, otherwise a create
  * without an organization would only be caught by validation.
  */
 export function orgScoped(permission: Permission, options: OrgScopedOptions = {}): Access {
   const field = options.field ?? 'organization'
 
-  return ({ req, data }) => {
+  return async ({ req, data }) => {
     const user = req.user as UserLike | null | undefined
     if (!user) return false
     if (isSuperadmin(user)) return true
 
-    const orgIds = getOrgIdsWithPermission(user, permission)
+    const overrides = await getRequestOverrides(req, user)
+    const orgIds = getOrgIdsWithPermission(user, permission, overrides)
     if (orgIds.length === 0) return false
 
     if (data && typeof data === 'object' && field in data && data[field] != null) {
       const target = extractId(data[field])
-      if (target === null || !can(user, target, permission)) return false
+      if (target === null || !orgIds.some((id) => String(id) === String(target))) return false
     }
 
     const where: Where = { [field]: { in: orgIds } }

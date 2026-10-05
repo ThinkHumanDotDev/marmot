@@ -144,9 +144,13 @@ These are read by `docker/entrypoint.sh`, `docker/docker-compose.yml` or the Cad
 
 ## Instance settings
 
-Some options can be changed at runtime by a superadmin in the Payload admin panel (**System → Instance
-settings**, the `instance-settings` global) without redeploying. Environment variables provide the defaults;
-once a value has been saved in the global it takes precedence over the variable.
+Some options can be changed at runtime by a superadmin without redeploying: in the Marmot UI under
+**Settings → Instance** (`/{orgSlug}/settings/instance`, visible to superadmins only, saved through
+`POST /api/globals/instance-settings`) or in the Payload admin panel (**System → Instance settings**, the
+`instance-settings` global). Environment variables provide the defaults; once a value has been saved in the
+global it takes precedence over the variable. The Instance tab also shows whether SMTP is configured and
+offers **Send test email** (`POST /api/instance/smtp-test { to? }`, superadmin-only; answers `400` while
+`SMTP_HOST` is unset).
 
 | Setting                             | Default                  | Description                                                                      |
 | ----------------------------------- | ------------------------ | -------------------------------------------------------------------------------- |

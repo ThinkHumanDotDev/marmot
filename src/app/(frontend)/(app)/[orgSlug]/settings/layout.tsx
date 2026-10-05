@@ -21,9 +21,10 @@ async function canSeeBilling(orgSlug: string): Promise<boolean> {
   return org ? can(user, org.id, 'organization:update') : false
 }
 
-/** Settings frame: header + tab strip (Account · Organization · Members · Tags · Proxies · Docker hosts · Import / Export · Billing). */
+/** Settings frame: header + tab strip (Account · Organization · Members · Tags · Proxies · Docker hosts · …). */
 export default async function SettingsLayout({ children, params }: SettingsLayoutProps) {
   const { orgSlug } = await params
+  const user = await getCurrentUser()
   const showBilling = await canSeeBilling(orgSlug)
   return (
     <>
@@ -33,7 +34,11 @@ export default async function SettingsLayout({ children, params }: SettingsLayou
         className="border-b-0 pb-2"
       />
       <div className="border-b px-4 sm:px-6 md:px-8">
-        <SettingsTabs orgSlug={orgSlug} showBilling={showBilling} />
+        <SettingsTabs
+          orgSlug={orgSlug}
+          showBilling={showBilling}
+          superadmin={user?.superadmin === true}
+        />
       </div>
       <section className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-4 sm:p-6 md:p-8">
         {children}

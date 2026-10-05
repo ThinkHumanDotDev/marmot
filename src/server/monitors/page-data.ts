@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { getPayload, type Payload } from 'payload'
 
 import config from '@payload-config'
-import { can, type Permission } from '@/access/permissions'
+import { canWithOverrides, type Permission } from '@/access/permissions'
 import { requireUser, type CurrentUser } from '@/lib/auth'
 import type { Monitor, Organization } from '@/payload-types'
 import { parseId, relationId, type RequestUser } from '@/server/monitors/http'
@@ -15,7 +15,7 @@ export interface OrgPageContext {
   user: CurrentUser
   requestUser: RequestUser
   org: Organization
-  /** `can(user, org.id, permission)` */
+  /** `canWithOverrides(user, org, permission)` */
   allowed: (permission: Permission) => boolean
 }
 
@@ -34,7 +34,7 @@ export async function getOrgPageContext(orgSlug: string, next: string): Promise<
     user,
     requestUser,
     org,
-    allowed: (permission) => can(user, org.id, permission),
+    allowed: (permission) => canWithOverrides(user, org, permission),
   }
 }
 

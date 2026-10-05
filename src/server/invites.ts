@@ -1,6 +1,7 @@
 import { APIError, type Payload, type PayloadRequest } from 'payload'
 
 import { addOrgMembership } from '@/access/memberships'
+import { canInOrg } from '@/access/overrides'
 import {
   can,
   canManageRole,
@@ -146,7 +147,7 @@ export async function regenerateInviteLink({
   role?: unknown
   req?: PayloadRequest
 }): Promise<{ url: string; role: Role }> {
-  if (!can(actor, orgId, 'member:invite')) {
+  if (!(await canInOrg(payload, actor, orgId, 'member:invite'))) {
     throw new APIError('You cannot manage invite links in this organization.', 403)
   }
   const nextRole = role === undefined ? undefined : isRole(role) ? role : null
@@ -183,7 +184,7 @@ export async function disableInviteLink({
   orgId: OrgId
   req?: PayloadRequest
 }): Promise<void> {
-  if (!can(actor, orgId, 'member:invite')) {
+  if (!(await canInOrg(payload, actor, orgId, 'member:invite'))) {
     throw new APIError('You cannot manage invite links in this organization.', 403)
   }
   await payload.update({
