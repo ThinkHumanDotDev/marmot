@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import type { CollectionConfig, Field, Where } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
+import { attachDefaultNotifications } from './Notifications'
 import { childLogger } from '@/lib/logger'
 import { relationId } from '@/server/realtime/serialize'
 
@@ -88,6 +89,8 @@ export const Monitors: CollectionConfig = {
         }
         return data
       },
+      // New monitors without explicit channels get the organization's default channels.
+      attachDefaultNotifications,
     ],
     afterChange: [
       async ({ doc, req }) => {
@@ -195,6 +198,18 @@ export const Monitors: CollectionConfig = {
       admin: { position: 'sidebar', description: 'Group this monitor belongs to.' },
     },
     { name: 'description', type: 'textarea' },
+    {
+      name: 'notifications',
+      type: 'relationship',
+      relationTo: 'notifications',
+      hasMany: true,
+      filterOptions: ({ data }): Where | boolean =>
+        data?.organization ? { organization: { equals: data.organization } } : true,
+      admin: {
+        position: 'sidebar',
+        description: 'Channels alerted when this monitor changes status.',
+      },
+    },
     {
       name: 'weight',
       type: 'number',

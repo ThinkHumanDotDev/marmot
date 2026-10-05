@@ -72,6 +72,7 @@ export interface Config {
     invitations: Invitation;
     media: Media;
     monitors: Monitor;
+    notifications: Notification;
     heartbeats: Heartbeat;
     'stat-minutely': StatMinutely;
     'stat-hourly': StatHourly;
@@ -88,6 +89,7 @@ export interface Config {
     invitations: InvitationsSelect<false> | InvitationsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     monitors: MonitorsSelect<false> | MonitorsSelect<true>;
+    notifications: NotificationsSelect<false> | NotificationsSelect<true>;
     heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
     'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
     'stat-hourly': StatHourlySelect<false> | StatHourlySelect<true>;
@@ -274,6 +276,10 @@ export interface Monitor {
   parent?: (number | null) | Monitor;
   description?: string | null;
   /**
+   * Channels alerted when this monitor changes status.
+   */
+  notifications?: (number | Notification)[] | null;
+  /**
    * Sort order on status pages.
    */
   weight?: number | null;
@@ -374,6 +380,53 @@ export interface Monitor {
      */
     lastPushAt?: string | null;
   };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notifications".
+ */
+export interface Notification {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  /**
+   * Provider slug, e.g. discord, slack, smtp (see docs/notifications.md).
+   */
+  type: string;
+  /**
+   * Provider-specific settings; validated against the provider schema.
+   */
+  config:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Attach this channel to every new monitor of the organization.
+   */
+  isDefault?: boolean | null;
+  /**
+   * On save, also attach this channel to all existing monitors.
+   */
+  applyExisting?: boolean | null;
+  /**
+   * Inactive channels are never sent to.
+   */
+  active?: boolean | null;
+  /**
+   * Maintained by the worker.
+   */
+  lastSentAt?: string | null;
+  /**
+   * Last delivery error; cleared on the next success.
+   */
+  lastError?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -556,6 +609,10 @@ export interface PayloadLockedDocument {
         value: number | Monitor;
       } | null)
     | ({
+        relationTo: 'notifications';
+        value: number | Notification;
+      } | null)
+    | ({
         relationTo: 'heartbeats';
         value: number | Heartbeat;
       } | null)
@@ -713,6 +770,7 @@ export interface MonitorsSelect<T extends boolean = true> {
   active?: T;
   parent?: T;
   description?: T;
+  notifications?: T;
   weight?: T;
   url?: T;
   hostname?: T;
@@ -765,6 +823,23 @@ export interface MonitorsSelect<T extends boolean = true> {
         downCount?: T;
         lastPushAt?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notifications_select".
+ */
+export interface NotificationsSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  type?: T;
+  config?: T;
+  isDefault?: T;
+  applyExisting?: T;
+  active?: T;
+  lastSentAt?: T;
+  lastError?: T;
   updatedAt?: T;
   createdAt?: T;
 }
