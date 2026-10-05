@@ -12,6 +12,7 @@ test-results
 playwright-report
 coverage
 tests
+playwright.config.ts
 docs
 docker/*.yml
 docker/.env*

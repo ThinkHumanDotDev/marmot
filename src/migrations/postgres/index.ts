@@ -9,7 +9,8 @@ import * as migration_20261005_042854_monitors_org_scoped from './20261005_04285
 import * as migration_20261005_045549_notifications from './20261005_045549_notifications';
 import * as migration_20261005_051201_status_pages from './20261005_051201_status_pages';
 import * as migration_20261005_133533_billing from './20261005_133533_billing';
-import * as migration_20261005_224154_cert_domain_expiry from './20261005_224154_cert_domain_expiry';
+import * as migration_20261005_222624_settings_2fa_permissions from './20261005_222624_settings_2fa_permissions';
+import * as migration_20261005_231708_cert_domain_expiry from './20261005_231708_cert_domain_expiry';
 
 export const migrations = [
   {
@@ -68,8 +69,13 @@ export const migrations = [
     name: '20261005_133533_billing',
   },
   {
-    up: migration_20261005_224154_cert_domain_expiry.up,
-    down: migration_20261005_224154_cert_domain_expiry.down,
-    name: '20261005_224154_cert_domain_expiry'
+    up: migration_20261005_222624_settings_2fa_permissions.up,
+    down: migration_20261005_222624_settings_2fa_permissions.down,
+    name: '20261005_222624_settings_2fa_permissions',
+  },
+  {
+    up: migration_20261005_231708_cert_domain_expiry.up,
+    down: migration_20261005_231708_cert_domain_expiry.down,
+    name: '20261005_231708_cert_domain_expiry'
   },
 ];

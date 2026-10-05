@@ -19,7 +19,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   const auth = await authenticate(payload, request)
   if (auth.response) return auth.response
-  const forbidden = authorize(auth.user, orgId, 'organization:update')
+  const forbidden = await authorize(payload, auth.user, orgId, 'organization:update')
   if (forbidden) return forbidden
 
   try {

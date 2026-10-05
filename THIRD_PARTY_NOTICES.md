@@ -84,6 +84,9 @@ attribution comment and are listed here:
   `sendCertNotificationByTargetDays` / `updateTlsInfo` (`server/model/monitor.js`)
 - `src/server/jobs/domain-expiry.ts`, `src/server/jobs/expiry-history.ts` — `server/model/domain_expiry.js`
   and the `notification_sent_history` table
+- `src/auth/two-factor/totp.ts`, `src/auth/two-factor/handlers.ts` — two-factor login flow (`login`,
+  `prepare2FA`, `save2FA`, `disable2FA`, `verifyToken` handlers in `server/server.js`: one-step TOTP
+  window and last-token replay check)
 - `src/server/import-export/uptime-kuma.ts`, `src/server/import-export/kuma-notifications.ts` — backup
   JSON format and import semantics of the `uploadBackup` handler (`server/server.js`,
   `src/components/settings/Backup.vue` in Uptime Kuma 1.23), monitor field names from
