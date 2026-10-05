@@ -6,7 +6,7 @@
 import { registerHeartbeatListener } from '@/server/engine/hooks'
 import { childLogger } from '@/lib/logger'
 import { getStats } from '@/server/stats/uptime-calculator'
-import { emitAvgPing, emitHeartbeat, emitUptime } from './emitter'
+import { emitAvgPing, emitCertInfo, emitHeartbeat, emitUptime } from './emitter'
 import { toRealtimeHeartbeat } from './serialize'
 
 const log = childLogger('realtime:listener')
@@ -19,6 +19,7 @@ export function registerRealtimeListener(): () => void {
     const monitorId = event.monitor.id
 
     emitHeartbeat(organizationId, { monitorId, heartbeat: toRealtimeHeartbeat(event.heartbeat) })
+    if (event.tlsInfo) emitCertInfo(organizationId, monitorId, event.tlsInfo)
 
     try {
       const stats = await getStats(event.payload, monitorId, '24h')

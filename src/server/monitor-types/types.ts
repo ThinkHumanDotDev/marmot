@@ -5,6 +5,7 @@
 import type { Payload } from 'payload'
 
 import type { Monitor } from '@/payload-types'
+import type { TlsInfo } from '@/server/engine/tls'
 
 export type HeartbeatStatus = 'up' | 'down' | 'pending' | 'maintenance'
 
@@ -22,6 +23,11 @@ export interface MonitorCheckContext {
   signal: AbortSignal
   /** Payload Local API for types that need other documents (groups, push). */
   payload: Payload
+  /**
+   * TLS certificate seen during the check, set by types that talk TLS (`performHttpCheck`).
+   * The worker stores it in `monitors.certInfo` and feeds the expiry notifications.
+   */
+  tlsInfo?: TlsInfo | null
 }
 
 export interface MonitorType {

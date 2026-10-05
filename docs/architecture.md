@@ -75,6 +75,34 @@ attempts with exponential backoff); the notification worker renders `[name] [ðŸ”
 provider's `send()` and records the outcome on the channel. Providers self-register in
 `src/server/notification-providers/`; see `docs/notifications.md`.
 
+### Certificate and domain expiry
+
+HTTPS checks go through a per-check undici agent whose connector records the peer certificate of every TLS
+socket it opens (`src/server/monitor-types/http-request.ts` â†’ `captureFromSocket` in
+`src/server/engine/tls.ts`: issuer, subject, validity window, `daysRemaining`, SHA-256 fingerprint, SANs and
+the chain up to the root, plus `valid` = `socket.authorized`). When the handshake itself is rejected
+(expired, self-signed, hostname mismatch) the certificate is fetched again without verification so it can
+still be shown. The worker stores the result in `monitors.certInfo`, publishes it as the realtime
+`certInfo` event and hands it to the heartbeat listeners as `event.tlsInfo` / `event.certChanged`.
+
+`registerExpiryNotificationListener()` (`src/server/jobs/expiry-notifications.ts`) runs after every beat:
+
+- **Certificates** (`monitors.expiryNotification`, ignored with `ignoreTls`): for each threshold in the
+  instance setting `tlsExpiryNotifyDays` (default 7, 14, 21, ascending) every certificate of the chain with
+  `daysRemaining <= threshold` sends `[name][url] <type> certificate <CN> will expire in N days` through the
+  monitor's active channels (`sendNotification`, no queue). Certificates of the system trust store are
+  skipped.
+- **Domains** (`monitors.domainExpiryNotification`): the registrable domain of the URL/hostname is looked up
+  through RDAP (`https://rdap.org/domain/<domain>`, retrying with one label less on 404), cached in
+  `monitors.domainExpiry` (`expiresAt`, `checkedAt`, `error`) and refreshed at most daily (hourly after a
+  failure). Thresholds come from `domainExpiryNotifyDays`; the message is
+  `[name][target] Domain name <domain> will expire in N days`.
+
+Delivered warnings are recorded in `notification-sent-history` (`type`, `monitor`, `days`, `organization`,
+compound unique index), looked up as `days <= threshold` so a certificate already inside several thresholds
+produces one message. The certificate history is cleared when a different leaf certificate appears, the domain
+history when the expiry date moves later (renewal); both go with the monitor when it is deleted.
+
 ## Maintenance windows
 
 `maintenance` documents (org-scoped) describe when a set of monitors is deliberately offline: `title`,
