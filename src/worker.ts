@@ -9,6 +9,8 @@ import config from '@payload-config'
 import { childLogger } from '@/lib/logger'
 import { closeChecksQueue, resyncAll, startCheckWorker } from '@/server/engine'
 import { listMonitorTypes } from '@/server/monitor-types'
+import { closeEmitter } from '@/server/realtime/emitter'
+import { registerRealtimeListener } from '@/server/realtime/listener'
 import { registerStatsListener } from '@/server/stats'
 
 const log = childLogger('worker')
@@ -45,6 +47,9 @@ async function main() {
   } catch (error) {
     log.error({ err: error }, 'failed to register the stats heartbeat listener')
   }
+  // Realtime: publishes each heartbeat (+ refreshed 24h uptime/avgPing) to the org's socket room.
+  // Registered after the stats listener so the figures already include the new beat.
+  registerRealtimeListener()
 
   // In a composed deployment the web container runs migrations while the worker is already
   // booting, so the schema may not exist yet. Wait for it instead of crash-looping.
@@ -65,6 +70,7 @@ async function main() {
       try {
         await checkWorker.close()
         await closeChecksQueue()
+        await closeEmitter()
         await payload.db.destroy?.()
       } catch (err) {
         log.error({ err }, 'error during shutdown')
