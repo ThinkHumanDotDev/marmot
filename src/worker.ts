@@ -6,7 +6,9 @@ import 'dotenv/config'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
+import pkg from '../package.json' with { type: 'json' }
 import { childLogger } from '@/lib/logger'
+import { captureServerEvent, shutdownServerAnalytics } from '@/server/analytics'
 import {
   closeChecksQueue,
   resyncAll,
@@ -55,6 +57,13 @@ async function main() {
     { adapter: payload.db.name, monitorTypes: listMonitorTypes().map((t) => t.name) },
     'worker booted',
   )
+  // Opt-in telemetry (docs/telemetry.md): one aggregate event per worker boot, no identifiers.
+  captureServerEvent('instance_started', {
+    version: pkg.version,
+    adapter: payload.db.name,
+    role: 'worker',
+    node: process.versions.node,
+  })
 
   // Time-series aggregation: records every heartbeat into stat-minutely/hourly/daily.
   try {
@@ -99,6 +108,7 @@ async function main() {
         ])
         await Promise.all([closeChecksQueue(), closeNotificationsQueue(), closeMaintenanceQueue()])
         await closeEmitter()
+        await shutdownServerAnalytics()
         await payload.db.destroy?.()
       } catch (err) {
         log.error({ err }, 'error during shutdown')

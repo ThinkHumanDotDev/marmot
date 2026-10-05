@@ -38,7 +38,7 @@ export default async function NewMaintenancePage({ params }: NewMaintenancePageP
         title="Schedule maintenance"
         description="Affected monitors stop alerting while the window runs."
       />
-      <section className="p-6 md:p-8">
+      <section className="p-4 sm:p-6 md:p-8">
         <MaintenanceForm
           mode="create"
           orgId={ctx.org.id}

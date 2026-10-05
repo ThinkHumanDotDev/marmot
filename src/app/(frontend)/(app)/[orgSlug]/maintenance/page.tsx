@@ -40,7 +40,7 @@ export default async function MaintenancePage({ params }: MaintenancePageProps) 
           ) : undefined
         }
       />
-      <section className="p-6 md:p-8">
+      <section className="p-4 sm:p-6 md:p-8">
         <MaintenanceList
           orgId={ctx.org.id}
           orgSlug={orgSlug}

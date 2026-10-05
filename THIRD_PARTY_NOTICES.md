@@ -85,6 +85,11 @@ attribution comment and are listed here:
 - `src/server/maintenance/status-page.ts` — `StatusPage.getMaintenanceList` from `server/model/status_page.js`
 - `src/lib/validation/maintenance.ts`, `src/components/maintenance/maintenance-form.tsx` — form semantics
   and defaults of `src/pages/EditMaintenance.vue`
+- `src/server/import-export/uptime-kuma.ts`, `src/server/import-export/kuma-notifications.ts` — backup
+  JSON format and import semantics of the `uploadBackup` handler (`server/server.js`,
+  `src/components/settings/Backup.vue` in Uptime Kuma 1.23), monitor field names from
+  `Monitor.toJSON()` (`server/model/monitor.js`) and notification config keys from
+  `server/notification-providers/*.js`
 
 The MIT license text is reproduced below.
 

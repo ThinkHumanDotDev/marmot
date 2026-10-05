@@ -49,7 +49,7 @@ export default async function EditMaintenancePage({ params }: EditMaintenancePag
         title="Edit maintenance"
         description="Changes apply immediately; the next check of each affected monitor honours them."
       />
-      <section className="p-6 md:p-8">
+      <section className="p-4 sm:p-6 md:p-8">
         <MaintenanceForm
           mode="edit"
           orgId={ctx.org.id}

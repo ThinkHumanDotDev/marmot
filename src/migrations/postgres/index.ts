@@ -8,7 +8,8 @@ import * as migration_20261005_033951_add_invite_link from './20261005_033951_ad
 import * as migration_20261005_042854_monitors_org_scoped from './20261005_042854_monitors_org_scoped';
 import * as migration_20261005_045549_notifications from './20261005_045549_notifications';
 import * as migration_20261005_051201_status_pages from './20261005_051201_status_pages';
-import * as migration_20261005_133606_maintenance from './20261005_133606_maintenance';
+import * as migration_20261005_133533_billing from './20261005_133533_billing';
+import * as migration_20261005_224350_maintenance from './20261005_224350_maintenance';
 
 export const migrations = [
   {
@@ -62,8 +63,13 @@ export const migrations = [
     name: '20261005_051201_status_pages',
   },
   {
-    up: migration_20261005_133606_maintenance.up,
-    down: migration_20261005_133606_maintenance.down,
-    name: '20261005_133606_maintenance'
+    up: migration_20261005_133533_billing.up,
+    down: migration_20261005_133533_billing.down,
+    name: '20261005_133533_billing',
+  },
+  {
+    up: migration_20261005_224350_maintenance.up,
+    down: migration_20261005_224350_maintenance.down,
+    name: '20261005_224350_maintenance'
   },
 ];

@@ -24,8 +24,8 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.012 60);
 
-  /* Accent: ember orange */
-  --primary: oklch(0.64 0.19 42);
+  /* Accent: ember orange. Deep enough for white labels and orange text on light surfaces (WCAG AA 4.5:1). */
+  --primary: oklch(0.56 0.18 40);
   --primary-foreground: oklch(0.99 0.01 80);
 
   --secondary: oklch(0.955 0.008 80);
@@ -40,23 +40,29 @@
 
   --border: oklch(0.9 0.01 80);
   --input: oklch(0.88 0.01 80);
-  --ring: oklch(0.64 0.19 42);
+  --ring: oklch(0.56 0.18 40);
 
   /* Sidebar = the muted frame around the main panel */
   --sidebar: oklch(0.965 0.008 82);
   --sidebar-foreground: oklch(0.3 0.012 60);
-  --sidebar-primary: oklch(0.64 0.19 42);
+  --sidebar-primary: oklch(0.56 0.18 40);
   --sidebar-primary-foreground: oklch(0.99 0.01 80);
   --sidebar-accent: oklch(0.92 0.012 78);
   --sidebar-accent-foreground: oklch(0.2 0.012 60);
   --sidebar-border: oklch(0.89 0.01 80);
-  --sidebar-ring: oklch(0.64 0.19 42);
+  --sidebar-ring: oklch(0.56 0.18 40);
 
-  /* Monitor status */
-  --status-up: oklch(0.68 0.17 150);
+  /* Monitor status. Fills (dots, bars) keep >= 3:1 against the surfaces where it is achievable;
+   * the bright amber cannot, so status is never conveyed by colour alone (dots carry aria labels).
+   * `*-text` variants are for status-coloured text and meet 4.5:1 on background and card. */
+  --status-up: oklch(0.62 0.16 150);
   --status-down: oklch(0.6 0.21 27);
   --status-pending: oklch(0.78 0.16 80);
   --status-maintenance: oklch(0.62 0.14 250);
+  --status-up-text: oklch(0.5 0.13 150);
+  --status-down-text: oklch(0.53 0.2 27);
+  --status-pending-text: oklch(0.52 0.11 70);
+  --status-maintenance-text: oklch(0.5 0.13 250);
 
   /* Charts (sequential accent ramp) */
   --chart-1: oklch(0.64 0.19 42);
@@ -85,7 +91,7 @@
   --accent-foreground: oklch(0.95 0.008 80);
 
   --destructive: oklch(0.66 0.19 25);
-  --destructive-foreground: oklch(0.98 0.01 20);
+  --destructive-foreground: oklch(0.17 0.02 25);
 
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 14%);
@@ -104,6 +110,10 @@
   --status-down: oklch(0.68 0.19 25);
   --status-pending: oklch(0.82 0.15 85);
   --status-maintenance: oklch(0.7 0.12 250);
+  --status-up-text: oklch(0.74 0.16 150);
+  --status-down-text: oklch(0.72 0.17 25);
+  --status-pending-text: oklch(0.82 0.15 85);
+  --status-maintenance-text: oklch(0.74 0.11 250);
 
   --chart-1: oklch(0.72 0.17 45);
   --chart-2: oklch(0.78 0.13 60);
@@ -159,6 +169,10 @@
   --color-status-down: var(--status-down);
   --color-status-pending: var(--status-pending);
   --color-status-maintenance: var(--status-maintenance);
+  --color-status-up-text: var(--status-up-text);
+  --color-status-down-text: var(--status-down-text);
+  --color-status-pending-text: var(--status-pending-text);
+  --color-status-maintenance-text: var(--status-maintenance-text);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);

@@ -455,6 +455,26 @@
           "notNull": false,
           "default": "'free'"
         },
+        "subscription_status": {
+          "name": "subscription_status",
+          "type": "enum_organizations_subscription_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'none'"
+        },
+        "stripe_customer_id": {
+          "name": "stripe_customer_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stripe_subscription_id": {
+          "name": "stripe_subscription_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "invite_link_token": {
           "name": "invite_link_token",
           "type": "varchar",
@@ -520,6 +540,36 @@
           "columns": [
             {
               "expression": "logo_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organizations_stripe_customer_id_idx": {
+          "name": "organizations_stripe_customer_id_idx",
+          "columns": [
+            {
+              "expression": "stripe_customer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organizations_stripe_subscription_id_idx": {
+          "name": "organizations_stripe_subscription_id_idx",
+          "columns": [
+            {
+              "expression": "stripe_subscription_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3402,576 +3452,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.maintenance_weekdays": {
-      "name": "maintenance_weekdays",
-      "schema": "",
-      "columns": {
-        "order": {
-          "name": "order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value": {
-          "name": "value",
-          "type": "enum_maintenance_weekdays",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "maintenance_weekdays_order_idx": {
-          "name": "maintenance_weekdays_order_idx",
-          "columns": [
-            {
-              "expression": "order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "maintenance_weekdays_parent_idx": {
-          "name": "maintenance_weekdays_parent_idx",
-          "columns": [
-            {
-              "expression": "parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "maintenance_weekdays_parent_fk": {
-          "name": "maintenance_weekdays_parent_fk",
-          "tableFrom": "maintenance_weekdays",
-          "tableTo": "maintenance",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.maintenance_days_of_month": {
-      "name": "maintenance_days_of_month",
-      "schema": "",
-      "columns": {
-        "order": {
-          "name": "order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value": {
-          "name": "value",
-          "type": "enum_maintenance_days_of_month",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "maintenance_days_of_month_order_idx": {
-          "name": "maintenance_days_of_month_order_idx",
-          "columns": [
-            {
-              "expression": "order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "maintenance_days_of_month_parent_idx": {
-          "name": "maintenance_days_of_month_parent_idx",
-          "columns": [
-            {
-              "expression": "parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "maintenance_days_of_month_parent_fk": {
-          "name": "maintenance_days_of_month_parent_fk",
-          "tableFrom": "maintenance_days_of_month",
-          "tableTo": "maintenance",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.maintenance": {
-      "name": "maintenance",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "strategy": {
-          "name": "strategy",
-          "type": "enum_maintenance_strategy",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'single'"
-        },
-        "timezone": {
-          "name": "timezone",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'SAME_AS_SERVER'"
-        },
-        "active": {
-          "name": "active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": true
-        },
-        "status": {
-          "name": "status",
-          "type": "enum_maintenance_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'unknown'"
-        },
-        "date_range_start": {
-          "name": "date_range_start",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "date_range_end": {
-          "name": "date_range_end",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "time_range_start": {
-          "name": "time_range_start",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'02:00'"
-        },
-        "time_range_end": {
-          "name": "time_range_end",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'03:00'"
-        },
-        "interval_day": {
-          "name": "interval_day",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 1
-        },
-        "cron": {
-          "name": "cron",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'30 3 * * *'"
-        },
-        "duration": {
-          "name": "duration",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 60
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "maintenance_organization_idx": {
-          "name": "maintenance_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "maintenance_active_idx": {
-          "name": "maintenance_active_idx",
-          "columns": [
-            {
-              "expression": "active",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "maintenance_status_idx": {
-          "name": "maintenance_status_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "maintenance_updated_at_idx": {
-          "name": "maintenance_updated_at_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "maintenance_created_at_idx": {
-          "name": "maintenance_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "organization_active_1_idx": {
-          "name": "organization_active_1_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "active",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "maintenance_organization_id_organizations_id_fk": {
-          "name": "maintenance_organization_id_organizations_id_fk",
-          "tableFrom": "maintenance",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.maintenance_rels": {
-      "name": "maintenance_rels",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "order": {
-          "name": "order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "path": {
-          "name": "path",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "monitors_id": {
-          "name": "monitors_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status_pages_id": {
-          "name": "status_pages_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "maintenance_rels_order_idx": {
-          "name": "maintenance_rels_order_idx",
-          "columns": [
-            {
-              "expression": "order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "maintenance_rels_parent_idx": {
-          "name": "maintenance_rels_parent_idx",
-          "columns": [
-            {
-              "expression": "parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "maintenance_rels_path_idx": {
-          "name": "maintenance_rels_path_idx",
-          "columns": [
-            {
-              "expression": "path",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "maintenance_rels_monitors_id_idx": {
-          "name": "maintenance_rels_monitors_id_idx",
-          "columns": [
-            {
-              "expression": "monitors_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "maintenance_rels_status_pages_id_idx": {
-          "name": "maintenance_rels_status_pages_id_idx",
-          "columns": [
-            {
-              "expression": "status_pages_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "maintenance_rels_parent_fk": {
-          "name": "maintenance_rels_parent_fk",
-          "tableFrom": "maintenance_rels",
-          "tableTo": "maintenance",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "maintenance_rels_monitors_fk": {
-          "name": "maintenance_rels_monitors_fk",
-          "tableFrom": "maintenance_rels",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "monitors_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "maintenance_rels_status_pages_fk": {
-          "name": "maintenance_rels_status_pages_fk",
-          "tableFrom": "maintenance_rels",
-          "tableTo": "status_pages",
-          "columnsFrom": [
-            "status_pages_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.payload_kv": {
       "name": "payload_kv",
       "schema": "",
@@ -4203,12 +3683,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": false
-        },
-        "maintenance_id": {
-          "name": "maintenance_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -4436,21 +3910,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "payload_locked_documents_rels_maintenance_id_idx": {
-          "name": "payload_locked_documents_rels_maintenance_id_idx",
-          "columns": [
-            {
-              "expression": "maintenance_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -4616,19 +4075,6 @@
           "tableTo": "incidents",
           "columnsFrom": [
             "incidents_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_maintenance_fk": {
-          "name": "payload_locked_documents_rels_maintenance_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "maintenance",
-          "columnsFrom": [
-            "maintenance_id"
           ],
           "columnsTo": [
             "id"
@@ -5126,6 +4572,18 @@
         "enterprise"
       ]
     },
+    "public.enum_organizations_subscription_status": {
+      "name": "enum_organizations_subscription_status",
+      "schema": "public",
+      "values": [
+        "none",
+        "trialing",
+        "active",
+        "past_due",
+        "canceled",
+        "unpaid"
+      ]
+    },
     "public.enum_organizations_invite_link_role": {
       "name": "enum_organizations_invite_link_role",
       "schema": "public",
@@ -5298,83 +4756,6 @@
         "primary"
       ]
     },
-    "public.enum_maintenance_weekdays": {
-      "name": "enum_maintenance_weekdays",
-      "schema": "public",
-      "values": [
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "0"
-      ]
-    },
-    "public.enum_maintenance_days_of_month": {
-      "name": "enum_maintenance_days_of_month",
-      "schema": "public",
-      "values": [
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "7",
-        "8",
-        "9",
-        "10",
-        "11",
-        "12",
-        "13",
-        "14",
-        "15",
-        "16",
-        "17",
-        "18",
-        "19",
-        "20",
-        "21",
-        "22",
-        "23",
-        "24",
-        "25",
-        "26",
-        "27",
-        "28",
-        "29",
-        "30",
-        "31",
-        "lastDay1",
-        "lastDay2",
-        "lastDay3",
-        "lastDay4"
-      ]
-    },
-    "public.enum_maintenance_strategy": {
-      "name": "enum_maintenance_strategy",
-      "schema": "public",
-      "values": [
-        "manual",
-        "single",
-        "recurring-interval",
-        "recurring-weekday",
-        "recurring-day-of-month",
-        "cron"
-      ]
-    },
-    "public.enum_maintenance_status": {
-      "name": "enum_maintenance_status",
-      "schema": "public",
-      "values": [
-        "inactive",
-        "scheduled",
-        "under-maintenance",
-        "ended",
-        "unknown"
-      ]
-    },
     "public.enum_instance_settings_entry_page": {
       "name": "enum_instance_settings_entry_page",
       "schema": "public",
@@ -5394,6 +4775,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "416d47cd-aa56-47bb-98cc-90bf2372ebed",
+  "id": "26017c49-2dbd-4bc6-9c88-5e6b3bd8ebbb",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
