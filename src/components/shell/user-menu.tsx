@@ -36,12 +36,22 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
 
   async function signOut() {
     setSigningOut(true)
+    let redirectTo = '/login'
     try {
-      await authApi.logout()
+      if (user.authProvider === 'oidc') {
+        // Also ends the identity-provider session when it supports RP-initiated logout.
+        redirectTo = (await authApi.oidcLogout()).redirectTo
+      } else {
+        await authApi.logout()
+      }
     } catch {
       // The cookie may already be gone; fall through to the login page either way.
     }
-    router.replace('/login')
+    if (/^https?:\/\//.test(redirectTo)) {
+      window.location.assign(redirectTo)
+      return
+    }
+    router.replace(redirectTo)
     router.refresh()
   }
 

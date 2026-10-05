@@ -2,8 +2,11 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
+import { getAuthProviders } from '@/auth/oidc/client'
+import { oidcErrorMessage } from '@/auth/oidc/errors'
 import { AuthCard } from '@/components/auth/auth-card'
 import { LoginForm } from '@/components/auth/login-form'
+import { SsoButton } from '@/components/auth/sso-button'
 import { env } from '@/env'
 import { getCurrentUser } from '@/lib/auth'
 import { safeNextPath } from '@/lib/utils'
@@ -14,11 +17,15 @@ export const dynamic = 'force-dynamic'
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>
+  searchParams: Promise<{ next?: string; error?: string }>
 }) {
-  const { next } = await searchParams
+  const { next, error } = await searchParams
   const user = await getCurrentUser()
   if (user) redirect(safeNextPath(next))
+
+  // Same data `GET /api/auth/providers` returns, read in-process to avoid a self-request.
+  const providers = getAuthProviders()
+  const ssoError = oidcErrorMessage(error)
 
   return (
     <AuthCard
@@ -38,7 +45,20 @@ export default async function LoginPage({
         )
       }
     >
-      <LoginForm next={next} />
+      <div className="flex flex-col gap-5">
+        {ssoError && (
+          <p
+            role="alert"
+            className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {ssoError}
+          </p>
+        )}
+        {providers.oidc.enabled && (
+          <SsoButton displayName={providers.oidc.displayName} next={next} />
+        )}
+        <LoginForm next={next} />
+      </div>
     </AuthCard>
   )
 }

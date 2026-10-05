@@ -112,8 +112,17 @@ export interface AuthConfig {
   signupEnabled: boolean
 }
 
+/** `GET /api/auth/providers` (see `src/auth/oidc`). */
+export interface AuthProviders {
+  local: true
+  oidc: { enabled: boolean; displayName: string }
+}
+
 export const authApi = {
   config: () => api.get<AuthConfig>('/api/auth/config'),
+  providers: () => api.get<AuthProviders>('/api/auth/providers'),
+  /** Ends the Payload session; `redirectTo` is the provider's end-session URL or `/login`. */
+  oidcLogout: () => api.post<{ redirectTo: string }>('/api/auth/oidc/logout'),
   login: (data: { email: string; password: string }) =>
     api.post<LoginResponse>('/api/users/login', data),
   signup: (data: { email: string; password: string; name?: string }) =>

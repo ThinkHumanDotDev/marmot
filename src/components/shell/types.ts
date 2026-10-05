@@ -6,6 +6,8 @@ export interface ShellUser {
   email: string
   name?: string | null
   superadmin?: boolean
+  /** `users.authProvider`; SSO accounts sign out through the identity provider too. */
+  authProvider?: 'local' | 'oidc' | null
 }
 
 export interface ShellContext {
