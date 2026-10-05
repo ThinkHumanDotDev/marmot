@@ -84,7 +84,9 @@ Permissions are `resource:action` strings mapped to the **minimum** role in `src
 ranks at or above the minimum. Helpers: `can(user, orgId, permission)`, `hasOrgRole(user, orgId,
 minRole)`, `getUserRole(user, orgId)`, `getUserOrgIds(user)`, `getOrgIdsWithPermission(user, permission)`,
 `isSuperadmin(user)`, `canManageRole(managerRole, targetRole)`. Instance `superadmin` users bypass every
-check and are the only users allowed into the Payload admin panel (`users.access.admin`).
+check and are the only users allowed into the Payload admin panel (`users.access.admin`). Anyone may create
+an account (`POST /api/users`) while `DISABLE_SIGNUP` is false (`canSignUp` in `src/collections/Users.ts`);
+field-level access strips `superadmin` and `organizations` from requests that are not made by a superadmin.
 
 | Permission                                                          | viewer | member | admin | owner |
 | ------------------------------------------------------------------- | :----: | :----: | :---: | :---: |

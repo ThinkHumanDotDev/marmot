@@ -5,6 +5,8 @@ import config from '@payload-config'
 
 import { can, getUserOrgIds, getUserRole, type Role } from '@/access/permissions'
 import { acceptInvitation } from '@/collections/Invitations'
+import { canSignUp } from '@/collections/Users'
+import { env } from '@/env'
 import type { Invitation, Organization, User } from '@/payload-types'
 
 let payload: Payload
@@ -242,6 +244,36 @@ describe('organization RBAC', () => {
       expect(fresh.name).toBe('Still a member')
       expect(fresh.superadmin).toBe(false)
       expect(getUserRole(fresh, org.id)).toBe('member')
+    })
+  })
+
+  describe('signup (anonymous user creation)', () => {
+    it('lets anonymous visitors create an account while DISABLE_SIGNUP is false, without privileges', async () => {
+      expect(env.DISABLE_SIGNUP).toBe(false)
+
+      const created = await payload.create({
+        collection: 'users',
+        data: {
+          email: email('signup'),
+          password: 'password-123',
+          name: 'Signup',
+          superadmin: true,
+          organizations: [{ organization: org.id, role: 'owner' }],
+        },
+        overrideAccess: false,
+        depth: 0,
+      })
+      const fresh = await as(created)
+      expect(fresh.superadmin).toBe(false)
+      expect(getUserOrgIds(fresh)).toEqual([])
+      expect(payload.collections.users.config.access.create).toBeDefined()
+    })
+
+    it('refuses anonymous and non-superadmin creation when DISABLE_SIGNUP is true', () => {
+      expect(canSignUp(null, true)).toBe(false)
+      expect(canSignUp({ id: 1, superadmin: false }, true)).toBe(false)
+      expect(canSignUp({ id: 1, superadmin: true }, true)).toBe(true)
+      expect(canSignUp(null, false)).toBe(true)
     })
   })
 
