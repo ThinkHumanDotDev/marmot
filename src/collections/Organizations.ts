@@ -11,12 +11,19 @@ import type {
 import { authenticated, orgScoped } from '@/access/org-scoped'
 import { addOrgMembership, toMembershipData } from '@/access/memberships'
 import { can, isSuperadmin, ROLES } from '@/access/permissions'
+import { PLANS, SUBSCRIPTION_STATUSES } from '@/lib/entitlements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
+import { captureServerEvent, hashAnalyticsId } from '@/server/analytics'
 
 import type { Organization, User } from '@/payload-types'
 
-export const PLANS = ['free', 'team', 'pro', 'enterprise'] as const
-export type Plan = (typeof PLANS)[number]
+export { PLANS, type Plan } from '@/lib/entitlements'
+
+/**
+ * Plan and Stripe fields are written by superadmins (admin panel) and by the billing code through
+ * the Local API with `overrideAccess: true`; members cannot grant themselves a plan.
+ */
+const superadminWrite: FieldAccess = ({ req }) => isSuperadmin(req.user)
 
 /** Secret for the shareable invite link (`/invite/<token>`). */
 export const generateInviteLinkToken = (): string => crypto.randomBytes(24).toString('base64url')
@@ -61,6 +68,39 @@ const grantOwnerMembership: CollectionAfterChangeHook<Organization> = async ({
     req,
   })
 
+  return doc
+}
+
+/**
+ * Keeps the Stripe customer's name in sync with the organization. Only runs when Stripe is
+ * configured and the organization already has a customer; `context.skipStripeSync` guards writes
+ * made by the webhook handlers themselves.
+ */
+const syncStripeCustomer: CollectionAfterChangeHook<Organization> = async ({
+  doc,
+  operation,
+  previousDoc,
+  req,
+}) => {
+  if (operation !== 'update' || req.context?.skipStripeSync) return doc
+  if (!doc.stripeCustomerId || doc.name === previousDoc?.name) return doc
+  try {
+    const { syncStripeCustomerName } = await import('@/server/billing/stripe')
+    await syncStripeCustomerName(doc)
+  } catch {
+    // Logged inside; never fail the organization update over Stripe.
+  }
+  return doc
+}
+
+/**
+ * Opt-in telemetry (docs/telemetry.md): counts new organizations. The only identifier is a keyed
+ * hash of the organization id; a no-op unless `NEXT_PUBLIC_POSTHOG_KEY` is set.
+ */
+const trackOrgCreated: CollectionAfterChangeHook<Organization> = ({ doc, operation }) => {
+  if (operation === 'create') {
+    captureServerEvent('org_created', { orgId: hashAnalyticsId(doc.id) })
+  }
   return doc
 }
 
@@ -131,7 +171,7 @@ export const Organizations: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [normalizeSlug],
-    afterChange: [grantOwnerMembership],
+    afterChange: [grantOwnerMembership, syncStripeCustomer, trackOrgCreated],
     beforeDelete: [removeInvitations, removeMemberships],
   },
   fields: [
@@ -164,6 +204,32 @@ export const Organizations: CollectionConfig = {
       admin: {
         description: 'Self-hosted installs are unlimited regardless of plan.',
       },
+      access: { create: superadminWrite, update: superadminWrite },
+    },
+    {
+      name: 'subscriptionStatus',
+      type: 'select',
+      defaultValue: 'none',
+      options: SUBSCRIPTION_STATUSES.map((status) => ({ label: status, value: status })),
+      admin: {
+        position: 'sidebar',
+        description: 'Maintained by Stripe webhooks when billing is enabled.',
+      },
+      access: { create: superadminWrite, update: superadminWrite },
+    },
+    {
+      name: 'stripeCustomerId',
+      type: 'text',
+      index: true,
+      admin: { position: 'sidebar', readOnly: true },
+      access: { create: superadminWrite, update: superadminWrite },
+    },
+    {
+      name: 'stripeSubscriptionId',
+      type: 'text',
+      index: true,
+      admin: { position: 'sidebar', readOnly: true },
+      access: { create: superadminWrite, update: superadminWrite },
     },
     {
       name: 'inviteLinkToken',

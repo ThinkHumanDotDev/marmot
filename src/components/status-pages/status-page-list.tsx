@@ -1,5 +1,6 @@
 import { ExternalLink, Globe } from 'lucide-react'
 import Link from 'next/link'
+import type * as React from 'react'
 
 import { EmptyState } from '@/components/empty-state'
 import { Badge } from '@/components/ui/badge'
@@ -15,13 +16,23 @@ import type { StatusPage } from '@/payload-types'
 
 import { publicStatusPagePath } from './api'
 
-export function StatusPageList({ pages, orgSlug }: { pages: StatusPage[]; orgSlug: string }) {
+export function StatusPageList({
+  pages,
+  orgSlug,
+  emptyAction,
+}: {
+  pages: StatusPage[]
+  orgSlug: string
+  /** Primary call to action for the empty state (the create dialog, for members who may create). */
+  emptyAction?: React.ReactNode
+}) {
   if (pages.length === 0) {
     return (
       <EmptyState
         icon={Globe}
         title="No status pages yet"
         description="Publish a status page to share uptime, incidents and maintenance with the people who rely on you."
+        action={emptyAction}
       />
     )
   }
@@ -32,10 +43,10 @@ export function StatusPageList({ pages, orgSlug }: { pages: StatusPage[]; orgSlu
         <TableHeader>
           <TableRow>
             <TableHead>Title</TableHead>
-            <TableHead>Public URL</TableHead>
-            <TableHead>Monitors</TableHead>
+            <TableHead className="hidden md:table-cell">Public URL</TableHead>
+            <TableHead className="hidden sm:table-cell">Monitors</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="text-right">Updated</TableHead>
+            <TableHead className="hidden text-right lg:table-cell">Updated</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -50,7 +61,7 @@ export function StatusPageList({ pages, orgSlug }: { pages: StatusPage[]; orgSlu
                 <TableCell className="font-medium">
                   <Link
                     href={`/${orgSlug}/status-pages/${page.id}`}
-                    className="underline-offset-4 hover:underline"
+                    className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:underline focus-visible:ring-2 focus-visible:ring-ring/50"
                   >
                     {page.title}
                   </Link>
@@ -60,22 +71,23 @@ export function StatusPageList({ pages, orgSlug }: { pages: StatusPage[]; orgSlu
                     </p>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden md:table-cell">
                   {page.published ? (
                     <a
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground"
+                      className="inline-flex items-center gap-1 rounded-sm font-mono text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
                     >
                       {href}
                       <ExternalLink className="size-3" aria-hidden />
+                      <span className="sr-only">(opens in a new tab)</span>
                     </a>
                   ) : (
                     <span className="font-mono text-xs text-muted-foreground">{href}</span>
                   )}
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground tabular-nums">
+                <TableCell className="hidden text-sm text-muted-foreground tabular-nums sm:table-cell">
                   {monitorCount} in {page.groups?.length ?? 0} group
                   {(page.groups?.length ?? 0) === 1 ? '' : 's'}
                 </TableCell>
@@ -86,7 +98,7 @@ export function StatusPageList({ pages, orgSlug }: { pages: StatusPage[]; orgSlu
                     <Badge variant="secondary">Draft</Badge>
                   )}
                 </TableCell>
-                <TableCell className="text-right text-xs text-muted-foreground">
+                <TableCell className="hidden text-right text-xs text-muted-foreground lg:table-cell">
                   {new Date(page.updatedAt).toLocaleDateString()}
                 </TableCell>
               </TableRow>

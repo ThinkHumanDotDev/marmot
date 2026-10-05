@@ -4,6 +4,12 @@ Public status pages show visitors the live state of a set of monitors, grouped t
 incidents you post. Every organization can publish any number of pages; each page has a globally unique
 slug and lives at `/status/<slug>` (or at the root of a custom domain).
 
+To publish one: **Status pages → New page**, give it a title and slug, add groups and drag monitors into
+them on the **Groups & monitors** tab, then flip **Published** in the header. Visitors see each monitor's
+current status, its last 50 heartbeats and 24h/30d uptime, the incidents you post, and (landing in the
+current release) maintenance windows and status badges. Members and above can edit pages; viewers can see
+drafts but not change them.
+
 ## Data model
 
 Two org-scoped collections (`src/collections/StatusPages.ts`, `src/collections/Incidents.ts`):

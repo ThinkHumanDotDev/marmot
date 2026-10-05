@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { track } from '@/lib/analytics'
 import { api, ApiError } from '@/lib/api'
 import {
   AUTH_METHODS,
@@ -650,6 +651,7 @@ export function MonitorForm({
               `/api/orgs/${orgId}/monitors/${monitorId}`,
               values,
             )
+      if (mode === 'create') track('monitor_created', { type: values.type })
       toast.success(mode === 'create' ? 'Monitor created' : 'Monitor saved')
       router.push(`/${orgSlug}/monitors/${doc.id}`)
       router.refresh()

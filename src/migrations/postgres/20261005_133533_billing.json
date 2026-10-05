@@ -455,6 +455,26 @@
           "notNull": false,
           "default": "'free'"
         },
+        "subscription_status": {
+          "name": "subscription_status",
+          "type": "enum_organizations_subscription_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'none'"
+        },
+        "stripe_customer_id": {
+          "name": "stripe_customer_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stripe_subscription_id": {
+          "name": "stripe_subscription_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "invite_link_token": {
           "name": "invite_link_token",
           "type": "varchar",
@@ -520,6 +540,36 @@
           "columns": [
             {
               "expression": "logo_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organizations_stripe_customer_id_idx": {
+          "name": "organizations_stripe_customer_id_idx",
+          "columns": [
+            {
+              "expression": "stripe_customer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organizations_stripe_subscription_id_idx": {
+          "name": "organizations_stripe_subscription_id_idx",
+          "columns": [
+            {
+              "expression": "stripe_subscription_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -948,122 +998,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.monitors_tags": {
-      "name": "monitors_tags",
-      "schema": "",
-      "columns": {
-        "_order": {
-          "name": "_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "_parent_id": {
-          "name": "_parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "varchar",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "tag_id": {
-          "name": "tag_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value": {
-          "name": "value",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "monitors_tags_order_idx": {
-          "name": "monitors_tags_order_idx",
-          "columns": [
-            {
-              "expression": "_order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitors_tags_parent_id_idx": {
-          "name": "monitors_tags_parent_id_idx",
-          "columns": [
-            {
-              "expression": "_parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitors_tags_tag_idx": {
-          "name": "monitors_tags_tag_idx",
-          "columns": [
-            {
-              "expression": "tag_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "monitors_tags_tag_id_tags_id_fk": {
-          "name": "monitors_tags_tag_id_tags_id_fk",
-          "tableFrom": "monitors_tags",
-          "tableTo": "tags",
-          "columnsFrom": [
-            "tag_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "monitors_tags_parent_id_fk": {
-          "name": "monitors_tags_parent_id_fk",
-          "tableFrom": "monitors_tags",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.monitors": {
       "name": "monitors",
       "schema": "",
@@ -1122,24 +1056,6 @@
         },
         "url": {
           "name": "url",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "proxy_id": {
-          "name": "proxy_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "docker_host_id": {
-          "name": "docker_host_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "docker_container": {
-          "name": "docker_container",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
@@ -1502,36 +1418,6 @@
           "method": "btree",
           "with": {}
         },
-        "monitors_proxy_idx": {
-          "name": "monitors_proxy_idx",
-          "columns": [
-            {
-              "expression": "proxy_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitors_docker_host_idx": {
-          "name": "monitors_docker_host_idx",
-          "columns": [
-            {
-              "expression": "docker_host_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "monitors_push_token_idx": {
           "name": "monitors_push_token_idx",
           "columns": [
@@ -1619,32 +1505,6 @@
           "tableTo": "monitors",
           "columnsFrom": [
             "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "monitors_proxy_id_proxies_id_fk": {
-          "name": "monitors_proxy_id_proxies_id_fk",
-          "tableFrom": "monitors",
-          "tableTo": "proxies",
-          "columnsFrom": [
-            "proxy_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "monitors_docker_host_id_docker_hosts_id_fk": {
-          "name": "monitors_docker_host_id_docker_hosts_id_fk",
-          "tableFrom": "monitors",
-          "tableTo": "docker_hosts",
-          "columnsFrom": [
-            "docker_host_id"
           ],
           "columnsTo": [
             "id"
@@ -2062,453 +1922,6 @@
         "notifications_organization_id_organizations_id_fk": {
           "name": "notifications_organization_id_organizations_id_fk",
           "tableFrom": "notifications",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.tags": {
-      "name": "tags",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "color": {
-          "name": "color",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'#4B5563'"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "tags_organization_idx": {
-          "name": "tags_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "tags_updated_at_idx": {
-          "name": "tags_updated_at_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "tags_created_at_idx": {
-          "name": "tags_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "organization_name_idx": {
-          "name": "organization_name_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "tags_organization_id_organizations_id_fk": {
-          "name": "tags_organization_id_organizations_id_fk",
-          "tableFrom": "tags",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.proxies": {
-      "name": "proxies",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "protocol": {
-          "name": "protocol",
-          "type": "enum_proxies_protocol",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'https'"
-        },
-        "host": {
-          "name": "host",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "port": {
-          "name": "port",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "auth": {
-          "name": "auth",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "username": {
-          "name": "username",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "password": {
-          "name": "password",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "active": {
-          "name": "active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": true
-        },
-        "default": {
-          "name": "default",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "proxies_organization_idx": {
-          "name": "proxies_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "proxies_default_idx": {
-          "name": "proxies_default_idx",
-          "columns": [
-            {
-              "expression": "default",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "proxies_updated_at_idx": {
-          "name": "proxies_updated_at_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "proxies_created_at_idx": {
-          "name": "proxies_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "organization_default_idx": {
-          "name": "organization_default_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "default",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "proxies_organization_id_organizations_id_fk": {
-          "name": "proxies_organization_id_organizations_id_fk",
-          "tableFrom": "proxies",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.docker_hosts": {
-      "name": "docker_hosts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "connection_type": {
-          "name": "connection_type",
-          "type": "enum_docker_hosts_connection_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'socket'"
-        },
-        "socket_path": {
-          "name": "socket_path",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'/var/run/docker.sock'"
-        },
-        "url": {
-          "name": "url",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "docker_hosts_organization_idx": {
-          "name": "docker_hosts_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "docker_hosts_updated_at_idx": {
-          "name": "docker_hosts_updated_at_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "docker_hosts_created_at_idx": {
-          "name": "docker_hosts_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "docker_hosts_organization_id_organizations_id_fk": {
-          "name": "docker_hosts_organization_id_organizations_id_fk",
-          "tableFrom": "docker_hosts",
           "tableTo": "organizations",
           "columnsFrom": [
             "organization_id"
@@ -4235,24 +3648,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "tags_id": {
-          "name": "tags_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "proxies_id": {
-          "name": "proxies_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "docker_hosts_id": {
-          "name": "docker_hosts_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "heartbeats_id": {
           "name": "heartbeats_id",
           "type": "integer",
@@ -4416,51 +3811,6 @@
           "columns": [
             {
               "expression": "notifications_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "payload_locked_documents_rels_tags_id_idx": {
-          "name": "payload_locked_documents_rels_tags_id_idx",
-          "columns": [
-            {
-              "expression": "tags_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "payload_locked_documents_rels_proxies_id_idx": {
-          "name": "payload_locked_documents_rels_proxies_id_idx",
-          "columns": [
-            {
-              "expression": "proxies_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "payload_locked_documents_rels_docker_hosts_id_idx": {
-          "name": "payload_locked_documents_rels_docker_hosts_id_idx",
-          "columns": [
-            {
-              "expression": "docker_hosts_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -4647,45 +3997,6 @@
           "tableTo": "notifications",
           "columnsFrom": [
             "notifications_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_tags_fk": {
-          "name": "payload_locked_documents_rels_tags_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "tags",
-          "columnsFrom": [
-            "tags_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_proxies_fk": {
-          "name": "payload_locked_documents_rels_proxies_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "proxies",
-          "columnsFrom": [
-            "proxies_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_docker_hosts_fk": {
-          "name": "payload_locked_documents_rels_docker_hosts_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "docker_hosts",
-          "columnsFrom": [
-            "docker_hosts_id"
           ],
           "columnsTo": [
             "id"
@@ -5261,6 +4572,18 @@
         "enterprise"
       ]
     },
+    "public.enum_organizations_subscription_status": {
+      "name": "enum_organizations_subscription_status",
+      "schema": "public",
+      "values": [
+        "none",
+        "trialing",
+        "active",
+        "past_due",
+        "canceled",
+        "unpaid"
+      ]
+    },
     "public.enum_organizations_invite_link_role": {
       "name": "enum_organizations_invite_link_role",
       "schema": "public",
@@ -5311,8 +4634,7 @@
         "dns",
         "push",
         "group",
-        "manual",
-        "docker"
+        "manual"
       ]
     },
     "public.enum_monitors_method": {
@@ -5405,26 +4727,6 @@
         "maintenance"
       ]
     },
-    "public.enum_proxies_protocol": {
-      "name": "enum_proxies_protocol",
-      "schema": "public",
-      "values": [
-        "http",
-        "https",
-        "socks",
-        "socks5",
-        "socks5h",
-        "socks4"
-      ]
-    },
-    "public.enum_docker_hosts_connection_type": {
-      "name": "enum_docker_hosts_connection_type",
-      "schema": "public",
-      "values": [
-        "socket",
-        "tcp"
-      ]
-    },
     "public.enum_heartbeats_status": {
       "name": "enum_heartbeats_status",
       "schema": "public",
@@ -5473,6 +4775,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "d399ad41-99fb-48a1-af9e-cefe22c58fdb",
+  "id": "26017c49-2dbd-4bc6-9c88-5e6b3bd8ebbb",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

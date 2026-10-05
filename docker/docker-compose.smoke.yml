@@ -1,0 +1,13 @@
+# Smoke-test override: publish the web/realtime ports and move Caddy to :8080 (HTTP only, no DOMAIN) so
+# scripts/smoke-test.sh can reach the stack. The release workflow uses it with the published image:
+#   MARMOT_VERSION=0.1.0 docker compose -f docker/docker-compose.yml -f docker/docker-compose.smoke.yml up -d --wait
+# CI adds docker-compose.ci.yml on top to run the locally built image instead.
+services:
+  web:
+    ports: ['3000:3000']
+  realtime:
+    ports: ['3001:3001']
+  caddy:
+    # 443 stays free on the runner.
+    ports: !override
+      - '8080:80'
