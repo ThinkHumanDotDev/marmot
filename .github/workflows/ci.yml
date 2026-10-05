@@ -146,7 +146,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      COMPOSE: docker compose -f docker/docker-compose.yml -f docker/docker-compose.ci.yml
+      COMPOSE: docker compose -f docker/docker-compose.yml -f docker/docker-compose.smoke.yml -f docker/docker-compose.ci.yml
       # The workflow-level REDIS_URL/DATABASE_URL target the runner's localhost services; compose
       # interpolates `${REDIS_URL:-...}` from the shell, so blank them here to use the in-stack defaults.
       REDIS_URL: ''
@@ -196,52 +196,12 @@ jobs:
             echo "| \`marmot:ci\` | $human ($bytes bytes) |"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Compose smoke test (postgres, web + worker + realtime + caddy)
-        run: |
-          set -euxo pipefail
-          $COMPOSE up -d --wait --wait-timeout 240
-          # web, through Caddy
-          curl -fsS --retry 10 --retry-delay 3 --retry-all-errors http://localhost:8080/api/health | grep -q '"ok":true'
-          # realtime health, direct
-          curl -fsS http://localhost:3001/healthz | grep -q '"ok":true'
-          # socket.io route through Caddy reaches the realtime process (polling handshake returns a sid)
-          curl -fsS 'http://localhost:8080/socket.io/?EIO=4&transport=polling' | grep -q '"sid"'
-          # security headers from next.config.ts
-          curl -fsSI http://localhost:8080/api/health | tr -d '\r' | grep -qi '^x-content-type-options: nosniff'
-          curl -fsSI http://localhost:8080/api/health | tr -d '\r' | grep -qi '^strict-transport-security:'
-          # worker booted against the database (it waits up to 120s for migrations; allow 150s)
-          for i in $(seq 1 50); do
-            $COMPOSE logs worker | grep -q 'worker booted' && break
-            if [ "$i" -eq 50 ]; then
-              echo 'worker did not boot in time'
-              $COMPOSE logs worker
-              $COMPOSE top worker || true
-              exit 1
-            fi
-            sleep 3
-          done
-          # the image healthcheck used by compose/orchestrators
-          $COMPOSE exec -T web /app/entrypoint.sh healthcheck
-          $COMPOSE exec -T realtime /app/entrypoint.sh healthcheck
+        run: scripts/smoke-test.sh compose
       - name: Single-container smoke test (MARMOT_ROLE=all, clean shutdown)
-        run: |
-          set -euxo pipefail
-          docker run -d --name marmot-all --network marmot_default -p 3100:3000 -p 3101:3001 \
-            -e MARMOT_ROLE=all -e PAYLOAD_SECRET -e NEXT_PUBLIC_SERVER_URL=http://localhost:3100 \
-            -e DATABASE_URL=postgres://marmot:marmot@postgres:5432/marmot -e REDIS_URL=redis://redis:6379 \
-            marmot:ci
-          curl -fsS --retry 40 --retry-delay 3 --retry-all-errors http://localhost:3100/api/health | grep -q '"ok":true'
-          curl -fsS --retry 10 --retry-delay 2 --retry-all-errors http://localhost:3101/healthz | grep -q '"ok":true'
-          docker exec marmot-all /app/entrypoint.sh healthcheck
-          docker stop -t 30 marmot-all
-          test "$(docker inspect marmot-all --format '{{.State.ExitCode}}')" = "0"
+        run: scripts/smoke-test.sh single marmot:ci
       - name: Container logs
         if: failure()
-        run: |
-          docker logs marmot-all 2>&1 | tail -n 100 || true
-          $COMPOSE ps -a || true
-          $COMPOSE logs --no-color --tail=150 || true
+        run: scripts/smoke-test.sh logs
       - name: Tear down
         if: always()
-        run: |
-          docker rm -f marmot-all >/dev/null 2>&1 || true
-          $COMPOSE down -v --remove-orphans || true
+        run: scripts/smoke-test.sh down

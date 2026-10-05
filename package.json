@@ -34,9 +34,11 @@
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
     "test:e2e": "cross-env NODE_OPTIONS=--no-deprecation playwright test --config=playwright.config.ts",
     "services:up": "bash scripts/dev-services.sh up",
-    "services:down": "bash scripts/dev-services.sh down"
+    "services:down": "bash scripts/dev-services.sh down",
+    "release:prepare": "bash scripts/release.sh"
   },
   "dependencies": {
+    "@c15t/nextjs": "2.3.0",
     "@dnd-kit/core": "6.3.1",
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
@@ -69,6 +71,8 @@
     "openid-client": "^6.8.8",
     "payload": "3.90.2",
     "pino": "^9.6.0",
+    "posthog-js": "1.435.8",
+    "posthog-node": "5.55.0",
     "radix-ui": "^1.6.7",
     "react": "19.2.6",
     "react-dom": "19.2.6",
