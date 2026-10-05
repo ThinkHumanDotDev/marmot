@@ -7,7 +7,17 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { childLogger } from '@/lib/logger'
-import { closeChecksQueue, resyncAll, startCheckWorker } from '@/server/engine'
+import {
+  closeChecksQueue,
+  resyncAll,
+  setMaintenanceResolver,
+  startCheckWorker,
+} from '@/server/engine'
+import {
+  closeMaintenanceQueue,
+  createMaintenanceResolver,
+  startMaintenanceWorker,
+} from '@/server/maintenance'
 import { listMonitorTypes } from '@/server/monitor-types'
 import {
   closeNotificationsQueue,
@@ -59,11 +69,16 @@ async function main() {
   // Notifications: enqueue one job per attached channel when a beat should notify.
   registerNotificationListener(payload)
 
+  // Maintenance: monitors inside a running window get MAINTENANCE beats instead of being checked.
+  setMaintenanceResolver(createMaintenanceResolver())
+
   // In a composed deployment the web container runs migrations while the worker is already
   // booting, so the schema may not exist yet. Wait for it instead of crash-looping.
   await waitForSchema(() => resyncAll(payload))
   const checkWorker = startCheckWorker(payload)
   const notificationWorker = startNotificationWorker(payload)
+  // Recomputes maintenance statuses every minute (and runs retention jobs on the same queue).
+  const maintenanceWorker = await startMaintenanceWorker(payload)
 
   // Keep the process alive until a shutdown signal arrives.
   await new Promise<void>((resolve) => {
@@ -77,8 +92,12 @@ async function main() {
         process.exit(1)
       }, 30_000)
       try {
-        await Promise.all([checkWorker.close(), notificationWorker.close()])
-        await Promise.all([closeChecksQueue(), closeNotificationsQueue()])
+        await Promise.all([
+          checkWorker.close(),
+          notificationWorker.close(),
+          maintenanceWorker.close(),
+        ])
+        await Promise.all([closeChecksQueue(), closeNotificationsQueue(), closeMaintenanceQueue()])
         await closeEmitter()
         await payload.db.destroy?.()
       } catch (err) {
