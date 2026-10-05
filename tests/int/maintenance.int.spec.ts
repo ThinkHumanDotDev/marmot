@@ -1,4 +1,9 @@
-import { getPayload, type Payload, type RequiredDataFromCollectionSlug } from 'payload'
+import {
+  getPayload,
+  type Payload,
+  type RequiredDataFromCollectionSlug,
+  type Where,
+} from 'payload'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import config from '@payload-config'
@@ -149,13 +154,10 @@ describe('maintenance windows', () => {
       // `delete({ where })` reports per-document failures instead of throwing; surface them.
       const wipe = async (
         collection: 'maintenance' | 'status-pages' | 'monitors',
-        extra: Record<string, unknown> = {},
+        extra: Where = {},
       ) => {
-        const result = await payload.delete({
-          collection,
-          where: { and: [{ organization: { in: orgIds } }, extra] },
-          depth: 0,
-        })
+        const where: Where = { and: [{ organization: { in: orgIds } }, extra] }
+        const result = await payload.delete({ collection, where, depth: 0 })
         if (result.errors.length) {
           throw new Error(`${collection} cleanup: ${JSON.stringify(result.errors)}`)
         }
