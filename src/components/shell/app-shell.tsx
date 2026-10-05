@@ -77,11 +77,15 @@ export function AppShell({ user, organizations, currentOrg, children }: AppShell
           <button
             type="button"
             onClick={() => openPalette(true)}
-            className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            aria-keyshortcuts="Meta+K Control+K"
+            className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors outline-none hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           >
             <Search className="size-4" aria-hidden />
             <span className="flex-1 text-left">Search</span>
-            <kbd className="rounded-sm border bg-background px-1.5 py-0.5 font-sans text-[10px] font-medium text-muted-foreground">
+            <kbd
+              aria-hidden
+              className="rounded-sm border bg-background px-1.5 py-0.5 font-sans text-[10px] font-medium text-muted-foreground"
+            >
               ⌘K
             </kbd>
           </button>
@@ -94,6 +98,12 @@ export function AppShell({ user, organizations, currentOrg, children }: AppShell
 
   return (
     <div className="flex h-dvh min-h-0 flex-col bg-sidebar text-sidebar-foreground md:flex-row md:p-3">
+      <a
+        href="#main-content"
+        className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm font-medium text-foreground shadow-md focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:ring-2 focus:ring-ring"
+      >
+        Skip to content
+      </a>
       {/* Mobile top bar */}
       <header className="flex h-14 items-center justify-between border-b border-sidebar-border px-3 md:hidden">
         <Button
@@ -107,7 +117,13 @@ export function AppShell({ user, organizations, currentOrg, children }: AppShell
         <Link href={`/${currentOrg.slug}`} aria-label="Marmot home">
           <Logo />
         </Link>
-        <Button variant="ghost" size="icon" aria-label="Search" onClick={() => openPalette(true)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Search and commands"
+          aria-keyshortcuts="Meta+K Control+K"
+          onClick={() => openPalette(true)}
+        >
           <Search />
         </Button>
       </header>
@@ -166,7 +182,11 @@ export function AppShell({ user, organizations, currentOrg, children }: AppShell
       </aside>
 
       {/* Main panel */}
-      <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground md:rounded-xl md:border md:shadow-xs">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground outline-none md:rounded-xl md:border md:shadow-xs"
+      >
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       </main>
 

@@ -66,7 +66,7 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
         )}
       >
         <Avatar className="size-7 rounded-md">
-          <AvatarFallback className="rounded-md bg-primary/15 text-[11px] font-semibold text-primary">
+          <AvatarFallback className="rounded-md bg-primary/15 text-[11px] font-semibold text-foreground">
             {initials(displayName)}
           </AvatarFallback>
         </Avatar>
