@@ -11,7 +11,7 @@ import { toNotificationRow } from '@/components/notifications/types'
 import { PageHeader } from '@/components/page-header'
 import { getUserOrganizations, requireUser } from '@/lib/auth'
 import type { Notification } from '@/payload-types'
-import { getProviderDescriptors } from '@/server/notifications/api'
+import { getProviderDescriptors, toClientNotification } from '@/server/notifications/api'
 
 export const metadata: Metadata = { title: 'Notifications' }
 export const dynamic = 'force-dynamic'
@@ -61,20 +61,23 @@ export default async function NotificationsPage({ params }: PageProps) {
     )
   }
 
+  const requestUser = { ...user, collection: 'users' as const }
   const { docs } = await payload.find({
     collection: 'notifications',
     where: { organization: { equals: orgId } },
     sort: 'name',
     depth: 0,
     limit: 200,
-    user: { ...user, collection: 'users' },
+    user: requestUser,
     overrideAccess: false,
   })
 
   return (
     <NotificationsView
       orgId={String(orgId)}
-      initial={(docs as Notification[]).map(toNotificationRow)}
+      initial={(docs as Notification[]).map((doc) =>
+        toNotificationRow(toClientNotification(doc, requestUser, orgId)),
+      )}
       providers={getProviderDescriptors()}
       canManage={canManage}
     />
