@@ -83,7 +83,9 @@ const oneOf = <T extends readonly string[]>(options: T, value: unknown): T[numbe
 
 const issueList = (issues: { path: PropertyKey[]; message: string }[]): string =>
   issues
-    .map((issue) => (issue.path.length ? `${issue.path.join('.')}: ${issue.message}` : issue.message))
+    .map((issue) =>
+      issue.path.length ? `${issue.path.join('.')}: ${issue.message}` : issue.message,
+    )
     .join('; ')
 
 /** Kuma `authMethod`: `null`/`""` means none. */
@@ -133,7 +135,9 @@ function mapKumaMonitor(
 
   const authMethod = mapAuthMethod(raw.authMethod)
   if (authMethod === undefined) {
-    warnings.push(`"${name}": authentication method "${String(raw.authMethod)}" is not supported; set to none`)
+    warnings.push(
+      `"${name}": authentication method "${String(raw.authMethod)}" is not supported; set to none`,
+    )
   }
 
   const input: MonitorFormInput = {
@@ -223,7 +227,10 @@ function parseNotificationConfig(value: unknown): Record<string, unknown> | null
  * `ImportFormatError` when the JSON is not a backup at all.
  */
 export function parseUptimeKumaBackup(json: unknown): ImportPlan {
-  if (!isRecord(json) || (!Array.isArray(json.monitorList) && !Array.isArray(json.notificationList))) {
+  if (
+    !isRecord(json) ||
+    (!Array.isArray(json.monitorList) && !Array.isArray(json.notificationList))
+  ) {
     throw new ImportFormatError(
       'Not an Uptime Kuma backup: expected a JSON object with "monitorList" and "notificationList".',
     )
@@ -283,7 +290,8 @@ export function parseUptimeKumaBackup(json: unknown): ImportPlan {
       name,
       type: mapped.type,
       config: mapped.config,
-      isDefault: asBool(entry.isDefault) ?? asBool(entry.is_default) ?? asBool(config.isDefault) ?? false,
+      isDefault:
+        asBool(entry.isDefault) ?? asBool(entry.is_default) ?? asBool(config.isDefault) ?? false,
       active: asBool(entry.active) ?? true,
     }
     plan.notifications.push(planned)
@@ -372,7 +380,9 @@ export function parseUptimeKumaBackup(json: unknown): ImportPlan {
     })
   }
   if (tagNames.size > 0) {
-    plan.warnings.push(`Skipped ${tagNames.size} tag${tagNames.size === 1 ? '' : 's'}: tags are not supported yet`)
+    plan.warnings.push(
+      `Skipped ${tagNames.size} tag${tagNames.size === 1 ? '' : 's'}: tags are not supported yet`,
+    )
   }
 
   return plan

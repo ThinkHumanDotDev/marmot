@@ -82,7 +82,10 @@ export interface ExportedStatusPage {
   customCSS: string | null
   googleAnalyticsId: string | null
   domains: string[]
-  groups: { name: string; monitors: { monitor: OrgId; sendUrl: boolean; customUrl: string | null }[] }[]
+  groups: {
+    name: string
+    monitors: { monitor: OrgId; sendUrl: boolean; customUrl: string | null }[]
+  }[]
   incidents: ExportedIncident[]
 }
 
@@ -133,8 +136,9 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
         sendUrl: row.sendUrl ?? false,
         customUrl: row.customUrl ?? null,
       }))
-      .filter((row): row is { monitor: OrgId; sendUrl: boolean; customUrl: string | null } =>
-        row.monitor !== null,
+      .filter(
+        (row): row is { monitor: OrgId; sendUrl: boolean; customUrl: string | null } =>
+          row.monitor !== null,
       ),
   })),
   incidents: incidents.map((incident) => ({
@@ -166,10 +170,30 @@ export async function buildMarmotExport(
   })) as Organization
 
   const [monitors, notifications, statusPages, incidents] = await Promise.all([
-    payload.find({ collection: 'monitors', where: { organization: { equals: orgId } }, sort: 'createdAt', ...common }),
-    payload.find({ collection: 'notifications', where: { organization: { equals: orgId } }, sort: 'name', ...common }),
-    payload.find({ collection: 'status-pages', where: { organization: { equals: orgId } }, sort: 'title', ...common }),
-    payload.find({ collection: 'incidents', where: { organization: { equals: orgId } }, sort: 'createdAt', ...common }),
+    payload.find({
+      collection: 'monitors',
+      where: { organization: { equals: orgId } },
+      sort: 'createdAt',
+      ...common,
+    }),
+    payload.find({
+      collection: 'notifications',
+      where: { organization: { equals: orgId } },
+      sort: 'name',
+      ...common,
+    }),
+    payload.find({
+      collection: 'status-pages',
+      where: { organization: { equals: orgId } },
+      sort: 'title',
+      ...common,
+    }),
+    payload.find({
+      collection: 'incidents',
+      where: { organization: { equals: orgId } },
+      sort: 'createdAt',
+      ...common,
+    }),
   ])
 
   const incidentsByPage = new Map<string, Incident[]>()
@@ -280,7 +304,9 @@ const statusPageSchema = z.object({
 
 const issueList = (issues: { path: PropertyKey[]; message: string }[]): string =>
   issues
-    .map((issue) => (issue.path.length ? `${issue.path.join('.')}: ${issue.message}` : issue.message))
+    .map((issue) =>
+      issue.path.length ? `${issue.path.join('.')}: ${issue.message}` : issue.message,
+    )
     .join('; ')
 
 /** Parses a Marmot export into an import plan. Pure: no database access. */
@@ -297,9 +323,14 @@ export function parseMarmotExport(json: unknown): ImportPlan {
   const seenNames = new Set<string>()
   file.notifications.forEach((entry, index) => {
     const parsed = notificationSchema.safeParse(entry)
-    const name = isRecord(entry) ? (asText(entry.name) ?? `notification #${index + 1}`) : `notification #${index + 1}`
+    const name = isRecord(entry)
+      ? (asText(entry.name) ?? `notification #${index + 1}`)
+      : `notification #${index + 1}`
     if (!parsed.success) {
-      plan.skipped.notifications.push({ name, reason: `Invalid notification: ${issueList(parsed.error.issues)}` })
+      plan.skipped.notifications.push({
+        name,
+        reason: `Invalid notification: ${issueList(parsed.error.issues)}`,
+      })
       return
     }
     let config: Record<string, unknown>
@@ -316,7 +347,10 @@ export function parseMarmotExport(json: unknown): ImportPlan {
       return
     }
     if (seenNames.has(parsed.data.name)) {
-      plan.skipped.notifications.push({ name, reason: 'Another notification in the file has the same name' })
+      plan.skipped.notifications.push({
+        name,
+        reason: 'Another notification in the file has the same name',
+      })
       return
     }
     seenNames.add(parsed.data.name)
@@ -331,7 +365,9 @@ export function parseMarmotExport(json: unknown): ImportPlan {
   })
 
   file.monitors.forEach((entry, index) => {
-    const name = isRecord(entry) ? (asText(entry.name) ?? `monitor #${index + 1}`) : `monitor #${index + 1}`
+    const name = isRecord(entry)
+      ? (asText(entry.name) ?? `monitor #${index + 1}`)
+      : `monitor #${index + 1}`
     const envelope = monitorEnvelopeSchema.safeParse(entry)
     if (!envelope.success || !isRecord(entry)) {
       plan.skipped.monitors.push({
@@ -343,13 +379,19 @@ export function parseMarmotExport(json: unknown): ImportPlan {
     const { id: _id, notifications: _n, pushToken: _p, parent: _parent, ...fields } = entry
     const parsed = monitorFormSchema.safeParse({ ...fields, parent: null })
     if (!parsed.success) {
-      plan.skipped.monitors.push({ name, reason: `Invalid monitor: ${issueList(parsed.error.issues)}` })
+      plan.skipped.monitors.push({
+        name,
+        reason: `Invalid monitor: ${issueList(parsed.error.issues)}`,
+      })
       return
     }
     plan.monitors.push({
       key: String(envelope.data.id),
       data: parsed.data,
-      parentKey: envelope.data.parent === null || envelope.data.parent === undefined ? null : String(envelope.data.parent),
+      parentKey:
+        envelope.data.parent === null || envelope.data.parent === undefined
+          ? null
+          : String(envelope.data.parent),
       notificationKeys: envelope.data.notifications.map(String),
       pushToken: parsed.data.type === 'push' ? (envelope.data.pushToken ?? null) : null,
     })
@@ -379,10 +421,15 @@ export function parseMarmotExport(json: unknown): ImportPlan {
 
   const monitorKeys = new Set(plan.monitors.map((m) => m.key))
   file.statusPages.forEach((entry, index) => {
-    const name = isRecord(entry) ? (asText(entry.title) ?? `status page #${index + 1}`) : `status page #${index + 1}`
+    const name = isRecord(entry)
+      ? (asText(entry.title) ?? `status page #${index + 1}`)
+      : `status page #${index + 1}`
     const parsed = statusPageSchema.safeParse(entry)
     if (!parsed.success) {
-      plan.skipped.statusPages.push({ name, reason: `Invalid status page: ${issueList(parsed.error.issues)}` })
+      plan.skipped.statusPages.push({
+        name,
+        reason: `Invalid status page: ${issueList(parsed.error.issues)}`,
+      })
       return
     }
     const page = parsed.data
@@ -419,16 +466,14 @@ export function parseMarmotExport(json: unknown): ImportPlan {
             customUrl: asText(row.customUrl),
           })),
       })),
-      incidents: page.incidents.map(
-        (incident): PlannedIncident => ({
-          title: incident.title,
-          content: incident.content ?? null,
-          style: incident.style ?? 'info',
-          pinned: incident.pinned ?? true,
-          active: incident.active ?? true,
-          resolvedAt: incident.resolvedAt ?? null,
-        }),
-      ),
+      incidents: page.incidents.map((incident): PlannedIncident => ({
+        title: incident.title,
+        content: incident.content ?? null,
+        style: incident.style ?? 'info',
+        pinned: incident.pinned ?? true,
+        active: incident.active ?? true,
+        resolvedAt: incident.resolvedAt ?? null,
+      })),
     }
     if (droppedRows > 0) {
       plan.warnings.push(
