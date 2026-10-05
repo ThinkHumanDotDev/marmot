@@ -32,10 +32,10 @@ export default async function SettingsLayout({ children, params }: SettingsLayou
         description="Your account, this organization and who has access."
         className="border-b-0 pb-2"
       />
-      <div className="border-b px-6 md:px-8">
+      <div className="border-b px-4 sm:px-6 md:px-8">
         <SettingsTabs orgSlug={orgSlug} showBilling={showBilling} />
       </div>
-      <section className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-6 md:p-8">
+      <section className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-4 sm:p-6 md:p-8">
         {children}
       </section>
     </>
