@@ -1,0 +1,91 @@
+# Marmot – production compose. Copy `.env.example` to `.env` next to this file and edit it.
+#   docker compose up -d
+# Set DOMAIN in .env to get automatic HTTPS from Caddy.
+name: marmot
+
+x-marmot: &marmot
+  image: ghcr.io/thinkhumandotdev/marmot:${MARMOT_VERSION:-latest}
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    DATABASE_ADAPTER: ${DATABASE_ADAPTER:-postgres}
+    DATABASE_URL: ${DATABASE_URL:-postgres://marmot:${POSTGRES_PASSWORD:-marmot}@postgres:5432/marmot}
+    REDIS_URL: redis://redis:6379
+    NEXT_PUBLIC_REALTIME_URL: ${NEXT_PUBLIC_REALTIME_URL:-}
+  volumes:
+    - uploads:/app/uploads
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  web:
+    <<: *marmot
+    environment:
+      MARMOT_ROLE: web
+    expose: ['3000']
+
+  worker:
+    <<: *marmot
+    environment:
+      MARMOT_ROLE: worker
+
+  realtime:
+    <<: *marmot
+    environment:
+      MARMOT_ROLE: realtime
+    expose: ['3001']
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: marmot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-marmot}
+      POSTGRES_DB: marmot
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U marmot -d marmot']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--maxmemory-policy', 'noeviction', '--save', '60', '1']
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN:-}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - realtime
+
+volumes:
+  uploads:
+  postgres:
+  redis:
+  caddy_data:
+  caddy_config:

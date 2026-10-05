@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PAYLOAD_SECRET: ci-secret-ci-secret-ci-secret
+  NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+  REDIS_URL: redis://localhost:6379
+  NEXT_TELEMETRY_DISABLED: 1
+  PAYLOAD_TELEMETRY_DISABLED: 1
+
+jobs:
+  pr-title:
+    name: Conventional PR title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  lint:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format
+      - run: pnpm lint
+      - run: pnpm generate:types
+        env:
+          DATABASE_ADAPTER: sqlite
+          DATABASE_URL: file:./data/ci.db
+      - run: pnpm typecheck
+
+  test:
+    name: Tests (${{ matrix.db }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      checks: write
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [postgres, mongodb]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: marmot
+          POSTGRES_PASSWORD: marmot
+          POSTGRES_DB: marmot
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U marmot" --health-interval 5s --health-timeout 5s --health-retries 10
+      mongo:
+        image: mongo:7
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok'" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_ADAPTER: ${{ matrix.db }}
+      DATABASE_URL: ${{ matrix.db == 'postgres' && 'postgres://marmot:marmot@localhost:5432/marmot' || 'mongodb://localhost:27017/marmot' }}
+      CI: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Integration tests
+        run: pnpm test:int --reporter=default --reporter=junit --outputFile=test-results/int-junit.xml
+      - name: Build
+        run: pnpm build
+      - name: Run migrations
+        run: pnpm migrate --force-accept-warning
+        env:
+          NODE_ENV: production
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+      - name: E2E tests
+        run: pnpm test:e2e
+        env:
+          E2E_WEB_COMMAND: pnpm start
+      - name: Test report
+        uses: dorny/test-reporter@v3
+        if: ${{ !cancelled() }}
+        with:
+          name: Test results (${{ matrix.db }})
+          path: test-results/*-junit.xml
+          reporter: java-junit
+          fail-on-error: false
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report-${{ matrix.db }}
+          path: playwright-report
+          retention-days: 7
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Validate compose files
+        run: |
+          cp .env.example docker/.env
+          docker compose -f docker/docker-compose.yml config -q
+          docker compose -f docker/docker-compose.yml -f docker/docker-compose.mongo.yml config -q
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: false
+          tags: marmot:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

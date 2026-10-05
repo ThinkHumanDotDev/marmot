@@ -1,0 +1,23 @@
+name: Bug report
+description: Something is broken
+labels: ['type:bug']
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+  - type: input
+    id: version
+    attributes:
+      label: Marmot version / commit
+  - type: dropdown
+    id: db
+    attributes:
+      label: Database adapter
+      options: [postgres, mongodb, sqlite]

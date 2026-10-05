@@ -1,0 +1,20 @@
+# Zero-config HTTPS for self-hosters. Set DOMAIN=status.example.com (DNS must point here).
+# With DOMAIN unset Caddy serves plain HTTP on :80 (useful behind another proxy or locally).
+{
+  email {$ACME_EMAIL:}
+}
+
+{$DOMAIN:http://localhost} {
+  encode zstd gzip
+
+  @realtime path /socket.io/*
+  handle @realtime {
+    reverse_proxy realtime:3001 {
+      stream_close_delay 5m
+    }
+  }
+
+  handle {
+    reverse_proxy web:3000
+  }
+}

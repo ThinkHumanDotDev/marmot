@@ -1,0 +1,45 @@
+# Override to run Marmot on MongoDB instead of Postgres:
+#   docker compose -f docker-compose.yml -f docker-compose.mongo.yml up -d
+services:
+  web:
+    environment:
+      DATABASE_ADAPTER: mongodb
+      DATABASE_URL: mongodb://mongo:27017/marmot
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  worker:
+    environment:
+      DATABASE_ADAPTER: mongodb
+      DATABASE_URL: mongodb://mongo:27017/marmot
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  realtime:
+    environment:
+      DATABASE_ADAPTER: mongodb
+      DATABASE_URL: mongodb://mongo:27017/marmot
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  postgres:
+    profiles: ['disabled']
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo:

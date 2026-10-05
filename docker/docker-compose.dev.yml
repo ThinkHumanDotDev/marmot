@@ -1,0 +1,17 @@
+# Local development dependencies only (app runs on the host with `pnpm dev`).
+#   docker compose -f docker/docker-compose.dev.yml up -d
+name: marmot-dev
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: marmot
+      POSTGRES_PASSWORD: marmot
+      POSTGRES_DB: marmot
+    ports: ['5432:5432']
+  redis:
+    image: redis:7-alpine
+    ports: ['6379:6379']
+  mongo:
+    image: mongo:7
+    ports: ['27017:27017']
