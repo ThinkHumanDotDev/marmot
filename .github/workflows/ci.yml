@@ -103,8 +103,10 @@ jobs:
           DATABASE_URL: ${{ env.INT_DATABASE_URL }}
       - name: Build
         run: pnpm build
+      # Same bundled runner as the container (scripts/build-server.mjs): `payload migrate` loads the
+      # config through tsx, whose import intermittently never settles and exits 0 having run nothing.
       - name: Run migrations
-        run: pnpm migrate --force-accept-warning
+        run: pnpm build:server && pnpm migrate:prod --force-accept-warning
         timeout-minutes: 5
         env:
           NODE_ENV: production
