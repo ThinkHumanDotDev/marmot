@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Marmot – single image, three roles (web | worker | realtime) selected with MARMOT_ROLE.
 
-FROM node:22-alpine AS base
+FROM node:26-alpine AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NEXT_TELEMETRY_DISABLED=1 PAYLOAD_TELEMETRY_DISABLED=1
 RUN apk add --no-cache libc6-compat && corepack enable
 WORKDIR /app
