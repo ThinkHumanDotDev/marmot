@@ -2,7 +2,7 @@ import Link from 'next/link'
 import * as React from 'react'
 
 import { Logo } from '@/components/logo'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 
 interface AuthCardProps {
   title: string
@@ -20,7 +20,9 @@ export function AuthCard({ title, description, children, footer }: AuthCardProps
       </Link>
       <Card className="w-full">
         <CardHeader>
-          <CardTitle className="text-xl">{title}</CardTitle>
+          <h1 data-slot="card-title" className="text-xl leading-none font-semibold">
+            {title}
+          </h1>
           {description && <CardDescription>{description}</CardDescription>}
         </CardHeader>
         <CardContent>{children}</CardContent>

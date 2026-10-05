@@ -15,7 +15,9 @@ test.describe('Frontend', () => {
     await page.getByLabel('Email').fill('nobody@marmot.local')
     await page.getByLabel('Password').fill('definitely-not-the-password')
     await page.getByRole('button', { name: /sign in/i }).click()
-    await expect(page.getByRole('alert')).toContainText(/incorrect email or password/i)
+    await expect(
+      page.getByRole('alert').filter({ hasText: /incorrect email or password/i }),
+    ).toBeVisible()
     await expect(page).toHaveURL(/\/login$/)
   })
 
