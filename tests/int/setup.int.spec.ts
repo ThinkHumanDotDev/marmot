@@ -61,7 +61,7 @@ describe('first-run setup', () => {
   })
 
   describe('needsSetup', () => {
-    it('is true while no user exists and caches false once users are observed', async () => {
+    it('is true while no user exists and follows the database without caching', async () => {
       expect(await needsSetup(payload)).toBe(true)
 
       const user = await payload.create({
@@ -70,10 +70,8 @@ describe('first-run setup', () => {
       })
       expect(await needsSetup(payload)).toBe(false)
 
-      // Cached: deleting the user does not reopen setup until the cache is reset.
+      // Not cached: an emptied users table reopens setup (per-route bundles cannot share a flag).
       await payload.delete({ collection: 'users', id: user.id })
-      expect(await needsSetup(payload)).toBe(false)
-      resetSetupCache()
       expect(await needsSetup(payload)).toBe(true)
     })
 

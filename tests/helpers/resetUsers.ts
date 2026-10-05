@@ -2,9 +2,8 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 /**
- * Empties the `users` collection so the instance is back in "needs setup" state. Only the
- * database is reset: a running web server that already observed users keeps reporting
- * `needsSetup: false` until it restarts, which is why the setup e2e spec runs first and in CI only.
+ * Empties the `users` collection so the instance is back in "needs setup" state. The setup e2e
+ * spec runs first (file name prefix) and in CI only so it never races the other specs' seeds.
  */
 export async function deleteAllUsers(): Promise<void> {
   const payload = await getPayload({ config })

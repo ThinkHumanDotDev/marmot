@@ -47,7 +47,7 @@ test.describe('First-run setup', () => {
     await page.getByRole('button', { name: /create admin account/i }).click()
 
     await expect(page).toHaveURL(new RegExp(`/${orgSlug}/monitors$`))
-    await expect(page.getByRole('heading', { name: 'Monitors' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Monitors' })).toBeVisible()
 
     // Setup is now closed: the status flips and the wizard is gone.
     expect(await (await request.get('/api/setup/status')).json()).toEqual({ needsSetup: false })

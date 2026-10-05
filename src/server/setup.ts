@@ -10,26 +10,20 @@ import type { Organization, User } from '@/payload-types'
  * organization are created in one transaction.
  */
 
-let setupComplete = false
-
-/** Forget that setup was observed complete (tests that empty the users table call this). */
-export function resetSetupCache(): void {
-  setupComplete = false
-}
+/**
+ * Kept for API compatibility: `needsSetup` no longer caches. Next.js bundles server modules per
+ * route, so a module-level flag would differ between the status route and the pages, and a
+ * reset database (tests, restores) would be reported inconsistently.
+ */
+export function resetSetupCache(): void {}
 
 /**
- * `true` while no user exists. Once users have been observed the result is cached as `false` for
- * the lifetime of the process: a completed setup never reverts and the check runs on every
- * anonymous page load.
+ * `true` while no user exists. This is one indexed count query per anonymous page load, which is
+ * cheap enough that we deliberately do not cache it.
  */
 export async function needsSetup(payload: Payload): Promise<boolean> {
-  if (setupComplete) return false
   const { totalDocs } = await payload.count({ collection: 'users' })
-  if (totalDocs > 0) {
-    setupComplete = true
-    return false
-  }
-  return true
+  return totalDocs === 0
 }
 
 export const setupSchema = z.object({
@@ -118,7 +112,6 @@ export async function runSetup(payload: Payload, input: SetupInput): Promise<Set
     })
 
     if (transactionID) await payload.db.commitTransaction(transactionID)
-    setupComplete = true
 
     const freshUser = await payload.findByID({ collection: 'users', id: user.id, depth: 0 })
     return { user: freshUser, organization }
