@@ -1,36 +1,21 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
-import { getPayload, type Payload } from 'payload'
+import type { Page } from '@playwright/test'
 
-import config from '@payload-config'
-
-import { cleanupOrganization, cleanupUsers, seedOrganization, seedUser } from '../helpers/org'
+import { expect, runId, targetUrl, test, type DocId } from './fixtures'
 
 /**
  * Accessibility smoke (issue #32): axe-core on the key pages in light and dark mode, plus the
  * keyboard paths (command palette, `g` sequences). Serious and critical violations fail the test.
+ * Runs as the setup admin (project storage state); data is seeded through the REST API and the
+ * heartbeats come from the worker checking the local target server.
  */
-const run = Date.now().toString(36)
-const owner = {
-  email: `a11y-${run}@marmot.local`,
-  password: 'marmot-a11y-password',
-  name: 'Grace Hopper',
-}
+const run = runId()
 const org = { name: `A11y Org ${run}`, slug: `e2e-a11y-${run}` }
 const monitorName = `Checkout API ${run}`
 const statusPageSlug = `e2e-a11y-status-${run}`
 
-let payload: Payload
-let orgId: string | number
-let monitorId: string | number
-
-async function signIn(page: Page) {
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(owner.email)
-  await page.getByLabel('Password').fill(owner.password)
-  await page.getByRole('button', { name: /^sign in$/i }).click()
-  await page.waitForURL((url) => !url.pathname.startsWith('/login'))
-}
+let monitorId: DocId
+const created: { collection: string; id: DocId }[] = []
 
 /** Runs axe with the WCAG 2.1 A/AA rules and fails on serious or critical findings. */
 async function expectNoSeriousViolations(page: Page, label: string) {
@@ -53,72 +38,50 @@ test.describe('Accessibility', () => {
   // Each test visits several freshly compiled pages in two colour schemes and two viewports.
   test.setTimeout(120_000)
 
-  test.beforeAll(async () => {
-    payload = await getPayload({ config })
-    const user = await seedUser(owner)
-    const organization = await seedOrganization(user, org)
-    orgId = organization.id
+  test.beforeAll(async ({ adminApi }) => {
+    const track = <T extends { id: DocId }>(collection: string, doc: T): T => {
+      created.unshift({ collection, id: doc.id })
+      return doc
+    }
+    // The creating admin becomes the organization's owner (organizations afterChange hook).
+    const organization = track('organizations', await adminApi.create('organizations', org))
 
-    const monitor = await payload.create({
-      collection: 'monitors',
-      data: {
+    const monitor = track(
+      'monitors',
+      await adminApi.createMonitor({
         name: monitorName,
         type: 'http',
-        url: 'https://example.com/health',
+        url: targetUrl('/health'),
         active: true,
         interval: 60,
         retryInterval: 60,
         maxRetries: 0,
         resendInterval: 0,
         timeout: 48,
-        organization: orgId,
-        status: { lastStatus: 'up', lastCheckAt: new Date().toISOString(), lastPing: 87 },
-      } as never,
-    })
+        organization: organization.id,
+      }),
+    )
     monitorId = monitor.id
+    await adminApi.waitForHeartbeat(monitorId, 'up')
 
-    const now = Date.now()
-    for (let i = 0; i < 12; i++) {
-      await payload.create({
-        collection: 'heartbeats',
-        data: {
-          monitor: monitorId,
-          organization: orgId,
-          status: i === 4 ? 'down' : 'up',
-          important: i === 4 || i === 5,
-          ping: 80 + i * 3,
-          msg: i === 4 ? 'Timeout' : 'OK',
-          time: new Date(now - (12 - i) * 60_000).toISOString(),
-        } as never,
-      })
-    }
-
-    await payload.create({
-      collection: 'status-pages',
-      data: {
-        organization: orgId,
+    track(
+      'status-pages',
+      await adminApi.create('status-pages', {
+        organization: organization.id,
         title: 'A11y Status',
         slug: statusPageSlug,
         published: true,
         groups: [{ name: 'Services', monitors: [{ monitor: monitorId }] }],
-      } as never,
-    })
+      }),
+    )
   })
 
-  test.afterAll(async () => {
-    if (orgId !== undefined) {
-      await payload.delete({
-        collection: 'status-pages',
-        where: { organization: { equals: orgId } },
-      })
-      await payload.delete({ collection: 'heartbeats', where: { organization: { equals: orgId } } })
-      await payload.delete({ collection: 'monitors', where: { organization: { equals: orgId } } })
-    }
-    await cleanupOrganization(org.slug)
-    await cleanupUsers([owner.email])
+  test.afterAll(async ({ adminApi }) => {
+    // Newest first, so nothing is deleted while something still references it.
+    for (const { collection, id } of created) await adminApi.delete(collection, id)
   })
 
-  test('login page has no serious violations', async ({ page }) => {
+  test('login page has no serious violations', async ({ anonymousPage: page }) => {
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme })
       await page.goto('/login')
@@ -136,7 +99,8 @@ test.describe('Accessibility', () => {
     {
       name: 'monitor detail',
       path: () => `/${org.slug}/monitors/${monitorId}`,
-      ready: (page: Page) => page.getByTestId('monitor-name'),
+      // The h1 rather than its test id: a hidden copy of the title can be in the DOM briefly.
+      ready: (page: Page) => page.getByRole('heading', { level: 1, name: new RegExp(monitorName) }),
     },
     {
       name: 'status pages',
@@ -152,7 +116,6 @@ test.describe('Accessibility', () => {
 
   for (const target of appPages) {
     test(`${target.name} has no serious violations (light, dark, mobile)`, async ({ page }) => {
-      await signIn(page)
       for (const colorScheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme })
         await page.goto(target.path())
@@ -174,7 +137,6 @@ test.describe('Accessibility', () => {
   }
 
   test('command palette finds monitors and runs keyboard navigation', async ({ page }) => {
-    await signIn(page)
     await page.goto(`/${org.slug}/members`)
     await expect(page.getByTestId('members-table')).toBeVisible()
 
@@ -186,7 +148,9 @@ test.describe('Accessibility', () => {
     await expect(palette.getByRole('option', { name: new RegExp(monitorName) })).toBeVisible()
     await page.keyboard.press('Enter')
     await page.waitForURL(new RegExp(`/${org.slug}/monitors/${monitorId}$`))
-    await expect(page.getByTestId('monitor-name')).toHaveText(monitorName)
+    await expect(
+      page.getByRole('heading', { level: 1, name: new RegExp(monitorName) }),
+    ).toBeVisible()
 
     // Quick actions know about the monitor on screen.
     await page.keyboard.press('ControlOrMeta+k')

@@ -3,7 +3,7 @@
  * where its access control already expresses the rule; Marmot's own route handlers under
  * `/api/orgs`, `/api/invite` and `/api/account` cover the rest.
  */
-import type { Role } from '@/access/permissions'
+import type { Permission, Role } from '@/access/permissions'
 import { api } from '@/lib/api'
 
 type Id = string | number
@@ -83,8 +83,25 @@ export const orgApi = {
     ),
 }
 
+export type ThemePreference = 'system' | 'light' | 'dark'
+
+export interface TwoFactorStatus {
+  enabled: boolean
+  verifiedAt: string | null
+  backupCodesRemaining: number
+}
+
+export interface TwoFactorSetup {
+  secret: string
+  otpauthUrl: string
+  qrDataUrl: string
+}
+
 export const accountApi = {
-  update: (userId: Id, data: { name?: string; email?: string; avatar?: Id | null }) =>
+  update: (
+    userId: Id,
+    data: { name?: string; email?: string; avatar?: Id | null; theme?: ThemePreference },
+  ) =>
     api.patch<{ doc: { id: Id; email: string; name?: string | null } }>(
       `/api/users/${userId}`,
       data,
@@ -92,6 +109,56 @@ export const accountApi = {
   changePassword: (data: { currentPassword: string; password: string }) =>
     api.post<{ updated: true }>('/api/account/password', data),
   remove: (confirm: string) => api.delete<{ deleted: true }>('/api/account', { body: { confirm } }),
+
+  /** Two-factor authentication (`/api/account/2fa/*`). */
+  twoFactor: {
+    status: () => api.get<TwoFactorStatus>('/api/account/2fa/backup-codes'),
+    setup: (password: string) => api.post<TwoFactorSetup>('/api/account/2fa/setup', { password }),
+    verify: (code: string) =>
+      api.post<{ enabled: true; backupCodes: string[] }>('/api/account/2fa/verify', { code }),
+    disable: (data: { password: string; code: string }) =>
+      api.post<{ enabled: false }>('/api/account/2fa/disable', data),
+    regenerateBackupCodes: (code: string) =>
+      api.post<{ backupCodes: string[] }>('/api/account/2fa/backup-codes', { code }),
+  },
+}
+
+// ---- Organization permissions ---------------------------------------------------------------
+
+export interface PermissionsResponse {
+  defaults: Record<Permission, Role>
+  overrides: Partial<Record<Permission, Role>>
+  effective: Record<Permission, Role>
+  locked: Permission[]
+  canEdit: boolean
+}
+
+export const permissionsApi = {
+  get: (orgId: Id) => api.get<PermissionsResponse>(`/api/orgs/${orgId}/permissions`),
+  update: (orgId: Id, overrides: Partial<Record<Permission, Role>>) =>
+    api.put<PermissionsResponse>(`/api/orgs/${orgId}/permissions`, { overrides }),
+}
+
+// ---- Instance settings (superadmin) ---------------------------------------------------------
+
+export interface InstanceSettingsInput {
+  primaryBaseUrl?: string | null
+  allowSignup?: boolean
+  entryPage?: 'dashboard' | 'status-page'
+  tlsExpiryNotifyDays?: number[]
+  domainExpiryNotifyDays?: number[]
+  keepDataPeriodDays?: number
+  trustProxy?: boolean
+  steamApiKey?: string | null
+  globalpingApiToken?: string | null
+}
+
+export const instanceApi = {
+  /** Payload REST global update; `instance-settings.access.update` is superadmin-only. */
+  update: (data: InstanceSettingsInput) =>
+    api.post<{ result: InstanceSettingsInput }>('/api/globals/instance-settings', { ...data }),
+  smtpTest: (to?: string) =>
+    api.post<{ sent: true; to: string }>('/api/instance/smtp-test', to ? { to } : {}),
 }
 
 /** Uploads an image to the `media` collection. */

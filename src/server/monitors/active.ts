@@ -22,7 +22,7 @@ export function setActiveHandler(active: boolean) {
 
     const auth = await authenticate(payload, request)
     if (auth.response) return auth.response
-    const forbidden = authorize(auth.user, orgId, 'monitor:update')
+    const forbidden = await authorize(payload, auth.user, orgId, 'monitor:update')
     if (forbidden) return forbidden
 
     const monitor = await loadOrgMonitor(payload, auth.user, orgId, id)

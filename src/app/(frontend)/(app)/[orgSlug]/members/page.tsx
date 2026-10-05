@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
-import { can } from '@/access/permissions'
+import { canWithOverrides } from '@/access/permissions'
 import { MembersView } from '@/components/members/members-view'
 import { requireUser } from '@/lib/auth'
 import { effectiveRole, getOrgBySlug } from '@/lib/org'
@@ -22,7 +22,7 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
 
   const payload = await getPayload({ config })
   const role = effectiveRole(user, org.id)
-  const canInvite = can(user, org.id, 'member:invite')
+  const canInvite = canWithOverrides(user, org, 'member:invite')
 
   const members = await listOrgMembers(payload, org.id, { user, overrideAccess: false })
 
