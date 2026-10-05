@@ -1,41 +1,58 @@
-import { ArrowLeft, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
-import { EmptyState } from '@/components/empty-state'
+import { MonitorForm } from '@/components/monitors/monitor-form'
 import { PageHeader } from '@/components/page-header'
-import { Button } from '@/components/ui/button'
+import {
+  defaultMonitorValues,
+  MONITOR_TYPE_NAMES,
+  type MonitorTypeName,
+} from '@/lib/validation/monitor'
+import { listMonitorTypes } from '@/server/monitor-types'
+import { getOrgGroups, getOrgPageContext } from '@/server/monitors/page-data'
 
 export const metadata: Metadata = { title: 'New monitor' }
+export const dynamic = 'force-dynamic'
 
 interface NewMonitorPageProps {
   params: Promise<{ orgSlug: string }>
+  searchParams: Promise<{ type?: string }>
 }
 
-/** Placeholder until the monitor form issue lands; keeps the dashboard's CTA routable. */
-export default async function NewMonitorPage({ params }: NewMonitorPageProps) {
+export default async function NewMonitorPage({ params, searchParams }: NewMonitorPageProps) {
   const { orgSlug } = await params
+  const { type } = await searchParams
+  const ctx = await getOrgPageContext(orgSlug, `/${orgSlug}/monitors/new`)
+  if (!ctx.allowed('monitor:create')) redirect(`/${orgSlug}/monitors`)
+
+  const initialType: MonitorTypeName = (MONITOR_TYPE_NAMES as readonly string[]).includes(
+    type ?? '',
+  )
+    ? (type as MonitorTypeName)
+    : 'http'
+  const groups = await getOrgGroups(ctx)
+  const types = listMonitorTypes().map(({ name, label }) => ({ name, label }))
+
   return (
     <>
       <PageHeader
         eyebrow={
-          <Link href={`/${orgSlug}/monitors`} className="inline-flex items-center gap-1">
-            <ArrowLeft className="size-3" aria-hidden /> Monitors
+          <Link href={`/${orgSlug}/monitors`} className="hover:text-foreground">
+            ← Monitors
           </Link>
         }
         title="New monitor"
-        description="Pick a type, point it at a target and choose how often to check."
+        description="Marmot starts checking as soon as you save."
       />
       <section className="p-6 md:p-8">
-        <EmptyState
-          icon={Plus}
-          title="The monitor form is on its way"
-          description="Until it ships, create monitors from the admin panel; they appear on the dashboard live."
-          action={
-            <Button asChild variant="outline">
-              <Link href={`/${orgSlug}/monitors`}>Back to monitors</Link>
-            </Button>
-          }
+        <MonitorForm
+          mode="create"
+          orgId={ctx.org.id}
+          orgSlug={orgSlug}
+          initialValues={defaultMonitorValues(initialType)}
+          types={types}
+          groups={groups}
         />
       </section>
     </>
