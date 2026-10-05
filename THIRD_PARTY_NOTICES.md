@@ -16,6 +16,18 @@ attribution comment and are listed here:
   averages, uptime/ping aggregation).
 - `src/server/jobs/retention.ts` — based on `server/jobs/clear-old-data.js` and the pruning logic of
   `server/uptime-calculator.js`.
+- `src/server/engine/beat.ts` — heartbeat state machine (`Monitor.beat`, `isImportantBeat`,
+  `isImportantForNotification` from `server/model/monitor.js`)
+- `src/server/monitor-types/http-request.ts` — HTTP request building and `checkStatusCode`
+  (`server/model/monitor.js`, `server/util-server.js`)
+- `src/server/monitor-types/http.ts`, `keyword.ts` — `http`/`keyword` branches of `server/model/monitor.js`
+- `src/server/monitor-types/json-query.ts` — `evaluateJsonQuery` from `src/util.ts`
+- `src/server/monitor-types/port.ts` — `server/monitor-types/tcp.js`
+- `src/server/monitor-types/ping.ts` — `ping`/`pingAsync` from `server/util-server.js`
+- `src/server/monitor-types/dns.ts` — `server/monitor-types/dns.js`
+- `src/server/monitor-types/push.ts` — `push` branch of `server/model/monitor.js`
+- `src/server/monitor-types/group.ts` — `server/monitor-types/group.js`
+- `src/server/monitor-types/manual.ts` — `server/monitor-types/manual.js`
 
 The MIT license text is reproduced below.
 
