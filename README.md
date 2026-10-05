@@ -67,6 +67,14 @@ Useful commands: `pnpm check` (lint + typecheck + integration tests), `pnpm test
 One image, three roles (`MARMOT_ROLE=web|worker|realtime`), scaled independently. Details in
 [docs/architecture.md](docs/architecture.md).
 
+## Privacy and telemetry
+
+Marmot collects **nothing** by default: no analytics SDK, no cookie banner, no calls home. Operators who
+want product analytics can set `NEXT_PUBLIC_POSTHOG_KEY`; the UI then asks every visitor for consent before
+any event is sent, identifies users only by a keyed hash of their id, reduces URLs to route patterns and
+proxies all traffic through the instance itself. [docs/telemetry.md](docs/telemetry.md) lists exactly what
+is collected and how to turn it off.
+
 ## License
 
 Marmot is released under the [GNU AGPL v3](LICENSE). It is heavily inspired by, and in places ports code

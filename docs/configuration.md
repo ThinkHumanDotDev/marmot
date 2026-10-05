@@ -25,7 +25,7 @@ All configuration is via environment variables (see `.env.example`). Variables a
 | `WORKER_CONCURRENCY`                                                                                       | `10`                     | Parallel monitor checks per worker process.             |
 | `MARMOT_DISABLE_ENGINE_HOOKS`                                                                              | `false`                  | Skip BullMQ sync in `monitors` hooks (tests w/o Redis). |
 | `BILLING_ENABLED`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                                            | off                      | Billing scaffold.                                       |
-| `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`                                                      | off                      | Opt-in analytics; nothing is sent without a key.        |
+| `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`                                                      | off                      | Opt-in analytics, see below; nothing without a key.     |
 | `LOG_LEVEL`                                                                                                | `info`                   | pino log level.                                         |
 | `DOMAIN`, `ACME_EMAIL`                                                                                     | —                        | Compose only: Caddy automatic HTTPS.                    |
 
@@ -67,3 +67,13 @@ process on `REALTIME_PORT`. Set `NEXT_PUBLIC_REALTIME_URL` (e.g. `https://realti
 the realtime server is exposed on another origin; it must share the cookie's site (a subdomain of the web
 app is fine) and allows `NEXT_PUBLIC_SERVER_URL` in CORS. Being a `NEXT_PUBLIC_*` variable it is inlined at
 `pnpm build` time, so rebuild the web image after changing it.
+
+## Telemetry
+
+Marmot sends nothing by default. Setting `NEXT_PUBLIC_POSTHOG_KEY` (and optionally
+`NEXT_PUBLIC_POSTHOG_HOST`, default `https://us.i.posthog.com`) enables PostHog product analytics: the
+frontend then shows a consent banner and only sends events once the visitor allows the `measurement`
+category; the worker and the `organizations` hook send a handful of aggregate, non-personal events. The
+browser never contacts PostHog directly: it posts to the same-origin `/ph` path, which `next.config.ts`
+rewrites to the configured host. Both variables are inlined at `pnpm build` time, so rebuild the web image
+after changing them. [docs/telemetry.md](telemetry.md) lists every event and property.
