@@ -19,8 +19,8 @@ which builds the multi-arch image and publishes it to `ghcr.io/thinkhumandotdev/
 - [ ] **Configuration docs**: every key in `src/env.ts` is in `.env.example` and `docs/configuration.md`
       (`tests/int/docs.int.spec.ts` enforces it); new instance settings are documented.
 - [ ] **Documentation**: pages marked _(landing in the current release)_ in `docs/` describe features that
-      actually merged; remove the markers (and the matching allowance in `docs.int.spec.ts`) or move the
-      feature to _planned_ in `docs/comparison.md`.
+      actually merged; remove the markers (and the page from `LANDING_PAGES` in
+      `tests/int/docs.int.spec.ts`) or move the feature to _planned_ in `docs/comparison.md`.
 - [ ] `THIRD_PARTY_NOTICES.md` lists every file ported from Uptime Kuma or kan.bn.
 - [ ] `package.json` `version` is bumped to the release version in a `chore(release): vX.Y.Z` commit.
 - [ ] `CHANGELOG` / release notes drafted from the commit log: features, fixes, **breaking changes** and
