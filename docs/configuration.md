@@ -57,3 +57,13 @@ A fresh install has no users. While that is the case `GET /api/setup/status` ret
 organization in one transaction (`POST /api/setup`) and signs them in. Once any user exists the wizard is
 closed for good (`/setup` redirects to `/login`, the API answers `409`); further users join through
 `/signup` (if `allowSignup`) or invitations.
+
+## Realtime origin
+
+The browser opens one socket.io connection with credentials, so the realtime server must be reachable on a
+URL that receives the `payload-token` cookie. By default the client connects to the page's own origin at
+`/socket.io`, and Caddy (or your reverse proxy, see `docs/deployment.md`) forwards that path to the realtime
+process on `REALTIME_PORT`. Set `NEXT_PUBLIC_REALTIME_URL` (e.g. `https://realtime.example.com`) only when
+the realtime server is exposed on another origin; it must share the cookie's site (a subdomain of the web
+app is fine) and allows `NEXT_PUBLIC_SERVER_URL` in CORS. Being a `NEXT_PUBLIC_*` variable it is inlined at
+`pnpm build` time, so rebuild the web image after changing it.
