@@ -237,6 +237,26 @@
           "notNull": false,
           "default": false
         },
+        "auth_provider": {
+          "name": "auth_provider",
+          "type": "enum_users_auth_provider",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'local'"
+        },
+        "oidc_issuer": {
+          "name": "oidc_issuer",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oidc_subject": {
+          "name": "oidc_subject",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -313,6 +333,21 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "users_oidc_subject_idx": {
+          "name": "users_oidc_subject_idx",
+          "columns": [
+            {
+              "expression": "oidc_subject",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -3210,6 +3245,14 @@
         "viewer"
       ]
     },
+    "public.enum_users_auth_provider": {
+      "name": "enum_users_auth_provider",
+      "schema": "public",
+      "values": [
+        "local",
+        "oidc"
+      ]
+    },
     "public.enum_organizations_plan": {
       "name": "enum_organizations_plan",
       "schema": "public",
@@ -3382,6 +3425,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "d7b4390f-6a61-4af6-af75-f8e6c194afe2",
+  "id": "cd37f861-0a66-4b6f-8ca1-47812115c95c",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

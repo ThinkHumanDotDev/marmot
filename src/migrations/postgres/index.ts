@@ -3,6 +3,7 @@ import * as migration_20261005_020303_add_stats from './20261005_020303_add_stat
 import * as migration_20261005_023021_organizations_rbac from './20261005_023021_organizations_rbac';
 import * as migration_20261005_023920_monitors_heartbeats from './20261005_023920_monitors_heartbeats';
 import * as migration_20261005_030513_add_oidc_fields from './20261005_030513_add_oidc_fields';
+import * as migration_20261005_032603_instance_settings from './20261005_032603_instance_settings';
 
 export const migrations = [
   {
@@ -28,6 +29,11 @@ export const migrations = [
   {
     up: migration_20261005_030513_add_oidc_fields.up,
     down: migration_20261005_030513_add_oidc_fields.down,
-    name: '20261005_030513_add_oidc_fields'
+    name: '20261005_030513_add_oidc_fields',
+  },
+  {
+    up: migration_20261005_032603_instance_settings.up,
+    down: migration_20261005_032603_instance_settings.down,
+    name: '20261005_032603_instance_settings'
   },
 ];
