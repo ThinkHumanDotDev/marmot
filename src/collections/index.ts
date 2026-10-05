@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 
+import { Invitations } from './Invitations'
 import { Media } from './Media'
 import { Monitors } from './Monitors'
 import { Organizations } from './Organizations'
@@ -15,6 +16,7 @@ import { Users } from './Users'
 export const collections: CollectionConfig[] = [
   Users,
   Organizations,
+  Invitations,
   Media,
   Monitors,
   StatMinutely,
