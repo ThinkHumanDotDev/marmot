@@ -21,7 +21,7 @@ const monitor = {
   timeout: 48,
   updatedAt: '',
   createdAt: '',
-} as Monitor
+} as unknown as Monitor
 
 const downBeat = {
   id: 99,
@@ -32,9 +32,15 @@ const downBeat = {
   duration: 60,
   important: true,
   time: '2026-03-10T10:30:00.000Z',
-} as Heartbeat
+} as unknown as Heartbeat
 
-const upBeat = { ...downBeat, id: 100, status: 'up', msg: '200 - OK', ping: 123 } as Heartbeat
+const upBeat = {
+  ...downBeat,
+  id: 100,
+  status: 'up',
+  msg: '200 - OK',
+  ping: 123,
+} as unknown as Heartbeat
 
 const message = '[API] [🔴 Down] Request failed with status code 503'
 

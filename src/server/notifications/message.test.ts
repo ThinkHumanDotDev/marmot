@@ -9,13 +9,18 @@ import {
   renderTemplate,
 } from './message'
 
-const monitor = { id: 1, name: 'Site', type: 'http', url: 'https://example.com' } as Monitor
+const monitor = {
+  id: 1,
+  name: 'Site',
+  type: 'http',
+  url: 'https://example.com',
+} as unknown as Monitor
 const down = {
   id: 2,
   status: 'down',
   msg: 'timeout',
   time: '2026-01-01T00:00:00.000Z',
-} as Heartbeat
+} as unknown as Heartbeat
 const up = { ...down, status: 'up', msg: '200 - OK', ping: 42 } as Heartbeat
 
 describe('default message', () => {
