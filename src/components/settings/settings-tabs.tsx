@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, Building2, Server, ShieldCheck, UserRound, Users } from 'lucide-react'
+import { ArrowDownUp, Bell, Building2, Server, ShieldCheck, UserRound, Users } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -22,6 +22,7 @@ export function SettingsTabs({ orgSlug, superadmin = false }: SettingsTabsProps)
     { href: `/${orgSlug}/settings/account`, label: 'Account', icon: UserRound },
     { href: `/${orgSlug}/settings/organization`, label: 'Organization', icon: Building2 },
     { href: `/${orgSlug}/members`, label: 'Members', icon: Users },
+    { href: `/${orgSlug}/settings/import-export`, label: 'Import / Export', icon: ArrowDownUp },
     { href: `/${orgSlug}/settings/permissions`, label: 'Permissions', icon: ShieldCheck },
     { href: `/${orgSlug}/settings/notifications`, label: 'Notifications', icon: Bell },
     ...(superadmin

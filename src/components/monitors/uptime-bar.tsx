@@ -1,4 +1,4 @@
-import { statusLabel } from '@/components/status-dot'
+import { describeBeats, statusLabel } from '@/components/status-dot'
 import { cn } from '@/lib/utils'
 import { statusKey, type Heartbeat } from '@/stores/monitor-store'
 
@@ -28,14 +28,14 @@ export function UptimeBar({ beats, count = UPTIME_BAR_BEATS, className }: Uptime
     <div
       className={cn('flex h-6 items-center gap-px', className)}
       role="img"
-      aria-label={
-        recent.length === 0
-          ? 'No heartbeats yet'
-          : `Last ${recent.length} checks, newest on the right`
-      }
+      aria-label={describeBeats(recent.map((beat) => statusKey(beat.status)))}
     >
       {Array.from({ length: padding }, (_, i) => (
-        <span key={`pad-${i}`} className="h-full flex-1 rounded-[2px] bg-muted-foreground/10" />
+        <span
+          key={`pad-${i}`}
+          aria-hidden
+          className="h-full flex-1 rounded-[2px] bg-muted-foreground/10"
+        />
       ))}
       {recent.map((beat, i) => {
         const key = statusKey(beat.status)

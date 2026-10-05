@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
+import { can, isSuperadmin } from '@/access/permissions'
 import { MonitorList, RealtimeIndicator } from '@/components/monitors/monitor-list'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
@@ -39,6 +40,8 @@ export default async function MonitorsPage({ params }: MonitorsPageProps) {
   const organization = docs[0]
   if (!organization) notFound()
 
+  const canCreate = isSuperadmin(user) || can(user, organization.id, 'monitor:create')
+
   const initial = await loadOrgState(payload, organization.id, {
     user,
     overrideAccess: false,
@@ -55,17 +58,20 @@ export default async function MonitorsPage({ params }: MonitorsPageProps) {
         actions={
           <>
             <RealtimeIndicator />
-            <Button asChild>
-              <Link href={`/${orgSlug}/monitors/new`}>
-                <Plus /> New monitor
-              </Link>
-            </Button>
+            {canCreate && (
+              <Button asChild>
+                <Link href={`/${orgSlug}/monitors/new`}>
+                  <Plus /> New monitor
+                </Link>
+              </Button>
+            )}
           </>
         }
       />
-      <section className="p-6 md:p-8">
+      <section className="p-4 sm:p-6 md:p-8">
         <MonitorList
           orgSlug={orgSlug}
+          canCreate={canCreate}
           initial={{
             organizationId: initial.organizationId,
             monitors: initial.monitors,

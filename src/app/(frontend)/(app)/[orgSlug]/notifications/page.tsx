@@ -51,7 +51,7 @@ export default async function NotificationsPage({ params }: PageProps) {
           title="Notifications"
           description="Where Marmot tells you when something changes."
         />
-        <section className="p-6 md:p-8">
+        <section className="p-4 sm:p-6 md:p-8">
           <EmptyState
             icon={Bell}
             title="Members only"
