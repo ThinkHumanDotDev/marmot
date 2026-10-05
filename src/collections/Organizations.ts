@@ -1,18 +1,35 @@
+import crypto from 'node:crypto'
+
 import type {
   CollectionAfterChangeHook,
   CollectionBeforeDeleteHook,
   CollectionBeforeValidateHook,
   CollectionConfig,
+  FieldAccess,
 } from 'payload'
 
 import { authenticated, orgScoped } from '@/access/org-scoped'
 import { addOrgMembership, toMembershipData } from '@/access/memberships'
+import { can, isSuperadmin, ROLES } from '@/access/permissions'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 
 import type { Organization, User } from '@/payload-types'
 
 export const PLANS = ['free', 'team', 'pro', 'enterprise'] as const
 export type Plan = (typeof PLANS)[number]
+
+/** Secret for the shareable invite link (`/invite/<token>`). */
+export const generateInviteLinkToken = (): string => crypto.randomBytes(24).toString('base64url')
+
+/**
+ * The invite link token is a credential: only members who may invite (`member:invite`) and
+ * superadmins can read it. Writes go through `POST /api/orgs/:orgId/invite-link`, never the client.
+ */
+const inviteLinkRead: FieldAccess = ({ req, doc }) => {
+  if (isSuperadmin(req.user)) return true
+  const id = doc && typeof doc === 'object' ? (doc as { id?: string | number }).id : undefined
+  return id !== undefined && can(req.user, id, 'member:invite')
+}
 
 /** Lowercase and trim the slug before validation so `My-Org ` becomes `my-org`. */
 const normalizeSlug: CollectionBeforeValidateHook<Organization> = ({ data }) => {
@@ -80,6 +97,20 @@ const removeMemberships: CollectionBeforeDeleteHook = async ({ id, req }) => {
 }
 
 /**
+ * Pending invitations reference the organization with a NOT NULL foreign key on Postgres, so they
+ * have to go before the organization row does.
+ */
+const removeInvitations: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  await req.payload.delete({
+    collection: 'invitations',
+    where: { organization: { equals: id } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
+}
+
+/**
  * Tenant collection for `@payloadcms/plugin-multi-tenant`. Access is implemented here (the plugin's
  * own tenant-collection access is disabled) so that any authenticated user can create their first
  * organization, members can read theirs, and `organization:update` / `organization:delete` gate
@@ -101,7 +132,7 @@ export const Organizations: CollectionConfig = {
   hooks: {
     beforeValidate: [normalizeSlug],
     afterChange: [grantOwnerMembership],
-    beforeDelete: [removeMemberships],
+    beforeDelete: [removeInvitations, removeMemberships],
   },
   fields: [
     {
@@ -132,6 +163,31 @@ export const Organizations: CollectionConfig = {
       options: PLANS.map((plan) => ({ label: plan, value: plan })),
       admin: {
         description: 'Self-hosted installs are unlimited regardless of plan.',
+      },
+    },
+    {
+      name: 'inviteLinkToken',
+      type: 'text',
+      index: true,
+      admin: {
+        readOnly: true,
+        description: 'Secret of the shareable invite link. Regenerate from the members page.',
+      },
+      access: {
+        read: inviteLinkRead,
+        create: () => false,
+        update: () => false,
+      },
+    },
+    {
+      name: 'inviteLinkRole',
+      type: 'select',
+      defaultValue: 'member',
+      options: ROLES.map((role) => ({ label: role, value: role })),
+      admin: { description: 'Role granted to people who join through the invite link.' },
+      access: {
+        create: () => false,
+        update: () => false,
       },
     },
     {
