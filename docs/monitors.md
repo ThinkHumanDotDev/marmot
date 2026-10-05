@@ -111,8 +111,10 @@ monitor type exists but the monitor stays PENDING/DOWN because nothing stamps `l
 
 ## Notifications, maintenance and tags
 
-- **Notifications**: the channels ticked on the monitor are alerted on important beats. Channels flagged as
-  default are preselected on new monitors; see [notifications.md](notifications.md).
+- **Notifications**: the channels attached to the monitor (`monitors.notifications`) are alerted on
+  important beats. Channels flagged as default attach to every new monitor and **Apply to all existing
+  monitors** attaches a channel to the current ones; a per-monitor picker in the form is landing in the
+  current release. See [notifications.md](notifications.md).
 - **Maintenance**: a monitor inside an active maintenance window reports MAINTENANCE instead of DOWN and does
   not notify; see [maintenance.md](maintenance.md) _(landing in the current release)_.
 - **Tags** (coloured labels with optional values, shown in lists and on status pages) are planned next to

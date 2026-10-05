@@ -68,9 +68,9 @@ Go to **Monitors → New monitor**. The form asks for:
 3. **Timing**: check every `interval` seconds (default 60, minimum 20), retry `maxRetries` times at
    `retryInterval` before going DOWN (default 0 retries), and `resendInterval` to re-alert while a monitor
    stays down (default 0 = alert once per transition).
-4. **Notifications**: tick the channels that should be alerted. Channels marked _default_ are preselected.
 
-Save. The worker schedules the monitor immediately and the first heartbeat shows up on the detail page
+Notification channels marked _default_ are attached automatically (per-monitor channel selection in the
+form is landing in the current release). Save. The worker schedules the monitor immediately and the first heartbeat shows up on the detail page
 within one interval, together with the uptime cards (24h/30d), the response-time chart and the list of
 status changes. The monitor list on `/acme/monitors` updates live over the WebSocket connection.
 
@@ -80,7 +80,8 @@ Go to **Notifications → New channel**, pick a provider (Slack, Discord, Telegr
 Pushover, webhook, PagerDuty, …; the full list is in [notifications.md](notifications.md)) and fill in the
 form that the provider describes. **Send test** delivers a test message before you save. Tick **Default**
 to attach the channel to every monitor created afterwards and **Apply to all existing monitors** to attach
-it to the monitors you already have.
+it to the monitors you already have (for now this is how channels reach monitors; picking channels per
+monitor in the monitor form lands in the current release).
 
 Marmot alerts on status transitions (UP→DOWN, DOWN→UP, PENDING→DOWN) and, when `resendInterval` is set,
 every N consecutive DOWN beats.

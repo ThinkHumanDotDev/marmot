@@ -4,7 +4,9 @@
 
 A **notification channel** is one destination for alerts: a Slack webhook, a Telegram chat, an email
 address, a PagerDuty integration, a plain webhook. Channels belong to an organization and are managed on
-`/{org}/notifications`; each monitor picks the channels that should hear about it. When a monitor changes
+`/{org}/notifications`; each monitor carries the list of channels that should hear about it (filled from
+the default channels and **Apply to all existing monitors**; a per-monitor picker in the monitor form is
+landing in the current release). When a monitor changes
 state (UP → DOWN, DOWN → UP, PENDING → DOWN) the worker sends one message per attached channel; with a
 `resendInterval` on the monitor it repeats the DOWN message every N beats while the outage lasts. Nothing is
 sent for PENDING (retrying) beats or for beats inside a maintenance window.
