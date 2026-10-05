@@ -72,7 +72,7 @@ test.describe('Members', () => {
 
     // Signed in → the invite page accepts automatically and redirects into the organization.
     await inviteePage.waitForURL(new RegExp(`/${org.slug}(/|$)`), { timeout: 30_000 })
-    await expect(inviteePage.getByRole('heading', { name: /monitors/i })).toBeVisible()
+    await expect(inviteePage.getByRole('heading', { name: 'Monitors', exact: true })).toBeVisible()
 
     // Owner: the new member is listed and the invitation is gone.
     await ownerPage.reload()
