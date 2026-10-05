@@ -73,6 +73,7 @@ export interface Config {
     media: Media;
     monitors: Monitor;
     notifications: Notification;
+    'notification-sent-history': NotificationSentHistory;
     heartbeats: Heartbeat;
     'stat-minutely': StatMinutely;
     'stat-hourly': StatHourly;
@@ -93,6 +94,7 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     monitors: MonitorsSelect<false> | MonitorsSelect<true>;
     notifications: NotificationsSelect<false> | NotificationsSelect<true>;
+    'notification-sent-history': NotificationSentHistorySelect<false> | NotificationSentHistorySelect<true>;
     heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
     'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
     'stat-hourly': StatHourlySelect<false> | StatHourlySelect<true>;
@@ -400,9 +402,37 @@ export interface Monitor {
   acceptedStatusCodes?: string[] | null;
   ignoreTls?: boolean | null;
   /**
-   * Notify before the TLS certificate expires.
+   * Notify before the TLS certificate expires (tlsExpiryNotifyDays).
    */
   expiryNotification?: boolean | null;
+  /**
+   * Notify before the domain registration expires (domainExpiryNotifyDays).
+   */
+  domainExpiryNotification?: boolean | null;
+  /**
+   * Maintained by the worker: TLS certificate seen by the last HTTPS check.
+   */
+  certInfo?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Maintained by the worker: cached RDAP domain expiry lookup.
+   */
+  domainExpiry?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   keyword?: string | null;
   /**
    * UP when the keyword is absent.
@@ -588,6 +618,27 @@ export interface Notification {
    * Last delivery error; cleared on the next success.
    */
   lastError?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Expiry warnings already sent per monitor and threshold. Maintained by the worker.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notification-sent-history".
+ */
+export interface NotificationSentHistory {
+  id: number;
+  /**
+   * Denormalised from the monitor for org-scoped queries.
+   */
+  organization?: (number | null) | Organization;
+  monitor: number | Monitor;
+  type: 'certificate' | 'domain';
+  /**
+   * Threshold (days before expiry) the warning was sent for.
+   */
+  days: number;
   updatedAt: string;
   createdAt: string;
 }
@@ -900,6 +951,10 @@ export interface PayloadLockedDocument {
         value: number | Notification;
       } | null)
     | ({
+        relationTo: 'notification-sent-history';
+        value: number | NotificationSentHistory;
+      } | null)
+    | ({
         relationTo: 'heartbeats';
         value: number | Heartbeat;
       } | null)
@@ -1099,6 +1154,9 @@ export interface MonitorsSelect<T extends boolean = true> {
   acceptedStatusCodes?: T;
   ignoreTls?: T;
   expiryNotification?: T;
+  domainExpiryNotification?: T;
+  certInfo?: T;
+  domainExpiry?: T;
   keyword?: T;
   invertKeyword?: T;
   jsonPath?: T;
@@ -1193,6 +1251,18 @@ export interface NotificationsSelect<T extends boolean = true> {
   active?: T;
   lastSentAt?: T;
   lastError?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notification-sent-history_select".
+ */
+export interface NotificationSentHistorySelect<T extends boolean = true> {
+  organization?: T;
+  monitor?: T;
+  type?: T;
+  days?: T;
   updatedAt?: T;
   createdAt?: T;
 }

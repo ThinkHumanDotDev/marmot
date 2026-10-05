@@ -1445,20 +1445,12 @@ export function MonitorForm({
                 description="JSON object of extra request headers."
               />
               <StatusCodesField control={control} />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <SwitchField
-                  control={control}
-                  name="ignoreTls"
-                  label="Ignore TLS errors"
-                  description="Accept self-signed or expired certificates."
-                />
-                <SwitchField
-                  control={control}
-                  name="expiryNotification"
-                  label="Certificate expiry notification"
-                  description="Warn before the TLS certificate expires."
-                />
-              </div>
+              <SwitchField
+                control={control}
+                name="ignoreTls"
+                label="Ignore TLS errors"
+                description="Accept self-signed or expired certificates. Also disables certificate expiry notifications."
+              />
             </CardContent>
           </Card>
         )}
@@ -1593,6 +1585,22 @@ export function MonitorForm({
                 label="Upside down mode"
                 description="Flip the status: a failed check counts as UP and a successful one as DOWN."
               />
+              {isHttp && (
+                <SwitchField
+                  control={control}
+                  name="expiryNotification"
+                  label="Certificate expiry notification"
+                  description="Warn through this monitor's notification channels before the TLS certificate expires (7, 14 and 21 days by default)."
+                />
+              )}
+              {(isHttp || isHost) && (
+                <SwitchField
+                  control={control}
+                  name="domainExpiryNotification"
+                  label="Domain name expiry notification"
+                  description="Look the registration up via RDAP once a day and warn before the domain expires."
+                />
+              )}
               <SwitchField
                 control={control}
                 name="active"

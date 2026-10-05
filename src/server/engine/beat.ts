@@ -8,6 +8,7 @@
  * persists what comes out. That keeps the transition rules unit-testable without Redis or a database.
  */
 import type { HeartbeatStatus } from '@/server/monitor-types/types'
+import type { TlsInfo } from './tls'
 
 export type BeatStatus = HeartbeatStatus
 
@@ -38,6 +39,8 @@ export interface CheckResult {
   duration?: number | null
   /** The monitor is inside an active maintenance window. */
   underMaintenance?: boolean
+  /** TLS certificate captured by the check (HTTPS / TLS types), whatever the outcome. */
+  tlsInfo?: TlsInfo | null
 }
 
 /** Subset of the monitor document the state machine needs. */
