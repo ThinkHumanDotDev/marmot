@@ -8,6 +8,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { childLogger } from '@/lib/logger'
 import { closeChecksQueue, resyncAll, startCheckWorker } from '@/server/engine'
+import { registerExpiryNotificationListener } from '@/server/jobs/expiry-notifications'
 import { listMonitorTypes } from '@/server/monitor-types'
 import {
   closeNotificationsQueue,
@@ -58,6 +59,9 @@ async function main() {
 
   // Notifications: enqueue one job per attached channel when a beat should notify.
   registerNotificationListener(payload)
+
+  // TLS certificate / domain registration expiry warnings (thresholds from the instance settings).
+  registerExpiryNotificationListener(payload)
 
   // In a composed deployment the web container runs migrations while the worker is already
   // booting, so the schema may not exist yet. Wait for it instead of crash-looping.

@@ -28,8 +28,14 @@ export const MONITOR_TYPES = [
 
 export const HTTP_TYPES = ['http', 'keyword', 'json-query']
 
+/** Types whose target names a domain (URL or hostname), i.e. domain expiry can be looked up. */
+export const DOMAIN_TYPES = [...HTTP_TYPES, 'port', 'ping', 'dns']
+
 const isHttpType = (data: { type?: string } | undefined) =>
   Boolean(data?.type && HTTP_TYPES.includes(data.type))
+
+const isDomainType = (data: { type?: string } | undefined) =>
+  Boolean(data?.type && DOMAIN_TYPES.includes(data.type))
 
 /**
  * Lightweight status cache, maintained by the worker after every check so list views, groups and
@@ -126,7 +132,12 @@ export const Monitors: CollectionConfig = {
           where: { monitor: { equals: id } },
           ...common,
         })
-        for (const collection of ['stat-minutely', 'stat-hourly', 'stat-daily'] as const) {
+        for (const collection of [
+          'stat-minutely',
+          'stat-hourly',
+          'stat-daily',
+          'notification-sent-history',
+        ] as const) {
           await req.payload.delete({ collection, where: { monitor: { equals: id } }, ...common })
         }
         await req.payload.update({
@@ -346,13 +357,50 @@ export const Monitors: CollectionConfig = {
           admin: { description: 'Status codes or ranges counted as UP, e.g. 200-299, 304.' },
         },
         { name: 'ignoreTls', type: 'checkbox', defaultValue: false },
+      ],
+    },
+
+    // ---- Expiry notifications (Uptime Kuma field names) --------------------------------------
+    {
+      type: 'row',
+      fields: [
         {
           name: 'expiryNotification',
           type: 'checkbox',
           defaultValue: false,
-          admin: { description: 'Notify before the TLS certificate expires.' },
+          admin: {
+            condition: (data) => isHttpType(data),
+            description: 'Notify before the TLS certificate expires (tlsExpiryNotifyDays).',
+          },
+        },
+        {
+          name: 'domainExpiryNotification',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: {
+            condition: (data) => isDomainType(data),
+            description: 'Notify before the domain registration expires (domainExpiryNotifyDays).',
+          },
         },
       ],
+    },
+    {
+      name: 'certInfo',
+      type: 'json',
+      admin: {
+        readOnly: true,
+        condition: (data) => isHttpType(data),
+        description: 'Maintained by the worker: TLS certificate seen by the last HTTPS check.',
+      },
+    },
+    {
+      name: 'domainExpiry',
+      type: 'json',
+      admin: {
+        readOnly: true,
+        condition: (data) => isDomainType(data),
+        description: 'Maintained by the worker: cached RDAP domain expiry lookup.',
+      },
     },
     {
       type: 'collapsible',

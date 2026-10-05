@@ -6,6 +6,7 @@ import { Invitations } from './Invitations'
 import { Media } from './Media'
 import { Monitors } from './Monitors'
 import { Notifications } from './Notifications'
+import { NotificationSentHistory } from './NotificationSentHistory'
 import { Organizations } from './Organizations'
 import { StatDaily } from './StatDaily'
 import { StatHourly } from './StatHourly'
@@ -24,6 +25,7 @@ export const collections: CollectionConfig[] = [
   Media,
   Monitors,
   Notifications,
+  NotificationSentHistory,
   Heartbeats,
   StatMinutely,
   StatHourly,

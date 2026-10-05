@@ -94,6 +94,8 @@ export const PROTECTED_MONITOR_FIELDS = [
   'id',
   'organization',
   'status',
+  'certInfo',
+  'domainExpiry',
   'pushToken',
   'createdAt',
   'updatedAt',
