@@ -1,5 +1,24 @@
 # Notifications
 
+## Concepts
+
+A **notification channel** is one destination for alerts: a Slack webhook, a Telegram chat, an email
+address, a PagerDuty integration, a plain webhook. Channels belong to an organization and are managed on
+`/{org}/notifications`; each monitor carries the list of channels that should hear about it (filled from
+the default channels and **Apply to all existing monitors**; a per-monitor picker in the monitor form is
+landing in the current release). When a monitor changes
+state (UP → DOWN, DOWN → UP, PENDING → DOWN) the worker sends one message per attached channel; with a
+`resendInterval` on the monitor it repeats the DOWN message every N beats while the outage lasts. Nothing is
+sent for PENDING (retrying) beats or for beats inside a maintenance window.
+
+Setting up a channel is a form: pick a **provider**, fill in the fields the provider needs (the form is
+generated from the provider's schema, so required fields and secrets are marked), press **Send test**, save.
+Tick **Default** to preselect the channel on every new monitor and **Apply to all existing monitors** to
+attach it to the monitors you already have. Marmot ships 48 providers ported from Uptime Kuma (table below),
+grouped as Chat, Push, Email and Generic (webhooks, incident management, SMS).
+
+## How it works
+
 Marmot alerts through **notification channels**: org-scoped documents in the `notifications` collection that
 name a provider (`type`) and carry its settings (`config`). Monitors reference channels through their
 `notifications` relationship; a channel flagged `isDefault` is attached to every monitor created afterwards, and

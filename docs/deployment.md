@@ -12,10 +12,14 @@ Postgres (or MongoDB) and Redis; the compose stack adds Caddy for automatic HTTP
                                                 worker ─────────┘──▶ postgres | mongodb
 ```
 
-## Compose quick start
+Whatever sits in front of Marmot has to do two things: send `/socket.io/*` (HTTP long-polling **and** the
+WebSocket upgrade) to the realtime process and everything else to the web process. The bundled Caddyfile
+does exactly that.
+
+## Compose with Caddy (automatic HTTPS)
 
 Requirements: Docker Engine 24+ with the compose plugin (`docker compose version` ≥ 2.24), a host with
-ports 80 and 443 reachable from the internet and a DNS record pointing at it (for HTTPS).
+ports 80 and 443 reachable from the internet and a DNS record pointing at it.
 
 ```bash
 mkdir marmot && cd marmot
@@ -42,22 +46,31 @@ docker compose up -d --wait
 docker compose logs -f web      # watch migrations run and the server start
 ```
 
-Open `https://$DOMAIN` (or `http://<host>`) and create the first user. `web` runs the database migrations
-(`dist/server/migrate.mjs`, bundled at image build time) on every start, so the schema is created on first
-boot and upgraded on later ones. The `worker` and `realtime` roles run from the same pre-built bundles.
+Open `https://$DOMAIN` (or `http://<host>`) and complete the setup wizard ([getting-started.md](getting-started.md)).
+`web` runs the database migrations (`dist/server/migrate.mjs`, bundled at image build time) on every start,
+so the schema is created on first boot and upgraded on later ones. The `worker` and `realtime` roles run
+from the same pre-built bundles; the worker waits up to `WORKER_SCHEMA_WAIT_MS` (2 minutes) for the schema
+to appear instead of crash-looping while `web` migrates.
 
-**MongoDB instead of Postgres**: download `docker-compose.mongo.yml` from the same place and add it to
-every compose command:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.mongo.yml up -d --wait
-```
-
-**Scaling**: `docker compose up -d --scale worker=3`. Several `realtime` replicas also work (they share
-state through the Redis adapter) but need a load balancer with sticky sessions in front of Caddy.
+Caddy obtains and renews the certificate for `DOMAIN` automatically and redirects HTTP to HTTPS. Status
+pages on their own hostnames need on-demand TLS; see [status-pages.md](status-pages.md#custom-domains).
 
 The rest of the configuration (SMTP, OIDC, S3 storage, retention, …) goes into the same `.env`; see
 [configuration.md](configuration.md) for the full table. `docker/.env.example` lists the common ones.
+
+## MongoDB instead of Postgres
+
+Download `docker-compose.mongo.yml` from the same place and add it to every compose command:
+
+```bash
+curl -fsSL $base/docker-compose.mongo.yml -o docker-compose.mongo.yml
+docker compose -f docker-compose.yml -f docker-compose.mongo.yml up -d --wait
+```
+
+The override sets `DATABASE_ADAPTER=mongodb`, points `DATABASE_URL` at a `mongo:7` service and disables the
+Postgres container. MongoDB has no schema migrations; indexes are created when the processes boot. To use an
+existing MongoDB (Atlas, a replica set) set `DATABASE_URL` in `.env` and keep the override for the adapter
+setting.
 
 ## Behind an existing reverse proxy
 
@@ -71,14 +84,77 @@ services:
       - '127.0.0.1:8080:80'
 ```
 
-Point your proxy (nginx, Traefik, Cloudflare Tunnel, …) at `http://127.0.0.1:8080` and make sure it
-forwards WebSocket upgrades for `/socket.io/` (nginx: `proxy_http_version 1.1; proxy_set_header Upgrade
-$http_upgrade; proxy_set_header Connection "upgrade";`). Set `NEXT_PUBLIC_SERVER_URL` to the public
-`https://` URL; the `Strict-Transport-Security` header is sent by Marmot itself in production.
+Point your proxy at `http://127.0.0.1:8080`, forward WebSocket upgrades, and set `NEXT_PUBLIC_SERVER_URL`
+to the public `https://` URL. Marmot sends the `Strict-Transport-Security` header itself in production and
+reads `X-Forwarded-Host` for custom status-page domains, so forward the original `Host`.
 
-You can also drop Caddy entirely (`caddy: { profiles: ['disabled'] }` in an override, publish
-`web:3000` and `realtime:3001`) and route `/socket.io/*` to realtime and everything else to web in your
-own proxy.
+### nginx
+
+```nginx
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name status.example.com;
+    # ssl_certificate / ssl_certificate_key ...
+
+    # socket.io: long-polling and the WebSocket upgrade
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 1h;   # keep idle websockets open
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 20m;   # logo uploads
+    }
+}
+```
+
+### Traefik
+
+With Traefik the simplest setup drops Caddy and publishes the two Marmot services directly: give `web` the
+catch-all router and `realtime` a higher-priority router for `/socket.io`. Traefik passes WebSocket upgrades
+through without extra configuration.
+
+```yaml
+# docker-compose.override.yml
+services:
+  caddy:
+    profiles: ['disabled']
+  web:
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.marmot.rule: Host(`status.example.com`)
+      traefik.http.routers.marmot.entrypoints: websecure
+      traefik.http.routers.marmot.tls.certresolver: letsencrypt
+      traefik.http.services.marmot.loadbalancer.server.port: '3000'
+  realtime:
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.marmot-rt.rule: Host(`status.example.com`) && PathPrefix(`/socket.io`)
+      traefik.http.routers.marmot-rt.entrypoints: websecure
+      traefik.http.routers.marmot-rt.tls.certresolver: letsencrypt
+      traefik.http.routers.marmot-rt.priority: '100'
+      traefik.http.services.marmot-rt.loadbalancer.server.port: '3001'
+```
+
+Attach both services to Traefik's network. The same split (everything to `web:3000`, `/socket.io/*` to
+`realtime:3001`) applies to any other proxy or ingress controller, including Cloudflare Tunnel (enable
+WebSockets on the tunnel) and Kubernetes ingresses (two path rules, WebSocket timeouts raised).
 
 ## Running the image without compose
 
@@ -90,21 +166,48 @@ docker run -d --name marmot-web -p 3000:3000 \
   -e DATABASE_URL=postgres://marmot:secret@db:5432/marmot -e REDIS_URL=redis://redis:6379 \
   -v marmot_uploads:/app/uploads ghcr.io/thinkhumandotdev/marmot:latest
 docker run -d --name marmot-worker   -e MARMOT_ROLE=worker   ... ghcr.io/thinkhumandotdev/marmot:latest
-docker run -d --name marmot-realtime -e MARMOT_ROLE=realtime ... ghcr.io/thinkhumandotdev/marmot:latest
+docker run -d --name marmot-realtime -e MARMOT_ROLE=realtime -p 3001:3001 ... ghcr.io/thinkhumandotdev/marmot:latest
 ```
 
 - The image runs as the unprivileged user `marmot` (uid 1001) under `tini`; `SIGTERM` shuts every role
-  down cleanly.
+  down cleanly (the worker finishes in-flight checks, up to 30 s).
 - Health: `web` answers `GET /api/health` (checks the database), `realtime` answers `GET /healthz`. The
   image's `HEALTHCHECK` calls `/app/entrypoint.sh healthcheck`, which picks the right probe for the role.
 - `docker run --rm ... ghcr.io/thinkhumandotdev/marmot migrate` runs migrations and exits. Set
   `SKIP_MIGRATIONS=true` on `web` when you run them yourself (CI/CD step, init container).
 - Uploads are stored in `/app/uploads` (volume) unless `S3_BUCKET` is configured.
-- `MARMOT_ROLE=all` is fine for small installs and evaluation; split the roles to scale.
 
-## Backups
+### Single container (`MARMOT_ROLE=all`)
 
-Everything lives in three places: the database, the `uploads` volume and your `.env`.
+```bash
+docker run -d --name marmot -p 3000:3000 -p 3001:3001 \
+  -e MARMOT_ROLE=all -e PAYLOAD_SECRET=... -e NEXT_PUBLIC_SERVER_URL=http://localhost:3000 \
+  -e DATABASE_URL=postgres://... -e REDIS_URL=redis://... \
+  -v marmot_uploads:/app/uploads ghcr.io/thinkhumandotdev/marmot:latest
+```
+
+The entrypoint runs the migrations, then supervises the three processes and exits (non-zero) when any of
+them dies so the orchestrator restarts the container. Fine for evaluation and small installs; split the
+roles to scale or to restart them independently. In this mode the browser still expects `/socket.io` on
+the web origin, so put a proxy in front that routes it to port 3001 (or set `NEXT_PUBLIC_REALTIME_URL` in
+your own build).
+
+## Scaling
+
+- **Workers** are stateless BullMQ consumers: `docker compose up -d --scale worker=3`. Each runs
+  `WORKER_CONCURRENCY` (default 10) checks in parallel; BullMQ guarantees a monitor is checked by one worker
+  at a time. Scale out for thousands of monitors or for checks with long timeouts.
+- **Realtime** replicas share state through the Redis adapter, so several can run; the proxy in front then
+  needs sticky sessions (or WebSocket-only transport) because socket.io's polling handshake must land on the
+  same replica.
+- **Web** is a regular Next.js server and scales horizontally behind the proxy. Only one replica should run
+  migrations: set `SKIP_MIGRATIONS=true` on the others or run `migrate` as a separate step.
+- **Redis** must run with `maxmemory-policy noeviction` and persistence (`--save`) so job schedulers survive
+  a restart; the compose file configures both.
+
+## Backups and restore
+
+Everything lives in three places: the database, the `uploads` volume (unless S3) and your `.env`.
 
 ```bash
 # Postgres
@@ -116,9 +219,23 @@ docker run --rm -v marmot_uploads:/data:ro -v "$PWD":/backup alpine \
   tar czf /backup/marmot-uploads-$(date +%F).tgz -C /data .
 ```
 
-Restore with `pg_restore -U marmot -d marmot --clean --if-exists` / `mongorestore --archive --db marmot`
-and untar into the volume. Redis only holds queue state and live sockets; it does not need a backup.
-Monitors are re-scheduled by the worker on start.
+Restore into a stopped stack (keep `postgres`/`mongo` and `redis` running):
+
+```bash
+docker compose stop web worker realtime
+# Postgres
+docker compose exec -T postgres pg_restore -U marmot -d marmot --clean --if-exists < marmot-2026-10-05.dump
+# MongoDB
+docker compose exec -T mongo mongorestore --archive --db marmot --drop < marmot-2026-10-05.archive
+# Uploads
+docker run --rm -v marmot_uploads:/data -v "$PWD":/backup alpine \
+  sh -c 'rm -rf /data/* && tar xzf /backup/marmot-uploads-2026-10-05.tgz -C /data'
+docker compose up -d --wait
+```
+
+Redis only holds queue state and live sockets; it does not need a backup. The worker re-creates every job
+scheduler from the monitors in the database when it starts (`resyncAll`). Restoring a backup taken with an
+older version is fine: `web` applies the missing migrations on start.
 
 ## Upgrading
 
@@ -147,3 +264,9 @@ version are in [`CHANGELOG.md`](../CHANGELOG.md); maintainers follow the
   are open; `docker compose logs caddy` shows the ACME errors.
 - Live updates are missing: the WebSocket upgrade for `/socket.io/` is not reaching the `realtime`
   service. `curl 'http://<host>/socket.io/?EIO=4&transport=polling'` should return a `sid`.
+- Login works but every request after a redirect fails with 403: `NEXT_PUBLIC_SERVER_URL` does not match
+  the URL in the browser (scheme, host or port), so the CSRF/CORS allow-list rejects the cookie.
+- The worker logs `database not ready yet; retrying`: migrations in `web` are still running. It gives up
+  after `WORKER_SCHEMA_WAIT_MS`; raise it on very slow disks.
+- Invitation mails never arrive: without `SMTP_HOST` they are printed to the `web` log. Check
+  `docker compose logs web | grep invite`.
