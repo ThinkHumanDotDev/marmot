@@ -78,6 +78,13 @@ attribution comment and are listed here:
 - `src/server/notification-providers/dingding.ts` — `server/notification-providers/dingding.js`
 - `src/server/notification-providers/feishu.ts` — `server/notification-providers/feishu.js`
 - `src/server/notification-providers/bitrix24.ts` — `server/notification-providers/bitrix24.js`
+- `src/server/badges/badge.ts` — badge handlers of `server/routers/api-router.js`, `badgeConstants`
+  (`src/util.ts`), `percentageToColor` / `filterAndJoin` (`server/util-server.js`)
+- `src/server/push/index.ts`, `recordExternalBeat` in `src/server/engine/worker.ts` — `/api/push/:pushToken`
+  handler of `server/routers/api-router.js`
+- `src/server/metrics/prometheus.ts` — metric names, help texts and labels from `server/prometheus.js`
+- `src/collections/ApiKeys.ts`, `src/server/api-keys/index.ts` — modelled on `server/model/api_key.js` and
+  `apiAuth` in `server/auth.js`
 
 The MIT license text is reproduced below.
 

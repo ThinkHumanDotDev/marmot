@@ -23,6 +23,8 @@ monitors it is built for organizations: multiple teams, role-based access, invit
 - **Status pages** – public pages with groups, incidents, maintenance banners, custom CSS and badges.
 - **Teams** – organizations, roles, invitations, generic OIDC [single sign-on](docs/sso.md).
 - **Live** – the dashboard updates in real time over WebSockets.
+- **Integrations** – status badges, push monitors, Prometheus metrics and organization API keys
+  ([docs/integrations.md](docs/integrations.md)).
 - **Self-hosting first** – one Docker image, Postgres **or** MongoDB, Redis, Caddy for automatic HTTPS.
 
 ## Quick start (Docker)
