@@ -12,7 +12,8 @@ import * as migration_20261005_133533_billing from './20261005_133533_billing';
 import * as migration_20261005_222624_settings_2fa_permissions from './20261005_222624_settings_2fa_permissions';
 import * as migration_20261005_225041_audit_logs from './20261005_225041_audit_logs';
 import * as migration_20261005_233026_cert_domain_expiry from './20261005_233026_cert_domain_expiry';
-import * as migration_20261005_234913_maintenance from './20261005_234913_maintenance';
+import * as migration_20261005_234608_api_keys from './20261005_234608_api_keys';
+import * as migration_20261006_000143_maintenance from './20261006_000143_maintenance';
 
 export const migrations = [
   {
@@ -86,8 +87,13 @@ export const migrations = [
     name: '20261005_233026_cert_domain_expiry',
   },
   {
-    up: migration_20261005_234913_maintenance.up,
-    down: migration_20261005_234913_maintenance.down,
-    name: '20261005_234913_maintenance'
+    up: migration_20261005_234608_api_keys.up,
+    down: migration_20261005_234608_api_keys.down,
+    name: '20261005_234608_api_keys',
+  },
+  {
+    up: migration_20261006_000143_maintenance.up,
+    down: migration_20261006_000143_maintenance.down,
+    name: '20261006_000143_maintenance'
   },
 ];

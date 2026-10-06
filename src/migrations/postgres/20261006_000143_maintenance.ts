@@ -49,6 +49,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"status_pages_id" integer
   );
   
+  DROP INDEX "organization_active_1_idx";
   ALTER TABLE "payload_locked_documents_rels" ADD COLUMN "maintenance_id" integer;
   ALTER TABLE "maintenance_weekdays" ADD CONSTRAINT "maintenance_weekdays_parent_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."maintenance"("id") ON DELETE cascade ON UPDATE no action;
   ALTER TABLE "maintenance_days_of_month" ADD CONSTRAINT "maintenance_days_of_month_parent_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."maintenance"("id") ON DELETE cascade ON UPDATE no action;
@@ -72,6 +73,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "maintenance_rels_monitors_id_idx" ON "maintenance_rels" USING btree ("monitors_id");
   CREATE INDEX "maintenance_rels_status_pages_id_idx" ON "maintenance_rels" USING btree ("status_pages_id");
   ALTER TABLE "payload_locked_documents_rels" ADD CONSTRAINT "payload_locked_documents_rels_maintenance_fk" FOREIGN KEY ("maintenance_id") REFERENCES "public"."maintenance"("id") ON DELETE cascade ON UPDATE no action;
+  CREATE INDEX "organization_active_2_idx" ON "api_keys" USING btree ("organization_id","active");
   CREATE INDEX "payload_locked_documents_rels_maintenance_id_idx" ON "payload_locked_documents_rels" USING btree ("maintenance_id");`)
 }
 
@@ -87,7 +89,9 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   DROP TABLE "maintenance_rels" CASCADE;
   ALTER TABLE "payload_locked_documents_rels" DROP CONSTRAINT "payload_locked_documents_rels_maintenance_fk";
   
+  DROP INDEX "organization_active_2_idx";
   DROP INDEX "payload_locked_documents_rels_maintenance_id_idx";
+  CREATE INDEX "organization_active_1_idx" ON "api_keys" USING btree ("organization_id","active");
   ALTER TABLE "payload_locked_documents_rels" DROP COLUMN "maintenance_id";
   DROP TYPE "public"."enum_maintenance_weekdays";
   DROP TYPE "public"."enum_maintenance_days_of_month";
