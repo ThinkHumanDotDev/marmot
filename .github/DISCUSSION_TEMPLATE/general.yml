@@ -1,0 +1,14 @@
+# Form for the "General" category. The file name must match the category slug (`general`).
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Anything about Marmot that is not a question (use **Q&A**), an idea (use **Ideas**) or a bug
+        ([open an issue](https://github.com/ThinkHumanDotDev/marmot/issues/new/choose)). Security problems go
+        through the private process in `SECURITY.md`, never here.
+  - type: textarea
+    id: body
+    attributes:
+      label: Message
+    validations:
+      required: true

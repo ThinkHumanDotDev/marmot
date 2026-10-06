@@ -132,6 +132,13 @@ visitors are asked for consent first. See **Privacy** below.
 **Can one install serve several teams?** That is the point: organizations are isolated workspaces with
 their own monitors, channels, status pages and members; a user can belong to several with different roles.
 
+## Community
+
+Questions, ideas and things you built go to [GitHub Discussions](https://github.com/ThinkHumanDotDev/marmot/discussions);
+bugs and scoped feature requests to [issues](https://github.com/ThinkHumanDotDev/marmot/issues/new/choose).
+[SUPPORT.md](.github/SUPPORT.md) lists where to ask what, and [CONTRIBUTING.md](CONTRIBUTING.md) how to send
+changes.
+
 ## Privacy
 
 Marmot collects **nothing** by default: no analytics SDK, no cookie banner, no calls home. Operators who
