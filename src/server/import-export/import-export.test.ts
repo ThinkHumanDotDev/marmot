@@ -213,6 +213,70 @@ describe('Uptime Kuma backup parser', () => {
     )
   })
 
+  it('imports the extended monitor types with their Kuma columns', () => {
+    const base = { active: true, interval: 60, retryInterval: 60, maxretries: 0 }
+    const out = parseUptimeKumaBackup({
+      notificationList: [],
+      monitorList: [
+        {
+          ...base,
+          id: 1,
+          name: 'Orders DB',
+          type: 'postgres',
+          databaseConnectionString: 'postgres://ro:pw@db:5432/orders',
+          databaseQuery: 'SELECT 1',
+        },
+        {
+          ...base,
+          id: 2,
+          name: 'Events',
+          type: 'kafka-producer',
+          kafkaProducerBrokers: ['kafka-1:9092', 'kafka-2:9092'],
+          kafkaProducerTopic: 'health',
+          kafkaProducerMessage: 'ping',
+          kafkaProducerSaslOptions: { mechanism: 'plain', username: 'u', password: 'p' },
+        },
+        {
+          ...base,
+          id: 3,
+          name: 'Switch',
+          type: 'snmp',
+          hostname: '10.0.0.2',
+          port: 161,
+          snmpOid: '1.3.6.1.2.1.1.3.0',
+          snmpVersion: '2c',
+          radiusPassword: 'public',
+        },
+        {
+          ...base,
+          id: 4,
+          name: 'Broker',
+          type: 'rabbitmq',
+          rabbitmqNodes: '["http://rabbit:15672"]',
+          rabbitmqUsername: 'guest',
+          rabbitmqPassword: 'guest',
+        },
+        { ...base, id: 5, name: 'Browser', type: 'real-browser', url: 'https://example.com' },
+      ],
+    })
+    expect(out.skipped.monitors).toEqual([
+      { name: 'Browser', reason: expect.stringContaining('remote browser URL') },
+    ])
+    const byKey = (key: string) => out.monitors.find((m) => m.key === key)!.data
+    expect(byKey('1')).toMatchObject({
+      type: 'postgres',
+      databaseConnectionString: 'postgres://ro:pw@db:5432/orders',
+      databaseQuery: 'SELECT 1',
+    })
+    expect(byKey('2')).toMatchObject({
+      kafkaProducerBrokers: ['kafka-1:9092', 'kafka-2:9092'],
+      kafkaProducerTopic: 'health',
+      kafkaProducerSaslOptions: '{"mechanism":"plain","username":"u","password":"p"}',
+    })
+    expect(byKey('3')).toMatchObject({ snmpVersion: '2c', snmpCommunity: 'public' })
+    expect(byKey('4')).toMatchObject({ rabbitmqNodes: ['http://rabbit:15672'] })
+  })
+
   it('accepts notification configs that are already objects', () => {
     const json = fixture()
     json.notificationList = [

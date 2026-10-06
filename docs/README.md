@@ -22,7 +22,7 @@ features whose pull requests are merging alongside this documentation.
 | Page                                                      | What it covers                                                                                                     |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | [Monitors](monitors.md)                                   | Monitor concepts: types, intervals and retries, groups, push monitors, pausing and cloning.                        |
-| [Monitor types](monitor-types.md)                         | Field-by-field reference for every monitor type _(landing in the current release)_.                                |
+| [Monitor types](monitor-types.md)                         | Field-by-field reference for every monitor type.                                                                   |
 | [Notifications](notifications.md)                         | Notification channels, the delivery pipeline, message templates and the provider reference.                        |
 | [Status pages](status-pages.md)                           | Public status pages, incidents, custom domains and the public JSON/RSS endpoints.                                  |
 | [Maintenance](maintenance.md)                             | Maintenance windows and how they silence alerts.                                                                   |

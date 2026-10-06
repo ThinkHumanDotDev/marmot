@@ -1,0 +1,124 @@
+import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
+
+export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
+  await db.execute(sql`
+   CREATE TYPE "public"."enum_monitors_mqtt_check_type" AS ENUM('keyword', 'json-query');
+  CREATE TYPE "public"."enum_monitors_snmp_version" AS ENUM('1', '2c');
+  CREATE TYPE "public"."enum_monitors_smtp_security" AS ENUM('opportunistic', 'starttls', 'secure', 'nostarttls');
+  CREATE TYPE "public"."enum_monitors_ssh_auth_method" AS ENUM('password', 'privateKey');
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'grpc-keyword';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'websocket-upgrade';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'mqtt';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'kafka-producer';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'rabbitmq';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'smtp';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'snmp';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'ntp';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'sftp';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'radius';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'tailscale-ping';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'real-browser';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'mysql';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'postgres';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'sqlserver';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'mongodb';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'redis';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'steam';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'gamedig';
+  ALTER TABLE "monitors" ADD COLUMN "database_connection_string" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "database_query" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "mqtt_topic" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "mqtt_username" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "mqtt_password" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "mqtt_check_type" "enum_monitors_mqtt_check_type" DEFAULT 'keyword';
+  ALTER TABLE "monitors" ADD COLUMN "mqtt_success_message" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "kafka_producer_topic" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "kafka_producer_message" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "kafka_producer_ssl" boolean DEFAULT false;
+  ALTER TABLE "monitors" ADD COLUMN "kafka_producer_allow_auto_topic_creation" boolean DEFAULT false;
+  ALTER TABLE "monitors" ADD COLUMN "kafka_producer_sasl_options" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "grpc_url" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "grpc_service_name" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "grpc_method" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "grpc_enable_tls" boolean DEFAULT false;
+  ALTER TABLE "monitors" ADD COLUMN "grpc_protobuf" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "grpc_body" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "grpc_metadata" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "radius_username" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "radius_password" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "radius_secret" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "radius_called_station_id" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "radius_calling_station_id" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "snmp_oid" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "snmp_version" "enum_monitors_snmp_version" DEFAULT '2c';
+  ALTER TABLE "monitors" ADD COLUMN "snmp_community" varchar DEFAULT 'public';
+  ALTER TABLE "monitors" ADD COLUMN "smtp_security" "enum_monitors_smtp_security" DEFAULT 'opportunistic';
+  ALTER TABLE "monitors" ADD COLUMN "ssh_username" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "ssh_auth_method" "enum_monitors_ssh_auth_method" DEFAULT 'password';
+  ALTER TABLE "monitors" ADD COLUMN "ssh_password" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "ssh_private_key" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "ssh_passphrase" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "sftp_path" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "rabbitmq_username" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "rabbitmq_password" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "ws_subprotocol" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "ws_ignore_sec_websocket_accept_header" boolean DEFAULT false;
+  ALTER TABLE "monitors" ADD COLUMN "game" varchar;
+  ALTER TABLE "monitors" ADD COLUMN "gamedig_given_port_only" boolean DEFAULT true;
+  ALTER TABLE "monitors" ADD COLUMN "remote_browser" varchar;`)
+}
+
+export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
+  await db.execute(sql`
+   ALTER TABLE "monitors" ALTER COLUMN "type" SET DATA TYPE text;
+  ALTER TABLE "monitors" ALTER COLUMN "type" SET DEFAULT 'http'::text;
+  DROP TYPE "public"."enum_monitors_type";
+  CREATE TYPE "public"."enum_monitors_type" AS ENUM('http', 'keyword', 'json-query', 'port', 'ping', 'dns', 'push', 'group', 'manual');
+  ALTER TABLE "monitors" ALTER COLUMN "type" SET DEFAULT 'http'::"public"."enum_monitors_type";
+  ALTER TABLE "monitors" ALTER COLUMN "type" SET DATA TYPE "public"."enum_monitors_type" USING "type"::"public"."enum_monitors_type";
+  ALTER TABLE "monitors" DROP COLUMN "database_connection_string";
+  ALTER TABLE "monitors" DROP COLUMN "database_query";
+  ALTER TABLE "monitors" DROP COLUMN "mqtt_topic";
+  ALTER TABLE "monitors" DROP COLUMN "mqtt_username";
+  ALTER TABLE "monitors" DROP COLUMN "mqtt_password";
+  ALTER TABLE "monitors" DROP COLUMN "mqtt_check_type";
+  ALTER TABLE "monitors" DROP COLUMN "mqtt_success_message";
+  ALTER TABLE "monitors" DROP COLUMN "kafka_producer_topic";
+  ALTER TABLE "monitors" DROP COLUMN "kafka_producer_message";
+  ALTER TABLE "monitors" DROP COLUMN "kafka_producer_ssl";
+  ALTER TABLE "monitors" DROP COLUMN "kafka_producer_allow_auto_topic_creation";
+  ALTER TABLE "monitors" DROP COLUMN "kafka_producer_sasl_options";
+  ALTER TABLE "monitors" DROP COLUMN "grpc_url";
+  ALTER TABLE "monitors" DROP COLUMN "grpc_service_name";
+  ALTER TABLE "monitors" DROP COLUMN "grpc_method";
+  ALTER TABLE "monitors" DROP COLUMN "grpc_enable_tls";
+  ALTER TABLE "monitors" DROP COLUMN "grpc_protobuf";
+  ALTER TABLE "monitors" DROP COLUMN "grpc_body";
+  ALTER TABLE "monitors" DROP COLUMN "grpc_metadata";
+  ALTER TABLE "monitors" DROP COLUMN "radius_username";
+  ALTER TABLE "monitors" DROP COLUMN "radius_password";
+  ALTER TABLE "monitors" DROP COLUMN "radius_secret";
+  ALTER TABLE "monitors" DROP COLUMN "radius_called_station_id";
+  ALTER TABLE "monitors" DROP COLUMN "radius_calling_station_id";
+  ALTER TABLE "monitors" DROP COLUMN "snmp_oid";
+  ALTER TABLE "monitors" DROP COLUMN "snmp_version";
+  ALTER TABLE "monitors" DROP COLUMN "snmp_community";
+  ALTER TABLE "monitors" DROP COLUMN "smtp_security";
+  ALTER TABLE "monitors" DROP COLUMN "ssh_username";
+  ALTER TABLE "monitors" DROP COLUMN "ssh_auth_method";
+  ALTER TABLE "monitors" DROP COLUMN "ssh_password";
+  ALTER TABLE "monitors" DROP COLUMN "ssh_private_key";
+  ALTER TABLE "monitors" DROP COLUMN "ssh_passphrase";
+  ALTER TABLE "monitors" DROP COLUMN "sftp_path";
+  ALTER TABLE "monitors" DROP COLUMN "rabbitmq_username";
+  ALTER TABLE "monitors" DROP COLUMN "rabbitmq_password";
+  ALTER TABLE "monitors" DROP COLUMN "ws_subprotocol";
+  ALTER TABLE "monitors" DROP COLUMN "ws_ignore_sec_websocket_accept_header";
+  ALTER TABLE "monitors" DROP COLUMN "game";
+  ALTER TABLE "monitors" DROP COLUMN "gamedig_given_port_only";
+  ALTER TABLE "monitors" DROP COLUMN "remote_browser";
+  DROP TYPE "public"."enum_monitors_mqtt_check_type";
+  DROP TYPE "public"."enum_monitors_snmp_version";
+  DROP TYPE "public"."enum_monitors_smtp_security";
+  DROP TYPE "public"."enum_monitors_ssh_auth_method";`)
+}

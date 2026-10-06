@@ -21,10 +21,10 @@ documentation remains the reference for the behaviour of the ported checks.
 | Push monitors                                                                                  |      ✓      | **done** (type), push endpoint **landing** ([integrations.md](integrations.md)) |
 | Group monitors                                                                                 |      ✓      | **done**                                                                        |
 | Manual monitors                                                                                |      ✓      | **done**                                                                        |
-| gRPC, WebSocket, MQTT, Kafka producer, RabbitMQ, SMTP, SNMP, NTP, SFTP, RADIUS, Tailscale ping |      ✓      | **landing** ([monitor-types.md](monitor-types.md))                              |
-| MySQL, PostgreSQL, SQL Server, MongoDB, Redis monitors                                         |      ✓      | **landing**                                                                     |
-| Steam, GameDig monitors                                                                        |      ✓      | **landing**                                                                     |
-| Real-browser (Chromium) monitor                                                                |      ✓      | **landing**, via a remote Playwright browser server                             |
+| gRPC, WebSocket, MQTT, Kafka producer, RabbitMQ, SMTP, SNMP, NTP, SFTP, RADIUS, Tailscale ping |      ✓      | **done** ([monitor-types.md](monitor-types.md))                                 |
+| MySQL, PostgreSQL, SQL Server, MongoDB, Redis monitors                                         |      ✓      | **done**                                                                        |
+| Steam, GameDig monitors                                                                        |      ✓      | **done**                                                                        |
+| Real-browser (Chromium) monitor                                                                |      ✓      | **done**, via a remote Playwright browser server                                |
 | Docker container monitor, proxies                                                              |      ✓      | **planned** (#21)                                                               |
 | Oracle DB monitor                                                                              |      ✓      | not planned (driver too heavy for the default image)                            |
 | SIP options, system service, pm2, Globalping monitors                                          |      ✓      | not planned for now                                                             |

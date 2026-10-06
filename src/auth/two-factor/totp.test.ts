@@ -141,9 +141,11 @@ describe('backup codes', () => {
 
 describe('login challenge cookie', () => {
   it('round-trips the user id and attempt counter', async () => {
-    const sealed = await sealChallenge({ userId: '42', attempts: 2 }, secret, { now })
-    expect(sealed).not.toContain('42')
-    expect(await openChallenge(sealed, secret, { now })).toEqual({ userId: '42', attempts: 2 })
+    // A distinctive id: a short one like '42' turns up in random base64url ciphertext now and then.
+    const userId = 'user-id-in-plaintext'
+    const sealed = await sealChallenge({ userId, attempts: 2 }, secret, { now })
+    expect(sealed).not.toContain(userId)
+    expect(await openChallenge(sealed, secret, { now })).toEqual({ userId, attempts: 2 })
   })
 
   it('expires, and rejects foreign or malformed tokens', async () => {
