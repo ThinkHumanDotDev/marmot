@@ -192,5 +192,74 @@
       "language": "Language",
       "languageAuto": "Follow the visitor's browser"
     }
+  },
+  "landing": {
+    "homeLabel": "Marmot home",
+    "nav": {
+      "features": "Features",
+      "selfHost": "Self-host",
+      "signIn": "Sign in",
+      "getStarted": "Get started"
+    },
+    "hero": {
+      "eyebrow": "Uptime monitoring for teams",
+      "title": "Know it’s down before your users do.",
+      "description": "Marmot watches your websites, APIs and servers, alerts the right people the moment something breaks and keeps your customers informed with public status pages.",
+      "startMonitoring": "Start monitoring",
+      "signIn": "Sign in",
+      "runItYourself": "Run it yourself"
+    },
+    "features": {
+      "title": "Everything Uptime Kuma does, built for a team",
+      "description": "The monitors and notifications you already know, with organizations, roles and an API on top.",
+      "monitorTypes": {
+        "title": "30+ monitor types",
+        "body": "HTTP and keywords, TCP, ping, DNS, Docker, databases, MQTT, gRPC, push heartbeats and more."
+      },
+      "notifications": {
+        "title": "40+ notification providers",
+        "body": "Slack, Discord, Teams, email, ntfy, webhooks and the rest of the Uptime Kuma catalogue."
+      },
+      "statusPages": {
+        "title": "Public status pages",
+        "body": "Branded pages on your own domain with incidents, RSS and per-group uptime."
+      },
+      "maintenance": {
+        "title": "Maintenance windows",
+        "body": "Schedule one-off or recurring windows so planned work never pages anyone."
+      },
+      "organizations": {
+        "title": "Organizations and roles",
+        "body": "Invite your team, separate environments by organization and control who can change what."
+      },
+      "live": {
+        "title": "Live by default",
+        "body": "Heartbeats stream to the dashboard as they happen; no refresh button, no polling."
+      }
+    },
+    "selfHost": {
+      "title": "Open source. Self-host it any time.",
+      "description": "Marmot is AGPL-3.0 software. Run the same image on your own server with Postgres or MongoDB and Redis, and keep every check and every heartbeat on infrastructure you control.",
+      "gettingStarted": "Getting started guide",
+      "viewOnGitHub": "View on GitHub",
+      "commandComment": "# one Docker image, automatic HTTPS"
+    },
+    "footer": {
+      "tagline": "Marmot · status monitoring for teams",
+      "docs": "Docs",
+      "github": "GitHub",
+      "signIn": "Sign in"
+    },
+    "preview": {
+      "title": "Monitors",
+      "live": "Live",
+      "monitors": {
+        "marketingSite": "Marketing site",
+        "publicApi": "Public API",
+        "postgresPrimary": "Postgres primary",
+        "nightlyBackup": "Nightly backup"
+      },
+      "pushHeartbeat": "push heartbeat"
+    }
   }
 }

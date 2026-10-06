@@ -70,6 +70,10 @@ const schema = z.object({
   // Skip the Redis side effects of the `monitors` hooks (tests without Redis).
   MARMOT_DISABLE_ENGINE_HOOKS: booleanish.default(false),
 
+  // Marketing landing page at `/` for signed-out visitors (hosted instance). Off on self-host:
+  // `/` then routes straight to the setup wizard or the login page.
+  LANDING_PAGE_ENABLED: booleanish.default(false),
+
   // Billing scaffold (disabled by default on self-host)
   BILLING_ENABLED: booleanish.default(false),
   STRIPE_SECRET_KEY: z.string().optional(),
