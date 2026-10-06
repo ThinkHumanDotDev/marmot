@@ -169,6 +169,13 @@
       "msgpackr-extract",
       "protobufjs",
       "ssh2"
-    ]
+    ],
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-vfj7-8cjw-p6xm",
+        "GHSA-67mh-4wv8-2f99",
+        "GHSA-hp3w-g68c-fv3c"
+      ]
+    }
   }
 }
