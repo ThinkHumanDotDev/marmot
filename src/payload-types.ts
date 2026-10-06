@@ -80,6 +80,7 @@ export interface Config {
     'stat-daily': StatDaily;
     'status-pages': StatusPage;
     incidents: Incident;
+    'api-keys': ApiKey;
     'audit-logs': AuditLog;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -101,6 +102,7 @@ export interface Config {
     'stat-daily': StatDailySelect<false> | StatDailySelect<true>;
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
+    'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -758,6 +760,35 @@ export interface Incident {
   createdAt: string;
 }
 /**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "api-keys".
+ */
+export interface ApiKey {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  /**
+   * SHA-256 of the plaintext key.
+   */
+  keyHash: string;
+  /**
+   * Public identifier shown in the UI (mk_<prefix>).
+   */
+  prefix: string;
+  /**
+   * Disabled keys are rejected.
+   */
+  active?: boolean | null;
+  /**
+   * Leave empty for a key that never expires.
+   */
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Security-relevant events. Rows are written by the server and cannot be edited.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -861,6 +892,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'incidents';
         value: number | Incident;
+      } | null)
+    | ({
+        relationTo: 'api-keys';
+        value: number | ApiKey;
       } | null)
     | ({
         relationTo: 'audit-logs';
@@ -1224,6 +1259,22 @@ export interface IncidentsSelect<T extends boolean = true> {
   pinned?: T;
   active?: T;
   resolvedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "api-keys_select".
+ */
+export interface ApiKeysSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  keyHash?: T;
+  prefix?: T;
+  active?: T;
+  expiresAt?: T;
+  lastUsedAt?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }

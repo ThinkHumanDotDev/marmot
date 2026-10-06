@@ -5,6 +5,7 @@ import {
   Bell,
   Building2,
   CreditCard,
+  KeyRound,
   Server,
   ShieldCheck,
   UserRound,
@@ -24,7 +25,7 @@ interface SettingsTabsProps {
 }
 
 /**
- * Link-based tab strip for the settings area. Future tabs (API keys) slot in here once their
+ * Link-based tab strip for the settings area. New tabs slot in here once their
  * issues land.
  */
 export function SettingsTabs({
@@ -37,6 +38,7 @@ export function SettingsTabs({
     { href: `/${orgSlug}/settings/account`, label: 'Account', icon: UserRound },
     { href: `/${orgSlug}/settings/organization`, label: 'Organization', icon: Building2 },
     { href: `/${orgSlug}/members`, label: 'Members', icon: Users },
+    { href: `/${orgSlug}/settings/api-keys`, label: 'API keys', icon: KeyRound },
     { href: `/${orgSlug}/settings/import-export`, label: 'Import / Export', icon: ArrowDownUp },
     ...(showBilling
       ? [{ href: `/${orgSlug}/settings/billing`, label: 'Billing', icon: CreditCard }]
