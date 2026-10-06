@@ -1,0 +1,2 @@
+# Throwaway self-signed test certificates for the SAML test identity provider; nothing secret.
+!*.pem

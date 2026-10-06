@@ -1,14 +1,14 @@
-import { AuthError, type ProviderInfo } from '@thinkhumandotdev/payload-auth'
+import type { ProviderInfo } from '@thinkhumandotdev/payload-auth'
 import { createOAuth, type OAuthProvider } from '@thinkhumandotdev/payload-auth/oauth'
-import type { Payload } from 'payload'
 
 import { issueTwoFactorChallenge } from '@/auth/two-factor/handlers'
 import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
-import { acceptInvitation } from '@/collections/Invitations'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
-import type { Invitation, User } from '@/payload-types'
+import type { User } from '@/payload-types'
+import { findEnabledConnection, toOAuthProvider } from '@/server/sso/connections'
 
+import { userResolution } from './hooks'
 import { getInstanceProviders, OIDC_PROVIDER_ID } from './providers'
 
 const log = childLogger('sso')
@@ -17,8 +17,8 @@ const serverUrl = () => env.NEXT_PUBLIC_SERVER_URL.replace(/\/$/, '')
 
 /**
  * Redirect URI to register at a provider. The env-configured OIDC client keeps the URL existing
- * installs registered before single sign-on moved to the plugin; every other provider lives under
- * `/api/auth/sso/<id>/callback`.
+ * installs registered before single sign-on moved to the plugin; every other provider (and every
+ * organization connection) lives under `/api/auth/sso/<id>/callback`.
  */
 export const ssoRedirectUri = (providerId: string): string =>
   providerId === OIDC_PROVIDER_ID
@@ -63,39 +63,52 @@ export function getAuthProviders(): AuthProviders {
   }
 }
 
-async function findPendingInvitation(
-  payload: Payload,
-  email: string,
-): Promise<Invitation | undefined> {
-  const { docs } = await payload.find({
-    collection: 'invitations',
-    where: {
-      and: [
-        { email: { equals: email } },
-        { status: { equals: 'pending' } },
-        { expiresAt: { greater_than: new Date().toISOString() } },
-      ],
-    },
-    sort: '-createdAt',
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
+/** Sends a signed-in user who was linking an identity back to where they started. */
+export function linkErrorResponse(
+  transaction: { linkUserId?: string; next: string } | undefined,
+  code: string,
+  cookies: string[],
+): Response | undefined {
+  if (!transaction?.linkUserId) return undefined
+  const target = new URL(transaction.next, 'http://marmot.local')
+  target.searchParams.set('error', code)
+  const headers = new Headers({
+    Location: `${target.pathname}${target.search}`,
+    'Cache-Control': 'no-store',
   })
-  return docs[0]
+  for (const value of cookies) headers.append('Set-Cookie', value)
+  return new Response(null, { status: 303, headers })
+}
+
+/**
+ * Accounts with Marmot's own second factor get the challenge instead of a session (the login page
+ * asks for the code, `POST /api/auth/2fa`). Linking flows are already signed in and skip it.
+ */
+export async function twoFactorResponse(
+  user: User,
+  next: string,
+  cookies: string[],
+  linking: boolean,
+): Promise<Response | undefined> {
+  if (linking || user.twoFactorEnabled !== true) return undefined
+  const { cookie } = await issueTwoFactorChallenge(user.id)
+  log.info({ user: user.id }, 'SSO login needs a second factor')
+  const params = new URLSearchParams({ two_factor: '1', next })
+  const headers = new Headers({ Location: `/login?${params}`, 'Cache-Control': 'no-store' })
+  for (const value of [cookie, ...cookies]) headers.append('Set-Cookie', value)
+  return new Response(null, { status: 303, headers })
 }
 
 /**
  * The OAuth / OpenID Connect integration (`@thinkhumandotdev/payload-auth/oauth`), configured for
  * Marmot:
  *
- * - providers are resolved per request from the environment (and, later, from per-organization
- *   connections), so nothing is cached across configuration changes beyond provider discovery;
+ * - providers are resolved per request: the instance-wide ones from the environment, then the
+ *   organizations' OIDC connections by slug (`sso-connections`), so nothing is restarted when an
+ *   admin saves a connection;
  * - the routes are Marmot's own (`src/app/api/auth/{oidc,sso}`), rate limited there, hence
  *   `basePath: false`;
- * - identities map to users as before: linked account → legacy `oidcIssuer`/`oidcSubject` columns →
- *   verified email → provisioning. Provisioning honours `OIDC_AUTO_PROVISION` and, with
- *   `DISABLE_SIGNUP`, requires a pending invitation that is accepted during the login;
- * - accounts with two-factor authentication get Marmot's challenge instead of a session.
+ * - identities map to users through `userResolution` (`./hooks.ts`).
  */
 export const oauth = createOAuth({
   usersSlug: 'users',
@@ -107,79 +120,16 @@ export const oauth = createOAuth({
   errorRedirect: '/login',
   cookie: { name: 'marmot-sso', path: '/api/auth' },
   providers: {
-    get: async (id) => getInstanceProviders().find((provider) => provider.id === id) ?? null,
+    get: async (id, { payload }) => {
+      const instance = getInstanceProviders().find((provider) => provider.id === id)
+      if (instance) return instance
+      const connection = await findEnabledConnection(payload, id)
+      return connection ? toOAuthProvider(connection) : null
+    },
     list: async () => getInstanceProviders(),
   },
-  users: {
-    autoProvision: ({ provider }) => provider.meta?.autoProvision !== false,
-    /**
-     * Installs from before the `auth-accounts` collection stored the OIDC identity on the user.
-     * Match it here so those users keep signing in; the account row created from this match takes
-     * over on the next login.
-     */
-    findUser: async ({ payload, identity, provider }) => {
-      if (provider.id !== OIDC_PROVIDER_ID) return null
-      const { docs } = await payload.find({
-        collection: 'users',
-        where: {
-          and: [
-            { oidcIssuer: { equals: env.OIDC_ISSUER_URL } },
-            { oidcSubject: { equals: identity.providerAccountId } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-        overrideAccess: true,
-      })
-      return docs[0] ?? null
-    },
-    beforeProvision: async ({ payload, identity }) => {
-      if (!env.DISABLE_SIGNUP) return
-      const email = identity.email?.trim().toLowerCase()
-      if (!email || !(await findPendingInvitation(payload, email))) {
-        throw new AuthError('signup_disabled')
-      }
-    },
-    mapNewUser: ({ provider }) => ({
-      authProvider: (provider.id === OIDC_PROVIDER_ID
-        ? 'oidc'
-        : 'oauth') satisfies User['authProvider'],
-    }),
-    afterProvision: async ({ payload, user, identity }) => {
-      if (!env.DISABLE_SIGNUP) return
-      const email = identity.email?.trim().toLowerCase()
-      const invitation = email ? await findPendingInvitation(payload, email) : undefined
-      if (!invitation?.token) return
-      try {
-        await acceptInvitation({ payload, token: invitation.token, user: user as unknown as User })
-      } catch (error) {
-        // The account exists either way; the invitation link can still be used afterwards.
-        log.warn({ err: error, user: user.id }, 'could not accept invitation during provisioning')
-      }
-    },
-  },
-  onError: ({ transaction, code, cookies }) => {
-    // A signed-in user who was linking an identity goes back to the account page, not to /login.
-    if (!transaction?.linkUserId) return
-    const target = new URL(transaction.next, 'http://marmot.local')
-    target.searchParams.set('error', code)
-    const headers = new Headers({
-      Location: `${target.pathname}${target.search}`,
-      'Cache-Control': 'no-store',
-    })
-    for (const value of cookies) headers.append('Set-Cookie', value)
-    return new Response(null, { status: 303, headers })
-  },
-  onAuthenticated: async ({ user: authenticated, next, cookies, linking }) => {
-    const user = authenticated as unknown as User
-    if (linking || user.twoFactorEnabled !== true) return
-    // The account opted into Marmot's own second factor on top of the identity provider: no
-    // session yet, the login page asks for the code (`POST /api/auth/2fa`).
-    const { cookie } = await issueTwoFactorChallenge(user.id)
-    log.info({ user: user.id }, 'SSO login needs a second factor')
-    const params = new URLSearchParams({ two_factor: '1', next })
-    const headers = new Headers({ Location: `/login?${params}`, 'Cache-Control': 'no-store' })
-    for (const value of [cookie, ...cookies]) headers.append('Set-Cookie', value)
-    return new Response(null, { status: 303, headers })
-  },
+  users: userResolution,
+  onError: ({ transaction, code, cookies }) => linkErrorResponse(transaction, code, cookies),
+  onAuthenticated: ({ user, next, cookies, linking }) =>
+    twoFactorResponse(user as unknown as User, next, cookies, linking),
 })

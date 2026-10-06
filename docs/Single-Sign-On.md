@@ -54,6 +54,37 @@ therefore link to an existing account with the same email, as described below. N
 them get `authProvider: oauth`. The sign-up rules are the same as for the OIDC client: with `DISABLE_SIGNUP`
 a pending invitation is required.
 
+## Per-organization connections (hosted and multi-team installs)
+
+Besides the instance-wide providers above, every organization can bring its own identity provider under
+**Settings → Security** (owners manage, admins can view; permissions `sso:manage` / `sso:read`). A
+_connection_ is one OpenID Connect or SAML 2.0 identity provider:
+
+| Setting                      | OpenID Connect                                                | SAML 2.0                                                                                                  |
+| ---------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| What you enter               | Issuer URL, client id, client secret (sealed at rest), scopes | IdP single sign-on URL, IdP entity id, IdP signing certificate (or import them from the IdP metadata URL) |
+| What you register at the IdP | Redirect URI `…/api/auth/sso/<slug>/callback`                 | SP entity id / metadata URL `…/api/auth/saml/<slug>/metadata`, ACS URL `…/api/auth/saml/<slug>/acs`       |
+| Login starts at              | `/api/auth/sso/<slug>/login`                                  | `/api/auth/saml/<slug>/login` (IdP-initiated logins are accepted only when enabled on the connection)     |
+| Signature / validation       | ID token signature, issuer, audience, `nonce`, PKCE           | Assertion (and/or response) signature, audience, validity window, `InResponseTo`, issuer                  |
+
+**Provisioning.** The organization's identity provider vouches for its users, so no invitation is needed:
+with _Create accounts on first login_ on (default), a new user is created on first login; everyone who
+signs in through the connection joins the organization with the connection's _default role_ (member by
+default) unless they are a member already. An existing Marmot user whose email the connection asserts is
+linked to it when the provider marks the email verified (OIDC `email_verified`, SAML always) **or** when
+the organization has verified that email's domain.
+
+**Verified domains.** Add `example.com` under _Verified domains_, create the DNS TXT record the page
+shows (`_marmot-verification.example.com` → `marmot-verification=<token>`) and press **Verify**. A verified
+domain belongs to one organization only. People who enter an email on that domain on the **Sign in with
+your organization's SSO** page (`/login/sso`) are sent to the organization's connections; the page also
+accepts the organization slug, and `/login/sso?org=<slug>` is a shareable link that goes straight to the
+organization's provider.
+
+Connections and domains are also available over the API (`/api/orgs/:orgId/sso/connections`,
+`/api/orgs/:orgId/sso/domains`, `POST /api/orgs/:orgId/sso/domains/:id/verify`,
+`POST /api/orgs/:orgId/sso/metadata` to parse IdP metadata, and the public `POST /api/auth/sso/lookup`).
+
 ## Connected accounts
 
 **Settings → Account → Connected accounts** lists the identities linked to the signed-in user with the

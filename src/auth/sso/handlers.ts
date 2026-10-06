@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { getAuthProviders, oauth } from './oauth'
+import { saml } from './saml'
 
 /**
  * Request handlers behind `src/app/api/auth/{providers,oidc,sso}`. Fetch `Request` → `Response`,
@@ -34,4 +35,25 @@ export async function handleSsoCallback(request: Request, providerId: string): P
 export async function handleSsoLogout(request: Request): Promise<Response> {
   const payload = await getPayload({ config })
   return oauth.handlers.logout(request, { payload })
+}
+
+/** `GET /api/auth/saml/:connection/login?next=/path` → redirect to the IdP with an AuthnRequest. */
+export async function handleSamlLogin(request: Request, connectionId: string): Promise<Response> {
+  const payload = await getPayload({ config })
+  return saml.handlers.login(request, { payload, connectionId })
+}
+
+/** `POST /api/auth/saml/:connection/acs` → validates the SAML response, signs the user in. */
+export async function handleSamlAcs(request: Request, connectionId: string): Promise<Response> {
+  const payload = await getPayload({ config })
+  return saml.handlers.acs(request, { payload, connectionId })
+}
+
+/** `GET /api/auth/saml/:connection/metadata` → service-provider metadata XML. */
+export async function handleSamlMetadata(
+  request: Request,
+  connectionId: string,
+): Promise<Response> {
+  const payload = await getPayload({ config })
+  return saml.handlers.metadata(request, { payload, connectionId })
 }

@@ -68,6 +68,10 @@ export const PERMISSIONS = {
   'api-key:delete': 'admin',
 
   'audit-log:read': 'admin',
+
+  // Single sign-on connections and verified domains (Settings → Security).
+  'sso:read': 'admin',
+  'sso:manage': 'owner',
 } as const satisfies Record<string, Role>
 
 export type Permission = keyof typeof PERMISSIONS

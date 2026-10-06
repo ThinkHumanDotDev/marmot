@@ -28,6 +28,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.9.1
         version: 5.9.1(@standard-schema/spec@1.1.0)(ajv@8.18.0)(react-hook-form@7.89.0(@types/react@19.2.14)(react@19.2.6))(valibot@1.4.2(typescript@5.7.3))(zod@4.6.5)
+      '@node-saml/node-saml':
+        specifier: ^5.1.0
+        version: 5.1.0
       '@payloadcms/db-mongodb':
         specifier: 3.90.2
         version: 3.90.2(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))(socks@2.8.10)
@@ -65,8 +68,8 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0
       '@thinkhumandotdev/payload-auth':
-        specifier: github:ThinkHumanDotDev/payload-plugin-auth#6322cec1bd22d303e24b793404222fa2f0cc8e3e
-        version: https://codeload.github.com/ThinkHumanDotDev/payload-plugin-auth/tar.gz/6322cec1bd22d303e24b793404222fa2f0cc8e3e(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))
+        specifier: github:ThinkHumanDotDev/payload-plugin-auth#1f934aa92d7993295d667fb704686f54e5d4fb05
+        version: https://codeload.github.com/ThinkHumanDotDev/payload-plugin-auth/tar.gz/1f934aa92d7993295d667fb704686f54e5d4fb05(@node-saml/node-saml@5.1.0)(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))
       badge-maker:
         specifier: 6.0.0
         version: 6.0.0
@@ -287,6 +290,9 @@ importers:
       vitest:
         specifier: 4.1.11
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.19.9)(happy-dom@20.14.5)(vite@7.3.6(@types/node@22.19.9)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.77.4)(tsx@4.23.15))
+      xml-crypto:
+        specifier: ^6.3.3
+        version: 6.3.3
     optionalDependencies:
       '@grpc/grpc-js':
         specifier: ^1.14.5
@@ -1958,6 +1964,10 @@ packages:
   '@nodable/entities@2.2.0':
     resolution: {integrity: sha512-9uGyhaQavEUMC8AIddIjau4NsnsXhou+j5sBAGojCM1oxmQpVKTWR/9JxABD6UAv12vpIms55fPZKFQEhG6uBg==}
 
+  '@node-saml/node-saml@5.1.0':
+    resolution: {integrity: sha512-t3cJnZ4aC7HhPZ6MGylGZULvUtBOZ6FzuUndaHGXjmIZHXnLfC/7L8a57O9Q9V7AxJGKAiRM5zu2wNm9EsvQpw==}
+    engines: {node: '>= 18'}
+
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
     engines: {node: '>= 8'}
@@ -3115,8 +3125,8 @@ packages:
   '@tediousjs/connection-string@1.1.0':
     resolution: {integrity: sha512-z9ZBWEG+8pIB5V1zYzlRPXx0oRJ5H7coPnMQK8EZOw03UTPI9Umn6viL36f5w+CuqkKsnCM50RVStpjZmR0Bng==}
 
-  '@thinkhumandotdev/payload-auth@https://codeload.github.com/ThinkHumanDotDev/payload-plugin-auth/tar.gz/6322cec1bd22d303e24b793404222fa2f0cc8e3e':
-    resolution: {tarball: https://codeload.github.com/ThinkHumanDotDev/payload-plugin-auth/tar.gz/6322cec1bd22d303e24b793404222fa2f0cc8e3e}
+  '@thinkhumandotdev/payload-auth@https://codeload.github.com/ThinkHumanDotDev/payload-plugin-auth/tar.gz/1f934aa92d7993295d667fb704686f54e5d4fb05':
+    resolution: {tarball: https://codeload.github.com/ThinkHumanDotDev/payload-plugin-auth/tar.gz/1f934aa92d7993295d667fb704686f54e5d4fb05}
     version: 0.1.0
     engines: {node: '>=20.9.0', pnpm: '>=9'}
     peerDependencies:
@@ -3238,6 +3248,9 @@ packages:
   '@types/qrcode@1.5.6':
     resolution: {integrity: sha512-te7NQcV2BOvdj2b1hCAHzAoMNuj65kNBMz0KBaxM6c3VGBOhU0dURQKOtH8CFNI/dsKkwlv32p26qYQTWoB5bw==}
 
+  '@types/qs@6.15.1':
+    resolution: {integrity: sha512-GZHUBZR9hckSUhrxmp1nG6NwdpM9fCunJwyThLW1X3AyHgd9IlHb6VANpQQqDr2o/qQp6McZ3y/IA2rVzKzSbw==}
+
   '@types/radius@0.0.33':
     resolution: {integrity: sha512-qcEAj3jQAs8AQum3mddLa5FyLVtOh2tr5V9bRVfojwErDOC8IpCCO4hrINgZty6sZ29tVTbEQyP7B+tSWVJXBg==}
 
@@ -3289,6 +3302,12 @@ packages:
 
   '@types/ws@8.18.2':
     resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
+
+  '@types/xml-encryption@1.2.4':
+    resolution: {integrity: sha512-I69K/WW1Dv7j6O3jh13z0X8sLWJRXbu5xnHDl9yHzUNDUBtUoBY058eb5s+x/WG6yZC1h8aKdI2EoyEPjyEh+Q==}
+
+  '@types/xml2js@0.4.14':
+    resolution: {integrity: sha512-4YnrRemBShWRO2QjvUin8ESA41rH+9nQGLUGZV/1IDhi3SL9OhdpNC/MrulTWuptXKwhx/aDxE7toV0f/ypIXQ==}
 
   '@typescript-eslint/eslint-plugin@8.71.0':
     resolution: {integrity: sha512-pqcS9c1HxZTHt7End4nXqd0s5lJrrFzrgCkKFJrsbUnaL6M3+6oBFZaslg6Gjsl3argl2DDRFROnXARaZ2e4Nw==}
@@ -3491,6 +3510,14 @@ packages:
 
   '@vitest/utils@4.1.11':
     resolution: {integrity: sha512-zTCVGpyFsGWBhllOyKlTw/vnr6D9qxsfSDyfbyZmTyjHw5N/VuvzHpHoQjm2ZJzn4RJgx5w4r7V0er69CmLgPQ==}
+
+  '@xmldom/is-dom-node@1.0.1':
+    resolution: {integrity: sha512-CJDxIgE5I0FH+ttq/Fxy6nRpxP70+e2O048EPe85J2use3XKdatVM7dDVvFNjQudd9B49NPoZ+8PG49zj4Er8Q==}
+    engines: {node: '>= 16'}
+
+  '@xmldom/xmldom@0.8.15':
+    resolution: {integrity: sha512-/5NV/vDALVFDXgLmfsy9TRCBlKwO2LNBFzpzvb9iIj+jR+eSc6DLYYvVOdivT/jm7MtU6TebYuRmzEOI7w40UA==}
+    engines: {node: '>=10.0.0'}
 
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
@@ -7187,6 +7214,13 @@ packages:
     resolution: {integrity: sha512-h3Fbisa2nKGPxCpm89Hk33lBLsnaGBvctQopaBSOW/uIs6FTe1ATyAnKFJrzVs9vpGdsTe73WF3V4lIsk4Gacw==}
     engines: {node: '>=18'}
 
+  xml-crypto@6.3.3:
+    resolution: {integrity: sha512-qJnp4Dv5tH8CPzXKitFcLiCxPcy3SnPVQ9eY4qKKsHahf7/Ri7zDwjWaBACarMkT0T6FP+LWzdibO+19b136rg==}
+    engines: {node: '>=16'}
+
+  xml-encryption@3.1.0:
+    resolution: {integrity: sha512-PV7qnYpoAMXbf1kvQkqMScLeQpjCMixddAKq9PtqVrho8HnYbBOWNfG0kA4R7zxQDo7w9kiYAyzS/ullAyO55Q==}
+
   xml-naming@0.1.0:
     resolution: {integrity: sha512-k8KO9hrMyNk6tUWqUfkTEZbezRRpONVOzUTnc97VnCvyj6Tf9lyUR9EDAIeiVLv56jsMcoXEwjW8Kv5yPY52lw==}
     engines: {node: '>=16.0.0'}
@@ -7194,6 +7228,18 @@ packages:
   xml-naming@0.3.0:
     resolution: {integrity: sha512-ghig2TBE/H11aOVgmahA3MhimvkBr6JIYknH/Dhdk10nXwdbIqBJsbfMxpvFPG8bAw77gN29aQWvKpmVoPlvPQ==}
     engines: {node: '>=16.0.0'}
+
+  xml2js@0.6.2:
+    resolution: {integrity: sha512-T4rieHaC1EXcES0Kxxj4JWgaUQHDk+qwHcYOCFHfiwKz7tOVPLq7Hjq9dM1WCMhylqMEfP7hMcOIChvotiZegA==}
+    engines: {node: '>=4.0.0'}
+
+  xmlbuilder@11.0.1:
+    resolution: {integrity: sha512-fDlsI/kFEx7gLvbecc0/ohLG50fugQp8ryHzMTuW9vSa1GJ0XYWKnhsUx7oie3G98+r56aTQIUB4kht42R3JvA==}
+    engines: {node: '>=4.0'}
+
+  xmlbuilder@15.1.1:
+    resolution: {integrity: sha512-yMqGBqtXyeN1e3TGYvgNgDVZ3j84W4cwkOXQswghol6APgZWaff9lnbvN7MHYJOiXsvGPXtjTYJEiC9J2wv9Eg==}
+    engines: {node: '>=8.0'}
 
   xmlbuilder@8.2.2:
     resolution: {integrity: sha512-eKRAFz04jghooy8muekqzo8uCSVNeyRedbuJrp0fovbLIi7wlsYtdUn3vBAAPq2Y3/0xMz2WMEUQ8yhVVO9Stw==}
@@ -7206,6 +7252,18 @@ packages:
   xmlrpc@1.3.2:
     resolution: {integrity: sha512-jQf5gbrP6wvzN71fgkcPPkF4bF/Wyovd7Xdff8d6/ihxYmgETQYSuTc+Hl+tsh/jmgPLro/Aro48LMFlIyEKKQ==}
     engines: {node: '>=0.8', npm: '>=1.0.0'}
+
+  xpath@0.0.32:
+    resolution: {integrity: sha512-rxMJhSIoiO8vXcWvSifKqhvV96GjiD5wYb8/QHdoRyQvraTpp4IEv944nhGausZZ3u7dhQXteZuZbaqfpB7uYw==}
+    engines: {node: '>=0.6.0'}
+
+  xpath@0.0.33:
+    resolution: {integrity: sha512-NNXnzrkDrAzalLhIUc01jO2mOzXGXh1JwPgkihcLLzw98c0WgYDmmjSh1Kl3wzaxSVWMuA+fe0WTWOBDWCBmNA==}
+    engines: {node: '>=0.6.0'}
+
+  xpath@0.0.34:
+    resolution: {integrity: sha512-FxF6+rkr1rNSQrhUNYrAFJpRXNzlDoMxeXN5qI84939ylEv3qqPFKa85Oxr6tDaJKqwW6KKyo2v26TSv3k6LeA==}
+    engines: {node: '>=0.6.0'}
 
   xss@1.0.15:
     resolution: {integrity: sha512-FVdlVVC67WOIPvfOwhoMETV72f6GbW7aOabBC3WxN/oUdoEMDyLz4OgRv5/gck2ZeNqEQu+Tb0kloovXOfpYVg==}
@@ -8923,6 +8981,23 @@ snapshots:
   '@nodable/entities@2.2.0':
     optional: true
 
+  '@node-saml/node-saml@5.1.0':
+    dependencies:
+      '@types/debug': 4.1.13
+      '@types/qs': 6.15.1
+      '@types/xml-encryption': 1.2.4
+      '@types/xml2js': 0.4.14
+      '@xmldom/is-dom-node': 1.0.1
+      '@xmldom/xmldom': 0.8.15
+      debug: 4.4.3
+      xml-crypto: 6.3.3
+      xml-encryption: 3.1.0
+      xml2js: 0.6.2
+      xmlbuilder: 15.1.1
+      xpath: 0.0.34
+    transitivePeerDependencies:
+      - supports-color
+
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -10325,11 +10400,14 @@ snapshots:
   '@tediousjs/connection-string@1.1.0':
     optional: true
 
-  '@thinkhumandotdev/payload-auth@https://codeload.github.com/ThinkHumanDotDev/payload-plugin-auth/tar.gz/6322cec1bd22d303e24b793404222fa2f0cc8e3e(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))':
+  '@thinkhumandotdev/payload-auth@https://codeload.github.com/ThinkHumanDotDev/payload-plugin-auth/tar.gz/1f934aa92d7993295d667fb704686f54e5d4fb05(@node-saml/node-saml@5.1.0)(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))':
     dependencies:
+      '@xmldom/xmldom': 0.8.15
       jose: 6.2.12
       openid-client: 6.8.8
       payload: 3.90.2(graphql@16.14.2)(typescript@5.7.3)
+    optionalDependencies:
+      '@node-saml/node-saml': 5.1.0
 
   '@tokenizer/inflate@0.4.1':
     dependencies:
@@ -10459,6 +10537,8 @@ snapshots:
     dependencies:
       '@types/node': 22.19.9
 
+  '@types/qs@6.15.1': {}
+
   '@types/radius@0.0.33':
     dependencies:
       '@types/node': 22.19.9
@@ -10508,6 +10588,14 @@ snapshots:
       '@types/webidl-conversions': 7.0.3
 
   '@types/ws@8.18.2':
+    dependencies:
+      '@types/node': 22.19.9
+
+  '@types/xml-encryption@1.2.4':
+    dependencies:
+      '@types/node': 22.19.9
+
+  '@types/xml2js@0.4.14':
     dependencies:
       '@types/node': 22.19.9
 
@@ -10720,6 +10808,10 @@ snapshots:
       '@vitest/pretty-format': 4.1.11
       convert-source-map: 2.0.0
       tinyrainbow: 3.2.0
+
+  '@xmldom/is-dom-node@1.0.1': {}
+
+  '@xmldom/xmldom@0.8.15': {}
 
   abort-controller@3.0.0:
     dependencies:
@@ -15011,11 +15103,32 @@ snapshots:
     dependencies:
       is-wsl: 3.1.1
 
+  xml-crypto@6.3.3:
+    dependencies:
+      '@xmldom/is-dom-node': 1.0.1
+      '@xmldom/xmldom': 0.8.15
+      xpath: 0.0.33
+
+  xml-encryption@3.1.0:
+    dependencies:
+      '@xmldom/xmldom': 0.8.15
+      escape-html: 1.0.3
+      xpath: 0.0.32
+
   xml-naming@0.1.0:
     optional: true
 
   xml-naming@0.3.0:
     optional: true
+
+  xml2js@0.6.2:
+    dependencies:
+      sax: 1.6.1
+      xmlbuilder: 11.0.1
+
+  xmlbuilder@11.0.1: {}
+
+  xmlbuilder@15.1.1: {}
 
   xmlbuilder@8.2.2:
     optional: true
@@ -15027,6 +15140,12 @@ snapshots:
       sax: 1.2.4
       xmlbuilder: 8.2.2
     optional: true
+
+  xpath@0.0.32: {}
+
+  xpath@0.0.33: {}
+
+  xpath@0.0.34: {}
 
   xss@1.0.15:
     dependencies:
