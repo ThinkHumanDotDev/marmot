@@ -72,7 +72,8 @@ commit_preprocessors = [
 # The HTML comments only order the groups; `striptags` removes them in the template. Use the `security`
 # scope (`fix(security): …`) or reference a CVE/GHSA id to land a commit under Security Fixes.
 commit_parsers = [
-  { message = "^chore\\(release\\): v?[0-9]+\\.[0-9]+\\.[0-9]+\\S*$", skip = true },
+  # Subject line only: the squash merge appends the (expanded) PR link and the PR body.
+  { message = "^chore\\(release\\): v?[0-9]+\\.[0-9]+\\.[0-9]+\\S*( \\(.*\\))?(\n|$)", skip = true },
   { message = "^chore\\(deps\\)", skip = true },
   { message = "^[a-z]+\\(security\\)|CVE-[0-9]|GHSA-", group = "<!-- 4 -->⬆️ Security Fixes" },
   { message = "^feat", group = "<!-- 1 -->🆕 New Features" },
