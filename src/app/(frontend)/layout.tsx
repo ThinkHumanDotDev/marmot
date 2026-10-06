@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getTranslations } from 'next-intl/server'
 import React from 'react'
 
 import { ConsentManager } from '@/components/consent/consent-manager'
@@ -16,10 +18,13 @@ const inter = Inter({
   variable: '--font-inter',
 })
 
-export const metadata: Metadata = {
-  title: { default: 'Marmot', template: '%s · Marmot' },
-  description: 'Self-hosted status monitor for teams.',
-  applicationName: 'Marmot',
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('metadata')
+  return {
+    title: { default: 'Marmot', template: '%s · Marmot' },
+    description: t('description'),
+    applicationName: 'Marmot',
+  }
 }
 
 export const viewport: Viewport = {
@@ -29,18 +34,23 @@ export const viewport: Viewport = {
   ],
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // User preference → `marmot-locale` cookie → Accept-Language → default (src/i18n/server.ts).
+  const locale = await getLocale()
   // Opt-in analytics (docs/Telemetry.md): the consent banner and the PostHog bridge exist only
   // when the operator set NEXT_PUBLIC_POSTHOG_KEY; otherwise nothing analytics-related is mounted.
   const analytics = isAnalyticsEnabled()
   return (
-    <html lang="en" suppressHydrationWarning className={inter.variable}>
+    <html lang={locale} suppressHydrationWarning className={inter.variable}>
       <body className="min-h-dvh bg-background text-foreground antialiased">
-        <ThemeProvider>
-          <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
-          <Toaster position="bottom-right" richColors closeButton />
-          {analytics && <ConsentManager />}
-        </ThemeProvider>
+        {/* Inherits locale, messages, formats and time zone from the request config. */}
+        <NextIntlClientProvider>
+          <ThemeProvider>
+            <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+            <Toaster position="bottom-right" richColors closeButton />
+            {analytics && <ConsentManager />}
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   )

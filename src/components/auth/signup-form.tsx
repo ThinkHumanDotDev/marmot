@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -21,15 +22,21 @@ import { Input } from '@/components/ui/input'
 import { authApi } from '@/lib/api'
 import { safeNextPath } from '@/lib/utils'
 
-const schema = z.object({
-  name: z.string().trim().min(1, 'Enter your name').max(120),
-  email: z.email('Enter a valid email address'),
-  password: z.string().min(8, 'Use at least 8 characters'),
-})
-
-type Values = z.infer<typeof schema>
+type Values = { name: string; email: string; password: string }
 
 export function SignupForm({ next }: { next?: string }) {
+  const t = useTranslations('auth.signup')
+  const tf = useTranslations('auth.fields')
+  const tv = useTranslations('auth.validation')
+  const schema = React.useMemo(
+    () =>
+      z.object({
+        name: z.string().trim().min(1, tv('nameRequired')).max(120),
+        email: z.email(tv('email')),
+        password: z.string().min(8, tv('passwordMin')),
+      }),
+    [tv],
+  )
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
   const form = useForm<Values>({
@@ -42,12 +49,12 @@ export function SignupForm({ next }: { next?: string }) {
     try {
       await authApi.signup(values)
       await authApi.login({ email: values.email, password: values.password })
-      toast.success('Welcome to Marmot')
+      toast.success(t('welcome'))
       router.replace(safeNextPath(next))
       router.refresh()
     } catch (error) {
       form.setError('root', {
-        message: error instanceof Error ? error.message : 'Could not create your account.',
+        message: error instanceof Error ? error.message : t('failed'),
       })
       setPending(false)
     }
@@ -63,9 +70,14 @@ export function SignupForm({ next }: { next?: string }) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>{tf('name')}</FormLabel>
               <FormControl>
-                <Input autoComplete="name" placeholder="Ada Lovelace" autoFocus {...field} />
+                <Input
+                  autoComplete="name"
+                  placeholder={tf('namePlaceholder')}
+                  autoFocus
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -76,9 +88,14 @@ export function SignupForm({ next }: { next?: string }) {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{tf('email')}</FormLabel>
               <FormControl>
-                <Input type="email" autoComplete="email" placeholder="you@example.com" {...field} />
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  placeholder={tf('emailPlaceholder')}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -89,11 +106,11 @@ export function SignupForm({ next }: { next?: string }) {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>{tf('password')}</FormLabel>
               <FormControl>
                 <Input type="password" autoComplete="new-password" {...field} />
               </FormControl>
-              <FormDescription>At least 8 characters.</FormDescription>
+              <FormDescription>{tf('passwordHint')}</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -104,7 +121,7 @@ export function SignupForm({ next }: { next?: string }) {
           </p>
         )}
         <Button type="submit" className="w-full" disabled={pending}>
-          {pending ? 'Creating account…' : 'Create account'}
+          {pending ? t('submitting') : t('submit')}
         </Button>
       </form>
     </Form>

@@ -2,6 +2,7 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { findPublishedStatusPage } from '@/server/status-pages/public'
+import { resolveStatusPageLocale } from '@/i18n/resolve'
 import { buildStatusPageRss } from '@/server/status-pages/rss'
 import { statusPageUrlFor } from '@/server/status-pages/urls'
 
@@ -16,7 +17,8 @@ export async function GET(request: Request, { params }: RouteContext) {
   const page = await findPublishedStatusPage(payload, slug)
   if (!page) return new Response('Not found', { status: 404 })
 
-  const xml = await buildStatusPageRss(payload, page, statusPageUrlFor(page, request))
+  const locale = resolveStatusPageLocale(page, request.headers)
+  const xml = await buildStatusPageRss(payload, page, statusPageUrlFor(page, request), locale)
   return new Response(xml, {
     headers: {
       'Content-Type': 'application/rss+xml; charset=utf-8',

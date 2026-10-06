@@ -460,6 +460,7 @@ describe('status pages', () => {
         title: 'A & B <C>',
         description: '"quoted"',
         link: 'http://x/?a=1&b=2',
+        language: 'en',
         feedUrl: 'http://x/rss',
         items: [
           {

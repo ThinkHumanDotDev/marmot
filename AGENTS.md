@@ -22,3 +22,4 @@ Payload CMS 3 + Next.js. Read `.claude/skills/marmot-conventions/SKILL.md` befor
 - Read configuration via `src/env.ts` only; document new variables in `.env.example` and `docs/Configuration.md`.
 - Never skip or disable tests to get green. Keep PRs focused; one issue per PR.
 - When porting from Uptime Kuma, add an attribution comment and list the file in `THIRD_PARTY_NOTICES.md`.
+- User-facing text goes through next-intl (`src/i18n/messages/en.json`), dates through its formatter.

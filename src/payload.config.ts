@@ -8,6 +8,7 @@ import { collections } from './collections'
 import { getDatabaseAdapter } from './db/adapter'
 import { env, runsRole } from './env'
 import { globals } from './globals'
+import { adminI18n } from './i18n/admin'
 import { getPlugins } from './plugins'
 import { getEmailAdapter } from './server/email/adapter'
 import { allowedOrigins } from './server/security/origins'
@@ -32,6 +33,8 @@ export default buildConfig({
   },
   collections,
   globals,
+  // Admin panel language (separate from the Marmot UI locale): see src/i18n/admin.ts.
+  i18n: adminI18n,
   editor: lexicalEditor(),
   email: getEmailAdapter(),
   secret: env.PAYLOAD_SECRET,

@@ -26,6 +26,7 @@ export type StatusPagePatch = Partial<
     | 'description'
     | 'logo'
     | 'theme'
+    | 'language'
     | 'published'
     | 'searchEngineIndex'
     | 'showTags'

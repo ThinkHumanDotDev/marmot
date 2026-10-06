@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -19,19 +20,25 @@ import {
 import { Input } from '@/components/ui/input'
 import { authApi } from '@/lib/api'
 
-const schema = z
-  .object({
-    password: z.string().min(8, 'Use at least 8 characters'),
-    confirm: z.string(),
-  })
-  .refine((v) => v.password === v.confirm, {
-    message: 'Passwords do not match',
-    path: ['confirm'],
-  })
-
-type Values = z.infer<typeof schema>
+type Values = { password: string; confirm: string }
 
 export function ResetPasswordForm({ token }: { token: string }) {
+  const t = useTranslations('auth.resetPassword')
+  const tf = useTranslations('auth.fields')
+  const tv = useTranslations('auth.validation')
+  const schema = React.useMemo(
+    () =>
+      z
+        .object({
+          password: z.string().min(8, tv('passwordMin')),
+          confirm: z.string(),
+        })
+        .refine((v) => v.password === v.confirm, {
+          message: tv('passwordsMismatch'),
+          path: ['confirm'],
+        }),
+    [tv],
+  )
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
   const form = useForm<Values>({
@@ -44,15 +51,12 @@ export function ResetPasswordForm({ token }: { token: string }) {
     try {
       // Payload signs the user in as part of a successful reset.
       await authApi.resetPassword({ token, password: values.password })
-      toast.success('Password updated')
+      toast.success(t('updated'))
       router.replace('/')
       router.refresh()
     } catch (error) {
       form.setError('root', {
-        message:
-          error instanceof Error
-            ? error.message
-            : 'This reset link is invalid or has expired. Request a new one.',
+        message: error instanceof Error ? error.message : t('failed'),
       })
       setPending(false)
     }
@@ -68,7 +72,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>New password</FormLabel>
+              <FormLabel>{tf('newPassword')}</FormLabel>
               <FormControl>
                 <Input type="password" autoComplete="new-password" autoFocus {...field} />
               </FormControl>
@@ -81,7 +85,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           name="confirm"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Confirm password</FormLabel>
+              <FormLabel>{tf('confirmPassword')}</FormLabel>
               <FormControl>
                 <Input type="password" autoComplete="new-password" {...field} />
               </FormControl>
@@ -95,7 +99,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           </p>
         )}
         <Button type="submit" className="w-full" disabled={pending}>
-          {pending ? 'Updating…' : 'Set new password'}
+          {pending ? t('submitting') : t('submit')}
         </Button>
       </form>
     </Form>

@@ -1,4 +1,5 @@
-import { describeBeats } from '@/components/status-dot'
+import { useFormatter, useTranslations } from 'next-intl'
+
 import { cn } from '@/lib/utils'
 
 export interface BeatBarBeat {
@@ -15,16 +16,13 @@ const colour: Record<BeatBarBeat['status'], string> = {
   maintenance: 'bg-status-maintenance',
 }
 
-function beatTitle(beat: BeatBarBeat): string {
-  const when = new Date(beat.time)
-  const time = Number.isNaN(when.getTime()) ? beat.time : when.toLocaleString()
-  const ping = typeof beat.ping === 'number' ? ` · ${Math.round(beat.ping)} ms` : ''
-  return `${beat.status.toUpperCase()} · ${time}${ping}`
-}
+const STATUS_ORDER = ['up', 'down', 'pending', 'maintenance'] as const
 
 /**
  * Row of up to `size` heartbeat bars, oldest left, newest right. Missing beats render as empty
- * slots so the bar keeps a constant width (Uptime Kuma `HeartbeatBar`).
+ * slots so the bar keeps a constant width (Uptime Kuma `HeartbeatBar`). The accessible name
+ * summarises the row ("Last 50 checks: 48 up, 2 down. Latest: Up."): colour alone never carries
+ * the status.
  */
 export function BeatBar({
   beats,
@@ -35,15 +33,36 @@ export function BeatBar({
   size?: number
   className?: string
 }) {
+  const t = useTranslations('statusPages.beats')
+  const tStatus = useTranslations('common.status')
+  const format = useFormatter()
   const shown = beats.slice(-size)
   const padding = Math.max(0, size - shown.length)
 
+  const beatTitle = (beat: BeatBarBeat): string => {
+    const when = new Date(beat.time)
+    const time = Number.isNaN(when.getTime()) ? beat.time : format.dateTime(when, 'short')
+    const parts = [beat.status.toUpperCase(), time]
+    if (typeof beat.ping === 'number') parts.push(t('ping', { ms: Math.round(beat.ping) }))
+    return parts.join(' · ')
+  }
+
+  let label = t('none')
+  if (shown.length > 0) {
+    const counts = new Map<BeatBarBeat['status'], number>()
+    for (const beat of shown) counts.set(beat.status, (counts.get(beat.status) ?? 0) + 1)
+    const parts = STATUS_ORDER.filter((key) => counts.has(key)).map((key) =>
+      t('count', { count: counts.get(key) ?? 0, status: t(`status.${key}`) }),
+    )
+    label = t('summary', {
+      count: shown.length,
+      parts: parts.join(', '),
+      latest: tStatus(shown[shown.length - 1].status),
+    })
+  }
+
   return (
-    <div
-      className={cn('flex h-6 items-center gap-px', className)}
-      role="img"
-      aria-label={describeBeats(shown.map((beat) => beat.status))}
-    >
+    <div className={cn('flex h-6 items-center gap-px', className)} role="img" aria-label={label}>
       {Array.from({ length: padding }, (_, i) => (
         <span
           key={`pad-${i}`}

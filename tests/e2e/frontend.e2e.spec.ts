@@ -7,6 +7,7 @@ test.describe('Frontend', () => {
     await page.goto('/')
     await expect(page).toHaveURL(/\/login$/)
     await expect(page).toHaveTitle(/Marmot/)
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
     await expect(page.getByRole('heading', { name: /sign in to marmot/i })).toBeVisible()
     await expect(page.getByLabel('Email')).toBeVisible()
     await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible()

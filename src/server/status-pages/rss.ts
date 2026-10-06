@@ -5,11 +5,13 @@
  */
 import type { Payload } from 'payload'
 
+import { getStaticFormatter, getTranslator } from '@/i18n/translator'
+import { renderMarkdown } from '@/lib/markdown'
+import type { Locale } from '@/i18n/locales'
+import { resolveStatusPageLocale, statusPageTimeZone } from '@/i18n/resolve'
 import type { Incident, StatusPage } from '@/payload-types'
 
-import { renderMarkdown } from '@/lib/markdown'
-
-import { buildPublicGroups, overallStatus, STATUS_DESCRIPTIONS } from './public'
+import { buildPublicGroups, overallStatus } from './public'
 
 export const escapeXml = (value: string): string =>
   value.replace(
@@ -30,6 +32,8 @@ export interface RssChannel {
   title: string
   description: string
   link: string
+  /** RFC 1766 language code of the channel. */
+  language: string
   /** URL of the feed itself (`atom:link rel="self"`). */
   feedUrl: string
   items: RssItem[]
@@ -60,7 +64,7 @@ export function renderRss(channel: RssChannel): string {
     `    ${element('title', channel.title)}\n` +
     `    ${element('link', channel.link)}\n` +
     `    ${element('description', channel.description)}\n` +
-    `    <language>en</language>\n` +
+    `    ${element('language', channel.language)}\n` +
     `    ${element('lastBuildDate', (channel.lastBuildDate ?? new Date()).toUTCString())}\n` +
     `    <atom:link href="${escapeXml(channel.feedUrl)}" rel="self" type="application/rss+xml"/>\n` +
     (items ? `${items}\n` : '') +
@@ -87,22 +91,31 @@ export async function findFeedIncidents(
   return docs
 }
 
-/** Builds the feed for a published status page. `pageUrl` is the public URL of the page. */
+/**
+ * Builds the feed for a published status page. `pageUrl` is the public URL of the page; the
+ * text is rendered in `locale` (`statusPageFeedLocale`) with times in the organization's zone.
+ */
 export async function buildStatusPageRss(
   payload: Payload,
   page: StatusPage,
   pageUrl: string,
+  locale: Locale = resolveStatusPageLocale(page, new Headers()),
 ): Promise<string> {
   const [groups, incidents] = await Promise.all([
     buildPublicGroups(payload, page),
     findFeedIncidents(payload, page.id),
   ])
+  const t = getTranslator(locale)
+  const format = getStaticFormatter(locale, statusPageTimeZone(page))
 
   const monitors = groups.flatMap((g) => g.monitors)
   const overall = overallStatus(monitors.map((m) => m.status))
 
   const items: RssItem[] = incidents.map((incident) => ({
-    title: incident.active === false ? `[Resolved] ${incident.title}` : incident.title,
+    title:
+      incident.active === false
+        ? t('statusPages.rss.resolved', { title: incident.title })
+        : incident.title,
     description: renderMarkdown(incident.content ?? ''),
     link: pageUrl,
     guid: `incident-${incident.id}-${incident.updatedAt}`,
@@ -113,10 +126,13 @@ export async function buildStatusPageRss(
     if (monitor.status !== 'down') continue
     const since = monitor.beats.at(-1)?.time
     items.push({
-      title: `${monitor.name} is down`,
+      title: t('statusPages.rss.monitorDown', { name: monitor.name }),
       description: since
-        ? `${monitor.name} has been down since ${new Date(since).toUTCString()}.`
-        : `${monitor.name} is down.`,
+        ? t('statusPages.rss.monitorDownSince', {
+            name: monitor.name,
+            since: format.dateTime(new Date(since), 'zoned'),
+          })
+        : t('statusPages.rss.monitorDownDescription', { name: monitor.name }),
       link: pageUrl,
       guid: `monitor-${monitor.id}-${since ?? 'down'}`,
       pubDate: since ? new Date(since) : new Date(),
@@ -126,9 +142,10 @@ export async function buildStatusPageRss(
   items.sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime())
 
   return renderRss({
-    title: `${page.title} status`,
-    description: `Current status: ${STATUS_DESCRIPTIONS[overall]}`,
+    title: t('statusPages.rss.title', { title: page.title }),
+    description: t('statusPages.rss.description', { status: t(`statusPages.overall.${overall}`) }),
     link: pageUrl,
+    language: locale,
     feedUrl: `${pageUrl}/rss`,
     items,
   })

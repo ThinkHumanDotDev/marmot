@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { MailCheck } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -18,10 +19,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { authApi } from '@/lib/api'
 
-const schema = z.object({ email: z.email('Enter a valid email address') })
-type Values = z.infer<typeof schema>
+type Values = { email: string }
 
 export function ForgotPasswordForm() {
+  const t = useTranslations('auth.forgotPassword')
+  const tf = useTranslations('auth.fields')
+  const tv = useTranslations('auth.validation')
+  const schema = React.useMemo(() => z.object({ email: z.email(tv('email')) }), [tv])
   const [pending, setPending] = React.useState(false)
   const [sentTo, setSentTo] = React.useState<string | null>(null)
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: '' } })
@@ -45,8 +49,7 @@ export function ForgotPasswordForm() {
           <MailCheck className="size-5" aria-hidden />
         </span>
         <p className="text-sm">
-          If an account exists for <span className="font-medium">{sentTo}</span>, a reset link is on
-          its way. It expires in one hour.
+          {t.rich('sent', { email: () => <span className="font-medium">{sentTo}</span> })}
         </p>
       </div>
     )
@@ -60,12 +63,12 @@ export function ForgotPasswordForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{tf('email')}</FormLabel>
               <FormControl>
                 <Input
                   type="email"
                   autoComplete="email"
-                  placeholder="you@example.com"
+                  placeholder={tf('emailPlaceholder')}
                   autoFocus
                   {...field}
                 />
@@ -75,7 +78,7 @@ export function ForgotPasswordForm() {
           )}
         />
         <Button type="submit" className="w-full" disabled={pending}>
-          {pending ? 'Sending…' : 'Send reset link'}
+          {pending ? t('submitting') : t('submit')}
         </Button>
       </form>
     </Form>
