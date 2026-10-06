@@ -1,4 +1,4 @@
-import { parseIdpMetadata } from '@thinkhumandotdev/payload-auth/saml'
+import { parseIdpMetadata } from '@thinkhuman/payload-plugin-auth/saml'
 import { z } from 'zod'
 
 import { jsonError, readJson, resolveOrgRequest } from '@/server/notifications/api'

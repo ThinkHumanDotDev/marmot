@@ -237,7 +237,7 @@ there with `post_logout_redirect_uri=${NEXT_PUBLIC_SERVER_URL}/login` so the pro
 
 ## Under the hood
 
-The protocol work lives in [`@thinkhumandotdev/payload-auth`](https://github.com/ThinkHumanDotDev/payload-plugin-auth),
+The protocol work lives in [`@thinkhuman/payload-plugin-auth`](https://github.com/ThinkHumanDotDev/payload-plugin-auth),
 a reusable set of Payload plugins (OAuth 2.0 / OpenID Connect and SAML 2.0) maintained alongside Marmot.
 `src/auth/sso` configures it: providers are resolved per request (today from the `OIDC_*` variables), the
 routes under `/api/auth/{oidc,sso}` are Marmot's own so they share its rate limiting, and the hooks add

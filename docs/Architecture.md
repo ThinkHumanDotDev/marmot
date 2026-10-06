@@ -340,7 +340,7 @@ be after the last accepted one, `users.twoFactorLastUsedStep`).
   `payload.login` without the gate flag for protected accounts, so the Payload REST login (and the admin
   panel's login form) cannot bypass the second step; a superadmin with 2FA signs in through the Marmot
   login page and then opens `/admin` with the shared cookie.
-- **Single sign-on**: the SSO callback (`src/auth/sso`, on `@thinkhumandotdev/payload-auth`) issues the
+- **Single sign-on**: the SSO callback (`src/auth/sso`, on `@thinkhuman/payload-plugin-auth`) issues the
   same challenge (redirect to `/login?two_factor=1`) when a linked account enabled 2FA; accounts that did
   not are signed in by the identity provider alone. SSO
   accounts have no Marmot password, so their setup/disable steps rely on the session plus a code.

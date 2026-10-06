@@ -1,4 +1,4 @@
-import { createSaml } from '@thinkhumandotdev/payload-auth/saml'
+import { createSaml } from '@thinkhuman/payload-plugin-auth/saml'
 
 import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
 import { env } from '@/env'
@@ -15,7 +15,7 @@ import { linkErrorResponse, twoFactorResponse } from './oauth'
 const serverUrl = () => env.NEXT_PUBLIC_SERVER_URL.replace(/\/$/, '')
 
 /**
- * The SAML 2.0 integration (`@thinkhumandotdev/payload-auth/saml`): every connection is an
+ * The SAML 2.0 integration (`@thinkhuman/payload-plugin-auth/saml`): every connection is an
  * organization's `sso-connections` row of type `saml`, resolved by slug per request. Routes live
  * under `/api/auth/saml/<slug>/{login,acs,metadata}` (`src/app/api/auth/saml`), rate limited there.
  * The service-provider entity id is the metadata URL, so the IdP can import it directly.
