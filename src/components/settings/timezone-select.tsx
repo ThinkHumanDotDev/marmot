@@ -15,6 +15,8 @@ interface TimezoneSelectProps {
   onChange: (value: string) => void
   disabled?: boolean
   id?: string
+  /** Non-zone choices listed first, e.g. "Organization default" (`SAME_AS_SERVER`). */
+  extraOptions?: { value: string; label: string }[]
 }
 
 function listTimezones(current: string): string[] {
@@ -42,14 +44,28 @@ const offsetLabel = (zone: string): string => {
 }
 
 /** IANA time zone picker backed by `Intl.supportedValuesOf`. */
-export function TimezoneSelect({ value, onChange, disabled, id }: TimezoneSelectProps) {
-  const zones = React.useMemo(() => listTimezones(value), [value])
+export function TimezoneSelect({
+  value,
+  onChange,
+  disabled,
+  id,
+  extraOptions = [],
+}: TimezoneSelectProps) {
+  const zones = React.useMemo(
+    () => listTimezones(extraOptions.some((o) => o.value === value) ? '' : value),
+    [value, extraOptions],
+  )
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
       <SelectTrigger id={id} className="w-full" aria-label="Time zone">
         <SelectValue placeholder="Select a time zone" />
       </SelectTrigger>
       <SelectContent position="popper" className="max-h-72">
+        {extraOptions.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
         {zones.map((zone) => (
           <SelectItem key={zone} value={zone}>
             <span className="flex items-center gap-2">

@@ -5,6 +5,7 @@ import { AuditLogs } from './AuditLogs'
 import { Heartbeats } from './Heartbeats'
 import { Incidents } from './Incidents'
 import { Invitations } from './Invitations'
+import { Maintenance } from './Maintenance'
 import { Media } from './Media'
 import { Monitors } from './Monitors'
 import { Notifications } from './Notifications'
@@ -34,6 +35,7 @@ export const collections: CollectionConfig[] = [
   StatDaily,
   StatusPages,
   Incidents,
+  Maintenance,
   ApiKeys,
   AuditLogs,
 ]

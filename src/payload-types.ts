@@ -80,6 +80,7 @@ export interface Config {
     'stat-daily': StatDaily;
     'status-pages': StatusPage;
     incidents: Incident;
+    maintenance: Maintenance;
     'api-keys': ApiKey;
     'audit-logs': AuditLog;
     'payload-kv': PayloadKv;
@@ -102,6 +103,7 @@ export interface Config {
     'stat-daily': StatDailySelect<false> | StatDailySelect<true>;
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
+    maintenance: MaintenanceSelect<false> | MaintenanceSelect<true>;
     'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -877,6 +879,111 @@ export interface Incident {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "maintenance".
+ */
+export interface Maintenance {
+  id: number;
+  organization: number | Organization;
+  title: string;
+  /**
+   * Shown on status pages.
+   */
+  description?: string | null;
+  strategy: 'manual' | 'single' | 'recurring-interval' | 'recurring-weekday' | 'recurring-day-of-month' | 'cron';
+  /**
+   * IANA time zone the schedule is written in, or SAME_AS_SERVER for the organization's zone.
+   */
+  timezone?: string | null;
+  /**
+   * Paused maintenances never run.
+   */
+  active?: boolean | null;
+  /**
+   * Maintained by the server; recomputed every minute.
+   */
+  status?: ('inactive' | 'scheduled' | 'under-maintenance' | 'ended' | 'unknown') | null;
+  /**
+   * Single window: when it runs. Recurring/cron: optional effective range. Wall-clock in the time zone above (YYYY-MM-DDTHH:mm).
+   */
+  dateRange?: {
+    start?: string | null;
+    end?: string | null;
+  };
+  /**
+   * Daily window (HH:mm); an end before the start runs past midnight.
+   */
+  timeRange?: {
+    start?: string | null;
+    end?: string | null;
+  };
+  /**
+   * Run every N days, counted from the start date.
+   */
+  intervalDay?: number | null;
+  weekdays?: ('1' | '2' | '3' | '4' | '5' | '6' | '0')[] | null;
+  /**
+   * Only "Last day of the month" has a cron equivalent; 2nd–4th last are ignored.
+   */
+  daysOfMonth?:
+    | (
+        | '1'
+        | '2'
+        | '3'
+        | '4'
+        | '5'
+        | '6'
+        | '7'
+        | '8'
+        | '9'
+        | '10'
+        | '11'
+        | '12'
+        | '13'
+        | '14'
+        | '15'
+        | '16'
+        | '17'
+        | '18'
+        | '19'
+        | '20'
+        | '21'
+        | '22'
+        | '23'
+        | '24'
+        | '25'
+        | '26'
+        | '27'
+        | '28'
+        | '29'
+        | '30'
+        | '31'
+        | 'lastDay1'
+        | 'lastDay2'
+        | 'lastDay3'
+        | 'lastDay4'
+      )[]
+    | null;
+  /**
+   * Five-field cron expression, evaluated in the time zone.
+   */
+  cron?: string | null;
+  /**
+   * Minutes each occurrence lasts.
+   */
+  duration?: number | null;
+  /**
+   * Affected monitors: checks are skipped and MAINTENANCE heartbeats written.
+   */
+  monitors?: (number | Monitor)[] | null;
+  /**
+   * Status pages that announce this maintenance.
+   */
+  statusPages?: (number | StatusPage)[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "api-keys".
  */
 export interface ApiKey {
@@ -1008,6 +1115,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'incidents';
         value: number | Incident;
+      } | null)
+    | ({
+        relationTo: 'maintenance';
+        value: number | Maintenance;
       } | null)
     | ({
         relationTo: 'api-keys';
@@ -1418,6 +1529,40 @@ export interface IncidentsSelect<T extends boolean = true> {
   pinned?: T;
   active?: T;
   resolvedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "maintenance_select".
+ */
+export interface MaintenanceSelect<T extends boolean = true> {
+  organization?: T;
+  title?: T;
+  description?: T;
+  strategy?: T;
+  timezone?: T;
+  active?: T;
+  status?: T;
+  dateRange?:
+    | T
+    | {
+        start?: T;
+        end?: T;
+      };
+  timeRange?:
+    | T
+    | {
+        start?: T;
+        end?: T;
+      };
+  intervalDay?: T;
+  weekdays?: T;
+  daysOfMonth?: T;
+  cron?: T;
+  duration?: T;
+  monitors?: T;
+  statusPages?: T;
   updatedAt?: T;
   createdAt?: T;
 }
