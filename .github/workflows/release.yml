@@ -165,9 +165,12 @@ jobs:
       - name: Add image reference
         env:
           VERSION: ${{ needs.image.outputs.version }}
+        # Insert the image block above the closing "**Full Changelog**" line so that link stays last.
         run: |
+          grep -v '^\*\*Full Changelog\*\*' RELEASE_NOTES.md > notes.body || true
+          grep '^\*\*Full Changelog\*\*' RELEASE_NOTES.md > notes.footer || true
           {
-            echo
+            cat notes.body
             echo '### Container image'
             echo
             echo '```bash'
@@ -175,7 +178,9 @@ jobs:
             echo '```'
             echo
             echo 'Multi-arch (linux/amd64, linux/arm64). Upgrade guide: [docs/Deployment.md](https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/Deployment.md#upgrading).'
-          } >> RELEASE_NOTES.md
+            echo
+            cat notes.footer
+          } > RELEASE_NOTES.md
           cat RELEASE_NOTES.md
       - name: Create release
         env:
