@@ -70,16 +70,23 @@ Uploads (organization logos, status-page logos) go to local disk unless `S3_BUCK
 
 Marmot sends invitations and password-reset mail through the Payload email adapter. Without `SMTP_HOST` the
 messages are written to the web process log instead of being sent, which is enough to copy an invitation
-link during evaluation. The `smtp` notification provider can reuse these settings (**Use server SMTP**).
+link during evaluation. The `smtp` notification provider can reuse these settings (**Use the server SMTP
+settings**); the last two variables decide who may do that and how much mail it may send.
 
-| Variable        | Default                     | Read by     | Description                                                                     |
-| --------------- | --------------------------- | ----------- | ------------------------------------------------------------------------------- |
-| `SMTP_HOST`     | —                           | web, worker | SMTP server. Unset = log mail to the console.                                   |
-| `SMTP_PORT`     | `587`                       | web, worker | SMTP port.                                                                      |
-| `SMTP_USER`     | —                           | web, worker | Username (optional for unauthenticated relays).                                 |
-| `SMTP_PASSWORD` | —                           | web, worker | Password.                                                                       |
-| `SMTP_SECURE`   | `false`                     | web, worker | `true` for implicit TLS (usually port 465); `false` uses STARTTLS when offered. |
-| `EMAIL_FROM`    | `Marmot <marmot@localhost>` | web, worker | Sender address, `Name <address>` form allowed.                                  |
+| Variable                         | Default                     | Read by     | Description                                                                                                                                                                                                          |
+| -------------------------------- | --------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SMTP_HOST`                      | —                           | web, worker | SMTP server. Unset = log mail to the console.                                                                                                                                                                        |
+| `SMTP_PORT`                      | `587`                       | web, worker | SMTP port.                                                                                                                                                                                                           |
+| `SMTP_USER`                      | —                           | web, worker | Username (optional for unauthenticated relays).                                                                                                                                                                      |
+| `SMTP_PASSWORD`                  | —                           | web, worker | Password.                                                                                                                                                                                                            |
+| `SMTP_SECURE`                    | `false`                     | web, worker | `true` for implicit TLS (usually port 465); `false` uses STARTTLS when offered.                                                                                                                                      |
+| `EMAIL_FROM`                     | `Marmot <marmot@localhost>` | web, worker | Sender address, `Name <address>` form allowed.                                                                                                                                                                       |
+| `NOTIFICATIONS_SERVER_SMTP`      | `superadmin`                | web, worker | Who may set up an `smtp` notification channel that sends through the settings above: `all` (anyone who manages channels), `superadmin` (instance superadmins only) or `off` (nobody; such channels fail to deliver). |
+| `NOTIFICATIONS_SERVER_SMTP_RATE` | `60`                        | web, worker | Messages per organization per hour sent through the server SMTP settings, test messages included. `0` = unlimited.                                                                                                   |
+
+Notification mail sent through the server settings is limited to 10 recipients per message (to, cc and bcc
+combined). In `superadmin` mode, channels set up before the upgrade keep sending; see
+[Deployment](Deployment.md#upgrading) for how to list them. Details: [Notifications](Notifications.md#email-through-the-server-smtp-settings).
 
 ## Authentication
 

@@ -22,6 +22,10 @@ interface ProviderFieldProps<T extends FieldValues> {
   control: Control<T>
   name: Path<T>
   field: NotificationFieldDescriptor
+  /** Render the control read-only. */
+  disabled?: boolean
+  /** Extra one-line explanation under the field (e.g. why it is disabled). */
+  note?: string | null
 }
 
 const isEmpty = (value: unknown) => value === undefined || value === null || value === ''
@@ -34,9 +38,12 @@ export function ProviderField<T extends FieldValues>({
   control,
   name,
   field,
+  disabled = false,
+  note,
 }: ProviderFieldProps<T>) {
   const id = React.useId()
   const descriptionId = `${id}-description`
+  const noteId = `${id}-note`
   const errorId = `${id}-error`
 
   return (
@@ -51,13 +58,14 @@ export function ProviderField<T extends FieldValues>({
       render={({ field: rhf, fieldState }) => {
         const error = fieldState.error?.message
         const describedBy =
-          [field.description ? descriptionId : null, error ? errorId : null]
+          [field.description ? descriptionId : null, note ? noteId : null, error ? errorId : null]
             .filter(Boolean)
             .join(' ') || undefined
         const common = {
           id,
           name: rhf.name,
           onBlur: rhf.onBlur,
+          disabled,
           'aria-invalid': !!error,
           'aria-describedby': describedBy,
         }
@@ -156,6 +164,11 @@ export function ProviderField<T extends FieldValues>({
             {field.description && (
               <p id={descriptionId} className="text-xs text-muted-foreground">
                 {field.description}
+              </p>
+            )}
+            {note && (
+              <p id={noteId} className="text-xs text-muted-foreground">
+                {note}
               </p>
             )}
             {error && (

@@ -18,6 +18,7 @@ import { childLogger } from '@/lib/logger'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import type { Incident, Monitor, Notification, StatusPage } from '@/payload-types'
 import type { RequestUser } from '@/server/monitors/http'
+import { checkServerSmtpChange } from '@/server/notifications/server-smtp'
 
 import type { ImportPlan, PlannedMonitor } from './types'
 
@@ -104,6 +105,24 @@ export async function applyImportPlan(
       'You may not create notification channels in this organization',
     )
     plan = { ...plan, notifications: [] }
+  }
+  // Channels that would send through the server SMTP settings follow NOTIFICATIONS_SERVER_SMTP;
+  // skip them here instead of failing the whole import on save.
+  if (plan.notifications.length > 0) {
+    plan = {
+      ...plan,
+      notifications: plan.notifications.filter((planned) => {
+        const refusal = checkServerSmtpChange({
+          operation: 'create',
+          type: planned.type,
+          config: planned.config,
+          user,
+        })
+        if (refusal)
+          report.notifications.skipped.push({ name: planned.name, reason: refusal.message })
+        return !refusal
+      }),
+    }
   }
   const canStatusPages = can(user, orgId, 'status-page:create')
   if (!canStatusPages && plan.statusPages.length > 0) {

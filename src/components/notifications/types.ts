@@ -81,6 +81,14 @@ export const notificationsApi = {
     ),
   remove: (orgId: string, id: string) =>
     api.delete<{ ok: boolean }>(`${base(orgId)}/${encodeURIComponent(id)}`),
-  test: (orgId: string, body: { type: string; config: Record<string, unknown>; name?: string }) =>
-    api.post<TestResult>(`${base(orgId)}/test`, body),
+  /** Saved channel (`notificationId`), unsaved edits of one (`notificationId` + `config`) or a new one. */
+  test: (
+    orgId: string,
+    body: {
+      notificationId?: string
+      type?: string
+      config?: Record<string, unknown>
+      name?: string
+    },
+  ) => api.post<TestResult>(`${base(orgId)}/test`, body),
 }

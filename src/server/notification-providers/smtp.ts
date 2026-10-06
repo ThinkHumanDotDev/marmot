@@ -5,12 +5,19 @@
  *
  * `useServerSmtp` reuses the instance-wide SMTP settings (`SMTP_HOST` & co. in `src/env.ts`) so an
  * admin only has to enter recipients; otherwise the channel carries its own transport settings.
+ * Who may use it, how often and for how many recipients is decided in
+ * `src/server/notifications/server-smtp.ts` (`NOTIFICATIONS_SERVER_SMTP*`).
  */
 import nodemailer, { type Transporter } from 'nodemailer'
 import { z } from 'zod'
 
 import { env } from '@/env'
 import { formatHeartbeatTime, renderMessageTemplate } from '@/server/notifications/message'
+import {
+  SERVER_SMTP_MAX_RECIPIENTS,
+  SERVER_SMTP_OFF_MESSAGE,
+  serverSmtpPolicy,
+} from '@/server/notifications/server-smtp'
 import { OK_MESSAGE } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -37,7 +44,7 @@ export type SmtpConfig = z.infer<typeof smtpConfigSchema>
 export const smtpFieldMeta: Record<keyof SmtpConfig, NotificationFieldMeta> = {
   useServerSmtp: {
     label: 'Use the server SMTP settings',
-    description: 'Send through the SMTP_* configuration of this Marmot instance.',
+    description: `Send through the SMTP_* configuration of this Marmot instance (at most ${SERVER_SMTP_MAX_RECIPIENTS} recipients per message).`,
   },
   host: { label: 'SMTP host', placeholder: 'smtp.example.com' },
   port: { label: 'Port' },
@@ -65,6 +72,8 @@ export const smtpFieldMeta: Record<keyof SmtpConfig, NotificationFieldMeta> = {
 /** Build the nodemailer transport for a channel (exported for tests). */
 export function buildSmtpTransportOptions(config: SmtpConfig): Record<string, unknown> {
   if (config.useServerSmtp) {
+    // `sendNotification` already refuses this; never fall back to the server transport regardless.
+    if (serverSmtpPolicy() === 'off') throw new Error(SERVER_SMTP_OFF_MESSAGE)
     if (!env.SMTP_HOST) {
       throw new Error(
         'This Marmot instance has no SMTP_HOST configured; enter SMTP settings instead.',

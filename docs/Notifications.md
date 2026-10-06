@@ -44,9 +44,12 @@ The default message is `[monitor name] [✅ Up|🔴 Down|⚠️ Pending|🔧 Mai
 
 ### Testing a channel
 
-`POST /api/orgs/:orgId/notifications/test` with `{ "notificationId": … }` (saved channel) or
+`POST /api/orgs/:orgId/notifications/test` with `{ "notificationId": … }` (saved channel),
+`{ "notificationId": …, "config": { … } }` (unsaved edits of a saved channel) or
 `{ "type": "slack", "config": { … } }` (unsaved) sends a test message and answers `{ ok: true, result }` or
-`400 { ok: false, error }`. Requires `notification:update`. The UI's **Send test** button uses it.
+`400 { ok: false, error }`. Requires `notification:update`. The UI's **Send test** button uses it. Unsaved
+settings follow the same rules as saving them (`403` when the caller may not use the server SMTP settings);
+`429` means the organization used up its hourly budget for the server SMTP settings.
 
 ### Channel API
 
@@ -135,6 +138,28 @@ services):
 | `apprise`        | Generic | **appriseUrl**, title. Runs the `apprise` CLI on the worker host (`pip install apprise`); fails with a readable error when the binary is missing                                    |
 
 Nostr is not ported: it needs `nostr-tools` plus a WebSocket polyfill, which outweighs its use.
+
+### Email through the server SMTP settings
+
+An `smtp` channel with **Use the server SMTP settings** (`useServerSmtp: true`) sends with the instance's
+`SMTP_*` settings and `EMAIL_FROM` instead of its own server, so it carries the operator's sender domain.
+Three limits apply:
+
+- **Who:** `NOTIFICATIONS_SERVER_SMTP` (default `superadmin`). In `superadmin` mode only instance
+  superadmins may create a channel with the option or switch a channel to it, and other users cannot change
+  the settings of a channel that uses it (they may still rename, pause, delete it or turn the option off);
+  everyone else gets a `403` from the REST API, the Local API (without `overrideAccess`) and the routes
+  above, and the form disables the switch. Existing channels keep sending. `off` refuses the option for
+  everyone, and existing channels that use it fail with an error in their **Last error** instead of falling
+  back to the server. `all` lets anyone who manages channels use it.
+- **How much:** `NOTIFICATIONS_SERVER_SMTP_RATE` messages per organization per hour (default `60`, `0` =
+  unlimited), counted in Redis across every channel of the organization; **Send test** counts too. Over
+  the limit a delivery is refused and recorded as the channel's **Last error** (not retried), and the test
+  endpoint answers `429` with `Retry-After`. When Redis is unreachable the limit is not enforced and the
+  worker logs one warning.
+- **To whom:** at most 10 recipients per message (to, cc and bcc combined), checked on save and on send.
+
+Channels with their own SMTP server are not affected by any of these.
 
 ### Adding a provider
 

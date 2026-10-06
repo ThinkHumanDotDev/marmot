@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/page-header'
 import { getUserOrganizations, requireUser } from '@/lib/auth'
 import type { Notification } from '@/payload-types'
 import { getProviderDescriptors, toClientNotification } from '@/server/notifications/api'
+import { serverSmtpRestriction } from '@/server/notifications/server-smtp'
 
 export const metadata: Metadata = { title: 'Notifications' }
 export const dynamic = 'force-dynamic'
@@ -81,6 +82,7 @@ export default async function NotificationsPage({ params }: PageProps) {
       )}
       providers={getProviderDescriptors()}
       canManage={canManage}
+      serverSmtpRestriction={serverSmtpRestriction(user)}
     />
   )
 }

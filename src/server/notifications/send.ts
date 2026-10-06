@@ -4,6 +4,7 @@ import { childLogger } from '@/lib/logger'
 import type { Heartbeat, Monitor, Notification } from '@/payload-types'
 import { getNotificationProvider } from '@/server/notification-providers'
 import { buildDefaultMessage, buildTestMessage } from './message'
+import { assertServerSmtpSendAllowed, usesServerSmtp } from './server-smtp'
 
 const log = childLogger('notifications:send')
 
@@ -11,6 +12,8 @@ const log = childLogger('notifications:send')
 export type NotificationChannelLike = Pick<Notification, 'type' | 'config'> & {
   id?: Notification['id']
   name?: string | null
+  /** Owning organization (id or populated doc); unsaved test channels pass the URL's organization. */
+  organization?: Notification['organization'] | null
 }
 
 export interface SendNotificationOptions {
@@ -57,6 +60,19 @@ export function validateNotificationConfig(type: string, config: unknown): Recor
   return result.data as Record<string, unknown>
 }
 
+/** `validateNotificationConfig`, or the config unchanged when it does not validate (for comparisons). */
+export function normalizeNotificationConfig(
+  type: string | null | undefined,
+  config: unknown,
+): unknown {
+  if (!type) return config
+  try {
+    return validateNotificationConfig(type, config)
+  } catch {
+    return config
+  }
+}
+
 /**
  * Resolve the provider for a channel and deliver one message. Used by the queue worker and the
  * test endpoint. Resolves with the provider's success string; throws on failure.
@@ -71,6 +87,13 @@ export async function sendNotification(
     throw new NotificationConfigError(`Unknown notification type "${notification.type}"`)
   }
   const config = validateNotificationConfig(notification.type, notification.config)
+  if (usesServerSmtp(notification.type, config)) {
+    const org = notification.organization
+    await assertServerSmtpSendAllowed({
+      orgId: org && typeof org === 'object' ? org.id : org,
+      config,
+    })
+  }
   const text = message ?? buildDefaultMessage(monitor, heartbeat)
 
   log.debug(

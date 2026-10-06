@@ -45,6 +45,11 @@ const schema = z.object({
   SMTP_PASSWORD: z.string().optional(),
   SMTP_SECURE: booleanish.default(false),
   EMAIL_FROM: z.string().default('Marmot <marmot@localhost>'),
+  // Who may point an `smtp` notification channel at the SMTP_* settings above ("Use the server
+  // SMTP settings"): everyone who manages channels, instance superadmins only, or nobody.
+  NOTIFICATIONS_SERVER_SMTP: z.enum(['all', 'superadmin', 'off']).default('superadmin'),
+  // Messages per organization per hour sent through the server SMTP settings; 0 = unlimited.
+  NOTIFICATIONS_SERVER_SMTP_RATE: z.coerce.number().int().min(0).default(60),
 
   // Auth
   DISABLE_SIGNUP: booleanish.default(false),

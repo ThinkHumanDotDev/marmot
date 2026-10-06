@@ -255,6 +255,21 @@ not jump to a newer version until you update `docker-compose.yml` or set `MARMOT
 version are in [`CHANGELOG.md`](../CHANGELOG.md); maintainers follow the
 [release checklist](Release-Checklist.md).
 
+### Notification channels that use the server SMTP settings
+
+Since `NOTIFICATIONS_SERVER_SMTP` (default `superadmin`), only instance superadmins can set up email
+channels that send through the instance's `SMTP_*` settings. Channels that already did so keep sending,
+whoever created them. Marmot does not record a channel's creator, so review all of them once after
+upgrading: as a superadmin, list them in the REST API
+
+```text
+GET /api/notifications?where[type][equals]=smtp&where[config.useServerSmtp][equals]=true&depth=0&limit=0
+```
+
+or in the admin panel at `/admin/collections/notifications?where[type][equals]=smtp&where[config.useServerSmtp][equals]=true`
+(the same filter in the URL). Each result names its `organization`; edit or delete the channels you did not
+expect, or set `NOTIFICATIONS_SERVER_SMTP=off` to stop all of them.
+
 ## Hardening
 
 Before exposing an instance to the internet, go through the checklist in [Security](Security.md): TLS,

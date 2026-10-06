@@ -55,3 +55,7 @@ account (per e-mail) and the OIDC endpoints are not limited.
    releases promptly; watch the CI dependency audit output after upgrading your fork.
 9. **Protect Redis.** Rate limiting and queues live there; use `requirepass`/ACLs and
    `maxmemory-policy noeviction`.
+10. **Limit who can send through your mail server.** Keep `NOTIFICATIONS_SERVER_SMTP=superadmin` (the
+    default) or set `off`, so only operators can point notification channels at the `SMTP_*` settings; keep
+    `NOTIFICATIONS_SERVER_SMTP_RATE` low. After upgrading, review the channels that already use the server
+    settings ([Deployment](Deployment.md#upgrading)).
