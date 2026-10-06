@@ -8,7 +8,8 @@ body:
       value: |
         Check `docs/Comparison.md` first: many Uptime Kuma features are already planned or landing. If the
         request is "port provider X" or "port monitor type Y", say so; those are one-file changes and good
-        first contributions.
+        first contributions. Larger or still-open ideas belong in
+        [Discussions → Ideas](https://github.com/ThinkHumanDotDev/marmot/discussions/categories/ideas) first.
   - type: textarea
     id: problem
     attributes:

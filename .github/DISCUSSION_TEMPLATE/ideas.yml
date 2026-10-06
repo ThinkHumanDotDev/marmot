@@ -1,0 +1,37 @@
+# Form for the "Ideas" category. The file name must match the category slug (`ideas`).
+# Ideas that get agreement are turned into a feature request issue by a maintainer.
+title: '[Idea] '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Propose something before it becomes a feature request: a new capability, a change in behaviour or
+        a hosting/integration option. Check `docs/Comparison.md` first; many Uptime Kuma features are
+        already planned. Clear, scoped requests (e.g. "port provider X") can go straight to a
+        [feature request](https://github.com/ThinkHumanDotDev/marmot/issues/new?template=feature_request.yml).
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Idea
+      description: What should Marmot do, and for whom (viewer, member, admin, operator)?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and prior art
+      description: Workarounds you use today, and how Uptime Kuma or other tools handle it.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and discussions for this idea.
+          required: true
