@@ -1,9 +1,15 @@
 version: 2
+# Labels follow the repo's type:/area: scheme instead of Dependabot's defaults (dependencies,
+# github_actions, docker). Dependabot skips labels that don't exist, so `area:deps` must exist in the repo.
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+    labels: ['type:chore', 'area:deps']
+    commit-message:
+      prefix: chore
+      include: scope
     open-pull-requests-limit: 5
     groups:
       payload:
@@ -14,6 +20,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    labels: ['type:chore', 'area:deps', 'area:ci']
+    commit-message:
+      prefix: chore
+      include: scope
     groups:
       actions:
         patterns: ['*']
@@ -21,6 +31,10 @@ updates:
     directory: /docker
     schedule:
       interval: monthly
+    labels: ['type:chore', 'area:deps', 'area:docker']
+    commit-message:
+      prefix: chore
+      include: scope
     ignore:
       # Stay on the Node LTS line we test against.
       - dependency-name: node
