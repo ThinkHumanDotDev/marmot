@@ -108,6 +108,14 @@ Full setup guide with provider walkthroughs: [Single sign-on](Single-Sign-On.md)
 | `DOCKER_SOCKET_ENABLED`       | `true`  | web, worker | Allow `socket` Docker hosts, which talk to the Docker daemon of the worker's own host. Set `false` on shared installs where users must not reach the local daemon.                |
 | `MARMOT_DISABLE_ENGINE_HOOKS` | `false` | web         | Skip the BullMQ scheduler sync in the `monitors` collection hooks. Only for tests that run without Redis; the Vitest setup sets it.                                               |
 
+## Hosted instance
+
+Switches for running Marmot as a hosted service. Self-hosted installs leave them off.
+
+| Variable               | Default | Read by | Description                                                                                                                                                       |
+| ---------------------- | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LANDING_PAGE_ENABLED` | `false` | web     | Show a marketing landing page at `/` to signed-out visitors instead of redirecting to `/login`. Signed-in users and fresh installs (setup wizard) are unaffected. |
+
 ## Billing
 
 A scaffold for hosted offerings. Self-hosted installs leave it off; every limit is then unlimited and no
