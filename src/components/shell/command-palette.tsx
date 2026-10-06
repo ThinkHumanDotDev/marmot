@@ -13,6 +13,7 @@ import {
   Plus,
   SunMoon,
   Sun,
+  Wrench,
 } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
@@ -185,6 +186,7 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
 
   const canWriteMonitors = roleCan(currentOrg.role, 'monitor:update')
   const canCreateMonitors = roleCan(currentOrg.role, 'monitor:create')
+  const canCreateMaintenance = roleCan(currentOrg.role, 'maintenance:create')
 
   // On a monitor detail page (`/{org}/monitors/{id}`), offer pause/resume for that monitor.
   const detailMatch = pathname.match(/^\/[^/]+\/monitors\/([^/]+)$/)
@@ -232,6 +234,14 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
               onSelect={run(() => router.push(orgPath(currentOrg.slug, 'monitors/new')))}
             >
               <Plus aria-hidden /> New monitor
+            </CommandItem>
+          )}
+          {canCreateMaintenance && (
+            <CommandItem
+              value="schedule maintenance window new create"
+              onSelect={run(() => router.push(orgPath(currentOrg.slug, 'maintenance/new')))}
+            >
+              <Wrench aria-hidden /> Schedule maintenance
             </CommandItem>
           )}
           {currentMonitor && canWriteMonitors && (
