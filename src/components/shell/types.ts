@@ -7,7 +7,7 @@ export interface ShellUser {
   name?: string | null
   superadmin?: boolean
   /** `users.authProvider`; SSO accounts sign out through the identity provider too. */
-  authProvider?: 'local' | 'oidc' | null
+  authProvider?: 'local' | 'oidc' | 'oauth' | 'saml' | null
   /** `users.theme`, saved when changed from the user menu. */
   theme?: 'system' | 'light' | 'dark' | null
 }

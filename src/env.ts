@@ -54,6 +54,11 @@ const schema = z.object({
   OIDC_DISPLAY_NAME: z.string().default('Single sign-on'),
   OIDC_AUTO_PROVISION: booleanish.default(true),
   OIDC_SCOPES: z.string().default('openid email profile'),
+  // Social sign-in presets; each pair enables its button.
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
 
   // Monitoring defaults
   KEEP_DATA_PERIOD_DAYS: z.coerce.number().int().default(365),

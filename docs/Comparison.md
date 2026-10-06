@@ -124,6 +124,7 @@ Uptime Kuma is single-user with optional read-only status pages. Marmot borrows 
 | Organization settings (name, slug, logo, timezone)                | **done**                                                             |
 | Account settings, password change, account deletion               | **done**                                                             |
 | Generic OIDC single sign-on with auto-provisioning                | **done** ([Single sign-on](Single-Sign-On.md))                       |
+| Per-organization SAML/OIDC connections with verified domains      | **done** ([Single sign-on](Single-Sign-On.md))                       |
 | First-run setup wizard, superadmin role, instance settings        | **done**                                                             |
 | Instance-wide sign-up switch                                      | **done**                                                             |
 | Billing / plan entitlements for hosted offerings                  | **landing** (#26, off on self-host; [Billing](Billing.md))           |

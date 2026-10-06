@@ -68,7 +68,10 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
+    'auth-accounts': AuthAccount;
     organizations: Organization;
+    'sso-connections': SsoConnection;
+    'sso-domains': SsoDomain;
     invitations: Invitation;
     media: Media;
     monitors: Monitor;
@@ -94,7 +97,10 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
+    'auth-accounts': AuthAccountsSelect<false> | AuthAccountsSelect<true>;
     organizations: OrganizationsSelect<false> | OrganizationsSelect<true>;
+    'sso-connections': SsoConnectionsSelect<false> | SsoConnectionsSelect<true>;
+    'sso-domains': SsoDomainsSelect<false> | SsoDomainsSelect<true>;
     invitations: InvitationsSelect<false> | InvitationsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     monitors: MonitorsSelect<false> | MonitorsSelect<true>;
@@ -168,12 +174,15 @@ export interface User {
    */
   superadmin?: boolean | null;
   /**
-   * How the account was created: password signup or single sign-on.
+   * How the account was created: password signup, the OIDC client, a social OAuth provider or SAML.
    */
-  authProvider?: ('local' | 'oidc') | null;
+  authProvider?: ('local' | 'oidc' | 'oauth' | 'saml') | null;
+  /**
+   * Legacy: identities now live in Auth accounts.
+   */
   oidcIssuer?: string | null;
   /**
-   * Stable `sub` claim of the linked single sign-on identity.
+   * Legacy `sub` claim; identities now live in Auth accounts.
    */
   oidcSubject?: string | null;
   /**
@@ -286,6 +295,10 @@ export interface Organization {
     | number
     | boolean
     | null;
+  /**
+   * Require single sign-on: password logins are refused for users on this organization's verified domains. Owners keep a break-glass password login (audited).
+   */
+  enforceSso?: boolean | null;
   settings?: {
     /**
      * IANA time zone, e.g. Europe/London.
@@ -294,6 +307,106 @@ export interface Organization {
     weekStart?: ('monday' | 'sunday') | null;
     language?: 'en' | null;
   };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Single sign-on identities linked to users. Managed by the login flows.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "auth-accounts".
+ */
+export interface AuthAccount {
+  id: number;
+  user: number | User;
+  /**
+   * Provider or connection id the identity came from.
+   */
+  provider: string;
+  /**
+   * Stable identifier at the provider (OIDC sub, OAuth id, SAML NameID).
+   */
+  providerAccountId: string;
+  /**
+   * Email the provider released, if any.
+   */
+  email?: string | null;
+  name?: string | null;
+  lastLoginAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sso-connections".
+ */
+export interface SsoConnection {
+  id: number;
+  organization: number | Organization;
+  /**
+   * Login button label.
+   */
+  name: string;
+  /**
+   * Used in the login URLs; lowercase letters, numbers and hyphens.
+   */
+  slug: string;
+  type: 'oidc' | 'saml';
+  /**
+   * Disabled connections refuse logins.
+   */
+  enabled?: boolean | null;
+  /**
+   * Issuer identifier (the `iss` claim); discovery is read from it.
+   */
+  issuerUrl?: string | null;
+  clientId?: string | null;
+  /**
+   * Sealed at rest. Leave empty to keep the current secret.
+   */
+  clientSecret?: string | null;
+  scopes?: string | null;
+  /**
+   * IdP single sign-on URL (HTTP-Redirect binding).
+   */
+  idpEntryPoint?: string | null;
+  /**
+   * IdP entity id (issuer). Responses from any other issuer are refused.
+   */
+  idpEntityId?: string | null;
+  /**
+   * IdP signing certificate (PEM or bare base64).
+   */
+  idpCert?: string | null;
+  wantAssertionsSigned?: boolean | null;
+  /**
+   * Accept logins started at the identity provider (unsolicited responses).
+   */
+  allowIdpInitiated?: boolean | null;
+  /**
+   * Create a Marmot account on first login and add it to the organization.
+   */
+  autoProvision?: boolean | null;
+  /**
+   * Role given to users who join through SSO.
+   */
+  defaultRole?: ('admin' | 'member' | 'viewer') | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sso-domains".
+ */
+export interface SsoDomain {
+  id: number;
+  organization: number | Organization;
+  domain: string;
+  /**
+   * Value of the DNS TXT record that proves ownership.
+   */
+  verificationToken: string;
+  verifiedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1163,8 +1276,20 @@ export interface PayloadLockedDocument {
         value: number | User;
       } | null)
     | ({
+        relationTo: 'auth-accounts';
+        value: number | AuthAccount;
+      } | null)
+    | ({
         relationTo: 'organizations';
         value: number | Organization;
+      } | null)
+    | ({
+        relationTo: 'sso-connections';
+        value: number | SsoConnection;
+      } | null)
+    | ({
+        relationTo: 'sso-domains';
+        value: number | SsoDomain;
       } | null)
     | ({
         relationTo: 'invitations';
@@ -1322,6 +1447,20 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "auth-accounts_select".
+ */
+export interface AuthAccountsSelect<T extends boolean = true> {
+  user?: T;
+  provider?: T;
+  providerAccountId?: T;
+  email?: T;
+  name?: T;
+  lastLoginAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "organizations_select".
  */
 export interface OrganizationsSelect<T extends boolean = true> {
@@ -1335,6 +1474,7 @@ export interface OrganizationsSelect<T extends boolean = true> {
   inviteLinkToken?: T;
   inviteLinkRole?: T;
   permissionOverrides?: T;
+  enforceSso?: T;
   settings?:
     | T
     | {
@@ -1342,6 +1482,42 @@ export interface OrganizationsSelect<T extends boolean = true> {
         weekStart?: T;
         language?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sso-connections_select".
+ */
+export interface SsoConnectionsSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  slug?: T;
+  type?: T;
+  enabled?: T;
+  issuerUrl?: T;
+  clientId?: T;
+  clientSecret?: T;
+  scopes?: T;
+  idpEntryPoint?: T;
+  idpEntityId?: T;
+  idpCert?: T;
+  wantAssertionsSigned?: T;
+  allowIdpInitiated?: T;
+  autoProvision?: T;
+  defaultRole?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sso-domains_select".
+ */
+export interface SsoDomainsSelect<T extends boolean = true> {
+  organization?: T;
+  domain?: T;
+  verificationToken?: T;
+  verifiedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

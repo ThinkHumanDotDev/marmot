@@ -1,5 +1,6 @@
 import {
   APIError,
+  type CollectionBeforeDeleteHook,
   type CollectionBeforeLoginHook,
   type CollectionConfig,
   type FieldAccess,
@@ -7,9 +8,11 @@ import {
 
 import { authenticated, selfOrSuperadmin, superadminOnly } from '@/access/org-scoped'
 import { isSuperadmin, type UserLike } from '@/access/permissions'
+import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
 import { adminT } from '@/i18n/admin'
 import { defaultLocale, localeNames, locales } from '@/i18n/locales'
 import { auditAuthFailure, auditLogin, rateLimitAuthOperations } from '@/server/security/auth-hooks'
+import { enforceSsoOnPasswordLogin } from '@/server/sso/enforcement'
 import { isSignupAllowed } from '@/server/settings'
 
 const superadminField: FieldAccess = ({ req }) => isSuperadmin(req.user)
@@ -20,8 +23,19 @@ const serverOnlyField = {
   update: () => false,
 } satisfies Record<string, FieldAccess>
 
-export const AUTH_PROVIDERS = ['local', 'oidc'] as const
+/**
+ * How an account was created: password signup (`local`), the env-configured OpenID Connect client
+ * (`oidc`), a social OAuth provider such as GitHub or Google (`oauth`) or a SAML identity provider
+ * (`saml`). Accounts created through single sign-on have a random password nobody knows; see
+ * `hasPassword`.
+ */
+export const AUTH_PROVIDERS = ['local', 'oidc', 'oauth', 'saml'] as const
 export type AuthProvider = (typeof AUTH_PROVIDERS)[number]
+
+/** `true` for accounts that chose their own password (and can be asked for it). */
+export const hasPassword = (
+  user: { authProvider?: AuthProvider | null } | null | undefined,
+): boolean => !user?.authProvider || user.authProvider === 'local'
 
 export const THEMES = ['system', 'light', 'dark'] as const
 export type Theme = (typeof THEMES)[number]
@@ -43,6 +57,20 @@ const requireTwoFactorGate: CollectionBeforeLoginHook = ({ user, context }) => {
     )
   }
   return user
+}
+
+/**
+ * Linked single sign-on identities reference the user with a NOT NULL foreign key on Postgres, so
+ * they have to go before the user row does (and an identity must never survive its user anyway).
+ */
+const removeAuthAccounts: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  await req.payload.delete({
+    collection: AUTH_ACCOUNTS_SLUG,
+    where: { user: { equals: id } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
 }
 
 /**
@@ -81,7 +109,8 @@ export const Users: CollectionConfig = {
   hooks: {
     // Rate limits `login` / `forgot-password` (REST only) and records the attempts in `audit-logs`.
     beforeOperation: [rateLimitAuthOperations],
-    beforeLogin: [requireTwoFactorGate],
+    beforeLogin: [enforceSsoOnPasswordLogin, requireTwoFactorGate],
+    beforeDelete: [removeAuthAccounts],
     afterLogin: [auditLogin],
     afterError: [auditAuthFailure],
   },
@@ -110,8 +139,8 @@ export const Users: CollectionConfig = {
           'Instance administrator: can access the Payload admin panel and every organization.',
       },
     },
-    // Single sign-on (src/auth/oidc). Set server-side by the OIDC callback with `overrideAccess`;
-    // clients can never write them, so a signup POST cannot claim somebody else's identity.
+    // Single sign-on (src/auth/sso). Set server-side with `overrideAccess`; clients can never write
+    // them, so a signup POST cannot claim somebody else's identity.
     {
       name: 'authProvider',
       type: 'select',
@@ -123,9 +152,13 @@ export const Users: CollectionConfig = {
       },
       admin: {
         position: 'sidebar',
-        description: 'How the account was created: password signup or single sign-on.',
+        description:
+          'How the account was created: password signup, the OIDC client, a social OAuth provider or SAML.',
       },
     },
+    // Legacy OIDC identity, from before linked identities moved to the `auth-accounts` collection.
+    // Still matched by the login flow (`src/auth/sso/oauth.ts`, `findUser`) so existing users keep
+    // signing in; an account row is created on their next login. Dropped in a future release.
     {
       name: 'oidcIssuer',
       type: 'text',
@@ -133,7 +166,11 @@ export const Users: CollectionConfig = {
         create: superadminField,
         update: superadminField,
       },
-      admin: { position: 'sidebar', readOnly: true },
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Legacy: identities now live in Auth accounts.',
+      },
     },
     {
       name: 'oidcSubject',
@@ -147,7 +184,7 @@ export const Users: CollectionConfig = {
       admin: {
         position: 'sidebar',
         readOnly: true,
-        description: 'Stable `sub` claim of the linked single sign-on identity.',
+        description: 'Legacy `sub` claim; identities now live in Auth accounts.',
       },
     },
     {

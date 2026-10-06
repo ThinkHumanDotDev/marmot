@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { ApiKeys } from './ApiKeys'
+import { AuthAccounts } from './AuthAccounts'
 import { DockerHosts } from './DockerHosts'
 import { AuditLogs } from './AuditLogs'
 import { Heartbeats } from './Heartbeats'
@@ -13,6 +14,8 @@ import { Notifications } from './Notifications'
 import { NotificationSentHistory } from './NotificationSentHistory'
 import { Organizations } from './Organizations'
 import { Proxies } from './Proxies'
+import { SsoConnections } from './SsoConnections'
+import { SsoDomains } from './SsoDomains'
 import { StatDaily } from './StatDaily'
 import { StatHourly } from './StatHourly'
 import { StatMinutely } from './StatMinutely'
@@ -26,7 +29,10 @@ import { Users } from './Users'
  */
 export const collections: CollectionConfig[] = [
   Users,
+  AuthAccounts,
   Organizations,
+  SsoConnections,
+  SsoDomains,
   Invitations,
   Media,
   Monitors,

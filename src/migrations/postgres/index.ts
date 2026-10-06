@@ -16,7 +16,11 @@ import * as migration_20261005_234608_api_keys from './20261005_234608_api_keys'
 import * as migration_20261006_000143_maintenance from './20261006_000143_maintenance';
 import * as migration_20261006_001607_add_monitor_type_fields from './20261006_001607_add_monitor_type_fields';
 import * as migration_20261006_003708_tags_proxies_docker from './20261006_003708_tags_proxies_docker';
-import * as migration_20261006_085029_add_language_fields from './20261006_085029_add_language_fields';
+import * as migration_20261006_135746_add_auth_accounts from './20261006_135746_add_auth_accounts';
+import * as migration_20261006_141212_add_auth_provider_values from './20261006_141212_add_auth_provider_values';
+import * as migration_20261006_143503_add_sso_connections from './20261006_143503_add_sso_connections';
+import * as migration_20261006_144923_add_enforce_sso from './20261006_144923_add_enforce_sso';
+import * as migration_20261006_212748_add_language_fields from './20261006_212748_add_language_fields';
 
 export const migrations = [
   {
@@ -110,8 +114,28 @@ export const migrations = [
     name: '20261006_003708_tags_proxies_docker',
   },
   {
-    up: migration_20261006_085029_add_language_fields.up,
-    down: migration_20261006_085029_add_language_fields.down,
-    name: '20261006_085029_add_language_fields'
+    up: migration_20261006_135746_add_auth_accounts.up,
+    down: migration_20261006_135746_add_auth_accounts.down,
+    name: '20261006_135746_add_auth_accounts',
+  },
+  {
+    up: migration_20261006_141212_add_auth_provider_values.up,
+    down: migration_20261006_141212_add_auth_provider_values.down,
+    name: '20261006_141212_add_auth_provider_values',
+  },
+  {
+    up: migration_20261006_143503_add_sso_connections.up,
+    down: migration_20261006_143503_add_sso_connections.down,
+    name: '20261006_143503_add_sso_connections',
+  },
+  {
+    up: migration_20261006_144923_add_enforce_sso.up,
+    down: migration_20261006_144923_add_enforce_sso.down,
+    name: '20261006_144923_add_enforce_sso',
+  },
+  {
+    up: migration_20261006_212748_add_language_fields.up,
+    down: migration_20261006_212748_add_language_fields.down,
+    name: '20261006_212748_add_language_fields'
   },
 ];

@@ -7,6 +7,7 @@ import {
   Container,
   CreditCard,
   KeyRound,
+  LockKeyhole,
   Network,
   Server,
   ShieldCheck,
@@ -50,6 +51,7 @@ export function SettingsTabs({
       ? [{ href: `/${orgSlug}/settings/billing`, label: 'Billing', icon: CreditCard }]
       : []),
     { href: `/${orgSlug}/settings/permissions`, label: 'Permissions', icon: ShieldCheck },
+    { href: `/${orgSlug}/settings/security`, label: 'Security', icon: LockKeyhole },
     { href: `/${orgSlug}/settings/notifications`, label: 'Notifications', icon: Bell },
     ...(superadmin
       ? [{ href: `/${orgSlug}/settings/instance`, label: 'Instance', icon: Server }]

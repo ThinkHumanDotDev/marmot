@@ -3,9 +3,12 @@ contact_links:
   - name: Security vulnerability
     url: https://github.com/ThinkHumanDotDev/marmot/security/advisories/new
     about: Report vulnerabilities privately through a security advisory, never in a public issue.
-  - name: Question or discussion
-    url: https://github.com/ThinkHumanDotDev/marmot/discussions
-    about: Ask how to deploy or use Marmot, or discuss an idea before it becomes a feature request.
+  - name: Question
+    url: https://github.com/ThinkHumanDotDev/marmot/discussions/categories/q-a
+    about: Ask how to deploy, configure or use Marmot in Discussions (Q&A).
+  - name: Idea
+    url: https://github.com/ThinkHumanDotDev/marmot/discussions/categories/ideas
+    about: Discuss an idea that is not yet a scoped feature request in Discussions (Ideas).
   - name: Documentation
     url: https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/Home.md
     about: Getting started, configuration, deployment, monitors, notifications, status pages and more.

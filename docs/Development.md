@@ -211,7 +211,7 @@ src/env.ts                       zod-validated env (the only place process.env i
 src/collections/                 one file per collection; register in index.ts
 src/globals/                     instance settings
 src/access/                      org RBAC helpers (orgScoped, permissions map)
-src/auth/oidc/                   OIDC login, callback, logout, user matching
+src/auth/sso/                    single sign-on (payload-auth plugin wiring, providers, user matching)
 src/server/engine/               BullMQ queues, schedulers, check worker, heartbeat state machine
 src/server/monitor-types/        one file per type, self-registering
 src/server/notification-providers/ one file per provider, self-registering

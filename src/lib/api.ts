@@ -125,17 +125,20 @@ export interface AuthConfig {
   signupEnabled: boolean
 }
 
-/** `GET /api/auth/providers` (see `src/auth/oidc`). */
+/** `GET /api/auth/providers` (see `src/auth/sso`). */
 export interface AuthProviders {
   local: true
+  /** The env-configured OIDC client (`OIDC_*`). */
   oidc: { enabled: boolean; displayName: string }
+  /** Every enabled single sign-on provider; `loginPath` starts its flow. */
+  providers: { id: string; name: string; type: string; icon?: string; loginPath: string }[]
 }
 
 export const authApi = {
   config: () => api.get<AuthConfig>('/api/auth/config'),
   providers: () => api.get<AuthProviders>('/api/auth/providers'),
   /** Ends the Payload session; `redirectTo` is the provider's end-session URL or `/login`. */
-  oidcLogout: () => api.post<{ redirectTo: string }>('/api/auth/oidc/logout'),
+  ssoLogout: () => api.post<{ redirectTo: string }>('/api/auth/sso/logout'),
   /** Marmot's login wrapper: honours two-factor authentication (see `src/auth/two-factor`). */
   login: (data: { email: string; password: string }) =>
     api.post<LoginResponse>('/api/auth/login', data),

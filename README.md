@@ -39,7 +39,7 @@ self-hosted install.
 - **Status pages** – any number of public pages per organization with monitor groups, incidents, custom
   CSS, custom domains, RSS and badges; maintenance banners landing.
 - **Teams** – organizations with owner/admin/member/viewer roles, email invitations, invite links,
-  ownership transfer, generic OIDC [single sign-on](docs/Single-Sign-On.md), first-run setup wizard.
+  ownership transfer, [single sign-on](docs/Single-Sign-On.md) (generic OIDC, GitHub, Google, and per-organization OIDC/SAML connections with verified domains) with linked accounts, first-run setup wizard.
 - **Hosting-ready** – optional per-organization plan limits and Stripe [billing](docs/Billing.md); off by default.
 - **Live** – the dashboard updates in real time over WebSockets.
 - **Integrations** – status badges, push monitors, Prometheus metrics and organization API keys
@@ -83,6 +83,9 @@ pnpm dev                        # web :3000, worker, realtime :3001
 
 `pnpm check` runs lint, typecheck and the integration tests. Read [CONTRIBUTING.md](CONTRIBUTING.md) and
 [docs/Development.md](docs/Development.md) before opening a pull request.
+
+Marmot is free software maintained in the open; if it is useful to you, consider
+[sponsoring its development](https://github.com/sponsors/EggsLeggs).
 
 ## Architecture
 
@@ -128,6 +131,13 @@ visitors are asked for consent first. See **Privacy** below.
 
 **Can one install serve several teams?** That is the point: organizations are isolated workspaces with
 their own monitors, channels, status pages and members; a user can belong to several with different roles.
+
+## Community
+
+Questions, ideas and things you built go to [GitHub Discussions](https://github.com/ThinkHumanDotDev/marmot/discussions);
+bugs and scoped feature requests to [issues](https://github.com/ThinkHumanDotDev/marmot/issues/new/choose).
+[SUPPORT.md](.github/SUPPORT.md) lists where to ask what, and [CONTRIBUTING.md](CONTRIBUTING.md) how to send
+changes.
 
 ## Privacy
 

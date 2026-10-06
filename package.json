@@ -56,6 +56,8 @@
     "@payloadcms/ui": "3.90.2",
     "@socket.io/redis-adapter": "^8.3.0",
     "@socket.io/redis-emitter": "^5.1.0",
+    "@node-saml/node-saml": "^5.1.0",
+    "@thinkhumandotdev/payload-auth": "github:ThinkHumanDotDev/payload-plugin-auth#1f934aa92d7993295d667fb704686f54e5d4fb05",
     "badge-maker": "6.0.0",
     "bullmq": "^6.3.11",
     "class-variance-authority": "^0.7.1",
@@ -90,7 +92,7 @@
     "react-hook-form": "^7.89.0",
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
-    "sharp": "0.35.4",
+    "sharp": "0.35.5",
     "socket.io": "^4.8.4",
     "socket.io-client": "^4.8.4",
     "socks": "^2.8.10",
@@ -147,7 +149,8 @@
     "tw-animate-css": "^1.4.0",
     "typescript": "5.7.3",
     "vite-tsconfig-paths": "6.0.5",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "xml-crypto": "^6.3.3"
   },
   "engines": {
     "node": ">=20.9.0",
@@ -158,9 +161,11 @@
     "overrides": {
       "@payloadcms/email-nodemailer>nodemailer": "^10.0.15",
       "undici@>=7.0.0 <7.29.1": "^7.29.1",
-      "dompurify@<3.4.16": "^3.4.16"
+      "dompurify@<3.4.16": "^3.4.16",
+      "shell-quote@<1.11.0": "^1.11.0"
     },
     "onlyBuiltDependencies": [
+      "@thinkhumandotdev/payload-auth",
       "sharp",
       "esbuild",
       "unrs-resolver"

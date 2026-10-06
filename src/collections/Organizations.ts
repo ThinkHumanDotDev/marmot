@@ -185,6 +185,19 @@ const removeInvitations: CollectionBeforeDeleteHook = async ({ id, req }) => {
   })
 }
 
+/** SSO connections and verified domains carry a NOT NULL `organization` on Postgres too. */
+const removeSso: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  for (const collection of ['sso-connections', 'sso-domains'] as const) {
+    await req.payload.delete({
+      collection,
+      where: { organization: { equals: id } },
+      depth: 0,
+      req,
+      overrideAccess: true,
+    })
+  }
+}
+
 /** API keys carry a NOT NULL `organization` on Postgres; revoke them before the row goes. */
 const removeApiKeys: CollectionBeforeDeleteHook = async ({ id, req }) => {
   await req.payload.delete({
@@ -268,7 +281,7 @@ export const Organizations: CollectionConfig = {
       trackOrgCreated,
       auditOrganizationUpdated,
     ],
-    beforeDelete: [removeInvitations, removeApiKeys, removeMemberships],
+    beforeDelete: [removeInvitations, removeApiKeys, removeSso, removeMemberships],
     afterDelete: [auditOrganizationDeleted],
   },
   fields: [
@@ -363,6 +376,17 @@ export const Organizations: CollectionConfig = {
       admin: {
         description:
           'Per-organization minimum roles, e.g. { "monitor:create": "admin" }. Unset permissions use the defaults in src/access/permissions.ts.',
+      },
+    },
+    {
+      name: 'enforceSso',
+      type: 'checkbox',
+      defaultValue: false,
+      access: { update: ownerField },
+      admin: {
+        position: 'sidebar',
+        description:
+          "Require single sign-on: password logins are refused for users on this organization's verified domains. Owners keep a break-glass password login (audited).",
       },
     },
     {
