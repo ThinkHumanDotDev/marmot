@@ -213,7 +213,9 @@ describe('monitor type registry', () => {
       .sort()
     // Every type the form offers is registered (and nothing unknown to the form is).
     expect(names).toEqual([...MONITOR_TYPE_NAMES].sort())
-    expect(names).toEqual(expect.arrayContaining(['dns', 'docker', 'group', 'http', 'push', 'mysql', 'mqtt']))
+    expect(names).toEqual(
+      expect.arrayContaining(['dns', 'docker', 'group', 'http', 'push', 'mysql', 'mqtt']),
+    )
     expect(getMonitorType('http')?.label).toBe('HTTP(s)')
   })
 })
