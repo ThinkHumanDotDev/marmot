@@ -1,6 +1,6 @@
 /**
  * Pure helpers for the opt-in product analytics (PostHog). No SDK import, so this module is safe
- * in server components, the client bundle and unit tests alike. See `docs/telemetry.md`.
+ * in server components, the client bundle and unit tests alike. See `docs/Telemetry.md`.
  *
  * `NEXT_PUBLIC_*` variables are inlined by Next.js at build time, so they must be read from
  * `process.env` directly here (the zod-validated `src/env.ts` is server-only). Server code uses
@@ -14,7 +14,7 @@ export const DEFAULT_POSTHOG_HOST = 'https://us.i.posthog.com'
 
 /** Public documentation of what the analytics collect (linked from the consent banner). */
 export const TELEMETRY_DOCS_URL =
-  'https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/telemetry.md'
+  'https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/Telemetry.md'
 
 /** The project key, or `undefined` when analytics are off (the default on self-hosted installs). */
 export function analyticsKey(): string | undefined {

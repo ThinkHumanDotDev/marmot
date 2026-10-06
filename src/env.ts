@@ -4,7 +4,7 @@ import { z } from 'zod'
  * Central, validated view of process.env. Import `env` everywhere instead of reading
  * process.env directly so misconfiguration fails fast with a readable message.
  *
- * Keep every variable documented in `.env.example` and `docs/configuration.md`.
+ * Keep every variable documented in `.env.example` and `docs/Configuration.md`.
  */
 const booleanish = z
   .union([z.boolean(), z.string()])

@@ -91,7 +91,7 @@ example an HTTP monitor without a URL) are skipped with the validation message.
 The extended types (`grpc-keyword`, `websocket-upgrade`, `mqtt`, `kafka-producer`, `rabbitmq`, `smtp`,
 `snmp`, `radius`, `tailscale-ping`, `mysql`, `postgres`, `sqlserver`, `mongodb`, `redis`, `steam`,
 `gamedig`) keep their type-specific columns, which carry the same names in Kuma and Marmot (see
-[monitor-types.md](monitor-types.md)); the SNMP community string comes from Kuma's `radiusPassword`
+[Monitor types](Monitor-Types.md)); the SNMP community string comes from Kuma's `radiusPassword`
 column, where Kuma's form stores it.
 
 Not imported: Docker monitors (Marmot's `docker` type needs a Docker host, which the backup does not map

@@ -2,7 +2,7 @@ name: Release
 
 # Pushing a tag `vX.Y.Z` (or a prerelease such as `vX.Y.Z-rc.1`) publishes the multi-arch image to GHCR,
 # smoke-tests the published image with the production compose stack and creates the GitHub Release with
-# git-cliff notes. Prepare the tag with `pnpm release:prepare <version>`; see docs/release-checklist.md.
+# git-cliff notes. Prepare the tag with `pnpm release:prepare <version>`; see docs/Release-Checklist.md.
 
 on:
   push:
@@ -72,7 +72,7 @@ jobs:
             org.opencontainers.image.description=Self-hosted status monitor with team workspaces, built on Payload CMS
             org.opencontainers.image.vendor=ThinkHumanDotDev
             org.opencontainers.image.licenses=AGPL-3.0-only
-            org.opencontainers.image.documentation=https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/deployment.md
+            org.opencontainers.image.documentation=https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/Deployment.md
           annotations: |
             org.opencontainers.image.title=Marmot
             org.opencontainers.image.description=Self-hosted status monitor with team workspaces, built on Payload CMS
@@ -174,7 +174,7 @@ jobs:
             echo "docker pull ${IMAGE}:${VERSION}"
             echo '```'
             echo
-            echo 'Multi-arch (linux/amd64, linux/arm64). Upgrade guide: [docs/deployment.md](https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/deployment.md#upgrading).'
+            echo 'Multi-arch (linux/amd64, linux/arm64). Upgrade guide: [docs/Deployment.md](https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/Deployment.md#upgrading).'
           } >> RELEASE_NOTES.md
           cat RELEASE_NOTES.md
       - name: Create release

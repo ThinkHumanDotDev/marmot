@@ -75,7 +75,7 @@ for README badges). Everything else — unknown ids, monitors of other organizat
 | `date`                                                     | cert-exp                                       | show the expiry date instead of remaining days                                              |
 
 Uptime and ping figures come from the stats rollups (`getUptime` / `getAvgPing`, see
-`docs/architecture.md`), `status` and `response` from the monitor's cached last heartbeat, `cert-exp`
+[Architecture](Architecture.md)), `status` and `response` from the monitor's cached last heartbeat, `cert-exp`
 from `monitors.certInfo` once the certificate-expiry job (#24) stores it ("No/Bad Cert" until then).
 The pure builder is `buildBadge()` in `src/server/badges/badge.ts`.
 

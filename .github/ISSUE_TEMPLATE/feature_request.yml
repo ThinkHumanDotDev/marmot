@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Check `docs/comparison.md` first: many Uptime Kuma features are already planned or landing. If the
+        Check `docs/Comparison.md` first: many Uptime Kuma features are already planned or landing. If the
         request is "port provider X" or "port monitor type Y", say so; those are one-file changes and good
         first contributions.
   - type: textarea

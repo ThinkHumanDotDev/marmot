@@ -14,7 +14,7 @@ Closes #
 - [ ] `pnpm format:fix && pnpm check` passes locally (format, lint, typecheck, integration tests)
 - [ ] Works on both Postgres and MongoDB (no adapter-specific features, ids typed `string | number`)
 - [ ] Collection changes: `pnpm generate:types` run, Postgres migration created on a fresh database
-- [ ] Docs / `.env.example` / `docs/configuration.md` updated when configuration changed
+- [ ] Docs / `.env.example` / `docs/Configuration.md` updated when configuration changed
 - [ ] Ported code carries an attribution comment and is listed in `THIRD_PARTY_NOTICES.md`
 - [ ] Screenshots attached for UI changes
 - [ ] No commit trailers (`Co-authored-by`, `Signed-off-by`, tool or session links)

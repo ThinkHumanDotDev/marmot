@@ -73,7 +73,7 @@ provider's zod schema, `isDefault`, `active`, `lastSentAt`, `lastError`) are att
 job per active attached channel on `marmot:notifications` (job id `notif:<channel>:<heartbeat>` dedupes, 3
 attempts with exponential backoff); the notification worker renders `[name] [🔴 Down] msg`, calls the
 provider's `send()` and records the outcome on the channel. Providers self-register in
-`src/server/notification-providers/`; see `docs/notifications.md`.
+`src/server/notification-providers/`; see [Notifications](Notifications.md).
 
 ### Certificate and domain expiry
 

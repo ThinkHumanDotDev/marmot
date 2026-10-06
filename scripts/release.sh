@@ -9,7 +9,7 @@
 #   3. regenerates CHANGELOG.md with git-cliff (cliff.toml), treating unreleased commits as v<version>
 #
 # Override the git-cliff command with GIT_CLIFF (default: `pnpm dlx git-cliff@2`).
-# Full procedure: docs/release-checklist.md
+# Full procedure: docs/Release-Checklist.md
 set -euo pipefail
 
 usage() {
@@ -82,5 +82,5 @@ Release ${TAG} prepared. Review CHANGELOG.md, then:
   git tag -a ${TAG} -m "${TAG}"
   git push origin ${TAG}                          # triggers .github/workflows/release.yml
 
-Then follow docs/release-checklist.md (published image smoke test, GHCR visibility, release notes).
+Then follow docs/Release-Checklist.md (published image smoke test, GHCR visibility, release notes).
 EOF

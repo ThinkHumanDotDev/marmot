@@ -138,7 +138,7 @@ export function DomainsPanel({
           <li>Add the hostname here, save, and make sure the page is published.</li>
           <li>
             Your reverse proxy must obtain a certificate for the hostname (Caddy on-demand TLS is
-            documented in <code>docs/status-pages.md</code>).
+            documented in <code>docs/Status-Pages.md</code>).
           </li>
         </ol>
       </aside>

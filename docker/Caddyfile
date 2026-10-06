@@ -3,7 +3,7 @@
 # Zero-config HTTPS: set DOMAIN=status.example.com in .env (DNS must point at this host and ports 80/443
 # must be reachable) and Caddy obtains and renews certificates automatically. Set ACME_EMAIL to receive
 # certificate expiry notices from the CA. Without DOMAIN, Caddy serves plain HTTP on :80 — use that when
-# Marmot runs behind another reverse proxy (see docs/deployment.md).
+# Marmot runs behind another reverse proxy (see docs/Deployment.md).
 #
 # SITE_ADDRESS is derived from DOMAIN by docker-compose.yml; when running Caddy by hand set it directly
 # (e.g. SITE_ADDRESS=status.example.com or SITE_ADDRESS=:80).

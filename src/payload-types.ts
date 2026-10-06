@@ -628,7 +628,7 @@ export interface Notification {
   organization: number | Organization;
   name: string;
   /**
-   * Provider slug, e.g. discord, slack, smtp (see docs/notifications.md).
+   * Provider slug, e.g. discord, slack, smtp (see docs/Notifications.md).
    */
   type: string;
   /**

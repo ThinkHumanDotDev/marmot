@@ -10,7 +10,7 @@ const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.postho
 const posthogAssetsHost = posthogHost.replace('.i.posthog.com', '-assets.i.posthog.com')
 
 // Security headers applied to every response. CSP is deliberately not set yet (the Payload admin and
-// status pages with custom CSS need an allowlist first). See docs/security.md.
+// status pages with custom CSS need an allowlist first). See docs/Security.md.
 //
 // HSTS is sent when the public URL is https. The Docker image is built without NEXT_PUBLIC_SERVER_URL
 // (headers are fixed at build time), so a production build with no URL keeps the header too: browsers

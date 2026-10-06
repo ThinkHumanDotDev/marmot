@@ -50,7 +50,7 @@ tests/e2e/*.e2e.spec.ts          Playwright critical paths
    `src/app/(frontend)/styles.css`. Live data flows socket → Zustand → selectors; never store heartbeats in
    React state. Pages are server components that load initial data via the Local API, hydrate stores, then
    subscribe.
-7. **Config**: new env vars go in `src/env.ts`, `.env.example`, `docs/configuration.md` and, if relevant,
+7. **Config**: new env vars go in `src/env.ts`, `.env.example`, `docs/Configuration.md` and, if relevant,
    `docker/docker-compose.yml`.
 8. **Tests**: integration tests for behaviour that can break silently (access control, engine state machine,
    rollups, provider payloads). E2E only for critical paths. No snapshot tests, no tests for trivial getters.

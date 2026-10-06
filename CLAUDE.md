@@ -3,7 +3,7 @@
 Marmot is a self-hosted status monitor (Uptime Kuma feature set, kan.bn-style organizations) built on
 Payload CMS 3 + Next.js. Read `.claude/skills/marmot-conventions/SKILL.md` before changing anything and
 `.claude/skills/payload/SKILL.md` for Payload specifics. The architecture is described in
-`docs/architecture.md`.
+`docs/Architecture.md`.
 
 ## Commands
 
@@ -19,6 +19,6 @@ Payload CMS 3 + Next.js. Read `.claude/skills/marmot-conventions/SKILL.md` befor
 - Conventional Commits, **no trailers** (no Co-authored-by, no session links). Plain branch names
   (`feat/…`, `fix/…`, `chore/…`); never `claude/*`.
 - Collections must work on Postgres and MongoDB. No `point` fields, no raw SQL, no adapter-specific operators.
-- Read configuration via `src/env.ts` only; document new variables in `.env.example` and `docs/configuration.md`.
+- Read configuration via `src/env.ts` only; document new variables in `.env.example` and `docs/Configuration.md`.
 - Never skip or disable tests to get green. Keep PRs focused; one issue per PR.
 - When porting from Uptime Kuma, add an attribution comment and list the file in `THIRD_PARTY_NOTICES.md`.

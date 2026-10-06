@@ -58,7 +58,7 @@ export const PLAN_LABELS: Record<Plan, string> = {
   enterprise: 'Enterprise',
 }
 
-/** Limit table of the hosted plans. Edit here; the docs table in `docs/billing.md` mirrors it. */
+/** Limit table of the hosted plans. Edit here; the docs table in `docs/Billing.md` mirrors it. */
 export const PLAN_LIMITS: Record<Plan, Entitlements> = {
   free: {
     maxMonitors: 10,

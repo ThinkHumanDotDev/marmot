@@ -7,7 +7,7 @@ slug and lives at `/status/<slug>` (or at the root of a custom domain).
 To publish one: **Status pages → New page**, give it a title and slug, add groups and drag monitors into
 them on the **Groups & monitors** tab, then flip **Published** in the header. Visitors see each monitor's
 current status, its last 50 heartbeats and 24h/30d uptime, the incidents you post, running and upcoming
-[maintenance windows](maintenance.md), and (landing in the current release) status badges. Members and above can edit pages; viewers can see
+[maintenance windows](Maintenance.md), and (landing in the current release) status badges. Members and above can edit pages; viewers can see
 drafts but not change them.
 
 ## Data model
