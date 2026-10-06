@@ -30,7 +30,6 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # ---- build -----------------------------------------------------------------
 FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Build-time placeholders: the real values are injected at runtime. The placeholder secret is scoped
 # to the build command so no secret-looking value is baked into an image layer's ENV.
@@ -38,7 +37,12 @@ ENV NODE_ENV=production \
     DATABASE_URL=postgres://build:build@localhost:5432/build \
     DATABASE_ADAPTER=postgres \
     REDIS_URL=redis://localhost:6379
-RUN PAYLOAD_SECRET=build-time-placeholder-secret sh -c 'pnpm build && pnpm build:server'
+# node_modules is bind-mounted from the deps stage instead of copied, so the builder does not add a
+# second copy of it as a layer. .next/cache (Turbopack's ~500 MB persistent cache) is a cache mount:
+# it speeds up local rebuilds and stays out of the builder layer, the CI layer cache and the image.
+RUN --mount=type=bind,from=deps,source=/app/node_modules,target=/app/node_modules,rw \
+    --mount=type=cache,id=marmot-next-cache,target=/app/.next/cache \
+    PAYLOAD_SECRET=build-time-placeholder-secret sh -c 'pnpm build && pnpm build:server'
 
 # ---- runtime ---------------------------------------------------------------
 FROM base AS runner

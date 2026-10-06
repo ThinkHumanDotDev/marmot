@@ -95,8 +95,12 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # The linux/amd64 layers can come from CI's cache of main (scope=ci); this build only writes
+          # its own scope so it never evicts CI's cache.
+          cache-from: |
+            type=gha,scope=release
+            type=gha,scope=ci
+          cache-to: type=gha,scope=release,mode=max
       - name: Summary
         run: |
           {

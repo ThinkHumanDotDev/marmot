@@ -106,8 +106,25 @@ jobs:
         run: pnpm test:int --reporter=default --reporter=junit --outputFile=test-results/int-junit.xml
         env:
           DATABASE_URL: ${{ env.INT_DATABASE_URL }}
+      # Turbopack's persistent cache cuts `next build` from about a minute to seconds when little changed.
+      # Only pushes to main save it, so pull requests restore main's cache without filling the
+      # repository's cache quota with one ~500 MB entry per PR commit.
+      - name: Restore Next.js build cache
+        uses: actions/cache/restore@v6
+        with:
+          path: .next/cache
+          key: next-${{ matrix.db }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            next-${{ matrix.db }}-${{ hashFiles('pnpm-lock.yaml') }}-
+            next-${{ matrix.db }}-
       - name: Build
         run: pnpm build
+      - name: Save Next.js build cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v6
+        with:
+          path: .next/cache
+          key: next-${{ matrix.db }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
       # Same bundled runner as the container (scripts/build-server.mjs): `payload migrate` loads the
       # config through tsx, whose import intermittently never settles and exits 0 having run nothing.
       - name: Run migrations
@@ -184,8 +201,9 @@ jobs:
           push: false
           load: true
           tags: marmot:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Own scope, so the multi-arch release build (scope=release) does not overwrite this cache.
+          cache-from: type=gha,scope=ci
+          cache-to: type=gha,scope=ci,mode=max
       - name: Report image size
         run: |
           bytes=$(docker image inspect marmot:ci --format '{{.Size}}')
