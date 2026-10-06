@@ -5,7 +5,7 @@ import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import type { Monitor } from '@/payload-types'
 import { emitMonitorDeleted, emitMonitorUpdated } from '@/server/realtime/emitter'
-import { relationId } from '@/server/realtime/serialize'
+import { populateMonitorTags, relationId } from '@/server/realtime/serialize'
 import { nextIntervalSeconds, type MonitorSettings } from './beat'
 import { CHECK_JOB_NAME, monitorSchedulerId } from './names'
 import { getChecksQueue, type ChecksQueue } from './queues'
@@ -111,7 +111,11 @@ export async function syncMonitorAfterCommit(
       if (monitor.active) await syncMonitor(monitor, queue)
       else await removeMonitorSchedule(monitor.id, queue)
       const organizationId = relationId(monitor.organization)
-      if (organizationId) emitMonitorUpdated(organizationId, monitor)
+      if (organizationId) {
+        // Live lists render tag chips, so the delta carries resolved tags (name, colour, value).
+        const [withTags] = await populateMonitorTags(req.payload, [monitor])
+        emitMonitorUpdated(organizationId, withTags)
+      }
     } catch (err) {
       log.warn({ err, monitorId: monitor.id }, 'failed to sync monitor schedule')
     }

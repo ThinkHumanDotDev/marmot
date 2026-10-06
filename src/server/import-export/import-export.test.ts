@@ -475,4 +475,40 @@ describe('Marmot export parser', () => {
       ]),
     )
   })
+
+  it('drops tag and proxy references and skips docker monitors (organization resources)', () => {
+    const base = { interval: 60, retryInterval: 60, maxRetries: 0, resendInterval: 0, timeout: 48 }
+    const plan = parseMarmotExport({
+      ...file,
+      notifications: [],
+      statusPages: [],
+      monitors: [
+        {
+          ...base,
+          id: 't1',
+          name: 'Tagged',
+          type: 'http',
+          url: 'https://example.com',
+          tags: [{ tag: 3, value: 'prod' }],
+          proxy: 4,
+        },
+        {
+          ...base,
+          id: 'd1',
+          name: 'Container',
+          type: 'docker',
+          dockerHost: 7,
+          dockerContainer: 'app',
+        },
+      ],
+    })
+    expect(plan.monitors).toHaveLength(1)
+    expect(plan.monitors[0].data).toMatchObject({ name: 'Tagged', tags: [], proxy: null })
+    expect(plan.skipped.monitors).toEqual([
+      { name: 'Container', reason: expect.stringContaining('Docker host') },
+    ])
+    expect(plan.warnings).toEqual([
+      expect.stringContaining('"Tagged": tags and proxy not imported'),
+    ])
+  })
 })

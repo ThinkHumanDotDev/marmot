@@ -377,7 +377,29 @@ export function parseMarmotExport(json: unknown): ImportPlan {
       return
     }
     const { id: _id, notifications: _n, pushToken: _p, parent: _parent, ...fields } = entry
-    const parsed = monitorFormSchema.safeParse({ ...fields, parent: null })
+    // Tags, proxies and Docker hosts are organization resources the export does not carry; their ids
+    // belong to the exporting organization, so references to them are not imported.
+    if (fields.type === 'docker') {
+      plan.skipped.monitors.push({
+        name,
+        reason:
+          'Docker monitors reference a Docker host of the exporting organization; recreate it',
+      })
+      return
+    }
+    const hasTags = Array.isArray(fields.tags) && fields.tags.length > 0
+    const hasProxy = fields.proxy !== null && fields.proxy !== undefined
+    if (hasTags || hasProxy) {
+      const dropped = [hasTags && 'tags', hasProxy && 'proxy'].filter(Boolean).join(' and ')
+      plan.warnings.push(`"${name}": ${dropped} not imported; assign them again after the import`)
+    }
+    const parsed = monitorFormSchema.safeParse({
+      ...fields,
+      tags: [],
+      proxy: null,
+      dockerHost: null,
+      parent: null,
+    })
     if (!parsed.success) {
       plan.skipped.monitors.push({
         name,

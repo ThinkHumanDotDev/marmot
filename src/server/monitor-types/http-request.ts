@@ -7,10 +7,12 @@
  */
 import { STATUS_CODES } from 'node:http'
 import type { TLSSocket } from 'node:tls'
+import type { Payload } from 'payload'
 import { Agent, buildConnector, interceptors, request, type Dispatcher } from 'undici'
 
-import type { Monitor } from '@/payload-types'
+import type { Monitor, MonitorProxy } from '@/payload-types'
 import { captureFromSocket, fetchCertificate, type TlsInfo } from '@/server/engine/tls'
+import { createProxyDispatcher, type ProxyConfig } from '@/server/proxies/dispatcher'
 import type { MonitorCheckContext } from './types'
 
 const DEFAULT_ACCEPT =
@@ -205,10 +207,36 @@ async function oauthClientCredentials(monitor: Monitor, signal: AbortSignal): Pr
   return token
 }
 
-/** Build the request options from the monitor's HTTP settings. */
+/**
+ * The monitor's proxy when one is set and active (Uptime Kuma skips inactive proxies and connects
+ * directly). Read with `overrideAccess` so the password is available to the worker.
+ */
+export async function loadMonitorProxy(
+  payload: Payload,
+  monitor: Pick<Monitor, 'proxy'>,
+): Promise<ProxyConfig | null> {
+  const ref = monitor.proxy
+  if (ref === null || ref === undefined) return null
+  let proxy: MonitorProxy | null
+  if (typeof ref === 'object') {
+    proxy = ref
+  } else {
+    proxy = (await payload
+      .findByID({ collection: 'proxies', id: ref, depth: 0, overrideAccess: true })
+      .catch(() => null)) as MonitorProxy | null
+  }
+  if (!proxy || proxy.active === false) return null
+  return proxy
+}
+
+/**
+ * Build the request options from the monitor's HTTP settings. `proxy` (see `loadMonitorProxy`)
+ * routes the request through an HTTP(S) or SOCKS proxy.
+ */
 export async function buildHttpRequest(
   monitor: Monitor,
   signal: AbortSignal,
+  { proxy = null }: { proxy?: ProxyConfig | null } = {},
 ): Promise<{
   url: string
   options: Parameters<typeof request>[1]
@@ -277,21 +305,22 @@ export async function buildHttpRequest(
     }
   }
 
-  // Dispatcher: a per-check agent that records the TLS certificate + redirect interceptor
+  // Dispatcher: a per-check agent that records the TLS certificate (or, with a proxy, the proxy
+  // agent: the certificate is then only fetched directly after a failed handshake) + redirects.
   const capture: TlsCapture = { tlsInfo: null }
-  const agent = capturingAgent(
-    {
-      rejectUnauthorized: !monitor.ignoreTls,
-      ...(monitor.authMethod === 'mtls'
-        ? {
-            cert: monitor.tlsCert || undefined,
-            key: monitor.tlsKey || undefined,
-            ca: monitor.tlsCa || undefined,
-          }
-        : {}),
-    },
-    capture,
-  )
+  const tlsOptions = {
+    rejectUnauthorized: !monitor.ignoreTls,
+    ...(monitor.authMethod === 'mtls'
+      ? {
+          cert: monitor.tlsCert || undefined,
+          key: monitor.tlsKey || undefined,
+          ca: monitor.tlsCa || undefined,
+        }
+      : {}),
+  }
+  const agent: Dispatcher = proxy
+    ? createProxyDispatcher(proxy, tlsOptions)
+    : capturingAgent(tlsOptions, capture)
   const cleanup = async () => {
     await agent.close()
   }
@@ -318,7 +347,10 @@ export async function buildHttpRequest(
  * accepted, throws `"<status> - <text>"` otherwise.
  */
 export async function performHttpCheck(ctx: MonitorCheckContext): Promise<HttpCheckResponse> {
-  const { url, options, cleanup, capture } = await buildHttpRequest(ctx.monitor, ctx.signal)
+  const proxy = await loadMonitorProxy(ctx.payload, ctx.monitor)
+  const { url, options, cleanup, capture } = await buildHttpRequest(ctx.monitor, ctx.signal, {
+    proxy,
+  })
   const startTime = Date.now()
   try {
     let res: Awaited<ReturnType<typeof request>>

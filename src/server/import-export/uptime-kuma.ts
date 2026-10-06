@@ -58,6 +58,9 @@ import {
  * the reason. Kuma's browser engine points at a `remote_browser` row that backups do not contain.
  */
 const UNIMPORTABLE_TYPES: Record<string, string> = {
+  // Marmot docker monitors point at a Docker host resource that the Kuma backup does not map to.
+  docker:
+    'Monitor type "Docker Container" needs a Docker host in Marmot; add one and recreate the monitor',
   'real-browser':
     'Monitor type "HTTP(s) - Browser Engine" needs a remote browser URL, which Uptime Kuma backups do not contain',
 }

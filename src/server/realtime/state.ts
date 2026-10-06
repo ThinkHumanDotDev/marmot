@@ -9,6 +9,7 @@ import { getStats, type StatsRange } from '@/server/stats/uptime-calculator'
 import type { RealtimeHeartbeat, RealtimeId, RealtimeMonitor, RealtimeRange } from './events'
 import {
   MONITOR_SUMMARY_SELECT,
+  populateMonitorTags,
   toRealtimeHeartbeat,
   toRealtimeMonitor,
   type HeartbeatSource,
@@ -115,7 +116,9 @@ export async function loadOrgState(
     pagination: false,
     ...access,
   })
-  const monitors = (docs as MonitorSummarySource[]).map(toRealtimeMonitor)
+  const monitors = (await populateMonitorTags(payload, docs as MonitorSummarySource[])).map(
+    toRealtimeMonitor,
+  )
 
   const state: OrgRealtimeState = {
     organizationId: String(organizationId),

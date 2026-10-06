@@ -62,5 +62,11 @@ export function toStoreMonitor(monitor: RealtimeMonitor): MonitorSummary {
     url: monitor.url ?? null,
     hostname: monitor.hostname ?? null,
     organization: monitor.organization ?? null,
+    tags: (monitor.tags ?? []).map((tag) => ({
+      id: tag.id,
+      name: tag.name,
+      color: tag.color,
+      value: tag.value,
+    })),
   }
 }

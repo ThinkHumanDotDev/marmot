@@ -22,6 +22,7 @@ The type decides what a check does and which fields the form shows. The built-in
 | Passive | Push                 | your system called `/api/push/<token>` within the interval (plus 10 % grace) |
 | Passive | Manual               | you set the status by hand; nothing is checked                               |
 | Special | Group                | every child monitor is UP                                                    |
+| Special | Docker Container     | the container is running (and healthy, when it has a health check)           |
 
 HTTP monitors also support request method and body, extra headers, redirects, `ignoreTls`, basic/bearer/
 OAuth2 client-credentials/NTLM/mTLS authentication and certificate-expiry alerts. The extended set adds gRPC, WebSocket, MQTT, Kafka, RabbitMQ, SMTP, SNMP, NTP, SFTP, RADIUS, Tailscale
@@ -116,8 +117,13 @@ the full reference, badges and API keys.
   current release. See [notifications.md](notifications.md).
 - **Maintenance**: a monitor inside an active maintenance window reports MAINTENANCE instead of DOWN and does
   not notify; see [maintenance.md](maintenance.md) _(landing in the current release)_.
-- **Tags** (coloured labels with optional values, shown in lists and on status pages) are planned next to
-  proxies and the Docker monitor type; the status-page `showTags` switch is already there.
+- **Tags**: coloured labels with optional values (`env: prod`), managed under Settings → Tags, shown in the
+  monitor list, on the detail page and on status pages with `showTags` on.
+- **Proxies**: HTTP-type monitors can send their requests through an HTTP(S) or SOCKS proxy (Settings →
+  Proxies); the organization's default proxy is preselected for new monitors.
+- **Docker**: the `docker` type checks a container's state on a Docker host (Settings → Docker hosts; local
+  socket or `tcp://`/`https://`). `DOCKER_SOCKET_ENABLED=false` forbids socket hosts on shared instances.
+  Details in [architecture.md](architecture.md#tags-proxies-and-docker-hosts).
 
 ## API
 

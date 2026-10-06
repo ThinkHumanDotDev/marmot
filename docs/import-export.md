@@ -94,7 +94,8 @@ The extended types (`grpc-keyword`, `websocket-upgrade`, `mqtt`, `kafka-producer
 [monitor-types.md](monitor-types.md)); the SNMP community string comes from Kuma's `radiusPassword`
 column, where Kuma's form stores it.
 
-Not imported: monitor types Marmot does not have (Docker), browser-engine monitors (they reference a
+Not imported: Docker monitors (Marmot's `docker` type needs a Docker host, which the backup does not map
+to), browser-engine monitors (they reference a
 remote browser that the backup does not contain), proxies, remote browsers, maintenance windows,
 heartbeat history and statistics, and **tags** — the tags collection does not exist yet (#21); tag names and
 assignments are listed in the report as skipped.
@@ -173,9 +174,10 @@ not contain. The "default enabled" flag is kept; "apply to all existing monitors
 ```
 
 Ids are the exporting instance's document ids and only serve to link documents inside the file; the
-importer remaps them. Heartbeats, statistics, maintenance windows, members and organization settings are not
-part of the export.
-Logos (media uploads) are not exported.
+importer remaps them. Heartbeats, statistics, maintenance windows, members and organization settings are not part of the export.
+Logos (media uploads) are not exported. Tags, proxies and Docker hosts are not exported either: a monitor's
+`tags`, `proxy` and `dockerHost` fields hold ids of the exporting organization, so the importer drops tag and
+proxy assignments (noted in the report) and skips `docker` monitors with a reason.
 
 > **The export contains secrets.** Notification configs are exported as stored — webhook URLs, bot tokens,
 > SMTP passwords — and monitors carry their basic-auth, bearer, OAuth and mTLS credentials. The download is

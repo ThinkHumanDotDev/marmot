@@ -101,6 +101,7 @@ Full setup guide with provider walkthroughs: [sso.md](sso.md).
 | ----------------------------- | ------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `KEEP_DATA_PERIOD_DAYS`       | `365`   | web, worker | Default for the `keepDataPeriodDays` instance setting: how long daily aggregates and important heartbeats are kept. Raw heartbeats live 24 h, minutely buckets 24 h, hourly 30 d. |
 | `WORKER_CONCURRENCY`          | `10`    | worker      | Parallel checks (and notification deliveries) per worker process. Scale out with more worker replicas rather than very high values.                                               |
+| `DOCKER_SOCKET_ENABLED`       | `true`  | web, worker | Allow `socket` Docker hosts, which talk to the Docker daemon of the worker's own host. Set `false` on shared installs where users must not reach the local daemon.                |
 | `MARMOT_DISABLE_ENGINE_HOOKS` | `false` | web         | Skip the BullMQ scheduler sync in the `monitors` collection hooks. Only for tests that run without Redis; the Vitest setup sets it.                                               |
 
 ## Billing

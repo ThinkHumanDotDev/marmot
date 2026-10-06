@@ -16,6 +16,7 @@ import {
 } from '@/stores/monitor-store'
 import { useMonitorStore } from '@/stores/monitor-store'
 
+import { TagList } from './tag-chip'
 import { UptimeBar } from './uptime-bar'
 
 /** Human label for the monitor target (URL for HTTP types, host:port otherwise). */
@@ -73,6 +74,7 @@ export function MonitorRowView({ monitor, beats, uptime24h, href }: MonitorRowVi
             <span className="uppercase">{monitor.type}</span>
             {target && <span className="before:mx-1.5 before:content-['·']">{target}</span>}
           </p>
+          <TagList tags={monitor.tags} className="mt-1" />
         </div>
         <div className="col-span-3 md:col-span-1">
           <UptimeBar beats={beats} />

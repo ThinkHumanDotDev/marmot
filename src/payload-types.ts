@@ -73,6 +73,9 @@ export interface Config {
     media: Media;
     monitors: Monitor;
     notifications: Notification;
+    tags: Tag;
+    proxies: MonitorProxy;
+    'docker-hosts': DockerHost;
     'notification-sent-history': NotificationSentHistory;
     heartbeats: Heartbeat;
     'stat-minutely': StatMinutely;
@@ -96,6 +99,9 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     monitors: MonitorsSelect<false> | MonitorsSelect<true>;
     notifications: NotificationsSelect<false> | NotificationsSelect<true>;
+    tags: TagsSelect<false> | TagsSelect<true>;
+    proxies: ProxiesSelect<false> | ProxiesSelect<true>;
+    'docker-hosts': DockerHostsSelect<false> | DockerHostsSelect<true>;
     'notification-sent-history': NotificationSentHistorySelect<false> | NotificationSentHistorySelect<true>;
     heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
     'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
@@ -326,6 +332,7 @@ export interface Monitor {
     | 'push'
     | 'group'
     | 'manual'
+    | 'docker'
     | 'grpc-keyword'
     | 'websocket-upgrade'
     | 'mqtt'
@@ -355,6 +362,16 @@ export interface Monitor {
   parent?: (number | null) | Monitor;
   description?: string | null;
   /**
+   * Tags (optionally with a value, e.g. env: prod) shown as chips.
+   */
+  tags?:
+    | {
+        tag: number | Tag;
+        value?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
    * Channels alerted when this monitor changes status.
    */
   notifications?: (number | Notification)[] | null;
@@ -363,6 +380,15 @@ export interface Monitor {
    */
   weight?: number | null;
   url?: string | null;
+  /**
+   * Send the request through this proxy (inactive proxies are skipped).
+   */
+  proxy?: (number | null) | MonitorProxy;
+  dockerHost?: (number | null) | DockerHost;
+  /**
+   * Container name or id.
+   */
+  dockerContainer?: string | null;
   hostname?: string | null;
   /**
    * DNS monitors: port of the resolver (default 53).
@@ -580,6 +606,21 @@ export interface Monitor {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tags".
+ */
+export interface Tag {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  /**
+   * Hex colour of the chip, e.g. #2563EB.
+   */
+  color: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "notifications".
  */
 export interface Notification {
@@ -622,6 +663,56 @@ export interface Notification {
    * Last delivery error; cleared on the next success.
    */
   lastError?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "proxies".
+ */
+export interface MonitorProxy {
+  id: number;
+  organization: number | Organization;
+  protocol: 'http' | 'https' | 'socks' | 'socks5' | 'socks5h' | 'socks4';
+  host: string;
+  port: number;
+  /**
+   * The proxy requires a username and password.
+   */
+  auth?: boolean | null;
+  username?: string | null;
+  /**
+   * Only visible to users who may edit proxies.
+   */
+  password?: string | null;
+  /**
+   * Inactive proxies are ignored: monitors connect directly.
+   */
+  active?: boolean | null;
+  /**
+   * Preselected for new HTTP monitors. One per organization.
+   */
+  default?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "docker-hosts".
+ */
+export interface DockerHost {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  connectionType: 'socket' | 'tcp';
+  /**
+   * Unix socket of the Docker daemon, as seen by the worker.
+   */
+  socketPath?: string | null;
+  /**
+   * tcp:// and http:// connect in plain text; https:// uses TLS.
+   */
+  url?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1089,6 +1180,18 @@ export interface PayloadLockedDocument {
         value: number | Notification;
       } | null)
     | ({
+        relationTo: 'tags';
+        value: number | Tag;
+      } | null)
+    | ({
+        relationTo: 'proxies';
+        value: number | MonitorProxy;
+      } | null)
+    | ({
+        relationTo: 'docker-hosts';
+        value: number | DockerHost;
+      } | null)
+    | ({
         relationTo: 'notification-sent-history';
         value: number | NotificationSentHistory;
       } | null)
@@ -1281,9 +1384,19 @@ export interface MonitorsSelect<T extends boolean = true> {
   active?: T;
   parent?: T;
   description?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        value?: T;
+        id?: T;
+      };
   notifications?: T;
   weight?: T;
   url?: T;
+  proxy?: T;
+  dockerHost?: T;
+  dockerContainer?: T;
   hostname?: T;
   port?: T;
   interval?: T;
@@ -1397,6 +1510,47 @@ export interface NotificationsSelect<T extends boolean = true> {
   active?: T;
   lastSentAt?: T;
   lastError?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tags_select".
+ */
+export interface TagsSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  color?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "proxies_select".
+ */
+export interface ProxiesSelect<T extends boolean = true> {
+  organization?: T;
+  protocol?: T;
+  host?: T;
+  port?: T;
+  auth?: T;
+  username?: T;
+  password?: T;
+  active?: T;
+  default?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "docker-hosts_select".
+ */
+export interface DockerHostsSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  connectionType?: T;
+  socketPath?: T;
+  url?: T;
   updatedAt?: T;
   createdAt?: T;
 }

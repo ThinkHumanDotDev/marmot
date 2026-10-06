@@ -44,8 +44,10 @@ export function statusText(
 
 /** What the monitor watches: URL for HTTP types, host[:port] for network types, nothing otherwise. */
 export function monitorTarget(
-  monitor: Pick<Monitor, 'type' | 'url' | 'hostname' | 'port' | 'dnsResolveType'>,
+  monitor: Pick<Monitor, 'type' | 'url' | 'hostname' | 'port' | 'dnsResolveType'> &
+    Partial<Pick<Monitor, 'dockerContainer'>>,
 ): string | null {
+  if (monitor.type === 'docker') return monitor.dockerContainer ?? null
   if (monitor.type === 'dns') {
     return monitor.hostname
       ? `${monitor.hostname}${monitor.dnsResolveType ? ` (${monitor.dnsResolveType})` : ''}`

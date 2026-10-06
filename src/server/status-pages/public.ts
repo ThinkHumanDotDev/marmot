@@ -15,6 +15,7 @@ import {
   getActiveMaintenanceForStatusPage,
   type PublicMaintenance,
 } from '@/server/maintenance/status-page'
+import { populateMonitorTags, toRealtimeTags } from '@/server/realtime/serialize'
 import { getUptime } from '@/server/stats/uptime-calculator'
 
 import type { Incident, Media, Monitor, StatusPage } from '@/payload-types'
@@ -207,7 +208,10 @@ async function toPublicMonitor(
   ])
 
   const url = row.customUrl?.trim() || (row.sendUrl ? monitor.url?.trim() : undefined) || undefined
-  const tags = (monitor as Monitor & { tags?: PublicMonitor['tags'] }).tags
+  // Public: name, colour and value only (no tag ids).
+  const tags = showTags
+    ? toRealtimeTags(monitor.tags).map(({ name, color, value }) => ({ name, color, value }))
+    : []
 
   return {
     id: String(monitor.id),
@@ -217,7 +221,7 @@ async function toPublicMonitor(
     uptime24h,
     uptime30d,
     beats,
-    ...(showTags && Array.isArray(tags) ? { tags } : {}),
+    ...(showTags ? { tags } : {}),
   }
 }
 
@@ -252,7 +256,8 @@ export async function buildPublicGroups(
     pagination: false,
     overrideAccess: true,
   })
-  const byId = new Map(docs.map((m) => [String(m.id), m]))
+  const monitors = page.showTags ? await populateMonitorTags(payload, docs) : docs
+  const byId = new Map(monitors.map((m) => [String(m.id), m]))
 
   const groups: PublicGroup[] = []
   for (const group of page.groups ?? []) {

@@ -9,6 +9,7 @@ import { ImportantEventsTable } from '@/components/monitors/important-events-tab
 import { MonitorActions } from '@/components/monitors/monitor-actions'
 import { ResponseTimeChart } from '@/components/monitors/response-time-chart'
 import { MonitorStatusBadge } from '@/components/monitors/status-badge'
+import { TagList } from '@/components/monitors/tag-chip'
 import { UptimeCards } from '@/components/monitors/uptime-cards'
 import { PageHeader } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
@@ -16,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { env } from '@/env'
 import { isHttpMonitorType } from '@/lib/validation/monitor'
 import type { Heartbeat, Monitor } from '@/payload-types'
+import { toRealtimeTags } from '@/server/realtime/serialize'
 import { getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
 import { getStats, getUptime } from '@/server/stats/uptime-calculator'
 
@@ -130,6 +132,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
                   {target}
                 </span>
               ))}
+            <TagList tags={toRealtimeTags(monitor.tags)} />
             <span className="text-xs">
               Checked {formatRelative(monitor.status?.lastCheckAt)}
               {monitor.status?.lastMsg ? ` · ${monitor.status.lastMsg}` : ''}

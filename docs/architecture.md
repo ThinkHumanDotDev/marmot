@@ -176,6 +176,40 @@ organization changes. Server status strings map to the store's `HeartbeatStatus`
 `src/lib/realtime.ts`. Pages load the same state server-side (`/{orgSlug}/monitors` uses `loadOrgState`),
 render it, seed the store and let the socket take over.
 
+## Tags, proxies and Docker hosts
+
+Three org-scoped collections hold resources that monitors reference (managed under
+`/{orgSlug}/settings/tags|proxies|docker-hosts`):
+
+- **`tags`** (`name`, unique per organization; `color`, hex). Monitors carry a `tags` array of
+  `{ tag, value }` rows (`env: prod`). Chips appear in the monitor list (the realtime `monitorList` /
+  `updateMonitorIntoList` payloads carry resolved `tags[] { id, name, color, value }`, filled by
+  `populateMonitorTags()` in `src/server/realtime/serialize.ts`), on the detail page and on status pages
+  whose `showTags` option is on (name, colour and value only). Deleting a tag removes its rows from every
+  monitor first (`beforeDelete`).
+- **`proxies`** (`protocol` = `http | https | socks | socks5 | socks5h | socks4`, `host`, `port`, `auth`,
+  `username`, `password`, `active`, `default`). HTTP-type monitors (`http`, `keyword`, `json-query`) send
+  their request through `monitor.proxy` when it is set and active (`loadMonitorProxy()` +
+  `createProxyDispatcher()` in `src/server/proxies/dispatcher.ts`): undici's `ProxyAgent` for HTTP(S)
+  proxies (CONNECT for https targets, absolute-form forwarding for http), and a custom undici connector
+  over the `socks` client for SOCKS (`socks4`/`socks5` resolve the target locally, `socks5h`/`socks` let
+  the proxy resolve it; TLS to https targets is negotiated through the tunnel). `password` has
+  field-level read access: only users with `proxy:update` (and the worker, which reads with
+  `overrideAccess`) receive it. One proxy per organization can be the `default`; it is preselected for new
+  monitors in the form. Deleting a proxy clears `monitor.proxy` (monitors connect directly again).
+- **`docker-hosts`** (`name`, `connectionType` = `socket | tcp`, `socketPath` or `url`). The `docker`
+  monitor type (`src/server/monitor-types/docker.ts`, ported from Uptime Kuma) calls
+  `GET /containers/<dockerContainer>/json` on the host (`src/server/docker/client.ts`, undici over the unix
+  socket or `tcp://` rewritten to `http://`; `https://` uses TLS) and maps `State`: not running, paused or
+  unhealthy → DOWN, restarting or a health check that is still `starting` → PENDING, healthy or running
+  without a health check → UP. `POST /api/orgs/:orgId/docker-hosts/test` (`docker-host:update`) lists the
+  daemon's containers for a saved host (`{ dockerHostId }`) or unsaved settings and answers
+  `{ ok, containers }`. Socket paths are resolved on the worker; `DOCKER_SOCKET_ENABLED=false` rejects socket
+  hosts on shared instances. Deleting a host clears `monitor.dockerHost`.
+
+A `monitors` `beforeChange` hook rejects tags, proxies and Docker hosts of another organization, so a
+member cannot borrow another tenant's proxy credentials or Docker daemon through the API.
+
 ## Organizations and RBAC
 
 `organizations` is the tenant collection (`@payloadcms/plugin-multi-tenant`, configured in
@@ -234,6 +268,12 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `status-page:create`, `status-page:update`, `status-page:delete`    |        |   ✓    |   ✓   |   ✓   |
 | `maintenance:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
 | `maintenance:create`, `maintenance:update`, `maintenance:delete`    |        |   ✓    |   ✓   |   ✓   |
+| `tag:read`                                                          |   ✓    |   ✓    |   ✓   |   ✓   |
+| `tag:create`, `tag:update`, `tag:delete`                            |        |   ✓    |   ✓   |   ✓   |
+| `proxy:read` (password only with `proxy:update`)                    |        |   ✓    |   ✓   |   ✓   |
+| `proxy:create`, `proxy:update`, `proxy:delete`                      |        |        |   ✓   |   ✓   |
+| `docker-host:read`                                                  |        |   ✓    |   ✓   |   ✓   |
+| `docker-host:create`, `docker-host:update`, `docker-host:delete`    |        |        |   ✓   |   ✓   |
 | `api-key:read`, `api-key:create`, `api-key:delete`                  |        |        |   ✓   |   ✓   |
 
 Nobody may invite or assign a role above their own (`canManageRole`); superadmins may.

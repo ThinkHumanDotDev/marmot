@@ -48,6 +48,21 @@ export const PERMISSIONS = {
   'maintenance:update': 'member',
   'maintenance:delete': 'member',
 
+  'tag:read': 'viewer',
+  'tag:create': 'member',
+  'tag:update': 'member',
+  'tag:delete': 'member',
+
+  'proxy:read': 'member',
+  'proxy:create': 'admin',
+  'proxy:update': 'admin',
+  'proxy:delete': 'admin',
+
+  'docker-host:read': 'member',
+  'docker-host:create': 'admin',
+  'docker-host:update': 'admin',
+  'docker-host:delete': 'admin',
+
   'api-key:read': 'admin',
   'api-key:create': 'admin',
   'api-key:delete': 'admin',

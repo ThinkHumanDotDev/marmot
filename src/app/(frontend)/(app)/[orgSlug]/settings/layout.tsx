@@ -21,7 +21,7 @@ async function canSeeBilling(orgSlug: string): Promise<boolean> {
   return org ? can(user, org.id, 'organization:update') : false
 }
 
-/** Settings frame: header + tab strip (Account · Organization · Members · Permissions · Billing · …). */
+/** Settings frame: header + tab strip (Account · Organization · Members · Tags · Proxies · Docker hosts · …). */
 export default async function SettingsLayout({ children, params }: SettingsLayoutProps) {
   const { orgSlug } = await params
   const user = await getCurrentUser()
@@ -30,7 +30,7 @@ export default async function SettingsLayout({ children, params }: SettingsLayou
     <>
       <PageHeader
         title="Settings"
-        description="Your account, this organization and who has access."
+        description="Your account, this organization, who has access and shared monitor resources."
         className="border-b-0 pb-2"
       />
       <div className="border-b px-4 sm:px-6 md:px-8">

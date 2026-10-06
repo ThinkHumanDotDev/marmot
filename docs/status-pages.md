@@ -85,6 +85,7 @@ All of these are anonymous and return 404 for unknown or unpublished slugs.
           "uptime24h": 0.9993,
           "uptime30d": 0.9981,
           "beats": [{ "status": "up", "time": "2026-10-05T03:00:00.000Z", "ping": 42 }], // oldest first, ≤ 50
+          "tags": [{ "name": "env", "color": "#2563EB", "value": "prod" }], // only when showTags
         },
       ],
     },

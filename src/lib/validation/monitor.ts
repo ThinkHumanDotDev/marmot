@@ -7,6 +7,8 @@
  */
 import { z } from 'zod'
 
+import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
+
 export const MONITOR_TYPE_NAMES = [
   // General
   'http',
@@ -19,6 +21,7 @@ export const MONITOR_TYPE_NAMES = [
   // Passive
   'push',
   'manual',
+  'docker',
   // Special
   'group',
   // Protocols
@@ -157,6 +160,11 @@ export const MONITOR_TYPE_GROUPS: Record<
       { name: 'port', label: 'TCP Port', description: 'UP when a TCP connection succeeds.' },
       { name: 'ping', label: 'Ping', description: 'UP when the host answers ICMP echo requests.' },
       { name: 'dns', label: 'DNS', description: 'UP when the resolver returns a record.' },
+      {
+        name: 'docker',
+        label: 'Docker Container',
+        description: 'UP when the container is running (and healthy, if it has a health check).',
+      },
     ],
   },
   passive: {
@@ -279,6 +287,11 @@ export const MONITOR_TYPE_GROUPS: Record<
         label: 'Group',
         description: 'Aggregates child monitors: DOWN when any child is down.',
       },
+      {
+        name: 'docker',
+        label: 'Docker Container',
+        description: 'UP while a container on a Docker host is running (and healthy).',
+      },
     ],
   },
 }
@@ -364,6 +377,12 @@ const relationId = z
   .nullish()
   .transform((v) => (v === undefined || v === '' ? null : v))
 
+/** `monitors.tags` row: a tag of the organization plus an optional value (`env: prod`). */
+const tagRow = z.object({
+  tag: z.union([z.string().min(1), z.number().int().positive()]),
+  value: optionalText(200),
+})
+
 const nonNegativeInt = (max = 1_000_000) => z.number().int().min(0).max(max)
 
 /** List of non-empty strings (brokers, nodes); blanks are dropped. */
@@ -381,6 +400,7 @@ export const monitorFormSchema = z
     parent: relationId,
     weight: nonNegativeInt().default(2000),
     active: z.boolean().default(true),
+    tags: z.array(tagRow).max(50).default([]),
 
     // Target
     url: optionalText(2048),
@@ -417,6 +437,7 @@ export const monitorFormSchema = z
       }),
     ignoreTls: z.boolean().default(false),
     expiryNotification: z.boolean().default(false),
+    proxy: relationId,
     domainExpiryNotification: z.boolean().default(false),
 
     // Keyword / JSON query
@@ -448,6 +469,10 @@ export const monitorFormSchema = z
 
     // Manual
     manualStatus: z.enum(MANUAL_STATUSES).nullish(),
+
+    // Docker
+    dockerHost: relationId,
+    dockerContainer: optionalText(255),
 
     // Databases
     databaseConnectionString: optionalText(2048),
@@ -607,6 +632,15 @@ export const monitorFormSchema = z
     if (type === 'manual' && !values.manualStatus) {
       issue('manualStatus', 'Choose the status to report')
     }
+    if (values.type === 'docker') {
+      if (values.dockerHost === null) issue('dockerHost', 'Choose a Docker host')
+      if (!values.dockerContainer) issue('dockerContainer', 'Container name or id is required')
+      else if (!DOCKER_CONTAINER_PATTERN.test(values.dockerContainer)) {
+        issue('dockerContainer', 'Use the container name or id, e.g. my-app or 3f2a…')
+      }
+    }
+    const tagIds = values.tags.map((row) => String(row.tag))
+    if (new Set(tagIds).size !== tagIds.length) issue('tags', 'Each tag may only be added once')
 
     if (isDatabaseMonitorType(type)) {
       const conn = values.databaseConnectionString
@@ -709,6 +743,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     parent: null,
     weight: 2000,
     active: true,
+    tags: [],
     url: defaultUrl(type),
     hostname: null,
     port: DEFAULT_PORTS[type] ?? null,
@@ -726,6 +761,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     acceptedStatusCodes: type === 'websocket-upgrade' ? ['1000'] : ['200-299'],
     ignoreTls: false,
     expiryNotification: false,
+    proxy: null,
     domainExpiryNotification: false,
     keyword: null,
     invertKeyword: false,
@@ -749,6 +785,8 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     dnsResolveServer: type === 'dns' ? '1.1.1.1' : null,
     dnsResolveType: 'A',
     manualStatus: type === 'manual' ? 'up' : null,
+    dockerHost: null,
+    dockerContainer: null,
     databaseConnectionString: null,
     databaseQuery: null,
     mqttTopic: null,
@@ -800,6 +838,11 @@ export type MonitorLike = Partial<Record<keyof MonitorFormValues, unknown>> & {
   parent?: unknown
 }
 
+const toId = (value: unknown): string | number | null =>
+  value && typeof value === 'object' && 'id' in value
+    ? ((value as { id: string | number }).id ?? null)
+    : ((value as string | number | null | undefined) ?? null)
+
 /**
  * Maps a stored monitor document to form values (relationships collapsed to ids, nulls kept so
  * the form is fully controlled).
@@ -809,14 +852,21 @@ export function monitorToFormValues(doc: MonitorLike): MonitorFormValues {
     ? (doc.type as MonitorTypeName)
     : 'http'
   const base = defaultMonitorValues(type)
-  const parent =
-    doc.parent && typeof doc.parent === 'object' && 'id' in doc.parent
-      ? ((doc.parent as { id: string | number }).id ?? null)
-      : ((doc.parent as string | number | null | undefined) ?? null)
+  const relations = {
+    parent: toId(doc.parent),
+    proxy: toId(doc.proxy),
+    dockerHost: toId(doc.dockerHost),
+  }
+  const tags = Array.isArray(doc.tags)
+    ? (doc.tags as { tag?: unknown; value?: string | null }[]).flatMap((row) => {
+        const tag = toId(row?.tag)
+        return tag === null ? [] : [{ tag, value: row.value ?? null }]
+      })
+    : []
 
-  const out: Record<string, unknown> = { ...base, parent }
+  const out: Record<string, unknown> = { ...base, ...relations, tags }
   for (const key of Object.keys(base) as (keyof MonitorFormValues)[]) {
-    if (key === 'parent') continue
+    if (key in relations || key === 'tags') continue
     const value = doc[key]
     if (value !== undefined && value !== null) out[key] = value
   }

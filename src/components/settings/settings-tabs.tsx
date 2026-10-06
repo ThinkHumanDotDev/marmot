@@ -4,10 +4,13 @@ import {
   ArrowDownUp,
   Bell,
   Building2,
+  Container,
   CreditCard,
   KeyRound,
+  Network,
   Server,
   ShieldCheck,
+  Tags,
   UserRound,
   Users,
 } from 'lucide-react'
@@ -38,6 +41,9 @@ export function SettingsTabs({
     { href: `/${orgSlug}/settings/account`, label: 'Account', icon: UserRound },
     { href: `/${orgSlug}/settings/organization`, label: 'Organization', icon: Building2 },
     { href: `/${orgSlug}/members`, label: 'Members', icon: Users },
+    { href: `/${orgSlug}/settings/tags`, label: 'Tags', icon: Tags },
+    { href: `/${orgSlug}/settings/proxies`, label: 'Proxies', icon: Network },
+    { href: `/${orgSlug}/settings/docker-hosts`, label: 'Docker hosts', icon: Container },
     { href: `/${orgSlug}/settings/api-keys`, label: 'API keys', icon: KeyRound },
     { href: `/${orgSlug}/settings/import-export`, label: 'Import / Export', icon: ArrowDownUp },
     ...(showBilling

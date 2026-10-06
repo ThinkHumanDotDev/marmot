@@ -47,6 +47,11 @@ services:
     environment:
       <<: *marmot-env
       MARMOT_ROLE: worker
+    # Docker Container monitors with a "socket" Docker host read the daemon through the worker.
+    # Uncomment to let them reach this host's Docker (Marmot only sends GET requests, but the socket
+    # grants full daemon access; see DOCKER_SOCKET_ENABLED in docs/configuration.md).
+    # volumes:
+    #   - /var/run/docker.sock:/var/run/docker.sock:ro
 
   # socket.io server (/socket.io via Caddy); /healthz on :3001.
   realtime:

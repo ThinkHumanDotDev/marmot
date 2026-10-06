@@ -8,6 +8,7 @@ import './dns'
 import './push'
 import './group'
 import './manual'
+import './docker'
 // Protocols
 import './grpc-keyword'
 import './websocket-upgrade'

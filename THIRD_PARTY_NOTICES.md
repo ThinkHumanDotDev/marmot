@@ -28,6 +28,9 @@ attribution comment and are listed here:
 - `src/server/monitor-types/push.ts` — `push` branch of `server/model/monitor.js`
 - `src/server/monitor-types/group.ts` — `server/monitor-types/group.js`
 - `src/server/monitor-types/manual.ts` — `server/monitor-types/manual.js`
+- `src/server/monitor-types/docker.ts`, `src/server/docker/client.ts` — `docker` branch of
+  `server/model/monitor.js` and `DockerHost.testDockerHost` / `patchDockerURL` from `server/docker.js`
+- `src/server/proxies/dispatcher.ts` — supported protocols and resolution semantics of `server/proxy.js`
 - `src/server/monitor-types/sql.ts`, `mysql.ts`, `postgres.ts`, `sqlserver.ts` —
   `server/monitor-types/{mysql,postgres,mssql}.js`
 - `src/server/monitor-types/redis.ts` — `server/monitor-types/redis.js`
