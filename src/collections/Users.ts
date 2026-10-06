@@ -10,6 +10,7 @@ import { authenticated, selfOrSuperadmin, superadminOnly } from '@/access/org-sc
 import { isSuperadmin, type UserLike } from '@/access/permissions'
 import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
 import { auditAuthFailure, auditLogin, rateLimitAuthOperations } from '@/server/security/auth-hooks'
+import { enforceSsoOnPasswordLogin } from '@/server/sso/enforcement'
 import { isSignupAllowed } from '@/server/settings'
 
 const superadminField: FieldAccess = ({ req }) => isSuperadmin(req.user)
@@ -106,7 +107,7 @@ export const Users: CollectionConfig = {
   hooks: {
     // Rate limits `login` / `forgot-password` (REST only) and records the attempts in `audit-logs`.
     beforeOperation: [rateLimitAuthOperations],
-    beforeLogin: [requireTwoFactorGate],
+    beforeLogin: [enforceSsoOnPasswordLogin, requireTwoFactorGate],
     beforeDelete: [removeAuthAccounts],
     afterLogin: [auditLogin],
     afterError: [auditAuthFailure],

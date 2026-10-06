@@ -294,6 +294,10 @@ export interface Organization {
     | number
     | boolean
     | null;
+  /**
+   * Require single sign-on: password logins are refused for users on this organization's verified domains. Owners keep a break-glass password login (audited).
+   */
+  enforceSso?: boolean | null;
   settings?: {
     /**
      * IANA time zone, e.g. Europe/London.
@@ -1466,6 +1470,7 @@ export interface OrganizationsSelect<T extends boolean = true> {
   inviteLinkToken?: T;
   inviteLinkRole?: T;
   permissionOverrides?: T;
+  enforceSso?: T;
   settings?:
     | T
     | {

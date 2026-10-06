@@ -68,6 +68,7 @@ export default async function SecuritySettingsPage({
       orgSlug={org.slug}
       connections={(connections.docs as SsoConnection[]).map(toConnectionRow)}
       domains={(domains.docs as SsoDomain[]).map(toDomainRow)}
+      enforceSso={org.enforceSso === true}
       canManage={canWithOverrides(user, org, 'sso:manage')}
     />
   )

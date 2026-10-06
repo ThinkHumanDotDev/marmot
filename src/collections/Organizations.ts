@@ -377,6 +377,17 @@ export const Organizations: CollectionConfig = {
       },
     },
     {
+      name: 'enforceSso',
+      type: 'checkbox',
+      defaultValue: false,
+      access: { update: ownerField },
+      admin: {
+        position: 'sidebar',
+        description:
+          "Require single sign-on: password logins are refused for users on this organization's verified domains. Owners keep a break-glass password login (audited).",
+      },
+    },
+    {
       name: 'settings',
       type: 'group',
       fields: [
