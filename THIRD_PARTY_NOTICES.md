@@ -95,6 +95,13 @@ attribution comment and are listed here:
   `src/components/settings/Backup.vue` in Uptime Kuma 1.23), monitor field names from
   `Monitor.toJSON()` (`server/model/monitor.js`) and notification config keys from
   `server/notification-providers/*.js`
+- `src/server/badges/badge.ts` — badge handlers of `server/routers/api-router.js`, `badgeConstants`
+  (`src/util.ts`), `percentageToColor` / `filterAndJoin` (`server/util-server.js`)
+- `src/server/push/index.ts`, `recordExternalBeat` in `src/server/engine/worker.ts` — `/api/push/:pushToken`
+  handler of `server/routers/api-router.js`
+- `src/server/metrics/prometheus.ts` — metric names, help texts and labels from `server/prometheus.js`
+- `src/collections/ApiKeys.ts`, `src/server/api-keys/index.ts` — modelled on `server/model/api_key.js` and
+  `apiAuth` in `server/auth.js`
 
 The MIT license text is reproduced below.
 

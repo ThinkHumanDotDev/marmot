@@ -96,9 +96,9 @@ marks the monitor DOWN otherwise; `maxRetries` and `upsideDown` apply as usual.
 curl -fsS "https://status.example.com/api/push/<token>?status=up&msg=OK&ping=12"
 ```
 
-The endpoint (`GET` or any method, `status=up|down`, free-text `msg`, optional `ping` in ms) lands in the
-current release together with badges and API keys; see [integrations.md](integrations.md). Until then the
-monitor type exists but the monitor stays PENDING/DOWN because nothing stamps `lastPushAt`.
+The endpoint accepts `GET` or any other method, `status=up|down`, a free-text `msg` and an optional `ping`
+in ms; every call records a heartbeat and stamps `lastPushAt`. See [integrations.md](integrations.md) for
+the full reference, badges and API keys.
 
 ## Pause, resume, clone, delete
 
@@ -143,4 +143,4 @@ same permissions as the UI (`monitor:read` for viewers, `monitor:create|update|d
 
 Requests from outside the browser must send the `payload-token` cookie or a `JWT` `Authorization` header
 (`POST /api/users/login` returns one) and an `Origin` matching `NEXT_PUBLIC_SERVER_URL`. Organization API
-keys for machine access land in the current release ([integrations.md](integrations.md)).
+keys give machine access to badges and metrics ([integrations.md](integrations.md)).

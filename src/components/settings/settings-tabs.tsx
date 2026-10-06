@@ -6,6 +6,7 @@ import {
   Building2,
   Container,
   CreditCard,
+  KeyRound,
   Network,
   Server,
   ShieldCheck,
@@ -27,7 +28,7 @@ interface SettingsTabsProps {
 }
 
 /**
- * Link-based tab strip for the settings area. Future tabs (API keys) slot in here once their
+ * Link-based tab strip for the settings area. New tabs slot in here once their
  * issues land.
  */
 export function SettingsTabs({
@@ -43,6 +44,7 @@ export function SettingsTabs({
     { href: `/${orgSlug}/settings/tags`, label: 'Tags', icon: Tags },
     { href: `/${orgSlug}/settings/proxies`, label: 'Proxies', icon: Network },
     { href: `/${orgSlug}/settings/docker-hosts`, label: 'Docker hosts', icon: Container },
+    { href: `/${orgSlug}/settings/api-keys`, label: 'API keys', icon: KeyRound },
     { href: `/${orgSlug}/settings/import-export`, label: 'Import / Export', icon: ArrowDownUp },
     ...(showBilling
       ? [{ href: `/${orgSlug}/settings/billing`, label: 'Billing', icon: CreditCard }]
