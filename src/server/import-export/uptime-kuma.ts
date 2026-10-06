@@ -28,7 +28,10 @@ import {
   MIN_INTERVAL_SECONDS,
   MONITOR_TYPE_NAMES,
   monitorFormSchema,
+  MQTT_CHECK_TYPES,
   OAUTH_AUTH_METHODS,
+  SMTP_SECURITY_MODES,
+  SNMP_VERSIONS,
   type MonitorFormInput,
   type MonitorTypeName,
 } from '@/lib/validation/monitor'
@@ -50,30 +53,27 @@ import {
   type PlannedNotification,
 } from './types'
 
+/**
+ * Kuma monitor types that cannot be imported even though Marmot has a type of the same name, with
+ * the reason. Kuma's browser engine points at a `remote_browser` row that backups do not contain.
+ */
+const UNIMPORTABLE_TYPES: Record<string, string> = {
+  // Marmot docker monitors point at a Docker host resource that the Kuma backup does not map to.
+  docker:
+    'Monitor type "Docker Container" needs a Docker host in Marmot; add one and recreate the monitor',
+  'real-browser':
+    'Monitor type "HTTP(s) - Browser Engine" needs a remote browser URL, which Uptime Kuma backups do not contain',
+}
+
 /** Monitor types that have the same name and semantics in Marmot. */
-const SUPPORTED_TYPES = new Set<string>(MONITOR_TYPE_NAMES)
+const SUPPORTED_TYPES = new Set<string>(
+  MONITOR_TYPE_NAMES.filter((type) => !(type in UNIMPORTABLE_TYPES)),
+)
 
 /** Human-readable names for Kuma monitor types Marmot does not have (for the report). */
 const UNSUPPORTED_TYPE_LABELS: Record<string, string> = {
-  'real-browser': 'HTTP(s) - Browser Engine',
   docker: 'Docker Container',
-  steam: 'Steam Game Server',
-  gamedig: 'GameDig',
-  mqtt: 'MQTT',
   kafkaproducer: 'Kafka Producer',
-  'kafka-producer': 'Kafka Producer',
-  sqlserver: 'Microsoft SQL Server',
-  postgres: 'PostgreSQL',
-  mysql: 'MySQL/MariaDB',
-  mongodb: 'MongoDB',
-  radius: 'Radius',
-  redis: 'Redis',
-  'grpc-keyword': 'gRPC(s) - Keyword',
-  'tailscale-ping': 'Tailscale Ping',
-  snmp: 'SNMP',
-  rabbitmq: 'RabbitMQ',
-  smtp: 'SMTP',
-  'websocket-upgrade': 'WebSocket Upgrade',
 }
 
 const oneOf = <T extends readonly string[]>(options: T, value: unknown): T[number] | undefined => {
@@ -87,6 +87,25 @@ const issueList = (issues: { path: PropertyKey[]; message: string }[]): string =
       issue.path.length ? `${issue.path.join('.')}: ${issue.message}` : issue.message,
     )
     .join('; ')
+
+/** Kuma serialises list columns (brokers, RabbitMQ nodes) as arrays or JSON array strings. */
+function asTextList(value: unknown): string[] {
+  let list: unknown = value
+  if (typeof value === 'string') {
+    try {
+      list = JSON.parse(value)
+    } catch {
+      list = value.split(',')
+    }
+  }
+  return Array.isArray(list) ? list.map(asText).filter((item): item is string => item !== null) : []
+}
+
+/** JSON settings (Kafka SASL options) arrive parsed or as text; Marmot stores the text. */
+function asJsonText(value: unknown): string | null {
+  if (isRecord(value)) return Object.keys(value).length ? JSON.stringify(value) : null
+  return asText(value)
+}
 
 /** Kuma `authMethod`: `null`/`""` means none. */
 function mapAuthMethod(value: unknown): (typeof AUTH_METHODS)[number] | undefined {
@@ -105,12 +124,7 @@ function mapKumaMonitor(
 ): { input: MonitorFormInput; type: MonitorTypeName } | { skip: string } {
   const name = asText(raw.name) ?? `monitor #${asKey(raw.id) ?? '?'}`
   const kumaType = asText(raw.type) ?? 'http'
-  if (kumaType === 'docker') {
-    // Marmot docker monitors point at a Docker host resource that the Kuma backup does not map to.
-    return {
-      skip: 'Monitor type "Docker Container" needs a Docker host in Marmot; add one and recreate the monitor',
-    }
-  }
+  if (kumaType in UNIMPORTABLE_TYPES) return { skip: UNIMPORTABLE_TYPES[kumaType] }
   if (!SUPPORTED_TYPES.has(kumaType)) {
     const label = UNSUPPORTED_TYPE_LABELS[kumaType] ?? kumaType
     return { skip: `Monitor type "${label}" is not supported by Marmot yet` }
@@ -143,6 +157,13 @@ function mapKumaMonitor(
   if (authMethod === undefined) {
     warnings.push(
       `"${name}": authentication method "${String(raw.authMethod)}" is not supported; set to none`,
+    )
+  }
+
+  const snmpVersion = oneOf(SNMP_VERSIONS, raw.snmpVersion)
+  if (type === 'snmp' && raw.snmpVersion != null && snmpVersion === undefined) {
+    warnings.push(
+      `"${name}": SNMP version "${String(raw.snmpVersion)}" is not supported; set to ${defaults.snmpVersion}`,
     )
   }
 
@@ -201,6 +222,45 @@ function mapKumaMonitor(
     dnsResolveType: oneOf(DNS_RECORD_TYPES, raw.dns_resolve_type) ?? defaults.dnsResolveType,
 
     manualStatus: type === 'manual' ? 'up' : null,
+
+    // Extended types: Kuma's column names match Marmot's fields.
+    databaseConnectionString: asText(raw.databaseConnectionString),
+    databaseQuery: asText(raw.databaseQuery),
+    mqttTopic: asText(raw.mqttTopic),
+    mqttUsername: asText(raw.mqttUsername),
+    mqttPassword: asText(raw.mqttPassword),
+    mqttCheckType: oneOf(MQTT_CHECK_TYPES, raw.mqttCheckType) ?? defaults.mqttCheckType,
+    mqttSuccessMessage: asText(raw.mqttSuccessMessage),
+    kafkaProducerBrokers: asTextList(raw.kafkaProducerBrokers),
+    kafkaProducerTopic: asText(raw.kafkaProducerTopic),
+    kafkaProducerMessage: asText(raw.kafkaProducerMessage),
+    kafkaProducerSsl: asBool(raw.kafkaProducerSsl) ?? false,
+    kafkaProducerAllowAutoTopicCreation: asBool(raw.kafkaProducerAllowAutoTopicCreation) ?? false,
+    kafkaProducerSaslOptions: asJsonText(raw.kafkaProducerSaslOptions),
+    grpcUrl: asText(raw.grpcUrl),
+    grpcProtobuf: asText(raw.grpcProtobuf),
+    grpcServiceName: asText(raw.grpcServiceName),
+    grpcMethod: asText(raw.grpcMethod),
+    grpcEnableTls: asBool(raw.grpcEnableTls) ?? false,
+    grpcBody: asText(raw.grpcBody),
+    grpcMetadata: asText(raw.grpcMetadata),
+    radiusUsername: asText(raw.radiusUsername),
+    radiusPassword: asText(raw.radiusPassword),
+    radiusSecret: asText(raw.radiusSecret),
+    radiusCalledStationId: asText(raw.radiusCalledStationId),
+    radiusCallingStationId: asText(raw.radiusCallingStationId),
+    snmpOid: asText(raw.snmpOid),
+    snmpVersion: snmpVersion ?? defaults.snmpVersion,
+    // Kuma's form stores the SNMP community string in the `radiusPassword` column.
+    snmpCommunity: type === 'snmp' ? asText(raw.radiusPassword) : null,
+    smtpSecurity: oneOf(SMTP_SECURITY_MODES, raw.smtpSecurity) ?? defaults.smtpSecurity,
+    rabbitmqNodes: asTextList(raw.rabbitmqNodes),
+    rabbitmqUsername: asText(raw.rabbitmqUsername),
+    rabbitmqPassword: asText(raw.rabbitmqPassword),
+    wsSubprotocol: asText(raw.wsSubprotocol),
+    wsIgnoreSecWebsocketAcceptHeader: asBool(raw.wsIgnoreSecWebsocketAcceptHeader) ?? false,
+    game: asText(raw.game),
+    gamedigGivenPortOnly: asBool(raw.gamedigGivenPortOnly) ?? defaults.gamedigGivenPortOnly,
   }
 
   return { input, type }

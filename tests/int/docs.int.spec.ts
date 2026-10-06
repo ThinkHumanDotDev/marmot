@@ -41,7 +41,7 @@ function markdownLinks(markdown: string): { target: string }[] {
  * Pages whose pull requests merge alongside the documentation ("landing in the current release" in the
  * docs). They may be linked before they exist; the release checklist empties this list once they landed.
  */
-const LANDING_PAGES = ['monitor-types.md', 'integrations.md', 'telemetry.md', 'billing.md']
+const LANDING_PAGES = ['integrations.md', 'telemetry.md', 'billing.md']
 
 const pageExists = (target: string) =>
   existsSync(path.join(root, 'docs', target)) || LANDING_PAGES.includes(target)

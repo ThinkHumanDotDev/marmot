@@ -322,7 +322,36 @@ export interface Monitor {
   id: number;
   organization: number | Organization;
   name: string;
-  type: 'http' | 'keyword' | 'json-query' | 'port' | 'ping' | 'dns' | 'push' | 'group' | 'manual' | 'docker';
+  type:
+    | 'http'
+    | 'keyword'
+    | 'json-query'
+    | 'port'
+    | 'ping'
+    | 'dns'
+    | 'push'
+    | 'group'
+    | 'manual'
+    | 'docker'
+    | 'grpc-keyword'
+    | 'websocket-upgrade'
+    | 'mqtt'
+    | 'kafka-producer'
+    | 'rabbitmq'
+    | 'smtp'
+    | 'snmp'
+    | 'ntp'
+    | 'sftp'
+    | 'radius'
+    | 'tailscale-ping'
+    | 'real-browser'
+    | 'mysql'
+    | 'postgres'
+    | 'sqlserver'
+    | 'mongodb'
+    | 'redis'
+    | 'steam'
+    | 'gamedig';
   /**
    * Paused monitors are not checked.
    */
@@ -469,6 +498,94 @@ export interface Monitor {
    */
   pushToken?: string | null;
   manualStatus?: ('up' | 'down' | 'pending') | null;
+  /**
+   * Driver connection string, e.g. postgres://user:pass@host:5432/db, mysql://…, mongodb://…, redis://….
+   */
+  databaseConnectionString?: string | null;
+  /**
+   * SQL statement to run (default SELECT 1). MongoDB: JSON command document (default {"ping": 1}).
+   */
+  databaseQuery?: string | null;
+  mqttTopic?: string | null;
+  mqttUsername?: string | null;
+  mqttPassword?: string | null;
+  mqttCheckType?: ('keyword' | 'json-query') | null;
+  /**
+   * Keyword mode: the received message must contain this text.
+   */
+  mqttSuccessMessage?: string | null;
+  /**
+   * Broker addresses, e.g. kafka1:9092.
+   */
+  kafkaProducerBrokers?: string[] | null;
+  kafkaProducerTopic?: string | null;
+  kafkaProducerMessage?: string | null;
+  kafkaProducerSsl?: boolean | null;
+  kafkaProducerAllowAutoTopicCreation?: boolean | null;
+  /**
+   * JSON object with mechanism (plain, scram-sha-256, scram-sha-512) and username/password.
+   */
+  kafkaProducerSaslOptions?: string | null;
+  grpcUrl?: string | null;
+  grpcServiceName?: string | null;
+  grpcMethod?: string | null;
+  grpcEnableTls?: boolean | null;
+  /**
+   * Proto definition of the service.
+   */
+  grpcProtobuf?: string | null;
+  /**
+   * JSON request body.
+   */
+  grpcBody?: string | null;
+  /**
+   * JSON object of request metadata.
+   */
+  grpcMetadata?: string | null;
+  radiusUsername?: string | null;
+  radiusPassword?: string | null;
+  radiusSecret?: string | null;
+  radiusCalledStationId?: string | null;
+  radiusCallingStationId?: string | null;
+  snmpOid?: string | null;
+  snmpVersion?: ('1' | '2c') | null;
+  snmpCommunity?: string | null;
+  smtpSecurity?: ('opportunistic' | 'starttls' | 'secure' | 'nostarttls') | null;
+  sshUsername?: string | null;
+  sshAuthMethod?: ('password' | 'privateKey') | null;
+  sshPassword?: string | null;
+  sshPrivateKey?: string | null;
+  sshPassphrase?: string | null;
+  /**
+   * Optional remote path that must exist.
+   */
+  sftpPath?: string | null;
+  /**
+   * Management API base URLs, e.g. https://node1:15672.
+   */
+  rabbitmqNodes?: string[] | null;
+  rabbitmqUsername?: string | null;
+  rabbitmqPassword?: string | null;
+  /**
+   * Comma-separated Sec-WebSocket-Protocol values.
+   */
+  wsSubprotocol?: string | null;
+  /**
+   * Accept non-compliant servers that omit Sec-WebSocket-Accept.
+   */
+  wsIgnoreSecWebsocketAcceptHeader?: boolean | null;
+  /**
+   * GameDig game id, e.g. minecraft.
+   */
+  game?: string | null;
+  /**
+   * Do not probe the other ports a game commonly uses.
+   */
+  gamedigGivenPortOnly?: boolean | null;
+  /**
+   * Playwright-compatible remote browser websocket URL.
+   */
+  remoteBrowser?: string | null;
   /**
    * Maintained by the worker. Mirrors the latest heartbeat.
    */
@@ -1322,6 +1439,49 @@ export interface MonitorsSelect<T extends boolean = true> {
   dnsResolveType?: T;
   pushToken?: T;
   manualStatus?: T;
+  databaseConnectionString?: T;
+  databaseQuery?: T;
+  mqttTopic?: T;
+  mqttUsername?: T;
+  mqttPassword?: T;
+  mqttCheckType?: T;
+  mqttSuccessMessage?: T;
+  kafkaProducerBrokers?: T;
+  kafkaProducerTopic?: T;
+  kafkaProducerMessage?: T;
+  kafkaProducerSsl?: T;
+  kafkaProducerAllowAutoTopicCreation?: T;
+  kafkaProducerSaslOptions?: T;
+  grpcUrl?: T;
+  grpcServiceName?: T;
+  grpcMethod?: T;
+  grpcEnableTls?: T;
+  grpcProtobuf?: T;
+  grpcBody?: T;
+  grpcMetadata?: T;
+  radiusUsername?: T;
+  radiusPassword?: T;
+  radiusSecret?: T;
+  radiusCalledStationId?: T;
+  radiusCallingStationId?: T;
+  snmpOid?: T;
+  snmpVersion?: T;
+  snmpCommunity?: T;
+  smtpSecurity?: T;
+  sshUsername?: T;
+  sshAuthMethod?: T;
+  sshPassword?: T;
+  sshPrivateKey?: T;
+  sshPassphrase?: T;
+  sftpPath?: T;
+  rabbitmqNodes?: T;
+  rabbitmqUsername?: T;
+  rabbitmqPassword?: T;
+  wsSubprotocol?: T;
+  wsIgnoreSecWebsocketAcceptHeader?: T;
+  game?: T;
+  gamedigGivenPortOnly?: T;
+  remoteBrowser?: T;
   status?:
     | T
     | {

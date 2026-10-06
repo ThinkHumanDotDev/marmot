@@ -32,12 +32,33 @@ const securityHeaders = [
     : []),
 ]
 
+// Optional monitor drivers (`optionalDependencies`) are imported lazily by `src/server/monitor-types/*`
+// and resolved from node_modules at runtime; bundling them (native bindings, protocol fixtures) is
+// neither needed nor wanted in the web server bundle.
+const monitorDriverPackages = [
+  '@grpc/grpc-js',
+  'gamedig',
+  'kafkajs',
+  'mongodb',
+  'mqtt',
+  'mssql',
+  'mysql2',
+  'net-snmp',
+  'pg',
+  'playwright-core',
+  'protobufjs',
+  'radius',
+  'ssh2-sftp-client',
+  'ws',
+]
+
 // Nothing but public status pages (`/status/<slug>`, embeddable in intranet dashboards) may be framed.
 const frameHeaders = [{ key: 'X-Frame-Options', value: 'DENY' }]
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   skipTrailingSlashRedirect: true,
+  serverExternalPackages: monitorDriverPackages,
   images: {
     localPatterns: [{ pathname: '/api/media/file/**' }],
   },

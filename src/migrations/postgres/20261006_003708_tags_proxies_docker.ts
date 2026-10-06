@@ -4,7 +4,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
    CREATE TYPE "public"."enum_proxies_protocol" AS ENUM('http', 'https', 'socks', 'socks5', 'socks5h', 'socks4');
   CREATE TYPE "public"."enum_docker_hosts_connection_type" AS ENUM('socket', 'tcp');
-  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'docker';
+  ALTER TYPE "public"."enum_monitors_type" ADD VALUE 'docker' BEFORE 'grpc-keyword';
   CREATE TABLE "monitors_tags" (
   	"_order" integer NOT NULL,
   	"_parent_id" integer NOT NULL,
@@ -109,7 +109,7 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   ALTER TABLE "monitors" ALTER COLUMN "type" SET DATA TYPE text;
   ALTER TABLE "monitors" ALTER COLUMN "type" SET DEFAULT 'http'::text;
   DROP TYPE "public"."enum_monitors_type";
-  CREATE TYPE "public"."enum_monitors_type" AS ENUM('http', 'keyword', 'json-query', 'port', 'ping', 'dns', 'push', 'group', 'manual');
+  CREATE TYPE "public"."enum_monitors_type" AS ENUM('http', 'keyword', 'json-query', 'port', 'ping', 'dns', 'push', 'group', 'manual', 'grpc-keyword', 'websocket-upgrade', 'mqtt', 'kafka-producer', 'rabbitmq', 'smtp', 'snmp', 'ntp', 'sftp', 'radius', 'tailscale-ping', 'real-browser', 'mysql', 'postgres', 'sqlserver', 'mongodb', 'redis', 'steam', 'gamedig');
   ALTER TABLE "monitors" ALTER COLUMN "type" SET DEFAULT 'http'::"public"."enum_monitors_type";
   ALTER TABLE "monitors" ALTER COLUMN "type" SET DATA TYPE "public"."enum_monitors_type" USING "type"::"public"."enum_monitors_type";
   DROP INDEX "monitors_proxy_idx";

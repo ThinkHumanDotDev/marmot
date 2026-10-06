@@ -1049,122 +1049,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.monitors_tags": {
-      "name": "monitors_tags",
-      "schema": "",
-      "columns": {
-        "_order": {
-          "name": "_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "_parent_id": {
-          "name": "_parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "varchar",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "tag_id": {
-          "name": "tag_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value": {
-          "name": "value",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "monitors_tags_order_idx": {
-          "name": "monitors_tags_order_idx",
-          "columns": [
-            {
-              "expression": "_order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitors_tags_parent_id_idx": {
-          "name": "monitors_tags_parent_id_idx",
-          "columns": [
-            {
-              "expression": "_parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitors_tags_tag_idx": {
-          "name": "monitors_tags_tag_idx",
-          "columns": [
-            {
-              "expression": "tag_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "monitors_tags_tag_id_tags_id_fk": {
-          "name": "monitors_tags_tag_id_tags_id_fk",
-          "tableFrom": "monitors_tags",
-          "tableTo": "tags",
-          "columnsFrom": [
-            "tag_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "monitors_tags_parent_id_fk": {
-          "name": "monitors_tags_parent_id_fk",
-          "tableFrom": "monitors_tags",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.monitors": {
       "name": "monitors",
       "schema": "",
@@ -1223,24 +1107,6 @@
         },
         "url": {
           "name": "url",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "proxy_id": {
-          "name": "proxy_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "docker_host_id": {
-          "name": "docker_host_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "docker_container": {
-          "name": "docker_container",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
@@ -1516,6 +1382,266 @@
           "primaryKey": false,
           "notNull": false
         },
+        "database_connection_string": {
+          "name": "database_connection_string",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "database_query": {
+          "name": "database_query",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mqtt_topic": {
+          "name": "mqtt_topic",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mqtt_username": {
+          "name": "mqtt_username",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mqtt_password": {
+          "name": "mqtt_password",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mqtt_check_type": {
+          "name": "mqtt_check_type",
+          "type": "enum_monitors_mqtt_check_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'keyword'"
+        },
+        "mqtt_success_message": {
+          "name": "mqtt_success_message",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kafka_producer_topic": {
+          "name": "kafka_producer_topic",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kafka_producer_message": {
+          "name": "kafka_producer_message",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kafka_producer_ssl": {
+          "name": "kafka_producer_ssl",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "kafka_producer_allow_auto_topic_creation": {
+          "name": "kafka_producer_allow_auto_topic_creation",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "kafka_producer_sasl_options": {
+          "name": "kafka_producer_sasl_options",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grpc_url": {
+          "name": "grpc_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grpc_service_name": {
+          "name": "grpc_service_name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grpc_method": {
+          "name": "grpc_method",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grpc_enable_tls": {
+          "name": "grpc_enable_tls",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "grpc_protobuf": {
+          "name": "grpc_protobuf",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grpc_body": {
+          "name": "grpc_body",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grpc_metadata": {
+          "name": "grpc_metadata",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "radius_username": {
+          "name": "radius_username",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "radius_password": {
+          "name": "radius_password",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "radius_secret": {
+          "name": "radius_secret",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "radius_called_station_id": {
+          "name": "radius_called_station_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "radius_calling_station_id": {
+          "name": "radius_calling_station_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "snmp_oid": {
+          "name": "snmp_oid",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "snmp_version": {
+          "name": "snmp_version",
+          "type": "enum_monitors_snmp_version",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'2c'"
+        },
+        "snmp_community": {
+          "name": "snmp_community",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'public'"
+        },
+        "smtp_security": {
+          "name": "smtp_security",
+          "type": "enum_monitors_smtp_security",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'opportunistic'"
+        },
+        "ssh_username": {
+          "name": "ssh_username",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ssh_auth_method": {
+          "name": "ssh_auth_method",
+          "type": "enum_monitors_ssh_auth_method",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'password'"
+        },
+        "ssh_password": {
+          "name": "ssh_password",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ssh_private_key": {
+          "name": "ssh_private_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ssh_passphrase": {
+          "name": "ssh_passphrase",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sftp_path": {
+          "name": "sftp_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rabbitmq_username": {
+          "name": "rabbitmq_username",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rabbitmq_password": {
+          "name": "rabbitmq_password",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ws_subprotocol": {
+          "name": "ws_subprotocol",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ws_ignore_sec_websocket_accept_header": {
+          "name": "ws_ignore_sec_websocket_accept_header",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "game": {
+          "name": "game",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gamedig_given_port_only": {
+          "name": "gamedig_given_port_only",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "remote_browser": {
+          "name": "remote_browser",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "status_last_status": {
           "name": "status_last_status",
           "type": "enum_monitors_status_last_status",
@@ -1622,36 +1748,6 @@
           "method": "btree",
           "with": {}
         },
-        "monitors_proxy_idx": {
-          "name": "monitors_proxy_idx",
-          "columns": [
-            {
-              "expression": "proxy_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitors_docker_host_idx": {
-          "name": "monitors_docker_host_idx",
-          "columns": [
-            {
-              "expression": "docker_host_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "monitors_push_token_idx": {
           "name": "monitors_push_token_idx",
           "columns": [
@@ -1739,32 +1835,6 @@
           "tableTo": "monitors",
           "columnsFrom": [
             "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "monitors_proxy_id_proxies_id_fk": {
-          "name": "monitors_proxy_id_proxies_id_fk",
-          "tableFrom": "monitors",
-          "tableTo": "proxies",
-          "columnsFrom": [
-            "proxy_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "monitors_docker_host_id_docker_hosts_id_fk": {
-          "name": "monitors_docker_host_id_docker_hosts_id_fk",
-          "tableFrom": "monitors",
-          "tableTo": "docker_hosts",
-          "columnsFrom": [
-            "docker_host_id"
           ],
           "columnsTo": [
             "id"
@@ -2182,453 +2252,6 @@
         "notifications_organization_id_organizations_id_fk": {
           "name": "notifications_organization_id_organizations_id_fk",
           "tableFrom": "notifications",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.tags": {
-      "name": "tags",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "color": {
-          "name": "color",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'#4B5563'"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "tags_organization_idx": {
-          "name": "tags_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "tags_updated_at_idx": {
-          "name": "tags_updated_at_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "tags_created_at_idx": {
-          "name": "tags_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "organization_name_idx": {
-          "name": "organization_name_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "tags_organization_id_organizations_id_fk": {
-          "name": "tags_organization_id_organizations_id_fk",
-          "tableFrom": "tags",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.proxies": {
-      "name": "proxies",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "protocol": {
-          "name": "protocol",
-          "type": "enum_proxies_protocol",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'https'"
-        },
-        "host": {
-          "name": "host",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "port": {
-          "name": "port",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "auth": {
-          "name": "auth",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "username": {
-          "name": "username",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "password": {
-          "name": "password",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "active": {
-          "name": "active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": true
-        },
-        "default": {
-          "name": "default",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "proxies_organization_idx": {
-          "name": "proxies_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "proxies_default_idx": {
-          "name": "proxies_default_idx",
-          "columns": [
-            {
-              "expression": "default",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "proxies_updated_at_idx": {
-          "name": "proxies_updated_at_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "proxies_created_at_idx": {
-          "name": "proxies_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "organization_default_idx": {
-          "name": "organization_default_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "default",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "proxies_organization_id_organizations_id_fk": {
-          "name": "proxies_organization_id_organizations_id_fk",
-          "tableFrom": "proxies",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.docker_hosts": {
-      "name": "docker_hosts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "connection_type": {
-          "name": "connection_type",
-          "type": "enum_docker_hosts_connection_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'socket'"
-        },
-        "socket_path": {
-          "name": "socket_path",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'/var/run/docker.sock'"
-        },
-        "url": {
-          "name": "url",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "docker_hosts_organization_idx": {
-          "name": "docker_hosts_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "docker_hosts_updated_at_idx": {
-          "name": "docker_hosts_updated_at_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "docker_hosts_created_at_idx": {
-          "name": "docker_hosts_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "docker_hosts_organization_id_organizations_id_fk": {
-          "name": "docker_hosts_organization_id_organizations_id_fk",
-          "tableFrom": "docker_hosts",
           "tableTo": "organizations",
           "columnsFrom": [
             "organization_id"
@@ -5512,24 +5135,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "tags_id": {
-          "name": "tags_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "proxies_id": {
-          "name": "proxies_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "docker_hosts_id": {
-          "name": "docker_hosts_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "notification_sent_history_id": {
           "name": "notification_sent_history_id",
           "type": "integer",
@@ -5717,51 +5322,6 @@
           "columns": [
             {
               "expression": "notifications_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "payload_locked_documents_rels_tags_id_idx": {
-          "name": "payload_locked_documents_rels_tags_id_idx",
-          "columns": [
-            {
-              "expression": "tags_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "payload_locked_documents_rels_proxies_id_idx": {
-          "name": "payload_locked_documents_rels_proxies_id_idx",
-          "columns": [
-            {
-              "expression": "proxies_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "payload_locked_documents_rels_docker_hosts_id_idx": {
-          "name": "payload_locked_documents_rels_docker_hosts_id_idx",
-          "columns": [
-            {
-              "expression": "docker_hosts_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -6008,45 +5568,6 @@
           "tableTo": "notifications",
           "columnsFrom": [
             "notifications_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_tags_fk": {
-          "name": "payload_locked_documents_rels_tags_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "tags",
-          "columnsFrom": [
-            "tags_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_proxies_fk": {
-          "name": "payload_locked_documents_rels_proxies_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "proxies",
-          "columnsFrom": [
-            "proxies_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_docker_hosts_fk": {
-          "name": "payload_locked_documents_rels_docker_hosts_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "docker_hosts",
-          "columnsFrom": [
-            "docker_hosts_id"
           ],
           "columnsTo": [
             "id"
@@ -6746,7 +6267,25 @@
         "push",
         "group",
         "manual",
-        "docker"
+        "grpc-keyword",
+        "websocket-upgrade",
+        "mqtt",
+        "kafka-producer",
+        "rabbitmq",
+        "smtp",
+        "snmp",
+        "ntp",
+        "sftp",
+        "radius",
+        "tailscale-ping",
+        "real-browser",
+        "mysql",
+        "postgres",
+        "sqlserver",
+        "mongodb",
+        "redis",
+        "steam",
+        "gamedig"
       ]
     },
     "public.enum_monitors_method": {
@@ -6829,6 +6368,40 @@
         "pending"
       ]
     },
+    "public.enum_monitors_mqtt_check_type": {
+      "name": "enum_monitors_mqtt_check_type",
+      "schema": "public",
+      "values": [
+        "keyword",
+        "json-query"
+      ]
+    },
+    "public.enum_monitors_snmp_version": {
+      "name": "enum_monitors_snmp_version",
+      "schema": "public",
+      "values": [
+        "1",
+        "2c"
+      ]
+    },
+    "public.enum_monitors_smtp_security": {
+      "name": "enum_monitors_smtp_security",
+      "schema": "public",
+      "values": [
+        "opportunistic",
+        "starttls",
+        "secure",
+        "nostarttls"
+      ]
+    },
+    "public.enum_monitors_ssh_auth_method": {
+      "name": "enum_monitors_ssh_auth_method",
+      "schema": "public",
+      "values": [
+        "password",
+        "privateKey"
+      ]
+    },
     "public.enum_monitors_status_last_status": {
       "name": "enum_monitors_status_last_status",
       "schema": "public",
@@ -6837,26 +6410,6 @@
         "down",
         "pending",
         "maintenance"
-      ]
-    },
-    "public.enum_proxies_protocol": {
-      "name": "enum_proxies_protocol",
-      "schema": "public",
-      "values": [
-        "http",
-        "https",
-        "socks",
-        "socks5",
-        "socks5h",
-        "socks4"
-      ]
-    },
-    "public.enum_docker_hosts_connection_type": {
-      "name": "enum_docker_hosts_connection_type",
-      "schema": "public",
-      "values": [
-        "socket",
-        "tcp"
       ]
     },
     "public.enum_notification_sent_history_type": {
@@ -6992,6 +6545,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "f8f5a378-e294-4ec5-a708-74e08e7f4b92",
+  "id": "b04e7557-fa87-4240-9c86-496d1516aef1",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

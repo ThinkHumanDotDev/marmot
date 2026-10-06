@@ -25,8 +25,7 @@ The type decides what a check does and which fields the form shows. The built-in
 | Special | Docker Container     | the container is running (and healthy, when it has a health check)           |
 
 HTTP monitors also support request method and body, extra headers, redirects, `ignoreTls`, basic/bearer/
-OAuth2 client-credentials/NTLM/mTLS authentication and certificate-expiry alerts. The extended set, landing
-in the current release, adds gRPC, WebSocket, MQTT, Kafka, RabbitMQ, SMTP, SNMP, NTP, SFTP, RADIUS, Tailscale
+OAuth2 client-credentials/NTLM/mTLS authentication and certificate-expiry alerts. The extended set adds gRPC, WebSocket, MQTT, Kafka, RabbitMQ, SMTP, SNMP, NTP, SFTP, RADIUS, Tailscale
 ping, MySQL/MariaDB, PostgreSQL, SQL Server, MongoDB, Redis, Steam and GameDig checks plus a remote-browser
 HTTP check; every field of every type is listed in [monitor-types.md](monitor-types.md).
 

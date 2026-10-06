@@ -14,6 +14,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 
 import config from '@payload-config'
 import { afterCommit } from '@/db/after-commit'
+import { MONITOR_TYPE_NAMES } from '@/lib/validation/monitor'
 import type { Monitor } from '@/payload-types'
 import {
   clearHeartbeatListeners,
@@ -210,20 +211,9 @@ describe('monitor type registry', () => {
     const names = listMonitorTypes()
       .map((t) => t.name)
       .sort()
-    expect(names).toEqual(
-      [
-        'dns',
-        'docker',
-        'group',
-        'http',
-        'json-query',
-        'keyword',
-        'manual',
-        'ping',
-        'port',
-        'push',
-      ].sort(),
-    )
+    // Every type the form offers is registered (and nothing unknown to the form is).
+    expect(names).toEqual([...MONITOR_TYPE_NAMES].sort())
+    expect(names).toEqual(expect.arrayContaining(['dns', 'docker', 'group', 'http', 'push', 'mysql', 'mqtt']))
     expect(getMonitorType('http')?.label).toBe('HTTP(s)')
   })
 })

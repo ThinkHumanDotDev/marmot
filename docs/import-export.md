@@ -88,9 +88,15 @@ rebuilt from the backup's ids, and `notificationIDList` becomes the monitor's ch
 Intervals below Marmot's 20-second minimum are raised to 20 s (noted in the report). Invalid monitors (for
 example an HTTP monitor without a URL) are skipped with the validation message.
 
+The extended types (`grpc-keyword`, `websocket-upgrade`, `mqtt`, `kafka-producer`, `rabbitmq`, `smtp`,
+`snmp`, `radius`, `tailscale-ping`, `mysql`, `postgres`, `sqlserver`, `mongodb`, `redis`, `steam`,
+`gamedig`) keep their type-specific columns, which carry the same names in Kuma and Marmot (see
+[monitor-types.md](monitor-types.md)); the SNMP community string comes from Kuma's `radiusPassword`
+column, where Kuma's form stores it.
+
 Not imported: Docker monitors (Marmot's `docker` type needs a Docker host, which the backup does not map
-to), monitor types Marmot does not have (databases, MQTT, gRPC, SNMP, Steam/GameDig,
-browser engine, Tailscale, RabbitMQ, SMTP, WebSocket), proxies, remote browsers, maintenance windows,
+to), browser-engine monitors (they reference a
+remote browser that the backup does not contain), proxies, remote browsers, maintenance windows,
 heartbeat history and statistics, and **tags** — the tags collection does not exist yet (#21); tag names and
 assignments are listed in the report as skipped.
 
