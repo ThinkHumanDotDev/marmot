@@ -40,6 +40,8 @@ const RESOURCE_LABELS: Record<string, string> = {
   'status-page': 'Status pages',
   maintenance: 'Maintenance',
   'api-key': 'API keys',
+  'audit-log': 'Audit log',
+  sso: 'Single sign-on',
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -50,6 +52,7 @@ const ACTION_LABELS: Record<string, string> = {
   invite: 'Invite',
   remove: 'Remove',
   'update-role': 'Change roles',
+  manage: 'Manage',
 }
 
 const ALL_ROLES: Role[] = ['owner', 'admin', 'member', 'viewer']

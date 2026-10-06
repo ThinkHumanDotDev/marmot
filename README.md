@@ -39,7 +39,7 @@ self-hosted install.
 - **Status pages** – any number of public pages per organization with monitor groups, incidents, custom
   CSS, custom domains, RSS and badges; maintenance banners landing.
 - **Teams** – organizations with owner/admin/member/viewer roles, email invitations, invite links,
-  ownership transfer, [single sign-on](docs/Single-Sign-On.md) (generic OIDC, GitHub, Google) with linked accounts, first-run setup wizard.
+  ownership transfer, [single sign-on](docs/Single-Sign-On.md) (generic OIDC, GitHub, Google, and per-organization OIDC/SAML connections with verified domains) with linked accounts, first-run setup wizard.
 - **Hosting-ready** – optional per-organization plan limits and Stripe [billing](docs/Billing.md); off by default.
 - **Live** – the dashboard updates in real time over WebSockets.
 - **Integrations** – status badges, push monitors, Prometheus metrics and organization API keys

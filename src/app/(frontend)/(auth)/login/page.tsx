@@ -11,6 +11,7 @@ import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth'
 import { safeNextPath } from '@/lib/utils'
 import { isSignupAllowed } from '@/server/settings'
+import { hasAnyEnabledConnection } from '@/server/sso/connections'
 
 export const metadata: Metadata = { title: 'Sign in' }
 export const dynamic = 'force-dynamic'
@@ -23,7 +24,11 @@ export default async function LoginPage({
   const { next, error, two_factor } = await searchParams
   const user = await getCurrentUser()
   if (user) redirect(safeNextPath(next))
-  const signupEnabled = await isSignupAllowed(await getPayload({ config }))
+  const payload = await getPayload({ config })
+  const [signupEnabled, orgSso] = await Promise.all([
+    isSignupAllowed(payload),
+    hasAnyEnabledConnection(payload),
+  ])
 
   // Same data `GET /api/auth/providers` returns, read in-process to avoid a self-request.
   const providers = getAuthProviders()
@@ -58,6 +63,16 @@ export default async function LoginPage({
         )}
         <SsoButtons providers={providers.providers} next={next} />
         <LoginForm next={next} twoFactor={two_factor === '1'} />
+        {orgSso && (
+          <p className="text-center text-sm text-muted-foreground">
+            <Link
+              href={next ? `/login/sso?next=${encodeURIComponent(next)}` : '/login/sso'}
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              Sign in with your organization&apos;s SSO
+            </Link>
+          </p>
+        )}
       </div>
     </AuthCard>
   )

@@ -70,6 +70,8 @@ export interface Config {
     users: User;
     'auth-accounts': AuthAccount;
     organizations: Organization;
+    'sso-connections': SsoConnection;
+    'sso-domains': SsoDomain;
     invitations: Invitation;
     media: Media;
     monitors: Monitor;
@@ -97,6 +99,8 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     'auth-accounts': AuthAccountsSelect<false> | AuthAccountsSelect<true>;
     organizations: OrganizationsSelect<false> | OrganizationsSelect<true>;
+    'sso-connections': SsoConnectionsSelect<false> | SsoConnectionsSelect<true>;
+    'sso-domains': SsoDomainsSelect<false> | SsoDomainsSelect<true>;
     invitations: InvitationsSelect<false> | InvitationsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     monitors: MonitorsSelect<false> | MonitorsSelect<true>;
@@ -323,6 +327,80 @@ export interface AuthAccount {
   email?: string | null;
   name?: string | null;
   lastLoginAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sso-connections".
+ */
+export interface SsoConnection {
+  id: number;
+  organization: number | Organization;
+  /**
+   * Login button label.
+   */
+  name: string;
+  /**
+   * Used in the login URLs; lowercase letters, numbers and hyphens.
+   */
+  slug: string;
+  type: 'oidc' | 'saml';
+  /**
+   * Disabled connections refuse logins.
+   */
+  enabled?: boolean | null;
+  /**
+   * Issuer identifier (the `iss` claim); discovery is read from it.
+   */
+  issuerUrl?: string | null;
+  clientId?: string | null;
+  /**
+   * Sealed at rest. Leave empty to keep the current secret.
+   */
+  clientSecret?: string | null;
+  scopes?: string | null;
+  /**
+   * IdP single sign-on URL (HTTP-Redirect binding).
+   */
+  idpEntryPoint?: string | null;
+  /**
+   * IdP entity id (issuer). Responses from any other issuer are refused.
+   */
+  idpEntityId?: string | null;
+  /**
+   * IdP signing certificate (PEM or bare base64).
+   */
+  idpCert?: string | null;
+  wantAssertionsSigned?: boolean | null;
+  /**
+   * Accept logins started at the identity provider (unsolicited responses).
+   */
+  allowIdpInitiated?: boolean | null;
+  /**
+   * Create a Marmot account on first login and add it to the organization.
+   */
+  autoProvision?: boolean | null;
+  /**
+   * Role given to users who join through SSO.
+   */
+  defaultRole?: ('admin' | 'member' | 'viewer') | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sso-domains".
+ */
+export interface SsoDomain {
+  id: number;
+  organization: number | Organization;
+  domain: string;
+  /**
+   * Value of the DNS TXT record that proves ownership.
+   */
+  verificationToken: string;
+  verifiedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1199,6 +1277,14 @@ export interface PayloadLockedDocument {
         value: number | Organization;
       } | null)
     | ({
+        relationTo: 'sso-connections';
+        value: number | SsoConnection;
+      } | null)
+    | ({
+        relationTo: 'sso-domains';
+        value: number | SsoDomain;
+      } | null)
+    | ({
         relationTo: 'invitations';
         value: number | Invitation;
       } | null)
@@ -1386,6 +1472,42 @@ export interface OrganizationsSelect<T extends boolean = true> {
         timezone?: T;
         weekStart?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sso-connections_select".
+ */
+export interface SsoConnectionsSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  slug?: T;
+  type?: T;
+  enabled?: T;
+  issuerUrl?: T;
+  clientId?: T;
+  clientSecret?: T;
+  scopes?: T;
+  idpEntryPoint?: T;
+  idpEntityId?: T;
+  idpCert?: T;
+  wantAssertionsSigned?: T;
+  allowIdpInitiated?: T;
+  autoProvision?: T;
+  defaultRole?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sso-domains_select".
+ */
+export interface SsoDomainsSelect<T extends boolean = true> {
+  organization?: T;
+  domain?: T;
+  verificationToken?: T;
+  verifiedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

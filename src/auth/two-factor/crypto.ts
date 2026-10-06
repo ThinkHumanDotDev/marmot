@@ -15,10 +15,17 @@ export function deriveKey(secret: string, purpose: string): Buffer {
   return createHash('sha256').update(`${purpose}:${secret}`).digest()
 }
 
-/** `v1.<iv>.<ciphertext>.<tag>` (base64url), AES-256-GCM. */
-export function encryptSecret(plain: string, secret: string): string {
+/**
+ * `v1.<iv>.<ciphertext>.<tag>` (base64url), AES-256-GCM. `purpose` scopes the key: a value sealed
+ * for one purpose never opens under another (TOTP secrets vs. single sign-on client secrets).
+ */
+export function encryptSecret(
+  plain: string,
+  secret: string,
+  purpose: string = ENCRYPTION_PURPOSE,
+): string {
   const iv = randomBytes(12)
-  const cipher = createCipheriv('aes-256-gcm', deriveKey(secret, ENCRYPTION_PURPOSE), iv)
+  const cipher = createCipheriv('aes-256-gcm', deriveKey(secret, purpose), iv)
   const ciphertext = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()])
   const tag = cipher.getAuthTag()
   return [
@@ -30,14 +37,18 @@ export function encryptSecret(plain: string, secret: string): string {
 }
 
 /** Inverse of `encryptSecret`; `null` for malformed, tampered or foreign-key input. */
-export function decryptSecret(sealed: string | null | undefined, secret: string): string | null {
+export function decryptSecret(
+  sealed: string | null | undefined,
+  secret: string,
+  purpose: string = ENCRYPTION_PURPOSE,
+): string | null {
   if (!sealed) return null
   const [version, iv, ciphertext, tag] = sealed.split('.')
   if (version !== VERSION || !iv || !ciphertext || !tag) return null
   try {
     const decipher = createDecipheriv(
       'aes-256-gcm',
-      deriveKey(secret, ENCRYPTION_PURPOSE),
+      deriveKey(secret, purpose),
       Buffer.from(iv, 'base64url'),
     )
     decipher.setAuthTag(Buffer.from(tag, 'base64url'))
