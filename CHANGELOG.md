@@ -27,6 +27,8 @@ All notable changes to Marmot are documented here. Marmot uses
 
 ### ⬆️ Security Fixes
 
+- **security:** Optional guard that keeps monitors and notification channels off private and internal addresses (`MONITOR_DENY_PRIVATE_ADDRESSES`), and response excerpts in messages are capped ([GHSA-m9r8-67jq-pqv2](https://github.com/ThinkHumanDotDev/marmot/security/advisories/GHSA-m9r8-67jq-pqv2))
+- **notifications:** Only superadmins can send notifications through the server SMTP settings by default (`NOTIFICATIONS_SERVER_SMTP`), with a per-organization hourly limit and a recipient cap ([GHSA-vm92-x67g-fhmj](https://github.com/ThinkHumanDotDev/marmot/security/advisories/GHSA-vm92-x67g-fhmj))
 - [#87](https://github.com/ThinkHumanDotDev/marmot/pull/87) **security:** Patch nodemailer, undici, vitest and dompurify advisories
 - [#88](https://github.com/ThinkHumanDotDev/marmot/pull/88) **security:** Record accepted audit advisories for braces, esbuild and sprintf-js
 - [#182](https://github.com/ThinkHumanDotDev/marmot/pull/182) **security:** Bump sharp to 0.35.5 and override shell-quote to ^1.11.0
@@ -88,7 +90,7 @@ All notable changes to Marmot are documented here. Marmot uses
 - [#64](https://github.com/ThinkHumanDotDev/marmot/pull/64) **e2e:** Critical-path Playwright suite and CI reporting
 - [#41](https://github.com/ThinkHumanDotDev/marmot/pull/41) **infra:** Harden Docker image, compose, Caddy, health checks and dev tooling
 - [#59](https://github.com/ThinkHumanDotDev/marmot/pull/59) **infra:** Admin hardening, rate limiting and security headers
-- [#60](https://github.com/ThinkHumanDotDev/marmot/pull/60) **release:** V0.1.0 release workflow, changelog and GHCR images
+- [#60](https://github.com/ThinkHumanDotDev/marmot/pull/60) **release:** v0.1.0 release workflow, changelog and GHCR images
 - [#69](https://github.com/ThinkHumanDotDev/marmot/pull/69) **release:** Uptime Kuma-style release notes with a full changelog link
 - **test:** Stop pinning the shared marmot_test database in .env.test
 - Scaffold Marmot on Payload CMS 3 and Next.js
