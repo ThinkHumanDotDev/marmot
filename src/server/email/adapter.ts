@@ -1,4 +1,5 @@
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
+import nodemailer from 'nodemailer'
 
 import { env } from '@/env'
 
@@ -17,12 +18,14 @@ export function getEmailAdapter() {
   return nodemailerAdapter({
     defaultFromAddress,
     defaultFromName,
-    transportOptions: {
+    // Build the transport ourselves: since nodemailer 10 the adapter's `transportOptions` type
+    // (SMTPConnection.Options) no longer declares `auth`, though createTransport accepts it.
+    transport: nodemailer.createTransport({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_SECURE,
       auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASSWORD } : undefined,
-    },
+    }),
   })
 }
 
