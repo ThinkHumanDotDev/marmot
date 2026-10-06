@@ -9,6 +9,7 @@ import jsonata from 'jsonata'
 
 import { performHttpCheck } from './http-request'
 import { registerMonitorType } from './registry'
+import { responseExcerpt } from './util'
 
 export type JsonQueryOperator = '==' | '!=' | '<' | '>' | '<=' | '>=' | 'contains'
 
@@ -96,9 +97,7 @@ export async function evaluateJsonQuery(
 
     return { status, response }
   } catch (err) {
-    let printable = JSON.stringify(response)
-    printable =
-      printable && printable.length > 50 ? `${printable.substring(0, 100)}… (truncated)` : printable
+    const printable = responseExcerpt(JSON.stringify(response) ?? String(response))
     throw new Error(
       `Error evaluating JSON query: ${err instanceof Error ? err.message : String(err)}. Response from server was: ${printable}`,
     )
@@ -121,11 +120,11 @@ registerMonitorType({
     )
     if (status) {
       ctx.heartbeat.status = 'up'
-      ctx.heartbeat.msg = `JSON query passes (comparing ${String(response)} ${operator} ${expected})`
+      ctx.heartbeat.msg = `JSON query passes (comparing ${responseExcerpt(response)} ${operator} ${expected})`
       return
     }
     throw new Error(
-      `JSON query does not pass (comparing ${String(response)} ${operator} ${expected})`,
+      `JSON query does not pass (comparing ${responseExcerpt(response)} ${operator} ${expected})`,
     )
   },
 })

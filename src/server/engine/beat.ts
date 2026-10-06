@@ -41,6 +41,11 @@ export interface CheckResult {
   underMaintenance?: boolean
   /** TLS certificate captured by the check (HTTPS / TLS types), whatever the outcome. */
   tlsInfo?: TlsInfo | null
+  /**
+   * The outbound address guard refused the target: always DOWN, without retries or upside-down
+   * flipping (the verdict does not depend on the target's state).
+   */
+  blocked?: boolean
 }
 
 /** Subset of the monitor document the state machine needs. */
@@ -200,7 +205,10 @@ export function computeNextBeat(
   } catch (error) {
     msg = error instanceof Error ? error.message : String(error)
 
-    if (upsideDown && status === UP) {
+    if (result.blocked) {
+      status = DOWN
+      retries++
+    } else if (upsideDown && status === UP) {
       // If UP comes in here, it must be upside down mode: just reset the retries.
       retries = 0
     } else if (maxRetries > 0 && retries < maxRetries) {

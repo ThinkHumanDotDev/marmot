@@ -136,3 +136,15 @@ export function parseJsonObject(
   }
   return parsed as Record<string, unknown>
 }
+
+/** Longest excerpt of a response (body, payload, value) a heartbeat message may quote. */
+export const MAX_RESPONSE_EXCERPT = 200
+
+/**
+ * Shorten text taken from a monitored service before it goes into a heartbeat message, so messages
+ * never carry more than a short excerpt of a response.
+ */
+export function responseExcerpt(value: unknown, max = MAX_RESPONSE_EXCERPT): string {
+  const text = typeof value === 'string' ? value : String(value)
+  return text.length > max ? `${text.slice(0, max)}… (truncated)` : text
+}

@@ -8,6 +8,8 @@
 import dgram from 'node:dgram'
 import dns from 'node:dns'
 
+import { resolveGuardedTarget } from '@/server/security/outbound-guard'
+
 import { registerMonitorType } from './registry'
 import { checkTimeoutMs, requireHostname } from './util'
 
@@ -153,9 +155,11 @@ registerMonitorType({
   group: 'specific',
   async check(ctx) {
     const hostname = requireHostname(ctx.monitor)
+    // Outbound address guard: query the vetted address (null when the guard is off).
+    const vetted = await resolveGuardedTarget(hostname)
     const startTime = Date.now()
     const result = await queryNtp(
-      hostname,
+      vetted?.address ?? hostname,
       ctx.monitor.port || DEFAULT_NTP_PORT,
       checkTimeoutMs(ctx.monitor),
     )

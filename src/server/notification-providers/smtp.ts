@@ -18,6 +18,7 @@ import {
   SERVER_SMTP_OFF_MESSAGE,
   serverSmtpPolicy,
 } from '@/server/notifications/server-smtp'
+import { resolveGuardedTarget } from '@/server/security/outbound-guard'
 import { OK_MESSAGE } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -118,7 +119,18 @@ registerNotificationProvider({
   fieldMeta: smtpFieldMeta,
   async send({ config: raw, message, monitor, heartbeat }) {
     const config = smtpConfigSchema.parse(raw)
-    const transport = createTransport(buildSmtpTransportOptions(config))
+    const options = buildSmtpTransportOptions(config)
+    if (!config.useServerSmtp && typeof options.host === 'string') {
+      // A channel's own SMTP host is user input: with the outbound address guard on, connect to the
+      // vetted address and keep the name for TLS (the instance's SMTP_HOST is trusted config).
+      const vetted = await resolveGuardedTarget(options.host)
+      if (vetted && vetted.address !== options.host) {
+        options.tls = { ...(options.tls as object), servername: options.host }
+        options.servername = options.host
+        options.host = vetted.address
+      }
+    }
+    const transport = createTransport(options)
 
     let subject = message
     let body = heartbeat ? `${message}\nTime: ${formatHeartbeatTime(heartbeat)}` : message

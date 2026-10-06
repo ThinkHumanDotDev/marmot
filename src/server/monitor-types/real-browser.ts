@@ -7,6 +7,8 @@
  * Ported from Uptime Kuma 2.5.5 `server/monitor-types/real-browser-monitor-type.js` — Copyright
  * (c) 2021 Louis Lam, MIT License. See THIRD_PARTY_NOTICES.md. (Screenshots are not stored.)
  */
+import { assertHostLocalAllowed } from '@/server/security/outbound-guard'
+
 import { registerMonitorType } from './registry'
 import { checkTimeoutMs, loadOptionalDriver, requireField, withAbort } from './util'
 
@@ -29,6 +31,9 @@ registerMonitorType({
   label: 'HTTP(s) - Browser Engine (Chrome/Chromium)',
   group: 'general',
   async check(ctx) {
+    // Chromium resolves and connects on its own (subresources, redirects, scripts), past the
+    // outbound address guard.
+    assertHostLocalAllowed('The Browser Engine monitor')
     const url = assertHttpUrl(requireField(ctx.monitor.url, 'URL')).href
     const remote = ctx.monitor.remoteBrowser?.trim()
     if (!remote) {

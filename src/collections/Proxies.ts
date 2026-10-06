@@ -8,13 +8,25 @@ import {
 import { orgScoped } from '@/access/org-scoped'
 import { PROXY_PROTOCOLS } from '@/lib/monitor-resources'
 import type { MonitorProxy } from '@/payload-types'
+import { literalTargetDenial } from '@/server/security/outbound-guard'
 
 import { detachMonitorRelation, relId, secretReadAccess } from './shared'
 
 /** Trim the host and drop credentials when authentication is off. */
 const normalize: CollectionBeforeValidateHook<MonitorProxy> = ({ data, originalDoc }) => {
   if (!data) return data
-  if (typeof data.host === 'string') data.host = data.host.trim()
+  if (typeof data.host === 'string') {
+    data.host = data.host.trim()
+    // Outbound address guard: fast feedback for a literally denied proxy address (names are
+    // vetted when a check connects through the proxy).
+    const denial = literalTargetDenial(data.host)
+    if (denial) {
+      throw new ValidationError({
+        collection: 'proxies',
+        errors: [{ message: denial, path: 'host' }],
+      })
+    }
+  }
   const auth = data.auth ?? originalDoc?.auth
   if (auth === false) {
     data.username = null

@@ -6,6 +6,8 @@
 import { Resolver } from 'node:dns/promises'
 import net from 'node:net'
 
+import { assertHostsAllowed } from '@/server/security/outbound-guard'
+
 import { registerMonitorType } from './registry'
 
 export type DnsRecordType =
@@ -125,6 +127,8 @@ registerMonitorType({
 
     const startTime = Date.now()
     const servers = await resolveDnsResolverServers(ctx.monitor.dnsResolveServer ?? '1.1.1.1')
+    // Outbound address guard: the queries go to exactly these (already resolved) server addresses.
+    await assertHostsAllowed(servers)
     const dnsRes = await dnsResolve(hostname, servers, port, rrtype, timeoutMs)
     ctx.heartbeat.ping = Date.now() - startTime
 

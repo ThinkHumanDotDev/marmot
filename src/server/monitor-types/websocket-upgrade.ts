@@ -10,6 +10,11 @@
 import type { ClientOptions } from 'ws'
 
 import type { Monitor } from '@/payload-types'
+import {
+  guardedLookup,
+  literalTargetDenial,
+  outboundGuardActive,
+} from '@/server/security/outbound-guard'
 
 import { checkStatusCode } from './http-request'
 import { registerMonitorType } from './registry'
@@ -153,8 +158,16 @@ registerMonitorType({
       throw new Error('URL must start with ws:// or wss://')
     }
     const timeout = checkTimeoutMs(ctx.monitor)
+    const wsOptions = buildWsOptions(ctx.monitor, timeout)
+    if (outboundGuardActive()) {
+      // Outbound address guard: literal hosts are checked here, names by `guardedLookup` when the
+      // socket connects (ws does not follow redirects).
+      const denial = literalTargetDenial(new URL(url).hostname)
+      if (denial) throw new Error(denial)
+      Object.assign(wsOptions, { lookup: guardedLookup })
+    }
     const startTime = Date.now()
-    const { message, code } = await attemptUpgrade(url, buildWsOptions(ctx.monitor, timeout), {
+    const { message, code } = await attemptUpgrade(url, wsOptions, {
       subprotocol: ctx.monitor.wsSubprotocol,
       ignoreSecWebsocketAcceptHeader: ctx.monitor.wsIgnoreSecWebsocketAcceptHeader,
     })

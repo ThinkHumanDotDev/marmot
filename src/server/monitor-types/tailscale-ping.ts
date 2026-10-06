@@ -7,6 +7,8 @@
  */
 import { spawn } from 'node:child_process'
 
+import { assertHostLocalAllowed } from '@/server/security/outbound-guard'
+
 import { registerMonitorType } from './registry'
 import { checkTimeoutMs, requireHostname } from './util'
 
@@ -92,6 +94,8 @@ registerMonitorType({
   label: 'Tailscale Ping',
   group: 'specific',
   async check(ctx) {
+    // The tailscale CLI reaches the tailnet directly, past the outbound address guard.
+    assertHostLocalAllowed('The Tailscale Ping monitor')
     const hostname = requireHostname(ctx.monitor)
     const output = await runTailscalePing(hostname, checkTimeoutMs(ctx.monitor), ctx.signal)
     ctx.heartbeat.ping = parseTailscaleOutput(output)

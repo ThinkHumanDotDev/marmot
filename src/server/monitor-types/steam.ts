@@ -12,6 +12,8 @@ import net from 'node:net'
 
 import { getInstanceSettings } from '@/server/settings'
 
+import { resolveGuardedTarget } from '@/server/security/outbound-guard'
+
 import { ping } from './ping'
 import { registerMonitorType } from './registry'
 import { checkTimeoutMs, errorMessage, requireHostname } from './util'
@@ -82,12 +84,17 @@ registerMonitorType({
       )
     }
     const timeout = checkTimeoutMs(ctx.monitor)
-    const ip = await resolveSteamHostname(hostname)
+    // Outbound address guard: the only direct connection is the ping below, sent to `ip`.
+    const vetted = await resolveGuardedTarget(hostname, 4).catch(async (err: unknown) => {
+      if (err instanceof Error && err.name === 'BlockedAddressError') throw err
+      return resolveGuardedTarget(hostname)
+    })
+    const ip = vetted?.address ?? (await resolveSteamHostname(hostname))
     const name = await querySteamServer(steamApiKey, ip, ctx.monitor.port, timeout, ctx.signal)
     ctx.heartbeat.status = 'up'
     ctx.heartbeat.msg = name
     try {
-      ctx.heartbeat.ping = await ping(hostname, {
+      ctx.heartbeat.ping = await ping(vetted ? ip : hostname, {
         timeoutSeconds: Math.max(1, Math.ceil(timeout / 1000)),
         signal: ctx.signal,
       })

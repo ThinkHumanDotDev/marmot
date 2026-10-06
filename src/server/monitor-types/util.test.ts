@@ -5,8 +5,11 @@ import {
   isModuleNotFound,
   loadOptionalDriver,
   parseJsonObject,
+  responseExcerpt,
   withAbort,
 } from './util'
+import { evaluateJsonQuery } from './json-query'
+import { checkMqttKeyword } from './mqtt'
 
 describe('isModuleNotFound', () => {
   it('recognises Node resolution errors by code and message', () => {
@@ -95,5 +98,35 @@ describe('parseJsonObject', () => {
     expect(parseJsonObject('{"a": 1}', 'X')).toEqual({ a: 1 })
     expect(() => parseJsonObject('[1]', 'Metadata')).toThrow('Metadata must be a JSON object')
     expect(() => parseJsonObject('{nope', 'Body')).toThrow(/Body must be valid JSON/)
+  })
+})
+
+describe('responseExcerpt', () => {
+  it('keeps short values and cuts long ones to about 200 characters', () => {
+    expect(responseExcerpt('short')).toBe('short')
+    expect(responseExcerpt(42)).toBe('42')
+    const cut = responseExcerpt('x'.repeat(5000))
+    expect(cut.startsWith('x'.repeat(200))).toBe(true)
+    expect(cut.length).toBeLessThan(220)
+  })
+
+  it('limits the response quoted by a failing JSON query', async () => {
+    const body = JSON.stringify({ secret: 'y'.repeat(5000) })
+    const err = await evaluateJsonQuery(body, 'missing', '==', 'x').catch((e: Error) => e)
+    expect(err).toBeInstanceOf(Error)
+    expect((err as Error).message).toMatch(/Response from server was: /)
+    expect((err as Error).message.length).toBeLessThan(400)
+  })
+
+  it('limits the MQTT payload quoted in a message', () => {
+    const message = 'z'.repeat(5000)
+    const ok = checkMqttKeyword(
+      { mqttTopic: 't', mqttSuccessMessage: 'z' },
+      { topic: 't', message },
+    )
+    expect(ok.length).toBeLessThan(260)
+    expect(() =>
+      checkMqttKeyword({ mqttTopic: 't', mqttSuccessMessage: 'nope' }, { topic: 't', message }),
+    ).toThrow(/truncated/)
   })
 })

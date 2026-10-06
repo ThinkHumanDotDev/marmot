@@ -12,7 +12,16 @@ import { Agent, buildConnector, interceptors, request, type Dispatcher } from 'u
 
 import type { Monitor, MonitorProxy } from '@/payload-types'
 import { captureFromSocket, fetchCertificate, type TlsInfo } from '@/server/engine/tls'
-import { createProxyDispatcher, type ProxyConfig } from '@/server/proxies/dispatcher'
+import {
+  createProxyDispatcher,
+  guardProxyAddress,
+  type ProxyConfig,
+} from '@/server/proxies/dispatcher'
+import {
+  guardConnector,
+  literalTargetDenial,
+  resolveGuardedTarget,
+} from '@/server/security/outbound-guard'
 import type { MonitorCheckContext } from './types'
 
 const DEFAULT_ACCEPT =
@@ -54,13 +63,18 @@ export function checkStatusCode(
 const encodeBase64 = (user: string, pass: string) =>
   Buffer.from(`${user}:${pass}`).toString('base64')
 
-/** Two long-lived agents (strict TLS and `ignoreTls`) for auxiliary requests such as OAuth tokens. */
+/**
+ * Two long-lived agents (strict TLS and `ignoreTls`) for auxiliary requests such as OAuth tokens.
+ * Their connections go through the outbound address guard like the check itself.
+ */
 const agents: Partial<Record<'strict' | 'insecure', Agent>> = {}
 
 function baseAgent(ignoreTls: boolean): Agent {
   const key = ignoreTls ? 'insecure' : 'strict'
   agents[key] ??= new Agent({
-    connect: { rejectUnauthorized: !ignoreTls, maxCachedSessions: 0 },
+    connect: guardConnector(
+      buildConnector({ rejectUnauthorized: !ignoreTls, maxCachedSessions: 0 }),
+    ),
     allowH2: false,
   })
   return agents[key]
@@ -78,6 +92,9 @@ const isTlsSocket = (socket: unknown): socket is TLSSocket =>
  * A throw-away agent whose connector records the peer certificate of every TLS socket it opens
  * (the last one wins, i.e. the final hop of a redirect chain) — Uptime Kuma reads the same from the
  * `secureConnect` event of its https agent. No session reuse, like Uptime Kuma.
+ *
+ * Every connection (each redirect hop included) passes the outbound address guard first: the
+ * hostname is resolved once, checked, and the socket connects to that vetted address.
  */
 export function capturingAgent(
   connectOptions: buildConnector.BuildOptions,
@@ -86,7 +103,7 @@ export function capturingAgent(
   const connector = buildConnector({ ...connectOptions, maxCachedSessions: 0 })
   return new Agent({
     allowH2: false,
-    connect: (opts, callback) => {
+    connect: guardConnector((opts, callback) => {
       connector(opts, (err, socket) => {
         if (socket && isTlsSocket(socket)) {
           try {
@@ -98,7 +115,7 @@ export function capturingAgent(
         if (err) callback(err, null)
         else callback(null, socket as NonNullable<typeof socket>)
       })
-    },
+    }),
   })
 }
 
@@ -132,19 +149,18 @@ export async function recordTlsInfo(
     return
   }
   if (target.protocol !== 'https:') return
+  const host = target.hostname.replace(/^\[|\]$/g, '')
   try {
-    const info = await fetchCertificate(
-      target.hostname.replace(/^\[|\]$/g, ''),
-      Number(target.port) || 443,
-      {
-        servername: target.hostname,
-        rejectUnauthorized: false,
-        ca: ctx.monitor.authMethod === 'mtls' ? ctx.monitor.tlsCa : null,
-        cert: ctx.monitor.authMethod === 'mtls' ? ctx.monitor.tlsCert : null,
-        key: ctx.monitor.authMethod === 'mtls' ? ctx.monitor.tlsKey : null,
-        signal: ctx.signal,
-      },
-    )
+    // Same guard as the request: connect to the vetted address, verify against the name.
+    const vetted = await resolveGuardedTarget(host)
+    const info = await fetchCertificate(vetted?.address ?? host, Number(target.port) || 443, {
+      servername: target.hostname,
+      rejectUnauthorized: false,
+      ca: ctx.monitor.authMethod === 'mtls' ? ctx.monitor.tlsCa : null,
+      cert: ctx.monitor.authMethod === 'mtls' ? ctx.monitor.tlsCert : null,
+      key: ctx.monitor.authMethod === 'mtls' ? ctx.monitor.tlsKey : null,
+      signal: ctx.signal,
+    })
     const message = error instanceof Error ? error.message : String(error)
     const code = (error as NodeJS.ErrnoException).code
     ctx.tlsInfo = {
@@ -246,6 +262,18 @@ export async function buildHttpRequest(
   if (!monitor.url) {
     throw new Error('URL is required')
   }
+  if (proxy) {
+    // Through an HTTP proxy the proxy resolves the target, so only a literal target can be checked
+    // here; the proxy's own address is vetted and pinned by `guardProxyAddress`.
+    let host: string | null = null
+    try {
+      host = new URL(monitor.url).hostname
+    } catch {
+      // The request below reports the invalid URL.
+    }
+    const denial = literalTargetDenial(host)
+    if (denial) throw new Error(denial)
+  }
 
   const headers: Record<string, string> = { accept: DEFAULT_ACCEPT }
 
@@ -319,7 +347,7 @@ export async function buildHttpRequest(
       : {}),
   }
   const agent: Dispatcher = proxy
-    ? createProxyDispatcher(proxy, tlsOptions)
+    ? createProxyDispatcher(await guardProxyAddress(proxy), tlsOptions)
     : capturingAgent(tlsOptions, capture)
   const cleanup = async () => {
     await agent.close()

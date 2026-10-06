@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { parseCidrList } from '@/server/security/address-policy'
+
 /**
  * Central, validated view of process.env. Import `env` everywhere instead of reading
  * process.env directly so misconfiguration fails fast with a readable message.
@@ -11,6 +13,18 @@ const booleanish = z
   .transform((v) =>
     typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.toLowerCase()),
   )
+
+/** Comma-separated CIDR list (`10.0.0.0/8, fd00::/8`); a malformed entry fails at startup. */
+const cidrList = z
+  .string()
+  .default('')
+  .superRefine((value, ctx) => {
+    try {
+      parseCidrList(value)
+    } catch (err) {
+      ctx.addIssue({ code: 'custom', message: err instanceof Error ? err.message : String(err) })
+    }
+  })
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -72,6 +86,12 @@ const schema = z.object({
   // Docker monitors: allow Docker hosts that connect through a local unix socket (the worker's own
   // daemon). Turn off on shared instances where organizations must not reach the host's Docker.
   DOCKER_SOCKET_ENABLED: booleanish.default(true),
+  // Outbound address guard for monitors and notifications (see docs/Security.md). Off by default so
+  // single-team installs can monitor their own network; turn it on when untrusted users can sign up.
+  MONITOR_DENY_PRIVATE_ADDRESSES: booleanish.default(false),
+  // Extra ranges that are always denied, and exceptions to the private ranges (comma-separated CIDRs).
+  MONITOR_DENY_CIDRS: cidrList,
+  MONITOR_ALLOW_CIDRS: cidrList,
   // Skip the Redis side effects of the `monitors` hooks (tests without Redis).
   MARMOT_DISABLE_ENGINE_HOOKS: booleanish.default(false),
 

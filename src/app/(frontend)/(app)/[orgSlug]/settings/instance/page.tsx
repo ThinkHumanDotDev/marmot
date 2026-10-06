@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { isSuperadmin } from '@/access/permissions'
 import { InstanceSettingsForm } from '@/components/settings/instance-settings-form'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SmtpTestCard } from '@/components/settings/smtp-test-card'
 import { env } from '@/env'
 import { requireUser } from '@/lib/auth'
@@ -32,9 +33,28 @@ export default async function InstanceSettingsPage({
     overrideAccess: false,
   })
   const settings = resolveInstanceSettings(doc)
+  // Open sign-up lets anyone create monitors; without the guard they can point them at the
+  // worker's private network (metadata endpoints, the bundled database, the tailnet).
+  const warnPrivateAddresses = settings.allowSignup && !env.MONITOR_DENY_PRIVATE_ADDRESSES
 
   return (
     <>
+      {warnPrivateAddresses ? (
+        <Card role="alert" className="border-destructive/50" data-testid="private-address-warning">
+          <CardHeader>
+            <CardTitle className="text-destructive">
+              Open sign-up without the private-address guard
+            </CardTitle>
+            <CardDescription>
+              Anyone can create an account, and every member can create monitors and notification
+              channels. Those connect from the worker, which can reach private, loopback and
+              container-network addresses. Set <code>MONITOR_DENY_PRIVATE_ADDRESSES=true</code>{' '}
+              (with <code>MONITOR_ALLOW_CIDRS</code> for subnets you do want to monitor) or turn
+              sign-up off. See the hardening checklist in docs/Security.md.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : null}
       <InstanceSettingsForm settings={settings} />
       <SmtpTestCard
         smtpHost={env.SMTP_HOST ?? null}

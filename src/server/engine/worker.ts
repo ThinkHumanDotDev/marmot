@@ -11,6 +11,7 @@ import { QUEUE_NAMES } from './names'
 import { createWorker, type CheckJobData, type QueueFactoryOptions } from './queues'
 import { effectiveIntervalMs, removeMonitorSchedule, syncMonitor } from './scheduler'
 import { certificateChanged } from './tls'
+import { findBlockedMessage } from '@/server/security/outbound-guard'
 
 const log = childLogger('engine:worker')
 
@@ -71,14 +72,19 @@ export async function runCheck(
   try {
     await Promise.race([type.check(ctx), timeout])
   } catch (err) {
-    const msg = isTimeoutError(err)
-      ? `timeout by AbortSignal (${Math.round(timeoutMs / 1000)}s)`
-      : err instanceof Error
-        ? err.message
-        : String(err)
+    // A target refused by the outbound address guard reads the same for every type and driver.
+    const blocked = findBlockedMessage(err)
+    const msg = blocked
+      ? blocked
+      : isTimeoutError(err)
+        ? `timeout by AbortSignal (${Math.round(timeoutMs / 1000)}s)`
+        : err instanceof Error
+          ? err.message
+          : String(err)
     return {
       ok: false,
       msg,
+      ...(blocked ? { blocked: true } : {}),
       ping: ctx.heartbeat.ping ?? null,
       duration: typeof ctx.heartbeat.duration === 'number' ? ctx.heartbeat.duration : null,
       tlsInfo: ctx.tlsInfo ?? null,
