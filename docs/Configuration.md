@@ -83,15 +83,19 @@ link during evaluation. The `smtp` notification provider can reuse these setting
 
 ## Authentication
 
-| Variable              | Default                | Read by | Description                                                                                                                                                                          |
-| --------------------- | ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `DISABLE_SIGNUP`      | `false`                | web     | Default for the `allowSignup` instance setting. When sign-up is off, accounts are created only through the setup wizard, invitations, or SSO logins that match a pending invitation. |
-| `OIDC_ISSUER_URL`     | —                      | web     | Issuer of your OpenID Connect provider (its `iss` value). Discovery is read from `<issuer>/.well-known/openid-configuration`.                                                        |
-| `OIDC_CLIENT_ID`      | —                      | web     | Client id registered at the provider.                                                                                                                                                |
-| `OIDC_CLIENT_SECRET`  | —                      | web     | Client secret. All three `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` must be set to enable the SSO button.                                                          |
-| `OIDC_DISPLAY_NAME`   | `Single sign-on`       | web     | Label of the login button ("Continue with …").                                                                                                                                       |
-| `OIDC_AUTO_PROVISION` | `true`                 | web     | Create a Marmot account on first SSO login. `false` only lets existing users (matched by subject or verified email) in.                                                              |
-| `OIDC_SCOPES`         | `openid email profile` | web     | Scopes requested from the provider.                                                                                                                                                  |
+| Variable               | Default                | Read by | Description                                                                                                                                                                          |
+| ---------------------- | ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DISABLE_SIGNUP`       | `false`                | web     | Default for the `allowSignup` instance setting. When sign-up is off, accounts are created only through the setup wizard, invitations, or SSO logins that match a pending invitation. |
+| `OIDC_ISSUER_URL`      | —                      | web     | Issuer of your OpenID Connect provider (its `iss` value). Discovery is read from `<issuer>/.well-known/openid-configuration`.                                                        |
+| `OIDC_CLIENT_ID`       | —                      | web     | Client id registered at the provider.                                                                                                                                                |
+| `OIDC_CLIENT_SECRET`   | —                      | web     | Client secret. All three `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` must be set to enable the SSO button.                                                          |
+| `OIDC_DISPLAY_NAME`    | `Single sign-on`       | web     | Label of the login button ("Continue with …").                                                                                                                                       |
+| `OIDC_AUTO_PROVISION`  | `true`                 | web     | Create a Marmot account on first SSO login. `false` only lets existing users (matched by subject or verified email) in.                                                              |
+| `OIDC_SCOPES`          | `openid email profile` | web     | Scopes requested from the provider.                                                                                                                                                  |
+| `GITHUB_CLIENT_ID`     | —                      | web     | GitHub OAuth app client id. With `GITHUB_CLIENT_SECRET`, enables "Continue with GitHub"; callback URL `<NEXT_PUBLIC_SERVER_URL>/api/auth/sso/github/callback`.                       |
+| `GITHUB_CLIENT_SECRET` | —                      | web     | GitHub OAuth app client secret.                                                                                                                                                      |
+| `GOOGLE_CLIENT_ID`     | —                      | web     | Google OAuth client id. With `GOOGLE_CLIENT_SECRET`, enables "Continue with Google"; redirect URI `<NEXT_PUBLIC_SERVER_URL>/api/auth/sso/google/callback`.                           |
+| `GOOGLE_CLIENT_SECRET` | —                      | web     | Google OAuth client secret.                                                                                                                                                          |
 
 Full setup guide with provider walkthroughs: [Single sign-on](Single-Sign-On.md).
 

@@ -12,6 +12,8 @@ const mock = await vi.hoisted(async () => {
   process.env.OIDC_DISPLAY_NAME = 'Acme SSO'
   process.env.OIDC_AUTO_PROVISION = 'true'
   process.env.DISABLE_SIGNUP = 'false'
+  process.env.GITHUB_CLIENT_ID = 'gh-client-id'
+  process.env.GITHUB_CLIENT_SECRET = 'gh-client-secret'
   return issuer
 })
 
@@ -25,6 +27,7 @@ import {
 } from '@/auth/sso/handlers'
 import { resetEnvCache } from '@/env'
 import type { AuthAccount, Organization, User } from '@/payload-types'
+import { listConnectedAccounts, unlinkConnectedAccount } from '@/server/accounts'
 
 /** Name of the sealed transaction cookie (`src/auth/sso/oauth.ts`). */
 const SSO_STATE_COOKIE = 'marmot-sso'
@@ -152,6 +155,13 @@ describe('single sign-on (env-configured OIDC provider)', () => {
       oidc: { enabled: true, displayName: 'Acme SSO' },
       providers: [
         {
+          id: 'github',
+          name: 'GitHub',
+          type: 'oauth2',
+          icon: 'github',
+          loginPath: '/api/auth/sso/github/login',
+        },
+        {
           id: 'oidc',
           name: 'Acme SSO',
           type: 'oidc',
@@ -160,6 +170,21 @@ describe('single sign-on (env-configured OIDC provider)', () => {
         },
       ],
     })
+  })
+
+  it('sends GitHub logins to github.com with the registered callback URL', async () => {
+    const res = await handleSsoLogin(
+      new Request('http://localhost:3000/api/auth/sso/github/login?next=/acme'),
+      'github',
+    )
+    expect(res.status).toBe(302)
+    const url = new URL(res.headers.get('location') ?? '')
+    expect(`${url.origin}${url.pathname}`).toBe('https://github.com/login/oauth/authorize')
+    expect(url.searchParams.get('client_id')).toBe('gh-client-id')
+    expect(url.searchParams.get('redirect_uri')).toBe(
+      'http://localhost:3000/api/auth/sso/github/callback',
+    )
+    expect(url.searchParams.get('scope')).toBe('read:user user:email')
   })
 
   it('starts the same flow from the generic /api/auth/sso/oidc/login path', async () => {
@@ -268,8 +293,8 @@ describe('single sign-on (env-configured OIDC provider)', () => {
 
   it('rejects a callback for a provider that is not configured', async () => {
     const res = await handleSsoLogin(
-      new Request('http://localhost:3000/api/auth/sso/github/login'),
-      'github',
+      new Request('http://localhost:3000/api/auth/sso/google/login'),
+      'google',
     )
     expect(locationOf(res)).toBe('/login?error=provider_unknown')
   })
@@ -413,6 +438,94 @@ describe('single sign-on (env-configured OIDC provider)', () => {
     const { res } = await loginVia()
     expect(locationOf(res)).toBe('/login?error=provisioning_disabled')
     expect(await usersWithEmail(address)).toHaveLength(0)
+  })
+
+  it('links a second identity to the signed-in user and lists it on the account page', async () => {
+    const address = email('jane')
+    mock.setUser({ sub: sub('jane'), email: address, email_verified: true })
+    const { res } = await loginVia()
+    const session = payloadCookieOf(res) as string
+    const jane = (await authenticate(session)) as User
+
+    const before = await listConnectedAccounts(payload, jane)
+    expect(before.hasPassword).toBe(false)
+    expect(before.accounts.map((a) => a.provider)).toEqual(['oidc'])
+    expect(before.linkable.map((p) => p.id)).toEqual(['github'])
+
+    // Not signed in: linking is refused.
+    const anonymous = await handleSsoLogin(
+      new Request('http://localhost:3000/api/auth/sso/oidc/login?link=1'),
+      'oidc',
+    )
+    expect(locationOf(anonymous)).toBe('/login?error=not_signed_in')
+
+    // Signed in: the identity from the provider (a different subject) joins Jane's account.
+    mock.setUser({ sub: sub('jane-second'), email: `second-${address}`, email_verified: false })
+    const start = await handleSsoLogin(
+      new Request(
+        'http://localhost:3000/api/auth/sso/oidc/login?link=1&next=/acme/settings/account',
+        { headers: { cookie: session, origin: 'http://localhost:3000' } },
+      ),
+      'oidc',
+    )
+    expect(start.status).toBe(302)
+    const txCookie = start.headers
+      .getSetCookie()
+      .find((c) => c.startsWith(`${SSO_STATE_COOKIE}=`))
+      ?.split(';')[0] as string
+    const callbackUrl = await authorize(new URL(locationOf(start)))
+    const linked = await callback(callbackUrl, txCookie)
+    expect(locationOf(linked)).toBe('/acme/settings/account')
+    expect(payloadCookieOf(linked)).toBeUndefined() // already signed in: no new session
+
+    const after = await listConnectedAccounts(payload, jane)
+    expect(after.accounts.map((a) => a.providerAccountId).sort()).toEqual(
+      [sub('jane'), sub('jane-second')].sort(),
+    )
+
+    // Somebody else trying to link Jane's second identity is sent back to their account page.
+    const larryAddress = email('larry')
+    mock.setUser({ sub: sub('larry'), email: larryAddress, email_verified: true })
+    const larrySession = payloadCookieOf((await loginVia()).res) as string
+    mock.setUser({ sub: sub('jane-second'), email: `second-${address}` })
+    const attempt = await handleSsoLogin(
+      new Request(
+        'http://localhost:3000/api/auth/sso/oidc/login?link=1&next=/acme/settings/account',
+        { headers: { cookie: larrySession, origin: 'http://localhost:3000' } },
+      ),
+      'oidc',
+    )
+    const attemptCookie = attempt.headers
+      .getSetCookie()
+      .find((c) => c.startsWith(`${SSO_STATE_COOKIE}=`))
+      ?.split(';')[0] as string
+    const refused = await callback(await authorize(new URL(locationOf(attempt))), attemptCookie)
+    expect(locationOf(refused)).toBe('/acme/settings/account?error=account_in_use')
+  })
+
+  it('unlinks identities but never the last way in of a password-less account', async () => {
+    const address = email('jane')
+    const [jane] = await usersWithEmail(address)
+    const { accounts } = await listConnectedAccounts(payload, jane)
+    expect(accounts).toHaveLength(2)
+    const second = accounts.find((a) => a.providerAccountId === sub('jane-second'))!
+
+    await unlinkConnectedAccount(payload, jane, second.id)
+    const remaining = await listConnectedAccounts(payload, jane)
+    expect(remaining.accounts.map((a) => a.providerAccountId)).toEqual([sub('jane')])
+
+    await expect(unlinkConnectedAccount(payload, jane, remaining.accounts[0].id)).rejects.toThrow(
+      /only way to sign in/,
+    )
+    await expect(unlinkConnectedAccount(payload, jane, 'nope')).rejects.toThrow(/not found/)
+
+    // A password account may unlink everything (Larry's subject is linked to the local account).
+    const [larry] = await usersWithEmail(email('local'))
+    expect(larry.authProvider).toBe('local')
+    const larryAccounts = await listConnectedAccounts(payload, larry)
+    expect(larryAccounts.hasPassword).toBe(true)
+    await unlinkConnectedAccount(payload, larry, larryAccounts.accounts[0].id)
+    expect((await listConnectedAccounts(payload, larry)).accounts).toHaveLength(0)
   })
 
   it('removes linked identities when the user is deleted', async () => {

@@ -20,8 +20,19 @@ const serverOnlyField = {
   update: () => false,
 } satisfies Record<string, FieldAccess>
 
-export const AUTH_PROVIDERS = ['local', 'oidc'] as const
+/**
+ * How an account was created: password signup (`local`), the env-configured OpenID Connect client
+ * (`oidc`), a social OAuth provider such as GitHub or Google (`oauth`) or a SAML identity provider
+ * (`saml`). Accounts created through single sign-on have a random password nobody knows; see
+ * `hasPassword`.
+ */
+export const AUTH_PROVIDERS = ['local', 'oidc', 'oauth', 'saml'] as const
 export type AuthProvider = (typeof AUTH_PROVIDERS)[number]
+
+/** `true` for accounts that chose their own password (and can be asked for it). */
+export const hasPassword = (
+  user: { authProvider?: AuthProvider | null } | null | undefined,
+): boolean => !user?.authProvider || user.authProvider === 'local'
 
 export const THEMES = ['system', 'light', 'dark'] as const
 export type Theme = (typeof THEMES)[number]
@@ -138,7 +149,8 @@ export const Users: CollectionConfig = {
       },
       admin: {
         position: 'sidebar',
-        description: 'How the account was created: password signup or single sign-on.',
+        description:
+          'How the account was created: password signup, the OIDC client, a social OAuth provider or SAML.',
       },
     },
     // Legacy OIDC identity, from before linked identities moved to the `auth-accounts` collection.

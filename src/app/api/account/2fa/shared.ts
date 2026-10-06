@@ -1,6 +1,7 @@
 import { APIError, type Payload } from 'payload'
 
 import { verifyPassword } from '@/auth/password'
+import { hasPassword } from '@/collections/Users'
 import type { RequestUser } from '@/server/http'
 
 /**
@@ -13,7 +14,7 @@ export async function requirePassword(
   user: RequestUser,
   password: unknown,
 ): Promise<void> {
-  if (user.authProvider === 'oidc') return
+  if (!hasPassword(user)) return
   if (typeof password !== 'string' || !password) {
     throw new APIError('Enter your password.', 400)
   }

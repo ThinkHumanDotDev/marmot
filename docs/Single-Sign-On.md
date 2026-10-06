@@ -1,8 +1,9 @@
-# Single sign-on (OIDC)
+# Single sign-on
 
 Marmot can authenticate users against any OpenID Connect provider that supports discovery and the
-authorization code flow with PKCE: Keycloak, Authentik, Zitadel, Okta, Microsoft Entra ID, Google
-Workspace, Dex, … Local password login stays available next to SSO.
+authorization code flow with PKCE (Keycloak, Authentik, Zitadel, Okta, Microsoft Entra ID, Google
+Workspace, Dex, …) and offers **Sign in with GitHub** and **Sign in with Google** buttons. Local password
+login stays available next to SSO, and a user can link several identities to one account.
 
 ## Configuration
 
@@ -39,10 +40,32 @@ The env-configured client has the id `oidc`; its flow starts at `/api/auth/sso/o
 Plain `http://` issuers are accepted only when `NODE_ENV` is not `production` (local Keycloak,
 tests). Production providers must use HTTPS.
 
+## Sign in with GitHub and Google
+
+Each pair of variables enables a button on the login page; both can be combined with the OIDC client.
+
+| Variable                                   | Where to get it                                                                                                                                                                  |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub → Settings → Developer settings → **OAuth Apps → New OAuth App**. Authorization callback URL: `${NEXT_PUBLIC_SERVER_URL}/api/auth/sso/github/callback`.                   |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud console → **APIs & Services → Credentials → OAuth client ID** (Web application). Authorised redirect URI: `${NEXT_PUBLIC_SERVER_URL}/api/auth/sso/google/callback`. |
+
+GitHub releases the primary **verified** email (scope `user:email`); Google asserts `email_verified`. Both
+therefore link to an existing account with the same email, as described below. New accounts created through
+them get `authProvider: oauth`. The sign-up rules are the same as for the OIDC client: with `DISABLE_SIGNUP`
+a pending invitation is required.
+
+## Connected accounts
+
+**Settings → Account → Connected accounts** lists the identities linked to the signed-in user with the
+provider, email and last use. **Link GitHub / Google / …** starts the provider's flow with `link=1` and
+attaches the identity to the current account (an identity already linked to somebody else is refused with
+`account_in_use` and the page shows why). **Unlink** removes an identity; an account created through single
+sign-on, which has no password of its own, cannot unlink its last identity.
+
 ## How users are matched
 
 On every successful login Marmot verifies the ID token (signature, issuer, audience, `nonce`) and
-reads the UserInfo endpoint, then:
+reads the UserInfo endpoint (or, for GitHub, the user and e-mail APIs), then:
 
 1. looks for a **linked account** with the same provider and `sub` claim (the `auth-accounts`
    collection, _Access → Auth accounts_ in the admin panel). A user can hold several linked identities;

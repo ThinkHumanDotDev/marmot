@@ -97,6 +97,21 @@ export interface TwoFactorSetup {
   qrDataUrl: string
 }
 
+export interface ConnectedAccount {
+  id: Id
+  provider: string
+  providerName: string
+  providerAccountId: string
+  email: string | null
+  lastLoginAt: string | null
+}
+
+export interface ConnectedAccounts {
+  accounts: ConnectedAccount[]
+  linkable: { id: string; name: string; loginPath: string }[]
+  hasPassword: boolean
+}
+
 export const accountApi = {
   update: (
     userId: Id,
@@ -109,6 +124,12 @@ export const accountApi = {
   changePassword: (data: { currentPassword: string; password: string }) =>
     api.post<{ updated: true }>('/api/account/password', data),
   remove: (confirm: string) => api.delete<{ deleted: true }>('/api/account', { body: { confirm } }),
+
+  /** Linked single sign-on identities (`/api/account/accounts`). */
+  connectedAccounts: {
+    list: () => api.get<ConnectedAccounts>('/api/account/accounts'),
+    unlink: (accountId: Id) => api.delete<{ unlinked: true }>(`/api/account/accounts/${accountId}`),
+  },
 
   /** Two-factor authentication (`/api/account/2fa/*`). */
   twoFactor: {
