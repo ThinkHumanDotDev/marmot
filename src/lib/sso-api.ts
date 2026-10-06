@@ -59,6 +59,8 @@ export const ssoApi = {
     remove: (orgId: Id, id: Id) =>
       api.delete<{ deleted: string }>(`/api/orgs/${orgId}/sso/domains/${id}`),
   },
+  setEnforcement: (orgId: Id, enforceSso: boolean) =>
+    api.patch<{ enforceSso: boolean }>(`/api/orgs/${orgId}/sso/enforcement`, { enforceSso }),
   parseMetadata: (orgId: Id, input: { url: string } | { xml: string }) =>
     api.post<ParsedIdpMetadata>(`/api/orgs/${orgId}/sso/metadata`, { ...input }),
   /** Public: where to send someone who wants to sign in with their organization's SSO. */

@@ -48,7 +48,8 @@ account (per e-mail) and the OIDC endpoints are not limited.
 5. **Disable open signup** (`DISABLE_SIGNUP=true` or the `allowSignup` instance setting) and invite people
    instead; use single sign-on (`OIDC_*`) where you can.
 6. **Limit superadmins.** They bypass organization access and can open `/admin`; give the flag to operators
-   only, and review `audit-logs` for `auth.login_failed` bursts.
+   only, and review `audit-logs` for `auth.login_failed` bursts and `auth.break_glass` entries (owner password
+   logins while an organization enforces single sign-on).
 7. **Restrict CORS.** Add only the origins you control to `ADDITIONAL_ORIGINS`.
 8. **Back up and update.** Follow [Deployment](Deployment.md) for backups, pin `MARMOT_VERSION` and apply
    releases promptly; watch the CI dependency audit output after upgrading your fork.

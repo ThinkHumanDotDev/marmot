@@ -81,9 +81,17 @@ your organization's SSO** page (`/login/sso`) are sent to the organization's con
 accepts the organization slug, and `/login/sso?org=<slug>` is a shareable link that goes straight to the
 organization's provider.
 
-Connections and domains are also available over the API (`/api/orgs/:orgId/sso/connections`,
+**Enforcement.** Once a domain is verified and a connection enabled, owners can switch on **Require
+single sign-on**: password logins (`POST /api/users/login` and the Marmot login page) are refused for
+every member whose email is on one of the organization's verified domains, with a message that points
+at the SSO page. Owners of the organization keep a **break-glass** password login so a broken identity
+provider never locks everyone out; each such login is written to the audit log as `auth.break_glass`.
+Logins through a connection are unaffected, and turning enforcement off restores password login at once.
+
+Connections, domains and enforcement are also available over the API (`/api/orgs/:orgId/sso/connections`,
 `/api/orgs/:orgId/sso/domains`, `POST /api/orgs/:orgId/sso/domains/:id/verify`,
-`POST /api/orgs/:orgId/sso/metadata` to parse IdP metadata, and the public `POST /api/auth/sso/lookup`).
+`POST /api/orgs/:orgId/sso/metadata` to parse IdP metadata, `PATCH /api/orgs/:orgId/sso/enforcement`, and
+the public `POST /api/auth/sso/lookup`).
 
 ## Connected accounts
 

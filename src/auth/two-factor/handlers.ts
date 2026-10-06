@@ -128,6 +128,11 @@ export async function handlePasswordLogin(request: Request): Promise<Response> {
     if (status === 401 || status === 400) {
       return jsonError('Incorrect email or password.', 401)
     }
+    if (status === 403 && error instanceof Error) {
+      // A policy refusal (for example single sign-on is enforced for the account's domain): the
+      // message tells the user what to do instead and carries no credential information.
+      return jsonError(error.message, 403)
+    }
     log.error({ err: error instanceof Error ? error.message : String(error) }, 'login failed')
     return jsonError('Could not sign in.', 500)
   }

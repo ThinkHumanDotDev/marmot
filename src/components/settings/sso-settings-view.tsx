@@ -48,6 +48,8 @@ interface SsoSettingsViewProps {
   orgSlug: string
   connections: SsoConnectionRow[]
   domains: SsoDomainRow[]
+  /** `organizations.enforceSso`. */
+  enforceSso: boolean
   /** `sso:manage` (owners). */
   canManage: boolean
 }
@@ -129,10 +131,26 @@ export function SsoSettingsView({
   orgSlug,
   connections: initialConnections,
   domains: initialDomains,
+  enforceSso: initialEnforceSso,
   canManage,
 }: SsoSettingsViewProps) {
   const [connections, setConnections] = React.useState(initialConnections)
   const [domains, setDomains] = React.useState(initialDomains)
+  const [enforceSso, setEnforceSso] = React.useState(initialEnforceSso)
+  const canEnforce = domains.some((d) => d.verifiedAt) && connections.some((c) => c.enabled)
+
+  const setEnforcement = (value: boolean) =>
+    run(
+      'enforce',
+      async () => {
+        const result = await ssoApi.setEnforcement(orgId, value)
+        setEnforceSso(result.enforceSso)
+        toast.success(
+          result.enforceSso ? 'Single sign-on is now required' : 'Password login allowed again',
+        )
+      },
+      'Could not change enforcement.',
+    )
   const [editing, setEditing] = React.useState<{
     row: SsoConnectionRow | null
     form: SsoConnectionInput
@@ -436,6 +454,31 @@ export function SsoSettingsView({
               ))}
             </ul>
           )}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="sso-enforcement-card">
+        <CardHeader>
+          <CardTitle>Require single sign-on</CardTitle>
+          <CardDescription>
+            Refuse password logins for members whose email is on a verified domain. Owners keep a
+            break-glass password login, which is recorded in the audit log.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
+            {canEnforce
+              ? enforceSso
+                ? 'Members on your verified domains must sign in through a connection.'
+                : 'Members may still sign in with a password.'
+              : 'Verify a domain and enable a connection first.'}
+          </p>
+          <Switch
+            checked={enforceSso}
+            disabled={!canManage || !canEnforce || busy === 'enforce'}
+            onCheckedChange={setEnforcement}
+            aria-label="Require single sign-on"
+          />
         </CardContent>
       </Card>
 
