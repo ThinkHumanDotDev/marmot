@@ -24,15 +24,60 @@ export const MONITOR_TYPES = [
   { label: 'Push', value: 'push' },
   { label: 'Group', value: 'group' },
   { label: 'Manual', value: 'manual' },
+  // Protocols
+  { label: 'gRPC(s) - Keyword', value: 'grpc-keyword' },
+  { label: 'WebSocket Upgrade', value: 'websocket-upgrade' },
+  { label: 'MQTT', value: 'mqtt' },
+  { label: 'Kafka Producer', value: 'kafka-producer' },
+  { label: 'RabbitMQ', value: 'rabbitmq' },
+  { label: 'SMTP', value: 'smtp' },
+  { label: 'SNMP', value: 'snmp' },
+  { label: 'NTP', value: 'ntp' },
+  { label: 'SFTP', value: 'sftp' },
+  { label: 'Radius', value: 'radius' },
+  { label: 'Tailscale Ping', value: 'tailscale-ping' },
+  { label: 'HTTP(s) - Browser Engine (Chrome/Chromium)', value: 'real-browser' },
+  // Databases
+  { label: 'MySQL/MariaDB', value: 'mysql' },
+  { label: 'PostgreSQL', value: 'postgres' },
+  { label: 'Microsoft SQL Server', value: 'sqlserver' },
+  { label: 'MongoDB', value: 'mongodb' },
+  { label: 'Redis', value: 'redis' },
+  // Game servers
+  { label: 'Steam Game Server', value: 'steam' },
+  { label: 'GameDig', value: 'gamedig' },
 ] as const
 
 export const HTTP_TYPES = ['http', 'keyword', 'json-query']
+/** Types whose target is `url` (HTTP types plus the WebSocket and browser checks). */
+export const URL_TYPES = [...HTTP_TYPES, 'websocket-upgrade', 'real-browser']
+/** Types whose target is `hostname` (+ `port`). */
+export const HOST_TYPES = [
+  'port',
+  'ping',
+  'dns',
+  'mqtt',
+  'smtp',
+  'snmp',
+  'ntp',
+  'sftp',
+  'radius',
+  'tailscale-ping',
+  'steam',
+  'gamedig',
+]
+export const PORT_TYPES = HOST_TYPES.filter((t) => t !== 'ping' && t !== 'tailscale-ping')
+export const DATABASE_TYPES = ['mysql', 'postgres', 'sqlserver', 'mongodb', 'redis']
+/** Types that evaluate a JSONata expression against their result. */
+export const JSON_QUERY_TYPES = ['json-query', 'mongodb', 'snmp', 'mqtt']
+export const KEYWORD_TYPES = ['keyword', 'grpc-keyword']
 
 /** Types whose target names a domain (URL or hostname), i.e. domain expiry can be looked up. */
 export const DOMAIN_TYPES = [...HTTP_TYPES, 'port', 'ping', 'dns']
 
-const isHttpType = (data: { type?: string } | undefined) =>
-  Boolean(data?.type && HTTP_TYPES.includes(data.type))
+type TypeData = { type?: string } | undefined
+const typeIn = (list: string[]) => (data: TypeData) =>
+  Boolean(data?.type && list.includes(data.type))
 
 const isDomainType = (data: { type?: string } | undefined) =>
   Boolean(data?.type && DOMAIN_TYPES.includes(data.type))
@@ -221,7 +266,7 @@ export const Monitors: CollectionConfig = {
     {
       name: 'url',
       type: 'text',
-      admin: { condition: (data) => isHttpType(data), placeholder: 'https://' },
+      admin: { condition: typeIn(URL_TYPES), placeholder: 'https://' },
     },
     {
       type: 'row',
@@ -229,9 +274,7 @@ export const Monitors: CollectionConfig = {
         {
           name: 'hostname',
           type: 'text',
-          admin: {
-            condition: (data) => ['port', 'ping', 'dns'].includes(data?.type),
-          },
+          admin: { condition: typeIn(HOST_TYPES) },
         },
         {
           name: 'port',
@@ -239,7 +282,7 @@ export const Monitors: CollectionConfig = {
           min: 1,
           max: 65535,
           admin: {
-            condition: (data) => ['port', 'dns'].includes(data?.type),
+            condition: typeIn(PORT_TYPES),
             description: 'DNS monitors: port of the resolver (default 53).',
           },
         },
@@ -308,7 +351,7 @@ export const Monitors: CollectionConfig = {
     {
       type: 'collapsible',
       label: 'HTTP options',
-      admin: { condition: (data) => isHttpType(data), initCollapsed: true },
+      admin: { condition: typeIn(URL_TYPES), initCollapsed: true },
       fields: [
         {
           type: 'row',
@@ -358,7 +401,7 @@ export const Monitors: CollectionConfig = {
           type: 'checkbox',
           defaultValue: false,
           admin: {
-            condition: (data) => isHttpType(data),
+            condition: typeIn(HTTP_TYPES),
             description: 'Notify before the TLS certificate expires (tlsExpiryNotifyDays).',
           },
         },
@@ -378,7 +421,7 @@ export const Monitors: CollectionConfig = {
       type: 'json',
       admin: {
         readOnly: true,
-        condition: (data) => isHttpType(data),
+        condition: typeIn(HTTP_TYPES),
         description: 'Maintained by the worker: TLS certificate seen by the last HTTPS check.',
       },
     },
@@ -394,7 +437,7 @@ export const Monitors: CollectionConfig = {
     {
       type: 'collapsible',
       label: 'Keyword',
-      admin: { condition: (data) => data?.type === 'keyword', initCollapsed: false },
+      admin: { condition: typeIn(KEYWORD_TYPES), initCollapsed: false },
       fields: [
         { name: 'keyword', type: 'text' },
         {
@@ -408,7 +451,7 @@ export const Monitors: CollectionConfig = {
     {
       type: 'collapsible',
       label: 'JSON query',
-      admin: { condition: (data) => data?.type === 'json-query', initCollapsed: false },
+      admin: { condition: typeIn(JSON_QUERY_TYPES), initCollapsed: false },
       fields: [
         {
           name: 'jsonPath',
@@ -434,7 +477,7 @@ export const Monitors: CollectionConfig = {
     {
       type: 'collapsible',
       label: 'Authentication',
-      admin: { condition: (data) => isHttpType(data), initCollapsed: true },
+      admin: { condition: typeIn(URL_TYPES), initCollapsed: true },
       fields: [
         {
           name: 'authMethod',
@@ -546,6 +589,302 @@ export const Monitors: CollectionConfig = {
         { label: 'Pending', value: 'pending' },
       ],
       admin: { condition: (data) => data?.type === 'manual' },
+    },
+
+    // ---- Databases (mysql, postgres, sqlserver, mongodb, redis) ---------------------------------
+    {
+      type: 'collapsible',
+      label: 'Database',
+      admin: { condition: typeIn(DATABASE_TYPES), initCollapsed: false },
+      fields: [
+        {
+          name: 'databaseConnectionString',
+          type: 'text',
+          admin: {
+            description:
+              'Driver connection string, e.g. postgres://user:pass@host:5432/db, mysql://…, mongodb://…, redis://….',
+          },
+        },
+        {
+          name: 'databaseQuery',
+          type: 'textarea',
+          admin: {
+            condition: typeIn(['mysql', 'postgres', 'sqlserver', 'mongodb']),
+            description:
+              'SQL statement to run (default SELECT 1). MongoDB: JSON command document (default {"ping": 1}).',
+          },
+        },
+      ],
+    },
+
+    // ---- MQTT -----------------------------------------------------------------------------------
+    {
+      type: 'collapsible',
+      label: 'MQTT',
+      admin: { condition: (data) => data?.type === 'mqtt', initCollapsed: false },
+      fields: [
+        { name: 'mqttTopic', type: 'text' },
+        {
+          type: 'row',
+          fields: [
+            { name: 'mqttUsername', type: 'text' },
+            { name: 'mqttPassword', type: 'text' },
+          ],
+        },
+        {
+          name: 'mqttCheckType',
+          type: 'select',
+          defaultValue: 'keyword',
+          options: [
+            { label: 'Keyword', value: 'keyword' },
+            { label: 'JSON query', value: 'json-query' },
+          ],
+        },
+        {
+          name: 'mqttSuccessMessage',
+          type: 'text',
+          admin: { description: 'Keyword mode: the received message must contain this text.' },
+        },
+      ],
+    },
+
+    // ---- Kafka producer -------------------------------------------------------------------------
+    {
+      type: 'collapsible',
+      label: 'Kafka producer',
+      admin: { condition: (data) => data?.type === 'kafka-producer', initCollapsed: false },
+      fields: [
+        {
+          name: 'kafkaProducerBrokers',
+          type: 'text',
+          hasMany: true,
+          admin: { description: 'Broker addresses, e.g. kafka1:9092.' },
+        },
+        { name: 'kafkaProducerTopic', type: 'text' },
+        { name: 'kafkaProducerMessage', type: 'textarea' },
+        {
+          type: 'row',
+          fields: [
+            { name: 'kafkaProducerSsl', type: 'checkbox', defaultValue: false },
+            {
+              name: 'kafkaProducerAllowAutoTopicCreation',
+              type: 'checkbox',
+              defaultValue: false,
+            },
+          ],
+        },
+        {
+          name: 'kafkaProducerSaslOptions',
+          type: 'textarea',
+          admin: {
+            description:
+              'JSON object with mechanism (plain, scram-sha-256, scram-sha-512) and username/password.',
+          },
+        },
+      ],
+    },
+
+    // ---- gRPC -----------------------------------------------------------------------------------
+    {
+      type: 'collapsible',
+      label: 'gRPC',
+      admin: { condition: (data) => data?.type === 'grpc-keyword', initCollapsed: false },
+      fields: [
+        { name: 'grpcUrl', type: 'text', admin: { placeholder: 'host:443' } },
+        {
+          type: 'row',
+          fields: [
+            { name: 'grpcServiceName', type: 'text' },
+            { name: 'grpcMethod', type: 'text' },
+            { name: 'grpcEnableTls', type: 'checkbox', defaultValue: false },
+          ],
+        },
+        {
+          name: 'grpcProtobuf',
+          type: 'textarea',
+          admin: { description: 'Proto definition of the service.' },
+        },
+        { name: 'grpcBody', type: 'textarea', admin: { description: 'JSON request body.' } },
+        {
+          name: 'grpcMetadata',
+          type: 'textarea',
+          admin: { description: 'JSON object of request metadata.' },
+        },
+      ],
+    },
+
+    // ---- RADIUS ---------------------------------------------------------------------------------
+    {
+      type: 'collapsible',
+      label: 'RADIUS',
+      admin: { condition: (data) => data?.type === 'radius', initCollapsed: false },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            { name: 'radiusUsername', type: 'text' },
+            { name: 'radiusPassword', type: 'text' },
+            { name: 'radiusSecret', type: 'text' },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            { name: 'radiusCalledStationId', type: 'text' },
+            { name: 'radiusCallingStationId', type: 'text' },
+          ],
+        },
+      ],
+    },
+
+    // ---- SNMP -----------------------------------------------------------------------------------
+    {
+      type: 'collapsible',
+      label: 'SNMP',
+      admin: { condition: (data) => data?.type === 'snmp', initCollapsed: false },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            { name: 'snmpOid', type: 'text', admin: { placeholder: '1.3.6.1.2.1.1.1.0' } },
+            {
+              name: 'snmpVersion',
+              type: 'select',
+              defaultValue: '2c',
+              options: [
+                { label: 'SNMPv1', value: '1' },
+                { label: 'SNMPv2c', value: '2c' },
+              ],
+            },
+            { name: 'snmpCommunity', type: 'text', defaultValue: 'public' },
+          ],
+        },
+      ],
+    },
+
+    // ---- SMTP -----------------------------------------------------------------------------------
+    {
+      name: 'smtpSecurity',
+      type: 'select',
+      defaultValue: 'opportunistic',
+      options: [
+        { label: 'STARTTLS if offered', value: 'opportunistic' },
+        { label: 'Require STARTTLS', value: 'starttls' },
+        { label: 'SMTPS (implicit TLS)', value: 'secure' },
+        { label: 'Ignore STARTTLS', value: 'nostarttls' },
+      ],
+      admin: { condition: (data) => data?.type === 'smtp' },
+    },
+
+    // ---- SFTP -----------------------------------------------------------------------------------
+    {
+      type: 'collapsible',
+      label: 'SFTP',
+      admin: { condition: (data) => data?.type === 'sftp', initCollapsed: false },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            { name: 'sshUsername', type: 'text' },
+            {
+              name: 'sshAuthMethod',
+              type: 'select',
+              defaultValue: 'password',
+              options: [
+                { label: 'Password', value: 'password' },
+                { label: 'Private key', value: 'privateKey' },
+              ],
+            },
+          ],
+        },
+        {
+          name: 'sshPassword',
+          type: 'text',
+          admin: { condition: (data) => data?.sshAuthMethod !== 'privateKey' },
+        },
+        {
+          name: 'sshPrivateKey',
+          type: 'textarea',
+          admin: { condition: (data) => data?.sshAuthMethod === 'privateKey' },
+        },
+        {
+          name: 'sshPassphrase',
+          type: 'text',
+          admin: { condition: (data) => data?.sshAuthMethod === 'privateKey' },
+        },
+        {
+          name: 'sftpPath',
+          type: 'text',
+          admin: { description: 'Optional remote path that must exist.' },
+        },
+      ],
+    },
+
+    // ---- RabbitMQ -------------------------------------------------------------------------------
+    {
+      type: 'collapsible',
+      label: 'RabbitMQ',
+      admin: { condition: (data) => data?.type === 'rabbitmq', initCollapsed: false },
+      fields: [
+        {
+          name: 'rabbitmqNodes',
+          type: 'text',
+          hasMany: true,
+          admin: { description: 'Management API base URLs, e.g. https://node1:15672.' },
+        },
+        {
+          type: 'row',
+          fields: [
+            { name: 'rabbitmqUsername', type: 'text' },
+            { name: 'rabbitmqPassword', type: 'text' },
+          ],
+        },
+      ],
+    },
+
+    // ---- WebSocket ------------------------------------------------------------------------------
+    {
+      type: 'row',
+      admin: { condition: (data) => data?.type === 'websocket-upgrade' },
+      fields: [
+        {
+          name: 'wsSubprotocol',
+          type: 'text',
+          admin: { description: 'Comma-separated Sec-WebSocket-Protocol values.' },
+        },
+        {
+          name: 'wsIgnoreSecWebsocketAcceptHeader',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: { description: 'Accept non-compliant servers that omit Sec-WebSocket-Accept.' },
+        },
+      ],
+    },
+
+    // ---- Game servers ---------------------------------------------------------------------------
+    {
+      type: 'row',
+      admin: { condition: (data) => data?.type === 'gamedig' },
+      fields: [
+        { name: 'game', type: 'text', admin: { description: 'GameDig game id, e.g. minecraft.' } },
+        {
+          name: 'gamedigGivenPortOnly',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: { description: 'Do not probe the other ports a game commonly uses.' },
+        },
+      ],
+    },
+
+    // ---- Real browser ---------------------------------------------------------------------------
+    {
+      name: 'remoteBrowser',
+      type: 'text',
+      admin: {
+        condition: (data) => data?.type === 'real-browser',
+        placeholder: 'ws://browserless:3000',
+        description: 'Playwright-compatible remote browser websocket URL.',
+      },
     },
 
     statusGroup,
