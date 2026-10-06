@@ -24,6 +24,7 @@ src/app/(payload)/               Payload admin + REST/GraphQL (do not edit excep
 src/app/(frontend)/              Marmot UI (App Router, server components + client islands)
 src/app/api/                     public endpoints: health, badge, push, metrics
 src/components/ui/               shadcn/ui primitives (themed); src/components/* app components
+src/i18n/                        locales, message catalogues (messages/en.json), formats, request locale
 src/stores/                      Zustand stores (live monitor state, ring buffers)
 src/lib/                         socket client, API client, logger, utils
 src/worker.ts, src/realtime.ts   process entrypoints
@@ -50,6 +51,9 @@ tests/e2e/*.e2e.spec.ts          Playwright critical paths
    `src/app/(frontend)/styles.css`. Live data flows socket → Zustand → selectors; never store heartbeats in
    React state. Pages are server components that load initial data via the Local API, hydrate stores, then
    subscribe.
+   User-facing text is a next-intl message in `src/i18n/messages/en.json` (`useTranslations` /
+   `getTranslations`; `getTranslator` outside React); dates and numbers go through `useFormatter` with a
+   named format from `src/i18n/formats.ts`, never `toLocaleString()`. See docs/Development.md → Localisation.
 7. **Config**: new env vars go in `src/env.ts`, `.env.example`, `docs/Configuration.md` and, if relevant,
    `docker/docker-compose.yml`.
 8. **Tests**: integration tests for behaviour that can break silently (access control, engine state machine,

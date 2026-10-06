@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 import React from 'react'
 
@@ -14,11 +15,12 @@ export const dynamic = 'force-dynamic'
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const payload = await getPayload({ config })
   if (await needsSetup(payload)) redirect('/setup')
+  const t = await getTranslations('common')
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-sidebar px-4 py-10 text-foreground">
       {children}
-      <p className="mt-10 text-xs text-muted-foreground">Marmot · self-hosted status monitoring</p>
+      <p className="mt-10 text-xs text-muted-foreground">{t('tagline')}</p>
     </main>
   )
 }

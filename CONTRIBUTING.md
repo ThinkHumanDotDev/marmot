@@ -43,6 +43,8 @@ participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
   `payload.auth({ headers })` and return `{ error }` JSON with a proper status.
 - UI lives in `src/app/(frontend)` (App Router) with shadcn/ui primitives under `src/components/ui`. Keep
   live data in Zustand stores (`src/stores`) fed by the socket client (`src/lib/socket.ts`).
+- User-facing text is a next-intl message in `src/i18n/messages/en.json`; dates and numbers go through the
+  i18n formatter (`docs/Development.md` → Localisation). Keys are type-checked.
 - Configuration is read through `src/env.ts` only. Document every new variable in `.env.example` and
   `docs/Configuration.md` (`tests/int/docs.int.spec.ts` fails otherwise); runtime-tunable options go into
   the `instance-settings` global with the variable as default.

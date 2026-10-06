@@ -87,7 +87,8 @@ sole owner of any organization cannot be deleted until the organization has anot
 
 ## Account settings
 
-**Settings → Account** (`/{org}/settings/account`) edits your name and avatar, changes your password (the
+**Settings → Account** (`/{org}/settings/account`) edits your name and avatar, your theme and language
+(`users.language`; the picker appears once Marmot ships more than one language), changes your password (the
 current password is required) and deletes your account (type your email to confirm; refused while you are
 the sole owner of an organization). Password reset by email is available from the login page
 (`/forgot-password`) when SMTP is configured.

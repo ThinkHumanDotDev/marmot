@@ -8,7 +8,9 @@ import { AccountForm } from '@/components/settings/account-form'
 import { AppearanceCard } from '@/components/settings/appearance-card'
 import { ChangePasswordForm } from '@/components/settings/change-password-form'
 import { DeleteAccountCard } from '@/components/settings/delete-account-card'
+import { LanguageCard } from '@/components/settings/language-card'
 import { TwoFactorCard } from '@/components/settings/two-factor-card'
+import { toLocale } from '@/i18n/translator'
 import { requireUser } from '@/lib/auth'
 import { getOrgBySlug } from '@/lib/org'
 import type { Media } from '@/payload-types'
@@ -40,6 +42,7 @@ export default async function AccountSettingsPage({
     <>
       <AccountForm user={{ id: user.id, email: user.email, name: user.name ?? '', avatarUrl }} />
       <AppearanceCard userId={user.id} theme={user.theme ?? 'system'} />
+      <LanguageCard userId={user.id} language={toLocale(user.language)} />
       <TwoFactorCard status={twoFactor} hasPassword={hasPassword} />
       {hasPassword && <ChangePasswordForm />}
       <DeleteAccountCard email={user.email} soleOwnerOf={blocking.map((o) => o.name)} />
