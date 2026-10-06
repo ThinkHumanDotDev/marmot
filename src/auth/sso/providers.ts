@@ -1,4 +1,4 @@
-import { github, google, oidc, type OAuthProvider } from '@thinkhumandotdev/payload-auth/oauth'
+import { github, google, oidc, type OAuthProvider } from '@thinkhuman/payload-plugin-auth/oauth'
 
 import { env } from '@/env'
 

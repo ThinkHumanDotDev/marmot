@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -20,18 +21,9 @@ import { Input } from '@/components/ui/input'
 import { ApiError, authApi } from '@/lib/api'
 import { safeNextPath } from '@/lib/utils'
 
-const schema = z.object({
-  email: z.email('Enter a valid email address'),
-  password: z.string().min(1, 'Enter your password'),
-})
+type Values = { email: string; password: string }
 
-type Values = z.infer<typeof schema>
-
-const codeSchema = z.object({
-  code: z.string().trim().min(6, 'Enter the 6-digit code or a backup code'),
-})
-
-type CodeValues = z.infer<typeof codeSchema>
+type CodeValues = { code: string }
 
 interface LoginFormProps {
   next?: string
@@ -45,6 +37,21 @@ interface LoginFormProps {
  * `POST /api/auth/2fa`, which sets the session cookie.
  */
 export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
+  const t = useTranslations('auth.login')
+  const tf = useTranslations('auth.fields')
+  const tv = useTranslations('auth.validation')
+  const schema = React.useMemo(
+    () =>
+      z.object({
+        email: z.email(tv('email')),
+        password: z.string().min(1, tv('passwordRequired')),
+      }),
+    [tv],
+  )
+  const codeSchema = React.useMemo(
+    () => z.object({ code: z.string().trim().min(6, tv('code')) }),
+    [tv],
+  )
   const router = useRouter()
   const [step, setStep] = React.useState<'password' | 'code'>(twoFactor ? 'code' : 'password')
   const [challenge, setChallenge] = React.useState<string | undefined>()
@@ -78,10 +85,10 @@ export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
     } catch (error) {
       const message =
         error instanceof ApiError && error.status === 401
-          ? 'Incorrect email or password.'
+          ? t('invalidCredentials')
           : error instanceof Error
             ? error.message
-            : 'Could not sign in.'
+            : t('failed')
       form.setError('root', { message })
       setPending(false)
     }
@@ -99,11 +106,11 @@ export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
         setChallenge(undefined)
         codeForm.reset()
         form.setError('root', {
-          message: error instanceof Error ? error.message : 'Enter your password again.',
+          message: error instanceof Error ? error.message : t('twoFactor.passwordAgain'),
         })
       } else {
         codeForm.setError('root', {
-          message: error instanceof Error ? error.message : 'That code is not valid.',
+          message: error instanceof Error ? error.message : t('twoFactor.invalidCode'),
         })
       }
       setPending(false)
@@ -120,16 +127,16 @@ export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
           noValidate
         >
           <p className="text-sm text-muted-foreground">
-            {useBackup
-              ? 'Enter one of the backup codes you saved when you set up two-factor authentication.'
-              : 'Enter the 6-digit code from your authenticator app to finish signing in.'}
+            {useBackup ? t('twoFactor.backupHint') : t('twoFactor.authenticatorHint')}
           </p>
           <FormField
             control={codeForm.control}
             name="code"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{useBackup ? 'Backup code' : 'Authentication code'}</FormLabel>
+                <FormLabel>
+                  {useBackup ? t('twoFactor.backupCodeLabel') : t('twoFactor.codeLabel')}
+                </FormLabel>
                 <FormControl>
                   <Input
                     inputMode={useBackup ? 'text' : 'numeric'}
@@ -150,7 +157,7 @@ export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
             </p>
           )}
           <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? 'Verifying…' : 'Verify'}
+            {pending ? t('twoFactor.verifying') : t('twoFactor.verify')}
           </Button>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <button
@@ -161,7 +168,7 @@ export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
                 codeForm.reset()
               }}
             >
-              {useBackup ? 'Use your authenticator app' : 'Use a backup code'}
+              {useBackup ? t('twoFactor.useAuthenticator') : t('twoFactor.useBackupCode')}
             </button>
             {!twoFactor && (
               <button
@@ -173,7 +180,7 @@ export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
                   codeForm.reset()
                 }}
               >
-                Back
+                {t('twoFactor.back')}
               </button>
             )}
           </div>
@@ -192,12 +199,12 @@ export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{tf('email')}</FormLabel>
               <FormControl>
                 <Input
                   type="email"
                   autoComplete="email"
-                  placeholder="you@example.com"
+                  placeholder={tf('emailPlaceholder')}
                   autoFocus
                   {...field}
                 />
@@ -212,12 +219,12 @@ export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
           render={({ field }) => (
             <FormItem>
               <div className="flex items-center justify-between">
-                <FormLabel>Password</FormLabel>
+                <FormLabel>{tf('password')}</FormLabel>
                 <Link
                   href="/forgot-password"
                   className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 >
-                  Forgot password?
+                  {tf('forgotPassword')}
                 </Link>
               </div>
               <FormControl>
@@ -233,7 +240,7 @@ export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
           </p>
         )}
         <Button type="submit" className="w-full" disabled={pending}>
-          {pending ? 'Signing in…' : 'Sign in'}
+          {pending ? t('submitting') : t('submit')}
         </Button>
       </form>
     </Form>

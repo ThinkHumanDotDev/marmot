@@ -20,6 +20,7 @@ Two org-scoped collections (`src/collections/StatusPages.ts`, `src/collections/I
 | `slug`                                               | Globally unique, lower-cased; reserved words from `src/lib/reserved-slugs.ts`. |
 | `title`, `description`, `logo` (media), `footerText` | Shown on the page; description and footer accept the Markdown subset below.    |
 | `theme`                                              | `auto` (visitor preference), `light` or `dark`.                                |
+| `language`                                           | Locale of the page text (`en`), or `auto` to follow the visitor's browser.     |
 | `published`                                          | Only published pages are served; drafts 404 for visitors.                      |
 | `searchEngineIndex`                                  | Emits `robots: index, follow` instead of `noindex`.                            |
 | `showTags`, `showCertificateExpiry`, `showPoweredBy` | Display toggles.                                                               |
@@ -128,7 +129,8 @@ realtime socket is not used on public pages).
 ## Builder
 
 `/{orgSlug}/status-pages` lists the organization's pages; `/{orgSlug}/status-pages/{id}` edits one with
-four tabs: **Settings** (title, slug, description, theme, refresh, custom CSS, analytics id, logo upload,
+four tabs: **Settings** (title, slug, description, theme, language once Marmot ships more than one, refresh,
+custom CSS, analytics id, logo upload,
 display toggles, delete), **Groups & monitors** (drag-and-drop groups and monitors with `dnd-kit`,
 per-monitor "show URL" / custom link), **Incidents** (post, edit, pin, resolve, reopen, delete) and
 **Domains**. The header switch publishes/unpublishes.

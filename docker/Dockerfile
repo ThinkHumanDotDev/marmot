@@ -23,13 +23,10 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # Runtime dependencies only. The worker/realtime entrypoints (scripts/run-ts.mjs) and `payload migrate`
 # transpile TypeScript with tsx, which is a regular dependency; `next start` loads next.config.ts through
-# SWC. Neither needs the `typescript` package, so devDependencies stay out of the final image. The
-# install itself is a full one followed by `pnpm prune --prod`: @thinkhumandotdev/payload-auth is fetched
-# from GitHub and compiled by its `prepare` script, which needs its own development dependencies that a
-# `--prod` install would skip (the package then has no dist/ and every process fails to start).
+# SWC. Neither needs the `typescript` package, so devDependencies stay out of the final image.
 FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml .npmrc ./
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile && pnpm prune --prod
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prod
 
 # ---- build -----------------------------------------------------------------
 FROM base AS builder

@@ -1,4 +1,4 @@
-import { listAccounts, unlinkAccount } from '@thinkhumandotdev/payload-auth'
+import { listAccounts, unlinkAccount } from '@thinkhuman/payload-plugin-auth'
 import { APIError, type Payload } from 'payload'
 
 import { getInstanceProviders } from '@/auth/sso/providers'

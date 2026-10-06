@@ -43,6 +43,7 @@
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
     "@hookform/resolvers": "^5.9.1",
+    "@node-saml/node-saml": "^5.1.0",
     "@payloadcms/db-mongodb": "3.90.2",
     "@payloadcms/db-postgres": "3.90.2",
     "@payloadcms/db-sqlite": "3.90.2",
@@ -52,11 +53,11 @@
     "@payloadcms/plugin-stripe": "3.90.2",
     "@payloadcms/richtext-lexical": "3.90.2",
     "@payloadcms/storage-s3": "3.90.2",
+    "@payloadcms/translations": "3.90.2",
     "@payloadcms/ui": "3.90.2",
     "@socket.io/redis-adapter": "^8.3.0",
     "@socket.io/redis-emitter": "^5.1.0",
-    "@node-saml/node-saml": "^5.1.0",
-    "@thinkhumandotdev/payload-auth": "github:ThinkHumanDotDev/payload-plugin-auth#1f934aa92d7993295d667fb704686f54e5d4fb05",
+    "@thinkhuman/payload-plugin-auth": "^0.1.0",
     "badge-maker": "6.0.0",
     "bullmq": "^6.3.11",
     "class-variance-authority": "^0.7.1",
@@ -73,6 +74,7 @@
     "jsonata": "^2.2.2",
     "lucide-react": "^1.52.0",
     "next": "16.3.8",
+    "next-intl": "^4.14.9",
     "next-themes": "^0.4.6",
     "nodemailer": "^10.0.15",
     "openid-client": "^6.8.8",
@@ -90,7 +92,7 @@
     "react-hook-form": "^7.89.0",
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
-    "sharp": "0.35.4",
+    "sharp": "0.35.5",
     "socket.io": "^4.8.4",
     "socket.io-client": "^4.8.4",
     "socks": "^2.8.10",
@@ -159,10 +161,10 @@
     "overrides": {
       "@payloadcms/email-nodemailer>nodemailer": "^10.0.15",
       "undici@>=7.0.0 <7.29.1": "^7.29.1",
-      "dompurify@<3.4.16": "^3.4.16"
+      "dompurify@<3.4.16": "^3.4.16",
+      "shell-quote@<1.11.0": "^1.11.0"
     },
     "onlyBuiltDependencies": [
-      "@thinkhumandotdev/payload-auth",
       "sharp",
       "esbuild",
       "unrs-resolver"

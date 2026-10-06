@@ -4,7 +4,7 @@ import {
   readCookie,
   revokeSession,
   type SessionCookie,
-} from '@thinkhumandotdev/payload-auth'
+} from '@thinkhuman/payload-plugin-auth'
 import type { Payload } from 'payload'
 
 import { env } from '@/env'
@@ -12,7 +12,7 @@ import type { User } from '@/payload-types'
 
 /**
  * Payload sessions for logins Marmot completes itself (single sign-on callback, second factor):
- * thin wrappers over `@thinkhumandotdev/payload-auth` bound to the `users` collection. The result
+ * thin wrappers over `@thinkhuman/payload-plugin-auth` bound to the `users` collection. The result
  * is indistinguishable from `POST /api/users/login` for `payload.auth`, the admin panel and the
  * realtime server.
  */

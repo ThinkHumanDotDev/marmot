@@ -4,6 +4,7 @@
  * `/api/orgs`, `/api/invite` and `/api/account` cover the rest.
  */
 import type { Permission, Role } from '@/access/permissions'
+import type { Locale } from '@/i18n/locales'
 import { api } from '@/lib/api'
 
 type Id = string | number
@@ -115,7 +116,13 @@ export interface ConnectedAccounts {
 export const accountApi = {
   update: (
     userId: Id,
-    data: { name?: string; email?: string; avatar?: Id | null; theme?: ThemePreference },
+    data: {
+      name?: string
+      email?: string
+      avatar?: Id | null
+      theme?: ThemePreference
+      language?: Locale
+    },
   ) =>
     api.patch<{ doc: { id: Id; email: string; name?: string | null } }>(
       `/api/users/${userId}`,
