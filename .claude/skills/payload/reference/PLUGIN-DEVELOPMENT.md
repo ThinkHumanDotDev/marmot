@@ -1,6 +1,6 @@
 # Payload Plugin Development
 
-Complete guide to creating Payload CMS plugins with TypeScript patterns, package structure, and best practices from the official Payload plugin template.
+Complete guide to creating Payload plugins with TypeScript patterns, package structure, and best practices from the official Payload plugin template.
 
 ## Plugin Architecture
 
@@ -95,7 +95,7 @@ plugin-<name>/
 {
   "name": "payload-plugin-example",
   "version": "1.0.0",
-  "description": "A Payload CMS plugin",
+  "description": "A Payload plugin",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -147,15 +147,15 @@ plugin-<name>/
     "@swc/cli": "^0.1.62",
     "@swc/core": "^1.3.0",
     "copyfiles": "^2.4.1",
-    "cross-env": "^7.0.3",
+    "cross-env": "10.1.0",
     "eslint": "^9.0.0",
     "next": "^15.4.10",
     "payload": "^3.0.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "rimraf": "^5.0.0",
-    "typescript": "^5.0.0",
-    "vitest": "^3.0.0"
+    "typescript": "^6.0.0",
+    "vitest": "4.1.6"
   },
   "peerDependencies": {
     "payload": "^3.0.0"
@@ -1432,5 +1432,5 @@ Provides infrastructure (database, storage, email)
 
 ## Resources
 
-- [Plugin Examples](https://github.com/payloadcms/payload/tree/3.x/packages/) - Official plugins source code, payload-\* prefix
-- [Plugin Template](https://github.com/payloadcms/payload/tree/3.x/templates/plugin) - Starter template for new plugins
+- [Plugin Examples](https://github.com/payloadcms/payload/tree/main/packages/) - Official plugins source code, payload-\* prefix
+- [Plugin Template](https://github.com/payloadcms/payload/tree/main/templates/plugin) - Starter template for new plugins

@@ -166,4 +166,6 @@ license as Marmot.
 ## Payload CMS — MIT License
 
 The project scaffold originates from the official Payload `blank` template (MIT). The bundled Claude skill
-under `.claude/skills/payload` is Payload's official agent skill (MIT).
+under `.claude/skills/payload` is Payload's official agent skill (MIT), synced from
+[payloadcms/skills](https://github.com/payloadcms/skills/tree/main/skills/payload) at `ae74c65` and
+reformatted with Prettier; the upstream `README.md` is omitted.
