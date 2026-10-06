@@ -16,7 +16,7 @@ paging the on-call and without a red bar on your public status page.
 
 Maintenance is **org-scoped**: by default viewers can see windows (`maintenance:read`), members and above
 create, edit, pause and delete them (`maintenance:create|update|delete`); owners can change these minimums
-under **Settings → Permissions** ([organizations-and-members.md](organizations-and-members.md)). Monitors and
+under **Settings → Permissions** ([Organizations and members](Organizations-and-Members.md)). Monitors and
 status pages must belong to the same organization as the window.
 
 ## Effect on monitors and alerts
@@ -37,7 +37,7 @@ maintenance (list them under **Monitors** for that). Public pages render running
 start within the next seven days in a **maintenance** block above the monitor groups, with the title,
 description and the time range in the visitor's local time. The public JSON
 (`GET /api/status-pages/:slug/public`) exposes them in its `maintenance` array, running windows first
-([status-pages.md](status-pages.md)). The page's overall status becomes `maintenance` when its monitors report
+([Status pages](Status-Pages.md)). The page's overall status becomes `maintenance` when its monitors report
 maintenance and nothing else is down.
 
 ## Managing windows
@@ -64,10 +64,10 @@ Status is a pure function of the document and the clock (`src/server/maintenance
 in-memory timer per window. The collection hooks compute `status` on save, and the `maintenance-status` job
 on the worker's `marmot:maintenance` queue recomputes every window each minute, persists changes and publishes
 the `maintenanceList` realtime event so open maintenance pages update live. See
-[architecture.md](architecture.md#maintenance-windows) for the details.
+[Architecture](Architecture.md#maintenance-windows) for the details.
 
 ## Related
 
-- [monitors.md](monitors.md) for the heartbeat state machine.
-- [notifications.md](notifications.md) for what does and does not notify.
-- [comparison.md](comparison.md) for the Uptime Kuma parity status.
+- [Monitors](Monitors.md) for the heartbeat state machine.
+- [Notifications](Notifications.md) for what does and does not notify.
+- [Comparison](Comparison.md) for the Uptime Kuma parity status.

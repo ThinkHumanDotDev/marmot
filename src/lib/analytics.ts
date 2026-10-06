@@ -7,7 +7,7 @@
  *    (`src/components/consent/*` calls `setAnalyticsConsent`).
  *
  * Users are identified by a server-computed keyed hash of their id (`hashAnalyticsId` in
- * `src/server/analytics.ts`), never by email or name. See `docs/telemetry.md`.
+ * `src/server/analytics.ts`), never by email or name. See `docs/Telemetry.md`.
  */
 import posthog from 'posthog-js'
 

@@ -1,8 +1,8 @@
 # Getting started
 
 This page takes a fresh server to a working Marmot with one monitor, one notification channel and one
-public status page. It assumes Docker; [development.md](development.md) covers running from source and
-[deployment.md](deployment.md) the production details (reverse proxies, backups, upgrades).
+public status page. It assumes Docker; [Development](Development.md) covers running from source and
+[Deployment](Deployment.md) the production details (reverse proxies, backups, upgrades).
 
 ## 1. Start the stack
 
@@ -51,7 +51,7 @@ redirects to `/setup`, which asks for:
 Submitting creates the instance **superadmin** and the organization with you as its **owner** in one
 transaction and signs you in. The wizard closes for good after that: later visitors land on `/login`, and
 new people join through `/signup` (while sign-up is allowed) or an invitation
-([organizations-and-members.md](organizations-and-members.md)).
+([Organizations and members](Organizations-and-Members.md)).
 
 Superadmins can additionally open the Payload admin panel at `/admin`, which exposes **Instance settings**
 (public URL, sign-up, retention, proxy trust) and raw access to every collection. Day-to-day work happens in
@@ -63,7 +63,7 @@ Go to **Monitors → New monitor**. The form asks for:
 
 1. **Type**. Start with _HTTP(s)_: UP when the response status is accepted (`200-299` by default). Other
    types (keyword, JSON query, TCP port, ping, DNS, push, group, manual, and the extended set landing in the
-   current release) are described in [monitors.md](monitors.md).
+   current release) are described in [Monitors](Monitors.md).
 2. **Name** and **URL** (or hostname/port for the host-based types).
 3. **Timing**: check every `interval` seconds (default 60, minimum 20), retry `maxRetries` times at
    `retryInterval` before going DOWN (default 0 retries), and `resendInterval` to re-alert while a monitor
@@ -77,7 +77,7 @@ status changes. The monitor list on `/acme/monitors` updates live over the WebSo
 ## 4. Get alerted
 
 Go to **Notifications → New channel**, pick a provider (Slack, Discord, Telegram, SMTP email, ntfy, Gotify,
-Pushover, webhook, PagerDuty, …; the full list is in [notifications.md](notifications.md)) and fill in the
+Pushover, webhook, PagerDuty, …; the full list is in [Notifications](Notifications.md)) and fill in the
 form that the provider describes. **Send test** delivers a test message before you save. Tick **Default**
 to attach the channel to every monitor created afterwards and **Apply to all existing monitors** to attach
 it to the monitors you already have (for now this is how channels reach monitors; picking channels per
@@ -93,7 +93,7 @@ monitors** tab create a group ("Core services") and drag monitors into it. Switc
 header. The page is now public at `https://status.example.com/status/<slug>`, shows the last 50 beats and
 the 24h/30d uptime of each monitor, and refreshes itself every few minutes. Post incidents from the
 **Incidents** tab; the **Domains** tab serves the page on its own hostname (`status.yourproduct.com`), see
-[status-pages.md](status-pages.md).
+[Status pages](Status-Pages.md).
 
 ## 6. Invite your team
 
@@ -101,11 +101,11 @@ the 24h/30d uptime of each monitor, and refreshes itself every few minutes. Post
 copy the organization's **invite link** for a self-service join. With SMTP unset, invitation emails are
 printed to the `web` container log (`docker compose logs web`) so you can copy the link from there.
 Configure `SMTP_*` in `.env` to send real mail, and `OIDC_*` to let people sign in with your identity
-provider ([sso.md](sso.md)).
+provider ([Single sign-on](Single-Sign-On.md)).
 
 ## Where to next
 
-- Harden and operate the install: [deployment.md](deployment.md) (reverse proxies, backups, upgrades).
-- Tune it: [configuration.md](configuration.md) (every variable), the instance settings in `/admin`.
+- Harden and operate the install: [Deployment](Deployment.md) (reverse proxies, backups, upgrades).
+- Tune it: [Configuration](Configuration.md) (every variable), the instance settings in `/admin`.
 - Automate it: badges, the push endpoint, Prometheus metrics and API keys in
-  [integrations.md](integrations.md) _(landing in the current release)_.
+  [Integrations](Integrations.md) _(landing in the current release)_.

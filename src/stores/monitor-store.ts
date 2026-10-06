@@ -4,7 +4,7 @@ import type { MonitorTagChip } from '@/lib/monitor-resources'
 import { RingBuffer } from '@/lib/ring-buffer'
 
 /**
- * Live monitor state fed by the realtime socket (see docs/architecture.md → Realtime).
+ * Live monitor state fed by the realtime socket (see docs/Architecture.md → Realtime).
  * Pages hydrate it from the Local API on the server, then the socket client pushes updates.
  * Heartbeats never live in React state: components read them through the selectors below.
  */

@@ -1,5 +1,5 @@
 /**
- * Generic OIDC single sign-on (see docs/sso.md).
+ * Generic OIDC single sign-on (see docs/Single-Sign-On.md).
  *
  * - `client.ts`   settings, discovery cache, redirect URIs, `getAuthProviders()`
  * - `state.ts`    encrypted transaction cookie (PKCE verifier, state, nonce, next path)

@@ -1,8 +1,8 @@
 # Contributing to Marmot
 
 Thanks for helping! Marmot is developed in the open; issues and pull requests are the unit of work. This
-page is the short version; [docs/development.md](docs/development.md) has the local setup, test and
-migration workflows and [docs/architecture.md](docs/architecture.md) explains how the pieces fit. By
+page is the short version; [docs/Development.md](docs/Development.md) has the local setup, test and
+migration workflows and [docs/Architecture.md](docs/Architecture.md) explains how the pieces fit. By
 participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Workflow
@@ -44,7 +44,7 @@ participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 - UI lives in `src/app/(frontend)` (App Router) with shadcn/ui primitives under `src/components/ui`. Keep
   live data in Zustand stores (`src/stores`) fed by the socket client (`src/lib/socket.ts`).
 - Configuration is read through `src/env.ts` only. Document every new variable in `.env.example` and
-  `docs/configuration.md` (`tests/int/docs.int.spec.ts` fails otherwise); runtime-tunable options go into
+  `docs/Configuration.md` (`tests/int/docs.int.spec.ts` fails otherwise); runtime-tunable options go into
   the `instance-settings` global with the variable as default.
 - Server code must be bundle-safe (`pnpm build:server`): no `import.meta.url`-relative paths to repository
   files, no dynamic imports with computed specifiers.
@@ -63,7 +63,7 @@ kan.bn stays under the AGPL-3.0, the same license as Marmot; attribute it the sa
 
 ## Adding a monitor type
 
-One file plus registry lines; see [docs/monitors.md](docs/monitors.md) for the concepts.
+One file plus registry lines; see [docs/Monitors.md](docs/Monitors.md) for the concepts.
 
 1. Create `src/server/monitor-types/<name>.ts` that calls `registerMonitorType({ name, label, group, check })`.
    `check(ctx)` receives `{ monitor, heartbeat, signal, payload }`, sets `heartbeat.status`/`msg`/`ping` and
@@ -75,7 +75,7 @@ One file plus registry lines; see [docs/monitors.md](docs/monitors.md) for the c
 4. Add the type to `MONITOR_TYPE_NAMES`, `MONITOR_TYPE_GROUPS` and the per-type `superRefine` rules in
    `src/lib/validation/monitor.ts`, and render its fields in `src/components/monitors/monitor-form.tsx`.
 5. Write `src/server/monitor-types/<name>.test.ts` (at least an unreachable-target case, and the
-   missing-driver message for optional drivers) and add a row to `docs/monitor-types.md`.
+   missing-driver message for optional drivers) and add a row to `docs/Monitor-Types.md`.
 
 ## Adding a notification provider
 
@@ -88,22 +88,26 @@ One file plus registry lines; see [docs/monitors.md](docs/monitors.md) for the c
    templates.
 3. Add `import './<name>'` to `src/server/notification-providers/index.ts`.
 4. Add a payload test to `src/server/notification-providers/providers.test.ts` (or `providers-2.test.ts`)
-   and a row to the table in `docs/notifications.md`.
+   and a row to the table in `docs/Notifications.md`.
 5. Ported from Uptime Kuma? Attribution header + `THIRD_PARTY_NOTICES.md` entry.
 
 ## Documentation
 
-User documentation lives in `docs/` with [docs/README.md](docs/README.md) as the index; every page linked
-from the index must exist (a test checks it). Write for the reader of that page: operators in
-`deployment.md`/`configuration.md`, users in `monitors.md`/`status-pages.md`, contributors in
-`development.md`/`architecture.md`. Features that are merging alongside a docs change are marked
-_(landing in the current release)_ and the marker is removed at release time
-([docs/release-checklist.md](docs/release-checklist.md)).
+User documentation lives in `docs/`, laid out as a GitHub wiki: flat, Title-Case page names
+(`Getting-Started.md` becomes the "Getting Started" page), [docs/Home.md](docs/Home.md) as the index and
+`_Sidebar.md`/`_Footer.md` for the wiki navigation. Link pages as `Page-Name.md` so they work in the
+repository too; `.github/workflows/wiki.yml` publishes `docs/` to the wiki on every push to `main` and
+`scripts/build-wiki.mjs` rewrites the links. Edit `docs/`, never the wiki. A new page needs a row in
+`Home.md` and a line in `_Sidebar.md`; every linked page must exist (a test checks all of it). Write for the
+reader of that page: operators in `Deployment.md`/`Configuration.md`, users in `Monitors.md`/`Status-Pages.md`,
+contributors in `Development.md`/`Architecture.md`. Features that are merging alongside a docs change are
+marked _(landing in the current release)_ and the marker is removed at release time
+([docs/Release-Checklist.md](docs/Release-Checklist.md)).
 
 ## Releases
 
 Maintainers cut releases with `pnpm release:prepare <version>` and a `vX.Y.Z` tag; the
-[release checklist](docs/release-checklist.md) has every step. `CHANGELOG.md` and the GitHub Release notes
+[release checklist](docs/Release-Checklist.md) has every step. `CHANGELOG.md` and the GitHub Release notes
 are generated from commit messages by git-cliff (`cliff.toml`), so a clear Conventional Commit subject is
 your changelog entry.
 

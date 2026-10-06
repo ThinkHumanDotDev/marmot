@@ -171,4 +171,4 @@ docker/                          Dockerfile, compose files, Caddyfile, entrypoin
 ```
 
 Extension points (adding a monitor type or a notification provider) are described in
-[`CONTRIBUTING.md`](../CONTRIBUTING.md); the data flow is in [architecture.md](architecture.md).
+[`CONTRIBUTING.md`](../CONTRIBUTING.md); the data flow is in [Architecture](Architecture.md).

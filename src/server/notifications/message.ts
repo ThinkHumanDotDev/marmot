@@ -36,7 +36,7 @@ export function buildTestMessage(channelName?: string): string {
   return `[Marmot] [${TEST_STATUS_LABEL}] ${channelName ? `"${channelName}" is configured correctly.` : 'Testing'}`
 }
 
-/** Variables available to `{{ }}` templates. Keep this list in `docs/notifications.md`. */
+/** Variables available to `{{ }}` templates. Keep this list in `docs/Notifications.md`. */
 export interface TemplateContext {
   msg: string
   status: string

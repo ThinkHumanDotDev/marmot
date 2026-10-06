@@ -39,11 +39,11 @@ self-hosted install.
 - **Status pages** – any number of public pages per organization with monitor groups, incidents, custom
   CSS, custom domains, RSS and badges; maintenance banners landing.
 - **Teams** – organizations with owner/admin/member/viewer roles, email invitations, invite links,
-  ownership transfer, generic OIDC [single sign-on](docs/sso.md), first-run setup wizard.
-- **Hosting-ready** – optional per-organization plan limits and Stripe [billing](docs/billing.md); off by default.
+  ownership transfer, generic OIDC [single sign-on](docs/Single-Sign-On.md), first-run setup wizard.
+- **Hosting-ready** – optional per-organization plan limits and Stripe [billing](docs/Billing.md); off by default.
 - **Live** – the dashboard updates in real time over WebSockets.
 - **Integrations** – status badges, push monitors, Prometheus metrics and organization API keys
-  ([docs/integrations.md](docs/integrations.md)).
+  ([docs/Integrations.md](docs/Integrations.md)).
 - **Self-hosting first** – one Docker image, Postgres **or** MongoDB, Redis, Caddy for automatic HTTPS,
   no telemetry unless you turn it on.
 
@@ -59,18 +59,18 @@ docker compose up -d --wait
 ```
 
 Add `-f docker-compose.yml -f docker-compose.mongo.yml` to run on MongoDB. The walkthrough from empty
-server to first status page is in [docs/getting-started.md](docs/getting-started.md).
+server to first status page is in [docs/Getting-Started.md](docs/Getting-Started.md).
 
 ## Documentation
 
-The index is [docs/README.md](docs/README.md). Most-read pages:
+The index is [docs/Home.md](docs/Home.md). Most-read pages:
 
 | Run it                                     | Use it                                                         | Change it                                         |
 | ------------------------------------------ | -------------------------------------------------------------- | ------------------------------------------------- |
-| [Getting started](docs/getting-started.md) | [Monitors](docs/monitors.md)                                   | [Architecture](docs/architecture.md)              |
-| [Configuration](docs/configuration.md)     | [Notifications](docs/notifications.md)                         | [Development](docs/development.md)                |
-| [Deployment](docs/deployment.md)           | [Status pages](docs/status-pages.md)                           | [Contributing](CONTRIBUTING.md)                   |
-| [Single sign-on](docs/sso.md)              | [Organizations and members](docs/organizations-and-members.md) | [Comparison with Uptime Kuma](docs/comparison.md) |
+| [Getting started](docs/Getting-Started.md) | [Monitors](docs/Monitors.md)                                   | [Architecture](docs/Architecture.md)              |
+| [Configuration](docs/Configuration.md)     | [Notifications](docs/Notifications.md)                         | [Development](docs/Development.md)                |
+| [Deployment](docs/Deployment.md)           | [Status pages](docs/Status-Pages.md)                           | [Contributing](CONTRIBUTING.md)                   |
+| [Single sign-on](docs/Single-Sign-On.md)   | [Organizations and members](docs/Organizations-and-Members.md) | [Comparison with Uptime Kuma](docs/Comparison.md) |
 
 ## Development
 
@@ -82,7 +82,7 @@ pnpm dev                        # web :3000, worker, realtime :3001
 ```
 
 `pnpm check` runs lint, typecheck and the integration tests. Read [CONTRIBUTING.md](CONTRIBUTING.md) and
-[docs/development.md](docs/development.md) before opening a pull request.
+[docs/Development.md](docs/Development.md) before opening a pull request.
 
 ## Architecture
 
@@ -95,17 +95,17 @@ pnpm dev                        # web :3000, worker, realtime :3001
 ```
 
 One image, three roles (`MARMOT_ROLE=web|worker|realtime`, or `all`), scaled independently. Details in
-[docs/architecture.md](docs/architecture.md).
+[docs/Architecture.md](docs/Architecture.md).
 
 ## FAQ
 
 **Is it a fork of Uptime Kuma?** No. Marmot is a new codebase on Payload CMS and Next.js. Where it saves
 time it ports individual pieces of Uptime Kuma (MIT) — the heartbeat state machine, the uptime calculator,
 monitor checks, notification providers — with attribution in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-[docs/comparison.md](docs/comparison.md) tracks feature parity.
+[docs/Comparison.md](docs/Comparison.md) tracks feature parity.
 
 **Can I import my Uptime Kuma data?** Yes: Settings → Import / Export reads an Uptime Kuma JSON backup
-(with a dry run first); see [docs/import-export.md](docs/import-export.md).
+(with a dry run first); see [docs/Import-and-Export.md](docs/Import-and-Export.md).
 
 **Postgres or MongoDB?** Either. Postgres is the default and ships in the compose file; MongoDB is a
 one-line override. Every collection is written to work on both, and CI runs the whole suite on both.
@@ -121,7 +121,7 @@ buckets so the database stays small; raw beats are pruned after 24 hours.
 
 **Can I run it behind my own reverse proxy?** Yes. Route `/socket.io/*` (with WebSocket upgrades) to the
 realtime process and everything else to the web process; nginx and Traefik examples are in
-[docs/deployment.md](docs/deployment.md).
+[docs/Deployment.md](docs/Deployment.md).
 
 **Does it phone home?** No. There is no telemetry unless an operator sets a PostHog key, and even then
 visitors are asked for consent first. See **Privacy** below.
@@ -134,7 +134,7 @@ their own monitors, channels, status pages and members; a user can belong to sev
 Marmot collects **nothing** by default: no analytics SDK, no cookie banner, no calls home. Operators who
 want product analytics can opt in with `NEXT_PUBLIC_POSTHOG_KEY`; the UI then asks every visitor for
 consent, identifies users only by a keyed hash and reduces URLs to route patterns.
-[docs/telemetry.md](docs/telemetry.md) (landing in the current release) lists exactly what is collected and
+[docs/Telemetry.md](docs/Telemetry.md) (landing in the current release) lists exactly what is collected and
 how to turn it off. Security reports go through [SECURITY.md](SECURITY.md).
 
 ## License

@@ -73,7 +73,7 @@ can be copied.
 
 With SSO configured and `DISABLE_SIGNUP` on, a user who signs in through the identity provider for the first
 time while holding a pending invitation is provisioned and placed in the organization in one step
-([sso.md](sso.md)).
+([Single sign-on](Single-Sign-On.md)).
 
 ## Managing members
 
@@ -110,4 +110,4 @@ the sole owner of an organization). Password reset by email is available from th
 
 Memberships themselves live on `users.organizations` and are writable only by superadmins through the
 Payload API; the routes above are the supported way to change them. Implementation notes are in
-[architecture.md](architecture.md#organizations-and-rbac).
+[Architecture](Architecture.md#organizations-and-rbac).

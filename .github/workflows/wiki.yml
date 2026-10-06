@@ -1,0 +1,42 @@
+name: Wiki
+
+# Publishes docs/ to the GitHub wiki (scripts/build-wiki.mjs rewrites the links). docs/ is the source of
+# truth: edits made in the wiki are overwritten on the next run. The wiki must exist before the first run
+# (create any page once in the GitHub UI).
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**', 'scripts/build-wiki.mjs', '.github/workflows/wiki.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: wiki
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish docs to the wiki
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: .wiki
+      - run: node scripts/build-wiki.mjs .wiki --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+      - name: Commit and push
+        working-directory: .wiki
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Wiki already up to date.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "docs: sync from ${GITHUB_SHA::7}"
+          git push

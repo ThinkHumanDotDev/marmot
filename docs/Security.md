@@ -39,7 +39,7 @@ account (per e-mail) and the OIDC endpoints are not limited.
 6. **Limit superadmins.** They bypass organization access and can open `/admin`; give the flag to operators
    only, and review `audit-logs` for `auth.login_failed` bursts.
 7. **Restrict CORS.** Add only the origins you control to `ADDITIONAL_ORIGINS`.
-8. **Back up and update.** Follow [deployment.md](deployment.md) for backups, pin `MARMOT_VERSION` and apply
+8. **Back up and update.** Follow [Deployment](Deployment.md) for backups, pin `MARMOT_VERSION` and apply
    releases promptly; watch the CI dependency audit output after upgrading your fork.
 9. **Protect Redis.** Rate limiting and queues live there; use `requirepass`/ACLs and
    `maxmemory-policy noeviction`.

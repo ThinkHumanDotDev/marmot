@@ -30,7 +30,7 @@ export const viewport: Viewport = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Opt-in analytics (docs/telemetry.md): the consent banner and the PostHog bridge exist only
+  // Opt-in analytics (docs/Telemetry.md): the consent banner and the PostHog bridge exist only
   // when the operator set NEXT_PUBLIC_POSTHOG_KEY; otherwise nothing analytics-related is mounted.
   const analytics = isAnalyticsEnabled()
   return (

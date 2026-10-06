@@ -3,7 +3,7 @@
 Every monitor type is one file in `src/server/monitor-types/`, registered in that directory's `index.ts`
 and described for the form in `src/lib/validation/monitor.ts` (`MONITOR_TYPE_GROUPS`, per-type required
 fields). The worker runs the type's `check()` bounded by the monitor's `timeout` (0 = 80% of the
-interval) and feeds the result through the heartbeat state machine (`docs/architecture.md`).
+interval) and feeds the result through the heartbeat state machine ([Architecture](Architecture.md)).
 
 Heavy client libraries are **optional dependencies** (`package.json` → `optionalDependencies`). They are
 imported lazily inside `check()`, so the worker starts without them; a monitor whose driver is missing

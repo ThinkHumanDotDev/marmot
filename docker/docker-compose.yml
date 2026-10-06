@@ -4,7 +4,7 @@
 #   docker compose up -d
 #
 # MongoDB instead of Postgres:  docker compose -f docker-compose.yml -f docker-compose.mongo.yml up -d
-# Full guide: docs/deployment.md
+# Full guide: docs/Deployment.md
 name: marmot
 
 # Environment shared by the three Marmot roles. `environment` wins over `.env` (env_file), so the
@@ -49,7 +49,7 @@ services:
       MARMOT_ROLE: worker
     # Docker Container monitors with a "socket" Docker host read the daemon through the worker.
     # Uncomment to let them reach this host's Docker (Marmot only sends GET requests, but the socket
-    # grants full daemon access; see DOCKER_SOCKET_ENABLED in docs/configuration.md).
+    # grants full daemon access; see DOCKER_SOCKET_ENABLED in docs/Configuration.md).
     # volumes:
     #   - /var/run/docker.sock:/var/run/docker.sock:ro
 

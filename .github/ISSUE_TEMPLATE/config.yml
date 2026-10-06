@@ -7,5 +7,5 @@ contact_links:
     url: https://github.com/ThinkHumanDotDev/marmot/discussions
     about: Ask how to deploy or use Marmot, or discuss an idea before it becomes a feature request.
   - name: Documentation
-    url: https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/README.md
+    url: https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/Home.md
     about: Getting started, configuration, deployment, monitors, notifications, status pages and more.

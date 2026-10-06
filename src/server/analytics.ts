@@ -4,7 +4,7 @@
  * identifiers. Gated by the same `NEXT_PUBLIC_POSTHOG_KEY` as the browser SDK: without it every
  * function is a no-op and the SDK is never instantiated. Imported by the worker (bundled with
  * esbuild) and by Payload hooks in the web process, so it must stay bundle-safe: static imports
- * only. See `docs/telemetry.md`.
+ * only. See `docs/Telemetry.md`.
  */
 import { createHash, createHmac } from 'node:crypto'
 

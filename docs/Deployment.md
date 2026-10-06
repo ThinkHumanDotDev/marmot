@@ -46,17 +46,17 @@ docker compose up -d --wait
 docker compose logs -f web      # watch migrations run and the server start
 ```
 
-Open `https://$DOMAIN` (or `http://<host>`) and complete the setup wizard ([getting-started.md](getting-started.md)).
+Open `https://$DOMAIN` (or `http://<host>`) and complete the setup wizard ([Getting started](Getting-Started.md)).
 `web` runs the database migrations (`dist/server/migrate.mjs`, bundled at image build time) on every start,
 so the schema is created on first boot and upgraded on later ones. The `worker` and `realtime` roles run
 from the same pre-built bundles; the worker waits up to `WORKER_SCHEMA_WAIT_MS` (2 minutes) for the schema
 to appear instead of crash-looping while `web` migrates.
 
 Caddy obtains and renews the certificate for `DOMAIN` automatically and redirects HTTP to HTTPS. Status
-pages on their own hostnames need on-demand TLS; see [status-pages.md](status-pages.md#custom-domains).
+pages on their own hostnames need on-demand TLS; see [Status pages](Status-Pages.md#custom-domains).
 
 The rest of the configuration (SMTP, OIDC, S3 storage, retention, …) goes into the same `.env`; see
-[configuration.md](configuration.md) for the full table. `docker/.env.example` lists the common ones.
+[Configuration](Configuration.md) for the full table. `docker/.env.example` lists the common ones.
 
 ## MongoDB instead of Postgres
 
@@ -253,11 +253,11 @@ Images are published for `linux/amd64` and `linux/arm64` on every release tag: `
 compose file of a release defaults `MARMOT_VERSION` to that release, so `docker compose pull` alone does
 not jump to a newer version until you update `docker-compose.yml` or set `MARMOT_VERSION`. Changes per
 version are in [`CHANGELOG.md`](../CHANGELOG.md); maintainers follow the
-[release checklist](release-checklist.md).
+[release checklist](Release-Checklist.md).
 
 ## Hardening
 
-Before exposing an instance to the internet, go through the checklist in [security.md](security.md): TLS,
+Before exposing an instance to the internet, go through the checklist in [Security](Security.md): TLS,
 the `trustProxy` instance setting (rate limiting and the audit log need the real client address), a strong
 `PAYLOAD_SECRET`, closed signup and private database/Redis ports.
 

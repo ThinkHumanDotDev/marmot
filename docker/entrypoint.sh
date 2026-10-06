@@ -6,7 +6,7 @@
 #   entrypoint.sh healthcheck  exit 0 when the role is healthy (used by HEALTHCHECK / compose)
 #   entrypoint.sh <command>    run an arbitrary command inside the image
 #
-# Environment knobs (besides the Marmot variables documented in docs/configuration.md):
+# Environment knobs (besides the Marmot variables documented in docs/Configuration.md):
 #   SKIP_MIGRATIONS=true  do not run `payload migrate` before starting web/all
 set -eu
 

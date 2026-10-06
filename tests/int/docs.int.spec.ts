@@ -41,18 +41,25 @@ function markdownLinks(markdown: string): { target: string }[] {
  * Pages whose pull requests merge alongside the documentation ("landing in the current release" in the
  * docs). They may be linked before they exist; the release checklist empties this list once they landed.
  */
-const LANDING_PAGES = ['integrations.md', 'telemetry.md', 'billing.md']
+const LANDING_PAGES = ['Integrations.md', 'Telemetry.md', 'Billing.md']
 
+/** Exact-case check for wiki pages (macOS file systems would accept `configuration.md` for `Configuration.md`). */
 const pageExists = (target: string) =>
-  existsSync(path.join(root, 'docs', target)) || LANDING_PAGES.includes(target)
+  target.includes('/')
+    ? existsSync(path.join(root, 'docs', target))
+    : readdirMarkdown('docs').includes(target) || LANDING_PAGES.includes(target)
+
+/** Wiki special pages: the landing page and the navigation shown on every page. */
+const NAVIGATION = ['Home.md', '_Sidebar.md']
+const WIKI_SPECIAL = [...NAVIGATION, '_Footer.md']
 
 describe('documentation', () => {
   const keys = envSchemaKeys()
 
-  it('documents every environment variable of src/env.ts in docs/configuration.md', () => {
-    const configuration = read('docs/configuration.md')
+  it('documents every environment variable of src/env.ts in docs/Configuration.md', () => {
+    const configuration = read('docs/Configuration.md')
     const missing = keys.filter((key) => !configuration.includes(`\`${key}\``))
-    expect(missing, 'variables missing from docs/configuration.md').toEqual([])
+    expect(missing, 'variables missing from docs/Configuration.md').toEqual([])
   })
 
   it('lists every environment variable of src/env.ts in .env.example', () => {
@@ -61,26 +68,32 @@ describe('documentation', () => {
     expect(missing, 'variables missing from .env.example (as KEY= or # KEY=)').toEqual([])
   })
 
-  it('links only to existing pages from docs/README.md', () => {
-    const index = read('docs/README.md')
-    const links = markdownLinks(index)
-    expect(links.length).toBeGreaterThan(10)
+  it('keeps docs/ in the GitHub wiki layout (flat, Title-Case page names)', () => {
+    const entries = readdirSync(path.join(root, 'docs'), { withFileTypes: true })
+    const misplaced = entries
+      .filter((entry) => !(entry.isFile() && entry.name.endsWith('.md')) && entry.name !== 'images')
+      .map((entry) => entry.name)
+    expect(misplaced, 'docs/ must only contain .md pages and images/ (the wiki is flat)').toEqual(
+      [],
+    )
 
-    const broken = links.map(({ target }) => target).filter((target) => !pageExists(target))
-    expect(broken, 'links in docs/README.md to files that do not exist').toEqual([])
+    const badNames = readdirMarkdown('docs').filter(
+      (file) =>
+        !WIKI_SPECIAL.includes(file) && !/^[A-Z][A-Za-z0-9]*(-[A-Za-z0-9]+)*\.md$/.test(file),
+    )
+    expect(badNames, 'page names must be Title-Case-With-Hyphens.md').toEqual([])
   })
 
-  it('lists every docs page in docs/README.md', () => {
-    const index = read('docs/README.md')
-    const pages = readdirMarkdown('docs').filter((file) => file !== 'README.md')
+  it.each(NAVIGATION)('lists every docs page in docs/%s', (nav) => {
+    const index = read(path.join('docs', nav))
+    const pages = readdirMarkdown('docs').filter((file) => !WIKI_SPECIAL.includes(file))
     const unlisted = pages.filter((file) => !index.includes(`](${file})`))
-    expect(unlisted, 'docs pages not linked from docs/README.md').toEqual([])
+    expect(unlisted, `docs pages not linked from docs/${nav}`).toEqual([])
   })
 
-  it('links only to existing pages from the other docs pages', () => {
+  it('links only to existing pages from the docs pages', () => {
     const broken: string[] = []
     for (const file of readdirMarkdown('docs')) {
-      if (file === 'README.md') continue
       for (const { target } of markdownLinks(read(path.join('docs', file)))) {
         if (!pageExists(target)) broken.push(`${file} -> ${target}`)
       }

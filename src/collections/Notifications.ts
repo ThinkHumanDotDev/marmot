@@ -225,7 +225,7 @@ export const Notifications: CollectionConfig = {
           required: true,
           index: true,
           admin: {
-            description: 'Provider slug, e.g. discord, slack, smtp (see docs/notifications.md).',
+            description: 'Provider slug, e.g. discord, slack, smtp (see docs/Notifications.md).',
           },
         },
       ],

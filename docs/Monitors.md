@@ -5,7 +5,7 @@ system that reports in by itself. Each check produces a **heartbeat** (`up`, `do
 `maintenance`, with a message and a response time), the heartbeats feed the uptime statistics and the
 status pages, and status changes trigger notifications. Monitors belong to an organization; viewers can
 see them, members and above can create, edit, pause and delete them
-([organizations-and-members.md](organizations-and-members.md)).
+([Organizations and members](Organizations-and-Members.md)).
 
 ## Types
 
@@ -27,7 +27,7 @@ The type decides what a check does and which fields the form shows. The built-in
 HTTP monitors also support request method and body, extra headers, redirects, `ignoreTls`, basic/bearer/
 OAuth2 client-credentials/NTLM/mTLS authentication and certificate-expiry alerts. The extended set adds gRPC, WebSocket, MQTT, Kafka, RabbitMQ, SMTP, SNMP, NTP, SFTP, RADIUS, Tailscale
 ping, MySQL/MariaDB, PostgreSQL, SQL Server, MongoDB, Redis, Steam and GameDig checks plus a remote-browser
-HTTP check; every field of every type is listed in [monitor-types.md](monitor-types.md).
+HTTP check; every field of every type is listed in [Monitor types](Monitor-Types.md).
 
 Marmot's type set follows Uptime Kuma's, so a monitor you know from there behaves the same here (the check
 code is in many cases a direct port, see `THIRD_PARTY_NOTICES.md`).
@@ -58,7 +58,7 @@ to recover before anyone is paged.
 
 Scheduling is handled by the worker process through BullMQ job schedulers (one per active monitor); the
 web process only writes the monitor and nudges the scheduler. Several worker replicas share the load and a
-monitor is never checked twice at once ([architecture.md](architecture.md#polling-engine)).
+monitor is never checked twice at once ([Architecture](Architecture.md#polling-engine)).
 
 ## The monitor page
 
@@ -96,7 +96,7 @@ curl -fsS "https://status.example.com/api/push/<token>?status=up&msg=OK&ping=12"
 ```
 
 The endpoint accepts `GET` or any other method, `status=up|down`, a free-text `msg` and an optional `ping`
-in ms; every call records a heartbeat and stamps `lastPushAt`. See [integrations.md](integrations.md) for
+in ms; every call records a heartbeat and stamps `lastPushAt`. See [Integrations](Integrations.md) for
 the full reference, badges and API keys.
 
 ## Pause, resume, clone, delete
@@ -114,16 +114,16 @@ the full reference, badges and API keys.
 - **Notifications**: the channels attached to the monitor (`monitors.notifications`) are alerted on
   important beats. Channels flagged as default attach to every new monitor and **Apply to all existing
   monitors** attaches a channel to the current ones; a per-monitor picker in the form is landing in the
-  current release. See [notifications.md](notifications.md).
+  current release. See [Notifications](Notifications.md).
 - **Maintenance**: a monitor inside an active maintenance window reports MAINTENANCE instead of DOWN and does
-  not notify; see [maintenance.md](maintenance.md) _(landing in the current release)_.
+  not notify; see [Maintenance](Maintenance.md) _(landing in the current release)_.
 - **Tags**: coloured labels with optional values (`env: prod`), managed under Settings → Tags, shown in the
   monitor list, on the detail page and on status pages with `showTags` on.
 - **Proxies**: HTTP-type monitors can send their requests through an HTTP(S) or SOCKS proxy (Settings →
   Proxies); the organization's default proxy is preselected for new monitors.
 - **Docker**: the `docker` type checks a container's state on a Docker host (Settings → Docker hosts; local
   socket or `tcp://`/`https://`). `DOCKER_SOCKET_ENABLED=false` forbids socket hosts on shared instances.
-  Details in [architecture.md](architecture.md#tags-proxies-and-docker-hosts).
+  Details in [Architecture](Architecture.md#tags-proxies-and-docker-hosts).
 
 ## API
 
@@ -142,4 +142,4 @@ same permissions as the UI (`monitor:read` for viewers, `monitor:create|update|d
 
 Requests from outside the browser must send the `payload-token` cookie or a `JWT` `Authorization` header
 (`POST /api/users/login` returns one) and an `Origin` matching `NEXT_PUBLIC_SERVER_URL`. Organization API
-keys give machine access to badges and metrics ([integrations.md](integrations.md)).
+keys give machine access to badges and metrics ([Integrations](Integrations.md)).

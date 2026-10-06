@@ -127,7 +127,7 @@ const syncStripeCustomer: CollectionAfterChangeHook<Organization> = async ({
 }
 
 /**
- * Opt-in telemetry (docs/telemetry.md): counts new organizations. The only identifier is a keyed
+ * Opt-in telemetry (docs/Telemetry.md): counts new organizations. The only identifier is a keyed
  * hash of the organization id; a no-op unless `NEXT_PUBLIC_POSTHOG_KEY` is set.
  */
 const trackOrgCreated: CollectionAfterChangeHook<Organization> = ({ doc, operation }) => {

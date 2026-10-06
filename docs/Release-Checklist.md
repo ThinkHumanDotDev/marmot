@@ -28,11 +28,11 @@ Nothing is tagged or pushed automatically from a developer machine; the steps be
 - [ ] `pnpm generate:types` produces no diff.
 - [ ] **Dependencies**: `pnpm audit` has no unaddressed high/critical findings; Dependabot PRs are merged
       or consciously deferred.
-- [ ] **Configuration docs**: every key in `src/env.ts` is in `.env.example` and `docs/configuration.md`
+- [ ] **Configuration docs**: every key in `src/env.ts` is in `.env.example` and [Configuration](Configuration.md)
       (`tests/int/docs.int.spec.ts` enforces it); new instance settings are documented.
 - [ ] **Documentation**: pages marked _(landing in the current release)_ in `docs/` describe features that
       actually merged; remove the markers (and the page from `LANDING_PAGES` in
-      `tests/int/docs.int.spec.ts`) or move the feature to _planned_ in `docs/comparison.md`.
+      `tests/int/docs.int.spec.ts`) or move the feature to _planned_ in [Comparison](Comparison.md).
 - [ ] `THIRD_PARTY_NOTICES.md` lists every file ported from Uptime Kuma or kan.bn.
 - [ ] Manual smoke test of the release candidate image (`docker build -f docker/Dockerfile -t marmot:rc .`):
   - fresh compose stack with Postgres: setup wizard, HTTP monitor with live heartbeats, a test notification,
@@ -40,7 +40,7 @@ Nothing is tagged or pushed automatically from a developer machine; the steps be
   - the same with `docker-compose.mongo.yml`;
   - upgrade path: start the previous release, add data, swap the image tag, `docker compose up -d`; history
     is intact and the worker reconnects;
-  - backup and restore according to [deployment.md](deployment.md#backups-and-restore);
+  - backup and restore according to [Deployment](Deployment.md#backups-and-restore);
   - OIDC login against a test provider when the release touched `src/auth/`.
 - [ ] Choose the version ([SemVer](https://semver.org); while `0.x`, breaking changes bump the minor).
 - [ ] On an up-to-date `main`:
@@ -121,4 +121,4 @@ Nothing is tagged or pushed automatically from a developer machine; the steps be
 ## 5. Announce
 
 - [ ] Review the generated GitHub Release notes; add upgrade notes or highlights at the top if needed.
-- [ ] Update [deployment docs](deployment.md) if the upgrade needs manual steps.
+- [ ] Update [deployment docs](Deployment.md) if the upgrade needs manual steps.

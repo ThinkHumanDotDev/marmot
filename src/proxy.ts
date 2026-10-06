@@ -12,7 +12,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  *   https://status.example.com/manifest.json → /status/<slug>/manifest.json
  *
  * Everything else (the app, API, admin) is untouched, and any failure falls through to the normal
- * routing so a broken lookup can never take the main site down. See docs/status-pages.md.
+ * routing so a broken lookup can never take the main site down. See docs/Status-Pages.md.
  */
 
 export const config = {

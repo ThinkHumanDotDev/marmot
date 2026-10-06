@@ -93,7 +93,7 @@ link during evaluation. The `smtp` notification provider can reuse these setting
 | `OIDC_AUTO_PROVISION` | `true`                 | web     | Create a Marmot account on first SSO login. `false` only lets existing users (matched by subject or verified email) in.                                                              |
 | `OIDC_SCOPES`         | `openid email profile` | web     | Scopes requested from the provider.                                                                                                                                                  |
 
-Full setup guide with provider walkthroughs: [sso.md](sso.md).
+Full setup guide with provider walkthroughs: [Single sign-on](Single-Sign-On.md).
 
 ## Monitoring
 
@@ -107,7 +107,7 @@ Full setup guide with provider walkthroughs: [sso.md](sso.md).
 ## Billing
 
 A scaffold for hosted offerings. Self-hosted installs leave it off; every limit is then unlimited and no
-Stripe code is loaded. Details in [billing.md](billing.md) _(landing in the current release)_.
+Stripe code is loaded. Details in [Billing](Billing.md) _(landing in the current release)_.
 
 | Variable                 | Default | Read by | Description                                                        |
 | ------------------------ | ------- | ------- | ------------------------------------------------------------------ |
@@ -120,7 +120,7 @@ Stripe code is loaded. Details in [billing.md](billing.md) _(landing in the curr
 
 Marmot sends nothing by default: no analytics SDK is loaded, no cookie banner appears and nothing calls
 home. Setting a PostHog key enables opt-in product analytics behind a consent banner; what is collected is
-documented in [telemetry.md](telemetry.md) _(landing in the current release)_.
+documented in [Telemetry](Telemetry.md) _(landing in the current release)_.
 
 | Variable                   | Default                    | Read by                  | Description                                                                                                 |
 | -------------------------- | -------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------- |
@@ -180,7 +180,7 @@ closed for good (`/setup` redirects to `/login`, the API answers `409`); further
 
 The browser opens one socket.io connection with credentials, so the realtime server must be reachable on a
 URL that receives the `payload-token` cookie. By default the client connects to the page's own origin at
-`/socket.io`, and Caddy (or your reverse proxy, see [deployment.md](deployment.md)) forwards that path to the
+`/socket.io`, and Caddy (or your reverse proxy, see [Deployment](Deployment.md)) forwards that path to the
 realtime process on `REALTIME_PORT`. Set `NEXT_PUBLIC_REALTIME_URL` (e.g. `https://realtime.example.com`)
 only when the realtime server is exposed on another origin; it must share the cookie's site (a subdomain of
 the web app is fine) and allows `NEXT_PUBLIC_SERVER_URL` in CORS. Being a `NEXT_PUBLIC_*` variable it is

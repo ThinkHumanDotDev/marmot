@@ -58,7 +58,7 @@ async function main() {
     { adapter: payload.db.name, monitorTypes: listMonitorTypes().map((t) => t.name) },
     'worker booted',
   )
-  // Opt-in telemetry (docs/telemetry.md): one aggregate event per worker boot, no identifiers.
+  // Opt-in telemetry (docs/Telemetry.md): one aggregate event per worker boot, no identifiers.
   captureServerEvent('instance_started', {
     version: pkg.version,
     adapter: payload.db.name,
