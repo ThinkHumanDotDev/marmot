@@ -157,6 +157,13 @@
       "sharp",
       "esbuild",
       "unrs-resolver"
+    ],
+    "ignoredBuiltDependencies": [
+      "core-js",
+      "cpu-features",
+      "msgpackr-extract",
+      "protobufjs",
+      "ssh2"
     ]
   }
 }
