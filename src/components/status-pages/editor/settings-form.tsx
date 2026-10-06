@@ -2,6 +2,7 @@
 
 import { ImageIcon, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -18,6 +19,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { defaultLocale, hasMultipleLocales, localeNames, locales } from '@/i18n/locales'
 import type { StatusPage } from '@/payload-types'
 
 import { statusPagesApi, type OrgId, type StatusPagePatch } from '../api'
@@ -29,6 +31,7 @@ type Values = Required<
     | 'slug'
     | 'description'
     | 'theme'
+    | 'language'
     | 'searchEngineIndex'
     | 'showTags'
     | 'showCertificateExpiry'
@@ -45,6 +48,7 @@ const fromPage = (page: StatusPage): Values => ({
   slug: page.slug,
   description: page.description ?? '',
   theme: page.theme ?? 'auto',
+  language: page.language ?? defaultLocale,
   searchEngineIndex: Boolean(page.searchEngineIndex),
   showTags: Boolean(page.showTags),
   showCertificateExpiry: Boolean(page.showCertificateExpiry),
@@ -96,6 +100,7 @@ export function SettingsForm({
   canEdit: boolean
   canDelete: boolean
 }) {
+  const t = useTranslations('statusPages.editor')
   const router = useRouter()
   const [values, setValues] = React.useState<Values>(() => fromPage(page))
   const [saving, setSaving] = React.useState(false)
@@ -252,6 +257,28 @@ export function SettingsForm({
                   </SelectContent>
                 </Select>
               </div>
+              {hasMultipleLocales() && (
+                <div className="grid gap-2">
+                  <Label htmlFor="language">{t('language')}</Label>
+                  <Select
+                    value={values.language ?? defaultLocale}
+                    disabled={!canEdit}
+                    onValueChange={(v) => set('language', v as Values['language'])}
+                  >
+                    <SelectTrigger id="language">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">{t('languageAuto')}</SelectItem>
+                      {locales.map((locale) => (
+                        <SelectItem key={locale} value={locale} lang={locale}>
+                          {localeNames[locale]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor="autoRefreshInterval">Auto refresh (seconds, 0 = off)</Label>
                 <Input

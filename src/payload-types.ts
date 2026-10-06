@@ -189,6 +189,7 @@ export interface User {
    * Colour scheme preference, applied on every device after sign-in.
    */
   theme?: ('system' | 'light' | 'dark') | null;
+  language?: 'en' | null;
   /**
    * Managed from Settings → Account → Two-factor authentication.
    */
@@ -304,6 +305,7 @@ export interface Organization {
      */
     timezone?: string | null;
     weekStart?: ('monday' | 'sunday') | null;
+    language?: 'en' | null;
   };
   updatedAt: string;
   createdAt: string;
@@ -999,6 +1001,7 @@ export interface StatusPage {
   description?: string | null;
   logo?: (number | null) | Media;
   theme?: ('auto' | 'light' | 'dark') | null;
+  language?: ('auto' | 'en') | null;
   /**
    * Unpublished pages return 404 to visitors.
    */
@@ -1410,6 +1413,7 @@ export interface UsersSelect<T extends boolean = true> {
   oidcIssuer?: T;
   oidcSubject?: T;
   theme?: T;
+  language?: T;
   twoFactorEnabled?: T;
   twoFactorVerifiedAt?: T;
   twoFactorSecret?: T;
@@ -1476,6 +1480,7 @@ export interface OrganizationsSelect<T extends boolean = true> {
     | {
         timezone?: T;
         weekStart?: T;
+        language?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -1814,6 +1819,7 @@ export interface StatusPagesSelect<T extends boolean = true> {
   description?: T;
   logo?: T;
   theme?: T;
+  language?: T;
   published?: T;
   searchEngineIndex?: T;
   showTags?: T;

@@ -20,6 +20,8 @@ import {
   LOCKED_PERMISSIONS,
   ROLES,
 } from '@/access/permissions'
+import { adminT } from '@/i18n/admin'
+import { defaultLocale, localeNames, locales } from '@/i18n/locales'
 import { PLANS, SUBSCRIPTION_STATUSES } from '@/lib/entitlements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
@@ -405,6 +407,15 @@ export const Organizations: CollectionConfig = {
             { label: 'Monday', value: 'monday' },
             { label: 'Sunday', value: 'sunday' },
           ],
+        },
+        // Language of emails and notifications sent for this organization (src/i18n).
+        {
+          name: 'language',
+          type: 'select',
+          label: adminT('marmot:language'),
+          defaultValue: defaultLocale,
+          options: locales.map((locale) => ({ label: localeNames[locale], value: locale })),
+          admin: { description: adminT('marmot:organizationLanguageDescription') },
         },
       ],
     },

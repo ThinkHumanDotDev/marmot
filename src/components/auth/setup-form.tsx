@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -34,24 +35,34 @@ export function slugify(input: string): string {
     .replace(/-+$/g, '')
 }
 
-const schema = z.object({
-  name: z.string().trim().min(1, 'Enter your name').max(120),
-  email: z.email('Enter a valid email address'),
-  password: z.string().min(8, 'Use at least 8 characters'),
-  organizationName: z.string().trim().min(1, 'Enter an organization name').max(120),
-  organizationSlug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .refine((slug) => validateOrganizationSlug(slug) === true, {
-      error: (issue) => {
-        const result = validateOrganizationSlug(issue.input)
-        return typeof result === 'string' ? result : 'Invalid slug.'
-      },
-    }),
-})
+type Values = {
+  name: string
+  email: string
+  password: string
+  organizationName: string
+  organizationSlug: string
+}
 
-type Values = z.infer<typeof schema>
+type Validation = ReturnType<typeof useTranslations<'auth.validation'>>
+
+const buildSchema = (tv: Validation) =>
+  z.object({
+    name: z.string().trim().min(1, tv('nameRequired')).max(120),
+    email: z.email(tv('email')),
+    password: z.string().min(8, tv('passwordMin')),
+    organizationName: z.string().trim().min(1, tv('organizationNameRequired')).max(120),
+    organizationSlug: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .refine((slug) => validateOrganizationSlug(slug) === true, {
+        error: (issue) => {
+          // The slug rules (and their messages) are shared with the API in src/lib/reserved-slugs.
+          const result = validateOrganizationSlug(issue.input)
+          return typeof result === 'string' ? result : tv('slugInvalid')
+        },
+      }),
+  })
 
 interface SetupResponse {
   redirectTo: string
@@ -59,6 +70,10 @@ interface SetupResponse {
 }
 
 export function SetupForm() {
+  const t = useTranslations('auth.setup')
+  const tf = useTranslations('auth.fields')
+  const tv = useTranslations('auth.validation')
+  const schema = React.useMemo(() => buildSchema(tv), [tv])
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
   const [slugEdited, setSlugEdited] = React.useState(false)
@@ -78,16 +93,16 @@ export function SetupForm() {
     setPending(true)
     try {
       const result = await api.post<SetupResponse>('/api/setup', values)
-      toast.success('Marmot is ready')
+      toast.success(t('ready'))
       router.replace(result.redirectTo || `/${result.organization.slug}/monitors`)
       router.refresh()
     } catch (error) {
       const message =
         error instanceof ApiError && error.status === 409
-          ? 'Setup has already been completed. Please sign in.'
+          ? t('alreadyDone')
           : error instanceof Error
             ? error.message
-            : 'Could not complete setup.'
+            : t('failed')
       form.setError('root', { message })
       setPending(false)
     }
@@ -99,15 +114,20 @@ export function SetupForm() {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
         <div className="flex flex-col gap-5">
-          <h2 className="text-sm font-medium text-muted-foreground">Administrator account</h2>
+          <h2 className="text-sm font-medium text-muted-foreground">{t('adminSection')}</h2>
           <FormField
             control={form.control}
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Name</FormLabel>
+                <FormLabel>{tf('name')}</FormLabel>
                 <FormControl>
-                  <Input autoComplete="name" placeholder="Ada Lovelace" autoFocus {...field} />
+                  <Input
+                    autoComplete="name"
+                    placeholder={tf('namePlaceholder')}
+                    autoFocus
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -118,12 +138,12 @@ export function SetupForm() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>{tf('email')}</FormLabel>
                 <FormControl>
                   <Input
                     type="email"
                     autoComplete="email"
-                    placeholder="you@example.com"
+                    placeholder={tf('emailPlaceholder')}
                     {...field}
                   />
                 </FormControl>
@@ -136,11 +156,11 @@ export function SetupForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel>{tf('password')}</FormLabel>
                 <FormControl>
                   <Input type="password" autoComplete="new-password" {...field} />
                 </FormControl>
-                <FormDescription>At least 8 characters.</FormDescription>
+                <FormDescription>{tf('passwordHint')}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -150,17 +170,17 @@ export function SetupForm() {
         <Separator />
 
         <div className="flex flex-col gap-5">
-          <h2 className="text-sm font-medium text-muted-foreground">Organization</h2>
+          <h2 className="text-sm font-medium text-muted-foreground">{t('organizationSection')}</h2>
           <FormField
             control={form.control}
             name="organizationName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Organization name</FormLabel>
+                <FormLabel>{t('organizationName')}</FormLabel>
                 <FormControl>
                   <Input
                     autoComplete="organization"
-                    placeholder="Acme Inc."
+                    placeholder={t('organizationNamePlaceholder')}
                     {...field}
                     onChange={(event) => {
                       field.onChange(event)
@@ -181,12 +201,12 @@ export function SetupForm() {
             name="organizationSlug"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>URL slug</FormLabel>
+                <FormLabel>{t('slug')}</FormLabel>
                 <FormControl>
                   <Input
                     autoComplete="off"
                     spellCheck={false}
-                    placeholder="acme"
+                    placeholder={t('slugPlaceholder')}
                     {...field}
                     onChange={(event) => {
                       setSlugEdited(event.target.value.length > 0)
@@ -195,8 +215,7 @@ export function SetupForm() {
                   />
                 </FormControl>
                 <FormDescription>
-                  Lowercase letters, numbers and hyphens. Your dashboard lives at /
-                  {field.value || 'your-org'}.
+                  {t('slugHint', { slug: field.value || t('slugExample') })}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -210,7 +229,7 @@ export function SetupForm() {
           </p>
         )}
         <Button type="submit" className="w-full" disabled={pending}>
-          {pending ? 'Setting up…' : 'Create admin account'}
+          {pending ? t('submitting') : t('submit')}
         </Button>
       </form>
     </Form>

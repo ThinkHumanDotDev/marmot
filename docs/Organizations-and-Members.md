@@ -87,7 +87,8 @@ sole owner of any organization cannot be deleted until the organization has anot
 
 ## Account settings
 
-**Settings → Account** (`/{org}/settings/account`) edits your name and avatar, changes your password (the
+**Settings → Account** (`/{org}/settings/account`) edits your name and avatar, your theme and language
+(`users.language`; the picker appears once Marmot ships more than one language), changes your password (the
 current password is required), manages the single sign-on identities linked to your account (**Connected
 accounts**: link GitHub, Google or the company IdP, unlink any but the last way in; see
 [Single sign-on](Single-Sign-On.md#connected-accounts)) and deletes your account (type your email to confirm;

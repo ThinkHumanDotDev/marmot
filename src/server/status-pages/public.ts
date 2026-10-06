@@ -10,7 +10,8 @@ import type { Payload } from 'payload'
 
 import type { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
 import type { IncidentStyle } from '@/collections/Incidents'
-import type { StatusPageTheme } from '@/collections/StatusPages'
+import type { StatusPageLanguage, StatusPageTheme } from '@/collections/StatusPages'
+import { defaultLocale } from '@/i18n/locales'
 import {
   getActiveMaintenanceForStatusPage,
   type PublicMaintenance,
@@ -71,6 +72,8 @@ export interface PublicConfig {
   description: string | null
   logo: string | null
   theme: StatusPageTheme
+  /** Fixed locale, or `auto` to follow the visitor's browser. */
+  language: StatusPageLanguage
   published: boolean
   showTags: boolean
   showCertificateExpiry: boolean
@@ -129,6 +132,7 @@ export function toPublicConfig(page: StatusPage): PublicConfig {
     description: page.description ?? null,
     logo: mediaUrl(page.logo),
     theme: page.theme ?? 'auto',
+    language: page.language ?? defaultLocale,
     published: Boolean(page.published),
     showTags: Boolean(page.showTags),
     showCertificateExpiry: Boolean(page.showCertificateExpiry),
@@ -167,14 +171,6 @@ export function overallStatus(statuses: readonly MonitorPublicStatus[]): Overall
   if (ups === known.length) return 'up'
   if (ups === 0) return 'down'
   return 'partial'
-}
-
-export const STATUS_DESCRIPTIONS: Record<OverallStatus, string> = {
-  up: 'All systems operational',
-  partial: 'Partially degraded service',
-  down: 'Major outage',
-  maintenance: 'Under maintenance',
-  unknown: 'No data yet',
 }
 
 async function lastBeats(payload: Payload, monitorId: string | number): Promise<PublicBeat[]> {

@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 
 import { StatusPageView } from '@/components/status-pages/public/status-page-view'
+import { getStatusPageLocale } from '@/i18n/server'
 import { markdownToText } from '@/lib/markdown'
-import { STATUS_DESCRIPTIONS } from '@/server/status-pages/public'
 import { statusPagePath, statusPageUrl } from '@/server/status-pages/urls'
 
 import { loadPublicData, loadPublishedPage } from './data'
@@ -15,7 +16,11 @@ type PageProps = { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const page = await loadPublishedPage(slug)
-  if (!page) return { title: 'Status page not found', robots: { index: false, follow: false } }
+  if (!page) {
+    const locale = await getStatusPageLocale(null)
+    const t = await getTranslations({ locale, namespace: 'statusPages.notFound' })
+    return { title: t('pageTitle'), robots: { index: false, follow: false } }
+  }
 
   const description = page.description ? markdownToText(page.description) : undefined
   const logo = page.logo && typeof page.logo === 'object' ? page.logo.url : null
@@ -53,6 +58,8 @@ export default async function PublicStatusPage({ params }: PageProps) {
 
   const { config } = data
   const gaId = config.googleAnalyticsId?.trim()
+  const locale = await getStatusPageLocale(config)
+  const t = await getTranslations({ locale, namespace: 'statusPages.overall' })
 
   return (
     <>
@@ -73,7 +80,7 @@ export default async function PublicStatusPage({ params }: PageProps) {
       <main
         id="status-page"
         data-slug={config.slug}
-        aria-label={`${config.title}: ${STATUS_DESCRIPTIONS[data.overall]}`}
+        aria-label={`${config.title}: ${t(data.overall)}`}
       >
         <StatusPageView slug={config.slug} initial={data} />
       </main>
