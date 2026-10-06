@@ -43,8 +43,10 @@ test.describe('Telemetry (disabled by default)', () => {
 
     await page.goto(`/${org.slug}/monitors`)
     await expect(page.getByRole('heading', { level: 1, name: 'Monitors' })).toBeVisible()
+    // Not `networkidle`: socket.io starts on HTTP long-polling, which keeps a request open until the
+    // websocket upgrade lands, so the page may never go idle. The listener above sees every request.
     await page.goto(`/${org.slug}/notifications`)
-    await page.waitForLoadState('networkidle')
+    await expect(page.getByRole('heading', { level: 1, name: 'Notifications' })).toBeVisible()
 
     // No SDK was initialised and no banner rendered.
     expect(await page.evaluate(() => 'posthog' in window)).toBe(false)

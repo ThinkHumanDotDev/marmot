@@ -32,13 +32,13 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Build-time placeholders: the real values are injected at runtime.
+# Build-time placeholders: the real values are injected at runtime. The placeholder secret is scoped
+# to the build command so no secret-looking value is baked into an image layer's ENV.
 ENV NODE_ENV=production \
-    PAYLOAD_SECRET=build-time-placeholder-secret \
     DATABASE_URL=postgres://build:build@localhost:5432/build \
     DATABASE_ADAPTER=postgres \
     REDIS_URL=redis://localhost:6379
-RUN pnpm build && pnpm build:server
+RUN PAYLOAD_SECRET=build-time-placeholder-secret sh -c 'pnpm build && pnpm build:server'
 
 # ---- runtime ---------------------------------------------------------------
 FROM base AS runner
