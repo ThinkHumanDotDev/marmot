@@ -2,7 +2,7 @@ import {
   AuthError,
   type ProviderInfo,
   type UserResolutionOptions,
-} from '@thinkhumandotdev/payload-auth'
+} from '@thinkhuman/payload-plugin-auth'
 import type { Payload } from 'payload'
 
 import { addOrgMembership } from '@/access/memberships'
