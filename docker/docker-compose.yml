@@ -16,7 +16,7 @@ x-marmot-env: &marmot-env
   UPLOADS_DIR: /app/uploads
 
 x-marmot: &marmot
-  image: ghcr.io/thinkhumandotdev/marmot:${MARMOT_VERSION:-0.1.0}
+  image: ghcr.io/thinkhumandotdev/marmot:${MARMOT_VERSION:-0.1.1}
   restart: unless-stopped
   env_file:
     - path: .env
