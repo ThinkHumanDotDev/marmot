@@ -32,8 +32,10 @@ test.describe('Monitors', () => {
   test('validates the form before submitting', async ({ page }) => {
     await page.goto(`/${SETUP_ORG.slug}/monitors/new`)
     await expect(page.getByRole('heading', { name: 'New monitor' })).toBeVisible()
-    await page.getByLabel('URL', { exact: true }).fill('')
-    await page.getByTestId('monitor-submit').click()
+    // Visible form only; see the note in critical-path.e2e.spec.ts.
+    const fields = page.getByTestId('monitor-form').filter({ visible: true })
+    await fields.getByLabel('URL', { exact: true }).fill('')
+    await fields.getByTestId('monitor-submit').click()
     await expect(page.getByText('Name is required')).toBeVisible()
     await expect(page.getByText('URL is required')).toBeVisible()
     await expect(page).toHaveURL(new RegExp(`/${SETUP_ORG.slug}/monitors/new$`))

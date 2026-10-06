@@ -21,7 +21,7 @@ jobs:
   pr-title:
     name: Conventional PR title
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       pull-requests: read
     steps:
@@ -31,7 +31,7 @@ jobs:
 
   lint:
     name: Lint & typecheck
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -53,7 +53,7 @@ jobs:
 
   test:
     name: Tests (${{ matrix.db }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -128,14 +128,14 @@ jobs:
       # Check runs are created by .github/workflows/test-report.yml (workflow_run), which also works
       # for pull requests from forks, where this workflow's token cannot write checks.
       - name: Upload JUnit results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: junit-${{ matrix.db }}
           path: test-results/*-junit.xml
           retention-days: 7
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: playwright-report-${{ matrix.db }}
@@ -146,7 +146,7 @@ jobs:
 
   docker:
     name: Docker image & compose smoke
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       COMPOSE: docker compose -f docker/docker-compose.yml -f docker/docker-compose.smoke.yml -f docker/docker-compose.ci.yml
@@ -177,7 +177,7 @@ jobs:
           validate -e SITE_ADDRESS=:80 -e ACME_EMAIL=
           validate -e SITE_ADDRESS=status.example.com -e ACME_EMAIL=
           validate -e SITE_ADDRESS=status.example.com -e ACME_EMAIL=ops@example.com
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile

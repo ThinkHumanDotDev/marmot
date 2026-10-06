@@ -64,11 +64,15 @@ test.describe('Critical path', () => {
     const form = await context.newPage()
     await form.goto(`/${org.slug}/monitors/new`)
     await expect(form.getByRole('heading', { name: 'New monitor' })).toBeVisible()
+    // Only the visible form: CI has caught a hidden, server-rendered copy of the form left next to the
+    // client-rendered one (a streamed Suspense boundary that React rendered on the client instead),
+    // and test-id and label locators, unlike role locators, also match hidden elements.
+    const fields = form.getByTestId('monitor-form').filter({ visible: true })
     // HTTP(s) is the default type; the URL field is visible straight away.
-    await expect(form.getByTestId('monitor-type')).toContainText('HTTP(s)')
-    await form.getByLabel('Friendly name').fill(monitorName)
-    await form.getByLabel('URL', { exact: true }).fill(monitorUrl)
-    await form.getByTestId('monitor-submit').click()
+    await expect(fields.getByTestId('monitor-type')).toContainText('HTTP(s)')
+    await fields.getByLabel('Friendly name').fill(monitorName)
+    await fields.getByLabel('URL', { exact: true }).fill(monitorUrl)
+    await fields.getByTestId('monitor-submit').click()
     await form.waitForURL((url) =>
       new RegExp(`/${org.slug}/monitors/(?!new$)[A-Za-z0-9]+$`).test(url.pathname),
     )
