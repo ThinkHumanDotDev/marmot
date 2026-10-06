@@ -1,4 +1,4 @@
-import { linkedAccountsCollection } from '@thinkhumandotdev/payload-auth'
+import { linkedAccountsCollection } from '@thinkhuman/payload-plugin-auth'
 import type { Access } from 'payload'
 
 import { isSuperadmin, type UserLike } from '@/access/permissions'
@@ -16,7 +16,7 @@ const ownOrSuperadmin: Access = ({ req }) => {
 /**
  * External identities linked to users: `(provider, providerAccountId) → user`, one row per identity
  * so a user can sign in with the company IdP and GitHub at the same time. Rows are written by the
- * single sign-on flows (`src/auth/sso`, through `@thinkhumandotdev/payload-auth`) with
+ * single sign-on flows (`src/auth/sso`, through `@thinkhuman/payload-plugin-auth`) with
  * `overrideAccess`; the API only lets users read and unlink their own.
  */
 export const AuthAccounts = linkedAccountsCollection({

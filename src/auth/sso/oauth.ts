@@ -1,5 +1,5 @@
-import type { ProviderInfo } from '@thinkhumandotdev/payload-auth'
-import { createOAuth, type OAuthProvider } from '@thinkhumandotdev/payload-auth/oauth'
+import type { ProviderInfo } from '@thinkhuman/payload-plugin-auth'
+import { createOAuth, type OAuthProvider } from '@thinkhuman/payload-plugin-auth/oauth'
 
 import { issueTwoFactorChallenge } from '@/auth/two-factor/handlers'
 import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
@@ -100,7 +100,7 @@ export async function twoFactorResponse(
 }
 
 /**
- * The OAuth / OpenID Connect integration (`@thinkhumandotdev/payload-auth/oauth`), configured for
+ * The OAuth / OpenID Connect integration (`@thinkhuman/payload-plugin-auth/oauth`), configured for
  * Marmot:
  *
  * - providers are resolved per request: the instance-wide ones from the environment, then the

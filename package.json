@@ -43,6 +43,7 @@
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
     "@hookform/resolvers": "^5.9.1",
+    "@node-saml/node-saml": "^5.1.0",
     "@payloadcms/db-mongodb": "3.90.2",
     "@payloadcms/db-postgres": "3.90.2",
     "@payloadcms/db-sqlite": "3.90.2",
@@ -56,8 +57,7 @@
     "@payloadcms/ui": "3.90.2",
     "@socket.io/redis-adapter": "^8.3.0",
     "@socket.io/redis-emitter": "^5.1.0",
-    "@node-saml/node-saml": "^5.1.0",
-    "@thinkhumandotdev/payload-auth": "github:ThinkHumanDotDev/payload-plugin-auth#1f934aa92d7993295d667fb704686f54e5d4fb05",
+    "@thinkhuman/payload-plugin-auth": "^0.1.0",
     "badge-maker": "6.0.0",
     "bullmq": "^6.3.11",
     "class-variance-authority": "^0.7.1",
@@ -165,7 +165,6 @@
       "shell-quote@<1.11.0": "^1.11.0"
     },
     "onlyBuiltDependencies": [
-      "@thinkhumandotdev/payload-auth",
       "sharp",
       "esbuild",
       "unrs-resolver"

@@ -1,5 +1,5 @@
 /**
- * Single sign-on (see docs/Single-Sign-On.md), built on `@thinkhumandotdev/payload-auth`.
+ * Single sign-on (see docs/Single-Sign-On.md), built on `@thinkhuman/payload-plugin-auth`.
  *
  * - `providers.ts` instance-wide providers from the environment (`OIDC_*`)
  * - `oauth.ts`     the configured OAuth/OIDC integration: redirect URIs, the 2FA hand-off

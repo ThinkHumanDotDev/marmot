@@ -13,7 +13,7 @@ src/env.ts                       zod-validated env (the only place process.env i
 src/db/adapter.ts                DATABASE_ADAPTER factory (postgres | mongodb | sqlite)
 src/collections/                 one file per collection; register in index.ts
 src/access/                      org RBAC helpers (orgScoped, hasRole, permissions map)
-src/auth/sso/                    single sign-on on @thinkhumandotdev/payload-auth (providers, hooks, handlers)
+src/auth/sso/                    single sign-on on @thinkhuman/payload-plugin-auth (providers, hooks, handlers)
 src/server/monitor-types/        one file per type, self-registering (registerMonitorType)
 src/server/notification-providers/ one file per provider, self-registering
 src/server/engine/               BullMQ queues, schedulers, check worker, heartbeat state machine

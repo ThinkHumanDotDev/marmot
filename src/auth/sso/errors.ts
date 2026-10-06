@@ -1,4 +1,4 @@
-import { AUTH_ERROR_CODES } from '@thinkhumandotdev/payload-auth'
+import { AUTH_ERROR_CODES } from '@thinkhuman/payload-plugin-auth'
 
 /**
  * Messages for the `?error=<code>` the single sign-on flows redirect to `/login` with. The plugin's

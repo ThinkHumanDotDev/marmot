@@ -1,5 +1,5 @@
-import { oidc, type OAuthProvider } from '@thinkhumandotdev/payload-auth/oauth'
-import type { SamlConnection } from '@thinkhumandotdev/payload-auth/saml'
+import { oidc, type OAuthProvider } from '@thinkhuman/payload-plugin-auth/oauth'
+import type { SamlConnection } from '@thinkhuman/payload-plugin-auth/saml'
 import type { Payload } from 'payload'
 
 import type { OrgId, Role } from '@/access/permissions'

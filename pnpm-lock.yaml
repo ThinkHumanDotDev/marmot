@@ -71,9 +71,9 @@ importers:
       '@socket.io/redis-emitter':
         specifier: ^5.1.0
         version: 5.1.0
-      '@thinkhumandotdev/payload-auth':
-        specifier: github:ThinkHumanDotDev/payload-plugin-auth#1f934aa92d7993295d667fb704686f54e5d4fb05
-        version: https://codeload.github.com/ThinkHumanDotDev/payload-plugin-auth/tar.gz/1f934aa92d7993295d667fb704686f54e5d4fb05(@node-saml/node-saml@5.1.0)(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))
+      '@thinkhuman/payload-plugin-auth':
+        specifier: ^0.1.0
+        version: 0.1.0(@node-saml/node-saml@5.1.0)(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))
       badge-maker:
         specifier: 6.0.0
         version: 6.0.0
@@ -3325,9 +3325,8 @@ packages:
   '@tediousjs/connection-string@1.1.0':
     resolution: {integrity: sha512-z9ZBWEG+8pIB5V1zYzlRPXx0oRJ5H7coPnMQK8EZOw03UTPI9Umn6viL36f5w+CuqkKsnCM50RVStpjZmR0Bng==}
 
-  '@thinkhumandotdev/payload-auth@https://codeload.github.com/ThinkHumanDotDev/payload-plugin-auth/tar.gz/1f934aa92d7993295d667fb704686f54e5d4fb05':
-    resolution: {tarball: https://codeload.github.com/ThinkHumanDotDev/payload-plugin-auth/tar.gz/1f934aa92d7993295d667fb704686f54e5d4fb05}
-    version: 0.1.0
+  '@thinkhuman/payload-plugin-auth@0.1.0':
+    resolution: {integrity: sha512-w+TBfA811Iqdju8ao4P8sJIAQ8bhpsFnmimKyKdfBa50394eAFXwJGxUBJ7COVS83NDmagzA5/9FP+VTYWTFLw==}
     engines: {node: '>=20.9.0', pnpm: '>=9'}
     peerDependencies:
       '@node-saml/node-saml': ^5.0.0
@@ -10790,7 +10789,7 @@ snapshots:
   '@tediousjs/connection-string@1.1.0':
     optional: true
 
-  '@thinkhumandotdev/payload-auth@https://codeload.github.com/ThinkHumanDotDev/payload-plugin-auth/tar.gz/1f934aa92d7993295d667fb704686f54e5d4fb05(@node-saml/node-saml@5.1.0)(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))':
+  '@thinkhuman/payload-plugin-auth@0.1.0(@node-saml/node-saml@5.1.0)(payload@3.90.2(graphql@16.14.2)(typescript@5.7.3))':
     dependencies:
       '@xmldom/xmldom': 0.8.15
       jose: 6.2.12
