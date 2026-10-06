@@ -42,9 +42,21 @@ echo "==> Generating the public domain for edge (port 8080)"
 railway domain --service edge --port 8080
 
 # The first deploys started before the domain existed, so NEXT_PUBLIC_SERVER_URL was empty for them.
-echo "==> Redeploying web, worker and realtime with the domain in place"
+# Railway refuses to redeploy while a build is running, so retry until each first build has finished.
+echo "==> Redeploying web, worker and realtime with the domain in place (waits for the first builds)"
 for svc in web worker realtime; do
-  railway service redeploy --service "$svc" --yes
+  for attempt in $(seq 1 60); do
+    if railway service redeploy --service "$svc" --yes >/dev/null 2>&1; then
+      echo "    $svc: redeploy started"
+      break
+    fi
+    if [ "$attempt" -eq 60 ]; then
+      echo "    $svc: still building after 15 minutes; redeploy it later with" >&2
+      echo "    railway service redeploy --service $svc --yes" >&2
+      break
+    fi
+    sleep 15
+  done
 done
 
 cat <<EOF
