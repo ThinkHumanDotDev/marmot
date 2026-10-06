@@ -52,7 +52,7 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
     resetAnalytics()
     let redirectTo = '/login'
     try {
-      if (user.authProvider === 'oidc') {
+      if (user.authProvider && user.authProvider !== 'local') {
         // Also ends the identity-provider session when it supports RP-initiated logout.
         redirectTo = (await authApi.ssoLogout()).redirectTo
       } else {

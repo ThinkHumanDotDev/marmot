@@ -17,6 +17,7 @@ import * as migration_20261006_000143_maintenance from './20261006_000143_mainte
 import * as migration_20261006_001607_add_monitor_type_fields from './20261006_001607_add_monitor_type_fields';
 import * as migration_20261006_003708_tags_proxies_docker from './20261006_003708_tags_proxies_docker';
 import * as migration_20261006_135746_add_auth_accounts from './20261006_135746_add_auth_accounts';
+import * as migration_20261006_141212_add_auth_provider_values from './20261006_141212_add_auth_provider_values';
 
 export const migrations = [
   {
@@ -112,6 +113,11 @@ export const migrations = [
   {
     up: migration_20261006_135746_add_auth_accounts.up,
     down: migration_20261006_135746_add_auth_accounts.down,
-    name: '20261006_135746_add_auth_accounts'
+    name: '20261006_135746_add_auth_accounts',
+  },
+  {
+    up: migration_20261006_141212_add_auth_provider_values.up,
+    down: migration_20261006_141212_add_auth_provider_values.down,
+    name: '20261006_141212_add_auth_provider_values'
   },
 ];

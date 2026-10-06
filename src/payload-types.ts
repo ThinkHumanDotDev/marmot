@@ -170,9 +170,9 @@ export interface User {
    */
   superadmin?: boolean | null;
   /**
-   * How the account was created: password signup or single sign-on.
+   * How the account was created: password signup, the OIDC client, a social OAuth provider or SAML.
    */
-  authProvider?: ('local' | 'oidc') | null;
+  authProvider?: ('local' | 'oidc' | 'oauth' | 'saml') | null;
   /**
    * Legacy: identities now live in Auth accounts.
    */

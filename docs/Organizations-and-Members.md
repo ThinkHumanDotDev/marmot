@@ -88,25 +88,28 @@ sole owner of any organization cannot be deleted until the organization has anot
 ## Account settings
 
 **Settings → Account** (`/{org}/settings/account`) edits your name and avatar, changes your password (the
-current password is required) and deletes your account (type your email to confirm; refused while you are
-the sole owner of an organization). Password reset by email is available from the login page
-(`/forgot-password`) when SMTP is configured.
+current password is required), manages the single sign-on identities linked to your account (**Connected
+accounts**: link GitHub, Google or the company IdP, unlink any but the last way in; see
+[Single sign-on](Single-Sign-On.md#connected-accounts)) and deletes your account (type your email to confirm;
+refused while you are the sole owner of an organization). Password reset by email is available from the
+login page (`/forgot-password`) when SMTP is configured.
 
 ## API
 
-| Method & path                                              | Permission / rule                                                           |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `POST /api/invitations` `{ organization, email, role }`    | `member:invite` (Payload REST; the hook mints the token and sends the mail) |
-| `PATCH /api/invitations/:id` `{ status: "revoked" }`       | `member:invite`                                                             |
-| `PATCH /api/orgs/:orgId/members/:userId` `{ role }`        | `member:update-role`; target and new role at or below your own              |
-| `DELETE /api/orgs/:orgId/members/:userId`                  | own id: leave; otherwise `member:remove`                                    |
-| `POST /api/orgs/:orgId/invitations/:invitationId/resend`   | `member:invite`                                                             |
-| `GET` / `POST` / `DELETE /api/orgs/:orgId/invite-link`     | `member:invite`: read, (re)generate, disable                                |
-| `POST /api/orgs/:orgId/transfer-ownership` `{ userId }`    | owner                                                                       |
-| `POST /api/invite/:code/accept`                            | signed-in user; accepts an invitation or invite-link code                   |
-| `GET` / `PATCH /api/account`, `POST /api/account/password` | the signed-in user                                                          |
-| `DELETE /api/account` `{ confirm: email }`                 | the signed-in user, unless sole owner somewhere                             |
-| `GET /api/orgs/slug-available?slug=`                       | signed-in user                                                              |
+| Method & path                                                   | Permission / rule                                                                     |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `POST /api/invitations` `{ organization, email, role }`         | `member:invite` (Payload REST; the hook mints the token and sends the mail)           |
+| `PATCH /api/invitations/:id` `{ status: "revoked" }`            | `member:invite`                                                                       |
+| `PATCH /api/orgs/:orgId/members/:userId` `{ role }`             | `member:update-role`; target and new role at or below your own                        |
+| `DELETE /api/orgs/:orgId/members/:userId`                       | own id: leave; otherwise `member:remove`                                              |
+| `POST /api/orgs/:orgId/invitations/:invitationId/resend`        | `member:invite`                                                                       |
+| `GET` / `POST` / `DELETE /api/orgs/:orgId/invite-link`          | `member:invite`: read, (re)generate, disable                                          |
+| `POST /api/orgs/:orgId/transfer-ownership` `{ userId }`         | owner                                                                                 |
+| `POST /api/invite/:code/accept`                                 | signed-in user; accepts an invitation or invite-link code                             |
+| `GET` / `PATCH /api/account`, `POST /api/account/password`      | the signed-in user                                                                    |
+| `GET /api/account/accounts`, `DELETE /api/account/accounts/:id` | the signed-in user; unlinking the last identity of a password-less account is refused |
+| `DELETE /api/account` `{ confirm: email }`                      | the signed-in user, unless sole owner somewhere                                       |
+| `GET /api/orgs/slug-available?slug=`                            | signed-in user                                                                        |
 
 Memberships themselves live on `users.organizations` and are writable only by superadmins through the
 Payload API; the routes above are the supported way to change them. Implementation notes are in

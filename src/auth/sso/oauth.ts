@@ -140,7 +140,11 @@ export const oauth = createOAuth({
         throw new AuthError('signup_disabled')
       }
     },
-    mapNewUser: () => ({ authProvider: 'oidc' satisfies User['authProvider'] }),
+    mapNewUser: ({ provider }) => ({
+      authProvider: (provider.id === OIDC_PROVIDER_ID
+        ? 'oidc'
+        : 'oauth') satisfies User['authProvider'],
+    }),
     afterProvision: async ({ payload, user, identity }) => {
       if (!env.DISABLE_SIGNUP) return
       const email = identity.email?.trim().toLowerCase()
@@ -153,6 +157,18 @@ export const oauth = createOAuth({
         log.warn({ err: error, user: user.id }, 'could not accept invitation during provisioning')
       }
     },
+  },
+  onError: ({ transaction, code, cookies }) => {
+    // A signed-in user who was linking an identity goes back to the account page, not to /login.
+    if (!transaction?.linkUserId) return
+    const target = new URL(transaction.next, 'http://marmot.local')
+    target.searchParams.set('error', code)
+    const headers = new Headers({
+      Location: `${target.pathname}${target.search}`,
+      'Cache-Control': 'no-store',
+    })
+    for (const value of cookies) headers.append('Set-Cookie', value)
+    return new Response(null, { status: 303, headers })
   },
   onAuthenticated: async ({ user: authenticated, next, cookies, linking }) => {
     const user = authenticated as unknown as User
