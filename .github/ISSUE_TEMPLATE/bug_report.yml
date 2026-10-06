@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Thanks for the report. Please search existing issues first and do **not** report security
-        vulnerabilities here; use the private process in `SECURITY.md`.
+        vulnerabilities here; use the private process in `.github/SECURITY.md`.
   - type: textarea
     id: what
     attributes:
