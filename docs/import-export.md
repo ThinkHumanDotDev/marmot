@@ -168,7 +168,7 @@ not contain. The "default enabled" flag is kept; "apply to all existing monitors
 ```
 
 Ids are the exporting instance's document ids and only serve to link documents inside the file; the
-importer remaps them. Heartbeats, statistics, members and organization settings are not part of the export.
+importer remaps them. Heartbeats, statistics, maintenance windows, members and organization settings are not part of the export.
 Logos (media uploads) are not exported. Tags, proxies and Docker hosts are not exported either: a monitor's
 `tags`, `proxy` and `dockerHost` fields hold ids of the exporting organization, so the importer drops tag and
 proxy assignments (noted in the report) and skips `docker` monitors with a reason.

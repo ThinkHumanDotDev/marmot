@@ -103,6 +103,37 @@ compound unique index), looked up as `days <= threshold` so a certificate alread
 produces one message. The certificate history is cleared when a different leaf certificate appears, the domain
 history when the expiry date moves later (renewal); both go with the monitor when it is deleted.
 
+## Maintenance windows
+
+`maintenance` documents (org-scoped) describe when a set of monitors is deliberately offline: `title`,
+`description`, `strategy` (`manual`, `single`, `recurring-interval`, `recurring-weekday`,
+`recurring-day-of-month`, `cron`), `active`, `dateRange {start, end}` and `timeRange {start, end}` as
+wall-clock strings, `intervalDay`, `weekdays`, `daysOfMonth` (`1`–`31`, `lastDay1`–`lastDay4`), `cron`,
+`duration` (minutes), `timezone` (IANA zone or `SAME_AS_SERVER` = the organization's `settings.timezone`),
+`monitors` and `statusPages` (both restricted to the same organization by a `beforeChange` hook). The field
+set and the scheduling rules are a port of Uptime Kuma's `server/model/maintenance.js`.
+
+Everything is a pure function of the document and the clock (`src/server/maintenance/status.ts`):
+`computeMaintenanceTimeslots(doc, now)` resolves the timezone, reads the date range in it, and evaluates the
+strategy — `croner` (cron patterns generated from the recurring options, evaluated in the maintenance's zone,
+DST-aware) or, for "every N days", calendar arithmetic anchored on the start date — to return the status
+(`inactive`, `scheduled`, `under-maintenance`, `ended`, `unknown`) plus the current and next window as ISO
+instants. There is no in-memory job per maintenance:
+
+- The worker installs `createMaintenanceResolver()` through the engine's `setMaintenanceResolver`, so every
+  check asks `isMonitorUnderMaintenance()` (active maintenances listing the monitor, then its parent groups)
+  and writes a MAINTENANCE heartbeat instead of running the check.
+- The `maintenance-status` BullMQ job scheduler (`src/server/maintenance/job.ts`, every minute on the
+  `marmot:maintenance` queue, whose worker also runs `retention` jobs) recomputes every document, persists
+  `status` when it changed and publishes `maintenanceList` (`MaintenanceSummary[]`) to the organization
+  room. The collection hooks compute `status` on save and publish the list after edits and deletes.
+- Public status pages receive running windows and windows starting within seven days
+  (`getActiveMaintenanceForStatusPage`) in their `maintenance` array and render them as banners.
+
+Routes: `GET/POST /api/orgs/:orgId/maintenance`, `GET/PATCH/DELETE .../:id`, `POST .../:id/{pause,resume}`
+(`maintenance:*` permissions, zod schema shared with the form in `src/lib/validation/maintenance.ts`). UI:
+`/[orgSlug]/maintenance` (live list), `/new`, `/[id]/edit`.
+
 ## Realtime
 
 The realtime process (`src/realtime.ts` → `createRealtimeServer()` in `src/server/realtime/server.ts`) is

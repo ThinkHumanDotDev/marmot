@@ -6,8 +6,8 @@ slug and lives at `/status/<slug>` (or at the root of a custom domain).
 
 To publish one: **Status pages → New page**, give it a title and slug, add groups and drag monitors into
 them on the **Groups & monitors** tab, then flip **Published** in the header. Visitors see each monitor's
-current status, its last 50 heartbeats and 24h/30d uptime, the incidents you post, and (landing in the
-current release) maintenance windows and status badges. Members and above can edit pages; viewers can see
+current status, its last 50 heartbeats and 24h/30d uptime, the incidents you post, running and upcoming
+[maintenance windows](maintenance.md), and (landing in the current release) status badges. Members and above can edit pages; viewers can see
 drafts but not change them.
 
 ## Data model
@@ -103,7 +103,19 @@ All of these are anonymous and return 404 for unknown or unpublished slugs.
       "resolvedAt": null,
     },
   ],
-  "maintenance": [], // populated by the maintenance feature
+  "maintenance": [
+    // running windows first, then windows starting within 7 days (maintenance.md)
+    {
+      "id": "7",
+      "title": "Database upgrade",
+      "description": "Expect a few minutes of read-only mode.",
+      "strategy": "single", // manual | single | recurring-interval | recurring-weekday | recurring-day-of-month | cron
+      "status": "scheduled", // under-maintenance | scheduled
+      "start": "2026-10-06T02:00:00.000Z", // null for manual windows
+      "end": "2026-10-06T03:00:00.000Z", // null when open-ended
+      "timezone": "Europe/Berlin",
+    },
+  ],
   "generatedAt": "2026-10-05T03:00:30.000Z",
 }
 ```

@@ -74,16 +74,16 @@ documentation remains the reference for the behaviour of the ported checks.
 | Auto refresh                                       |      ✓      | **done**                                                            |
 | RSS feed, web manifest                             |      ✓      | **done**                                                            |
 | Show tags / certificate expiry on the page         |      ✓      | toggles **done**; data **landing** with tags (#21) and expiry (#24) |
-| Maintenance banners on status pages                |      ✓      | **landing** (#19, [maintenance.md](maintenance.md))                 |
+| Maintenance banners on status pages                |      ✓      | **done** ([maintenance.md](maintenance.md))                         |
 | Status badges (shields.io style)                   |      ✓      | **landing** (#20, [integrations.md](integrations.md))               |
 
 ## Maintenance
 
 | Feature                                                                   | Uptime Kuma | Marmot            |
 | ------------------------------------------------------------------------- | :---------: | ----------------- |
-| Manual, single, recurring (interval, weekday, day of month), cron windows |      ✓      | **landing** (#19) |
-| Timezone-aware schedules                                                  |      ✓      | **landing**       |
-| Attach monitors and whole status pages                                    |      ✓      | **landing**       |
+| Manual, single, recurring (interval, weekday, day of month), cron windows |      ✓      | **done**          |
+| Timezone-aware schedules                                                  |      ✓      | **done**          |
+| Attach monitors and status pages (banners)                                |      ✓      | **done**          |
 | Maintenance status counted as up                                          |      ✓      | **done** (engine) |
 
 ## Integrations and API

@@ -25,7 +25,7 @@ features whose pull requests are merging alongside this documentation.
 | [Monitor types](monitor-types.md)                         | Field-by-field reference for every monitor type _(landing in the current release)_.                                |
 | [Notifications](notifications.md)                         | Notification channels, the delivery pipeline, message templates and the provider reference.                        |
 | [Status pages](status-pages.md)                           | Public status pages, incidents, custom domains and the public JSON/RSS endpoints.                                  |
-| [Maintenance](maintenance.md)                             | Maintenance windows and how they silence alerts _(landing in the current release)_.                                |
+| [Maintenance](maintenance.md)                             | Maintenance windows and how they silence alerts.                                                                   |
 | [Organizations and members](organizations-and-members.md) | Roles and permissions, invitations, invite links, ownership transfer, account settings.                            |
 | [Integrations](integrations.md)                           | Status badges, the push endpoint, Prometheus metrics and organization API keys _(landing in the current release)_. |
 | [Import and export](import-export.md)                     | Importing an Uptime Kuma backup or a Marmot export, and exporting an organization.                                 |

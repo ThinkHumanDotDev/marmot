@@ -9,7 +9,17 @@ import config from '@payload-config'
 import pkg from '../package.json' with { type: 'json' }
 import { childLogger } from '@/lib/logger'
 import { captureServerEvent, shutdownServerAnalytics } from '@/server/analytics'
-import { closeChecksQueue, resyncAll, startCheckWorker } from '@/server/engine'
+import {
+  closeChecksQueue,
+  resyncAll,
+  setMaintenanceResolver,
+  startCheckWorker,
+} from '@/server/engine'
+import {
+  closeMaintenanceQueue,
+  createMaintenanceResolver,
+  startMaintenanceWorker,
+} from '@/server/maintenance'
 import { registerExpiryNotificationListener } from '@/server/jobs/expiry-notifications'
 import { listMonitorTypes } from '@/server/monitor-types'
 import {
@@ -69,6 +79,8 @@ async function main() {
   // Notifications: enqueue one job per attached channel when a beat should notify.
   registerNotificationListener(payload)
 
+  // Maintenance: monitors inside a running window get MAINTENANCE beats instead of being checked.
+  setMaintenanceResolver(createMaintenanceResolver())
   // TLS certificate / domain registration expiry warnings (thresholds from the instance settings).
   registerExpiryNotificationListener(payload)
 
@@ -77,6 +89,8 @@ async function main() {
   await waitForSchema(() => resyncAll(payload))
   const checkWorker = startCheckWorker(payload)
   const notificationWorker = startNotificationWorker(payload)
+  // Recomputes maintenance statuses every minute (and runs retention jobs on the same queue).
+  const maintenanceWorker = await startMaintenanceWorker(payload)
 
   // Keep the process alive until a shutdown signal arrives.
   await new Promise<void>((resolve) => {
@@ -90,8 +104,12 @@ async function main() {
         process.exit(1)
       }, 30_000)
       try {
-        await Promise.all([checkWorker.close(), notificationWorker.close()])
-        await Promise.all([closeChecksQueue(), closeNotificationsQueue()])
+        await Promise.all([
+          checkWorker.close(),
+          notificationWorker.close(),
+          maintenanceWorker.close(),
+        ])
+        await Promise.all([closeChecksQueue(), closeNotificationsQueue(), closeMaintenanceQueue()])
         await closeEmitter()
         await shutdownServerAnalytics()
         await payload.db.destroy?.()

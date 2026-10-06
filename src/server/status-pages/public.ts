@@ -11,6 +11,10 @@ import type { Payload } from 'payload'
 import type { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
 import type { IncidentStyle } from '@/collections/Incidents'
 import type { StatusPageTheme } from '@/collections/StatusPages'
+import {
+  getActiveMaintenanceForStatusPage,
+  type PublicMaintenance,
+} from '@/server/maintenance/status-page'
 import { populateMonitorTags, toRealtimeTags } from '@/server/realtime/serialize'
 import { getUptime } from '@/server/stats/uptime-calculator'
 
@@ -83,8 +87,8 @@ export interface PublicStatusPageData {
   groups: PublicGroup[]
   /** Active incidents, newest first (pinned ones first). */
   incidents: PublicIncident[]
-  /** Reserved for the maintenance issue (#13); always empty for now. */
-  maintenance: never[]
+  /** Running and upcoming maintenance windows attached to this page, running ones first. */
+  maintenance: PublicMaintenance[]
   /** ISO timestamp of when this payload was built. */
   generatedAt: string
 }
@@ -299,9 +303,10 @@ export async function buildPublicStatusPageData(
   payload: Payload,
   page: StatusPage,
 ): Promise<PublicStatusPageData> {
-  const [groups, incidents] = await Promise.all([
+  const [groups, incidents, maintenance] = await Promise.all([
     buildPublicGroups(payload, page),
     findActiveIncidents(payload, page.id),
+    getActiveMaintenanceForStatusPage(payload, page.id),
   ])
 
   return {
@@ -309,7 +314,7 @@ export async function buildPublicStatusPageData(
     overall: overallStatus(groups.flatMap((g) => g.monitors.map((m) => m.status))),
     groups,
     incidents: incidents.map(toPublicIncident),
-    maintenance: [],
+    maintenance,
     generatedAt: new Date().toISOString(),
   }
 }

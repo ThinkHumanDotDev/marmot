@@ -81,6 +81,13 @@ attribution comment and are listed here:
 - `src/server/notification-providers/dingding.ts` — `server/notification-providers/dingding.js`
 - `src/server/notification-providers/feishu.ts` — `server/notification-providers/feishu.js`
 - `src/server/notification-providers/bitrix24.ts` — `server/notification-providers/bitrix24.js`
+- `src/server/maintenance/status.ts` — maintenance status and window computation (`getStatus`,
+  `generateCron`, `calcDuration`, `getRunningTimeslot`, `inferDuration` from `server/model/maintenance.js`)
+- `src/server/maintenance/resolver.ts` — `Monitor.isUnderMaintenance` (parent-group walk) from
+  `server/model/monitor.js`
+- `src/server/maintenance/status-page.ts` — `StatusPage.getMaintenanceList` from `server/model/status_page.js`
+- `src/lib/validation/maintenance.ts`, `src/components/maintenance/maintenance-form.tsx` — form semantics
+  and defaults of `src/pages/EditMaintenance.vue`
 - `src/server/engine/tls.ts` — `checkCertificate`, `parseCertificateInfo`, `checkCertificateHostname` from
   `server/util-server.js`
 - `src/server/jobs/cert-expiry.ts` — `checkCertExpiryNotifications` (`server/util-server.js`) and

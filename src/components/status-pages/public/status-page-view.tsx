@@ -1,12 +1,13 @@
 'use client'
 
-import { ExternalLink, Rss } from 'lucide-react'
+import { ExternalLink, Rss, Wrench } from 'lucide-react'
 import * as React from 'react'
 
 import { BeatBar } from '@/components/status-pages/beat-bar'
 import { StatusDot } from '@/components/status-dot'
 import { renderMarkdown } from '@/lib/markdown'
 import { cn } from '@/lib/utils'
+import type { PublicMaintenance } from '@/server/maintenance/status-page'
 import type {
   OverallStatus,
   PublicIncident,
@@ -75,6 +76,53 @@ export function IncidentCard({ incident }: { incident: PublicIncident }) {
         <div
           className="prose-sm mt-2 max-w-none text-sm leading-relaxed [&_a]:underline [&_code]:rounded [&_code]:bg-background/60 [&_code]:px-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5"
           dangerouslySetInnerHTML={{ __html: renderMarkdown(incident.content) }}
+        />
+      )}
+    </article>
+  )
+}
+
+const formatWindow = (start: string | null, end: string | null): string => {
+  if (!start) return ''
+  const from = new Date(start)
+  if (!end) return `from ${from.toLocaleString()}`
+  const to = new Date(end)
+  const sameDay = from.toDateString() === to.toDateString()
+  return `${from.toLocaleString()} – ${sameDay ? to.toLocaleTimeString() : to.toLocaleString()}`
+}
+
+/** Banner for a running or upcoming maintenance window (Uptime Kuma shows these above the groups). */
+export function MaintenanceCard({ item }: { item: PublicMaintenance }) {
+  const running = item.status === 'under-maintenance'
+  return (
+    <article
+      data-maintenance-status={item.status}
+      className={cn(
+        'rounded-xl border px-5 py-4',
+        running
+          ? 'border-status-maintenance/40 bg-status-maintenance/10'
+          : 'border-dashed border-status-maintenance/40 bg-card',
+      )}
+    >
+      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h3 className="inline-flex items-center gap-2 text-base font-semibold">
+          <Wrench className="size-4 text-status-maintenance" aria-hidden />
+          {item.title}
+        </h3>
+        <span className="text-xs font-medium text-muted-foreground">
+          {running ? 'Maintenance in progress' : 'Scheduled maintenance'}
+        </span>
+      </header>
+      {item.start && (
+        <p className="mt-1 text-xs text-muted-foreground tabular-nums" suppressHydrationWarning>
+          <time dateTime={item.start}>{formatWindow(item.start, item.end)}</time>
+          {item.timezone && <span className="ml-1">({item.timezone})</span>}
+        </p>
+      )}
+      {item.description && (
+        <div
+          className="prose-sm mt-2 max-w-none text-sm leading-relaxed [&_a]:underline [&_code]:rounded [&_code]:bg-background/60 [&_code]:px-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5"
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(item.description) }}
         />
       )}
     </article>
@@ -179,7 +227,7 @@ export function StatusPageView({ slug, initial }: StatusPageViewProps) {
     }
   }, [slug, interval])
 
-  const { config, groups, incidents, overall } = data
+  const { config, groups, incidents, overall, maintenance } = data
   const pinned = incidents.filter((i) => i.pinned)
   const others = incidents.filter((i) => !i.pinned)
   const feedHref = `/status/${encodeURIComponent(slug)}/rss`
@@ -206,6 +254,14 @@ export function StatusPageView({ slug, initial }: StatusPageViewProps) {
       </header>
 
       <OverallBanner status={overall} />
+
+      {maintenance.length > 0 && (
+        <section aria-label="Maintenance" className="flex flex-col gap-3">
+          {maintenance.map((item) => (
+            <MaintenanceCard key={item.id} item={item} />
+          ))}
+        </section>
+      )}
 
       {pinned.length > 0 && (
         <section aria-label="Incidents" className="flex flex-col gap-3">
