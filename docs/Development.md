@@ -2,7 +2,7 @@
 
 Marmot is one TypeScript codebase (Payload CMS 3 + Next.js, pnpm) that runs as three processes. This page
 gets you from a clone to a running stack and through the test, migration and build workflows. Project
-conventions live in [`CONTRIBUTING.md`](../CONTRIBUTING.md) and `.claude/skills/marmot-conventions/SKILL.md`.
+conventions live in [`CONTRIBUTING.md`](../.github/CONTRIBUTING.md) and `.claude/skills/marmot-conventions/SKILL.md`.
 
 ## Prerequisites
 
@@ -229,4 +229,4 @@ docker/                          Dockerfile, compose files, Caddyfile, entrypoin
 ```
 
 Extension points (adding a monitor type or a notification provider) are described in
-[`CONTRIBUTING.md`](../CONTRIBUTING.md); the data flow is in [Architecture](Architecture.md).
+[`CONTRIBUTING.md`](../.github/CONTRIBUTING.md); the data flow is in [Architecture](Architecture.md).

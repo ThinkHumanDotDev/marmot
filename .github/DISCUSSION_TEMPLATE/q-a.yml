@@ -7,7 +7,7 @@ body:
         Ask how to deploy, configure or use Marmot. Search existing discussions and the
         [documentation](https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/Home.md) first.
         Found a bug? Open an [issue](https://github.com/ThinkHumanDotDev/marmot/issues/new/choose) instead.
-        Never post vulnerabilities here; follow `SECURITY.md`.
+        Never post vulnerabilities here; follow `.github/SECURITY.md`.
   - type: textarea
     id: question
     attributes:

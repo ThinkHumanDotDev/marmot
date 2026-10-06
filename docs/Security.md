@@ -1,7 +1,7 @@
 # Security
 
 What Marmot does to protect an instance, and what the operator has to provide. Report vulnerabilities as
-described in [SECURITY.md](../SECURITY.md).
+described in [SECURITY.md](../.github/SECURITY.md).
 
 ## Built in
 

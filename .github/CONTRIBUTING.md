@@ -1,8 +1,8 @@
 # Contributing to Marmot
 
 Thanks for helping! Marmot is developed in the open; issues and pull requests are the unit of work. This
-page is the short version; [docs/Development.md](docs/Development.md) has the local setup, test and
-migration workflows and [docs/Architecture.md](docs/Architecture.md) explains how the pieces fit. By
+page is the short version; [docs/Development.md](../docs/Development.md) has the local setup, test and
+migration workflows and [docs/Architecture.md](../docs/Architecture.md) explains how the pieces fit. By
 participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Issues or discussions?
@@ -13,7 +13,7 @@ participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
   an agreed idea into an issue.
 - Security vulnerabilities go through the private process in [SECURITY.md](SECURITY.md), never either.
 
-See [`.github/SUPPORT.md`](.github/SUPPORT.md) for where to get help.
+See [`.github/SUPPORT.md`](SUPPORT.md) for where to get help.
 
 ## Workflow
 
@@ -75,7 +75,7 @@ kan.bn stays under the AGPL-3.0, the same license as Marmot; attribute it the sa
 
 ## Adding a monitor type
 
-One file plus registry lines; see [docs/Monitors.md](docs/Monitors.md) for the concepts.
+One file plus registry lines; see [docs/Monitors.md](../docs/Monitors.md) for the concepts.
 
 1. Create `src/server/monitor-types/<name>.ts` that calls `registerMonitorType({ name, label, group, check })`.
    `check(ctx)` receives `{ monitor, heartbeat, signal, payload }`, sets `heartbeat.status`/`msg`/`ping` and
@@ -106,7 +106,7 @@ One file plus registry lines; see [docs/Monitors.md](docs/Monitors.md) for the c
 ## Documentation
 
 User documentation lives in `docs/`, laid out as a GitHub wiki: flat, Title-Case page names
-(`Getting-Started.md` becomes the "Getting Started" page), [docs/Home.md](docs/Home.md) as the index and
+(`Getting-Started.md` becomes the "Getting Started" page), [docs/Home.md](../docs/Home.md) as the index and
 `_Sidebar.md`/`_Footer.md` for the wiki navigation. Link pages as `Page-Name.md` so they work in the
 repository too; `.github/workflows/wiki.yml` publishes `docs/` to the wiki on every push to `main` and
 `scripts/build-wiki.mjs` rewrites the links. Edit `docs/`, never the wiki. A new page needs a row in
@@ -114,12 +114,12 @@ repository too; `.github/workflows/wiki.yml` publishes `docs/` to the wiki on ev
 reader of that page: operators in `Deployment.md`/`Configuration.md`, users in `Monitors.md`/`Status-Pages.md`,
 contributors in `Development.md`/`Architecture.md`. Features that are merging alongside a docs change are
 marked _(landing in the current release)_ and the marker is removed at release time
-([docs/Release-Checklist.md](docs/Release-Checklist.md)).
+([docs/Release-Checklist.md](../docs/Release-Checklist.md)).
 
 ## Releases
 
 Maintainers cut releases with `pnpm release:prepare <version>` and a `vX.Y.Z` tag; the
-[release checklist](docs/Release-Checklist.md) has every step. `CHANGELOG.md` and the GitHub Release notes
+[release checklist](../docs/Release-Checklist.md) has every step. `CHANGELOG.md` and the GitHub Release notes
 are generated from commit messages by git-cliff (`cliff.toml`), so a clear Conventional Commit subject is
 your changelog entry.
 

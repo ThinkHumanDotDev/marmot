@@ -69,7 +69,7 @@ The index is [docs/Home.md](docs/Home.md). Most-read pages:
 | ------------------------------------------ | -------------------------------------------------------------- | ------------------------------------------------- |
 | [Getting started](docs/Getting-Started.md) | [Monitors](docs/Monitors.md)                                   | [Architecture](docs/Architecture.md)              |
 | [Configuration](docs/Configuration.md)     | [Notifications](docs/Notifications.md)                         | [Development](docs/Development.md)                |
-| [Deployment](docs/Deployment.md)           | [Status pages](docs/Status-Pages.md)                           | [Contributing](CONTRIBUTING.md)                   |
+| [Deployment](docs/Deployment.md)           | [Status pages](docs/Status-Pages.md)                           | [Contributing](.github/CONTRIBUTING.md)           |
 | [Single sign-on](docs/Single-Sign-On.md)   | [Organizations and members](docs/Organizations-and-Members.md) | [Comparison with Uptime Kuma](docs/Comparison.md) |
 
 ## Development
@@ -81,7 +81,7 @@ pnpm services:up                # docker compose dev services (or local binaries
 pnpm dev                        # web :3000, worker, realtime :3001
 ```
 
-`pnpm check` runs lint, typecheck and the integration tests. Read [CONTRIBUTING.md](CONTRIBUTING.md) and
+`pnpm check` runs lint, typecheck and the integration tests. Read [CONTRIBUTING.md](.github/CONTRIBUTING.md) and
 [docs/Development.md](docs/Development.md) before opening a pull request.
 
 Marmot is free software maintained in the open; if it is useful to you, consider
@@ -136,7 +136,7 @@ their own monitors, channels, status pages and members; a user can belong to sev
 
 Questions, ideas and things you built go to [GitHub Discussions](https://github.com/ThinkHumanDotDev/marmot/discussions);
 bugs and scoped feature requests to [issues](https://github.com/ThinkHumanDotDev/marmot/issues/new/choose).
-[SUPPORT.md](.github/SUPPORT.md) lists where to ask what, and [CONTRIBUTING.md](CONTRIBUTING.md) how to send
+[SUPPORT.md](.github/SUPPORT.md) lists where to ask what, and [CONTRIBUTING.md](.github/CONTRIBUTING.md) how to send
 changes.
 
 ## Privacy
@@ -145,7 +145,7 @@ Marmot collects **nothing** by default: no analytics SDK, no cookie banner, no c
 want product analytics can opt in with `NEXT_PUBLIC_POSTHOG_KEY`; the UI then asks every visitor for
 consent, identifies users only by a keyed hash and reduces URLs to route patterns.
 [docs/Telemetry.md](docs/Telemetry.md) (landing in the current release) lists exactly what is collected and
-how to turn it off. Security reports go through [SECURITY.md](SECURITY.md).
+how to turn it off. Security reports go through [SECURITY.md](.github/SECURITY.md).
 
 ## License
 
