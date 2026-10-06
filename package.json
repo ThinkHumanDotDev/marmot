@@ -55,6 +55,7 @@
     "@payloadcms/ui": "3.90.2",
     "@socket.io/redis-adapter": "^8.3.0",
     "@socket.io/redis-emitter": "^5.1.0",
+    "@thinkhumandotdev/payload-auth": "github:ThinkHumanDotDev/payload-plugin-auth#6322cec1bd22d303e24b793404222fa2f0cc8e3e",
     "badge-maker": "6.0.0",
     "bullmq": "^6.3.11",
     "class-variance-authority": "^0.7.1",
@@ -159,6 +160,7 @@
       "dompurify@<3.4.16": "^3.4.16"
     },
     "onlyBuiltDependencies": [
+      "@thinkhumandotdev/payload-auth",
       "sharp",
       "esbuild",
       "unrs-resolver"

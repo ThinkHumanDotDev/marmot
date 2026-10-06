@@ -31,8 +31,10 @@ and, for RP-initiated logout, this **post-logout redirect URI**:
 ${NEXT_PUBLIC_SERVER_URL}/login
 ```
 
-`GET /api/auth/providers` returns `{ "local": true, "oidc": { "enabled": true, "displayName": "…" } }`
-once the three required variables are set; the login page renders the SSO button from it.
+`GET /api/auth/providers` returns `{ "local": true, "oidc": { "enabled": true, "displayName": "…" }, "providers": [ { "id": "oidc", "name": "…", "type": "oidc", "loginPath": "/api/auth/sso/oidc/login" } ] }`
+once the three required variables are set; the login page renders one button per entry of `providers`.
+The env-configured client has the id `oidc`; its flow starts at `/api/auth/sso/oidc/login` (the older
+`/api/auth/oidc/login` keeps working) and its redirect URI stays `/api/auth/oidc/callback`.
 
 Plain `http://` issuers are accepted only when `NODE_ENV` is not `production` (local Keycloak,
 tests). Production providers must use HTTPS.
@@ -42,13 +44,17 @@ tests). Production providers must use HTTPS.
 On every successful login Marmot verifies the ID token (signature, issuer, audience, `nonce`) and
 reads the UserInfo endpoint, then:
 
-1. looks for a user with the same `(oidcIssuer, oidcSubject)` — the stable `sub` claim;
-2. otherwise looks for a user with the same email address. The account is linked (subject recorded)
-   only if the provider asserts `email_verified: true`; an unverified email never takes over an
-   existing account (`/login?error=email_unverified`);
-3. otherwise, with `OIDC_AUTO_PROVISION=true`, creates the user with the claims' name, a random
-   password nobody knows and `authProvider: oidc`. With `DISABLE_SIGNUP=true` this requires a pending
-   invitation for that email; the invitation is accepted so the user lands in the organization.
+1. looks for a **linked account** with the same provider and `sub` claim (the `auth-accounts`
+   collection, _Access → Auth accounts_ in the admin panel). A user can hold several linked identities;
+2. otherwise, for users created before Marmot 0.2, matches the legacy `oidcIssuer`/`oidcSubject` fields
+   on the user and creates the linked account from them;
+3. otherwise looks for a user with the same email address. The identity is linked only if the provider
+   asserts `email_verified: true`; an unverified email never takes over an existing account
+   (`/login?error=email_unverified`);
+4. otherwise, with `OIDC_AUTO_PROVISION=true`, creates the user with the claims' name, a random
+   password nobody knows and `authProvider: oidc`, and links the identity. With `DISABLE_SIGNUP=true`
+   this requires a pending invitation for that email; the invitation is accepted so the user lands in
+   the organization.
 
 The session that results is a regular Payload session (`payload-token` cookie, same expiry as
 password logins). Signing out an SSO user also redirects to the provider's `end_session_endpoint`
@@ -143,23 +149,35 @@ invited role; uninvited emails are refused with `signup_disabled`.
 
 ## Logout
 
-Signing out (`POST /api/auth/oidc/logout`, used by the account menu for SSO sessions) revokes the Payload
-session and clears the cookie. When the provider advertises an `end_session_endpoint` the browser is sent
+Signing out (`POST /api/auth/sso/logout`, used by the account menu for SSO sessions; `/api/auth/oidc/logout`
+is an alias) revokes the Payload session and clears the cookie. When the provider advertises an `end_session_endpoint` the browser is sent
 there with `post_logout_redirect_uri=${NEXT_PUBLIC_SERVER_URL}/login` so the provider session ends too
 (register that URI at the provider); otherwise the browser goes straight to `/login`.
 
 ## Troubleshooting
 
-- `/login?error=oidc_state` — the browser returned without (or with a stale) `marmot-oidc` cookie:
+- `/login?error=state_mismatch` — the browser returned without (or with a stale) `marmot-sso` cookie:
   the login took longer than 10 minutes, cookies are blocked, or `NEXT_PUBLIC_SERVER_URL` does not
   match the URL you opened Marmot at.
-- `/login?error=oidc_failed` — token exchange or ID-token validation failed. The web process log
-  (`module: "oidc"`) has the provider's error; typical causes are a redirect URI mismatch, a wrong
-  client secret or an issuer URL that differs from the `iss` claim (trailing slash!). Marmot
+- `/login?error=exchange_failed` — token exchange or ID-token validation failed. The web process log
+  (`payload-auth:` messages) has the provider's error; typical causes are a redirect URI mismatch, a
+  wrong client secret or an issuer URL that differs from the `iss` claim (trailing slash!). Marmot
   rediscovers the provider configuration after such an error, so rotated keys are picked up on
   the next attempt.
+- `/login?error=access_denied` — the identity provider refused the request (the user cancelled, or a
+  policy at the provider).
+- `/login?error=provider_unknown` — the provider in the URL is not configured on this server.
 - `/login?error=email_missing` — the provider did not release an email. Add the `email` scope or a
   claim mapper.
 - `/login?error=signup_disabled` — `DISABLE_SIGNUP=true` and no pending invitation exists for the
   user's email. Invite them first.
 - `/login?error=provisioning_disabled` — `OIDC_AUTO_PROVISION=false` and no account exists yet.
+
+## Under the hood
+
+The protocol work lives in [`@thinkhumandotdev/payload-auth`](https://github.com/ThinkHumanDotDev/payload-plugin-auth),
+a reusable set of Payload plugins (OAuth 2.0 / OpenID Connect and SAML 2.0) maintained alongside Marmot.
+`src/auth/sso` configures it: providers are resolved per request (today from the `OIDC_*` variables), the
+routes under `/api/auth/{oidc,sso}` are Marmot's own so they share its rate limiting, and the hooks add
+Marmot's rules (invitations, `DISABLE_SIGNUP`, the two-factor hand-off, the legacy column match). Linked
+identities are rows of the `auth-accounts` collection.

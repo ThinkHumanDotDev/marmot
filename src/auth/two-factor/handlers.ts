@@ -3,9 +3,12 @@ import { APIError, getPayload, type Payload } from 'payload'
 import { generatePayloadCookie } from 'payload/shared'
 
 import config from '@payload-config'
-import { cookiesAreSecure } from '@/auth/oidc/client'
-import { createPayloadSessionCookie, revokePayloadSession } from '@/auth/oidc/session'
-import { readCookie } from '@/auth/oidc/state'
+import {
+  cookiesAreSecure,
+  createPayloadSessionCookie,
+  readCookie,
+  revokePayloadSession,
+} from '@/auth/session'
 import { TWO_FACTOR_GATE_CONTEXT } from '@/collections/Users'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'

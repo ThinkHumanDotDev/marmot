@@ -4,7 +4,7 @@ import type { Payload } from 'payload'
 import { TWO_FACTOR_GATE_CONTEXT } from '@/collections/Users'
 import type { User } from '@/payload-types'
 
-import { revokePayloadSession } from './oidc/session'
+import { revokePayloadSession } from './session'
 
 /**
  * Checks a password without leaving a session behind. Payload has no "verify only" operation, so

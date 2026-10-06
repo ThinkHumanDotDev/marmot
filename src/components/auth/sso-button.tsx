@@ -2,27 +2,41 @@ import { KeyRound } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
-interface SsoButtonProps {
-  /** `OIDC_DISPLAY_NAME`, e.g. "Okta" or "Company SSO". */
-  displayName: string
+export interface SsoButtonProvider {
+  id: string
+  /** Button label: "Continue with …". */
+  name: string
+  /** Path that starts the provider's flow (`/api/auth/sso/<id>/login`). */
+  loginPath: string
+}
+
+interface SsoButtonsProps {
+  providers: SsoButtonProvider[]
   /** Same-origin path to return to after login. */
   next?: string
 }
 
 /**
- * "Continue with …" link that starts the OIDC flow. A plain anchor (not a fetch) because the
- * endpoint answers with a redirect to the identity provider.
+ * One "Continue with …" link per enabled single sign-on provider. Plain anchors (not fetches)
+ * because the endpoints answer with a redirect to the identity provider.
  */
-export function SsoButton({ displayName, next }: SsoButtonProps) {
-  const href = `/api/auth/oidc/login${next ? `?next=${encodeURIComponent(next)}` : ''}`
+export function SsoButtons({ providers, next }: SsoButtonsProps) {
+  if (providers.length === 0) return null
   return (
     <div className="flex flex-col gap-5">
-      <Button asChild variant="outline" className="w-full">
-        <a href={href} rel="nofollow">
-          <KeyRound aria-hidden />
-          Continue with {displayName}
-        </a>
-      </Button>
+      <div className="flex flex-col gap-2">
+        {providers.map((provider) => (
+          <Button key={provider.id} asChild variant="outline" className="w-full">
+            <a
+              href={`${provider.loginPath}${next ? `?next=${encodeURIComponent(next)}` : ''}`}
+              rel="nofollow"
+            >
+              <KeyRound aria-hidden />
+              Continue with {provider.name}
+            </a>
+          </Button>
+        ))}
+      </div>
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border" aria-hidden />
         or sign in with your password

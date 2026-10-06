@@ -54,7 +54,7 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
     try {
       if (user.authProvider === 'oidc') {
         // Also ends the identity-provider session when it supports RP-initiated logout.
-        redirectTo = (await authApi.oidcLogout()).redirectTo
+        redirectTo = (await authApi.ssoLogout()).redirectTo
       } else {
         await authApi.logout()
       }
