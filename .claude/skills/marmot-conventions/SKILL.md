@@ -54,8 +54,9 @@ tests/e2e/*.e2e.spec.ts          Playwright critical paths
    `docker/docker-compose.yml`.
 8. **Tests**: integration tests for behaviour that can break silently (access control, engine state machine,
    rollups, provider payloads). E2E only for critical paths. No snapshot tests, no tests for trivial getters.
-9. **Commits & PRs**: Conventional Commits (`feat(engine): …`), no trailers. Branch `feat/<slug>` from
-   `main`, one issue per PR, `Closes #NN` in the body, run `pnpm check` before pushing. CI must be green on
+9. **Commits & PRs**: Conventional Commits (`feat(engine): …`), no trailers. Commit subjects become the
+   release notes (`cliff.toml`); use the `security` scope (`fix(security): …`) for security fixes. Branch
+   `feat/<slug>` from `main`, one issue per PR, `Closes #NN` in the body, run `pnpm check` before pushing. CI must be green on
    Postgres and MongoDB before merge; PRs are squash-merged.
 10. **Don't** touch `src/app/(payload)/*` except `importMap.js` regeneration, don't edit
     `src/payload-types.ts` by hand (`pnpm generate:types`), don't add a monorepo.
