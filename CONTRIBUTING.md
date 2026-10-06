@@ -5,6 +5,16 @@ page is the short version; [docs/Development.md](docs/Development.md) has the lo
 migration workflows and [docs/Architecture.md](docs/Architecture.md) explains how the pieces fit. By
 participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
+## Issues or discussions?
+
+- **Issues** track work: reproducible bugs and scoped feature requests.
+- **[Discussions](https://github.com/ThinkHumanDotDev/marmot/discussions)** are for everything before that:
+  questions (Q&A), ideas that need shaping (Ideas), and things you built (Show and tell). A maintainer turns
+  an agreed idea into an issue.
+- Security vulnerabilities go through the private process in [SECURITY.md](SECURITY.md), never either.
+
+See [`.github/SUPPORT.md`](.github/SUPPORT.md) for where to get help.
+
 ## Workflow
 
 1. **Open or pick an issue first.** Features without an approved issue may be closed; small fixes and docs

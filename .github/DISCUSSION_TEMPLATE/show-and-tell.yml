@@ -1,0 +1,22 @@
+# Form for the "Show and tell" category. The file name must match the category slug (`show-and-tell`).
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share what you built with Marmot: a status page, a deployment recipe, an integration, a dashboard.
+  - type: textarea
+    id: what
+    attributes:
+      label: What did you build?
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Link
+      description: Public status page, repository or write-up, if any.
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Drag images here. Hide private hostnames and monitor names you don't want public.
