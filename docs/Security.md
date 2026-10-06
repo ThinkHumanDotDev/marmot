@@ -16,6 +16,17 @@ described in [SECURITY.md](../SECURITY.md).
 | Secrets in the model | Invitation tokens, invite-link tokens and SSO identifiers are write-protected fields; API responses only expose them to roles that need them.                                                                                                                                                                           |
 | Dependencies         | CI runs `pnpm audit --prod --audit-level=high` (advisory) on every push; Dependabot keeps Payload, Next.js and the rest current.                                                                                                                                                                                        |
 
+### Accepted dependency advisories
+
+`pnpm.auditConfig.ignoreGhsas` in `package.json` lists advisories that have no patched release or cannot be
+reached in Marmot. Each needs a reason here. Remove the entry once upstream ships a fix.
+
+| Advisory                                                                 | Package (path)                                                              | Why it is accepted                                                                                                                                                 |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) | `braces` ≤3.0.3 (`next › sass › chokidar`, and `eslint-config-next` in dev) | No patched release. Stack exhaustion needs a deeply nested glob pattern; `chokidar` only expands patterns from the build configuration, never from request data.   |
+| [GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99) | `esbuild` ≤0.24.2 (`@payloadcms/db-postgres › drizzle-kit › @esbuild-kit`)  | Affects only esbuild's development server (`serve`), which `@esbuild-kit` never starts; it uses the transform API. Marmot's own `esbuild` is already patched.      |
+| [GHSA-hp3w-g68c-fv3c](https://github.com/advisories/GHSA-hp3w-g68c-fv3c) | `sprintf-js` ≤1.1.3 (`mssql › tedious`)                                     | No patched release. Needs an attacker-controlled format string; `tedious` formats only its own fixed strings. Only loaded by the optional SQL Server monitor type. |
+
 ### Client addresses and `trustProxy`
 
 Next.js route handlers do not see the TCP peer address, so Marmot learns the client IP only from
