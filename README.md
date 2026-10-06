@@ -84,6 +84,9 @@ pnpm dev                        # web :3000, worker, realtime :3001
 `pnpm check` runs lint, typecheck and the integration tests. Read [CONTRIBUTING.md](CONTRIBUTING.md) and
 [docs/Development.md](docs/Development.md) before opening a pull request.
 
+Marmot is free software maintained in the open; if it is useful to you, consider
+[sponsoring its development](https://github.com/sponsors/EggsLeggs).
+
 ## Architecture
 
 ```
