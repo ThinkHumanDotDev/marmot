@@ -4,10 +4,12 @@
 #
 #   bash deploy/railway/bootstrap.sh                               # new project "marmot", from main
 #   MARMOT_BRANCH=feat/x PROJECT_NAME=marmot-test bash deploy/railway/bootstrap.sh
+#   MARMOT_REGION=us-west2 bash deploy/railway/bootstrap.sh      # default europe-west4-drams3a
 #
 # Needs the Railway CLI 5.42.1 or newer (`npm i -g @railway/cli`), `railway login`, pnpm and openssl.
 # It always creates a NEW project and links this checkout to it. To change an existing project later,
-# edit .railway/railway.ts and run `railway config plan` and then `railway config apply`. Secrets are kept.
+# edit .railway/railway.ts and run `railway config plan` and then `railway config apply`, with the same
+# MARMOT_BRANCH and MARMOT_REGION as the first run. Secrets are kept.
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
@@ -42,17 +44,17 @@ echo "==> Generating the public domain for edge (port 8080)"
 railway domain --service edge --port 8080
 
 # The first deploys started before the domain existed, so NEXT_PUBLIC_SERVER_URL was empty for them.
-# Railway refuses to redeploy while a build is running, so retry until each first build has finished.
-echo "==> Redeploying web, worker and realtime with the domain in place (waits for the first builds)"
+# Deploy each Marmot service again from source. Railway refuses while a build is still running, so retry.
+echo "==> Redeploying web, worker and realtime with the domain in place (waits for running builds)"
 for svc in web worker realtime; do
   for attempt in $(seq 1 60); do
-    if railway service redeploy --service "$svc" --yes >/dev/null 2>&1; then
-      echo "    $svc: redeploy started"
+    if railway service redeploy --service "$svc" --from-source --yes >/dev/null 2>&1; then
+      echo "    $svc: deploy started"
       break
     fi
     if [ "$attempt" -eq 60 ]; then
-      echo "    $svc: still building after 15 minutes; redeploy it later with" >&2
-      echo "    railway service redeploy --service $svc --yes" >&2
+      echo "    $svc: still busy after 15 minutes; deploy it later with" >&2
+      echo "    railway service redeploy --service $svc --from-source --yes" >&2
       break
     fi
     sleep 15

@@ -50,7 +50,8 @@ The script:
 5. redeploys the Marmot services so they pick up the domain.
 
 To change the project later, edit `.railway/railway.ts` and run `railway config plan`, then
-`railway config apply`. Stored secrets are kept (`preserve()`).
+`railway config apply`. Set the same `MARMOT_BRANCH` and `MARMOT_REGION` as the first run; the region
+defaults to `europe-west4-drams3a`. Stored secrets are kept (`preserve()`).
 
 Then:
 
