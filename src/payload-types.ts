@@ -68,6 +68,7 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
+    'auth-accounts': AuthAccount;
     organizations: Organization;
     invitations: Invitation;
     media: Media;
@@ -94,6 +95,7 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
+    'auth-accounts': AuthAccountsSelect<false> | AuthAccountsSelect<true>;
     organizations: OrganizationsSelect<false> | OrganizationsSelect<true>;
     invitations: InvitationsSelect<false> | InvitationsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -171,9 +173,12 @@ export interface User {
    * How the account was created: password signup or single sign-on.
    */
   authProvider?: ('local' | 'oidc') | null;
+  /**
+   * Legacy: identities now live in Auth accounts.
+   */
   oidcIssuer?: string | null;
   /**
-   * Stable `sub` claim of the linked single sign-on identity.
+   * Legacy `sub` claim; identities now live in Auth accounts.
    */
   oidcSubject?: string | null;
   /**
@@ -292,6 +297,32 @@ export interface Organization {
     timezone?: string | null;
     weekStart?: ('monday' | 'sunday') | null;
   };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Single sign-on identities linked to users. Managed by the login flows.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "auth-accounts".
+ */
+export interface AuthAccount {
+  id: number;
+  user: number | User;
+  /**
+   * Provider or connection id the identity came from.
+   */
+  provider: string;
+  /**
+   * Stable identifier at the provider (OIDC sub, OAuth id, SAML NameID).
+   */
+  providerAccountId: string;
+  /**
+   * Email the provider released, if any.
+   */
+  email?: string | null;
+  name?: string | null;
+  lastLoginAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1160,6 +1191,10 @@ export interface PayloadLockedDocument {
         value: number | User;
       } | null)
     | ({
+        relationTo: 'auth-accounts';
+        value: number | AuthAccount;
+      } | null)
+    | ({
         relationTo: 'organizations';
         value: number | Organization;
       } | null)
@@ -1315,6 +1350,20 @@ export interface UsersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "auth-accounts_select".
+ */
+export interface AuthAccountsSelect<T extends boolean = true> {
+  user?: T;
+  provider?: T;
+  providerAccountId?: T;
+  email?: T;
+  name?: T;
+  lastLoginAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

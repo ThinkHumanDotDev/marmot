@@ -3,11 +3,10 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 
-import { getAuthProviders } from '@/auth/oidc/client'
-import { oidcErrorMessage } from '@/auth/oidc/errors'
+import { getAuthProviders, ssoErrorMessage } from '@/auth/sso'
 import { AuthCard } from '@/components/auth/auth-card'
 import { LoginForm } from '@/components/auth/login-form'
-import { SsoButton } from '@/components/auth/sso-button'
+import { SsoButtons } from '@/components/auth/sso-button'
 import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth'
 import { safeNextPath } from '@/lib/utils'
@@ -28,7 +27,7 @@ export default async function LoginPage({
 
   // Same data `GET /api/auth/providers` returns, read in-process to avoid a self-request.
   const providers = getAuthProviders()
-  const ssoError = oidcErrorMessage(error)
+  const ssoError = ssoErrorMessage(error)
 
   return (
     <AuthCard
@@ -57,9 +56,7 @@ export default async function LoginPage({
             {ssoError}
           </p>
         )}
-        {providers.oidc.enabled && (
-          <SsoButton displayName={providers.oidc.displayName} next={next} />
-        )}
+        <SsoButtons providers={providers.providers} next={next} />
         <LoginForm next={next} twoFactor={two_factor === '1'} />
       </div>
     </AuthCard>

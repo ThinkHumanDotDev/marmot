@@ -2,20 +2,21 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { handleSsoCallback } from '@/auth/sso/handlers'
-import { OIDC_PROVIDER_ID } from '@/auth/sso/providers'
 import { ssoLimiter } from '@/server/security/limiters'
 import { withRateLimit } from '@/server/security/rate-limit'
 import { ipKey } from '@/server/security/request'
 
 export const dynamic = 'force-dynamic'
 
+type Context = { params: Promise<{ provider: string }> }
+
 /**
- * GET /api/auth/oidc/callback — the redirect URI registered at the env-configured OIDC provider
- * (unchanged since before single sign-on moved to the payload-auth plugin, so registrations keep
- * working). Rate limited per client IP (20/min, shared with `/login`).
+ * GET /api/auth/sso/:provider/callback — redirect URI to register at the provider. Rate limited per
+ * client IP (20/min, shared with `/login`) when a trusted proxy address exists.
  */
 export const GET = withRateLimit(
-  (request: Request) => handleSsoCallback(request, OIDC_PROVIDER_ID),
+  async (request: Request, { params }: Context) =>
+    handleSsoCallback(request, (await params).provider),
   ssoLimiter,
   { keyFrom: ipKey(() => getPayload({ config })) },
 )

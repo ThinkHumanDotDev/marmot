@@ -18,14 +18,16 @@ const mock = await vi.hoisted(async () => {
 import config from '@payload-config'
 
 import {
-  handleOidcCallback,
-  handleOidcLogin,
-  handleOidcLogout,
   handleProviders,
-} from '@/auth/oidc/handlers'
-import { OIDC_STATE_COOKIE } from '@/auth/oidc/state'
+  handleSsoCallback,
+  handleSsoLogin,
+  handleSsoLogout,
+} from '@/auth/sso/handlers'
 import { resetEnvCache } from '@/env'
-import type { Organization, User } from '@/payload-types'
+import type { AuthAccount, Organization, User } from '@/payload-types'
+
+/** Name of the sealed transaction cookie (`src/auth/sso/oauth.ts`). */
+const SSO_STATE_COOKIE = 'marmot-sso'
 
 let payload: Payload
 
@@ -36,13 +38,13 @@ const sub = (name: string) => `${name}-${run}`
 const createdUserEmails = new Set<string>()
 
 /** Starts the flow: returns the authorization URL and the sealed transaction cookie. */
-async function startLogin(next?: string) {
-  const url = new URL('http://localhost:3000/api/auth/oidc/login')
+async function startLogin(next?: string, path = '/api/auth/oidc/login') {
+  const url = new URL(`http://localhost:3000${path}`)
   if (next) url.searchParams.set('next', next)
-  const res = await handleOidcLogin(new Request(url))
+  const res = await handleSsoLogin(new Request(url), 'oidc')
   expect(res.status).toBe(302)
   const authorizationUrl = new URL(res.headers.get('location') ?? '')
-  const setCookie = res.headers.getSetCookie().find((c) => c.startsWith(`${OIDC_STATE_COOKIE}=`))
+  const setCookie = res.headers.getSetCookie().find((c) => c.startsWith(`${SSO_STATE_COOKIE}=`))
   expect(setCookie).toBeDefined()
   const cookie = (setCookie as string).split(';')[0]
   return { authorizationUrl, cookie }
@@ -56,7 +58,7 @@ async function authorize(authorizationUrl: URL): Promise<URL> {
 }
 
 async function callback(callbackUrl: URL, cookie: string) {
-  return handleOidcCallback(new Request(callbackUrl, { headers: { cookie } }))
+  return handleSsoCallback(new Request(callbackUrl, { headers: { cookie } }), 'oidc')
 }
 
 /** Full happy-path login for the issuer's current user. */
@@ -96,7 +98,19 @@ async function usersWithEmail(address: string) {
   return docs
 }
 
-describe('OIDC single sign-on', () => {
+/** Linked identities of a user (`auth-accounts`). */
+async function accountsOf(user: User | null): Promise<AuthAccount[]> {
+  if (!user) return []
+  const { docs } = await payload.find({
+    collection: 'auth-accounts',
+    where: { user: { equals: user.id } },
+    depth: 0,
+    overrideAccess: true,
+  })
+  return docs
+}
+
+describe('single sign-on (env-configured OIDC provider)', () => {
   beforeAll(async () => {
     payload = await getPayload({ config })
   })
@@ -109,6 +123,14 @@ describe('OIDC single sign-on', () => {
 
   afterAll(async () => {
     for (const address of createdUserEmails) {
+      const users = await usersWithEmail(address)
+      for (const user of users) {
+        await payload.delete({
+          collection: 'auth-accounts',
+          where: { user: { equals: user.id } },
+          overrideAccess: true,
+        })
+      }
       await payload.delete({
         collection: 'users',
         where: { email: { equals: address } },
@@ -125,7 +147,28 @@ describe('OIDC single sign-on', () => {
 
   it('advertises the provider', async () => {
     const body = await handleProviders().json()
-    expect(body).toEqual({ local: true, oidc: { enabled: true, displayName: 'Acme SSO' } })
+    expect(body).toEqual({
+      local: true,
+      oidc: { enabled: true, displayName: 'Acme SSO' },
+      providers: [
+        {
+          id: 'oidc',
+          name: 'Acme SSO',
+          type: 'oidc',
+          icon: 'key',
+          loginPath: '/api/auth/sso/oidc/login',
+        },
+      ],
+    })
+  })
+
+  it('starts the same flow from the generic /api/auth/sso/oidc/login path', async () => {
+    const { authorizationUrl } = await startLogin(undefined, '/api/auth/sso/oidc/login')
+    expect(authorizationUrl.origin).toBe(mock.issuer)
+    // The env-configured provider keeps the redirect URI existing installs registered.
+    expect(authorizationUrl.searchParams.get('redirect_uri')).toBe(
+      'http://localhost:3000/api/auth/oidc/callback',
+    )
   })
 
   it('redirects to the provider with PKCE, state, nonce and a sealed cookie', async () => {
@@ -160,9 +203,7 @@ describe('OIDC single sign-on', () => {
     const { res } = await loginVia('/acme/monitors')
     expect(res.status).toBe(303)
     expect(locationOf(res)).toBe('/acme/monitors')
-    expect(res.headers.getSetCookie().some((c) => c.startsWith(`${OIDC_STATE_COOKIE}=;`))).toBe(
-      true,
-    )
+    expect(res.headers.getSetCookie().some((c) => c.startsWith(`${SSO_STATE_COOKIE}=;`))).toBe(true)
 
     const cookie = payloadCookieOf(res)
     expect(cookie).toBeDefined()
@@ -175,9 +216,14 @@ describe('OIDC single sign-on', () => {
     expect(user?.email).toBe(address)
     expect(user?.name).toBe('Jane Doe')
     expect(user?.authProvider).toBe('oidc')
-    expect(user?.oidcSubject).toBe(sub('jane'))
-    expect(user?.oidcIssuer).toBe(mock.issuer)
     expect(user?.superadmin).toBe(false)
+    const accounts = await accountsOf(user)
+    expect(accounts).toHaveLength(1)
+    expect(accounts[0]).toMatchObject({
+      provider: 'oidc',
+      providerAccountId: sub('jane'),
+      email: address,
+    })
   })
 
   it('reuses the same user on the second login', async () => {
@@ -199,7 +245,7 @@ describe('OIDC single sign-on', () => {
     callbackUrl.searchParams.set('state', 'not-the-state')
     const res = await callback(callbackUrl, cookie)
     expect(res.status).toBe(303)
-    expect(locationOf(res)).toBe('/login?error=oidc_state')
+    expect(locationOf(res)).toBe('/login?error=state_mismatch')
     expect(payloadCookieOf(res)).toBeUndefined()
     expect(mock.tokenRequests()).toBe(2) // no token exchange happened
   })
@@ -207,8 +253,8 @@ describe('OIDC single sign-on', () => {
   it('rejects a callback without the transaction cookie', async () => {
     const { authorizationUrl } = await startLogin()
     const callbackUrl = await authorize(authorizationUrl)
-    const res = await handleOidcCallback(new Request(callbackUrl))
-    expect(locationOf(res)).toBe('/login?error=oidc_state')
+    const res = await handleSsoCallback(new Request(callbackUrl), 'oidc')
+    expect(locationOf(res)).toBe('/login?error=state_mismatch')
   })
 
   it('rejects a callback whose cookie belongs to another transaction (nonce/PKCE)', async () => {
@@ -217,7 +263,15 @@ describe('OIDC single sign-on', () => {
     const callbackUrl = await authorize(second.authorizationUrl)
     // Right query string, wrong cookie: the state check fails before any token exchange.
     const res = await callback(callbackUrl, first.cookie)
-    expect(locationOf(res)).toBe('/login?error=oidc_state')
+    expect(locationOf(res)).toBe('/login?error=state_mismatch')
+  })
+
+  it('rejects a callback for a provider that is not configured', async () => {
+    const res = await handleSsoLogin(
+      new Request('http://localhost:3000/api/auth/sso/github/login'),
+      'github',
+    )
+    expect(locationOf(res)).toBe('/login?error=provider_unknown')
   })
 
   it('links an existing local account when the provider verified the email', async () => {
@@ -233,9 +287,39 @@ describe('OIDC single sign-on', () => {
     const { res } = await loginVia()
     const user = await authenticate(payloadCookieOf(res))
     expect(String(user?.id)).toBe(String(local.id))
-    expect(user?.oidcSubject).toBe(sub('larry'))
     expect(user?.authProvider).toBe('local')
     expect(user?.name).toBe('Local Larry')
+    expect((await accountsOf(user)).map((a) => a.providerAccountId)).toEqual([sub('larry')])
+  })
+
+  it('keeps signing in users whose identity lives in the legacy oidcIssuer/oidcSubject columns', async () => {
+    const address = email('legacy')
+    createdUserEmails.add(address)
+    const legacy = await payload.create({
+      collection: 'users',
+      data: {
+        email: address,
+        password: 'password-123',
+        authProvider: 'oidc',
+        oidcIssuer: mock.issuer,
+        oidcSubject: sub('legacy'),
+      },
+      overrideAccess: true,
+    })
+    // A different, unverified email: only the legacy subject can match this user.
+    mock.setUser({ sub: sub('legacy'), email: `new-${address}`, email_verified: false })
+
+    const { res } = await loginVia()
+    expect(res.status).toBe(303)
+    const user = await authenticate(payloadCookieOf(res))
+    expect(String(user?.id)).toBe(String(legacy.id))
+    const accounts = await accountsOf(user)
+    expect(accounts.map((a) => a.providerAccountId)).toEqual([sub('legacy')])
+
+    // Second login: the account row matches first.
+    const again = await loginVia()
+    expect(String((await authenticate(payloadCookieOf(again.res)))?.id)).toBe(String(legacy.id))
+    expect(await accountsOf(user)).toHaveLength(1)
   })
 
   it('never links by an unverified email', async () => {
@@ -252,7 +336,7 @@ describe('OIDC single sign-on', () => {
     expect(locationOf(res)).toBe('/login?error=email_unverified')
     expect(payloadCookieOf(res)).toBeUndefined()
     const [user] = await usersWithEmail(address)
-    expect(user.oidcSubject ?? null).toBeNull()
+    expect(await accountsOf(user)).toHaveLength(0)
   })
 
   it('refuses to provision when signup is disabled and there is no invitation', async () => {
@@ -331,6 +415,21 @@ describe('OIDC single sign-on', () => {
     expect(await usersWithEmail(address)).toHaveLength(0)
   })
 
+  it('removes linked identities when the user is deleted', async () => {
+    const address = email('gone')
+    mock.setUser({ sub: sub('gone'), email: address, email_verified: true })
+    const { res } = await loginVia()
+    const user = await authenticate(payloadCookieOf(res))
+    expect(await accountsOf(user)).toHaveLength(1)
+    await payload.delete({ collection: 'users', id: user!.id, overrideAccess: true })
+    const { totalDocs } = await payload.find({
+      collection: 'auth-accounts',
+      where: { providerAccountId: { equals: sub('gone') } },
+      overrideAccess: true,
+    })
+    expect(totalDocs).toBe(0)
+  })
+
   it('refuses identities without an email', async () => {
     mock.setUser({ sub: sub('noemail') })
     const { res } = await loginVia()
@@ -344,8 +443,8 @@ describe('OIDC single sign-on', () => {
     const cookie = payloadCookieOf(res) as string
     expect(await authenticate(cookie)).not.toBeNull()
 
-    const logout = await handleOidcLogout(
-      new Request('http://localhost:3000/api/auth/oidc/logout', {
+    const logout = await handleSsoLogout(
+      new Request('http://localhost:3000/api/auth/sso/logout', {
         method: 'POST',
         headers: { cookie, accept: 'application/json', origin: 'http://localhost:3000' },
       }),

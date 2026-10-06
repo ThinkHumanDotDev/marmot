@@ -1,5 +1,6 @@
 import {
   APIError,
+  type CollectionBeforeDeleteHook,
   type CollectionBeforeLoginHook,
   type CollectionConfig,
   type FieldAccess,
@@ -7,6 +8,7 @@ import {
 
 import { authenticated, selfOrSuperadmin, superadminOnly } from '@/access/org-scoped'
 import { isSuperadmin, type UserLike } from '@/access/permissions'
+import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
 import { auditAuthFailure, auditLogin, rateLimitAuthOperations } from '@/server/security/auth-hooks'
 import { isSignupAllowed } from '@/server/settings'
 
@@ -41,6 +43,20 @@ const requireTwoFactorGate: CollectionBeforeLoginHook = ({ user, context }) => {
     )
   }
   return user
+}
+
+/**
+ * Linked single sign-on identities reference the user with a NOT NULL foreign key on Postgres, so
+ * they have to go before the user row does (and an identity must never survive its user anyway).
+ */
+const removeAuthAccounts: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  await req.payload.delete({
+    collection: AUTH_ACCOUNTS_SLUG,
+    where: { user: { equals: id } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
 }
 
 /**
@@ -80,6 +96,7 @@ export const Users: CollectionConfig = {
     // Rate limits `login` / `forgot-password` (REST only) and records the attempts in `audit-logs`.
     beforeOperation: [rateLimitAuthOperations],
     beforeLogin: [requireTwoFactorGate],
+    beforeDelete: [removeAuthAccounts],
     afterLogin: [auditLogin],
     afterError: [auditAuthFailure],
   },
@@ -108,8 +125,8 @@ export const Users: CollectionConfig = {
           'Instance administrator: can access the Payload admin panel and every organization.',
       },
     },
-    // Single sign-on (src/auth/oidc). Set server-side by the OIDC callback with `overrideAccess`;
-    // clients can never write them, so a signup POST cannot claim somebody else's identity.
+    // Single sign-on (src/auth/sso). Set server-side with `overrideAccess`; clients can never write
+    // them, so a signup POST cannot claim somebody else's identity.
     {
       name: 'authProvider',
       type: 'select',
@@ -124,6 +141,9 @@ export const Users: CollectionConfig = {
         description: 'How the account was created: password signup or single sign-on.',
       },
     },
+    // Legacy OIDC identity, from before linked identities moved to the `auth-accounts` collection.
+    // Still matched by the login flow (`src/auth/sso/oauth.ts`, `findUser`) so existing users keep
+    // signing in; an account row is created on their next login. Dropped in a future release.
     {
       name: 'oidcIssuer',
       type: 'text',
@@ -131,7 +151,11 @@ export const Users: CollectionConfig = {
         create: superadminField,
         update: superadminField,
       },
-      admin: { position: 'sidebar', readOnly: true },
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Legacy: identities now live in Auth accounts.',
+      },
     },
     {
       name: 'oidcSubject',
@@ -145,7 +169,7 @@ export const Users: CollectionConfig = {
       admin: {
         position: 'sidebar',
         readOnly: true,
-        description: 'Stable `sub` claim of the linked single sign-on identity.',
+        description: 'Legacy `sub` claim; identities now live in Auth accounts.',
       },
     },
     {
