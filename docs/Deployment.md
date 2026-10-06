@@ -156,6 +156,33 @@ Attach both services to Traefik's network. The same split (everything to `web:30
 `realtime:3001`) applies to any other proxy or ingress controller, including Cloudflare Tunnel (enable
 WebSockets on the tunnel) and Kubernetes ingresses (two path rules, WebSocket timeouts raised).
 
+## Railway
+
+The Railway template deploys the same stack as the compose file, with each role as its own service:
+
+- `edge`: Caddy, the only public service.
+- `web`, `worker` and `realtime`.
+- Postgres.
+- Redis, configured with `noeviction` and persistence.
+
+Railway provides HTTPS on the `edge` domain. Secrets are generated at deploy time, so the only thing to do
+after deploying is to open the domain and complete the setup wizard.
+
+- **Custom domain**: add it to the `edge` service. Then set `NEXT_PUBLIC_SERVER_URL` on `web`, `worker` and
+  `realtime` to `https://your.domain`.
+- **Configuration**: SMTP, OIDC, S3 and the rest go into the variables of `web`, `worker` and `realtime`
+  (see [Configuration](Configuration.md)).
+- **Scaling**: give `worker` more replicas. `realtime` replicas need sticky sessions (see
+  [Scaling](#scaling)), so keep one.
+- **Uploads**: logos and other uploads live on the `web` volume. Set `S3_BUCKET` before running more than
+  one `web` replica.
+- **Upgrading**: each release updates the image tags under `deploy/railway/` in this repository.
+  Redeploying the services from the template's repository picks the new release up. Migrations run when
+  `web` starts.
+
+How the template is built, and how to rebuild it, is described in
+[`deploy/railway/README.md`](../deploy/railway/README.md).
+
 ## Running the image without compose
 
 Any orchestrator works as long as each role gets the same environment:
