@@ -1,54 +1,70 @@
 # Maintenance windows
 
-> **Status:** landing in the current release. The `/{org}/maintenance` page on `main` is a placeholder; the
-> behaviour below describes the feature as it is being merged and may still change in details.
-
-A maintenance window tells Marmot that a set of monitors is _expected_ to misbehave for a while: during the
-window their checks keep running, but a failed check produces a `maintenance` heartbeat instead of `down`,
-no notification is sent, and the affected status pages show a maintenance banner instead of an outage. This
-is how you deploy, patch or migrate without paging the on-call and without a red bar on your public status
-page.
+A maintenance window tells Marmot that a set of monitors is _expected_ to be offline for a while: during the
+window their checks are replaced by `maintenance` heartbeats, no notification is sent, and the status pages
+you attach show a maintenance banner instead of an outage. This is how you deploy, patch or migrate without
+paging the on-call and without a red bar on your public status page.
 
 ## Concepts
 
-| Term     | Meaning                                                                                                                                                                                                                         |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window   | A `maintenance` document: title, description, the monitors (or whole status pages) it covers, and a schedule.                                                                                                                   |
-| Strategy | How the window repeats: **manual** (active until you stop it), **single** (one start/end), **recurring interval** (every N days), **recurring weekday** (e.g. every Tuesday 02:00–03:00), **recurring day of month**, **cron**. |
-| Status   | `scheduled` (before the next start), `under-maintenance` (active now), `ended` (past its last occurrence), `inactive` (paused by you).                                                                                          |
-| Timezone | Recurring schedules are evaluated in the window's timezone (defaults to the organization's `settings.timezone`).                                                                                                                |
+| Term     | Meaning                                                                                                                                                                                                                                                                                         |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window   | A `maintenance` document: title, description (Markdown), the monitors it covers, the status pages that announce it, and a schedule.                                                                                                                                                             |
+| Strategy | How the window repeats: **manual** (active until you pause it), **single** (one start/end), **recurring interval** (every N days), **recurring weekday** (e.g. every Tuesday 02:00–03:00), **recurring day of month** (`1`–`31` or the last days), **cron** (pattern plus duration in minutes). |
+| Status   | `scheduled` (before the next start), `under-maintenance` (active now), `ended` (past its last occurrence), `inactive` (paused by you), `unknown` (the schedule cannot be evaluated).                                                                                                            |
+| Timezone | Schedules are evaluated in the window's IANA timezone, DST-aware. The default, _same as server_ (`SAME_AS_SERVER`), uses the organization's `settings.timezone`.                                                                                                                                |
 
-Maintenance is **org-scoped**: viewers can see windows (`maintenance:read`), members and above create, edit
-and end them (`maintenance:create|update|delete`). Attaching a status page to a window covers every monitor
-shown on that page, which is the usual choice for a planned outage.
+Maintenance is **org-scoped**: by default viewers can see windows (`maintenance:read`), members and above
+create, edit, pause and delete them (`maintenance:create|update|delete`); owners can change these minimums
+under **Settings → Permissions** ([organizations-and-members.md](organizations-and-members.md)). Monitors and
+status pages must belong to the same organization as the window.
 
 ## Effect on monitors and alerts
 
 The worker asks the maintenance resolver before every check (`setMaintenanceResolver` in
-`src/server/engine/hooks.ts`). When the monitor is covered by an active window the beat is recorded as
-`maintenance`, counts as **up** in the uptime statistics (Uptime Kuma semantics) and never notifies. When the
-window ends the next check decides the real state; a monitor that is still broken then goes DOWN and alerts
-as usual.
+`src/server/engine/hooks.ts`, installed by `createMaintenanceResolver()` from `src/server/maintenance`). A
+monitor is under maintenance when an active window listing it is running, or when one of its parent groups is
+(recursively). In that case the check is skipped and a `maintenance` beat is recorded instead: it counts as
+**up** in the uptime statistics (Uptime Kuma semantics) and never notifies. When the window ends the next
+check decides the real state; a monitor that is still broken then goes DOWN and alerts as usual.
 
 Monitors currently in maintenance show a blue status in the dashboard, the monitor list and the badges.
 
 ## Effect on status pages
 
-Public pages render active and upcoming windows in a **maintenance** block above the monitor groups, with the
-title, description and the time range in the visitor's local time. The page's overall status becomes
-`maintenance` while a window covers any of its monitors and nothing else is down. The public JSON
-(`GET /api/status-pages/:slug/public`) exposes the windows in its `maintenance` array, which is already part
-of the payload shape today ([status-pages.md](status-pages.md)).
+Attaching a status page to a window makes the page announce it; it does not put the page's monitors into
+maintenance (list them under **Monitors** for that). Public pages render running windows and windows that
+start within the next seven days in a **maintenance** block above the monitor groups, with the title,
+description and the time range in the visitor's local time. The public JSON
+(`GET /api/status-pages/:slug/public`) exposes them in its `maintenance` array, running windows first
+([status-pages.md](status-pages.md)). The page's overall status becomes `maintenance` when its monitors report
+maintenance and nothing else is down.
 
 ## Managing windows
 
-`/{org}/maintenance` lists windows grouped by status with their next occurrence; **Schedule maintenance**
-opens the form (title, description, affected monitors and status pages, strategy, date range, timezone).
-A window can be paused (`inactive`) and resumed, edited while running, or ended early. Route handlers follow
-the usual pattern: `GET/POST /api/orgs/:orgId/maintenance`, `PATCH/DELETE /api/orgs/:orgId/maintenance/:id`,
-`POST …/:id/{pause,resume}`.
+`/{org}/maintenance` lists the organization's windows with their schedule, status and the current or next
+occurrence. With no windows yet, the empty state offers **Schedule maintenance** to members who may create
+one; the same action is in the page header and in the command palette (⌘K / Ctrl+K). The form covers title,
+description, strategy, date and time range, interval/weekdays/days of month or cron and duration, timezone,
+and pickers for the affected monitors and status pages. A window can be paused (`inactive`) and resumed,
+edited while it runs, or deleted, after which affected monitors resume normal checks on their next run.
 
-The live `maintenanceList` realtime event keeps dashboards in sync when a window starts or ends.
+Route handlers follow the usual pattern (zod schema shared with the form in
+`src/lib/validation/maintenance.ts`):
+
+| Method                   | Path                                                     |
+| ------------------------ | -------------------------------------------------------- |
+| `GET`, `POST`            | `/api/orgs/:orgId/maintenance`                           |
+| `GET`, `PATCH`, `DELETE` | `/api/orgs/:orgId/maintenance/:id`                       |
+| `POST`                   | `/api/orgs/:orgId/maintenance/:id/pause`, `…/:id/resume` |
+
+## How status is kept current
+
+Status is a pure function of the document and the clock (`src/server/maintenance/status.ts`); there is no
+in-memory timer per window. The collection hooks compute `status` on save, and the `maintenance-status` job
+on the worker's `marmot:maintenance` queue recomputes every window each minute, persists changes and publishes
+the `maintenanceList` realtime event so open maintenance pages update live. See
+[architecture.md](architecture.md#maintenance-windows) for the details.
 
 ## Related
 
