@@ -140,6 +140,40 @@ export async function processCheckJob(
     ? { ok: false, msg: 'Monitor under maintenance', underMaintenance: true }
     : await runCheck(payload, monitor, timeoutMs)
 
+  const { heartbeat, next } = await recordBeat(payload, monitor, result, {
+    queue: queueOptions?.queue,
+  })
+  return { outcome: 'processed', heartbeat, next }
+}
+
+export interface RecordBeatOptions {
+  /** Queue to re-plan the scheduler on; the shared checks queue by default. */
+  queue?: Parameters<typeof syncMonitor>[1]
+  /** Extra `status` fields to persist alongside the beat (e.g. `lastPushAt`). */
+  statusPatch?: Partial<NonNullable<Monitor['status']>>
+  /** Beat time; defaults to now. */
+  now?: Date
+}
+
+export interface RecordBeatResult {
+  heartbeat: Heartbeat
+  /** Monitor document after the status cache update. */
+  monitor: Monitor
+  next: NextState
+}
+
+/**
+ * Feed a check result through the state machine and persist it: `heartbeats` row, `monitors.status`
+ * cache (with `context.skipEngineSync`), scheduler re-plan when the cadence changed, listeners.
+ * Shared by the check worker and the push endpoint (`recordExternalBeat`).
+ */
+export async function recordBeat(
+  payload: Payload,
+  monitor: Monitor,
+  result: CheckResult,
+  options: RecordBeatOptions = {},
+): Promise<RecordBeatResult> {
+  const monitorId = String(monitor.id)
   const prev: PrevState = {
     status: monitor.status?.lastStatus,
     retries: monitor.status?.retries,
@@ -147,7 +181,7 @@ export async function processCheckJob(
   }
   const next = computeNextBeat(prev, result, monitor)
 
-  const now = new Date()
+  const now = options.now ?? new Date()
   const lastCheckAt = monitor.status?.lastCheckAt ? new Date(monitor.status.lastCheckAt) : null
   const duration =
     next.duration ??
@@ -191,6 +225,7 @@ export async function processCheckJob(
         lastMsg: next.msg,
         retries: next.retries,
         downCount: next.downCount,
+        ...options.statusPatch,
       },
       ...(tlsInfo ? { certInfo: tlsInfo as unknown as Monitor['certInfo'] } : {}),
     },
@@ -199,7 +234,7 @@ export async function processCheckJob(
   // PENDING monitors poll at `retryInterval`; back to `interval` once they leave PENDING.
   if (effectiveIntervalMs(updated) !== effectiveIntervalMs(monitor)) {
     try {
-      await syncMonitor(updated, queueOptions?.queue)
+      await syncMonitor(updated, options.queue)
     } catch (err) {
       log.error({ err, monitorId }, 'failed to re-plan scheduler')
     }
@@ -232,7 +267,41 @@ export async function processCheckJob(
     certChanged,
   })
 
-  return { outcome: 'processed', heartbeat, next }
+  return { heartbeat, monitor: updated, next }
+}
+
+export interface ExternalBeatInput {
+  status: 'up' | 'down'
+  msg?: string | null
+  ping?: number | null
+}
+
+/**
+ * Record a beat reported from outside the worker (the push endpoint). Maintenance windows,
+ * retries/PENDING and `upsideDown` apply exactly as for polled checks; the monitor's
+ * `status.lastPushAt` is stamped so the periodic push check knows the heartbeat arrived.
+ * Port of the `/api/push/:pushToken` handler in Uptime Kuma 2.5.5 `server/routers/api-router.js`.
+ */
+export async function recordExternalBeat(
+  payload: Payload,
+  monitor: Monitor,
+  input: ExternalBeatInput,
+  options: Omit<RecordBeatOptions, 'statusPatch'> = {},
+): Promise<RecordBeatResult> {
+  const now = options.now ?? new Date()
+  const msg = input.msg?.trim() || 'OK'
+  const ping = typeof input.ping === 'number' && Number.isFinite(input.ping) ? input.ping : null
+  const underMaintenance = await isUnderMaintenance(monitor, payload)
+  const result: CheckResult = underMaintenance
+    ? { ok: false, msg: 'Monitor under maintenance', underMaintenance: true, ping }
+    : input.status === 'up'
+      ? { ok: true, status: 'up', msg, ping }
+      : { ok: false, msg, ping }
+  return recordBeat(payload, monitor, result, {
+    ...options,
+    now,
+    statusPatch: { lastPushAt: now.toISOString() },
+  })
 }
 
 export interface StartCheckWorkerOptions extends QueueFactoryOptions {

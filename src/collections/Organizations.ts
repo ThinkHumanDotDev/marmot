@@ -183,6 +183,17 @@ const removeInvitations: CollectionBeforeDeleteHook = async ({ id, req }) => {
   })
 }
 
+/** API keys carry a NOT NULL `organization` on Postgres; revoke them before the row goes. */
+const removeApiKeys: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  await req.payload.delete({
+    collection: 'api-keys',
+    where: { organization: { equals: id } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
+}
+
 const actorId = (req: { user?: { id: string | number; collection?: string } | null }) =>
   req.user && req.user.collection === 'users' ? req.user.id : null
 
@@ -255,7 +266,7 @@ export const Organizations: CollectionConfig = {
       trackOrgCreated,
       auditOrganizationUpdated,
     ],
-    beforeDelete: [removeInvitations, removeMemberships],
+    beforeDelete: [removeInvitations, removeApiKeys, removeMemberships],
     afterDelete: [auditOrganizationDeleted],
   },
   fields: [
