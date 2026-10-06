@@ -1,10 +1,12 @@
 # Railway template
 
-Config for the official **Deploy on Railway** template. Every fixed setting lives here: build, healthchecks,
-restart policy, ports, roles, bind addresses and Caddy upstreams. The template on Railway only wires the
-services together and generates secrets, so a Marmot release never needs a manual template edit. Railway's
-template generator keeps only variables that reference other services, which is why fixed values are
-baked into these small images instead.
+Service images for the official **Deploy on Railway** template. [`.railway/railway.ts`](../../.railway/railway.ts)
+declares the project: services, Postgres, volumes, variables, and each service's build and deploy settings.
+Railway reads that file only when someone runs `railway config apply`. The small images here carry
+everything a deploy reads from the repository: ports, roles, bind addresses, Caddy upstreams and the Marmot
+version. A release therefore reaches running projects and the published template without editing anything
+on Railway. Railway's template generator keeps only variables that reference other services, which is
+another reason fixed values live in the images.
 
 | Folder      | Railway service | Image                             | Public | Volume         | Notes                                                     |
 | ----------- | --------------- | --------------------------------- | ------ | -------------- | --------------------------------------------------------- |
@@ -16,7 +18,10 @@ baked into these small images instead.
 | –           | `Postgres`      | Railway's Postgres                | –      | (managed)      | Add it from Railway's database menu                       |
 
 The Marmot image tag in `web/`, `worker/` and `realtime/` follows `package.json`. `scripts/release.sh` bumps
-it, and `pnpm check:railway` (run in CI) fails when a Dockerfile, `railway.json` or tag is out of line.
+it. `pnpm check:railway`, which runs in CI, fails when:
+
+- a Dockerfile or its tag is out of line;
+- `.railway/railway.ts` and the folders here disagree.
 
 `BIND_HOST` (web listening on IPv6 as well as IPv4) arrived after `0.1.0`. Publish the template once a
 release containing it is out. Before that, `web` listens on IPv4 only, and edge cannot reach it on an
@@ -25,8 +30,8 @@ IPv6-only private network.
 ## Creating the project and template (maintainers, once)
 
 [`.railway/railway.ts`](../../.railway/railway.ts) declares the whole project with Railway's infrastructure
-as code: Postgres, the five services (each reading its `railway.json` here), the volumes and every
-variable. One command creates it:
+as code: Postgres, the five services (each built from its Dockerfile here, with healthchecks and restart
+policy), the volumes and every variable. One command creates it:
 
 ```bash
 npm i -g @railway/cli        # 5.42.1 or newer
@@ -67,9 +72,6 @@ Then:
    [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/<slug>?referralCode=<code>&utm_medium=integration&utm_source=template&utm_campaign=generic)
    ```
 
-`pnpm check:railway`, which runs in CI, evaluates `.railway/railway.ts`. It fails when a service folder here
-and the IaC file disagree.
-
 ### Manual setup (if the IaC beta gets in the way)
 
 The service **names matter**: `edge` dials `web.railway.internal` and `realtime.railway.internal`, and the
@@ -77,8 +79,9 @@ variables reference `edge`, `redis` and `Postgres` by name.
 
 1. Add **Postgres** from the database menu.
 2. Add `edge`, `web`, `worker`, `realtime` and `redis` from the GitHub repo `ThinkHumanDotDev/marmot`. For
-   each, leave **Root Directory** empty and set the **config file path** to
-   `/deploy/railway/<service>/railway.json`.
+   each, leave **Root Directory** empty. Under Build, choose the Dockerfile builder with path
+   `deploy/railway/<service>/Dockerfile`. Set the healthcheck path to `/api/health` on `web` and `/healthz` on
+   `realtime`.
 3. Add volumes: `web` at `/app/uploads` and `redis` at `/data`. Generate a domain for `edge` on port 8080.
 4. Add the variables:
 
@@ -94,5 +97,6 @@ variables reference `edge`, `redis` and `Postgres` by name.
    `?family=0` lets the Redis client resolve IPv6 private hostnames. Everything else (SMTP, OIDC, S3, …) is
    optional and documented in `docs/Configuration.md`.
 
-Changing a fixed setting later means editing the files here. Changing the service list or variables means
-editing `.railway/railway.ts` and the published template on Railway.
+Changing a fixed setting later means editing the images here. Changing services, build settings or
+variables means editing `.railway/railway.ts`, running `railway config apply`, and updating the published
+template on Railway.
