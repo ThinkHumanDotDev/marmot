@@ -1,11 +1,13 @@
 /**
- * Maintenance status job: once a minute the worker recomputes every maintenance's status,
- * persists the ones that changed (`maintenance.status`) and publishes the organization's list to
- * its socket room, so dashboards flip to "Under maintenance" without a page load.
+ * Maintenance jobs on the `marmot:maintenance` queue (one worker, concurrency 1, so syncs of the
+ * same maintenance never overlap):
  *
- * Runs as the `maintenance-status` BullMQ job scheduler on the `marmot:maintenance` queue; the
- * worker started here also executes `retention` jobs (`src/server/jobs/retention.ts`) so a single
- * worker serves that queue.
+ * - `maintenance-wakeup` (delayed, one per planned start/end/reminder instant; `queue.ts`): syncs
+ *   that maintenance's occurrences at that instant (`syncMaintenance`, `occurrences.ts`).
+ * - `maintenance-status` (every minute): reconciler that syncs every maintenance, persists the
+ *   statuses that changed and publishes the organization's list to its socket room. It catches
+ *   wake-ups lost with Redis and plans the first occurrences of documents saved without hooks.
+ * - `retention` (`src/server/jobs/retention.ts`) shares the queue so a single worker serves it.
  */
 import type { Job, Queue, Worker } from 'bullmq'
 import type { Payload } from 'payload'
@@ -13,10 +15,19 @@ import type { Payload } from 'payload'
 import { childLogger } from '@/lib/logger'
 import type { Maintenance } from '@/payload-types'
 import { QUEUE_NAMES } from '@/server/engine/names'
-import { createQueue, createWorker, type QueueFactoryOptions } from '@/server/engine/queues'
+import { createWorker, type QueueFactoryOptions } from '@/server/engine/queues'
 import { processRetentionJob, RETENTION_JOB_NAME } from '@/server/jobs/retention'
+import { syncMaintenance, syncMaintenanceById, type SyncOptions } from './occurrences'
+import {
+  closeMaintenanceQueue,
+  getMaintenanceQueue,
+  MAINTENANCE_WAKEUP_JOB_NAME,
+  type MaintenanceWakeupData,
+} from './queue'
 import { emitOrgMaintenanceList } from './realtime'
-import { relationId, timeslotsFor } from './serialize'
+import { relationId } from './serialize'
+
+export { closeMaintenanceQueue, getMaintenanceQueue }
 
 const log = childLogger('maintenance:job')
 
@@ -33,11 +44,13 @@ export interface RefreshResult {
 export interface RefreshOptions {
   /** Publish `maintenanceList` for organizations with changes (default true). */
   emit?: boolean
+  /** Wake-up scheduling (see `SyncOptions.scheduleJobs`); the worker passes `'all'` on boot. */
+  scheduleJobs?: SyncOptions['scheduleJobs']
 }
 
 /**
- * Recompute and persist statuses. `now` is injectable for tests. Writes use
- * `context.skipMaintenanceHooks` so the collection hooks neither recompute nor re-emit.
+ * Sync every maintenance at `now` (injectable for tests): plan and advance occurrences, send due
+ * reminders, persist effective statuses. `changed` counts maintenances whose status changed.
  */
 export async function refreshMaintenanceStatuses(
   payload: Payload,
@@ -56,23 +69,15 @@ export async function refreshMaintenanceStatuses(
   let changed = 0
   for (const doc of docs as Maintenance[]) {
     try {
-      const { status } = await timeslotsFor(payload, doc, now)
-      if (status === doc.status) continue
-      await payload.update({
-        collection: 'maintenance',
-        id: doc.id,
-        data: { status },
-        depth: 0,
-        overrideAccess: true,
-        context: { skipMaintenanceHooks: true },
+      const result = await syncMaintenance(payload, doc, {
+        now,
+        scheduleJobs: options.scheduleJobs ?? 'changed',
       })
-      changed += 1
-      const orgId = relationId(doc.organization)
-      if (orgId !== null) changedOrgs.add(orgId)
-      log.info(
-        { maintenanceId: doc.id, from: doc.status, to: status },
-        'maintenance status changed',
-      )
+      if (result.statusChanged) changed += 1
+      if (result.statusChanged || result.occurrencesChanged) {
+        const orgId = relationId(doc.organization)
+        if (orgId !== null) changedOrgs.add(orgId)
+      }
     } catch (err) {
       log.error({ err, maintenanceId: doc.id }, 'failed to refresh maintenance status')
     }
@@ -84,18 +89,31 @@ export async function refreshMaintenanceStatuses(
   return { checked: docs.length, changed, organizations: [...changedOrgs].map(String) }
 }
 
-let maintenanceQueue: Queue | undefined
-
-/** Process-wide queue for the `maintenance` BullMQ queue (lazy; shares one Redis connection). */
-export function getMaintenanceQueue(options: QueueFactoryOptions = {}): Queue {
-  maintenanceQueue ??= createQueue(QUEUE_NAMES.maintenance, options)
-  return maintenanceQueue
-}
-
-export async function closeMaintenanceQueue(): Promise<void> {
-  const queue = maintenanceQueue
-  maintenanceQueue = undefined
-  if (queue) await queue.close()
+/**
+ * A delayed wake-up: sync the maintenance at the planned instant (never earlier, so a worker
+ * clock slightly behind the planner's still applies the transition) and publish on change.
+ */
+export async function processMaintenanceWakeup(
+  payload: Payload,
+  data: MaintenanceWakeupData,
+  options: { emit?: boolean } = {},
+): Promise<{ status: string } | null> {
+  const now = new Date(Math.max(Date.now(), Number(data.at) || 0))
+  const result = await syncMaintenanceById(payload, data.maintenanceId, { now })
+  if (!result) return null
+  if (options.emit !== false && (result.statusChanged || result.occurrencesChanged)) {
+    const doc = await payload.findByID({
+      collection: 'maintenance',
+      id: data.maintenanceId,
+      depth: 0,
+      overrideAccess: true,
+      disableErrors: true,
+      select: { organization: true },
+    })
+    const orgId = relationId(doc?.organization)
+    if (orgId !== null) await emitOrgMaintenanceList(payload, orgId)
+  }
+  return { status: result.status }
 }
 
 /** Upsert the every-minute `maintenance-status` scheduler. Idempotent; call on every worker boot. */
@@ -114,11 +132,14 @@ export async function scheduleMaintenanceStatusJob(queue: Queue): Promise<void> 
   )
 }
 
-/** Processor of the maintenance queue: status refreshes, plus retention jobs when scheduled. */
+/** Processor of the maintenance queue: reconciler, wake-ups and retention jobs. */
 export const processMaintenanceJob =
   (payload: Payload) =>
   async (job: Job): Promise<unknown> => {
     if (job.name === MAINTENANCE_STATUS_JOB_NAME) return refreshMaintenanceStatuses(payload)
+    if (job.name === MAINTENANCE_WAKEUP_JOB_NAME) {
+      return processMaintenanceWakeup(payload, job.data as MaintenanceWakeupData)
+    }
     if (job.name === RETENTION_JOB_NAME) return processRetentionJob(payload)(job)
     log.warn({ jobId: job.id, name: job.name }, 'unknown job on the maintenance queue; ignored')
     return undefined
@@ -133,6 +154,12 @@ export async function startMaintenanceWorker(
   options: QueueFactoryOptions = {},
 ): Promise<Worker> {
   await scheduleMaintenanceStatusJob(getMaintenanceQueue(options))
+  // Re-plan every wake-up once per boot (they may have been lost with Redis).
+  try {
+    await refreshMaintenanceStatuses(payload, new Date(), { scheduleJobs: 'all' })
+  } catch (err) {
+    log.error({ err }, 'initial maintenance sync failed')
+  }
   const worker = createWorker(QUEUE_NAMES.maintenance, processMaintenanceJob(payload), {
     ...options,
     concurrency: 1,

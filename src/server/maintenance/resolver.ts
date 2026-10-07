@@ -9,11 +9,9 @@
 import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
-import type { Maintenance, Monitor } from '@/payload-types'
+import type { Monitor } from '@/payload-types'
 import type { MaintenanceResolver } from '@/server/engine/hooks'
 import { relationId } from './serialize'
-import { getMaintenanceStatus } from './status'
-import { getOrganizationTimezone } from './timezone'
 
 const log = childLogger('maintenance:resolver')
 
@@ -21,30 +19,36 @@ const log = childLogger('maintenance:resolver')
 export const MAX_GROUP_DEPTH = 10
 
 export interface ResolverOptions {
-  now?: Date
   /** The monitor document when the caller already has it (saves the first lookup). */
   monitor?: Pick<Monitor, 'id' | 'parent'> | null
 }
 
-/** Active maintenances that list `monitorId`; evaluated against `now`. */
+/**
+ * True when an active maintenance listing `monitorId` is running. Reads the persisted effective
+ * status (`under-maintenance` exactly while one of its occurrences is in progress or verifying,
+ * see `occurrences.ts`), so alert suppression follows the actual state: a window that was not
+ * started yet does not suppress, one running past its end until completed does.
+ */
 export async function hasRunningMaintenance(
   payload: Payload,
   monitorId: string | number,
-  now: Date,
 ): Promise<boolean> {
   const { docs } = await payload.find({
     collection: 'maintenance',
-    where: { and: [{ active: { equals: true } }, { monitors: { equals: monitorId } }] },
+    where: {
+      and: [
+        { active: { equals: true } },
+        { status: { equals: 'under-maintenance' } },
+        { monitors: { equals: monitorId } },
+      ],
+    },
     depth: 0,
-    limit: 100,
+    limit: 1,
     pagination: false,
     overrideAccess: true,
+    select: { status: true },
   })
-  for (const doc of docs as Maintenance[]) {
-    const serverTimezone = await getOrganizationTimezone(payload, relationId(doc.organization))
-    if (getMaintenanceStatus(doc, now, { serverTimezone }) === 'under-maintenance') return true
-  }
-  return false
+  return docs.length > 0
 }
 
 async function loadMonitorRef(
@@ -72,7 +76,6 @@ export async function isMonitorUnderMaintenance(
   monitorId: string | number,
   options: ResolverOptions = {},
 ): Promise<boolean> {
-  const now = options.now ?? new Date()
   const visited = new Set<string>()
   let current: Pick<Monitor, 'id' | 'parent'> | null =
     options.monitor && String(options.monitor.id) === String(monitorId)
@@ -83,7 +86,7 @@ export async function isMonitorUnderMaintenance(
     const key = String(current.id)
     if (visited.has(key)) break
     visited.add(key)
-    if (await hasRunningMaintenance(payload, current.id, now)) return true
+    if (await hasRunningMaintenance(payload, current.id)) return true
     const parentId = relationId(current.parent)
     if (parentId === null) break
     current = await loadMonitorRef(payload, parentId)

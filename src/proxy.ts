@@ -17,7 +17,8 @@ import { NextResponse, type NextRequest } from 'next/server'
  *   https://status.example.com/feed/atom     → /status/<slug>/feed/atom (and every other path in
  *                                              `CUSTOM_DOMAIN_PATHS`: feeds, `maintenance.ics`,
  *                                              `api/v2/*.json`, `api/openapi.json`, `index.md`,
- *                                              `llms.txt`, `manifest.json`, `login`)
+ *                                              `llms.txt`, `manifest.json`, `login`,
+ *                                              `badge.svg`)
  *   https://status.example.com/incidents/7   → /status/<slug>/incidents/7
  *   https://status.example.com/incidents/7.md → /status/<slug>/incident-md/7
  *
@@ -31,6 +32,7 @@ export const config = {
     '/rss',
     '/manifest.json',
     '/login',
+    '/badge.svg',
     '/index.md',
     '/llms.txt',
     '/maintenance.ics',
@@ -48,6 +50,7 @@ export const CUSTOM_DOMAIN_PATHS: Record<string, string> = {
   '/rss': '/rss',
   '/manifest.json': '/manifest.json',
   '/login': '/login',
+  '/badge.svg': '/badge.svg',
   '/index.md': '/index.md',
   '/llms.txt': '/llms.txt',
   '/maintenance.ics': '/maintenance.ics',

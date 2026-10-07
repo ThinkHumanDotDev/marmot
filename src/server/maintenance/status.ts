@@ -6,8 +6,9 @@
  * Copyright (c) 2021 Louis Lam, https://github.com/louislam/uptime-kuma). See THIRD_PARTY_NOTICES.md.
  *
  * Unlike Kuma, which keeps an in-memory cron job per maintenance and flips a status flag when it
- * fires, everything here is a pure function of the document and `now`: the worker recomputes
- * statuses every minute and the engine asks on every check. Windows are computed with `croner`
+ * fires, everything here is a pure function of the document and `now`: it gives the *planned*
+ * windows, which `occurrences.ts` turns into persisted occurrences (with auto start/complete and
+ * manual control) at the instants of delayed BullMQ jobs. Windows are computed with `croner`
  * (cron patterns in the maintenance's timezone, DST-aware) and `date-fns-tz` (wall-clock dates of
  * the date range and the "every N days" strategy).
  */
