@@ -16,6 +16,7 @@ import { listMaintenanceOccurrences } from '@/server/maintenance/occurrences'
 import { resolveTimezone } from '@/server/maintenance/status'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 import { getOrgPageContext } from '@/server/monitors/page-data'
+import { getOrgTemplates } from '@/server/templates/page-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,11 +39,12 @@ export default async function EditMaintenancePage({ params }: EditMaintenancePag
   if (!ctx.allowed('maintenance:update')) redirect(`/${orgSlug}/maintenance`)
 
   const t = await getTranslations('maintenance.editPage')
-  const [monitors, statusPages, orgTimezone, occurrences] = await Promise.all([
+  const [monitors, statusPages, orgTimezone, occurrences, templates] = await Promise.all([
     getOrgMonitorOptions(ctx),
     getOrgStatusPageOptions(ctx),
     getOrganizationTimezone(ctx.payload, ctx.org.id),
     listMaintenanceOccurrences(ctx.payload, doc.id, { user: ctx.requestUser }),
+    getOrgTemplates(ctx, ['maintenance-update']),
   ])
 
   return (
@@ -63,6 +65,7 @@ export default async function EditMaintenancePage({ params }: EditMaintenancePag
           initial={occurrences}
           timeZone={resolveTimezone(doc.timezone, orgTimezone)}
           canEdit
+          templateContext={{ templates, organization: ctx.org.name, maintenance: doc.title }}
         />
         <MaintenanceForm
           mode="edit"

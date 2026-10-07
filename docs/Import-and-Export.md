@@ -1,7 +1,7 @@
 # Import / Export
 
-Settings → **Import / Export** (`/<org>/settings/import-export`) moves monitors, notification channels
-and status pages between organizations and instances, and migrates an existing Uptime Kuma installation.
+Settings → **Import / Export** (`/<org>/settings/import-export`) moves monitors, notification channels,
+status pages and incident templates between organizations and instances, and migrates an existing Uptime Kuma installation.
 Code lives in `src/server/import-export/`; the UI in `src/components/import-export/`.
 
 ## Importing
@@ -19,7 +19,8 @@ press **Import**. The committed import runs in one database transaction, so a fa
 organization untouched (on database adapters without transactions the documents created so far remain).
 
 Permissions: importing needs `monitor:create` (member). Notification channels are only imported with
-`notification:create` (admin) and status pages with `status-page:create`; parts you may not create are
+`notification:create` (admin), status pages with `status-page:create` and templates with
+`template:create`; parts you may not create are
 skipped and reported, and monitors are then imported without the corresponding channel links.
 
 ### Conflicts
@@ -30,6 +31,8 @@ skipped and reported, and monitors are then imported without the corresponding c
 - Status page slugs and custom domains are unique across the whole instance. A taken slug gets a `-2`, `-3`, …
   suffix (reported as a note); a taken custom domain is dropped from the imported page.
 - Monitors created without any channel receive the organization's default channels, like any new monitor.
+- A template whose **name** already exists in the organization is skipped. Templates bound to a status page
+  that is not imported lose the page and their default components (reported as a note).
 
 ### API
 
@@ -158,8 +161,21 @@ not contain. The "default enabled" flag is kept; "apply to all existing monitors
           "name": "Core",
           "defaultOpen": true,
           "monitors": [
-            { "type": "monitor", "monitor": 12, "name": null, "sendUrl": false, "customUrl": null },
-            { "type": "static", "monitor": null, "name": "Customer support", "description": null }
+            {
+              "id": "6650c0ffee0000000000a001",
+              "type": "monitor",
+              "monitor": 12,
+              "name": null,
+              "sendUrl": false,
+              "customUrl": null
+            },
+            {
+              "id": "6650c0ffee0000000000a002",
+              "type": "static",
+              "monitor": null,
+              "name": "Customer support",
+              "description": null
+            }
           ]
         }
       ],
@@ -176,12 +192,26 @@ not contain. The "default enabled" flag is kept; "apply to all existing monitors
       ],
       "...": "theme, description, homepageUrl, contactUrl, footerText, customCSS, autoRefreshInterval, show* flags (incl. showValues), googleAnalyticsId"
     }
+  ],
+  "templates": [
+    {
+      "name": "Database failover",
+      "kind": "incident",
+      "title": "Database failover on {{ page }}",
+      "body": "We are failing over the primary database. Next update by {{ eta }}.",
+      "status": "identified",
+      "impact": null,
+      "duration": null,
+      "statusPage": 5,
+      "components": [{ "component": "6650c0ffee0000000000a001", "impact": "major_outage" }]
+    }
   ]
 }
 ```
 
 Ids are the exporting instance's document ids and only serve to link documents inside the file; the
-importer remaps them. Status page components keep their type, public name, description and
+importer remaps them. Component rows carry their `id` so templates can reference them; the importer maps
+them to the rows it creates (`templates` is optional, files from before templates import unchanged). Status page components keep their type, public name, description and
 `showValues`; incident impacts on components (`affectedComponents`) are not exported because component ids
 are regenerated on import. A page's subscription settings (`subscriptions`: enabled, channels, review or
 automatic sending, SMS templates) travel with it, and its SMS sender when that Twilio channel is in the

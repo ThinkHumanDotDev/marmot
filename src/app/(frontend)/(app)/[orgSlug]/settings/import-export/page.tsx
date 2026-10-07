@@ -30,6 +30,7 @@ export default async function ImportExportSettingsPage({
       canImport={can(user, org.id, 'monitor:create')}
       canImportNotifications={can(user, org.id, 'notification:create')}
       canImportStatusPages={can(user, org.id, 'status-page:create')}
+      canImportTemplates={can(user, org.id, 'template:create')}
       canExport={can(user, org.id, 'organization:update')}
     />
   )
