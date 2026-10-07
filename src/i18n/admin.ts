@@ -345,6 +345,26 @@ export const adminTranslations = {
         bannerTextDescription: 'Replaces the automatic overall-status headline when set.',
         logoDarkDescription: 'Shown instead of the logo in dark mode.',
         faviconDescription: 'PNG, ICO or SVG; falls back to the logo.',
+        subscriptionsEnabledDescription:
+          'Show a Subscribe button and send incident and maintenance announcements to subscribers.',
+        deliveryModeDescription:
+          'review: every announcement waits as a draft until someone sends it; auto: sent at once.',
+        subscriptionChannelsDescription: 'Channels visitors may subscribe with.',
+        smsChannelDescription: 'Twilio notification channel whose credentials send the SMS.',
+        smsMaxSegmentsDescription: 'Longer SMS are shortened to fit this many segments.',
+        smsTemplatesDescription:
+          'Optional SMS templates with {{ siteName }} {{ title }} {{ status }} {{ message }} {{ url }}.',
+      },
+      subscribers: {
+        targetDescription: 'Email address, phone number (E.164), webhook URL or Slack webhook URL.',
+        componentsDescription: 'Component ids of the page; empty means every component.',
+        confirmedAtDescription: 'Unconfirmed self sign-ups receive nothing.',
+        localeDescription: 'Language of the messages.',
+        secretDescription: 'Signs every webhook delivery (X-Marmot-Signature).',
+      },
+      subscriberNotifications: {
+        windowDescription: 'Maintenance window of the announcement.',
+        channelsDescription: 'Channels the announcement went out on.',
       },
       tags: {
         colorDescription: 'Hex colour of the chip, e.g. #2563EB.',

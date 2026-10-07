@@ -12,6 +12,7 @@ import type { ComponentImpact } from '@/lib/status-page-components'
 import { renderMarkdown } from '@/lib/markdown'
 import { cn } from '@/lib/utils'
 
+import { SubscribeDialog } from './subscribe-dialog'
 import { ThemeToggle } from './theme-toggle'
 import type {
   OverallStatus,
@@ -512,6 +513,14 @@ export function StatusPageView({ slug, initial }: StatusPageViewProps) {
               <Mail className="size-4" aria-hidden />
               {t('public.contact')}
             </a>
+          )}
+          {config.subscriptionChannels.length > 0 && (
+            <SubscribeDialog
+              slug={slug}
+              title={config.title}
+              channels={config.subscriptionChannels}
+              groups={groups}
+            />
           )}
           {config.theme === 'auto' && <ThemeToggle className="shrink-0" />}
         </header>

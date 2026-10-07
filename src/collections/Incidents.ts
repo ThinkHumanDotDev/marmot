@@ -347,6 +347,7 @@ const announceUpdates: CollectionAfterChangeHook<Incident> = async ({
             : 'updated'
     await emitIncidentUpdatePosted({
       payload: req.payload,
+      req,
       incident: doc,
       update,
       kind,

@@ -2,6 +2,7 @@ import {
   ValidationError,
   type Access,
   type CollectionBeforeChangeHook,
+  type CollectionBeforeDeleteHook,
   type CollectionBeforeValidateHook,
   type CollectionConfig,
   type Where,
@@ -18,6 +19,14 @@ import {
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { STATUS_PAGE_ACCESS_MODES } from '@/lib/status-page-access'
 import { COMPONENT_TYPES, isContactUrl, isHttpUrl } from '@/lib/status-page-components'
+import {
+  DEFAULT_SMS_MAX_SEGMENTS,
+  DEFAULT_SUBSCRIBER_DELIVERY_MODE,
+  MAX_SMS_MAX_SEGMENTS,
+  SMS_TEMPLATE_KEYS,
+  SUBSCRIBER_CHANNELS,
+  SUBSCRIBER_DELIVERY_MODES,
+} from '@/lib/status-page-subscribers'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 import { applyAccessPassword } from '@/server/status-pages/access-password'
 
@@ -194,7 +203,67 @@ const validateReferences: CollectionBeforeChangeHook<StatusPage> = async ({
     }
   }
 
+  // The SMS channel of subscriptions must be a Twilio channel of the page's organization.
+  const smsChannel = relId(data.subscriptions?.smsChannel)
+  if (smsChannel !== null) {
+    const channel = await req.payload.findByID({
+      collection: 'notifications',
+      id: smsChannel,
+      depth: 0,
+      req,
+      overrideAccess: true,
+      disableErrors: true,
+    })
+    if (
+      !channel ||
+      channel.type !== 'twilio' ||
+      String(relId(channel.organization)) !== String(organization)
+    ) {
+      throw new ValidationError({
+        collection: 'status-pages',
+        errors: [
+          { message: userErrorText(req, 'smsChannelInvalid'), path: 'subscriptions.smsChannel' },
+        ],
+      })
+    }
+  }
+
   return data
+}
+
+/**
+ * Subscribers, their notifications and the delivery log belong to the page; on Postgres they hold
+ * NOT NULL foreign keys to it, so they go first (deliveries, then notifications and subscribers).
+ */
+const removeSubscribers: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  const { docs } = await req.payload.find({
+    collection: 'subscriber-notifications',
+    where: { statusPage: { equals: id } },
+    depth: 0,
+    limit: 0,
+    pagination: false,
+    select: {},
+    req,
+    overrideAccess: true,
+  })
+  if (docs.length > 0) {
+    await req.payload.delete({
+      collection: 'subscriber-deliveries',
+      where: { notification: { in: docs.map((doc) => doc.id) } },
+      depth: 0,
+      req,
+      overrideAccess: true,
+    })
+  }
+  for (const collection of ['subscriber-notifications', 'status-page-subscribers'] as const) {
+    await req.payload.delete({
+      collection,
+      where: { statusPage: { equals: id } },
+      depth: 0,
+      req,
+      overrideAccess: true,
+    })
+  }
 }
 
 export const StatusPages: CollectionConfig = {
@@ -218,6 +287,7 @@ export const StatusPages: CollectionConfig = {
       applyAccessPassword,
       enforceEntitlementOnCreate('statusPages'),
     ],
+    beforeDelete: [removeSubscribers],
   },
   indexes: [{ fields: ['organization', 'published'] }],
   fields: [
@@ -373,6 +443,69 @@ export const StatusPages: CollectionConfig = {
         value == null || value === '' || /^(G|UA|AW|DC)-[A-Z0-9-]+$/i.test(String(value))
           ? true
           : 'Enter a Google Analytics measurement ID such as G-XXXXXXX.',
+    },
+    {
+      // Subscribers (#104): who may subscribe through the page and how announcements go out.
+      name: 'subscriptions',
+      type: 'group',
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'enabled',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: { description: adminT('marmot:statusPages:subscriptionsEnabledDescription') },
+            },
+            {
+              name: 'deliveryMode',
+              type: 'select',
+              defaultValue: DEFAULT_SUBSCRIBER_DELIVERY_MODE,
+              options: SUBSCRIBER_DELIVERY_MODES.map((value) => ({ label: value, value })),
+              admin: { description: adminT('marmot:statusPages:deliveryModeDescription') },
+            },
+          ],
+        },
+        {
+          // Channels visitors may sign up with; owners can add subscribers on any channel.
+          name: 'channels',
+          type: 'select',
+          hasMany: true,
+          defaultValue: ['email'],
+          options: SUBSCRIBER_CHANNELS.map((value) => ({ label: value, value })),
+          admin: { description: adminT('marmot:statusPages:subscriptionChannelsDescription') },
+        },
+        {
+          name: 'smsChannel',
+          type: 'relationship',
+          relationTo: 'notifications',
+          // Never populated: the channel's config holds the Twilio credentials.
+          maxDepth: 0,
+          filterOptions: ({ data }): Where | true => {
+            const organization = relId((data as { organization?: unknown })?.organization)
+            const twilio: Where = { type: { equals: 'twilio' } }
+            return organization === null
+              ? twilio
+              : { and: [twilio, { organization: { equals: organization } }] }
+          },
+          admin: { description: adminT('marmot:statusPages:smsChannelDescription') },
+        },
+        {
+          name: 'smsMaxSegments',
+          type: 'number',
+          defaultValue: DEFAULT_SMS_MAX_SEGMENTS,
+          min: 1,
+          max: MAX_SMS_MAX_SEGMENTS,
+          admin: { description: adminT('marmot:statusPages:smsMaxSegmentsDescription') },
+        },
+        {
+          name: 'smsTemplates',
+          type: 'group',
+          admin: { description: adminT('marmot:statusPages:smsTemplatesDescription') },
+          fields: SMS_TEMPLATE_KEYS.map((name) => ({ name, type: 'textarea' as const })),
+        },
+      ],
     },
     {
       name: 'domains',
