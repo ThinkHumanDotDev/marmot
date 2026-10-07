@@ -56,6 +56,7 @@ export default async function EditMonitorPage({ params }: EditMonitorPageProps) 
           types={types}
           groups={groups}
           resources={resources}
+          canPickChannels={ctx.allowed('notification:read')}
         />
       </section>
     </>
