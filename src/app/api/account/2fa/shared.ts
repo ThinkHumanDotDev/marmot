@@ -1,8 +1,9 @@
-import { APIError, type Payload } from 'payload'
+import type { Payload } from 'payload'
 
 import { verifyPassword } from '@/auth/password'
 import { hasPassword } from '@/collections/Users'
 import type { RequestUser } from '@/server/http'
+import { apiError } from '@/server/errors'
 
 /**
  * Sensitive 2FA operations re-authenticate the session user. Password accounts must repeat their
@@ -16,16 +17,16 @@ export async function requirePassword(
 ): Promise<void> {
   if (!hasPassword(user)) return
   if (typeof password !== 'string' || !password) {
-    throw new APIError('Enter your password.', 400)
+    throw apiError('enterPassword', 400)
   }
   if (!(await verifyPassword(payload, user.email, password))) {
-    throw new APIError('Your password is incorrect.', 401)
+    throw apiError('passwordIncorrect', 401)
   }
 }
 
 export function requireCode(code: unknown): string {
   if (typeof code !== 'string' || !code.trim()) {
-    throw new APIError('Enter the code from your authenticator app.', 400)
+    throw apiError('enterTotpCode', 400)
   }
   return code.trim()
 }

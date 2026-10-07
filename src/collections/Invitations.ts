@@ -1,7 +1,6 @@
 import crypto from 'node:crypto'
 
 import {
-  APIError,
   ValidationError,
   type CollectionAfterChangeHook,
   type CollectionBeforeChangeHook,
@@ -22,11 +21,19 @@ import {
   type Role,
 } from '@/access/permissions'
 import { env } from '@/env'
+import {
+  getOrganizationI18n,
+  organizationFormatter,
+  serverTranslator,
+  type OrganizationI18n,
+} from '@/server/i18n'
 import { childLogger } from '@/lib/logger'
+import { apiError } from '@/server/errors'
 import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 
 import type { Invitation } from '@/payload-types'
+import { adminT } from '@/i18n/admin'
 
 const log = childLogger('invitations')
 
@@ -73,14 +80,49 @@ const prepareInvitation: CollectionBeforeChangeHook<Invitation> = ({ data, opera
   return data
 }
 
-const expiry = (doc: Invitation) =>
-  doc.expiresAt ? new Date(doc.expiresAt).toUTCString() : 'in 7 days'
-
 const escapeHtml = (value: string) =>
   value.replace(
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
   )
+
+/**
+ * Subject and bodies of the invitation email, in the inviting organization's language. The expiry
+ * is formatted in the organization's time zone (named `zoned` format, so the zone is spelled out).
+ */
+export function renderInvitationEmail({
+  email,
+  role,
+  url,
+  expiresAt,
+  organizationName,
+  i18n,
+}: {
+  email: string
+  role: string
+  url: string
+  expiresAt?: string | null
+  organizationName?: string | null
+  i18n: OrganizationI18n
+}): { to: string; subject: string; text: string; html: string } {
+  const t = serverTranslator(i18n.locale)
+  const orgName = organizationName ?? t('email.invitation.unknownOrganization')
+  const expires = expiresAt
+    ? t('email.invitation.expiresOn', {
+        date: organizationFormatter(i18n).dateTime(new Date(expiresAt), 'zoned'),
+      })
+    : t('email.invitation.expiresSoon')
+  // `role` is the stable identifier (`admin`, `member`, …), as in the UI's role picker values.
+  const intro = (strong: (chunks: string) => string, organization: string) =>
+    t.markup('email.invitation.intro', { organization, role, strong })
+
+  return {
+    to: email,
+    subject: t('email.invitation.subject', { organization: orgName }),
+    text: `${intro((chunks) => chunks, orgName)}\n\n${t('email.invitation.acceptLink', { url })}\n\n${expires}`,
+    html: `<p>${intro((chunks) => `<strong>${chunks}</strong>`, escapeHtml(orgName))}</p><p><a href="${url}">${escapeHtml(t('email.invitation.accept'))}</a></p><p>${escapeHtml(expires)}</p>`,
+  }
+}
 
 /**
  * Email the invite link. Uses the configured Payload email adapter (console in dev/tests). Runs on
@@ -104,15 +146,16 @@ const sendInvitationEmail: CollectionAfterChangeHook<Invitation> = async ({
       req,
       overrideAccess: true,
     })
-    const url = invitationUrl(doc.token)
-    const orgName = organization?.name ?? 'an organization'
-
-    await req.payload.sendEmail({
-      to: doc.email,
-      subject: `You have been invited to ${orgName} on Marmot`,
-      text: `You have been invited to join ${orgName} as ${doc.role}.\n\nAccept the invitation: ${url}\n\nThis link expires on ${expiry(doc)}.`,
-      html: `<p>You have been invited to join <strong>${escapeHtml(orgName)}</strong> as <strong>${doc.role}</strong>.</p><p><a href="${url}">Accept the invitation</a></p><p>This link expires on ${expiry(doc)}.</p>`,
-    })
+    await req.payload.sendEmail(
+      renderInvitationEmail({
+        email: doc.email,
+        role: doc.role,
+        url: invitationUrl(doc.token),
+        expiresAt: doc.expiresAt,
+        organizationName: organization?.name,
+        i18n: await getOrganizationI18n(req.payload, organization),
+      }),
+    )
   } catch (error) {
     // Never fail the create because mail could not be delivered; the token can be resent.
     log.error({ err: error, invitation: doc.id }, 'failed to send invitation email')
@@ -165,7 +208,7 @@ export async function acceptInvitation({
   user,
   req,
 }: AcceptInvitationArgs): Promise<AcceptInvitationResult> {
-  if (!token) throw new APIError('Invitation token is required.', 400)
+  if (!token) throw apiError('invitationTokenRequired', 400)
 
   const { docs } = await payload.find({
     collection: 'invitations',
@@ -176,7 +219,7 @@ export async function acceptInvitation({
     overrideAccess: true,
   })
   const invitation = docs[0]
-  if (!invitation) throw new APIError('Invitation not found.', 404)
+  if (!invitation) throw apiError('invitationNotFound', 404)
 
   const context = { ...(req?.context ?? {}), skipInvitationEmail: true }
 
@@ -191,11 +234,11 @@ export async function acceptInvitation({
       overrideAccess: true,
       context,
     })
-    throw new APIError('This invitation has expired.', 410)
+    throw apiError('invitationExpired', 410)
   }
 
   if (invitation.status !== 'pending') {
-    throw new APIError(`This invitation is ${invitation.status ?? 'no longer valid'}.`, 410)
+    throw apiError('invitationNotValid', 410, { status: invitation.status ?? 'unknown' })
   }
 
   const orgId = extractId(invitation.organization)
@@ -257,7 +300,7 @@ export const Invitations: CollectionConfig = {
       path: '/:token/accept',
       method: 'post',
       handler: async (req) => {
-        if (!req.user) throw new APIError('You must be logged in to accept an invitation.', 401)
+        if (!req.user) throw apiError('signInToAcceptInvitation', 401)
         const token = typeof req.routeParams?.token === 'string' ? req.routeParams.token : ''
         const result = await acceptInvitation({ payload: req.payload, token, user: req.user, req })
         return Response.json(result)
@@ -293,7 +336,7 @@ export const Invitations: CollectionConfig = {
       type: 'text',
       unique: true,
       index: true,
-      admin: { readOnly: true, description: 'Generated on create.' },
+      admin: { readOnly: true, description: adminT('marmot:invitations:tokenDescription') },
       access: {
         // Field access runs in beforeValidate, so a client-supplied token is dropped before
         // `prepareInvitation` mints the real one; it is never changed afterwards.

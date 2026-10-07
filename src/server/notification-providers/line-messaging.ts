@@ -39,13 +39,13 @@ registerNotificationProvider({
   docsUrl: 'https://developers.line.biz/en/reference/messaging-api/#send-push-message',
   configSchema: lineMessagingConfigSchema,
   fieldMeta: lineMessagingFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = lineMessagingConfigSchema.parse(raw)
     const headers = { Authorization: `Bearer ${config.channelAccessToken}` }
 
     let text = message
     if (heartbeat && monitor) {
-      text = `Marmot Alert: [${statusLabel(heartbeat.status)}]\nName: ${monitor.name} \n${heartbeat.msg ?? ''}\nTime: ${formatHeartbeatTime(heartbeat)}`
+      text = `Marmot Alert: [${statusLabel(heartbeat.status, locale)}]\nName: ${monitor.name} \n${heartbeat.msg ?? ''}\nTime: ${formatHeartbeatTime(heartbeat)}`
     }
 
     await postJson(

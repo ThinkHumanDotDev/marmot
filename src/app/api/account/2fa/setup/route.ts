@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
  */
 export const POST = withErrors(async (request: Request) => {
   const { payload, user } = await getRequestContext(request)
-  if (!user) return unauthorized()
+  if (!user) return unauthorized(request)
   const { password } = await readJson<{ password?: unknown }>(request)
   await requirePassword(payload, user, password)
   const setup = await beginTwoFactorSetup(payload, user.id)

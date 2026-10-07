@@ -13,9 +13,11 @@
  */
 import net from 'node:net'
 
+import { defaultLocale, type Locale } from '@/i18n/locales'
 import { childLogger } from '@/lib/logger'
 import type { Monitor } from '@/payload-types'
 import { daysUntil } from '@/server/engine/tls'
+import { serverTranslator } from '@/server/i18n'
 import type { ExpirySender } from './cert-expiry'
 import { sortedThresholds, type SentHistoryStore } from './expiry-history'
 
@@ -215,14 +217,24 @@ export interface NotifyDomainExpiryOptions {
   history: SentHistoryStore
   send: ExpirySender
   now?: Date
+  /** Language of the warning (the monitor organization's `settings.language`). */
+  locale?: Locale
 }
 
 export function domainExpiryMessage(
   monitor: { name: string; url?: string | null; hostname?: string | null },
   domain: string,
   daysRemaining: number,
+  locale: Locale = defaultLocale,
 ): string {
-  return `[${monitor.name}][${monitor.url ?? monitor.hostname ?? ''}] Domain name ${domain} will expire in ${daysRemaining} days`
+  return serverTranslator(locale)('notifications.messages.domainExpiry', {
+    name: monitor.name,
+    address: monitor.url ?? monitor.hostname ?? '',
+    domain,
+    // `count` picks the plural form; `days` is printed as is (no digit grouping, like before).
+    count: daysRemaining,
+    days: String(daysRemaining),
+  })
 }
 
 /** Send the tightest due threshold (once), like Uptime Kuma's `DomainExpiry.sendNotifications`. */
@@ -241,7 +253,7 @@ export async function notifyDomainExpiry(
       log.debug({ monitorId: monitor.id, targetDays }, 'domain warning already sent')
       continue
     }
-    const message = domainExpiryMessage(monitor, info.domain, daysRemaining)
+    const message = domainExpiryMessage(monitor, info.domain, daysRemaining, options.locale)
     log.info(
       { monitorId: monitor.id, domain: info.domain, daysRemaining, targetDays },
       'sending domain expiry warning',

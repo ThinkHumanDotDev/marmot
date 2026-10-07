@@ -16,6 +16,7 @@ import {
 import { looseHost } from '@/server/security/monitor-targets'
 
 import { detachMonitorRelation } from './shared'
+import { adminT } from '@/i18n/admin'
 
 /**
  * A socket host needs a path (and socket hosts must be enabled on the instance), a TCP host a
@@ -90,7 +91,11 @@ export const DockerHosts: CollectionConfig = {
       required: true,
       defaultValue: 'socket',
       options: DOCKER_CONNECTION_TYPES.map((value) => ({
-        label: value === 'socket' ? 'Socket' : 'TCP / HTTP',
+        label: adminT(
+          value === 'socket'
+            ? 'marmot:dockerHosts:connectionTypeSocket'
+            : 'marmot:dockerHosts:connectionTypeTcp',
+        ),
         value,
       })),
     },
@@ -101,7 +106,7 @@ export const DockerHosts: CollectionConfig = {
       maxLength: 1024,
       admin: {
         condition: (data) => data?.connectionType !== 'tcp',
-        description: 'Unix socket of the Docker daemon, as seen by the worker.',
+        description: adminT('marmot:dockerHosts:socketPathDescription'),
       },
     },
     {
@@ -111,7 +116,7 @@ export const DockerHosts: CollectionConfig = {
       admin: {
         condition: (data) => data?.connectionType === 'tcp',
         placeholder: 'tcp://docker.example.com:2375',
-        description: 'tcp:// and http:// connect in plain text; https:// uses TLS.',
+        description: adminT('marmot:dockerHosts:urlDescription'),
       },
     },
   ],

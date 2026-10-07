@@ -4,6 +4,7 @@ import { orgScoped } from '@/access/org-scoped'
 import { ROLES } from '@/access/permissions'
 import { decryptSecret, encryptSecret } from '@/auth/two-factor/crypto'
 import { env } from '@/env'
+import { adminT } from '@/i18n/admin'
 
 export const SSO_CONNECTIONS_SLUG = 'sso-connections' as const
 export const SSO_CONNECTION_TYPES = ['oidc', 'saml'] as const
@@ -93,7 +94,12 @@ export const SsoConnections: CollectionConfig = {
       index: true,
       admin: { position: 'sidebar' },
     },
-    { name: 'name', type: 'text', required: true, admin: { description: 'Login button label.' } },
+    {
+      name: 'name',
+      type: 'text',
+      required: true,
+      admin: { description: adminT('marmot:ssoConnections:nameDescription') },
+    },
     {
       name: 'slug',
       type: 'text',
@@ -101,7 +107,7 @@ export const SsoConnections: CollectionConfig = {
       unique: true,
       index: true,
       validate: (value: unknown) => validateConnectionSlug(value),
-      admin: { description: 'Used in the login URLs; lowercase letters, numbers and hyphens.' },
+      admin: { description: adminT('marmot:ssoConnections:slugDescription') },
     },
     {
       name: 'type',
@@ -118,7 +124,10 @@ export const SsoConnections: CollectionConfig = {
       type: 'checkbox',
       defaultValue: true,
       index: true,
-      admin: { position: 'sidebar', description: 'Disabled connections refuse logins.' },
+      admin: {
+        position: 'sidebar',
+        description: adminT('marmot:ssoConnections:enabledDescription'),
+      },
     },
     // OpenID Connect
     {
@@ -126,7 +135,7 @@ export const SsoConnections: CollectionConfig = {
       type: 'text',
       admin: {
         condition: (data) => data?.type === 'oidc',
-        description: 'Issuer identifier (the `iss` claim); discovery is read from it.',
+        description: adminT('marmot:ssoConnections:issuerUrlDescription'),
       },
     },
     { name: 'clientId', type: 'text', admin: { condition: (data) => data?.type === 'oidc' } },
@@ -136,7 +145,7 @@ export const SsoConnections: CollectionConfig = {
       access: { read: serverOnly },
       admin: {
         condition: (data) => data?.type === 'oidc',
-        description: 'Sealed at rest. Leave empty to keep the current secret.',
+        description: adminT('marmot:ssoConnections:clientSecretDescription'),
       },
     },
     {
@@ -151,7 +160,7 @@ export const SsoConnections: CollectionConfig = {
       type: 'text',
       admin: {
         condition: (data) => data?.type === 'saml',
-        description: 'IdP single sign-on URL (HTTP-Redirect binding).',
+        description: adminT('marmot:ssoConnections:idpEntryPointDescription'),
       },
     },
     {
@@ -159,7 +168,7 @@ export const SsoConnections: CollectionConfig = {
       type: 'text',
       admin: {
         condition: (data) => data?.type === 'saml',
-        description: 'IdP entity id (issuer). Responses from any other issuer are refused.',
+        description: adminT('marmot:ssoConnections:idpEntityIdDescription'),
       },
     },
     {
@@ -167,7 +176,7 @@ export const SsoConnections: CollectionConfig = {
       type: 'textarea',
       admin: {
         condition: (data) => data?.type === 'saml',
-        description: 'IdP signing certificate (PEM or bare base64).',
+        description: adminT('marmot:ssoConnections:idpCertDescription'),
       },
     },
     {
@@ -182,7 +191,7 @@ export const SsoConnections: CollectionConfig = {
       defaultValue: false,
       admin: {
         condition: (data) => data?.type === 'saml',
-        description: 'Accept logins started at the identity provider (unsolicited responses).',
+        description: adminT('marmot:ssoConnections:allowIdpInitiatedDescription'),
       },
     },
     // Provisioning
@@ -192,7 +201,7 @@ export const SsoConnections: CollectionConfig = {
       defaultValue: true,
       admin: {
         position: 'sidebar',
-        description: 'Create a Marmot account on first login and add it to the organization.',
+        description: adminT('marmot:ssoConnections:autoProvisionDescription'),
       },
     },
     {
@@ -203,7 +212,10 @@ export const SsoConnections: CollectionConfig = {
         label: role,
         value: role,
       })),
-      admin: { position: 'sidebar', description: 'Role given to users who join through SSO.' },
+      admin: {
+        position: 'sidebar',
+        description: adminT('marmot:ssoConnections:defaultRoleDescription'),
+      },
     },
   ],
   timestamps: true,

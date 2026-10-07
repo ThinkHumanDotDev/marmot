@@ -1,7 +1,6 @@
-import { APIError } from 'payload'
-
 import { verifyPassword } from '@/auth/password'
 import { getRequestContext, readJson, unauthorized, withErrors } from '@/server/http'
+import { apiError } from '@/server/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,21 +13,21 @@ export const dynamic = 'force-dynamic'
  */
 export const POST = withErrors(async (request: Request) => {
   const { payload, user } = await getRequestContext(request)
-  if (!user) return unauthorized()
+  if (!user) return unauthorized(request)
   const { currentPassword, password } = await readJson<{
     currentPassword?: unknown
     password?: unknown
   }>(request)
 
   if (typeof currentPassword !== 'string' || !currentPassword) {
-    throw new APIError('Enter your current password.', 400)
+    throw apiError('enterCurrentPassword', 400)
   }
   if (typeof password !== 'string' || password.length < 8) {
-    throw new APIError('The new password must be at least 8 characters.', 400)
+    throw apiError('passwordTooShort', 400, { min: 8 })
   }
 
   if (!(await verifyPassword(payload, user.email, currentPassword))) {
-    throw new APIError('Your current password is incorrect.', 401)
+    throw apiError('currentPasswordIncorrect', 401)
   }
 
   await payload.update({

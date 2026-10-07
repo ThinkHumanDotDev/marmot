@@ -21,6 +21,7 @@ import {
   validateNotificationConfig,
 } from '@/server/notifications/send'
 import { checkServerSmtpChange } from '@/server/notifications/server-smtp'
+import { adminT } from '@/i18n/admin'
 
 const log = childLogger('notifications')
 
@@ -270,7 +271,7 @@ export const Notifications: CollectionConfig = {
           required: true,
           index: true,
           admin: {
-            description: 'Provider slug, e.g. discord, slack, smtp (see docs/Notifications.md).',
+            description: adminT('marmot:notifications:typeDescription'),
           },
         },
       ],
@@ -281,7 +282,7 @@ export const Notifications: CollectionConfig = {
       required: true,
       defaultValue: {},
       hooks: { beforeValidate: [enforceServerSmtpPolicy] },
-      admin: { description: 'Provider-specific settings; validated against the provider schema.' },
+      admin: { description: adminT('marmot:notifications:configDescription') },
     },
     {
       name: 'isDefault',
@@ -290,7 +291,7 @@ export const Notifications: CollectionConfig = {
       index: true,
       admin: {
         position: 'sidebar',
-        description: 'Attach this channel to every new monitor of the organization.',
+        description: adminT('marmot:notifications:isDefaultDescription'),
       },
     },
     {
@@ -300,7 +301,7 @@ export const Notifications: CollectionConfig = {
       defaultValue: false,
       admin: {
         position: 'sidebar',
-        description: 'On save, also attach this channel to all existing monitors.',
+        description: adminT('marmot:notifications:applyExistingDescription'),
       },
     },
     {
@@ -308,7 +309,7 @@ export const Notifications: CollectionConfig = {
       type: 'checkbox',
       defaultValue: true,
       index: true,
-      admin: { position: 'sidebar', description: 'Inactive channels are never sent to.' },
+      admin: { position: 'sidebar', description: adminT('marmot:notifications:activeDescription') },
     },
     {
       name: 'lastSentAt',
@@ -317,13 +318,13 @@ export const Notifications: CollectionConfig = {
         readOnly: true,
         position: 'sidebar',
         date: { pickerAppearance: 'dayAndTime' },
-        description: 'Maintained by the worker.',
+        description: adminT('marmot:notifications:lastSentAtDescription'),
       },
     },
     {
       name: 'lastError',
       type: 'text',
-      admin: { readOnly: true, description: 'Last delivery error; cleared on the next success.' },
+      admin: { readOnly: true, description: adminT('marmot:notifications:lastErrorDescription') },
     },
   ],
   timestamps: true,

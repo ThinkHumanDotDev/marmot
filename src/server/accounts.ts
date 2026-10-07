@@ -1,10 +1,11 @@
 import { listAccounts, unlinkAccount } from '@thinkhuman/payload-plugin-auth'
-import { APIError, type Payload } from 'payload'
+import type { Payload } from 'payload'
 
 import { getInstanceProviders } from '@/auth/sso/providers'
 import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
 import { hasPassword } from '@/collections/Users'
 import type { User } from '@/payload-types'
+import { apiError } from '@/server/errors'
 
 /** One linked identity as the account settings page shows it. */
 export interface ConnectedAccount {
@@ -69,12 +70,9 @@ export async function unlinkConnectedAccount(
 ): Promise<void> {
   const rows = await listAccounts(client(payload), user.id)
   const target = rows.find((row) => String(row.id) === String(accountId))
-  if (!target) throw new APIError('Linked account not found.', 404)
+  if (!target) throw apiError('linkedAccountNotFound', 404)
   if (!hasPassword(user) && rows.length <= 1) {
-    throw new APIError(
-      'This is the only way to sign in to your account. Set a password or link another account first.',
-      409,
-    )
+    throw apiError('lastSignInMethod', 409)
   }
   await unlinkAccount(client(payload), user.id, target.id)
 }
