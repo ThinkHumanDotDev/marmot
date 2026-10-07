@@ -174,6 +174,16 @@ describe('server-side i18n', () => {
           'certificate',
           '[Marmot] [⚠️ Test] Certificate and domain expiry: "Ops" is configured correctly.',
         ],
+        [
+          'en',
+          'acknowledged',
+          '[Marmot] [⚠️ Test] Incident acknowledged: "Ops" is configured correctly.',
+        ],
+        [
+          'en',
+          'resolved',
+          '[Marmot] [⚠️ Test] Incident resolved by hand: "Ops" is configured correctly.',
+        ],
       ])
 
       // A caller that already loaded the organization (the queue worker) skips the lookup.
