@@ -1052,6 +1052,24 @@
       "required": "{label} is required",
       "selectPlaceholder": "Select…",
       "optional": "(optional)"
+    },
+    "monitors": {
+      "action": "Monitors",
+      "title": "Monitors using “{name}”",
+      "description": "Monitors that alert through this channel. Changes apply from their next status change.",
+      "search": "Search monitors",
+      "empty": "No monitors in this organization yet.",
+      "noMatch": "No monitors match your search.",
+      "selected": "{count, plural, one {# monitor selected} other {# monitors selected}}",
+      "selectAll": "Select all",
+      "clear": "Clear",
+      "toggle": "Alert {name} through this channel",
+      "paused": "Paused",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Monitors updated",
+      "loadFailed": "Could not load the monitors",
+      "saveFailed": "Could not update the monitors"
     }
   },
   "consent": {
@@ -1142,6 +1160,441 @@
     "editor": {
       "language": "Language",
       "languageAuto": "Follow the visitor's browser"
+    },
+    "list": {
+      "pageTitle": "Status pages",
+      "title": "Status pages",
+      "description": "Public pages that show your customers what is up.",
+      "loading": "Loading status pages",
+      "emptyTitle": "No status pages yet",
+      "emptyDescription": "Publish a status page to share uptime, incidents and maintenance with the people who rely on you.",
+      "columns": {
+        "title": "Title",
+        "publicUrl": "Public URL",
+        "monitors": "Monitors",
+        "status": "Status",
+        "updated": "Updated"
+      },
+      "monitorCount": "{monitors} in {groups, plural, one {# group} other {# groups}}",
+      "published": "Published",
+      "draft": "Draft",
+      "opensInNewTab": "(opens in a new tab)"
+    },
+    "create": {
+      "trigger": "New status page",
+      "title": "New status page",
+      "description": "Pages start unpublished. Add monitors and publish when it looks right.",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Acme status",
+      "slugLabel": "Slug",
+      "slugHint": "Lowercase letters, numbers and hyphens. Globally unique.",
+      "descriptionLabel": "Description (optional)",
+      "descriptionPlaceholder": "Live status of our services.",
+      "cancel": "Cancel",
+      "submit": "Create",
+      "submitting": "Creating…",
+      "created": "Status page created",
+      "failed": "Could not create"
+    },
+    "editorPage": {
+      "pageTitle": "Edit status page",
+      "loading": "Loading status page",
+      "back": "Status pages",
+      "published": "Published",
+      "draft": "Draft",
+      "publishedLabel": "Published",
+      "viewPage": "View page",
+      "preview": "Preview",
+      "opensInNewTab": "(opens in a new tab)",
+      "publishedToast": "Status page published",
+      "unpublishedToast": "Status page unpublished",
+      "updateFailed": "Could not update",
+      "draftNotice": "Visitors get a 404 until the page is published. Signed-in members can preview it any time.",
+      "tabs": {
+        "settings": "Settings",
+        "groups": "Groups & monitors",
+        "incidents": "Incidents",
+        "domains": "Domains"
+      }
+    },
+    "settings": {
+      "general": {
+        "title": "General",
+        "description": "What visitors see at the top of the page."
+      },
+      "title": "Title",
+      "slug": "Slug",
+      "slugHint": "Changing the slug changes the public URL; old links stop working.",
+      "description": "Description",
+      "footerText": "Footer text",
+      "footerTextPlaceholder": "Contact support@example.com for help. Markdown links are supported.",
+      "appearance": {
+        "title": "Appearance",
+        "description": "Theme, refresh rate and custom styling."
+      },
+      "theme": "Theme",
+      "themes": {
+        "auto": "Auto (follow visitor)",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "autoRefresh": "Auto refresh (seconds, 0 = off)",
+      "customCss": "Custom CSS",
+      "googleAnalytics": "Google Analytics measurement ID",
+      "logo": {
+        "title": "Logo",
+        "upload": "Upload",
+        "uploading": "Uploading…",
+        "replace": "Replace",
+        "remove": "Remove",
+        "updated": "Logo updated",
+        "uploadFailed": "Upload failed",
+        "removeFailed": "Could not remove logo"
+      },
+      "visibility": {
+        "title": "Visibility",
+        "searchEngineIndex": "Search engine indexing",
+        "searchEngineIndexHint": "Allow Google and others to index the page.",
+        "showTags": "Show tags",
+        "showTagsHint": "Display monitor tags next to their names.",
+        "showCertificateExpiry": "Show certificate expiry",
+        "showPoweredBy": "Show “Powered by Marmot”"
+      },
+      "reset": "Reset",
+      "save": "Save settings",
+      "saving": "Saving…",
+      "saved": "Settings saved",
+      "saveFailed": "Could not save",
+      "danger": {
+        "title": "Danger zone",
+        "description": "Deleting the page removes its incidents. Monitors are not affected.",
+        "delete": "Delete status page",
+        "confirm": "Delete \"{title}\" and all of its incidents? This cannot be undone.",
+        "deleted": "Status page deleted",
+        "failed": "Could not delete"
+      }
+    },
+    "groups": {
+      "title": "Groups & monitors",
+      "description": "Drag to reorder. Paused monitors stay in the list but are hidden from visitors.",
+      "addGroup": "Add group",
+      "save": "Save groups",
+      "saving": "Saving…",
+      "saved": "Groups saved",
+      "saveFailed": "Could not save groups",
+      "noMonitors": "This organization has no monitors yet. Create monitors first, then add them here.",
+      "empty": "No groups yet. Add a group to start listing monitors.",
+      "defaultName": "Group {number}",
+      "untitled": "Untitled group",
+      "groupName": "Group name",
+      "reorderGroup": "Reorder group {name}",
+      "removeGroup": "Remove group",
+      "monitorCount": "{count, plural, one {# monitor} other {# monitors}}",
+      "addMonitor": "Add monitor",
+      "addMonitorPlaceholder": "Add a monitor…",
+      "allMonitorsAdded": "All monitors are in this group",
+      "reorderMonitor": "Reorder {name}",
+      "monitorFallback": "monitor",
+      "unknownMonitor": "Monitor #{id}",
+      "pausedHidden": "(paused, hidden publicly)",
+      "showUrl": "Show URL",
+      "customUrlPlaceholder": "Custom link (optional)",
+      "removeMonitor": "Remove monitor from group"
+    },
+    "incidents": {
+      "title": "Incidents",
+      "description": "Announcements shown on the public page and in its RSS feed.",
+      "post": "Post incident",
+      "empty": "No incidents. Post one when something needs explaining.",
+      "resolvedHeading": "Resolved",
+      "styles": {
+        "info": "info",
+        "warning": "warning",
+        "danger": "danger",
+        "primary": "primary"
+      },
+      "pinnedBadge": "Pinned",
+      "resolvedBadge": "Resolved",
+      "resolvedAt": " · resolved {time}",
+      "edit": "Edit",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "resolve": "Resolve",
+      "reopen": "Reopen",
+      "delete": "Delete",
+      "confirmDelete": "Delete incident \"{title}\"?",
+      "posted": "Incident posted",
+      "updated": "Incident updated",
+      "pinned": "Pinned",
+      "unpinned": "Unpinned",
+      "resolved": "Incident resolved",
+      "reopened": "Incident reopened",
+      "deleted": "Incident deleted",
+      "saveFailed": "Could not save incident",
+      "updateFailed": "Could not update incident",
+      "deleteFailed": "Could not delete incident",
+      "dialog": {
+        "postTitle": "Post incident",
+        "editTitle": "Edit incident",
+        "description": "Markdown is supported: paragraphs, **bold**, _italics_, `code`, links and lists.",
+        "title": "Title",
+        "details": "Details",
+        "style": "Style",
+        "pinToTop": "Pin to top",
+        "cancel": "Cancel",
+        "post": "Post",
+        "save": "Save",
+        "saving": "Saving…"
+      }
+    },
+    "domains": {
+      "title": "Custom domains",
+      "description": "Serve this page at the root of your own hostname, e.g. <code>status.example.com</code>.",
+      "hostname": "Hostname",
+      "add": "Add",
+      "alreadyListed": "Already listed.",
+      "empty": "No custom domains. The page is reachable at <code>{path}</code>.",
+      "remove": "Remove {host}",
+      "save": "Save domains",
+      "saving": "Saving…",
+      "saved": "Domains saved",
+      "saveFailed": "Could not save domains",
+      "serverHostFallback": "your Marmot host",
+      "dns": {
+        "title": "DNS setup",
+        "cname": "Create a <code>CNAME</code> record for the hostname pointing at <host></host>.",
+        "addHere": "Add the hostname here, save, and make sure the page is published.",
+        "certificate": "Your reverse proxy must obtain a certificate for the hostname (Caddy on-demand TLS is documented in <code>docs/Status-Pages.md</code>)."
+      }
+    }
+  },
+  "maintenance": {
+    "list": {
+      "pageTitle": "Maintenance",
+      "title": "Maintenance",
+      "description": "Planned windows during which monitors are paused and status pages say so.",
+      "loading": "Loading maintenance",
+      "schedule": "Schedule maintenance",
+      "emptyTitle": "No maintenance scheduled",
+      "emptyDescription": "Schedule a window to silence alerts and inform your users ahead of time.",
+      "columns": {
+        "maintenance": "Maintenance",
+        "schedule": "Schedule",
+        "status": "Status"
+      },
+      "monitorCount": " · {count, plural, one {# monitor} other {# monitors}}",
+      "statusPageCount": " · {count, plural, one {# status page} other {# status pages}}",
+      "actionsFor": "Actions for {title}",
+      "edit": "Edit",
+      "pause": "Pause",
+      "resume": "Resume",
+      "delete": "Delete",
+      "paused": "Maintenance paused",
+      "resumed": "Maintenance resumed",
+      "updateFailed": "Could not update the maintenance",
+      "deleted": "Deleted “{title}”",
+      "deleteFailed": "Could not delete the maintenance",
+      "confirmDeleteTitle": "Delete “{title}”?",
+      "confirmDeleteDescription": "Affected monitors resume normal checks on their next run and status pages stop announcing it.",
+      "confirmDelete": "Delete"
+    },
+    "schedule": {
+      "manual": "Manual — active until paused",
+      "until": "Until {time}",
+      "single": "Single window",
+      "cron": "Cron {cron} · {duration} min",
+      "everyDay": "Every day {time}",
+      "everyNDays": "Every {days} days {time}",
+      "weekdays": "{days} {time}",
+      "daysOfMonth": "Days {days} {time}",
+      "lastDay": "last-{n}",
+      "ends": "Ends {time}",
+      "next": "Next {window}"
+    },
+    "status": {
+      "inactive": "Paused",
+      "scheduled": "Scheduled",
+      "under-maintenance": "Under maintenance",
+      "ended": "Ended",
+      "unknown": "Unknown"
+    },
+    "strategies": {
+      "manual": "Manual (active until you pause it)",
+      "single": "Single maintenance window",
+      "recurring-interval": "Recurring – every N days",
+      "recurring-weekday": "Recurring – days of the week",
+      "recurring-day-of-month": "Recurring – days of the month",
+      "cron": "Cron expression"
+    },
+    "strategyHelp": {
+      "manual": "Starts now and stays active until you pause or delete it.",
+      "single": "One window between a start and an end date.",
+      "recurring-interval": "Repeats every N days at the same time of day, counted from the start date.",
+      "recurring-weekday": "Repeats on the chosen days of the week.",
+      "recurring-day-of-month": "Repeats on the chosen days of the month.",
+      "cron": "Starts whenever the cron expression matches and lasts the given number of minutes."
+    },
+    "weekdays": {
+      "0": "Sun",
+      "1": "Mon",
+      "2": "Tue",
+      "3": "Wed",
+      "4": "Thu",
+      "5": "Fri",
+      "6": "Sat"
+    },
+    "lastDays": {
+      "lastDay1": "Last day of the month",
+      "lastDay2": "2nd last day of the month",
+      "lastDay3": "3rd last day of the month",
+      "lastDay4": "4th last day of the month"
+    },
+    "newPage": {
+      "pageTitle": "Schedule maintenance",
+      "back": "← Maintenance",
+      "title": "Schedule maintenance",
+      "description": "Affected monitors stop alerting while the window runs."
+    },
+    "editPage": {
+      "pageTitle": "Edit {title}",
+      "back": "← Maintenance",
+      "title": "Edit maintenance",
+      "description": "Changes apply immediately; the next check of each affected monitor honours them."
+    },
+    "form": {
+      "general": {
+        "title": "General",
+        "description": "What visitors and teammates read about this window."
+      },
+      "title": "Title",
+      "titlePlaceholder": "Database upgrade",
+      "description": "Description",
+      "descriptionPlaceholder": "What is happening and what to expect.",
+      "descriptionHint": "Shown on the selected status pages. Markdown supported.",
+      "active": "Active",
+      "activeHint": "Paused maintenances never apply, whatever the schedule.",
+      "schedule": {
+        "title": "Date and time"
+      },
+      "strategy": "Strategy",
+      "cron": "Cron expression",
+      "cronHint": "minute hour day-of-month month day-of-week",
+      "cronNext": "Next: {runs}",
+      "duration": "Duration",
+      "minutesUnit": "min",
+      "interval": "Interval",
+      "daysUnit": "days",
+      "intervalHint": "1 = every day. Counted from the start date below.",
+      "weekdays": "Days of the week",
+      "daysOfMonth": "Days of the month",
+      "lastDaysOfMonth": "Last days of the month",
+      "lastDaysHint": "Only the last day of the month has a cron equivalent; the others are accepted but not scheduled.",
+      "windowStarts": "Window starts",
+      "windowEnds": "Window ends",
+      "windowEndsHint": "An end before the start runs past midnight.",
+      "timezone": "Time zone",
+      "timezoneDefault": "Organization default ({zone})",
+      "timezoneHint": "Dates and times above are read in this zone.",
+      "starts": "Starts",
+      "ends": "Ends",
+      "effectiveFrom": "Effective from",
+      "effectiveUntil": "Effective until",
+      "effectiveUntilHint": "Optional. Leave empty to repeat forever.",
+      "quickDurations": "Quick durations",
+      "quickMinutes": "{minutes} min",
+      "quickHours": "{hours} h",
+      "quickHint": "Sets the end relative to the start.",
+      "setStartFirst": "Set the start first",
+      "monitors": {
+        "title": "Affected monitors",
+        "description": "These monitors (and the children of selected groups) are not checked while the window runs; they report MAINTENANCE instead.",
+        "label": "monitors",
+        "search": "Search monitors…",
+        "empty": "This organization has no monitors yet."
+      },
+      "statusPages": {
+        "title": "Status pages",
+        "description": "Pages that announce the window to visitors, running or upcoming.",
+        "label": "status pages",
+        "search": "Search status pages…",
+        "empty": "This organization has no status pages yet."
+      },
+      "noTargets": "Pick at least one monitor or status page, otherwise the window does nothing.",
+      "cancel": "Cancel",
+      "create": "Schedule maintenance",
+      "save": "Save changes",
+      "created": "Maintenance scheduled",
+      "saved": "Maintenance saved",
+      "fixFields": "Please fix the highlighted fields",
+      "saveFailed": "Could not save the maintenance"
+    },
+    "validation": {
+      "titleRequired": "Title is required",
+      "dateTime": "Enter a valid date and time",
+      "time": "Use HH:mm",
+      "timezone": "Unknown time zone",
+      "startRequired": "Start is required",
+      "endRequired": "End is required",
+      "endAfterStart": "End must be after the start",
+      "windowLength": "The window must be longer than zero minutes",
+      "pickDay": "Pick at least one day",
+      "cron": "Invalid cron expression"
+    },
+    "picker": {
+      "search": "Search…",
+      "searchLabel": "Search {label}",
+      "empty": "Nothing to pick from yet.",
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all",
+      "noMatches": "No matches.",
+      "selected": "{selected} of {total} selected"
+    }
+  },
+  "importExport": {
+    "formats": {
+      "uptime-kuma": "Uptime Kuma backup",
+      "marmot": "Marmot export"
+    },
+    "import": {
+      "title": "Import",
+      "description": "Upload an Uptime Kuma backup (<code>Uptime_Kuma_Backup_*.json</code>) or a Marmot export. The file is checked first; nothing is written until you confirm.",
+      "forbidden": "Importing requires the member role or higher in this organization.",
+      "skipNotifications": "Notification channels in the file will be skipped (admin role required). ",
+      "skipStatusPages": "Status pages in the file will be skipped.",
+      "choose": "Choose a JSON file…",
+      "checking": "Checking {fileName}…",
+      "imported": "Imported",
+      "goToMonitors": "Go to monitors",
+      "another": "Import another file",
+      "submit": "Import {count, plural, one {# item} other {# items}}",
+      "cancel": "Cancel",
+      "tooLarge": "{fileName} is {size}; the limit is {limit}.",
+      "sizeMb": "{size} MB",
+      "invalidJson": "That file is not valid JSON.",
+      "unrecognised": "Unrecognised file. Expected an Uptime Kuma backup or a Marmot export.",
+      "checkFailed": "Could not check the file.",
+      "success": "Imported {count, plural, one {# item} other {# items}}",
+      "failed": "Import failed; nothing was written."
+    },
+    "export": {
+      "title": "Export",
+      "description": "Download this organization's monitors, notification channels and status pages as a Marmot export file. It can be imported into another organization or instance.",
+      "secrets": "<strong>The file contains secrets.</strong> Notification channel settings (webhook URLs, tokens, SMTP passwords) and monitor credentials are exported exactly as stored. Treat it like a password file.",
+      "download": "Download export",
+      "forbidden": "Exporting requires the admin role in this organization."
+    },
+    "report": {
+      "section": "Section",
+      "willCreate": "Will create",
+      "created": "Created",
+      "skipped": "Skipped",
+      "notes": "Notes",
+      "sections": {
+        "monitors": "Monitors",
+        "notifications": "Notification channels",
+        "statusPages": "Status pages",
+        "tags": "Tags"
+      }
     }
   },
   "landing": {
@@ -1211,6 +1664,24 @@
         "nightlyBackup": "Nightly backup"
       },
       "pushHeartbeat": "push heartbeat"
+    }
+  },
+  "monitors": {
+    "channels": {
+      "title": "Notifications",
+      "description": "Channels alerted when this monitor changes status.",
+      "defaultsHint": "Default channels are selected for new monitors.",
+      "empty": "No notification channels in this organization yet.",
+      "manage": "Manage channels",
+      "toggle": "Alert through {name}",
+      "default": "Default",
+      "paused": "Paused",
+      "none": "No channels attached: status changes of this monitor alert nobody.",
+      "noneEditable": "No channels attached: status changes of this monitor alert nobody. Choose channels under Edit.",
+      "test": "Test",
+      "testLabel": "Send a test message through {name}",
+      "testSent": "Test message sent",
+      "testFailed": "Test failed"
     }
   }
 }

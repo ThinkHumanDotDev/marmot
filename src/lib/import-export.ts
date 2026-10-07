@@ -50,11 +50,6 @@ export function detectImportFormat(json: unknown): ImportFormat | null {
   return null
 }
 
-export const FORMAT_LABELS: Record<ImportFormat, string> = {
-  'uptime-kuma': 'Uptime Kuma backup',
-  marmot: 'Marmot export',
-}
-
 /** Total number of documents an import will create. */
 export const totalCreates = (report: ImportReport): number =>
   report.monitors.create + report.notifications.create + report.statusPages.create

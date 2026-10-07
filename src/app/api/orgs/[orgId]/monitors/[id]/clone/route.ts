@@ -17,7 +17,8 @@ type RouteContext = { params: Promise<{ orgId: string; id: string }> }
 
 /**
  * POST /api/orgs/:orgId/monitors/:id/clone — duplicate a monitor as "<name> (copy)", paused, with
- * a fresh status cache and push token. Returns the new document.
+ * a fresh status cache and push token, keeping its tags and notification channels. Returns the new
+ * document.
  */
 export async function POST(request: Request, { params }: RouteContext) {
   const payload = await getPayload({ config })
@@ -46,6 +47,8 @@ export async function POST(request: Request, { params }: RouteContext) {
       user: auth.user,
       overrideAccess: false,
       depth: 0,
+      // The copy keeps exactly the source's channels (no default channels added).
+      context: { explicitNotifications: true },
     })
     return Response.json(doc, { status: 201 })
   } catch (error) {

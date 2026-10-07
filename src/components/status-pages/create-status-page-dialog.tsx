@@ -2,6 +2,7 @@
 
 import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -31,6 +32,7 @@ export function CreateStatusPageDialog({
   orgSlug: string
   canCreate?: boolean
 }) {
+  const t = useTranslations('statusPages.create')
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [title, setTitle] = React.useState('')
@@ -58,13 +60,13 @@ export function CreateStatusPageDialog({
         slug: slug.trim(),
         description: description.trim() || undefined,
       })
-      toast.success('Status page created')
+      toast.success(t('created'))
       setOpen(false)
       reset()
       router.push(`/${orgSlug}/status-pages/${doc.id}`)
       router.refresh()
     } catch (err) {
-      setError(err instanceof ApiError || err instanceof Error ? err.message : 'Could not create')
+      setError(err instanceof ApiError || err instanceof Error ? err.message : t('failed'))
     } finally {
       setPending(false)
     }
@@ -80,19 +82,17 @@ export function CreateStatusPageDialog({
     >
       <DialogTrigger asChild>
         <Button disabled={!canCreate}>
-          <Plus /> New status page
+          <Plus /> {t('trigger')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={onSubmit} className="flex flex-col gap-5">
           <DialogHeader>
-            <DialogTitle>New status page</DialogTitle>
-            <DialogDescription>
-              Pages start unpublished. Add monitors and publish when it looks right.
-            </DialogDescription>
+            <DialogTitle>{t('title')}</DialogTitle>
+            <DialogDescription>{t('description')}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="sp-title">Title</Label>
+            <Label htmlFor="sp-title">{t('titleLabel')}</Label>
             <Input
               id="sp-title"
               value={title}
@@ -102,11 +102,11 @@ export function CreateStatusPageDialog({
                 setTitle(e.target.value)
                 if (!slugTouched) setSlug(slugify(e.target.value))
               }}
-              placeholder="Acme status"
+              placeholder={t('titlePlaceholder')}
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="sp-slug">Slug</Label>
+            <Label htmlFor="sp-slug">{t('slugLabel')}</Label>
             <div className="flex items-center gap-2">
               <span className="shrink-0 text-sm text-muted-foreground">/status/</span>
               <Input
@@ -121,17 +121,15 @@ export function CreateStatusPageDialog({
                 placeholder="acme"
               />
             </div>
-            <p className="text-xs text-muted-foreground">
-              Lowercase letters, numbers and hyphens. Globally unique.
-            </p>
+            <p className="text-xs text-muted-foreground">{t('slugHint')}</p>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="sp-description">Description (optional)</Label>
+            <Label htmlFor="sp-description">{t('descriptionLabel')}</Label>
             <Textarea
               id="sp-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Live status of our services."
+              placeholder={t('descriptionPlaceholder')}
               rows={2}
             />
           </div>
@@ -142,10 +140,10 @@ export function CreateStatusPageDialog({
           )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={pending || !title.trim() || !slug.trim()}>
-              {pending ? 'Creating…' : 'Create'}
+              {pending ? t('submitting') : t('submit')}
             </Button>
           </DialogFooter>
         </form>

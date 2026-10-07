@@ -8,6 +8,10 @@ import { canWithOverrides, type Permission } from '@/access/permissions'
 import { requireUser, type CurrentUser } from '@/lib/auth'
 import type { Monitor, Organization } from '@/payload-types'
 import { parseId, relationId, type RequestUser } from '@/server/monitors/http'
+import {
+  getNotificationProvider,
+  type NotificationProviderGroup,
+} from '@/server/notification-providers'
 import { findOrganizationBySlug } from '@/server/organizations/resolve'
 
 export interface OrgPageContext {
@@ -80,15 +84,83 @@ export async function getOrgGroups(
   return docs.map((doc) => ({ id: doc.id, name: doc.name }))
 }
 
+/** Notification channel as the monitor pages show it: no config, so no secrets. */
+export interface MonitorChannelOption {
+  id: string | number
+  name: string
+  type: string
+  /** Provider label (`Slack`), or the raw type when the provider is not registered. */
+  typeLabel: string
+  group: NotificationProviderGroup | null
+  active: boolean
+  isDefault: boolean
+}
+
 export interface MonitorFormResources {
   tags: { id: string | number; name: string; color: string }[]
   proxies: { id: string | number; label: string; active: boolean; isDefault: boolean }[]
   dockerHosts: { id: string | number; name: string }[]
+  /** Channels of the organization (empty when the user may not read them). */
+  notifications: MonitorChannelOption[]
+}
+
+const toChannelOption = (doc: {
+  id: string | number
+  name: string
+  type: string
+  active?: boolean | null
+  isDefault?: boolean | null
+}): MonitorChannelOption => {
+  const provider = getNotificationProvider(doc.type)
+  return {
+    id: doc.id,
+    name: doc.name,
+    type: doc.type,
+    typeLabel: provider?.label ?? doc.type,
+    group: provider?.group ?? null,
+    active: doc.active !== false,
+    isDefault: Boolean(doc.isDefault),
+  }
 }
 
 /**
- * Tags, proxies and Docker hosts of the organization for the monitor form selectors, read as the
- * user (members see all three; proxies come without passwords).
+ * Channels attached to a monitor, for its detail page. Viewers may not read channels (their
+ * configs hold secrets), so the names and types are read with access overridden and nothing else
+ * leaves the server. Channels of another organization are never returned.
+ */
+export async function getMonitorChannels(
+  ctx: OrgPageContext,
+  monitor: Pick<Monitor, 'id'>,
+): Promise<MonitorChannelOption[]> {
+  // Ids at depth 0: a populated relationship the user may not read would not carry them reliably.
+  const { notifications } = await ctx.payload.findByID({
+    collection: 'monitors',
+    id: monitor.id,
+    select: { notifications: true },
+    depth: 0,
+    overrideAccess: true,
+  })
+  const ids = (notifications ?? [])
+    .map((item) => relationId(item))
+    .filter((id): id is string | number => id !== null)
+  if (ids.length === 0) return []
+  const { docs } = await ctx.payload.find({
+    collection: 'notifications',
+    where: { and: [{ id: { in: ids } }, { organization: { equals: ctx.org.id } }] },
+    select: { name: true, type: true, active: true, isDefault: true },
+    sort: 'name',
+    depth: 0,
+    limit: ids.length,
+    pagination: false,
+    overrideAccess: true,
+  })
+  return docs.map(toChannelOption)
+}
+
+/**
+ * Tags, proxies, Docker hosts and notification channels of the organization for the monitor form
+ * selectors, read as the user (members see all four; proxies come without passwords, channels
+ * without their config).
  */
 export async function getMonitorFormResources(ctx: OrgPageContext): Promise<MonitorFormResources> {
   const common = {
@@ -99,10 +171,18 @@ export async function getMonitorFormResources(ctx: OrgPageContext): Promise<Moni
     overrideAccess: false,
     disableErrors: true,
   } as const
-  const [tags, proxies, dockerHosts] = await Promise.all([
+  const [tags, proxies, dockerHosts, notifications] = await Promise.all([
     ctx.payload.find({ collection: 'tags', sort: 'name', ...common }),
     ctx.payload.find({ collection: 'proxies', ...common }),
     ctx.payload.find({ collection: 'docker-hosts', sort: 'name', ...common }),
+    ctx.allowed('notification:read')
+      ? ctx.payload.find({
+          collection: 'notifications',
+          sort: 'name',
+          select: { name: true, type: true, active: true, isDefault: true },
+          ...common,
+        })
+      : Promise.resolve({ docs: [] }),
   ])
   return {
     tags: tags.docs.map((doc) => ({ id: doc.id, name: doc.name, color: doc.color })),
@@ -113,5 +193,6 @@ export async function getMonitorFormResources(ctx: OrgPageContext): Promise<Moni
       isDefault: Boolean(doc.default),
     })),
     dockerHosts: dockerHosts.docs.map((doc) => ({ id: doc.id, name: doc.name })),
+    notifications: notifications.docs.map(toChannelOption),
   }
 }

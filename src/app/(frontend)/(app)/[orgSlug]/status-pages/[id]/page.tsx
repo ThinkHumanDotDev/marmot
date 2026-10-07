@@ -1,12 +1,18 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 
 import { StatusPageEditor } from '@/components/status-pages/editor/status-page-editor'
 import type { MonitorOption } from '@/components/status-pages/api'
+import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 
 import { resolveOrg } from '../resolve-org'
 
-export const metadata: Metadata = { title: 'Edit status page' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('statusPages.editorPage')
+  return { title: t('pageTitle') }
+}
+
 export const dynamic = 'force-dynamic'
 
 export default async function StatusPageEditorPage({
@@ -18,7 +24,7 @@ export default async function StatusPageEditorPage({
   const { payload, user, org, can } = await resolveOrg(orgSlug)
   const pageId = payload.db.defaultIDType === 'number' && /^\d+$/.test(id) ? Number(id) : id
 
-  const [{ docs: pages }, { docs: monitors }] = await Promise.all([
+  const [{ docs: pages }, { docs: monitors }, timeZone] = await Promise.all([
     payload.find({
       collection: 'status-pages',
       where: { and: [{ id: { equals: pageId } }, { organization: { equals: org.id } }] },
@@ -37,6 +43,7 @@ export default async function StatusPageEditorPage({
       user,
       overrideAccess: false,
     }),
+    getOrganizationTimezone(payload, org.id),
   ])
 
   const page = pages[0]
@@ -71,6 +78,7 @@ export default async function StatusPageEditorPage({
       monitors={monitorOptions}
       canEdit={can('status-page:update')}
       canDelete={can('status-page:delete')}
+      timeZone={timeZone}
     />
   )
 }

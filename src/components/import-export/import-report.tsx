@@ -1,6 +1,7 @@
 'use client'
 
 import { AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import { Badge } from '@/components/ui/badge'
@@ -20,12 +21,7 @@ interface ImportReportViewProps {
 
 type SectionKey = 'monitors' | 'notifications' | 'statusPages' | 'tags'
 
-const SECTIONS: { key: SectionKey; label: string }[] = [
-  { key: 'monitors', label: 'Monitors' },
-  { key: 'notifications', label: 'Notification channels' },
-  { key: 'statusPages', label: 'Status pages' },
-  { key: 'tags', label: 'Tags' },
-]
+const SECTIONS: SectionKey[] = ['monitors', 'notifications', 'statusPages', 'tags']
 
 function SectionRow({ label, section }: { label: string; section: ImportSectionReport }) {
   const [open, setOpen] = React.useState(false)
@@ -84,21 +80,22 @@ function SectionRow({ label, section }: { label: string; section: ImportSectionR
 
 /** Dry-run / result table: what will be (or was) created and what was skipped, with reasons. */
 export function ImportReportView({ report }: ImportReportViewProps) {
+  const t = useTranslations('importExport.report')
   return (
     <div className="space-y-4">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Section</TableHead>
+            <TableHead>{t('section')}</TableHead>
             <TableHead className="text-right">
-              {report.dryRun ? 'Will create' : 'Created'}
+              {report.dryRun ? t('willCreate') : t('created')}
             </TableHead>
-            <TableHead className="text-right">Skipped</TableHead>
+            <TableHead className="text-right">{t('skipped')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {SECTIONS.map(({ key, label }) => (
-            <SectionRow key={key} label={label} section={report[key]} />
+          {SECTIONS.map((key) => (
+            <SectionRow key={key} label={t(`sections.${key}`)} section={report[key]} />
           ))}
         </TableBody>
       </Table>
@@ -106,7 +103,7 @@ export function ImportReportView({ report }: ImportReportViewProps) {
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
           <div className="mb-1 flex items-center gap-2 font-medium">
             <AlertTriangle className="size-4 text-amber-600" aria-hidden />
-            Notes
+            {t('notes')}
           </div>
           <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">
             {report.warnings.map((warning, index) => (

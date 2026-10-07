@@ -2,6 +2,7 @@
 
 import { Download, FileJson2, Loader2, Upload } from 'lucide-react'
 import Link from 'next/link'
+import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -17,7 +18,6 @@ import {
 } from '@/components/ui/card'
 import {
   detectImportFormat,
-  FORMAT_LABELS,
   MAX_IMPORT_BYTES,
   totalCreates,
   type ImportFormat,
@@ -53,8 +53,6 @@ type Stage =
     }
   | { kind: 'done'; fileName: string; format: ImportFormat; report: ImportReport }
 
-const formatBytes = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-
 export function ImportExportView({
   orgId,
   orgSlug,
@@ -63,6 +61,15 @@ export function ImportExportView({
   canImportStatusPages,
   canExport,
 }: ImportExportViewProps) {
+  const t = useTranslations('importExport')
+  const format = useFormatter()
+  const formatBytes = (bytes: number) =>
+    t('import.sizeMb', {
+      size: format.number(bytes / (1024 * 1024), {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }),
+    })
   const [stage, setStage] = React.useState<Stage>({ kind: 'idle' })
   const inputRef = React.useRef<HTMLInputElement>(null)
   const inputId = React.useId()
@@ -73,7 +80,11 @@ export function ImportExportView({
     if (!file) return
     if (file.size > MAX_IMPORT_BYTES) {
       toast.error(
-        `${file.name} is ${formatBytes(file.size)}; the limit is ${formatBytes(MAX_IMPORT_BYTES)}.`,
+        t('import.tooLarge', {
+          fileName: file.name,
+          size: formatBytes(file.size),
+          limit: formatBytes(MAX_IMPORT_BYTES),
+        }),
       )
       return
     }
@@ -81,12 +92,12 @@ export function ImportExportView({
     try {
       json = JSON.parse(await file.text())
     } catch {
-      toast.error('That file is not valid JSON.')
+      toast.error(t('import.invalidJson'))
       return
     }
     const format = detectImportFormat(json)
     if (!format) {
-      toast.error('Unrecognised file. Expected an Uptime Kuma backup or a Marmot export.')
+      toast.error(t('import.unrecognised'))
       return
     }
     setStage({ kind: 'checking', fileName: file.name })
@@ -95,7 +106,7 @@ export function ImportExportView({
       setStage({ kind: 'ready', fileName: file.name, format, json, report })
     } catch (error) {
       setStage({ kind: 'idle' })
-      toast.error(error instanceof Error ? error.message : 'Could not check the file.')
+      toast.error(error instanceof Error ? error.message : t('import.checkFailed'))
     }
   }
 
@@ -105,10 +116,10 @@ export function ImportExportView({
     try {
       const report = await importExportApi.commit(orgId, stage.json)
       setStage({ kind: 'done', fileName: stage.fileName, format: stage.format, report })
-      toast.success(`Imported ${totalCreates(report)} item${totalCreates(report) === 1 ? '' : 's'}`)
+      toast.success(t('import.success', { count: totalCreates(report) }))
     } catch (error) {
       setStage({ ...stage, kind: 'ready' })
-      toast.error(error instanceof Error ? error.message : 'Import failed; nothing was written.')
+      toast.error(error instanceof Error ? error.message : t('import.failed'))
     }
   }
 
@@ -119,24 +130,20 @@ export function ImportExportView({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Import</CardTitle>
+          <CardTitle>{t('import.title')}</CardTitle>
           <CardDescription>
-            Upload an Uptime Kuma backup (<code>Uptime_Kuma_Backup_*.json</code>) or a Marmot
-            export. The file is checked first; nothing is written until you confirm.
+            {t.rich('import.description', { code: (chunks) => <code>{chunks}</code> })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {!canImport ? (
-            <p className="text-sm text-muted-foreground">
-              Importing requires the member role or higher in this organization.
-            </p>
+            <p className="text-sm text-muted-foreground">{t('import.forbidden')}</p>
           ) : (
             <>
               {(!canImportNotifications || !canImportStatusPages) && (
                 <p className="text-sm text-muted-foreground">
-                  {!canImportNotifications &&
-                    'Notification channels in the file will be skipped (admin role required). '}
-                  {!canImportStatusPages && 'Status pages in the file will be skipped.'}
+                  {!canImportNotifications && t('import.skipNotifications')}
+                  {!canImportStatusPages && t('import.skipStatusPages')}
                 </p>
               )}
               <input
@@ -151,13 +158,13 @@ export function ImportExportView({
               {stage.kind === 'idle' && (
                 <Button type="button" onClick={() => inputRef.current?.click()}>
                   <Upload className="size-4" aria-hidden />
-                  Choose a JSON file…
+                  {t('import.choose')}
                 </Button>
               )}
               {stage.kind === 'checking' && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="size-4 animate-spin" aria-hidden />
-                  Checking {stage.fileName}…
+                  {t('import.checking', { fileName: stage.fileName })}
                 </div>
               )}
               {(stage.kind === 'ready' || stage.kind === 'importing' || stage.kind === 'done') && (
@@ -165,8 +172,8 @@ export function ImportExportView({
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <FileJson2 className="size-4 text-muted-foreground" aria-hidden />
                     <span className="font-medium">{stage.fileName}</span>
-                    <Badge variant="secondary">{FORMAT_LABELS[stage.format]}</Badge>
-                    {stage.kind === 'done' && <Badge>Imported</Badge>}
+                    <Badge variant="secondary">{t(`formats.${stage.format}`)}</Badge>
+                    {stage.kind === 'done' && <Badge>{t('import.imported')}</Badge>}
                   </div>
                   <ImportReportView report={stage.report} />
                 </div>
@@ -179,10 +186,10 @@ export function ImportExportView({
             {stage.kind === 'done' ? (
               <>
                 <Button asChild>
-                  <Link href={`/${orgSlug}/monitors`}>Go to monitors</Link>
+                  <Link href={`/${orgSlug}/monitors`}>{t('import.goToMonitors')}</Link>
                 </Button>
                 <Button type="button" variant="outline" onClick={reset}>
-                  Import another file
+                  {t('import.another')}
                 </Button>
               </>
             ) : (
@@ -195,11 +202,10 @@ export function ImportExportView({
                   {stage.kind === 'importing' && (
                     <Loader2 className="size-4 animate-spin" aria-hidden />
                   )}
-                  Import {totalCreates(stage.report)} item
-                  {totalCreates(stage.report) === 1 ? '' : 's'}
+                  {t('import.submit', { count: totalCreates(stage.report) })}
                 </Button>
                 <Button type="button" variant="outline" onClick={reset} disabled={busy}>
-                  Cancel
+                  {t('import.cancel')}
                 </Button>
               </>
             )}
@@ -209,17 +215,14 @@ export function ImportExportView({
 
       <Card>
         <CardHeader>
-          <CardTitle>Export</CardTitle>
-          <CardDescription>
-            Download this organization&apos;s monitors, notification channels and status pages as a
-            Marmot export file. It can be imported into another organization or instance.
-          </CardDescription>
+          <CardTitle>{t('export.title')}</CardTitle>
+          <CardDescription>{t('export.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            <strong className="text-foreground">The file contains secrets.</strong> Notification
-            channel settings (webhook URLs, tokens, SMTP passwords) and monitor credentials are
-            exported exactly as stored. Treat it like a password file.
+            {t.rich('export.secrets', {
+              strong: (chunks) => <strong className="text-foreground">{chunks}</strong>,
+            })}
           </p>
         </CardContent>
         <CardFooter>
@@ -227,13 +230,11 @@ export function ImportExportView({
             <Button asChild variant="outline">
               <a href={importExportApi.exportUrl(orgId)} download>
                 <Download className="size-4" aria-hidden />
-                Download export
+                {t('export.download')}
               </a>
             </Button>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Exporting requires the admin role in this organization.
-            </p>
+            <p className="text-sm text-muted-foreground">{t('export.forbidden')}</p>
           )}
         </CardFooter>
       </Card>

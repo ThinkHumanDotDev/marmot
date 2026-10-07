@@ -2,6 +2,7 @@
 
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -28,6 +29,8 @@ export interface EditorProps {
   monitors: MonitorOption[]
   canEdit: boolean
   canDelete: boolean
+  /** Organization time zone the incident timestamps render in. */
+  timeZone: string
 }
 
 export function StatusPageEditor({
@@ -38,7 +41,9 @@ export function StatusPageEditor({
   monitors,
   canEdit,
   canDelete,
+  timeZone,
 }: EditorProps) {
+  const t = useTranslations('statusPages.editorPage')
   const [page, setPage] = React.useState(initialPage)
   const [publishing, setPublishing] = React.useState(false)
   const publicHref = publicStatusPagePath(page.slug)
@@ -49,9 +54,9 @@ export function StatusPageEditor({
       const { doc } = await statusPagesApi.update(orgId, page.id, { published: next })
       setPage(doc)
       if (next) track('status_page_published')
-      toast.success(next ? 'Status page published' : 'Status page unpublished')
+      toast.success(next ? t('publishedToast') : t('unpublishedToast'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not update')
+      toast.error(error instanceof Error ? error.message : t('updateFailed'))
     } finally {
       setPublishing(false)
     }
@@ -65,16 +70,16 @@ export function StatusPageEditor({
             href={`/${orgSlug}/status-pages`}
             className="inline-flex items-center gap-1 hover:text-foreground"
           >
-            <ArrowLeft className="size-3" aria-hidden /> Status pages
+            <ArrowLeft className="size-3" aria-hidden /> {t('back')}
           </Link>
         }
         title={
           <span className="inline-flex max-w-full items-center gap-3">
             <span className="truncate">{page.title}</span>
             {page.published ? (
-              <Badge className="bg-status-up/15 text-foreground">Published</Badge>
+              <Badge className="bg-status-up/15 text-foreground">{t('published')}</Badge>
             ) : (
-              <Badge variant="secondary">Draft</Badge>
+              <Badge variant="secondary">{t('draft')}</Badge>
             )}
           </span>
         }
@@ -89,13 +94,13 @@ export function StatusPageEditor({
                 onCheckedChange={togglePublished}
               />
               <Label htmlFor="sp-published" className="text-sm">
-                Published
+                {t('publishedLabel')}
               </Label>
             </div>
             <Button asChild variant="outline">
               <a href={publicHref} target="_blank" rel="noopener noreferrer">
-                {page.published ? 'View page' : 'Preview'} <ExternalLink aria-hidden />
-                <span className="sr-only">(opens in a new tab)</span>
+                {page.published ? t('viewPage') : t('preview')} <ExternalLink aria-hidden />
+                <span className="sr-only">{t('opensInNewTab')}</span>
               </a>
             </Button>
           </>
@@ -104,16 +109,15 @@ export function StatusPageEditor({
       <section className="p-4 sm:p-6 md:p-8">
         {!page.published && (
           <p className="mb-6 rounded-lg border border-dashed px-4 py-2 text-xs text-muted-foreground">
-            Visitors get a 404 until the page is published. Signed-in members can preview it any
-            time.
+            {t('draftNotice')}
           </p>
         )}
         <Tabs defaultValue="settings">
           <TabsList className="no-scrollbar max-w-full justify-start overflow-x-auto">
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="groups">Groups &amp; monitors</TabsTrigger>
-            <TabsTrigger value="incidents">Incidents</TabsTrigger>
-            <TabsTrigger value="domains">Domains</TabsTrigger>
+            <TabsTrigger value="settings">{t('tabs.settings')}</TabsTrigger>
+            <TabsTrigger value="groups">{t('tabs.groups')}</TabsTrigger>
+            <TabsTrigger value="incidents">{t('tabs.incidents')}</TabsTrigger>
+            <TabsTrigger value="domains">{t('tabs.domains')}</TabsTrigger>
           </TabsList>
           <TabsContent value="settings" className="pt-6">
             <SettingsForm
@@ -139,6 +143,7 @@ export function StatusPageEditor({
               orgId={orgId}
               pageId={page.id}
               initialIncidents={initialIncidents}
+              timeZone={timeZone}
               canEdit={canEdit}
             />
           </TabsContent>

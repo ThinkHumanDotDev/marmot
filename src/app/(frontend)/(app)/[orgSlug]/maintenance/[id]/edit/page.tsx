@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 
 import { MaintenanceForm } from '@/components/maintenance/maintenance-form'
 import { PageHeader } from '@/components/page-header'
@@ -23,7 +24,8 @@ export async function generateMetadata({ params }: EditMaintenancePageProps): Pr
   const { orgSlug, id } = await params
   const ctx = await getOrgPageContext(orgSlug, `/${orgSlug}/maintenance/${id}/edit`)
   const doc = await getOrgMaintenance(ctx, id)
-  return { title: `Edit ${doc.title}` }
+  const t = await getTranslations('maintenance.editPage')
+  return { title: t('pageTitle', { title: doc.title }) }
 }
 
 export default async function EditMaintenancePage({ params }: EditMaintenancePageProps) {
@@ -32,6 +34,7 @@ export default async function EditMaintenancePage({ params }: EditMaintenancePag
   const doc = await getOrgMaintenance(ctx, id)
   if (!ctx.allowed('maintenance:update')) redirect(`/${orgSlug}/maintenance`)
 
+  const t = await getTranslations('maintenance.editPage')
   const [monitors, statusPages, orgTimezone] = await Promise.all([
     getOrgMonitorOptions(ctx),
     getOrgStatusPageOptions(ctx),
@@ -43,11 +46,11 @@ export default async function EditMaintenancePage({ params }: EditMaintenancePag
       <PageHeader
         eyebrow={
           <Link href={`/${orgSlug}/maintenance`} className="hover:text-foreground">
-            ← Maintenance
+            {t('back')}
           </Link>
         }
-        title="Edit maintenance"
-        description="Changes apply immediately; the next check of each affected monitor honours them."
+        title={t('title')}
+        description={t('description')}
       />
       <section className="p-4 sm:p-6 md:p-8">
         <MaintenanceForm
