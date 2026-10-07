@@ -96,7 +96,9 @@ The extended types (`grpc-keyword`, `websocket-upgrade`, `mqtt`, `kafka-producer
 `snmp`, `radius`, `tailscale-ping`, `mysql`, `postgres`, `sqlserver`, `mongodb`, `redis`, `steam`,
 `gamedig`) keep their type-specific columns, which carry the same names in Kuma and Marmot (see
 [Monitor types](Monitor-Types.md)); the SNMP community string comes from Kuma's `radiusPassword`
-column, where Kuma's form stores it.
+column, where Kuma's form stores it. Kuma's Globalping monitors become `globalping` monitors with one
+probe (`subtype`, `location`, `ping_count`, `protocol` and `ipFamily` map to the measurement, locations,
+packets, protocol and IP version) and an interval of at least 60 s.
 
 Not imported: Docker monitors (Marmot's `docker` type needs a Docker host, which the backup does not map
 to), browser-engine monitors (they reference a

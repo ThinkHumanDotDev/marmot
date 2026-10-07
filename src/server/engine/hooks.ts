@@ -38,6 +38,11 @@ export interface HeartbeatEvent {
    * beat that must not count as downtime.
    */
   checkerOffline?: boolean
+  /**
+   * The check was deferred (#142, e.g. the Globalping rate limit): a PENDING beat held like a
+   * checker offline one, which must not count as downtime either.
+   */
+  deferred?: boolean
 }
 
 export type HeartbeatListener = (event: HeartbeatEvent) => void | Promise<void>
