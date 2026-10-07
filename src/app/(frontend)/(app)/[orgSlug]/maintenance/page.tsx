@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 
 import { MaintenanceList } from '@/components/maintenance/maintenance-list'
 import { PageHeader } from '@/components/page-header'
@@ -29,6 +29,7 @@ export default async function MaintenancePage({ params }: MaintenancePageProps) 
   const items = await listOrgMaintenance(ctx.payload, ctx.org.id, {
     user: ctx.requestUser,
     overrideAccess: false,
+    locale: await getLocale(),
   })
 
   return (

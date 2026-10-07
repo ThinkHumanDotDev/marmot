@@ -1,7 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 
 /**
  * Which expiry warnings were already delivered: one row per `(type, monitor, days)` threshold.
@@ -16,7 +16,7 @@ export type ExpiryNotificationType = (typeof EXPIRY_NOTIFICATION_TYPES)[number]
 export const NotificationSentHistory: CollectionConfig = {
   slug: 'notification-sent-history',
   admin: {
-    group: 'Monitoring',
+    group: adminGroup('monitoring'),
     defaultColumns: ['monitor', 'type', 'days', 'createdAt'],
     description: adminT('marmot:notificationSentHistory:description'),
   },

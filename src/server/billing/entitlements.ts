@@ -24,6 +24,7 @@ import {
   type Plan,
   type PlanSource,
 } from '@/lib/entitlements'
+import { apiError } from '@/server/errors'
 
 export type OrgId = string | number
 
@@ -134,17 +135,20 @@ export const ENTITLEMENT_HTTP_STATUS = 402
 
 /** Wraps an `EntitlementError` in a public `APIError` (402) with structured `data`. */
 export function toApiError(error: EntitlementError, plan: Plan): APIError {
-  return new APIError(
-    error.message,
+  return apiError(
+    'planLimit',
     ENTITLEMENT_HTTP_STATUS,
+    { resource: error.resource, limit: error.limit },
     {
-      code: error.code,
-      resource: error.resource,
-      limit: error.limit,
-      current: error.current,
-      plan,
+      data: {
+        code: error.code,
+        resource: error.resource,
+        limit: error.limit,
+        current: error.current,
+        plan,
+      },
+      isPublic: true,
     },
-    true,
   )
 }
 

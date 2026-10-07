@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { extractAddress, OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -30,8 +31,9 @@ registerNotificationProvider({
   docsUrl: 'https://support.squadcast.com/integrations/incident-webhook-incident-webhook-api',
   configSchema: squadcastConfigSchema,
   fieldMeta: squadcastFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = squadcastConfigSchema.parse(raw)
+    const p = providerText(locale)
     const data: Record<string, unknown> = {
       message,
       description: '',
@@ -44,10 +46,10 @@ registerNotificationProvider({
       data.description = heartbeat.msg ?? ''
       data.event_id = String(monitor.id)
       if (heartbeat.status === 'down') {
-        data.message = `${monitor.name} is DOWN`
+        data.message = p('isDownLoud', { name: monitor.name })
         data.status = 'trigger'
       } else {
-        data.message = `${monitor.name} is UP`
+        data.message = p('isUpLoud', { name: monitor.name })
         data.status = 'resolve'
       }
       data.tags = { AlertAddress: extractAddress(monitor) }

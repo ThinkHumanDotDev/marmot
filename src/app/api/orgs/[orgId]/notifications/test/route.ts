@@ -6,6 +6,9 @@ import {
   type NotificationChannelLike,
 } from '@/server/notifications/send'
 import { checkServerSmtpChange, ServerSmtpSendError } from '@/server/notifications/server-smtp'
+import { serverTranslator } from '@/server/i18n'
+import { OK_MESSAGE } from '@/server/notification-providers/http'
+import { errorText, requestLocale } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,7 +36,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const body = await readJson<TestBody>(request)
-  if (!body) return jsonError(400, 'Invalid JSON body', { ok: false })
+  if (!body) return jsonError(400, errorText(request, 'invalidJsonBody'), { ok: false })
 
   let saved: Notification | null = null
   if (body.notificationId !== undefined && body.notificationId !== null) {
@@ -49,10 +52,10 @@ export async function POST(request: Request, { params }: RouteContext) {
       if (String(org) !== String(ctx.orgId)) throw new Error('wrong organization')
       saved = doc
     } catch {
-      return jsonError(404, 'Notification channel not found', { ok: false })
+      return jsonError(404, errorText(request, 'notificationChannelNotFound'), { ok: false })
     }
   } else if (typeof body.type !== 'string') {
-    return jsonError(400, 'Provide notificationId or type + config', { ok: false })
+    return jsonError(400, errorText(request, 'notificationTestTargetRequired'), { ok: false })
   }
 
   let channel: NotificationChannelLike
@@ -75,12 +78,23 @@ export async function POST(request: Request, { params }: RouteContext) {
       originalConfig: saved ? normalizeNotificationConfig(saved.type, saved.config) : undefined,
       user: ctx.user,
     })
-    if (refusal) return jsonError(refusal.status, refusal.message, { ok: false })
+    if (refusal) {
+      return jsonError(refusal.status, errorText(request, refusal.key, refusal.values), {
+        ok: false,
+      })
+    }
   }
 
   try {
     const result = await sendTestNotification(ctx.payload, channel)
-    return Response.json({ ok: true, result })
+    // Providers report success with Kuma's fixed text; show it in the user's language.
+    return Response.json({
+      ok: true,
+      result:
+        result === OK_MESSAGE
+          ? serverTranslator(requestLocale(request))('notifications.messages.sentSuccessfully')
+          : result,
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (error instanceof ServerSmtpSendError && error.reason === 'rate-limited') {

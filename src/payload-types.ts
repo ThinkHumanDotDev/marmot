@@ -388,6 +388,7 @@ export interface Monitor {
     | 'gamedig';
   active?: boolean | null;
   parent?: (number | null) | Monitor;
+  publicName?: string | null;
   description?: string | null;
   tags?:
     | {
@@ -698,7 +699,54 @@ export interface StatusPage {
   slug: string;
   description?: string | null;
   logo?: (number | null) | Media;
+  homepageUrl?: string | null;
+  contactUrl?: string | null;
   theme?: ('auto' | 'light' | 'dark') | null;
+  themePreset?: string | null;
+  themeOverrides?: {
+    light?: {
+      background?: string;
+      foreground?: string;
+      card?: string;
+      primary?: string;
+      primaryForeground?: string;
+      muted?: string;
+      mutedForeground?: string;
+      border?: string;
+      success?: string;
+      warning?: string;
+      info?: string;
+      destructive?: string;
+      chart1?: string;
+      chart2?: string;
+      chart3?: string;
+      chart4?: string;
+      chart5?: string;
+    };
+    dark?: {
+      background?: string;
+      foreground?: string;
+      card?: string;
+      primary?: string;
+      primaryForeground?: string;
+      muted?: string;
+      mutedForeground?: string;
+      border?: string;
+      success?: string;
+      warning?: string;
+      info?: string;
+      destructive?: string;
+      chart1?: string;
+      chart2?: string;
+      chart3?: string;
+      chart4?: string;
+      chart5?: string;
+    };
+    radius?: string;
+  } | null;
+  bannerText?: string | null;
+  logoDark?: (number | null) | Media;
+  favicon?: (number | null) | Media;
   language?: ('auto' | 'en') | null;
   published?: boolean | null;
   access?: ('public' | 'password' | 'email-domain' | 'ip-allowlist') | null;
@@ -721,6 +769,7 @@ export interface StatusPage {
   showTags?: boolean | null;
   showCertificateExpiry?: boolean | null;
   showPoweredBy?: boolean | null;
+  showValues?: boolean | null;
   autoRefreshInterval?: number | null;
   footerText?: string | null;
   customCSS?: string | null;
@@ -734,9 +783,14 @@ export interface StatusPage {
   groups?:
     | {
         name: string;
+        defaultOpen?: boolean | null;
         monitors?:
           | {
-              monitor: number | Monitor;
+              type?: ('monitor' | 'static') | null;
+              monitor?: (number | null) | Monitor;
+              name?: string | null;
+              description?: string | null;
+              showValues?: boolean | null;
               sendUrl?: boolean | null;
               customUrl?: string | null;
               id?: string | null;
@@ -775,6 +829,13 @@ export interface Incident {
   style?: ('info' | 'warning' | 'danger' | 'primary') | null;
   pinned?: boolean | null;
   active?: boolean | null;
+  affectedComponents?:
+    | {
+        component: string;
+        impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
+        id?: string | null;
+      }[]
+    | null;
   resolvedAt?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -1210,6 +1271,7 @@ export interface MonitorsSelect<T extends boolean = true> {
   type?: T;
   active?: T;
   parent?: T;
+  publicName?: T;
   description?: T;
   tags?:
     | T
@@ -1464,7 +1526,14 @@ export interface StatusPagesSelect<T extends boolean = true> {
   slug?: T;
   description?: T;
   logo?: T;
+  homepageUrl?: T;
+  contactUrl?: T;
   theme?: T;
+  themePreset?: T;
+  themeOverrides?: T;
+  bannerText?: T;
+  logoDark?: T;
+  favicon?: T;
   language?: T;
   published?: T;
   access?: T;
@@ -1487,6 +1556,7 @@ export interface StatusPagesSelect<T extends boolean = true> {
   showTags?: T;
   showCertificateExpiry?: T;
   showPoweredBy?: T;
+  showValues?: T;
   autoRefreshInterval?: T;
   footerText?: T;
   customCSS?: T;
@@ -1501,10 +1571,15 @@ export interface StatusPagesSelect<T extends boolean = true> {
     | T
     | {
         name?: T;
+        defaultOpen?: T;
         monitors?:
           | T
           | {
+              type?: T;
               monitor?: T;
+              name?: T;
+              description?: T;
+              showValues?: T;
               sendUrl?: T;
               customUrl?: T;
               id?: T;
@@ -1539,6 +1614,13 @@ export interface IncidentsSelect<T extends boolean = true> {
   style?: T;
   pinned?: T;
   active?: T;
+  affectedComponents?:
+    | T
+    | {
+        component?: T;
+        impact?: T;
+        id?: T;
+      };
   resolvedAt?: T;
   updatedAt?: T;
   createdAt?: T;

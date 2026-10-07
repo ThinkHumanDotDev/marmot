@@ -8,6 +8,7 @@ import {
   checkStatusPageAccess,
 } from '@/server/status-pages/access'
 import { buildPublicStatusPageData, findPublishedStatusPage } from '@/server/status-pages/public'
+import { errorText, requestLocale } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,13 +31,13 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   if (!page) {
     return Response.json(
-      { error: 'Status page not found' },
+      { error: errorText(request, 'statusPageNotFound') },
       { status: 404, headers: { 'Cache-Control': 'no-store' } },
     )
   }
 
   const access = await checkStatusPageAccess(payload, page, accessRequestFrom(request))
-  if (!access.allowed) return accessDeniedResponse(access)
+  if (!access.allowed) return accessDeniedResponse(access, 'json', requestLocale(request))
 
   const data = await buildPublicStatusPageData(payload, page)
   return Response.json(data, {

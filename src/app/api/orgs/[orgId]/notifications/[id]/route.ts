@@ -9,6 +9,7 @@ import {
   resolveOrgRequest,
   type OrgRequestContext,
 } from '@/server/notifications/api'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,12 +39,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const existing = await loadChannel(ctx, id)
-  if (!existing) return jsonError(404, 'Notification channel not found')
+  if (!existing) return jsonError(404, errorText(request, 'notificationChannelNotFound'))
 
   const body = await readJson(request)
-  if (!body) return jsonError(400, 'Invalid JSON body')
+  if (!body) return jsonError(400, errorText(request, 'invalidJsonBody'))
   const input = pickInput(body)
-  if (input.name === '') return jsonError(400, 'name is required')
+  if (input.name === '') return jsonError(400, errorText(request, 'nameRequired'))
 
   try {
     const doc = await ctx.payload.update({
@@ -56,7 +57,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     })
     return Response.json({ doc })
   } catch (error) {
-    return jsonError(errorStatus(error), errorMessage(error))
+    return jsonError(errorStatus(error), errorMessage(error, request))
   }
 }
 
@@ -67,7 +68,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const existing = await loadChannel(ctx, id)
-  if (!existing) return jsonError(404, 'Notification channel not found')
+  if (!existing) return jsonError(404, errorText(request, 'notificationChannelNotFound'))
 
   try {
     await ctx.payload.delete({
@@ -79,6 +80,6 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     })
     return Response.json({ ok: true })
   } catch (error) {
-    return jsonError(errorStatus(error), errorMessage(error))
+    return jsonError(errorStatus(error), errorMessage(error, request))
   }
 }

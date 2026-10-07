@@ -14,6 +14,8 @@ import addressparser from 'nodemailer/lib/addressparser'
 
 import { isSuperadmin, type OrgId, type UserLike } from '@/access/permissions'
 import { env } from '@/env'
+import { defaultLocale, type Locale } from '@/i18n/locales'
+import { translateError, type ErrorKey, type ErrorValues } from '@/server/errors'
 import { createRateLimiter, type RateLimiter } from '@/server/security/rate-limit'
 
 export type ServerSmtpPolicy = 'all' | 'superadmin' | 'off'
@@ -52,15 +54,17 @@ export function canUseServerSmtp(
   return isSuperadmin(user)
 }
 
-/** One-line explanation for the channel form, or `null` when the user may use the option. */
+/** One-line explanation for the channel form in `locale`, or `null` when the user may use the option. */
 export function serverSmtpRestriction(
   user: UserLike | null | undefined,
   policy: ServerSmtpPolicy = serverSmtpPolicy(),
+  locale: Locale = defaultLocale,
 ): string | null {
   if (canUseServerSmtp(user, policy)) return null
-  return policy === 'off'
-    ? 'Sending through the server SMTP settings is turned off on this instance.'
-    : 'Only an instance superadmin can turn on the server SMTP settings for a channel.'
+  return translateError(
+    locale,
+    policy === 'off' ? 'serverSmtpRestrictedOff' : 'serverSmtpRestrictedSuperadmin',
+  )
 }
 
 /** Number of addresses in the `to`, `cc` and `bcc` fields of an `smtp` config. */
@@ -85,8 +89,13 @@ function normalizedConfig(config: unknown): string {
   return JSON.stringify(entries)
 }
 
-export type ServerSmtpChangeRefusal =
-  { status: 403; message: string } | { status: 400; message: string; path: string }
+/**
+ * Why a change is refused: `message` is the English text, `key`/`values` the `errors.*` message
+ * for rendering it in the user's language.
+ */
+export type ServerSmtpChangeRefusal = { key: ErrorKey; values?: ErrorValues; message: string } & (
+  { status: 403 } | { status: 400; path: string }
+)
 
 export interface ServerSmtpChangeInput {
   operation: 'create' | 'update'
@@ -119,12 +128,20 @@ export function checkServerSmtpChange(
   if (unchanged) return null
 
   const policy = input.policy ?? serverSmtpPolicy()
-  if (policy === 'off') return { status: 403, message: SERVER_SMTP_OFF_MESSAGE }
+  if (policy === 'off') {
+    return { status: 403, key: 'serverSmtpOff', message: SERVER_SMTP_OFF_MESSAGE }
+  }
   if (policy === 'superadmin' && !input.overrideAccess && !isSuperadmin(input.user)) {
-    return { status: 403, message: SERVER_SMTP_SUPERADMIN_MESSAGE }
+    return { status: 403, key: 'serverSmtpSuperadminOnly', message: SERVER_SMTP_SUPERADMIN_MESSAGE }
   }
   if (countSmtpRecipients(input.config) > SERVER_SMTP_MAX_RECIPIENTS) {
-    return { status: 400, message: SERVER_SMTP_RECIPIENTS_MESSAGE, path: 'config.to' }
+    return {
+      status: 400,
+      key: 'serverSmtpTooManyRecipients',
+      values: { max: SERVER_SMTP_MAX_RECIPIENTS },
+      message: SERVER_SMTP_RECIPIENTS_MESSAGE,
+      path: 'config.to',
+    }
   }
   return null
 }

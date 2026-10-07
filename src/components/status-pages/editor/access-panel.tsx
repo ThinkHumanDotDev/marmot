@@ -205,7 +205,7 @@ export function AccessPanel({
                 rows={4}
                 disabled={!canEdit}
                 spellCheck={false}
-                placeholder="example.com"
+                placeholder={t('domains.placeholder')}
                 aria-describedby="sp-access-domains-hint"
                 onChange={(e) => setDomains(e.target.value)}
               />
@@ -225,7 +225,7 @@ export function AccessPanel({
                 disabled={!canEdit}
                 spellCheck={false}
                 className="font-mono text-xs"
-                placeholder={'203.0.113.0/24 Office\n2001:db8::/32 VPN'}
+                placeholder={t('ranges.placeholder')}
                 aria-describedby="sp-access-ranges-hint"
                 onChange={(e) => setRanges(e.target.value)}
               />

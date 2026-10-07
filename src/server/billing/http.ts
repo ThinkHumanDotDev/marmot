@@ -6,6 +6,7 @@
 import { APIError, getPayload, type Payload } from 'payload'
 
 import config from '@payload-config'
+import { errorMessageFor, errorText, rememberRequestUser } from '@/server/request-locale'
 import { can } from '@/access/permissions'
 import { isBillingEnabled } from './entitlements'
 
@@ -18,7 +19,8 @@ export const jsonError = (message: string, status: number, details?: unknown) =>
 
 export const BILLING_DISABLED_STATUS = 501
 
-export const billingDisabled = () => jsonError('billing disabled', BILLING_DISABLED_STATUS)
+export const billingDisabled = (request: Request) =>
+  jsonError(errorText(request, 'billingDisabled'), BILLING_DISABLED_STATUS)
 
 export type BillingContext = { payload: Payload; user: RequestUser; org: Organization }
 
@@ -35,11 +37,12 @@ export async function billingContext(
   request: Request,
   orgId: string,
 ): Promise<{ ok: true; ctx: BillingContext } | { ok: false; response: Response }> {
-  if (!isBillingEnabled()) return { ok: false, response: billingDisabled() }
+  if (!isBillingEnabled()) return { ok: false, response: billingDisabled(request) }
 
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: request.headers })
-  if (!user) return { ok: false, response: jsonError('Unauthorized', 401) }
+  if (!user) return { ok: false, response: jsonError(errorText(request, 'unauthenticated'), 401) }
+  rememberRequestUser(request, user)
 
   const org = await payload.findByID({
     collection: 'organizations',
@@ -49,9 +52,11 @@ export async function billingContext(
     overrideAccess: false,
     disableErrors: true,
   })
-  if (!org) return { ok: false, response: jsonError('Organization not found', 404) }
+  if (!org) {
+    return { ok: false, response: jsonError(errorText(request, 'organizationNotFound'), 404) }
+  }
   if (!can(user, org.id, 'organization:update')) {
-    return { ok: false, response: jsonError('Forbidden', 403) }
+    return { ok: false, response: jsonError(errorText(request, 'forbidden'), 403) }
   }
   return { ok: true, ctx: { payload, user: user as RequestUser, org } }
 }
@@ -65,12 +70,14 @@ export async function readJson<T = Record<string, unknown>>(request: Request): P
   }
 }
 
-/** Maps `APIError`s (ours and Payload's) to JSON; anything else becomes a 500. */
-export function errorResponse(error: unknown): Response {
+/**
+ * Maps `APIError`s (ours and Payload's) to JSON, with `apiError(…)` messages in the request
+ * locale; anything else becomes a 500.
+ */
+export function errorResponse(error: unknown, request: Request): Response {
   if (error instanceof APIError) {
     const data = (error as APIError & { data?: unknown }).data
-    return jsonError(error.message, error.status ?? 500, data)
+    return jsonError(errorMessageFor(request, error, 'unexpected'), error.status ?? 500, data)
   }
-  const message = error instanceof Error ? error.message : 'Unexpected error'
-  return jsonError(message, 500)
+  return jsonError(errorMessageFor(request, error, 'unexpected'), 500)
 }

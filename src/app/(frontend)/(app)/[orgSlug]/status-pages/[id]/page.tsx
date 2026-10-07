@@ -64,6 +64,7 @@ export default async function StatusPageEditorPage({
   const monitorOptions: MonitorOption[] = monitors.map((m) => ({
     id: m.id,
     name: m.name,
+    publicName: m.publicName ?? null,
     type: m.type,
     active: m.active,
     url: m.url,

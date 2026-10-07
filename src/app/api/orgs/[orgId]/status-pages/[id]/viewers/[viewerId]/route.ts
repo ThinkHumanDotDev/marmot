@@ -8,6 +8,7 @@ import {
   readJson,
   type Authenticated,
 } from '@/server/status-pages/http'
+import { errorText } from '@/server/request-locale'
 
 import type { StatusPageViewer } from '@/payload-types'
 
@@ -49,12 +50,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   const body = await readJson(request)
   const status = body?.status
   if (!STATUS_PAGE_VIEWER_STATUSES.includes(status as StatusPageViewer['status'])) {
-    return jsonError('status must be "active" or "revoked"', 400)
+    return jsonError(errorText(request, 'statusPageViewerStatusInvalid'), 400)
   }
 
   try {
     const viewer = await loadViewer(auth.ctx, orgId, id, viewerId)
-    if (!viewer) return jsonError('Visitor not found', 404)
+    if (!viewer) return jsonError(errorText(request, 'statusPageViewerNotFound'), 404)
 
     const doc = await payload.update({
       collection: 'status-page-viewers',
@@ -66,7 +67,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     })
     return Response.json({ doc })
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }
 
@@ -79,7 +80,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 
   try {
     const viewer = await loadViewer(auth.ctx, orgId, id, viewerId)
-    if (!viewer) return jsonError('Visitor not found', 404)
+    if (!viewer) return jsonError(errorText(request, 'statusPageViewerNotFound'), 404)
 
     await payload.delete({
       collection: 'status-page-viewers',
@@ -89,6 +90,6 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     })
     return Response.json({ ok: true })
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }

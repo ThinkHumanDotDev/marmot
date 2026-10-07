@@ -1,5 +1,8 @@
 import type { z } from 'zod'
 
+import type { Locale } from '@/i18n/locales'
+import { serverTranslator } from '@/server/i18n'
+
 import type {
   NotificationFieldMeta,
   NotificationProvider,
@@ -126,5 +129,51 @@ export function describeProvider(provider: NotificationProvider): NotificationPr
     group: provider.group,
     ...(provider.docsUrl ? { docsUrl: provider.docsUrl } : {}),
     fields,
+  }
+}
+
+/**
+ * `descriptor` with its user-facing text (provider label, field labels, descriptions, prose
+ * placeholders and option labels) from `notifications.providers.<name>` in `locale`. Text without
+ * a catalogue entry (technical placeholders such as URLs) is kept as declared by the provider.
+ */
+export function localizeDescriptor(
+  descriptor: NotificationProviderDescriptor,
+  locale: Locale,
+): NotificationProviderDescriptor {
+  // Keys are built at runtime from provider and field names, so they cannot be type-checked here;
+  // `notification-providers.test.ts` checks that the English catalogue covers every provider.
+  const t = serverTranslator(locale) as unknown as {
+    (key: string): string
+    has(key: string): boolean
+  }
+  const text = (key: string, fallback: string) => (t.has(key) ? t(key) : fallback)
+  const base = `notifications.providers.${descriptor.name}`
+  return {
+    ...descriptor,
+    label: text(`${base}.label`, descriptor.label),
+    fields: descriptor.fields.map((field) => {
+      const key = `${base}.fields.${field.name}`
+      return {
+        ...field,
+        label: text(`${key}.label`, field.label),
+        ...(field.description
+          ? { description: text(`${key}.description`, field.description) }
+          : {}),
+        ...(field.placeholder
+          ? { placeholder: text(`${key}.placeholder`, field.placeholder) }
+          : {}),
+        ...(field.options
+          ? {
+              options: Object.fromEntries(
+                Object.entries(field.options).map(([value, label]) => [
+                  value,
+                  text(`${key}.options.${value}`, label),
+                ]),
+              ),
+            }
+          : {}),
+      }
+    }),
   }
 }

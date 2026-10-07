@@ -7,6 +7,7 @@ import {
 import { hashPassword } from '@/server/security/password-hash'
 
 import type { StatusPage } from '@/payload-types'
+import { userErrorText } from '@/server/request-locale'
 
 type PageData = Partial<StatusPage> & { password?: unknown }
 
@@ -31,6 +32,7 @@ const invalid = (message: string): never => {
 export const applyAccessPassword: CollectionBeforeChangeHook<StatusPage> = async ({
   data,
   originalDoc,
+  req,
 }) => {
   const page = data as PageData
   const plain = page.password
@@ -44,17 +46,21 @@ export const applyAccessPassword: CollectionBeforeChangeHook<StatusPage> = async
 
   if (typeof plain === 'string' && plain.length > 0) {
     if (plain.length < STATUS_PAGE_PASSWORD_MIN_LENGTH) {
-      invalid(`The password must be at least ${STATUS_PAGE_PASSWORD_MIN_LENGTH} characters.`)
+      invalid(
+        userErrorText(req, 'statusPagePasswordTooShort', { min: STATUS_PAGE_PASSWORD_MIN_LENGTH }),
+      )
     }
     if (plain.length > STATUS_PAGE_PASSWORD_MAX_LENGTH) {
-      invalid(`The password must be at most ${STATUS_PAGE_PASSWORD_MAX_LENGTH} characters.`)
+      invalid(
+        userErrorText(req, 'statusPagePasswordTooLong', { max: STATUS_PAGE_PASSWORD_MAX_LENGTH }),
+      )
     }
     page.passwordHash = await hashPassword(plain)
     return data
   }
 
   const stored = page.passwordHash ?? originalDoc?.passwordHash
-  if (!stored) invalid('Set a password to protect this page.')
+  if (!stored) invalid(userErrorText(req, 'statusPagePasswordRequired'))
   page.passwordHash = stored
   return data
 }

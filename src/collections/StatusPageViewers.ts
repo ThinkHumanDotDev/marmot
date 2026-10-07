@@ -1,7 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 
 export const STATUS_PAGE_VIEWER_STATUSES = ['active', 'revoked'] as const
 export type StatusPageViewerStatus = (typeof STATUS_PAGE_VIEWER_STATUSES)[number]
@@ -21,7 +21,7 @@ export const StatusPageViewers: CollectionConfig = {
   slug: 'status-page-viewers',
   admin: {
     useAsTitle: 'email',
-    group: 'Status pages',
+    group: adminGroup('statusPages'),
     defaultColumns: ['email', 'page', 'status', 'lastSeenAt'],
   },
   access: {

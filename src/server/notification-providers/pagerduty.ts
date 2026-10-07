@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { extractAddress, OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -48,20 +49,21 @@ registerNotificationProvider({
   docsUrl: 'https://developer.pagerduty.com/docs/events-api-v2-overview',
   configSchema: pagerdutyConfigSchema,
   fieldMeta: pagerdutyFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = pagerdutyConfigSchema.parse(raw)
+    const p = providerText(locale)
 
-    let title = 'Marmot Alert'
+    let title = p('alert')
     let body = message
     let eventAction: 'trigger' | 'acknowledge' | 'resolve' = 'trigger'
     if (heartbeat && monitor) {
       body = heartbeat.msg || message
       if (heartbeat.status === 'up') {
         if (config.autoResolve === 'none') return 'no action required'
-        title = 'Marmot Monitor ✅ Up'
+        title = p('monitorUpIcon')
         eventAction = config.autoResolve
       } else if (heartbeat.status === 'down') {
-        title = 'Marmot Monitor 🔴 Down'
+        title = p('monitorDownIcon')
       } else {
         return 'no action required'
       }

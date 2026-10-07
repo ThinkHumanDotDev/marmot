@@ -9,6 +9,7 @@ import {
   parseId,
   payloadError,
 } from '@/server/monitors/http'
+import { errorText } from '@/server/request-locale'
 
 type RouteContext = { params: Promise<{ orgId: string; id: string }> }
 
@@ -26,7 +27,7 @@ export function setActiveHandler(active: boolean) {
     if (forbidden) return forbidden
 
     const monitor = await loadOrgMonitor(payload, auth.user, orgId, id)
-    if (!monitor) return jsonError(404, 'Monitor not found')
+    if (!monitor) return jsonError(404, errorText(request, 'monitorNotFound'))
 
     try {
       const doc = await payload.update({
@@ -39,7 +40,7 @@ export function setActiveHandler(active: boolean) {
       })
       return Response.json(doc)
     } catch (error) {
-      return payloadError(error)
+      return payloadError(error, request)
     }
   }
 }

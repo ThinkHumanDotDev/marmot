@@ -9,6 +9,7 @@ import {
 } from '@/server/status-pages/access'
 import { findPublishedStatusPage, toPublicConfig } from '@/server/status-pages/public'
 import { statusPagePath } from '@/server/status-pages/urls'
+import { requestLocale } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,10 +26,12 @@ export async function GET(request: Request, { params }: RouteContext) {
   if (!page) return Response.json({ error: 'Not found' }, { status: 404 })
 
   const access = await checkStatusPageAccess(payload, page, accessRequestFrom(request))
-  if (!access.allowed) return accessDeniedResponse(access)
+  if (!access.allowed) return accessDeniedResponse(access, 'json', requestLocale(request))
 
-  const { logo, title, description } = toPublicConfig(page)
-  const logoDoc = page.logo && typeof page.logo === 'object' ? page.logo : null
+  const { title, description } = toPublicConfig(page)
+  const media = [page.logo, page.favicon].flatMap((doc) =>
+    doc && typeof doc === 'object' && doc.url ? [doc] : [],
+  )
 
   return Response.json(
     {
@@ -39,16 +42,12 @@ export async function GET(request: Request, { params }: RouteContext) {
       display: 'standalone',
       background_color: '#f7f5f1',
       theme_color: '#f7f5f1',
-      icons: logo
-        ? [
-            {
-              src: logo,
-              sizes:
-                logoDoc?.width && logoDoc?.height ? `${logoDoc.width}x${logoDoc.height}` : 'any',
-              type: logoDoc?.mimeType ?? undefined,
-            },
-          ]
-        : [],
+      // The logo, then the favicon (when set).
+      icons: media.map((doc) => ({
+        src: doc.url,
+        sizes: doc.width && doc.height ? `${doc.width}x${doc.height}` : 'any',
+        type: doc.mimeType ?? undefined,
+      })),
     },
     {
       headers: {

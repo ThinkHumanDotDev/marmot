@@ -221,14 +221,14 @@ describe('restricted status pages (email domain, IP allow-list)', () => {
           collection: 'status-pages',
           data: { ...base, access: 'ip-allowlist', allowedIpRanges: [{ cidr: '10.0.0.0/33' }] },
         }),
-        /invalid prefix length/,
+        /not an IP address or CIDR range/,
       )
       await expectValidationError(
         payload.create({
           collection: 'status-pages',
           data: { ...base, access: 'ip-allowlist', allowedIpRanges: [{ cidr: 'office' }] },
         }),
-        /not an IP address/,
+        /"office" is not an IP address/,
       )
       await expectValidationError(
         payload.create({ collection: 'status-pages', data: { ...base, access: 'ip-allowlist' } }),

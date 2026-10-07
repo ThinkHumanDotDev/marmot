@@ -2,6 +2,7 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
+import { errorText, requestLocale, slugMessageIn } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
   const raw = new URL(request.url).searchParams.get('slug') ?? ''
   const slug = raw.trim().toLowerCase()
 
-  const valid = validateOrganizationSlug(slug)
+  const valid = validateOrganizationSlug(slug, slugMessageIn(requestLocale(request)))
   if (valid !== true) return Response.json({ available: false, slug, reason: valid })
 
   const payload = await getPayload({ config })
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
   })
   return Response.json(
     totalDocs > 0
-      ? { available: false, slug, reason: 'This slug is already taken.' }
+      ? { available: false, slug, reason: errorText(request, 'slugTaken') }
       : { available: true, slug },
   )
 }

@@ -4,6 +4,7 @@ import {
   jsonError,
   loadOrgStatusPage,
 } from '@/server/status-pages/http'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +22,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   try {
     const page = await loadOrgStatusPage(auth.ctx, orgId, id, 0)
-    if (!page) return jsonError('Status page not found', 404)
+    if (!page) return jsonError(errorText(request, 'statusPageNotFound'), 404)
 
     const result = await payload.find({
       collection: 'status-page-viewers',
@@ -34,6 +35,6 @@ export async function GET(request: Request, { params }: RouteContext) {
     })
     return Response.json(result)
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }

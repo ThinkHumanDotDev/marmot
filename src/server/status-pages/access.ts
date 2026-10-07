@@ -37,6 +37,8 @@ import { ipAllowListFor } from '@/server/status-pages/ip-allowlist'
 import { isEmailAllowed, touchViewer } from '@/server/status-pages/magic-link'
 
 import type { StatusPage } from '@/payload-types'
+import { defaultLocale, type Locale } from '@/i18n/locales'
+import { translateError, type ErrorKey } from '@/server/errors'
 
 /** The fields of a page the access check reads (load the page with `overrideAccess: true`). */
 export type AccessPage = Pick<
@@ -393,11 +395,11 @@ export const protectedHeaders = (): Record<string, string> => ({
   'X-Robots-Tag': 'noindex, nofollow',
 })
 
-const DENIAL_MESSAGES: Record<AccessDenial, string> = {
-  'login-required': 'This status page is restricted. Sign in to view it.',
-  'invalid-password': 'The password is not correct.',
-  'rate-limited': 'Too many attempts. Please try again later.',
-  'ip-not-allowed': 'This status page is not available from your network.',
+const DENIAL_MESSAGES: Record<AccessDenial, ErrorKey> = {
+  'login-required': 'statusPageProtected',
+  'invalid-password': 'statusPagePasswordIncorrect',
+  'rate-limited': 'tooManyAttempts',
+  'ip-not-allowed': 'statusPageIpNotAllowed',
 }
 
 const DENIAL_STATUS: Record<AccessDenial, number> = {
@@ -414,11 +416,12 @@ const DENIAL_STATUS: Record<AccessDenial, number> = {
 export function accessDeniedResponse(
   decision: Extract<StatusPageAccessDecision, { allowed: false }>,
   format: 'json' | 'text' = 'json',
+  locale: Locale = defaultLocale,
 ): Response {
   const status = DENIAL_STATUS[decision.reason]
   const headers: Record<string, string> = { ...protectedHeaders() }
   if (decision.retryAfterSeconds) headers['Retry-After'] = String(decision.retryAfterSeconds)
-  const message = DENIAL_MESSAGES[decision.reason]
+  const message = translateError(locale, DENIAL_MESSAGES[decision.reason])
   if (format === 'text') {
     return new Response(message, {
       status,

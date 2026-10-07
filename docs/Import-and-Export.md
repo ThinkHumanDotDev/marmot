@@ -154,7 +154,14 @@ not contain. The "default enabled" flag is kept; "apply to all existing monitors
       "published": true,
       "domains": ["status.example.com"],
       "groups": [
-        { "name": "Core", "monitors": [{ "monitor": 12, "sendUrl": false, "customUrl": null }] }
+        {
+          "name": "Core",
+          "defaultOpen": true,
+          "monitors": [
+            { "type": "monitor", "monitor": 12, "name": null, "sendUrl": false, "customUrl": null },
+            { "type": "static", "monitor": null, "name": "Customer support", "description": null }
+          ]
+        }
       ],
       "incidents": [
         {
@@ -167,14 +174,16 @@ not contain. The "default enabled" flag is kept; "apply to all existing monitors
           "createdAt": "..."
         }
       ],
-      "...": "theme, description, footerText, customCSS, autoRefreshInterval, show* flags, googleAnalyticsId"
+      "...": "theme, description, homepageUrl, contactUrl, footerText, customCSS, autoRefreshInterval, show* flags (incl. showValues), googleAnalyticsId"
     }
   ]
 }
 ```
 
 Ids are the exporting instance's document ids and only serve to link documents inside the file; the
-importer remaps them. Heartbeats, statistics, maintenance windows, members and organization settings are not part of the export.
+importer remaps them. Status page components keep their type, public name, description and
+`showValues`; incident impacts on components (`affectedComponents`) are not exported because component ids
+are regenerated on import. Heartbeats, statistics, maintenance windows, members and organization settings are not part of the export.
 Logos (media uploads) are not exported. Tags, proxies and Docker hosts are not exported either: a monitor's
 `tags`, `proxy` and `dockerHost` fields hold ids of the exporting organization, so the importer drops tag and
 proxy assignments (noted in the report) and skips `docker` monitors with a reason.

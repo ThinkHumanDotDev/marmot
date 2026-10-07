@@ -13,6 +13,7 @@ import {
 import { consumeMagicLink, requestMagicLink } from '@/server/status-pages/magic-link'
 import { findPublishedStatusPage } from '@/server/status-pages/public'
 import { requestHostname, statusPageBasePath } from '@/server/status-pages/urls'
+import { errorText, requestLocale } from '@/server/request-locale'
 
 import type { StatusPage } from '@/payload-types'
 
@@ -94,7 +95,9 @@ async function passwordLogin(ctx: Ctx) {
     : { ok: false, reason: 'invalid-password' }
 
   if (!attempt.ok) {
-    if (!body.form) return accessDeniedResponse({ allowed: false, ...attempt })
+    if (!body.form) {
+      return accessDeniedResponse({ allowed: false, ...attempt }, 'json', requestLocale(request))
+    }
     const error = attempt.reason === 'rate-limited' ? 'rate-limited' : 'invalid'
     return redirect(`${base}/login?error=${error}`, retryHeaders(attempt.retryAfterSeconds))
   }
@@ -111,7 +114,7 @@ async function emailDomainLogin(ctx: Ctx) {
     if (result.ok) return grant(ctx, result.viewer.id)
     if (body.form) return redirect(`${base}/login?error=link-invalid`)
     return Response.json(
-      { error: 'This sign-in link is invalid, expired or already used.', code: 'link-invalid' },
+      { error: errorText(request, 'statusPageLinkInvalid'), code: 'link-invalid' },
       { status: 400, headers: protectedHeaders() },
     )
   }
@@ -121,17 +124,21 @@ async function emailDomainLogin(ctx: Ctx) {
   if (!result.ok) {
     if (result.reason === 'rate-limited') {
       if (!body.form) {
-        return accessDeniedResponse({
-          allowed: false,
-          reason: 'rate-limited',
-          retryAfterSeconds: result.retryAfterSeconds,
-        })
+        return accessDeniedResponse(
+          {
+            allowed: false,
+            reason: 'rate-limited',
+            retryAfterSeconds: result.retryAfterSeconds,
+          },
+          'json',
+          requestLocale(request),
+        )
       }
       return redirect(`${base}/login?error=rate-limited`, retryHeaders(result.retryAfterSeconds))
     }
     if (body.form) return redirect(`${base}/login?error=invalid-email`)
     return Response.json(
-      { error: 'Enter a valid email address.', code: 'invalid-email' },
+      { error: errorText(request, 'invalidEmailAddress'), code: 'invalid-email' },
       { status: 400, headers: protectedHeaders() },
     )
   }
@@ -159,7 +166,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { slug } = await params
   if (crossSite(request)) {
     return Response.json(
-      { error: 'Cross-site request refused' },
+      { error: errorText(request, 'crossSiteRefused') },
       { status: 403, headers: protectedHeaders() },
     )
   }
@@ -170,7 +177,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if (!page) {
     return Response.json(
-      { error: 'Status page not found' },
+      { error: errorText(request, 'statusPageNotFound') },
       { status: 404, headers: protectedHeaders() },
     )
   }

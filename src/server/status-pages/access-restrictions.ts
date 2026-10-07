@@ -6,6 +6,8 @@ import {
   STATUS_PAGE_MAX_EMAIL_DOMAINS,
   STATUS_PAGE_MAX_IP_RANGES,
 } from '@/lib/status-page-access'
+import type { ErrorKey, ErrorValues } from '@/server/errors'
+import { userErrorText } from '@/server/request-locale'
 import { normalizeCidr } from '@/server/status-pages/ip-allowlist'
 
 import type { StatusPage } from '@/payload-types'
@@ -13,19 +15,24 @@ import type { StatusPage } from '@/payload-types'
 type DomainRow = NonNullable<StatusPage['allowedEmailDomains']>[number]
 type RangeRow = NonNullable<StatusPage['allowedIpRanges']>[number]
 
-const invalid = (path: string, message: string): never => {
-  throw new ValidationError({ collection: 'status-pages', errors: [{ message, path }] })
+type Req = { user?: unknown } | null | undefined
+
+const invalid = (req: Req, path: string, key: ErrorKey, values?: ErrorValues): never => {
+  throw new ValidationError({
+    collection: 'status-pages',
+    errors: [{ message: userErrorText(req, key, values), path }],
+  })
 }
 
 /** Lower-case, `@`-less, de-duplicated domains; throws on anything that is not a domain name. */
-export function normalizeDomainRows(rows: readonly DomainRow[]): DomainRow[] {
+export function normalizeDomainRows(rows: readonly DomainRow[], req?: Req): DomainRow[] {
   const seen = new Set<string>()
   const out: DomainRow[] = []
   for (const row of rows) {
     const domain = normalizeEmailDomain(String(row?.domain ?? ''))
     if (!domain) continue
     if (!isValidEmailDomain(domain)) {
-      invalid('allowedEmailDomains', `"${domain}" is not a domain name such as example.com.`)
+      invalid(req, 'allowedEmailDomains', 'statusPageEmailDomainInvalid', { domain })
     }
     if (seen.has(domain)) continue
     seen.add(domain)
@@ -35,7 +42,7 @@ export function normalizeDomainRows(rows: readonly DomainRow[]): DomainRow[] {
 }
 
 /** Canonical, de-duplicated CIDRs; throws on the first entry that is not an IP or a CIDR range. */
-export function normalizeRangeRows(rows: readonly RangeRow[]): RangeRow[] {
+export function normalizeRangeRows(rows: readonly RangeRow[], req?: Req): RangeRow[] {
   const seen = new Set<string>()
   const out: RangeRow[] = []
   for (const row of rows) {
@@ -44,11 +51,8 @@ export function normalizeRangeRows(rows: readonly RangeRow[]): RangeRow[] {
     let cidr: string
     try {
       cidr = normalizeCidr(raw)
-    } catch (error) {
-      return invalid(
-        'allowedIpRanges',
-        error instanceof Error ? error.message : `"${raw}" is not a CIDR range.`,
-      )
+    } catch {
+      return invalid(req, 'allowedIpRanges', 'statusPageIpRangeInvalid', { entry: raw })
     }
     if (seen.has(cidr)) continue
     seen.add(cidr)
@@ -67,32 +71,37 @@ export function normalizeRangeRows(rows: readonly RangeRow[]): RangeRow[] {
 export const applyAccessRestrictions: CollectionBeforeChangeHook<StatusPage> = ({
   data,
   originalDoc,
+  req,
 }) => {
   const access = data.access ?? originalDoc?.access ?? 'public'
 
   if (Array.isArray(data.allowedEmailDomains)) {
-    data.allowedEmailDomains = normalizeDomainRows(data.allowedEmailDomains)
+    data.allowedEmailDomains = normalizeDomainRows(data.allowedEmailDomains, req)
     if (data.allowedEmailDomains.length > STATUS_PAGE_MAX_EMAIL_DOMAINS) {
-      invalid('allowedEmailDomains', `List at most ${STATUS_PAGE_MAX_EMAIL_DOMAINS} email domains.`)
+      invalid(req, 'allowedEmailDomains', 'statusPageEmailDomainsTooMany', {
+        max: STATUS_PAGE_MAX_EMAIL_DOMAINS,
+      })
     }
   }
   if (Array.isArray(data.allowedIpRanges)) {
-    data.allowedIpRanges = normalizeRangeRows(data.allowedIpRanges)
+    data.allowedIpRanges = normalizeRangeRows(data.allowedIpRanges, req)
     if (data.allowedIpRanges.length > STATUS_PAGE_MAX_IP_RANGES) {
-      invalid('allowedIpRanges', `List at most ${STATUS_PAGE_MAX_IP_RANGES} IP ranges.`)
+      invalid(req, 'allowedIpRanges', 'statusPageIpRangesTooMany', {
+        max: STATUS_PAGE_MAX_IP_RANGES,
+      })
     }
   }
 
   if (access === 'email-domain') {
     const domains = data.allowedEmailDomains ?? originalDoc?.allowedEmailDomains ?? []
     if (domains.length === 0) {
-      invalid('allowedEmailDomains', 'Add at least one email domain to restrict this page.')
+      invalid(req, 'allowedEmailDomains', 'statusPageEmailDomainsRequired')
     }
   }
   if (access === 'ip-allowlist') {
     const ranges = data.allowedIpRanges ?? originalDoc?.allowedIpRanges ?? []
     if (ranges.length === 0) {
-      invalid('allowedIpRanges', 'Add at least one IP range to restrict this page.')
+      invalid(req, 'allowedIpRanges', 'statusPageIpRangesRequired')
     }
   }
   return data

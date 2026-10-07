@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson, trimSlash } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -48,8 +49,9 @@ registerNotificationProvider({
   docsUrl: 'https://docs.ntfy.sh/publish/',
   configSchema: ntfyConfigSchema,
   fieldMeta: ntfyFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = ntfyConfigSchema.parse(raw)
+    const p = providerText(locale)
     const headers: Record<string, string> = {}
     if (config.authMethod === 'usernamePassword') {
       headers.Authorization = `Basic ${Buffer.from(`${config.username ?? ''}:${config.password ?? ''}`).toString('base64')}`
@@ -78,22 +80,24 @@ registerNotificationProvider({
     let priority = config.priority
     if (heartbeat.status === 'down') {
       tags = ['red_circle']
-      status = 'Down'
+      status = 'down'
       priority = config.priorityDown ?? (priority === 5 ? priority : priority + 1)
     } else if (heartbeat.status === 'up') {
       tags = ['green_circle']
-      status = 'Up'
+      status = 'up'
     }
 
     const data: Record<string, unknown> = {
       topic: config.topic,
       message: heartbeat.msg || message,
       priority,
-      title: `${monitor.name} ${status} [Marmot]`,
+      title: `${monitor.name} ${p('statusWord', { status })} [Marmot]`,
       tags,
     }
     if (monitor.url && monitor.url !== 'https://') {
-      data.actions = [{ action: 'view', label: `Open ${monitor.name}`, url: monitor.url }]
+      data.actions = [
+        { action: 'view', label: p('openMonitor', { name: monitor.name }), url: monitor.url },
+      ]
     }
     if (config.icon) data.icon = config.icon
 
