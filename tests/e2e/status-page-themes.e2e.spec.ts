@@ -1,3 +1,5 @@
+import type { Locator } from '@playwright/test'
+
 import { expect, runId, SETUP_ORG, test, type DocId } from './fixtures'
 
 /**
@@ -9,7 +11,9 @@ const run = runId()
 const slug = `e2e-theme-${run}`
 let pageId: DocId | undefined
 
-const cssVar = (name: string) => (el: Element) => getComputedStyle(el).getPropertyValue(name).trim()
+/** Computed value of a CSS custom property (the inline arrow function is serialised into the page). */
+const cssVar = (locator: Locator, name: string) =>
+  locator.evaluate((el, n) => getComputedStyle(el).getPropertyValue(n).trim(), name)
 
 test.describe('Status page themes', () => {
   test.beforeAll(async ({ adminApi }) => {
@@ -46,9 +50,9 @@ test.describe('Status page themes', () => {
 
     const preview = page.locator('[data-theme-preview="dark"]')
     await expect(preview).toBeVisible()
-    expect(await preview.evaluate(cssVar('--primary'))).toBe('#ff8800')
-    expect(await preview.evaluate(cssVar('--status-down'))).toBe('#ff0000')
-    expect(await preview.evaluate(cssVar('--background'))).toBe('#0b1622')
+    expect(await cssVar(preview, '--primary')).toBe('#ff8800')
+    expect(await cssVar(preview, '--status-down')).toBe('#ff0000')
+    expect(await cssVar(preview, '--background')).toBe('#0b1622')
 
     await page.getByRole('button', { name: 'Save theme' }).click()
     await expect(page.getByText('Theme saved')).toBeVisible()
@@ -57,14 +61,14 @@ test.describe('Status page themes', () => {
     await anonymousPage.goto(`/status/${slug}`)
     const html = anonymousPage.locator('html')
     await expect(html).toHaveClass(/\bdark\b/)
-    expect(await html.evaluate(cssVar('--primary'))).toBe('#ff8800')
-    expect(await html.evaluate(cssVar('--status-down'))).toBe('#ff0000')
+    expect(await cssVar(html, '--primary')).toBe('#ff8800')
+    expect(await cssVar(html, '--status-down')).toBe('#ff0000')
 
     // Light mode keeps the preset's colours; the visitor toggle switches modes and is remembered.
     await anonymousPage.emulateMedia({ colorScheme: 'light' })
     await anonymousPage.reload()
     await expect(html).not.toHaveClass(/\bdark\b/)
-    expect(await html.evaluate(cssVar('--primary'))).toBe('#0b5cad')
+    expect(await cssVar(html, '--primary')).toBe('#0b5cad')
 
     const toggle = anonymousPage.getByRole('group', { name: 'Colour theme' })
     await toggle.getByRole('button', { name: 'Dark' }).click()
