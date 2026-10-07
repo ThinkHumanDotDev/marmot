@@ -8,9 +8,12 @@
  * - listener registry for stats / realtime / notifications — `hooks.ts`
  * - resync of all schedulers on worker boot — `scheduler.ts` (`resyncAll`)
  * - on-demand checks ("Check now", ad-hoc tests) through the same worker — `on-demand.ts`
+ * - self connectivity check that holds checks while the worker is offline — `connectivity.ts`
+ *   (worker wiring in `connectivity-runtime.ts`, shared status in `connectivity-state.ts`)
  */
 export * from './names'
 export * from './beat'
+export * from './connectivity'
 export * from './hooks'
 export * from './queues'
 export * from './scheduler'

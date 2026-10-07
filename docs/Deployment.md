@@ -198,7 +198,8 @@ docker run -d --name marmot-realtime -e MARMOT_ROLE=realtime -p 3001:3001 ... gh
 
 - The image runs as the unprivileged user `marmot` (uid 1001) under `tini`; `SIGTERM` shuts every role
   down cleanly (the worker finishes in-flight checks, up to 30 s).
-- Health: `web` answers `GET /api/health` (checks the database), `realtime` answers `GET /healthz`. The
+- Health: `web` answers `GET /api/health` (checks the database; its `checker` field reports the workers'
+  [self connectivity check](Configuration.md#self-connectivity-check)), `realtime` answers `GET /healthz`. The
   image's `HEALTHCHECK` calls `/app/entrypoint.sh healthcheck`, which picks the right probe for the role.
 - `docker run --rm ... ghcr.io/thinkhumandotdev/marmot migrate` runs migrations and exits. Set
   `SKIP_MIGRATIONS=true` on `web` when you run them yourself (CI/CD step, init container).

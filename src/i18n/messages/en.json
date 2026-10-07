@@ -146,6 +146,12 @@
       "checkingMonitor": "Checking “{name}”…",
       "checkResult": "“{name}” is {status, select, up {up} down {down} pending {pending} maintenance {under maintenance} degraded {degraded} other {unknown}}: {msg}",
       "checkFailed": "Could not run the check"
+    },
+    "checkerOffline": {
+      "title": "Checker offline",
+      "since": "Marmot lost its own internet connectivity at {time}.",
+      "now": "Marmot lost its own internet connectivity.",
+      "description": "Checks of external targets are paused and do not count as downtime; they resume automatically when connectivity returns."
     }
   },
   "dashboard": {
@@ -4711,6 +4717,13 @@
         "intro": "This address already receives updates from <strong>{siteName}</strong>. You can change the components you follow or unsubscribe at any time.",
         "ignore": "If you did not ask for this email, you can ignore it."
       }
+    },
+    "checker": {
+      "offlineSubject": "Marmot checker offline",
+      "offlineText": "The Marmot worker lost its own internet connectivity at {time}{location, select, default {} other { (location {location})}}. Checks of external targets are paused and recorded as \"checker offline\": they send no notifications and do not count as downtime. Monitors of private or local addresses keep running. You will get another message when connectivity returns.",
+      "results": "Probe results: {results}",
+      "onlineSubject": "Marmot checker back online",
+      "onlineText": "The Marmot worker is back online since {time}{location, select, default {} other { (location {location})}} after {minutes, plural, one {# minute} other {# minutes}} offline. Held monitors are being checked again."
     }
   },
   "errors": {

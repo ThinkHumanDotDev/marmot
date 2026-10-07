@@ -21,6 +21,8 @@ import {
   startMaintenanceWorker,
 } from '@/server/maintenance'
 import { registerIncidentListener } from '@/server/incidents/listener'
+import { startConnectivityCheck } from '@/server/engine/connectivity-runtime'
+import { closeCheckerStateStore } from '@/server/engine/connectivity-state'
 import { registerExpiryNotificationListener } from '@/server/jobs/expiry-notifications'
 import { listMonitorTypes } from '@/server/monitor-types'
 import {
@@ -92,6 +94,8 @@ async function main() {
   // In a composed deployment the web container runs migrations while the worker is already
   // booting, so the schema may not exist yet. Wait for it instead of crash-looping.
   await waitForSchema(() => resyncAll(payload))
+  // Self connectivity check (CONNECTIVITY_CHECK_ENABLED): probes before the first check runs.
+  const connectivity = await startConnectivityCheck(payload)
   const checkWorker = startCheckWorker(payload)
   const notificationWorker = startNotificationWorker(payload)
   // Recomputes maintenance statuses every minute (and runs retention jobs on the same queue).
@@ -114,7 +118,9 @@ async function main() {
           notificationWorker.close(),
           maintenanceWorker.close(),
         ])
+        await connectivity?.stop()
         await Promise.all([closeChecksQueue(), closeNotificationsQueue(), closeMaintenanceQueue()])
+        await closeCheckerStateStore()
         await closeEmitter()
         await shutdownServerAnalytics()
         await payload.db.destroy?.()
