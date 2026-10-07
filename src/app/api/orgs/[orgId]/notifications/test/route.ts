@@ -6,7 +6,9 @@ import {
   type NotificationChannelLike,
 } from '@/server/notifications/send'
 import { checkServerSmtpChange, ServerSmtpSendError } from '@/server/notifications/server-smtp'
-import { errorText } from '@/server/request-locale'
+import { serverTranslator } from '@/server/i18n'
+import { OK_MESSAGE } from '@/server/notification-providers/http'
+import { errorText, requestLocale } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -85,7 +87,14 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   try {
     const result = await sendTestNotification(ctx.payload, channel)
-    return Response.json({ ok: true, result })
+    // Providers report success with Kuma's fixed text; show it in the user's language.
+    return Response.json({
+      ok: true,
+      result:
+        result === OK_MESSAGE
+          ? serverTranslator(requestLocale(request))('notifications.messages.sentSuccessfully')
+          : result,
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (error instanceof ServerSmtpSendError && error.reason === 'rate-limited') {

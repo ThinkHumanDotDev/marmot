@@ -6,11 +6,12 @@ import type { Payload } from 'payload'
 
 import { MAX_IMPORT_BYTES, type ImportFormat } from '@/lib/import-export'
 import { authenticate, authorize, jsonError, parseId, payloadError } from '@/server/monitors/http'
+import { errorText, requestLocale } from '@/server/request-locale'
 
 import { applyImportPlan } from './apply'
 import { parseImportFile } from './index'
 import { ImportFormatError } from './types'
-import { errorText } from '@/server/request-locale'
+import { importText } from './text'
 
 const isDryRun = (url: URL): boolean => {
   const value = url.searchParams.get('dryRun')
@@ -43,9 +44,16 @@ export async function handleImportRequest(
   }
 
   try {
-    const plan = parseImportFile(json, format)
+    const locale = requestLocale(request)
+    const plan = parseImportFile(json, format, importText(locale))
     const dryRun = isDryRun(new URL(request.url))
-    const report = await applyImportPlan(payload, { orgId, user: auth.user, plan, dryRun })
+    const report = await applyImportPlan(payload, {
+      orgId,
+      user: auth.user,
+      plan,
+      dryRun,
+      locale,
+    })
     return Response.json(report, { status: dryRun ? 200 : 201 })
   } catch (error) {
     if (error instanceof ImportFormatError) return jsonError(400, error.message)

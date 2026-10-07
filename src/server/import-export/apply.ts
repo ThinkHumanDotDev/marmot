@@ -21,6 +21,10 @@ import type { RequestUser } from '@/server/monitors/http'
 import { checkServerSmtpChange } from '@/server/notifications/server-smtp'
 
 import type { ImportPlan, PlannedMonitor } from './types'
+import { defaultLocale, type Locale } from '@/i18n/locales'
+import { translateError } from '@/server/errors'
+import { slugMessageIn } from '@/server/request-locale'
+import { importText } from './text'
 
 const log = childLogger('import-export')
 
@@ -29,6 +33,8 @@ export interface ApplyImportOptions {
   user: RequestUser
   plan: ImportPlan
   dryRun: boolean
+  /** Language of the report's reasons and warnings (English by default). */
+  locale?: Locale
 }
 
 /** Groups first, then their children, then grandchildren (groups can nest). */
@@ -64,8 +70,9 @@ function uniqueSlug(slug: string, taken: Set<string>): string {
 
 export async function applyImportPlan(
   payload: Payload,
-  { orgId, user, plan, dryRun }: ApplyImportOptions,
+  { orgId, user, plan, dryRun, locale = defaultLocale }: ApplyImportOptions,
 ): Promise<ImportReport> {
+  const t = importText(locale)
   const report: ImportReport = {
     format: plan.format,
     dryRun,
@@ -90,20 +97,14 @@ export async function applyImportPlan(
     skipAll(
       plan.monitors.map((m) => ({ name: m.data.name })),
       report.monitors.skipped,
-      'You may not create monitors in this organization',
+      t('noMonitorPermission'),
     )
     plan = { ...plan, monitors: [] }
   }
   const canNotifications = can(user, orgId, 'notification:create')
   if (!canNotifications && plan.notifications.length > 0) {
-    report.warnings.push(
-      'Notification channels were skipped: creating channels requires the admin role. Monitors are imported without their channel links.',
-    )
-    skipAll(
-      plan.notifications,
-      report.notifications.skipped,
-      'You may not create notification channels in this organization',
-    )
+    report.warnings.push(t('notificationsSkippedRole'))
+    skipAll(plan.notifications, report.notifications.skipped, t('noNotificationPermission'))
     plan = { ...plan, notifications: [] }
   }
   // Channels that would send through the server SMTP settings follow NOTIFICATIONS_SERVER_SMTP;
@@ -119,20 +120,21 @@ export async function applyImportPlan(
           user,
         })
         if (refusal)
-          report.notifications.skipped.push({ name: planned.name, reason: refusal.message })
+          report.notifications.skipped.push({
+            name: planned.name,
+            reason: translateError(locale, refusal.key, refusal.values),
+          })
         return !refusal
       }),
     }
   }
   const canStatusPages = can(user, orgId, 'status-page:create')
   if (!canStatusPages && plan.statusPages.length > 0) {
-    report.warnings.push(
-      'Status pages were skipped: you may not create status pages in this organization.',
-    )
+    report.warnings.push(t('statusPagesSkipped'))
     skipAll(
       plan.statusPages.map((p) => ({ name: p.data.title })),
       report.statusPages.skipped,
-      'You may not create status pages in this organization',
+      t('noStatusPagePermission'),
     )
     plan = { ...plan, statusPages: [] }
   }
@@ -164,7 +166,7 @@ export async function applyImportPlan(
         notificationIds.set(planned.key, existing)
         report.notifications.skipped.push({
           name: planned.name,
-          reason: 'A channel with this name already exists; monitors are linked to it',
+          reason: t('channelExists'),
         })
         return false
       }),
@@ -191,11 +193,11 @@ export async function applyImportPlan(
 
   // Resolve slugs and domains up front so the dry run reports the same outcome as the commit.
   const statusPages = plan.statusPages.flatMap((page) => {
-    const valid = validateOrganizationSlug(page.data.slug)
+    const valid = validateOrganizationSlug(page.data.slug, slugMessageIn(locale))
     if (valid !== true) {
       report.statusPages.skipped.push({
         name: page.data.title,
-        reason: `Invalid slug "${page.data.slug}": ${valid}`,
+        reason: t('invalidSlug', { slug: page.data.slug, reason: valid }),
       })
       return []
     }
@@ -203,14 +205,12 @@ export async function applyImportPlan(
     takenSlugs.add(slug)
     if (slug !== page.data.slug) {
       report.warnings.push(
-        `"${page.data.title}": slug "${page.data.slug}" is already in use; imported as "${slug}"`,
+        t('slugInUse', { title: page.data.title, slug: page.data.slug, imported: slug }),
       )
     }
     const domains = page.domains.filter((hostname) => {
       if (takenHostnames.has(hostname)) {
-        report.warnings.push(
-          `"${page.data.title}": custom domain ${hostname} is already used by another status page and was dropped`,
-        )
+        report.warnings.push(t('domainInUse', { title: page.data.title, hostname }))
         return false
       }
       takenHostnames.add(hostname)
