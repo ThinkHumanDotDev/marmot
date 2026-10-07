@@ -87,6 +87,7 @@ export interface Config {
     'status-pages': StatusPage;
     incidents: Incident;
     maintenance: Maintenance;
+    'maintenance-occurrences': MaintenanceOccurrence;
     'api-keys': ApiKey;
     'audit-logs': AuditLog;
     'payload-kv': PayloadKv;
@@ -116,6 +117,7 @@ export interface Config {
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
     maintenance: MaintenanceSelect<false> | MaintenanceSelect<true>;
+    'maintenance-occurrences': MaintenanceOccurrencesSelect<false> | MaintenanceOccurrencesSelect<true>;
     'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -704,6 +706,7 @@ export interface StatusPage {
   showCertificateExpiry?: boolean | null;
   showPoweredBy?: boolean | null;
   autoRefreshInterval?: number | null;
+  maintenanceVisibilityHours?: number | null;
   footerText?: string | null;
   customCSS?: string | null;
   googleAnalyticsId?: string | null;
@@ -811,8 +814,37 @@ export interface Maintenance {
     | null;
   cron?: string | null;
   duration?: number | null;
+  autoStart?: boolean | null;
+  autoComplete?: boolean | null;
+  reminders?: ('15' | '30' | '60' | '120' | '360' | '720' | '1440' | '2880' | '10080')[] | null;
   monitors?: (number | Monitor)[] | null;
   statusPages?: (number | StatusPage)[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "maintenance-occurrences".
+ */
+export interface MaintenanceOccurrence {
+  id: number;
+  organization: number | Organization;
+  maintenance: number | Maintenance;
+  start: string;
+  end?: string | null;
+  state: 'scheduled' | 'in-progress' | 'verifying' | 'completed' | 'cancelled';
+  startedAt?: string | null;
+  completedAt?: string | null;
+  cancelledAt?: string | null;
+  remindersSent?: ('15' | '30' | '60' | '120' | '360' | '720' | '1440' | '2880' | '10080')[] | null;
+  updates?:
+    | {
+        status: 'scheduled' | 'in-progress' | 'verifying' | 'completed' | 'cancelled';
+        postedAt: string;
+        message?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -960,6 +992,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'maintenance';
         value: number | Maintenance;
+      } | null)
+    | ({
+        relationTo: 'maintenance-occurrences';
+        value: number | MaintenanceOccurrence;
       } | null)
     | ({
         relationTo: 'api-keys';
@@ -1436,6 +1472,7 @@ export interface StatusPagesSelect<T extends boolean = true> {
   showCertificateExpiry?: T;
   showPoweredBy?: T;
   autoRefreshInterval?: T;
+  maintenanceVisibilityHours?: T;
   footerText?: T;
   customCSS?: T;
   googleAnalyticsId?: T;
@@ -1507,8 +1544,36 @@ export interface MaintenanceSelect<T extends boolean = true> {
   daysOfMonth?: T;
   cron?: T;
   duration?: T;
+  autoStart?: T;
+  autoComplete?: T;
+  reminders?: T;
   monitors?: T;
   statusPages?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "maintenance-occurrences_select".
+ */
+export interface MaintenanceOccurrencesSelect<T extends boolean = true> {
+  organization?: T;
+  maintenance?: T;
+  start?: T;
+  end?: T;
+  state?: T;
+  startedAt?: T;
+  completedAt?: T;
+  cancelledAt?: T;
+  remindersSent?: T;
+  updates?:
+    | T
+    | {
+        status?: T;
+        postedAt?: T;
+        message?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }

@@ -1,0 +1,82 @@
+import { getPayload } from 'payload'
+
+import config from '@payload-config'
+import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
+import type { MaintenanceOccurrence } from '@/payload-types'
+import {
+  loadOrgMaintenance,
+  OccurrenceTransitionError,
+  postOccurrenceUpdate,
+  relationId,
+  summarizeMaintenance,
+} from '@/server/maintenance'
+import {
+  authenticate,
+  authorize,
+  jsonError,
+  parseId,
+  payloadError,
+  readJson,
+  validationError,
+} from '@/server/monitors/http'
+
+export const dynamic = 'force-dynamic'
+
+type RouteContext = { params: Promise<{ orgId: string; id: string; occurrenceId: string }> }
+
+/**
+ * POST /api/orgs/:orgId/maintenance/:id/occurrences/:occurrenceId/updates — post an update
+ * `{ status, message }` on an occurrence. The current status adds a note; another allowed status
+ * starts, verifies, completes or cancels it (409 when the transition is not allowed). Answers
+ * `{ occurrence, maintenance }` (201).
+ */
+export async function POST(request: Request, { params }: RouteContext): Promise<Response> {
+  const payload = await getPayload({ config })
+  const { orgId: rawOrgId, id: rawId, occurrenceId: rawOccurrenceId } = await params
+  const orgId = parseId(payload, rawOrgId)
+  const id = parseId(payload, rawId)
+  const occurrenceId = parseId(payload, rawOccurrenceId)
+
+  const auth = await authenticate(payload, request)
+  if (auth.response) return auth.response
+  const forbidden = await authorize(payload, auth.user, orgId, 'maintenance:update')
+  if (forbidden) return forbidden
+
+  const maintenance = await loadOrgMaintenance(payload, auth.user, orgId, id)
+  if (!maintenance) return jsonError(404, 'Maintenance not found')
+
+  let occurrence: MaintenanceOccurrence | null = null
+  try {
+    occurrence = (await payload.findByID({
+      collection: 'maintenance-occurrences',
+      id: occurrenceId,
+      depth: 0,
+      user: auth.user,
+      overrideAccess: false,
+    })) as MaintenanceOccurrence
+  } catch {
+    occurrence = null
+  }
+  if (!occurrence || String(relationId(occurrence.maintenance)) !== String(maintenance.id)) {
+    return jsonError(404, 'Occurrence not found')
+  }
+
+  const parsed = occurrenceUpdateSchema.safeParse(await readJson(request))
+  if (!parsed.success) return validationError(parsed.error)
+
+  try {
+    const result = await postOccurrenceUpdate(payload, maintenance, occurrence, parsed.data)
+    return Response.json(
+      {
+        occurrence: result.occurrence,
+        maintenance: await summarizeMaintenance(payload, result.maintenance),
+      },
+      { status: 201 },
+    )
+  } catch (error) {
+    if (error instanceof OccurrenceTransitionError) {
+      return jsonError(409, error.message, { from: error.from, to: error.to })
+    }
+    return payloadError(error)
+  }
+}

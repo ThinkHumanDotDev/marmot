@@ -21,6 +21,7 @@ import * as migration_20261006_141212_add_auth_provider_values from './20261006_
 import * as migration_20261006_143503_add_sso_connections from './20261006_143503_add_sso_connections';
 import * as migration_20261006_144923_add_enforce_sso from './20261006_144923_add_enforce_sso';
 import * as migration_20261006_212748_add_language_fields from './20261006_212748_add_language_fields';
+import * as migration_20261007_035240_maintenance_announcements from './20261007_035240_maintenance_announcements';
 
 export const migrations = [
   {
@@ -136,6 +137,11 @@ export const migrations = [
   {
     up: migration_20261006_212748_add_language_fields.up,
     down: migration_20261006_212748_add_language_fields.down,
-    name: '20261006_212748_add_language_fields'
+    name: '20261006_212748_add_language_fields',
+  },
+  {
+    up: migration_20261007_035240_maintenance_announcements.up,
+    down: migration_20261007_035240_maintenance_announcements.down,
+    name: '20261007_035240_maintenance_announcements'
   },
 ];

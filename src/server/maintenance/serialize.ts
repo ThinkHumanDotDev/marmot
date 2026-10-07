@@ -13,8 +13,9 @@ import { getOrganizationTimezone } from './timezone'
 export type { MaintenanceWindow }
 
 /**
- * A maintenance as the UI and the realtime `maintenanceList` event see it: ids are strings, the
- * status and the current/next window are computed for "now".
+ * A maintenance as the UI and the realtime `maintenanceList` event see it: ids are strings,
+ * `status` is the persisted effective status (it follows the occurrences, see `occurrences.ts`)
+ * and the current/next planned window are computed for "now".
  */
 export interface MaintenanceSummary {
   id: string
@@ -24,6 +25,12 @@ export interface MaintenanceSummary {
   strategy: MaintenanceStrategy
   active: boolean
   status: MaintenanceStatus
+  /** Start each window automatically at its planned time. */
+  autoStart: boolean
+  /** Complete each window automatically at its planned end. */
+  autoComplete: boolean
+  /** Reminder offsets before the start, in minutes, descending. */
+  reminders: number[]
   dateRange: { start: string | null; end: string | null }
   timeRange: { start: string | null; end: string | null }
   intervalDay: number
@@ -71,7 +78,10 @@ export function toMaintenanceSummary(
     description: doc.description ?? null,
     strategy: doc.strategy,
     active: doc.active !== false,
-    status: timeslots.status,
+    status: doc.status ?? timeslots.status,
+    autoStart: doc.autoStart !== false,
+    autoComplete: doc.autoComplete !== false,
+    reminders: (doc.reminders ?? []).map(Number).sort((a, b) => b - a),
     dateRange: { start: doc.dateRange?.start ?? null, end: doc.dateRange?.end ?? null },
     timeRange: { start: doc.timeRange?.start ?? null, end: doc.timeRange?.end ?? null },
     intervalDay: doc.intervalDay ?? 1,

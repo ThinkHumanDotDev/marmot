@@ -85,6 +85,7 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'showCertificateExpiry',
   'showPoweredBy',
   'autoRefreshInterval',
+  'maintenanceVisibilityHours',
   'footerText',
   'customCSS',
   'googleAnalyticsId',

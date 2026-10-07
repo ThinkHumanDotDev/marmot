@@ -11,6 +11,10 @@ import { orgScoped } from '@/access/org-scoped'
 import { getOrgIdsWithPermission, isSuperadmin, type UserLike } from '@/access/permissions'
 import { adminT } from '@/i18n/admin'
 import { defaultLocale, localeNames, locales } from '@/i18n/locales'
+import {
+  DEFAULT_MAINTENANCE_VISIBILITY_HOURS,
+  MAX_MAINTENANCE_VISIBILITY_HOURS,
+} from '@/lib/maintenance-announcements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 
@@ -248,6 +252,16 @@ export const StatusPages: CollectionConfig = {
       defaultValue: 300,
       min: 0,
       admin: { description: adminT('marmot:statusPages:autoRefreshIntervalDescription') },
+    },
+    {
+      name: 'maintenanceVisibilityHours',
+      type: 'number',
+      defaultValue: DEFAULT_MAINTENANCE_VISIBILITY_HOURS,
+      min: 0,
+      max: MAX_MAINTENANCE_VISIBILITY_HOURS,
+      admin: {
+        description: adminT('marmot:statusPages:maintenanceVisibilityHoursDescription'),
+      },
     },
     { name: 'footerText', type: 'textarea' },
     {

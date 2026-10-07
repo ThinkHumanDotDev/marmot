@@ -35,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { timeZoneOrDefault } from '@/i18n/formats'
+import { REMINDER_OFFSETS, type ReminderOffset } from '@/lib/maintenance-announcements'
 import {
   createMaintenanceFormSchema,
   hasSchedule,
@@ -175,6 +176,42 @@ function NumberInputField({
   )
 }
 
+function SwitchField({
+  control,
+  name,
+  label,
+  description,
+  testId,
+}: {
+  control: FormControlType
+  name: Name
+  label: string
+  description: string
+  testId?: string
+}) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem className="flex flex-row items-start justify-between gap-4 rounded-lg border p-3">
+          <div className="space-y-0.5">
+            <FormLabel>{label}</FormLabel>
+            <FormDescription>{description}</FormDescription>
+          </div>
+          <FormControl>
+            <Switch
+              checked={field.value !== false}
+              onCheckedChange={field.onChange}
+              data-testid={testId}
+            />
+          </FormControl>
+        </FormItem>
+      )}
+    />
+  )
+}
+
 /** Toggle-button group bound to an array field (weekdays, days of month). */
 function ToggleGroupField<T extends string>({
   control,
@@ -267,6 +304,7 @@ export function MaintenanceForm({
   const tHelp = useTranslations('maintenance.strategyHelp')
   const tWeekday = useTranslations('maintenance.weekdays')
   const tLastDay = useTranslations('maintenance.lastDays')
+  const tAnnounce = useTranslations('maintenance.announcements.form')
   const format = useFormatter()
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
@@ -387,6 +425,22 @@ export function MaintenanceForm({
   const lastDayOptions = React.useMemo<{ value: DayOfMonthValue; label: string }[]>(
     () => LAST_DAY_VALUES.map((value) => ({ value, label: tLastDay(value) })),
     [tLastDay],
+  )
+  const reminderOptions = React.useMemo<{ value: ReminderOffset; label: string }[]>(
+    () =>
+      REMINDER_OFFSETS.map((value) => {
+        const minutes = Number(value)
+        const label =
+          minutes < 60
+            ? tAnnounce('reminderMinutes', { value: minutes })
+            : minutes < 1440
+              ? tAnnounce('reminderHours', { value: minutes / 60 })
+              : minutes < 10080
+                ? tAnnounce('reminderDays', { value: minutes / 1440 })
+                : tAnnounce('reminderWeeks', { value: minutes / 10080 })
+        return { value, label }
+      }),
+    [tAnnounce],
   )
   const weekdayOptions = React.useMemo<{ value: WeekdayValue; label: string }[]>(
     () => WEEKDAY_OPTIONS.map(({ value }) => ({ value, label: tWeekday(value) })),
@@ -643,6 +697,40 @@ export function MaintenanceForm({
             )}
           </CardContent>
         </Card>
+
+        {/* Announcements ------------------------------------------------------------------- */}
+        {scheduled && (
+          <Card data-testid="maintenance-announcements">
+            <CardHeader>
+              <CardTitle>{tAnnounce('title')}</CardTitle>
+              <CardDescription>{tAnnounce('description')}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-5">
+              <SwitchField
+                control={control}
+                name="autoStart"
+                label={tAnnounce('autoStart')}
+                description={tAnnounce('autoStartHint')}
+                testId="maintenance-auto-start"
+              />
+              <SwitchField
+                control={control}
+                name="autoComplete"
+                label={tAnnounce('autoComplete')}
+                description={tAnnounce('autoCompleteHint')}
+                testId="maintenance-auto-complete"
+              />
+              <ToggleGroupField<ReminderOffset>
+                control={control}
+                name="reminders"
+                label={tAnnounce('reminders')}
+                description={tAnnounce('remindersHint')}
+                options={reminderOptions}
+                columns="grid-cols-3 sm:grid-cols-5"
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Targets ------------------------------------------------------------------------- */}
         <Card>

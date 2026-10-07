@@ -61,7 +61,8 @@ export const adminTranslations = {
       maintenance: {
         descriptionDescription: 'Shown on status pages.',
         activeDescription: 'Paused maintenances never run.',
-        statusDescription: 'Maintained by the server; recomputed every minute.',
+        statusDescription:
+          'Maintained by the server from the occurrences: under maintenance while one is in progress.',
         dateRangeDescription:
           'Single window: when it runs. Recurring/cron: optional effective range. Wall-clock in the time zone above (YYYY-MM-DDTHH:mm).',
         timeRangeDescription: 'Daily window (HH:mm); an end before the start runs past midnight.',
@@ -75,6 +76,20 @@ export const adminTranslations = {
         statusPagesDescription: 'Status pages that announce this maintenance.',
         timezoneDescription:
           "IANA time zone the schedule is written in, or {{sameAsServer}} for the organization's zone.",
+        autoStartDescription:
+          'Start each window at its planned time. Off: it stays scheduled until someone starts it.',
+        autoCompleteDescription:
+          'Complete each window at its planned end. Off: it stays in progress (and keeps suppressing alerts) until someone completes it.',
+        remindersDescription:
+          'Minutes before the start at which status page subscribers are reminded.',
+      },
+      maintenanceOccurrences: {
+        description:
+          'Concrete windows of maintenances with their state and public update timeline. Managed by the server.',
+        startDescription: 'Planned start of this window.',
+        endDescription: 'Planned end; empty for manual maintenances.',
+        remindersSentDescription: 'Reminder offsets (minutes) already sent or skipped.',
+        updatesDescription: 'Public timeline: one entry per state change or posted update.',
       },
       monitors: {
         statusDescription: 'Maintained by the worker. Mirrors the latest heartbeat.',
@@ -212,6 +227,8 @@ export const adminTranslations = {
         groupsDescription: 'Monitors are shown in these groups, in this order.',
         sendUrlDescription: "Show the monitor's URL to visitors.",
         customUrlDescription: 'Link visitors to this URL instead.',
+        maintenanceVisibilityHoursDescription:
+          'Hours a completed or cancelled maintenance window stays on the page.',
       },
       tags: {
         colorDescription: 'Hex colour of the chip, e.g. #2563EB.',

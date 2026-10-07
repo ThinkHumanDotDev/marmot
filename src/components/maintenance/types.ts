@@ -1,8 +1,9 @@
 import { api } from '@/lib/api'
+import type { OccurrenceState, OccurrenceSummary } from '@/lib/maintenance-announcements'
 import type { MaintenanceFormValues } from '@/lib/validation/maintenance'
 import type { MaintenanceSummary } from '@/server/maintenance/serialize'
 
-export type { MaintenanceSummary }
+export type { MaintenanceSummary, OccurrenceSummary }
 
 export interface MonitorOption {
   id: string
@@ -35,4 +36,17 @@ export const maintenanceApi = {
     api.post<MaintenanceSummary>(`${one(orgId, id)}/resume`),
   remove: (orgId: string | number, id: string) =>
     api.delete<{ id: string; deleted: true }>(one(orgId, id)),
+  occurrences: async (orgId: string | number, id: string) =>
+    (await api.get<{ docs: OccurrenceSummary[] }>(`${one(orgId, id)}/occurrences`)).docs,
+  /** Post an update; another status than the current one starts/verifies/completes/cancels. */
+  postUpdate: (
+    orgId: string | number,
+    id: string,
+    occurrenceId: string,
+    body: { status: OccurrenceState; message?: string },
+  ) =>
+    api.post<{ occurrence: OccurrenceSummary; maintenance: MaintenanceSummary }>(
+      `${one(orgId, id)}/occurrences/${encodeURIComponent(occurrenceId)}/updates`,
+      body,
+    ),
 }

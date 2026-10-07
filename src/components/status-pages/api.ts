@@ -33,6 +33,7 @@ export type StatusPagePatch = Partial<
     | 'showCertificateExpiry'
     | 'showPoweredBy'
     | 'autoRefreshInterval'
+    | 'maintenanceVisibilityHours'
     | 'footerText'
     | 'customCSS'
     | 'googleAnalyticsId'

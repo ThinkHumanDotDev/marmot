@@ -3,6 +3,7 @@ import {
   type CollectionAfterChangeHook,
   type CollectionAfterDeleteHook,
   type CollectionBeforeChangeHook,
+  type CollectionBeforeDeleteHook,
   type CollectionBeforeValidateHook,
   type CollectionConfig,
   type CollectionSlug,
@@ -11,6 +12,7 @@ import {
 } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
+import { DEFAULT_REMINDERS, REMINDER_OFFSETS } from '@/lib/maintenance-announcements'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import {
@@ -171,9 +173,23 @@ async function publishList(doc: MaintenanceDoc, req: PayloadRequest) {
   }
 }
 
+/**
+ * Plan and advance the occurrences right away (same transaction), so the returned document carries
+ * the effective status and a window that is due now is already running; wake-up jobs and events
+ * follow the commit.
+ */
 const afterChange: CollectionAfterChangeHook<MaintenanceDoc> = async ({ doc, req }) => {
-  await publishList(doc, req)
-  return doc
+  if (req.context?.skipMaintenanceHooks) return doc
+  const { syncMaintenance } = await import('@/server/maintenance/occurrences')
+  const result = await syncMaintenance(req.payload, doc, { req, scheduleJobs: 'all' })
+  const synced = { ...doc, status: result.status }
+  await publishList(synced, req)
+  return synced
+}
+
+const beforeDelete: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  const { deleteMaintenanceOccurrences } = await import('@/server/maintenance/occurrences')
+  await deleteMaintenanceOccurrences(req.payload, id, req)
 }
 
 const afterDelete: CollectionAfterDeleteHook<MaintenanceDoc> = async ({ doc, req }) => {
@@ -192,8 +208,10 @@ const dayOfMonthLabel = (value: string): string =>
 /**
  * Maintenance windows (Uptime Kuma feature set). While a window is running, the monitors listed in
  * `monitors` (and the children of listed groups) produce MAINTENANCE heartbeats instead of being
- * checked, and the status pages listed in `statusPages` show a banner. `status` is written by the
- * hooks on save and refreshed every minute by the worker (`src/server/maintenance/job.ts`).
+ * checked, and the status pages listed in `statusPages` announce it. Each concrete window is a
+ * `maintenance-occurrences` document with its own lifecycle and update timeline; `status` is the
+ * effective status (`under-maintenance` exactly while an occurrence is open), written on save and
+ * by the worker (`src/server/maintenance/occurrences.ts`).
  */
 export const Maintenance: CollectionConfig = {
   slug: 'maintenance',
@@ -213,6 +231,7 @@ export const Maintenance: CollectionConfig = {
     beforeValidate: [validateSchedule],
     beforeChange: [prepare],
     afterChange: [afterChange],
+    beforeDelete: [beforeDelete],
     afterDelete: [afterDelete],
   },
   fields: [
@@ -360,6 +379,33 @@ export const Maintenance: CollectionConfig = {
           admin: { description: adminT('marmot:maintenance:durationDescription') },
         },
       ],
+    },
+
+    // ---- Announcements (#154) -------------------------------------------------------------------
+    {
+      type: 'row',
+      fields: [
+        {
+          name: 'autoStart',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: { description: adminT('marmot:maintenance:autoStartDescription') },
+        },
+        {
+          name: 'autoComplete',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: { description: adminT('marmot:maintenance:autoCompleteDescription') },
+        },
+      ],
+    },
+    {
+      name: 'reminders',
+      type: 'select',
+      hasMany: true,
+      defaultValue: DEFAULT_REMINDERS,
+      options: REMINDER_OFFSETS.map((value) => ({ value, label: value })),
+      admin: { description: adminT('marmot:maintenance:remindersDescription') },
     },
 
     // ---- Targets --------------------------------------------------------------------------------
