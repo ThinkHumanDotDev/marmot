@@ -1,6 +1,7 @@
 'use client'
 
 import { CheckCircle2, Pencil, Pin, PinOff, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -47,12 +48,18 @@ export function IncidentsPanel({
   pageId,
   initialIncidents,
   canEdit,
+  timeZone,
 }: {
   orgId: OrgId
   pageId: OrgId
   initialIncidents: Incident[]
   canEdit: boolean
+  /** Organization time zone the timestamps render in. */
+  timeZone: string
 }) {
+  const t = useTranslations('statusPages.incidents')
+  const format = useFormatter()
+  const formatTime = (iso: string) => format.dateTime(new Date(iso), 'short', { timeZone })
   const [incidents, setIncidents] = React.useState(initialIncidents)
   const [editing, setEditing] = React.useState<Incident | 'new' | null>(null)
   const [draft, setDraft] = React.useState<Draft>(emptyDraft)
@@ -94,9 +101,9 @@ export function IncidentsPanel({
           : await statusPagesApi.incidents.update(orgId, pageId, editing.id, data)
       upsert(doc)
       setEditing(null)
-      toast.success(editing === 'new' ? 'Incident posted' : 'Incident updated')
+      toast.success(editing === 'new' ? t('posted') : t('updated'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not save incident')
+      toast.error(error instanceof Error ? error.message : t('saveFailed'))
     } finally {
       setPending(false)
     }
@@ -108,18 +115,18 @@ export function IncidentsPanel({
       upsert(doc)
       toast.success(message)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not update incident')
+      toast.error(error instanceof Error ? error.message : t('updateFailed'))
     }
   }
 
   async function remove(incident: Incident) {
-    if (!window.confirm(`Delete incident "${incident.title}"?`)) return
+    if (!window.confirm(t('confirmDelete', { title: incident.title }))) return
     try {
       await statusPagesApi.incidents.remove(orgId, pageId, incident.id)
       setIncidents((list) => list.filter((i) => String(i.id) !== String(incident.id)))
-      toast.success('Incident deleted')
+      toast.success(t('deleted'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not delete incident')
+      toast.error(error instanceof Error ? error.message : t('deleteFailed'))
     }
   }
 
@@ -135,10 +142,10 @@ export function IncidentsPanel({
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{incident.title}</span>
           <Badge className={cn('text-foreground', styleBadge[incident.style ?? 'info'])}>
-            {incident.style}
+            {t(`styles.${incident.style ?? 'info'}`)}
           </Badge>
-          {incident.pinned && <Badge variant="outline">Pinned</Badge>}
-          {incident.active === false && <Badge variant="secondary">Resolved</Badge>}
+          {incident.pinned && <Badge variant="outline">{t('pinnedBadge')}</Badge>}
+          {incident.active === false && <Badge variant="secondary">{t('resolvedBadge')}</Badge>}
         </div>
         {incident.content && (
           <p className="mt-1 line-clamp-2 text-sm whitespace-pre-line text-muted-foreground">
@@ -146,8 +153,8 @@ export function IncidentsPanel({
           </p>
         )}
         <p className="mt-1 text-xs text-muted-foreground">
-          {new Date(incident.createdAt).toLocaleString()}
-          {incident.resolvedAt && ` · resolved ${new Date(incident.resolvedAt).toLocaleString()}`}
+          {formatTime(incident.createdAt)}
+          {incident.resolvedAt && t('resolvedAt', { time: formatTime(incident.resolvedAt) })}
         </p>
       </div>
       {canEdit && (
@@ -156,7 +163,7 @@ export function IncidentsPanel({
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="Edit"
+            aria-label={t('edit')}
             onClick={() => openEdit(incident)}
           >
             <Pencil />
@@ -166,12 +173,12 @@ export function IncidentsPanel({
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label={incident.pinned ? 'Unpin' : 'Pin'}
+              aria-label={incident.pinned ? t('unpin') : t('pin')}
               onClick={() =>
                 patch(
                   incident,
                   { pinned: !incident.pinned },
-                  incident.pinned ? 'Unpinned' : 'Pinned',
+                  incident.pinned ? t('unpinned') : t('pinned'),
                 )
               }
             >
@@ -183,8 +190,8 @@ export function IncidentsPanel({
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label="Resolve"
-              onClick={() => patch(incident, { active: false }, 'Incident resolved')}
+              aria-label={t('resolve')}
+              onClick={() => patch(incident, { active: false }, t('resolved'))}
             >
               <CheckCircle2 />
             </Button>
@@ -193,8 +200,8 @@ export function IncidentsPanel({
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label="Reopen"
-              onClick={() => patch(incident, { active: true }, 'Incident reopened')}
+              aria-label={t('reopen')}
+              onClick={() => patch(incident, { active: true }, t('reopened'))}
             >
               <RotateCcw />
             </Button>
@@ -203,7 +210,7 @@ export function IncidentsPanel({
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="Delete"
+            aria-label={t('delete')}
             onClick={() => remove(incident)}
           >
             <Trash2 />
@@ -217,19 +224,17 @@ export function IncidentsPanel({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <Label className="text-base">Incidents</Label>
-          <p className="text-sm text-muted-foreground">
-            Announcements shown on the public page and in its RSS feed.
-          </p>
+          <Label className="text-base">{t('title')}</Label>
+          <p className="text-sm text-muted-foreground">{t('description')}</p>
         </div>
         <Button type="button" size="sm" disabled={!canEdit} onClick={openNew}>
-          <Plus /> Post incident
+          <Plus /> {t('post')}
         </Button>
       </div>
 
       {incidents.length === 0 ? (
         <p className="rounded-xl border border-dashed px-5 py-10 text-center text-sm text-muted-foreground">
-          No incidents. Post one when something needs explaining.
+          {t('empty')}
         </p>
       ) : (
         <>
@@ -237,7 +242,7 @@ export function IncidentsPanel({
           {resolved.length > 0 && (
             <div className="flex flex-col gap-2">
               <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                Resolved
+                {t('resolvedHeading')}
               </h3>
               <ul className="flex flex-col gap-2 opacity-80">{resolved.map(renderRow)}</ul>
             </div>
@@ -249,13 +254,13 @@ export function IncidentsPanel({
         <DialogContent>
           <form onSubmit={submit} className="flex flex-col gap-5">
             <DialogHeader>
-              <DialogTitle>{editing === 'new' ? 'Post incident' : 'Edit incident'}</DialogTitle>
-              <DialogDescription>
-                Markdown is supported: paragraphs, **bold**, _italics_, `code`, links and lists.
-              </DialogDescription>
+              <DialogTitle>
+                {editing === 'new' ? t('dialog.postTitle') : t('dialog.editTitle')}
+              </DialogTitle>
+              <DialogDescription>{t('dialog.description')}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-2">
-              <Label htmlFor="incident-title">Title</Label>
+              <Label htmlFor="incident-title">{t('dialog.title')}</Label>
               <Input
                 id="incident-title"
                 value={draft.title}
@@ -265,7 +270,7 @@ export function IncidentsPanel({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="incident-content">Details</Label>
+              <Label htmlFor="incident-content">{t('dialog.details')}</Label>
               <Textarea
                 id="incident-content"
                 rows={5}
@@ -275,7 +280,7 @@ export function IncidentsPanel({
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="incident-style">Style</Label>
+                <Label htmlFor="incident-style">{t('dialog.style')}</Label>
                 <Select
                   value={draft.style ?? 'info'}
                   onValueChange={(v) => setDraft({ ...draft, style: v as Draft['style'] })}
@@ -286,14 +291,14 @@ export function IncidentsPanel({
                   <SelectContent>
                     {INCIDENT_STYLES.map((style) => (
                       <SelectItem key={style} value={style}>
-                        {style}
+                        {t(`styles.${style}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-center justify-between gap-3 self-end py-2">
-                <Label htmlFor="incident-pinned">Pin to top</Label>
+                <Label htmlFor="incident-pinned">{t('dialog.pinToTop')}</Label>
                 <Switch
                   id="incident-pinned"
                   checked={Boolean(draft.pinned)}
@@ -303,10 +308,14 @@ export function IncidentsPanel({
             </div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
-                Cancel
+                {t('dialog.cancel')}
               </Button>
               <Button type="submit" disabled={pending || !draft.title.trim()}>
-                {pending ? 'Saving…' : editing === 'new' ? 'Post' : 'Save'}
+                {pending
+                  ? t('dialog.saving')
+                  : editing === 'new'
+                    ? t('dialog.post')
+                    : t('dialog.save')}
               </Button>
             </DialogFooter>
           </form>

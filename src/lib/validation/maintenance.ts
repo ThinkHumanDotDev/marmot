@@ -128,82 +128,126 @@ const optionalText = z
   .nullish()
   .transform((v) => (v ? v : null))
 
-/** `datetime-local` inputs hand back `''` when cleared; store `null`. */
-const optionalDateTime = z
-  .string()
-  .trim()
-  .nullish()
-  .transform((v) => (v ? v : null))
-  .refine((v) => v === null || isValidDateTime(v), 'Enter a valid date and time')
-
 const relationIdSchema = z.union([z.string().min(1), z.number().int()])
 
-export const maintenanceFormSchema = z
-  .object({
-    title: z.string().trim().min(1, 'Title is required').max(150),
-    description: optionalText,
-    strategy: z.enum(MAINTENANCE_STRATEGIES),
-    active: z.boolean().default(true),
-    dateRange: z
-      .object({ start: optionalDateTime, end: optionalDateTime })
-      .default({ start: null, end: null }),
-    timeRange: z
-      .object({
-        start: z.string().trim().refine(isValidTime, 'Use HH:mm'),
-        end: z.string().trim().refine(isValidTime, 'Use HH:mm'),
-      })
-      .default({ start: '02:00', end: '03:00' }),
-    intervalDay: z.coerce.number().int().min(1).max(MAX_INTERVAL_DAYS).default(1),
-    weekdays: z.array(z.enum(WEEKDAY_VALUES)).default([]),
-    daysOfMonth: z.array(z.enum(DAY_OF_MONTH_VALUES)).default([]),
-    cron: z.string().trim().default('30 3 * * *'),
-    duration: z.coerce.number().int().min(1).max(MAX_DURATION_MINUTES).default(60),
-    timezone: z
-      .string()
-      .trim()
-      .default(SAME_AS_SERVER)
-      .refine(isValidTimezone, 'Unknown time zone'),
-    monitors: z.array(relationIdSchema).default([]),
-    statusPages: z.array(relationIdSchema).default([]),
-  })
-  .superRefine((values, ctx) => {
-    const { strategy, dateRange } = values
-    const start = dateRange.start ? new Date(dateRange.start).getTime() : null
-    const end = dateRange.end ? new Date(dateRange.end).getTime() : null
+/**
+ * Validation messages of the schema. The route handlers use the English defaults; the form passes
+ * the `maintenance.validation` messages of the viewer's locale (`createMaintenanceFormSchema`).
+ */
+export interface MaintenanceValidationMessages {
+  titleRequired: string
+  dateTime: string
+  time: string
+  timezone: string
+  startRequired: string
+  endRequired: string
+  endAfterStart: string
+  windowLength: string
+  pickDay: string
+  cron: string
+}
 
-    if (strategy === 'single') {
-      if (start === null) {
-        ctx.addIssue({ code: 'custom', path: ['dateRange', 'start'], message: 'Start is required' })
-      }
-      if (end === null) {
-        ctx.addIssue({ code: 'custom', path: ['dateRange', 'end'], message: 'End is required' })
-      }
-    }
-    if (start !== null && end !== null && end <= start) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['dateRange', 'end'],
-        message: 'End must be after the start',
-      })
-    }
+export const defaultMaintenanceValidationMessages: MaintenanceValidationMessages = {
+  titleRequired: 'Title is required',
+  dateTime: 'Enter a valid date and time',
+  time: 'Use HH:mm',
+  timezone: 'Unknown time zone',
+  startRequired: 'Start is required',
+  endRequired: 'End is required',
+  endAfterStart: 'End must be after the start',
+  windowLength: 'The window must be longer than zero minutes',
+  pickDay: 'Pick at least one day',
+  cron: 'Invalid cron expression',
+}
 
-    if (isRecurringStrategy(strategy) && values.timeRange.start === values.timeRange.end) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['timeRange', 'end'],
-        message: 'The window must be longer than zero minutes',
-      })
-    }
-    if (strategy === 'recurring-weekday' && values.weekdays.length === 0) {
-      ctx.addIssue({ code: 'custom', path: ['weekdays'], message: 'Pick at least one day' })
-    }
-    if (strategy === 'recurring-day-of-month' && values.daysOfMonth.length === 0) {
-      ctx.addIssue({ code: 'custom', path: ['daysOfMonth'], message: 'Pick at least one day' })
-    }
-    if (strategy === 'cron' && !isValidCron(values.cron)) {
-      ctx.addIssue({ code: 'custom', path: ['cron'], message: 'Invalid cron expression' })
-    }
-  })
+export const createMaintenanceFormSchema = (
+  messages: MaintenanceValidationMessages = defaultMaintenanceValidationMessages,
+) => {
+  /** `datetime-local` inputs hand back `''` when cleared; store `null`. */
+  const optionalDateTime = z
+    .string()
+    .trim()
+    .nullish()
+    .transform((v) => (v ? v : null))
+    .refine((v) => v === null || isValidDateTime(v), messages.dateTime)
+
+  return z
+    .object({
+      title: z.string().trim().min(1, messages.titleRequired).max(150),
+      description: optionalText,
+      strategy: z.enum(MAINTENANCE_STRATEGIES),
+      active: z.boolean().default(true),
+      dateRange: z
+        .object({ start: optionalDateTime, end: optionalDateTime })
+        .default({ start: null, end: null }),
+      timeRange: z
+        .object({
+          start: z.string().trim().refine(isValidTime, messages.time),
+          end: z.string().trim().refine(isValidTime, messages.time),
+        })
+        .default({ start: '02:00', end: '03:00' }),
+      intervalDay: z.coerce.number().int().min(1).max(MAX_INTERVAL_DAYS).default(1),
+      weekdays: z.array(z.enum(WEEKDAY_VALUES)).default([]),
+      daysOfMonth: z.array(z.enum(DAY_OF_MONTH_VALUES)).default([]),
+      cron: z.string().trim().default('30 3 * * *'),
+      duration: z.coerce.number().int().min(1).max(MAX_DURATION_MINUTES).default(60),
+      timezone: z
+        .string()
+        .trim()
+        .default(SAME_AS_SERVER)
+        .refine(isValidTimezone, messages.timezone),
+      monitors: z.array(relationIdSchema).default([]),
+      statusPages: z.array(relationIdSchema).default([]),
+    })
+    .superRefine((values, ctx) => {
+      const { strategy, dateRange } = values
+      const start = dateRange.start ? new Date(dateRange.start).getTime() : null
+      const end = dateRange.end ? new Date(dateRange.end).getTime() : null
+
+      if (strategy === 'single') {
+        if (start === null) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['dateRange', 'start'],
+            message: messages.startRequired,
+          })
+        }
+        if (end === null) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['dateRange', 'end'],
+            message: messages.endRequired,
+          })
+        }
+      }
+      if (start !== null && end !== null && end <= start) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['dateRange', 'end'],
+          message: messages.endAfterStart,
+        })
+      }
+
+      if (isRecurringStrategy(strategy) && values.timeRange.start === values.timeRange.end) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['timeRange', 'end'],
+          message: messages.windowLength,
+        })
+      }
+      if (strategy === 'recurring-weekday' && values.weekdays.length === 0) {
+        ctx.addIssue({ code: 'custom', path: ['weekdays'], message: messages.pickDay })
+      }
+      if (strategy === 'recurring-day-of-month' && values.daysOfMonth.length === 0) {
+        ctx.addIssue({ code: 'custom', path: ['daysOfMonth'], message: messages.pickDay })
+      }
+      if (strategy === 'cron' && !isValidCron(values.cron)) {
+        ctx.addIssue({ code: 'custom', path: ['cron'], message: messages.cron })
+      }
+    })
+}
+
+export const maintenanceFormSchema = createMaintenanceFormSchema()
 
 export type MaintenanceFormValues = z.output<typeof maintenanceFormSchema>
 export type MaintenanceFormInput = z.input<typeof maintenanceFormSchema>

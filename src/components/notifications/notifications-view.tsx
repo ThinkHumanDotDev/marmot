@@ -1,6 +1,16 @@
 'use client'
 
-import { AlertTriangle, Bell, MoreHorizontal, Pencil, Plus, Send, Trash2 } from 'lucide-react'
+import {
+  Activity,
+  AlertTriangle,
+  Bell,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Send,
+  Trash2,
+} from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -37,6 +47,7 @@ import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 import { ChannelDialog } from './channel-dialog'
+import { ChannelMonitorsDialog } from './channel-monitors-dialog'
 import {
   notificationsApi,
   PROVIDER_GROUP_LABELS,
@@ -77,6 +88,11 @@ export function NotificationsView({
   const [editing, setEditing] = React.useState<NotificationRow | null>(null)
   const [deleting, setDeleting] = React.useState<NotificationRow | null>(null)
   const [busyId, setBusyId] = React.useState<string | null>(null)
+  const [monitorsOf, setMonitorsOf] = React.useState<NotificationRow | null>(null)
+  const tMonitors = useTranslations('notifications.monitors')
+  const closeMonitors = React.useCallback((open: boolean) => {
+    if (!open) setMonitorsOf(null)
+  }, [])
 
   const providerLabel = React.useCallback(
     (type: string) => providers.find((p) => p.name === type),
@@ -258,6 +274,9 @@ export function NotificationsView({
                               <DropdownMenuItem onSelect={() => openEdit(row)}>
                                 <Pencil /> Edit
                               </DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setMonitorsOf(row)}>
+                                <Activity /> {tMonitors('action')}
+                              </DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => void sendTest(row)}>
                                 <Send /> Send test
                               </DropdownMenuItem>
@@ -291,6 +310,10 @@ export function NotificationsView({
           onOpenChange={setDialogOpen}
           onSaved={upsert}
         />
+      )}
+
+      {canManage && (
+        <ChannelMonitorsDialog orgId={orgId} channel={monitorsOf} onOpenChange={closeMonitors} />
       )}
 
       <Dialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>

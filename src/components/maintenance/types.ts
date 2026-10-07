@@ -36,18 +36,3 @@ export const maintenanceApi = {
   remove: (orgId: string | number, id: string) =>
     api.delete<{ id: string; deleted: true }>(one(orgId, id)),
 }
-
-/** `2026-01-31T22:00` (wall-clock) or an ISO instant → readable text in the viewer's locale. */
-export function formatInstant(iso: string | null | undefined): string {
-  if (!iso) return ''
-  const date = new Date(iso)
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString()
-}
-
-export function formatWindow(window: { start: string; end: string } | null): string {
-  if (!window) return ''
-  const start = new Date(window.start)
-  const end = new Date(window.end)
-  const sameDay = start.toDateString() === end.toDateString()
-  return `${start.toLocaleString()} – ${sameDay ? end.toLocaleTimeString() : end.toLocaleString()}`
-}

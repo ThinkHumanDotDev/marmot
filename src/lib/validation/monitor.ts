@@ -401,6 +401,11 @@ export const monitorFormSchema = z
     weight: nonNegativeInt().default(2000),
     active: z.boolean().default(true),
     tags: z.array(tagRow).max(50).default([]),
+    /** Notification channels alerted on important beats (`monitors.notifications`). */
+    notifications: z
+      .array(z.union([z.string().min(1), z.number().int().positive()]))
+      .max(100)
+      .default([]),
 
     // Target
     url: optionalText(2048),
@@ -641,6 +646,10 @@ export const monitorFormSchema = z
     }
     const tagIds = values.tags.map((row) => String(row.tag))
     if (new Set(tagIds).size !== tagIds.length) issue('tags', 'Each tag may only be added once')
+    const channelIds = values.notifications.map(String)
+    if (new Set(channelIds).size !== channelIds.length) {
+      issue('notifications', 'Each channel may only be added once')
+    }
 
     if (isDatabaseMonitorType(type)) {
       const conn = values.databaseConnectionString
@@ -744,6 +753,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     weight: 2000,
     active: true,
     tags: [],
+    notifications: [],
     url: defaultUrl(type),
     hostname: null,
     port: DEFAULT_PORTS[type] ?? null,
@@ -864,9 +874,16 @@ export function monitorToFormValues(doc: MonitorLike): MonitorFormValues {
       })
     : []
 
-  const out: Record<string, unknown> = { ...base, ...relations, tags }
+  const notifications = Array.isArray(doc.notifications)
+    ? (doc.notifications as unknown[]).flatMap((item) => {
+        const id = toId(item)
+        return id === null ? [] : [id]
+      })
+    : []
+
+  const out: Record<string, unknown> = { ...base, ...relations, tags, notifications }
   for (const key of Object.keys(base) as (keyof MonitorFormValues)[]) {
-    if (key in relations || key === 'tags') continue
+    if (key in relations || key === 'tags' || key === 'notifications') continue
     const value = doc[key]
     if (value !== undefined && value !== null) out[key] = value
   }

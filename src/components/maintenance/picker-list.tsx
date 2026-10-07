@@ -1,6 +1,7 @@
 'use client'
 
 import { Check, Search } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -33,11 +34,12 @@ export function PickerList({
   options,
   value,
   onChange,
-  placeholder = 'Search…',
-  emptyText = 'Nothing to pick from yet.',
+  placeholder,
+  emptyText,
   label,
   disabled,
 }: PickerListProps) {
+  const t = useTranslations('maintenance.picker')
   const [query, setQuery] = React.useState('')
   const selected = React.useMemo(() => new Set(value), [value])
   const shown = React.useMemo(() => {
@@ -70,7 +72,7 @@ export function PickerList({
   if (options.length === 0) {
     return (
       <p className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
-        {emptyText}
+        {emptyText ?? t('empty')}
       </p>
     )
   }
@@ -80,10 +82,10 @@ export function PickerList({
       <div className="flex items-center gap-2 border-b px-2 py-1.5">
         <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         <Input
-          aria-label={`Search ${label}`}
+          aria-label={t('searchLabel', { label })}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('search')}
           className="h-8 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 dark:bg-transparent"
           disabled={disabled}
         />
@@ -94,7 +96,7 @@ export function PickerList({
           onClick={toggleAllShown}
           disabled={disabled || shown.length === 0}
         >
-          {allShownSelected ? 'Deselect all' : 'Select all'}
+          {allShownSelected ? t('deselectAll') : t('selectAll')}
         </Button>
       </div>
       <ul
@@ -104,7 +106,7 @@ export function PickerList({
         className="max-h-64 divide-y overflow-y-auto"
       >
         {shown.length === 0 && (
-          <li className="px-3 py-3 text-sm text-muted-foreground">No matches.</li>
+          <li className="px-3 py-3 text-sm text-muted-foreground">{t('noMatches')}</li>
         )}
         {shown.map((option) => {
           const checked = selected.has(option.id)
@@ -138,7 +140,7 @@ export function PickerList({
         })}
       </ul>
       <div className="border-t px-3 py-1.5 text-xs text-muted-foreground">
-        {value.length} of {options.length} selected
+        {t('selected', { selected: value.length, total: options.length })}
       </div>
     </div>
   )

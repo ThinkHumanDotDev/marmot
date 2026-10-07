@@ -8,12 +8,15 @@
 #
 # Environment knobs (besides the Marmot variables documented in docs/Configuration.md):
 #   SKIP_MIGRATIONS=true  do not run `payload migrate` before starting web/all
+#   BIND_HOST=::          address the web server listens on (default 0.0.0.0; `::` for IPv6-only
+#                         private networks such as Railway's)
 set -eu
 
 cd /app
 
 ROLE="${MARMOT_ROLE:-all}"
 PORT="${PORT:-3000}"
+BIND_HOST="${BIND_HOST:-0.0.0.0}"
 REALTIME_PORT="${REALTIME_PORT:-3001}"
 ADAPTER="${DATABASE_ADAPTER:-postgres}"
 export MARMOT_ROLE="$ROLE"
@@ -59,7 +62,7 @@ healthcheck() {
   esac
 }
 
-start_web() { exec "$NEXT" start -H 0.0.0.0 -p "$PORT"; }
+start_web() { exec "$NEXT" start -H "$BIND_HOST" -p "$PORT"; }
 start_worker() { exec node "$WORKER"; }
 start_realtime() { exec node "$REALTIME"; }
 
@@ -71,7 +74,7 @@ start_all() {
   worker_pid=$!
   node "$REALTIME" &
   realtime_pid=$!
-  "$NEXT" start -H 0.0.0.0 -p "$PORT" &
+  "$NEXT" start -H "$BIND_HOST" -p "$PORT" &
   web_pid=$!
 
   stop_all() {

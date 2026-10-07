@@ -1,12 +1,18 @@
 import type { Metadata } from 'next'
+import { getTranslations } from 'next-intl/server'
 
 import { PageHeader } from '@/components/page-header'
 import { CreateStatusPageDialog } from '@/components/status-pages/create-status-page-dialog'
 import { StatusPageList } from '@/components/status-pages/status-page-list'
+import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 
 import { resolveOrg } from './resolve-org'
 
-export const metadata: Metadata = { title: 'Status pages' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('statusPages.list')
+  return { title: t('pageTitle') }
+}
+
 export const dynamic = 'force-dynamic'
 
 export default async function StatusPagesPage({
@@ -16,6 +22,9 @@ export default async function StatusPagesPage({
 }) {
   const { orgSlug } = await params
   const { payload, user, org, can } = await resolveOrg(orgSlug)
+
+  const t = await getTranslations('statusPages.list')
+  const timeZone = await getOrganizationTimezone(payload, org.id)
 
   const { docs: pages } = await payload.find({
     collection: 'status-pages',
@@ -30,8 +39,8 @@ export default async function StatusPagesPage({
   return (
     <>
       <PageHeader
-        title="Status pages"
-        description="Public pages that show your customers what is up."
+        title={t('title')}
+        description={t('description')}
         actions={
           <CreateStatusPageDialog
             orgId={org.id}
@@ -44,6 +53,7 @@ export default async function StatusPagesPage({
         <StatusPageList
           pages={pages}
           orgSlug={org.slug}
+          timeZone={timeZone}
           emptyAction={
             can('status-page:create') ? (
               <CreateStatusPageDialog orgId={org.id} orgSlug={org.slug} />
