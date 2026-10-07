@@ -34,7 +34,40 @@ export interface MonitorCheckContext {
    * verdict. The worker stores it on the heartbeat (`heartbeats.assertions`).
    */
   assertions?: AssertionResult[] | null
+  /**
+   * Per-probe outcome of a multi-location check (Globalping), whatever the verdict. The worker
+   * stores it on the heartbeat (`heartbeats.probes`).
+   */
+  probes?: ProbeResult[] | null
 }
+
+/** One probe of a multi-location check (`heartbeats.probes`). */
+export interface ProbeResult {
+  /** Human-readable probe location, e.g. `Frankfurt, DE, EU, Hetzner Online GmbH (AS24940)`. */
+  location: string
+  /** Did this probe's measurement pass the type's criteria? */
+  ok: boolean
+  /** Latency in ms measured by the probe (average RTT, total HTTP/DNS time), when it has one. */
+  latency: number | null
+  /** Short outcome (`200 OK`, `0% loss`, the error). */
+  msg: string
+}
+
+/**
+ * Thrown by a check that could not judge the target for a reason on our side of the measurement,
+ * e.g. the Globalping API rate limit. The engine records a PENDING beat with the message and keeps
+ * the monitor's state as it was (like the "checker offline" beats, #148): no retry is used up, the
+ * monitor never goes DOWN because of it and no notification is sent.
+ */
+export class CheckDeferredError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'CheckDeferredError'
+  }
+}
+
+export const isCheckDeferredError = (err: unknown): err is CheckDeferredError =>
+  err instanceof Error && err.name === 'CheckDeferredError'
 
 export interface MonitorType {
   /** Unique slug stored in `monitors.type`, e.g. `http`. */

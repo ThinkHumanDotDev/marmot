@@ -9,6 +9,7 @@ export default defineConfig([
   globalIgnores([
     '.next/**',
     'dist/**',
+    'action/dist/**',
     'node_modules/**',
     'src/payload-types.ts',
     'src/payload-generated-schema.ts',

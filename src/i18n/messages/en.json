@@ -389,6 +389,10 @@
         "label": "DNS",
         "description": "UP when the resolver returns a record."
       },
+      "globalping": {
+        "label": "Globalping",
+        "description": "Ping, HTTP, DNS or traceroute from Globalping community probes in the chosen locations."
+      },
       "docker": {
         "label": "Docker Container",
         "description": "UP when the container is running (and healthy, if it has a health check)."
@@ -545,7 +549,14 @@
       "assertionStatusCode": "Enter a status code between 100 and 599",
       "assertionNumber": "Enter a number",
       "assertionRegex": "Enter a valid regular expression of at most {max} characters",
-      "assertionTooLong": "At most {max} characters"
+      "assertionTooLong": "At most {max} characters",
+      "globalpingIntervalMin": "Globalping monitors run at most once a minute: at least {min} seconds",
+      "globalpingMethod": "Globalping supports the methods {methods}",
+      "globalpingRecordType": "Globalping does not support this record type",
+      "globalpingProtocol": "This protocol is not available for the selected measurement",
+      "globalpingLocationsMax": "At most {max} locations",
+      "globalpingMinSuccessRequired": "Enter how many probes must succeed",
+      "globalpingMinSuccessMax": "Cannot be more than the number of probes"
     },
     "form": {
       "assertions": {
@@ -778,6 +789,40 @@
         "steam": "The server is looked up through the Steam Web API. A superadmin must set the Steam API key in the instance settings first.",
         "remoteBrowser": "Remote browser URL",
         "remoteBrowserDescription": "Playwright-compatible browser server (e.g. browserless or `npx playwright run-server`). Marmot does not launch Chromium itself."
+      },
+      "globalping": {
+        "title": "Globalping",
+        "description": "The check runs on Globalping community probes. Each probe uses one credit: anonymous checks get 250 per hour; an API token in the instance settings raises the limit.",
+        "measurement": "Measurement",
+        "measurementOption": {
+          "ping": "Ping",
+          "http": "HTTP(s)",
+          "dns": "DNS",
+          "traceroute": "Traceroute"
+        },
+        "locations": "Locations",
+        "locationsPlaceholder": "Europe, US+AWS",
+        "locationsDescription": "Comma-separated, in Globalping's location syntax, e.g. <code>Europe</code>, <code>US+AWS</code>, <code>AS13335</code>. Leave empty for probes anywhere.",
+        "probes": "Probes",
+        "probesDescription": "Probes per check, 1–{max}.",
+        "successRule": "Up when",
+        "successRuleOption": {
+          "all": "All probes succeed",
+          "any": "Any probe succeeds",
+          "atLeast": "At least N probes succeed"
+        },
+        "minSuccess": "Probes that must succeed",
+        "protocol": "Protocol",
+        "protocolDefault": "Default",
+        "ipVersion": "IP version",
+        "ipVersionAny": "Any",
+        "ipVersionOption": "IPv{version}",
+        "packets": "Packets",
+        "port": "Port (optional)",
+        "method": "Method",
+        "resolver": "Resolver (optional)",
+        "resolverDescription": "Leave empty to use each probe's own resolver.",
+        "rateLimit": "Rate limits never mark the monitor down: it stays pending until the limit resets."
       },
       "http": {
         "title": "HTTP options",
@@ -5149,6 +5194,8 @@
     "apiKeyReadOnly": "This API key has the read scope and may only send GET requests. Create a key with the write scope for changes.",
     "apiKeyRouteForbidden": "API keys cannot manage members, invitations, API keys, single sign-on, billing or ownership. Sign in to do this.",
     "apiKeyWrongOrganization": "This API key belongs to another organization.",
+    "mcpApiKeyRequired": "Connect with an organization API key: send it as Authorization: Bearer mk_….",
+    "mcpMethodNotAllowed": "This MCP endpoint is stateless: send JSON-RPC messages with POST.",
     "dockerHostNotFound": "Docker host not found",
     "socketPathAbsolute": "Enter an absolute socket path.",
     "dockerTestTargetRequired": "Provide dockerHostId or connectionType + socketPath/url",
@@ -5453,6 +5500,49 @@
     "logout": {
       "done": "Removed profile {profile}.",
       "none": "No saved profile {profile}."
+    },
+    "action": {
+      "checksTitle": "Marmot checks",
+      "applyTitle": "Marmot monitors as code",
+      "totals": "{passed} passed, {failed} failed, {skipped} skipped",
+      "columns": {
+        "result": "Result",
+        "monitor": "Monitor",
+        "status": "Status",
+        "response": "Response",
+        "message": "Message"
+      },
+      "verdict": {
+        "pass": "passed",
+        "fail": "failed",
+        "skip": "skipped"
+      },
+      "statusError": "error",
+      "degradedAllowed": "Degraded, allowed (set fail-on-degraded to fail on it).",
+      "pendingRetry": "The check failed; the monitor has retries left, so it is still pending.",
+      "maintenance": "In a maintenance window: the check did not run.",
+      "assertionFailed": "Assertion failed: {kind}{target, select, none {} other { {target}}} {comparator} {expected} (got {actual})",
+      "assertionError": "Assertion could not be evaluated: {kind}{target, select, none {} other { {target}}}: {error}",
+      "notFound": "No monitor with the key or id “{ref}”.",
+      "rateLimited": "The instance rate-limits on-demand checks; retrying in {seconds} s.",
+      "checking": "Checking {count, plural, one {# monitor} other {# monitors}} on {url}",
+      "checkFailed": "{monitor}: {message}",
+      "failedChecks": "{count, plural, one {# check} other {# checks}} failed.",
+      "noTargets": "Mode run needs monitors to check: set the monitors input (keys or ids), or config to a monitors file.",
+      "configRequired": "Mode apply needs the config input (a monitors file).",
+      "modeInvalid": "Unknown mode “{mode}”: use run or apply.",
+      "booleanInvalid": "Input {name} must be true or false.",
+      "dryRunInvalid": "Input dry-run must be auto, true or false.",
+      "inputMissing": "Missing input {name} (or the environment variable {env}).",
+      "dryRunNote": "Dry run: nothing was applied.",
+      "dryRunAuto": "dry-run is auto and this is a {event} event; it applies on push.",
+      "noChanges": "No changes: the monitors match the file.",
+      "applied": "Applied: {created} created, {updated} updated, {deleted} deleted.",
+      "applyFailed": "Apply stopped at {key}: {message}",
+      "warnings": "Warnings",
+      "invalidFile": "The monitors file is not valid:",
+      "apiError": "The Marmot API answered {status}: {message}",
+      "networkError": "Could not reach {url}: {message}"
     }
   }
 }
