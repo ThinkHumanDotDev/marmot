@@ -14,7 +14,8 @@ import addressparser from 'nodemailer/lib/addressparser'
 
 import { isSuperadmin, type OrgId, type UserLike } from '@/access/permissions'
 import { env } from '@/env'
-import type { ErrorKey, ErrorValues } from '@/server/errors'
+import { defaultLocale, type Locale } from '@/i18n/locales'
+import { translateError, type ErrorKey, type ErrorValues } from '@/server/errors'
 import { createRateLimiter, type RateLimiter } from '@/server/security/rate-limit'
 
 export type ServerSmtpPolicy = 'all' | 'superadmin' | 'off'
@@ -53,15 +54,17 @@ export function canUseServerSmtp(
   return isSuperadmin(user)
 }
 
-/** One-line explanation for the channel form, or `null` when the user may use the option. */
+/** One-line explanation for the channel form in `locale`, or `null` when the user may use the option. */
 export function serverSmtpRestriction(
   user: UserLike | null | undefined,
   policy: ServerSmtpPolicy = serverSmtpPolicy(),
+  locale: Locale = defaultLocale,
 ): string | null {
   if (canUseServerSmtp(user, policy)) return null
-  return policy === 'off'
-    ? 'Sending through the server SMTP settings is turned off on this instance.'
-    : 'Only an instance superadmin can turn on the server SMTP settings for a channel.'
+  return translateError(
+    locale,
+    policy === 'off' ? 'serverSmtpRestrictedOff' : 'serverSmtpRestrictedSuperadmin',
+  )
 }
 
 /** Number of addresses in the `to`, `cc` and `bcc` fields of an `smtp` config. */

@@ -4,6 +4,7 @@
 import { getPayload, type Payload } from 'payload'
 
 import config from '@payload-config'
+import { defaultLocale, type Locale } from '@/i18n/locales'
 import { canInOrg } from '@/access/overrides'
 import { can, isSuperadmin, type OrgId, type Permission } from '@/access/permissions'
 import type { Notification, User } from '@/payload-types'
@@ -65,11 +66,18 @@ export async function readJson<T = Record<string, unknown>>(request: Request): P
   }
 }
 
-let descriptorCache: NotificationProviderDescriptor[] | undefined
+const descriptorCache = new Map<Locale, NotificationProviderDescriptor[]>()
 
-export function getProviderDescriptors(): NotificationProviderDescriptor[] {
-  descriptorCache ??= describeNotificationProviders()
-  return descriptorCache
+/** Provider form descriptors with labels in `locale` (memoised per locale). */
+export function getProviderDescriptors(
+  locale: Locale = defaultLocale,
+): NotificationProviderDescriptor[] {
+  let descriptors = descriptorCache.get(locale)
+  if (!descriptors) {
+    descriptors = describeNotificationProviders(locale)
+    descriptorCache.set(locale, descriptors)
+  }
+  return descriptors
 }
 
 /** Secret config keys per provider (webhook URLs, tokens, passwords). */

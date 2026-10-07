@@ -1,4 +1,9 @@
-import { describeProvider, type NotificationProviderDescriptor } from './describe'
+import { defaultLocale, type Locale } from '@/i18n/locales'
+import {
+  describeProvider,
+  localizeDescriptor,
+  type NotificationProviderDescriptor,
+} from './describe'
 import type { NotificationProvider } from './types'
 
 const registry = new Map<string, NotificationProvider>()
@@ -20,9 +25,15 @@ export function listNotificationProviders(): NotificationProvider[] {
   return [...registry.values()]
 }
 
-/** Serialisable form descriptors for every provider, sorted by group then label. */
-export function describeNotificationProviders(): NotificationProviderDescriptor[] {
+/**
+ * Serialisable form descriptors for every provider with their labels in `locale`
+ * (`notifications.providers.*`), sorted by group, then by label in that locale.
+ */
+export function describeNotificationProviders(
+  locale: Locale = defaultLocale,
+): NotificationProviderDescriptor[] {
+  const collator = new Intl.Collator(locale)
   return listNotificationProviders()
-    .map(describeProvider)
-    .sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label))
+    .map((provider) => localizeDescriptor(describeProvider(provider), locale))
+    .sort((a, b) => collator.compare(a.group, b.group) || collator.compare(a.label, b.label))
 }

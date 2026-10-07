@@ -1819,6 +1819,892 @@
       "certificateExpiry": "[{name}][{address}] {certType} certificate {commonName} will expire in {count, plural, other {{days} days}}",
       "noCommonName": "(no CN)",
       "domainExpiry": "[{name}][{address}] Domain name {domain} will expire in {count, plural, other {{days} days}}"
+    },
+    "providers": {
+      "alerta": {
+        "label": "Alerta",
+        "fields": {
+          "apiEndpoint": {
+            "label": "API endpoint"
+          },
+          "apiKey": {
+            "label": "API key"
+          },
+          "environment": {
+            "label": "Environment",
+            "placeholder": "Production"
+          },
+          "alertState": {
+            "label": "Severity when DOWN"
+          },
+          "recoverState": {
+            "label": "Severity when UP"
+          }
+        }
+      },
+      "apprise": {
+        "label": "Apprise",
+        "fields": {
+          "appriseUrl": {
+            "label": "Apprise URL",
+            "description": "One or more Apprise service URLs. The `apprise` binary must be installed on the worker host."
+          },
+          "title": {
+            "label": "Title"
+          }
+        }
+      },
+      "bark": {
+        "label": "Bark",
+        "fields": {
+          "endpoint": {
+            "label": "Bark endpoint",
+            "description": "Server URL including your device key."
+          },
+          "apiVersion": {
+            "label": "API version",
+            "options": {
+              "v1": "v1 (GET)",
+              "v2": "v2 (POST)"
+            }
+          },
+          "group": {
+            "label": "Group"
+          },
+          "sound": {
+            "label": "Sound"
+          }
+        }
+      },
+      "bitrix24": {
+        "label": "Bitrix24",
+        "fields": {
+          "webhookUrl": {
+            "label": "Inbound webhook URL",
+            "description": "Developer resources → Other → Inbound webhook, with the `im` scope."
+          },
+          "userId": {
+            "label": "User ID",
+            "description": "Numeric id of the user to notify."
+          }
+        }
+      },
+      "clicksend": {
+        "label": "ClickSend SMS",
+        "fields": {
+          "login": {
+            "label": "API username"
+          },
+          "password": {
+            "label": "API key"
+          },
+          "toNumber": {
+            "label": "Recipient number"
+          },
+          "senderName": {
+            "label": "Sender name / number",
+            "description": "Optional dedicated number or approved alphanumeric sender id."
+          }
+        }
+      },
+      "dingding": {
+        "label": "DingTalk",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          },
+          "secretKey": {
+            "label": "Signing secret",
+            "description": "Robot security → Sign."
+          },
+          "mentioning": {
+            "label": "Mention",
+            "options": {
+              "nobody": "Don't mention people",
+              "everyone": "Mention @everyone",
+              "specify-mobiles": "Mention mobile numbers",
+              "specify-users": "Mention user IDs"
+            }
+          },
+          "mobileList": {
+            "label": "Mobile numbers",
+            "description": "Comma-separated."
+          },
+          "userList": {
+            "label": "User IDs",
+            "description": "Comma-separated."
+          }
+        }
+      },
+      "discord": {
+        "label": "Discord",
+        "fields": {
+          "webhookUrl": {
+            "label": "Discord webhook URL",
+            "description": "Channel settings → Integrations → Webhooks."
+          },
+          "username": {
+            "label": "Bot display name"
+          },
+          "prefixMessage": {
+            "label": "Prefix custom message",
+            "description": "Sent as plain content above the embed (use it to mention roles).",
+            "placeholder": "Hello @everyone …"
+          },
+          "messageFormat": {
+            "label": "Message format",
+            "options": {
+              "normal": "Embed",
+              "minimalist": "Minimalist",
+              "custom": "Custom template"
+            }
+          },
+          "messageTemplate": {
+            "label": "Message template",
+            "description": "Used when format is \"Custom template\". Supports '{{' monitor.name '}}' placeholders."
+          },
+          "channelType": {
+            "label": "Message type",
+            "options": {
+              "channel": "Send to channel",
+              "createNewForumPost": "Create new forum post",
+              "postToThread": "Post to existing thread"
+            }
+          },
+          "threadId": {
+            "label": "Thread ID",
+            "description": "For \"Post to existing thread\"."
+          },
+          "postName": {
+            "label": "Forum post name",
+            "description": "For \"Create new forum post\"."
+          },
+          "suppressNotifications": {
+            "label": "Suppress push notifications"
+          },
+          "disableUrl": {
+            "label": "Hide the monitor URL in messages"
+          }
+        }
+      },
+      "feishu": {
+        "label": "Feishu / Lark",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          }
+        }
+      },
+      "google-chat": {
+        "label": "Google Chat",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          },
+          "maxRetries": {
+            "label": "Max attempts on rate limit (1–10)",
+            "description": "Retries with a 1–3 minute delay when Google Chat answers HTTP 429."
+          },
+          "useTemplate": {
+            "label": "Use a custom message template"
+          },
+          "template": {
+            "label": "Message template",
+            "description": "Supports '{{' monitor.name '}}', '{{' heartbeat.msg '}}', '{{' status '}}'."
+          }
+        }
+      },
+      "gotify": {
+        "label": "Gotify",
+        "fields": {
+          "serverUrl": {
+            "label": "Server URL"
+          },
+          "appToken": {
+            "label": "Application token"
+          },
+          "priority": {
+            "label": "Priority (0–10)"
+          }
+        }
+      },
+      "grafana-oncall": {
+        "label": "Grafana OnCall",
+        "fields": {
+          "webhookUrl": {
+            "label": "Formatted webhook URL"
+          }
+        }
+      },
+      "heii-oncall": {
+        "label": "Heii On-Call",
+        "fields": {
+          "apiKey": {
+            "label": "API key"
+          },
+          "triggerId": {
+            "label": "Trigger ID",
+            "description": "From the manual trigger URL `https://heiioncall.com/triggers/'<'id'>'/`."
+          }
+        }
+      },
+      "home-assistant": {
+        "label": "Home Assistant",
+        "fields": {
+          "url": {
+            "label": "Home Assistant URL"
+          },
+          "longLivedAccessToken": {
+            "label": "Long-lived access token",
+            "description": "Profile → Security → Long-lived access tokens."
+          },
+          "notificationService": {
+            "label": "Notification service",
+            "description": "The part after `notify.`, e.g. `mobile_app_phone`; `notify` reaches all devices."
+          }
+        }
+      },
+      "line-messaging": {
+        "label": "LINE Messaging API",
+        "fields": {
+          "channelAccessToken": {
+            "label": "Channel access token",
+            "description": "LINE Developers console → Messaging API → Channel access token (long-lived)."
+          },
+          "userId": {
+            "label": "User / group ID",
+            "description": "Recipient user, group or room id (not the display name)."
+          }
+        }
+      },
+      "matrix": {
+        "label": "Matrix",
+        "fields": {
+          "homeserverUrl": {
+            "label": "Homeserver URL"
+          },
+          "internalRoomId": {
+            "label": "Internal room ID",
+            "description": "Room settings → Advanced → Internal room ID."
+          },
+          "accessToken": {
+            "label": "Access token",
+            "description": "Log in with a dedicated bot user and copy its access token."
+          },
+          "useTemplate": {
+            "label": "Use a custom message template"
+          },
+          "template": {
+            "label": "Message template"
+          }
+        }
+      },
+      "mattermost": {
+        "label": "Mattermost",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          },
+          "username": {
+            "label": "Username"
+          },
+          "channel": {
+            "label": "Channel name",
+            "description": "Overrides the webhook default channel."
+          },
+          "iconUrl": {
+            "label": "Icon URL"
+          },
+          "iconEmoji": {
+            "label": "Icon emoji",
+            "description": "One emoji, or two separated by a space: the first for UP, the second for DOWN."
+          }
+        }
+      },
+      "nextcloud-talk": {
+        "label": "Nextcloud Talk",
+        "fields": {
+          "host": {
+            "label": "Nextcloud URL"
+          },
+          "conversationToken": {
+            "label": "Conversation token",
+            "description": "The token in the conversation URL: /call/'<'token'>'."
+          },
+          "botSecret": {
+            "label": "Bot secret",
+            "description": "Shared secret given to `occ talk:bot:install`."
+          },
+          "sendSilentUp": {
+            "label": "Send UP messages silently"
+          },
+          "sendSilentDown": {
+            "label": "Send DOWN messages silently"
+          }
+        }
+      },
+      "ntfy": {
+        "label": "ntfy",
+        "fields": {
+          "serverUrl": {
+            "label": "Server URL"
+          },
+          "topic": {
+            "label": "Topic"
+          },
+          "priority": {
+            "label": "Priority (1–5)",
+            "description": "5 is urgent; DOWN alerts default to priority + 1."
+          },
+          "priorityDown": {
+            "label": "Priority for DOWN alerts (1–5)"
+          },
+          "authMethod": {
+            "label": "Authentication",
+            "options": {
+              "none": "None",
+              "usernamePassword": "Username & password",
+              "accessToken": "Access token"
+            }
+          },
+          "username": {
+            "label": "Username"
+          },
+          "password": {
+            "label": "Password"
+          },
+          "accessToken": {
+            "label": "Access token"
+          },
+          "icon": {
+            "label": "Icon URL"
+          }
+        }
+      },
+      "onebot": {
+        "label": "OneBot",
+        "fields": {
+          "httpAddr": {
+            "label": "HTTP API address",
+            "description": "OneBot HTTP endpoint; `http://` is assumed when no scheme is given."
+          },
+          "accessToken": {
+            "label": "Access token"
+          },
+          "msgType": {
+            "label": "Message type",
+            "options": {
+              "group": "Group",
+              "private": "Private"
+            }
+          },
+          "receiverId": {
+            "label": "Group ID / QQ number"
+          }
+        }
+      },
+      "opsgenie": {
+        "label": "Opsgenie",
+        "fields": {
+          "region": {
+            "label": "Region",
+            "options": {
+              "us": "US (default)",
+              "eu": "EU"
+            }
+          },
+          "apiKey": {
+            "label": "API key",
+            "description": "Teams → Integrations → API."
+          },
+          "priority": {
+            "label": "Priority (1–5)",
+            "description": "P1 is critical, P5 informational."
+          }
+        }
+      },
+      "pagerduty": {
+        "label": "PagerDuty",
+        "fields": {
+          "integrationKey": {
+            "label": "Integration key",
+            "description": "Service → Integrations → Events API v2 routing key."
+          },
+          "integrationUrl": {
+            "label": "Integration URL"
+          },
+          "priority": {
+            "label": "Severity",
+            "options": {
+              "info": "Info",
+              "warning": "Warning",
+              "error": "Error",
+              "critical": "Critical"
+            }
+          },
+          "autoResolve": {
+            "label": "When the monitor comes back up",
+            "options": {
+              "none": "Do nothing",
+              "acknowledge": "Acknowledge the incident",
+              "resolve": "Resolve the incident"
+            }
+          }
+        }
+      },
+      "pumble": {
+        "label": "Pumble",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          }
+        }
+      },
+      "pushbullet": {
+        "label": "Pushbullet",
+        "fields": {
+          "accessToken": {
+            "label": "Access token",
+            "description": "Settings → Account → Create Access Token."
+          }
+        }
+      },
+      "pushdeer": {
+        "label": "PushDeer",
+        "fields": {
+          "serverUrl": {
+            "label": "Server URL"
+          },
+          "pushKey": {
+            "label": "Push key"
+          }
+        }
+      },
+      "pushover": {
+        "label": "Pushover",
+        "fields": {
+          "userKey": {
+            "label": "User key"
+          },
+          "appToken": {
+            "label": "Application token"
+          },
+          "device": {
+            "label": "Device",
+            "description": "Optional: deliver to one device only."
+          },
+          "title": {
+            "label": "Message title"
+          },
+          "priority": {
+            "label": "Priority",
+            "options": {
+              "0": "Normal",
+              "1": "High",
+              "2": "Emergency (retry every 30s for 1h)",
+              "-2": "Lowest",
+              "-1": "Low"
+            }
+          },
+          "sound": {
+            "label": "Notification sound"
+          },
+          "soundUp": {
+            "label": "Sound for UP alerts",
+            "description": "Defaults to the sound above."
+          },
+          "ttl": {
+            "label": "Message TTL (seconds)",
+            "description": "0 or empty = never expire."
+          }
+        }
+      },
+      "pushy": {
+        "label": "Pushy",
+        "fields": {
+          "apiKey": {
+            "label": "Secret API key"
+          },
+          "deviceToken": {
+            "label": "Device token",
+            "description": "Target device token (or topic)."
+          }
+        }
+      },
+      "resend": {
+        "label": "Resend",
+        "fields": {
+          "apiKey": {
+            "label": "API key"
+          },
+          "fromEmail": {
+            "label": "From email"
+          },
+          "fromName": {
+            "label": "From name"
+          },
+          "toEmail": {
+            "label": "To email"
+          },
+          "subject": {
+            "label": "Subject",
+            "placeholder": "Notification from Marmot"
+          }
+        }
+      },
+      "rocket-chat": {
+        "label": "Rocket.Chat",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          },
+          "channel": {
+            "label": "Channel name"
+          },
+          "username": {
+            "label": "Username"
+          },
+          "iconEmoji": {
+            "label": "Icon emoji"
+          }
+        }
+      },
+      "sendgrid": {
+        "label": "SendGrid",
+        "fields": {
+          "apiKey": {
+            "label": "API key"
+          },
+          "fromEmail": {
+            "label": "From email"
+          },
+          "toEmail": {
+            "label": "To email"
+          },
+          "ccEmail": {
+            "label": "CC",
+            "description": "Comma-separated."
+          },
+          "bccEmail": {
+            "label": "BCC",
+            "description": "Comma-separated."
+          },
+          "subject": {
+            "label": "Subject",
+            "placeholder": "Notification from Marmot"
+          }
+        }
+      },
+      "serverchan": {
+        "label": "ServerChan",
+        "fields": {
+          "sendKey": {
+            "label": "SendKey",
+            "description": "ServerChan 3 keys (sctp…) are sent through ft07.com automatically."
+          }
+        }
+      },
+      "signal": {
+        "label": "Signal",
+        "fields": {
+          "apiUrl": {
+            "label": "signal-cli REST API URL",
+            "description": "Full send endpoint of a signal-cli-rest-api instance."
+          },
+          "number": {
+            "label": "Sender number"
+          },
+          "recipients": {
+            "label": "Recipients",
+            "description": "Comma-separated numbers or group ids."
+          },
+          "useTemplate": {
+            "label": "Use a custom message template"
+          },
+          "template": {
+            "label": "Message template"
+          }
+        }
+      },
+      "slack": {
+        "label": "Slack",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          },
+          "channel": {
+            "label": "Channel name"
+          },
+          "username": {
+            "label": "Username"
+          },
+          "iconEmoji": {
+            "label": "Icon emoji"
+          },
+          "richMessage": {
+            "label": "Rich message (blocks)"
+          },
+          "channelNotify": {
+            "label": "Notify channel (@channel)"
+          },
+          "useTemplate": {
+            "label": "Use a custom message template"
+          },
+          "template": {
+            "label": "Message template",
+            "description": "Supports '{{' monitor.name '}}', '{{' heartbeat.msg '}}', '{{' status '}}'."
+          }
+        }
+      },
+      "smtp": {
+        "label": "Email (SMTP)",
+        "fields": {
+          "useServerSmtp": {
+            "label": "Use the server SMTP settings",
+            "description": "Send through the SMTP_* configuration of this Marmot instance (at most 10 recipients per message)."
+          },
+          "host": {
+            "label": "SMTP host"
+          },
+          "port": {
+            "label": "Port"
+          },
+          "secure": {
+            "label": "Implicit TLS (SMTPS, port 465)"
+          },
+          "ignoreTlsErrors": {
+            "label": "Ignore TLS certificate errors"
+          },
+          "user": {
+            "label": "Username"
+          },
+          "pass": {
+            "label": "Password"
+          },
+          "from": {
+            "label": "From"
+          },
+          "to": {
+            "label": "To",
+            "description": "Comma-separated recipients."
+          },
+          "cc": {
+            "label": "CC"
+          },
+          "bcc": {
+            "label": "BCC"
+          },
+          "subject": {
+            "label": "Subject template",
+            "description": "Defaults to the notification message."
+          },
+          "body": {
+            "label": "Body template",
+            "description": "Defaults to the message and time."
+          },
+          "htmlBody": {
+            "label": "Send the body as HTML"
+          }
+        }
+      },
+      "splunk": {
+        "label": "Splunk On-Call",
+        "fields": {
+          "restUrl": {
+            "label": "REST endpoint URL"
+          },
+          "severity": {
+            "label": "Severity",
+            "options": {
+              "INFO": "Info",
+              "WARNING": "Warning",
+              "CRITICAL": "Critical"
+            }
+          },
+          "autoResolve": {
+            "label": "When the monitor comes back up",
+            "options": {
+              "none": "Do nothing",
+              "ACKNOWLEDGEMENT": "Acknowledge the incident",
+              "RECOVERY": "Resolve the incident"
+            }
+          }
+        }
+      },
+      "squadcast": {
+        "label": "Squadcast",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          }
+        }
+      },
+      "teams": {
+        "label": "Microsoft Teams",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL",
+            "description": "Power Automate \"When a Teams webhook request is received\" URL, or a legacy incoming webhook."
+          }
+        }
+      },
+      "techulus-push": {
+        "label": "Push by Techulus",
+        "fields": {
+          "apiKey": {
+            "label": "API key"
+          },
+          "title": {
+            "label": "Title"
+          },
+          "channel": {
+            "label": "Channel",
+            "description": "Optional channel name."
+          },
+          "sound": {
+            "label": "Sound"
+          },
+          "timeSensitive": {
+            "label": "Time-sensitive notification"
+          }
+        }
+      },
+      "telegram": {
+        "label": "Telegram",
+        "fields": {
+          "botToken": {
+            "label": "Bot token",
+            "description": "From @BotFather."
+          },
+          "chatId": {
+            "label": "Chat ID",
+            "description": "Send a message to the bot, then open https://api.telegram.org/bot'<'token'>'/getUpdates."
+          },
+          "messageThreadId": {
+            "label": "Message thread ID",
+            "description": "Optional: topic id inside a forum supergroup."
+          },
+          "serverUrl": {
+            "label": "API server URL",
+            "description": "Change only for a local Bot API server."
+          },
+          "sendSilently": {
+            "label": "Send silently",
+            "description": "Users receive a notification with no sound."
+          },
+          "protectContent": {
+            "label": "Protect content",
+            "description": "Prevent forwarding and saving."
+          },
+          "useTemplate": {
+            "label": "Use a custom message template"
+          },
+          "template": {
+            "label": "Message template"
+          },
+          "templateParseMode": {
+            "label": "Template parse mode",
+            "options": {
+              "plain": "Plain text",
+              "HTML": "HTML",
+              "MarkdownV2": "MarkdownV2"
+            }
+          }
+        }
+      },
+      "twilio": {
+        "label": "Twilio SMS",
+        "fields": {
+          "accountSid": {
+            "label": "Account SID"
+          },
+          "apiKey": {
+            "label": "API key SID",
+            "description": "Optional: authenticate with an API key instead of the account SID."
+          },
+          "authToken": {
+            "label": "Auth token (or API key secret)"
+          },
+          "fromNumber": {
+            "label": "From number"
+          },
+          "toNumber": {
+            "label": "To number"
+          },
+          "messagingServiceSid": {
+            "label": "Messaging service SID"
+          }
+        }
+      },
+      "webhook": {
+        "label": "Webhook",
+        "fields": {
+          "url": {
+            "label": "Post URL"
+          },
+          "method": {
+            "label": "HTTP method"
+          },
+          "contentType": {
+            "label": "Request body",
+            "options": {
+              "json": "application/json",
+              "form-data": "multipart/form-data",
+              "custom": "Custom body (template)"
+            }
+          },
+          "customBody": {
+            "label": "Custom body",
+            "description": "Sent verbatim after '{{' '}}' substitution, e.g. '{'\"text\": \"'{{' msg '}}'\"'}'. Set Content-Type in the headers below."
+          },
+          "additionalHeaders": {
+            "label": "Additional headers (JSON)"
+          }
+        }
+      },
+      "webpush": {
+        "label": "Web Push",
+        "fields": {
+          "subscription": {
+            "label": "Push subscription (JSON)",
+            "description": "The PushSubscription object returned by `pushManager.subscribe()` in the browser."
+          },
+          "vapidPublicKey": {
+            "label": "VAPID public key"
+          },
+          "vapidPrivateKey": {
+            "label": "VAPID private key"
+          },
+          "vapidSubject": {
+            "label": "VAPID subject",
+            "description": "A mailto: address or https URL identifying the sender."
+          },
+          "title": {
+            "label": "Notification title"
+          }
+        }
+      },
+      "wecom": {
+        "label": "WeCom",
+        "fields": {
+          "botKey": {
+            "label": "Bot key",
+            "description": "The `key=` parameter of the group bot webhook URL."
+          },
+          "mentionedMobileList": {
+            "label": "Mention mobile numbers",
+            "description": "Comma-separated; `@all` mentions everyone."
+          }
+        }
+      },
+      "zoho-cliq": {
+        "label": "Zoho Cliq",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          }
+        }
+      }
     }
   },
   "consent": {
@@ -2570,6 +3456,8 @@
     "permissionUnknown": "Unknown permission \"{permission}\".",
     "permissionLocked": "\"{permission}\" cannot be overridden.",
     "permissionRoleInvalid": "Invalid role for \"{permission}\".",
-    "statsRangeInvalid": "Invalid range; expected one of {ranges}"
+    "statsRangeInvalid": "Invalid range; expected one of {ranges}",
+    "serverSmtpRestrictedOff": "Sending through the server SMTP settings is turned off on this instance.",
+    "serverSmtpRestrictedSuperadmin": "Only an instance superadmin can turn on the server SMTP settings for a channel."
   }
 }
