@@ -113,24 +113,47 @@ wall-clock strings, `intervalDay`, `weekdays`, `daysOfMonth` (`1`–`31`, `lastD
 `monitors` and `statusPages` (both restricted to the same organization by a `beforeChange` hook). The field
 set and the scheduling rules are a port of Uptime Kuma's `server/model/maintenance.js`.
 
-Everything is a pure function of the document and the clock (`src/server/maintenance/status.ts`):
+The **planned** windows are a pure function of the document and the clock (`src/server/maintenance/status.ts`):
 `computeMaintenanceTimeslots(doc, now)` resolves the timezone, reads the date range in it, and evaluates the
 strategy — `croner` (cron patterns generated from the recurring options, evaluated in the maintenance's zone,
 DST-aware) or, for "every N days", calendar arithmetic anchored on the start date — to return the status
 (`inactive`, `scheduled`, `under-maintenance`, `ended`, `unknown`) plus the current and next window as ISO
-instants. There is no in-memory job per maintenance:
+instants.
+
+What **actually** happens is persisted per occurrence (#154): `maintenance-occurrences` documents (`maintenance`,
+`start`/`end` of the planned window, `state` = `scheduled | in-progress | verifying | completed | cancelled`,
+`startedAt`/`completedAt`/`cancelledAt`, `remindersSent`, and an `updates[] { status, message, postedAt }`
+timeline). `syncMaintenance(payload, doc, { now })` in `src/server/maintenance/occurrences.ts` is the only
+writer besides admin updates: it plans an occurrence for the current and the next window, applies the due
+transitions (`autoStart`, `autoComplete`), handles due reminders once per occurrence, and persists the
+**effective** `maintenance.status` (`under-maintenance` exactly while an occurrence is open). It runs
+
+- in the `maintenance` `afterChange` hook, inside the save's transaction (the response already carries the
+  effective status),
+- from delayed `maintenance-wakeup` BullMQ jobs (`src/server/maintenance/queue.ts`) at each planned start,
+  end and reminder instant, enqueued after the commit with a job id per instant (idempotent re-planning;
+  stale jobs find nothing to do),
+- and from the `maintenance-status` job scheduler (`src/server/maintenance/job.ts`, every minute on the
+  `marmot:maintenance` queue, whose concurrency-1 worker also runs `retention` and the wake-ups) as a
+  reconciler; the worker re-plans every wake-up at boot.
+
+Changes publish `maintenanceList` (`MaintenanceSummary[]`) to the organization room and hand
+`MaintenanceEvent`s (`scheduled`, `reminder`, `started`, `updated`, `completed`, `cancelled`) to the listeners
+registered with `registerMaintenanceEventListener()` after the commit: the hook point for subscriber
+notifications (#104). Admins post updates or transitions through
+`POST /api/orgs/:orgId/maintenance/:id/occurrences/:occurrenceId/updates` (`postOccurrenceUpdate()`).
+
+Reads never recompute state:
 
 - The worker installs `createMaintenanceResolver()` through the engine's `setMaintenanceResolver`, so every
-  check asks `isMonitorUnderMaintenance()` (active maintenances listing the monitor, then its parent groups)
-  and writes a MAINTENANCE heartbeat instead of running the check.
-- The `maintenance-status` BullMQ job scheduler (`src/server/maintenance/job.ts`, every minute on the
-  `marmot:maintenance` queue, whose worker also runs `retention` jobs) recomputes every document, persists
-  `status` when it changed and publishes `maintenanceList` (`MaintenanceSummary[]`) to the organization
-  room. The collection hooks compute `status` on save and publish the list after edits and deletes.
-- Public status pages receive running windows and windows starting within seven days
-  (`getActiveMaintenanceForStatusPage`) in their `maintenance` array and render them as banners.
+  check asks `isMonitorUnderMaintenance()` (active maintenances listing the monitor whose persisted status is
+  `under-maintenance`, then its parent groups) and writes a MAINTENANCE heartbeat instead of running the check.
+- Public status pages receive the running occurrences, the next one of each maintenance starting within seven
+  days and those finished within the page's `maintenanceVisibilityHours`
+  (`getActiveMaintenanceForStatusPage`) in their `maintenance` array, each with its timeline.
 
-Routes: `GET/POST /api/orgs/:orgId/maintenance`, `GET/PATCH/DELETE .../:id`, `POST .../:id/{pause,resume}`
+Routes: `GET/POST /api/orgs/:orgId/maintenance`, `GET/PATCH/DELETE .../:id`, `POST .../:id/{pause,resume}`,
+`GET .../:id/occurrences`, `POST .../:id/occurrences/:occurrenceId/updates`
 (`maintenance:*` permissions, zod schema shared with the form in `src/lib/validation/maintenance.ts`). UI:
 `/[orgSlug]/maintenance` (live list), `/new`, `/[id]/edit`.
 

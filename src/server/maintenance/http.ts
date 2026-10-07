@@ -63,5 +63,8 @@ export function toMaintenanceData(payload: Payload, values: MaintenanceFormValue
     timezone: values.timezone,
     monitors: ids(values.monitors),
     statusPages: ids(values.statusPages),
+    autoStart: values.autoStart,
+    autoComplete: values.autoComplete,
+    reminders: values.reminders,
   }
 }
