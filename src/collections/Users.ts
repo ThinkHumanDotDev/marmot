@@ -8,7 +8,7 @@ import {
 import { authenticated, selfOrSuperadmin, superadminOnly } from '@/access/org-scoped'
 import { isSuperadmin, type UserLike } from '@/access/permissions'
 import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import { defaultLocale, localeNames, locales } from '@/i18n/locales'
 import { auditAuthFailure, auditLogin, rateLimitAuthOperations } from '@/server/security/auth-hooks'
 import { enforceSsoOnPasswordLogin } from '@/server/sso/enforcement'
@@ -89,7 +89,7 @@ export const Users: CollectionConfig = {
   slug: 'users',
   admin: {
     useAsTitle: 'email',
-    group: 'Access',
+    group: adminGroup('access'),
     defaultColumns: ['email', 'name', 'superadmin'],
   },
   auth: true,

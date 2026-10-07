@@ -9,7 +9,7 @@ import {
 
 import { orgScoped } from '@/access/org-scoped'
 import { getOrgIdsWithPermission, isSuperadmin, type UserLike } from '@/access/permissions'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import { defaultLocale, localeNames, locales } from '@/i18n/locales'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
@@ -164,7 +164,7 @@ export const StatusPages: CollectionConfig = {
   slug: 'status-pages',
   admin: {
     useAsTitle: 'title',
-    group: 'Status pages',
+    group: adminGroup('statusPages'),
     defaultColumns: ['title', 'slug', 'published', 'organization', 'updatedAt'],
   },
   access: {

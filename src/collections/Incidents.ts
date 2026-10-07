@@ -8,7 +8,7 @@ import {
 import { orgScoped } from '@/access/org-scoped'
 
 import type { Incident } from '@/payload-types'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import { userErrorText } from '@/server/request-locale'
 
 export const INCIDENT_STYLES = ['info', 'warning', 'danger', 'primary'] as const
@@ -72,7 +72,7 @@ export const Incidents: CollectionConfig = {
   slug: 'incidents',
   admin: {
     useAsTitle: 'title',
-    group: 'Status pages',
+    group: adminGroup('statusPages'),
     defaultColumns: ['title', 'statusPage', 'style', 'pinned', 'active', 'createdAt'],
   },
   access: {

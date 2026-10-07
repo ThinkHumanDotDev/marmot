@@ -20,7 +20,7 @@ import {
   LOCKED_PERMISSIONS,
   ROLES,
 } from '@/access/permissions'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import { defaultLocale, localeNames, locales, type Locale } from '@/i18n/locales'
 import { PLANS, SUBSCRIPTION_STATUSES } from '@/lib/entitlements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
@@ -281,7 +281,7 @@ export const Organizations: CollectionConfig = {
   slug: 'organizations',
   admin: {
     useAsTitle: 'name',
-    group: 'Access',
+    group: adminGroup('access'),
     defaultColumns: ['name', 'slug', 'plan', 'createdAt'],
   },
   access: {

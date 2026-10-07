@@ -16,7 +16,7 @@ import {
 import { looseHost } from '@/server/security/monitor-targets'
 
 import { detachMonitorRelation } from './shared'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import { userErrorText } from '@/server/request-locale'
 
 /**
@@ -63,7 +63,7 @@ export const DockerHosts: CollectionConfig = {
   slug: 'docker-hosts',
   admin: {
     useAsTitle: 'name',
-    group: 'Monitoring',
+    group: adminGroup('monitoring'),
     defaultColumns: ['name', 'connectionType', 'socketPath', 'url'],
   },
   // Members read (to pick a host for their monitors), admins write: a Docker host reaches a daemon.

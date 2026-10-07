@@ -20,7 +20,7 @@ import {
   validateNotificationConfig,
 } from '@/server/notifications/send'
 import { checkServerSmtpChange } from '@/server/notifications/server-smtp'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import { userErrorText } from '@/server/request-locale'
 import { apiError } from '@/server/errors'
 
@@ -243,7 +243,7 @@ export const Notifications: CollectionConfig = {
   slug: 'notifications',
   admin: {
     useAsTitle: 'name',
-    group: 'Monitoring',
+    group: adminGroup('monitoring'),
     defaultColumns: ['name', 'type', 'isDefault', 'active', 'lastSentAt'],
   },
   access: {

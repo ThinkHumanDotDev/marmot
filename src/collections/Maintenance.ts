@@ -15,16 +15,13 @@ import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import {
   DAY_OF_MONTH_VALUES,
-  LAST_DAY_LABELS,
   LAST_DAY_VALUES,
-  MAINTENANCE_STATUS_LABELS,
   MAINTENANCE_STATUSES,
   MAINTENANCE_STRATEGIES,
-  MAINTENANCE_STRATEGY_LABELS,
   MAX_DURATION_MINUTES,
   MAX_INTERVAL_DAYS,
   SAME_AS_SERVER,
-  WEEKDAY_OPTIONS,
+  WEEKDAY_ORDER,
   isRecurringStrategy,
   isValidTimezone,
   type LastDayValue,
@@ -32,7 +29,7 @@ import {
 import type { Maintenance as MaintenanceDoc } from '@/payload-types'
 import { buildCron, getMaintenanceStatus, validateCron } from '@/server/maintenance/status'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import { userErrorText } from '@/server/request-locale'
 import type { ErrorKey, ErrorValues } from '@/server/errors'
 
@@ -193,9 +190,9 @@ const afterDelete: CollectionAfterDeleteHook<MaintenanceDoc> = async ({ doc, req
 const onlyWhen = (strategies: readonly string[]) => (data: Partial<MaintenanceDoc>) =>
   strategies.includes(data?.strategy ?? '')
 
-const dayOfMonthLabel = (value: string): string =>
+const dayOfMonthLabel = (value: string) =>
   (LAST_DAY_VALUES as readonly string[]).includes(value)
-    ? LAST_DAY_LABELS[value as LastDayValue]
+    ? adminT(`marmot:lastDays:${value as LastDayValue}`)
     : value
 
 /**
@@ -208,7 +205,7 @@ export const Maintenance: CollectionConfig = {
   slug: 'maintenance',
   admin: {
     useAsTitle: 'title',
-    group: 'Monitoring',
+    group: adminGroup('monitoring'),
     defaultColumns: ['title', 'strategy', 'status', 'active', 'organization'],
   },
   access: {
@@ -249,7 +246,7 @@ export const Maintenance: CollectionConfig = {
           defaultValue: 'single',
           options: MAINTENANCE_STRATEGIES.map((value) => ({
             value,
-            label: MAINTENANCE_STRATEGY_LABELS[value],
+            label: adminT(`marmot:maintenanceStrategies:${value}`),
           })),
         },
         {
@@ -278,7 +275,7 @@ export const Maintenance: CollectionConfig = {
       index: true,
       options: MAINTENANCE_STATUSES.map((value) => ({
         value,
-        label: MAINTENANCE_STATUS_LABELS[value],
+        label: adminT(`marmot:maintenanceStatuses:${value}`),
       })),
       admin: {
         position: 'sidebar',
@@ -337,7 +334,10 @@ export const Maintenance: CollectionConfig = {
       name: 'weekdays',
       type: 'select',
       hasMany: true,
-      options: WEEKDAY_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+      options: WEEKDAY_ORDER.map((value) => ({
+        value,
+        label: adminT(`marmot:weekdays:${value}`),
+      })),
       admin: { condition: onlyWhen(['recurring-weekday']) },
     },
     {

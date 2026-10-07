@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import type { CollectionBeforeValidateHook, CollectionConfig, FieldAccess } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 
 export const SSO_DOMAINS_SLUG = 'sso-domains' as const
 
@@ -68,7 +68,7 @@ export const SsoDomains: CollectionConfig = {
   slug: SSO_DOMAINS_SLUG,
   admin: {
     useAsTitle: 'domain',
-    group: 'Access',
+    group: adminGroup('access'),
     defaultColumns: ['domain', 'organization', 'verifiedAt'],
   },
   access: {

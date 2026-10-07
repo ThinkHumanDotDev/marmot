@@ -33,7 +33,7 @@ import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 
 import type { Invitation } from '@/payload-types'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import { userErrorText } from '@/server/request-locale'
 
 const log = childLogger('invitations')
@@ -282,7 +282,7 @@ export const Invitations: CollectionConfig = {
   slug: 'invitations',
   admin: {
     useAsTitle: 'email',
-    group: 'Access',
+    group: adminGroup('access'),
     defaultColumns: ['email', 'organization', 'role', 'status', 'expiresAt'],
   },
   access: {
