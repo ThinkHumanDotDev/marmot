@@ -3444,7 +3444,7 @@
   "email": {
     "invitation": {
       "subject": "You have been invited to {organization} on Marmot",
-      "intro": "You have been invited to join <strong>{organization}</strong> as <strong>{role}</strong>.",
+      "intro": "You have been invited to join <strong>{organization}</strong> as <strong>{role, select, owner {owner} admin {admin} member {member} viewer {viewer} other {{role}}}</strong>.",
       "accept": "Accept the invitation",
       "acceptLink": "Accept the invitation: {url}",
       "expiresOn": "This link expires on {date}.",
