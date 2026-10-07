@@ -20,6 +20,7 @@ import { DomainsPanel } from './domains-panel'
 import { GroupsEditor } from './groups-editor'
 import { IncidentsPanel } from './incidents-panel'
 import { SettingsForm } from './settings-form'
+import { SharePanel } from './share-panel'
 
 export interface EditorProps {
   orgId: OrgId
@@ -118,6 +119,7 @@ export function StatusPageEditor({
             <TabsTrigger value="groups">{t('tabs.groups')}</TabsTrigger>
             <TabsTrigger value="incidents">{t('tabs.incidents')}</TabsTrigger>
             <TabsTrigger value="domains">{t('tabs.domains')}</TabsTrigger>
+            <TabsTrigger value="share">{t('tabs.share')}</TabsTrigger>
           </TabsList>
           <TabsContent value="settings" className="pt-6">
             <SettingsForm
@@ -149,6 +151,9 @@ export function StatusPageEditor({
           </TabsContent>
           <TabsContent value="domains" className="pt-6">
             <DomainsPanel orgId={orgId} page={page} onSaved={setPage} canEdit={canEdit} />
+          </TabsContent>
+          <TabsContent value="share" className="pt-6">
+            <SharePanel page={page} />
           </TabsContent>
         </Tabs>
       </section>
