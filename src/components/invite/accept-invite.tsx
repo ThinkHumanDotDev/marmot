@@ -3,10 +3,10 @@
 import { Building2, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import type { Role } from '@/access/permissions'
-import { ROLE_LABELS } from '@/components/members/role-badge'
 import { Button } from '@/components/ui/button'
 import { CardContent, CardDescription, CardFooter, CardHeader } from '@/components/ui/card'
 import { orgApi } from '@/lib/org-api'
@@ -36,6 +36,7 @@ export function AcceptInvite({
   alreadyMember,
   autoAccept,
 }: AcceptInviteProps) {
+  const t = useTranslations('invite.accept')
   const router = useRouter()
   const [state, setState] = React.useState<'idle' | 'joining' | 'done' | 'error'>(
     autoAccept ? 'joining' : 'idle',
@@ -52,10 +53,10 @@ export function AcceptInvite({
       router.replace(`/${result.organization.slug}`)
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not accept the invitation.')
+      setError(err instanceof Error ? err.message : t('failed'))
       setState('error')
     }
-  }, [code, router])
+  }, [code, router, t])
 
   React.useEffect(() => {
     if (autoAccept && !started.current) {
@@ -77,19 +78,23 @@ export function AcceptInvite({
           )}
         </span>
         <h1 data-slot="card-title" className="text-xl leading-none font-semibold">
-          {joining ? `Joining ${organization.name}…` : `Join ${organization.name}`}
+          {joining
+            ? t('joining', { organization: organization.name })
+            : t('join', { organization: organization.name })}
         </h1>
         <CardDescription>
           {alreadyMember
-            ? `You are already a member of ${organization.name}.`
-            : `You will join as ${ROLE_LABELS[role].toLowerCase()}, signed in as ${userEmail}.`}
+            ? t('alreadyMember', { organization: organization.name })
+            : t('joinAs', { role, email: userEmail })}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {invitedEmail && invitedEmail.toLowerCase() !== userEmail.toLowerCase() && (
           <p className="rounded-md border border-status-pending/40 bg-status-pending/10 p-3 text-sm">
-            This invitation was sent to <strong>{invitedEmail}</strong>, but you are signed in as{' '}
-            <strong>{userEmail}</strong>. You can still accept it with this account.
+            {t.rich('emailMismatch', {
+              invited: () => <strong>{invitedEmail}</strong>,
+              current: () => <strong>{userEmail}</strong>,
+            })}
           </p>
         )}
         {error && (
@@ -99,11 +104,7 @@ export function AcceptInvite({
         )}
         {!joining && (
           <Button onClick={accept} className="w-full">
-            {state === 'error'
-              ? 'Try again'
-              : alreadyMember
-                ? 'Open organization'
-                : 'Accept invitation'}
+            {state === 'error' ? t('retry') : alreadyMember ? t('open') : t('submit')}
           </Button>
         )}
       </CardContent>
@@ -112,7 +113,7 @@ export function AcceptInvite({
           href="/"
           className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
-          Not now
+          {t('notNow')}
         </Link>
       </CardFooter>
     </>

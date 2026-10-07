@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
@@ -10,7 +11,10 @@ import { requireUser } from '@/lib/auth'
 import { effectiveRole, getOrgBySlug, summarizeOrg } from '@/lib/org'
 import { listOrgMembers } from '@/server/members'
 
-export const metadata: Metadata = { title: 'Organization settings' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pageTitles')
+  return { title: t('organization') }
+}
 export const dynamic = 'force-dynamic'
 
 export default async function OrganizationSettingsPage({

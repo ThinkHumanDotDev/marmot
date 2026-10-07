@@ -33,6 +33,8 @@ export type PlannedStatusPageFields = Pick<
   | 'title'
   | 'slug'
   | 'description'
+  | 'homepageUrl'
+  | 'contactUrl'
   | 'theme'
   | 'themePreset'
   | 'themeOverrides'
@@ -42,15 +44,28 @@ export type PlannedStatusPageFields = Pick<
   | 'showTags'
   | 'showCertificateExpiry'
   | 'showPoweredBy'
+  | 'showValues'
   | 'autoRefreshInterval'
   | 'footerText'
   | 'customCSS'
   | 'googleAnalyticsId'
 >
 
+/** A group row (component). Static components have no `monitorKey`. */
+export interface PlannedStatusPageComponent {
+  monitorKey: string | null
+  type?: 'monitor' | 'static'
+  name?: string | null
+  description?: string | null
+  showValues?: boolean
+  sendUrl: boolean
+  customUrl: string | null
+}
+
 export interface PlannedStatusPageGroup {
   name: string
-  monitors: { monitorKey: string; sendUrl: boolean; customUrl: string | null }[]
+  defaultOpen?: boolean
+  monitors: PlannedStatusPageComponent[]
 }
 
 export type PlannedIncident = Pick<

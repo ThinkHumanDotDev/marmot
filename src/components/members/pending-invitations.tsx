@@ -2,6 +2,7 @@
 
 import { MailPlus, MoreHorizontal, RefreshCw, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -30,10 +31,10 @@ interface PendingInvitationsProps {
   onInvite: () => void
 }
 
-const formatDate = (iso: string | null) =>
-  iso ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(iso)) : '—'
-
 export function PendingInvitations({ orgId, invitations, onInvite }: PendingInvitationsProps) {
+  const t = useTranslations('members.pending')
+  const format = useFormatter()
+  const formatDate = (iso: string | null) => (iso ? format.dateTime(new Date(iso), 'date') : '—')
   const router = useRouter()
   const [busyId, setBusyId] = React.useState<string | number | null>(null)
 
@@ -42,14 +43,14 @@ export function PendingInvitations({ orgId, invitations, onInvite }: PendingInvi
     try {
       if (action === 'resend') {
         await orgApi.resendInvitation(orgId, invitation.id)
-        toast.success(`Invitation re-sent to ${invitation.email}`)
+        toast.success(t('resent', { email: invitation.email }))
       } else {
         await orgApi.revokeInvitation(invitation.id)
-        toast.success(`Invitation to ${invitation.email} revoked`)
+        toast.success(t('revoked', { email: invitation.email }))
       }
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Something went wrong.')
+      toast.error(error instanceof Error ? error.message : t('failed'))
     } finally {
       setBusyId(null)
     }
@@ -59,17 +60,15 @@ export function PendingInvitations({ orgId, invitations, onInvite }: PendingInvi
     <div className="flex flex-col gap-3" data-testid="pending-invitations">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold">Pending invitations</h2>
-          <p className="text-sm text-muted-foreground">
-            Invitations expire after seven days. Resend to extend them.
-          </p>
+          <h2 className="text-base font-semibold">{t('title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('description')}</p>
         </div>
       </div>
       {invitations.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-10 text-center">
-          <p className="text-sm text-muted-foreground">No pending invitations.</p>
+          <p className="text-sm text-muted-foreground">{t('empty')}</p>
           <Button variant="outline" size="sm" onClick={onInvite}>
-            <MailPlus /> Invite someone
+            <MailPlus /> {t('invite')}
           </Button>
         </div>
       ) : (
@@ -77,11 +76,11 @@ export function PendingInvitations({ orgId, invitations, onInvite }: PendingInvi
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead className="w-28">Role</TableHead>
-                <TableHead className="w-36">Expires</TableHead>
+                <TableHead>{t('columns.email')}</TableHead>
+                <TableHead className="w-28">{t('columns.role')}</TableHead>
+                <TableHead className="w-36">{t('columns.expires')}</TableHead>
                 <TableHead className="w-12">
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{t('columns.actions')}</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -102,20 +101,20 @@ export function PendingInvitations({ orgId, invitations, onInvite }: PendingInvi
                           variant="ghost"
                           size="icon-sm"
                           disabled={busyId === invitation.id}
-                          aria-label={`Actions for invitation to ${invitation.email}`}
+                          aria-label={t('actionsFor', { email: invitation.email })}
                         >
                           <MoreHorizontal />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onSelect={() => run(invitation, 'resend')}>
-                          <RefreshCw /> Resend email
+                          <RefreshCw /> {t('resend')}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           variant="destructive"
                           onSelect={() => run(invitation, 'revoke')}
                         >
-                          <X /> Revoke
+                          <X /> {t('revoke')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

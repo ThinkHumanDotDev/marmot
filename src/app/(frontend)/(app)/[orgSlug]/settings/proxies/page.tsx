@@ -1,12 +1,16 @@
 import { Network } from 'lucide-react'
 import type { Metadata } from 'next'
+import { getTranslations } from 'next-intl/server'
 
 import { EmptyState } from '@/components/empty-state'
 import { ProxiesSettings } from '@/components/settings/proxies-settings'
 import { toProxyRow } from '@/components/settings/resources-api'
 import { getOrgPageContext } from '@/server/monitors/page-data'
 
-export const metadata: Metadata = { title: 'Proxies' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pageTitles')
+  return { title: t('proxies') }
+}
 export const dynamic = 'force-dynamic'
 
 export default async function ProxiesSettingsPage({
@@ -17,11 +21,12 @@ export default async function ProxiesSettingsPage({
   const { orgSlug } = await params
   const ctx = await getOrgPageContext(orgSlug, `/${orgSlug}/settings/proxies`)
   if (!ctx.allowed('proxy:read')) {
+    const t = await getTranslations('settings.proxies')
     return (
       <EmptyState
         icon={Network}
-        title="Members only"
-        description="Proxies are visible to members and managed by admins of this organization."
+        title={t('membersOnlyTitle')}
+        description={t('membersOnlyDescription')}
       />
     )
   }

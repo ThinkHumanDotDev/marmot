@@ -1777,6 +1777,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "public_name": {
+          "name": "public_name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "description": {
           "name": "description",
           "type": "varchar",
@@ -4493,11 +4499,38 @@
           "primaryKey": true,
           "notNull": true
         },
+        "type": {
+          "name": "type",
+          "type": "enum_status_pages_groups_monitors_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'monitor'"
+        },
         "monitor_id": {
           "name": "monitor_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "show_values": {
+          "name": "show_values",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
         },
         "send_url": {
           "name": "send_url",
@@ -4621,6 +4654,13 @@
           "type": "varchar",
           "primaryKey": false,
           "notNull": true
+        },
+        "default_open": {
+          "name": "default_open",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
         }
       },
       "indexes": {
@@ -4716,6 +4756,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "homepage_url": {
+          "name": "homepage_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contact_url": {
+          "name": "contact_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "theme": {
           "name": "theme",
           "type": "enum_status_pages_theme",
@@ -4723,37 +4775,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'auto'"
-        },
-        "theme_preset": {
-          "name": "theme_preset",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'default'"
-        },
-        "theme_overrides": {
-          "name": "theme_overrides",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "banner_text": {
-          "name": "banner_text",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "logo_dark_id": {
-          "name": "logo_dark_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "favicon_id": {
-          "name": "favicon_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
         },
         "language": {
           "name": "language",
@@ -4793,6 +4814,13 @@
         },
         "show_powered_by": {
           "name": "show_powered_by",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "show_values": {
+          "name": "show_values",
           "type": "boolean",
           "primaryKey": false,
           "notNull": false,
@@ -4874,36 +4902,6 @@
           "columns": [
             {
               "expression": "logo_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_pages_logo_dark_idx": {
-          "name": "status_pages_logo_dark_idx",
-          "columns": [
-            {
-              "expression": "logo_dark_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_pages_favicon_idx": {
-          "name": "status_pages_favicon_idx",
-          "columns": [
-            {
-              "expression": "favicon_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5007,31 +5005,95 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.incidents_affected_components": {
+      "name": "incidents_affected_components",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         },
-        "status_pages_logo_dark_id_media_id_fk": {
-          "name": "status_pages_logo_dark_id_media_id_fk",
-          "tableFrom": "status_pages",
-          "tableTo": "media",
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "component": {
+          "name": "component",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "impact": {
+          "name": "impact",
+          "type": "enum_incidents_affected_components_impact",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'partial_outage'"
+        }
+      },
+      "indexes": {
+        "incidents_affected_components_order_idx": {
+          "name": "incidents_affected_components_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "incidents_affected_components_parent_id_idx": {
+          "name": "incidents_affected_components_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "incidents_affected_components_parent_id_fk": {
+          "name": "incidents_affected_components_parent_id_fk",
+          "tableFrom": "incidents_affected_components",
+          "tableTo": "incidents",
           "columnsFrom": [
-            "logo_dark_id"
+            "_parent_id"
           ],
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "status_pages_favicon_id_media_id_fk": {
-          "name": "status_pages_favicon_id_media_id_fk",
-          "tableFrom": "status_pages",
-          "tableTo": "media",
-          "columnsFrom": [
-            "favicon_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -7989,6 +8051,14 @@
         "maintenance"
       ]
     },
+    "public.enum_status_pages_groups_monitors_type": {
+      "name": "enum_status_pages_groups_monitors_type",
+      "schema": "public",
+      "values": [
+        "monitor",
+        "static"
+      ]
+    },
     "public.enum_status_pages_theme": {
       "name": "enum_status_pages_theme",
       "schema": "public",
@@ -8004,6 +8074,16 @@
       "values": [
         "auto",
         "en"
+      ]
+    },
+    "public.enum_incidents_affected_components_impact": {
+      "name": "enum_incidents_affected_components_impact",
+      "schema": "public",
+      "values": [
+        "operational",
+        "degraded_performance",
+        "partial_outage",
+        "major_outage"
       ]
     },
     "public.enum_incidents_style": {
@@ -8112,6 +8192,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "e8ce618d-3007-42e3-9610-787ac2de7afa",
+  "id": "ee9a900b-bdbc-441d-92e0-4b39179b0c4c",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

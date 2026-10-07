@@ -1,12 +1,16 @@
 import { Container } from 'lucide-react'
 import type { Metadata } from 'next'
+import { getTranslations } from 'next-intl/server'
 
 import { EmptyState } from '@/components/empty-state'
 import { DockerHostsSettings } from '@/components/settings/docker-hosts-settings'
 import { toDockerHostRow } from '@/components/settings/resources-api'
 import { getOrgPageContext } from '@/server/monitors/page-data'
 
-export const metadata: Metadata = { title: 'Docker hosts' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pageTitles')
+  return { title: t('dockerHosts') }
+}
 export const dynamic = 'force-dynamic'
 
 export default async function DockerHostsSettingsPage({
@@ -17,11 +21,12 @@ export default async function DockerHostsSettingsPage({
   const { orgSlug } = await params
   const ctx = await getOrgPageContext(orgSlug, `/${orgSlug}/settings/docker-hosts`)
   if (!ctx.allowed('docker-host:read')) {
+    const t = await getTranslations('settings.dockerHosts')
     return (
       <EmptyState
         icon={Container}
-        title="Members only"
-        description="Docker hosts are visible to members and managed by admins of this organization."
+        title={t('membersOnlyTitle')}
+        description={t('membersOnlyDescription')}
       />
     )
   }

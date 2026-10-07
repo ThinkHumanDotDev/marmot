@@ -412,6 +412,8 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
     .object({
       name: z.string().trim().min(1, message('nameRequired')).max(150),
       type: z.enum(MONITOR_TYPE_NAMES),
+      /** Name on status pages (and, later, subscriber messages) instead of `name`. */
+      publicName: optionalText(150),
       description: optionalText(5000),
       parent: relationId,
       weight: nonNegativeInt().default(2000),
@@ -770,6 +772,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
   return {
     name: '',
     type,
+    publicName: null,
     description: null,
     parent: null,
     weight: 2000,

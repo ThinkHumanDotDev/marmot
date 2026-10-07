@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
@@ -20,7 +21,10 @@ import type { Media } from '@/payload-types'
 import { listConnectedAccounts } from '@/server/accounts'
 import { soleOwnerships } from '@/server/members'
 
-export const metadata: Metadata = { title: 'Account settings' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pageTitles')
+  return { title: t('account') }
+}
 export const dynamic = 'force-dynamic'
 
 export default async function AccountSettingsPage({
