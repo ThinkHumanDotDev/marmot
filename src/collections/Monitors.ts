@@ -17,11 +17,25 @@ import { MONITOR_TARGET_FIELDS, monitorTargetProblem } from '@/server/security/m
 import { outboundGuardActive } from '@/server/security/outbound-guard'
 
 import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
+import {
+  ASSERTION_COMPARATORS,
+  ASSERTION_KINDS,
+  assertionProblems,
+  normalizeAssertions,
+} from '@/lib/validation/assertions'
 
 import { HEARTBEAT_STATUSES } from './Heartbeats'
+import {
+  MAX_REMINDERS_LIMIT,
+  MAX_SUCCESS_THRESHOLD,
+  REMINDER_BACKOFFS,
+} from '@/lib/reminder-backoff'
 import { relId } from './shared'
+import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
+import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 import { adminGroup, adminT } from '@/i18n/admin'
-import { userErrorText } from '@/server/request-locale'
+import { getTranslator } from '@/i18n/translator'
+import { userErrorText, userLocale } from '@/server/request-locale'
 
 const log = childLogger('monitors')
 
@@ -128,12 +142,32 @@ const statusGroup: Field = {
       admin: { description: adminT('marmot:monitors:settledStatusDescription') },
     },
     {
+      name: 'recoveries',
+      type: 'number',
+      defaultValue: 0,
+      admin: { description: adminT('marmot:monitors:recoveriesDescription') },
+    },
+    {
       name: 'lastPushAt',
       type: 'date',
       admin: {
         date: { pickerAppearance: 'dayAndTime' },
         description: adminT('marmot:monitors:lastPushAtDescription'),
       },
+    },
+    {
+      name: 'lastPushStatus',
+      type: 'select',
+      options: [
+        { label: 'up', value: 'up' },
+        { label: 'down', value: 'down' },
+      ],
+      admin: { description: adminT('marmot:monitors:lastPushStatusDescription') },
+    },
+    {
+      name: 'pushRuns',
+      type: 'json',
+      admin: { description: adminT('marmot:monitors:pushRunsDescription') },
     },
   ],
 }
@@ -328,6 +362,8 @@ export const Monitors: CollectionConfig = {
           'stat-hourly',
           'stat-daily',
           'notification-sent-history',
+          'monitor-incidents',
+          'push-events',
         ] as const) {
           await req.payload.delete({ collection, where: { monitor: { equals: id } }, ...common })
         }
@@ -556,6 +592,37 @@ export const Monitors: CollectionConfig = {
       },
     },
     {
+      type: 'row',
+      fields: [
+        {
+          name: 'successThreshold',
+          type: 'number',
+          defaultValue: 1,
+          min: 1,
+          max: MAX_SUCCESS_THRESHOLD,
+          admin: { description: adminT('marmot:monitors:successThresholdDescription') },
+        },
+        {
+          name: 'reminderBackoff',
+          type: 'select',
+          defaultValue: 'none',
+          options: REMINDER_BACKOFFS.map((value) => ({
+            label: adminT(`marmot:monitors:reminderBackoff_${value}`),
+            value,
+          })),
+          admin: { description: adminT('marmot:monitors:reminderBackoffDescription') },
+        },
+        {
+          name: 'maxReminders',
+          type: 'number',
+          defaultValue: 0,
+          min: 0,
+          max: MAX_REMINDERS_LIMIT,
+          admin: { description: adminT('marmot:monitors:maxRemindersDescription') },
+        },
+      ],
+    },
+    {
       name: 'upsideDown',
       type: 'checkbox',
       defaultValue: false,
@@ -688,6 +755,58 @@ export const Monitors: CollectionConfig = {
       ],
     },
 
+    {
+      // Assertions (#96): rows evaluated by the worker after the request / lookup, all must pass.
+      // Evaluated by `src/server/monitor-types/assertions.ts`; rules in `src/lib/validation/assertions.ts`.
+      name: 'assertions',
+      type: 'array',
+      label: adminT('marmot:labels:assertions'),
+      admin: {
+        condition: typeIn([...HTTP_TYPES, 'dns']),
+        initCollapsed: true,
+        description: adminT('marmot:monitors:assertionsDescription'),
+      },
+      validate: (
+        value: unknown,
+        { data, req }: { data?: Partial<Monitor>; req: { user?: unknown } },
+      ) => {
+        const problems = assertionProblems(normalizeAssertions(value), data?.type)
+        if (problems.length === 0) return true
+        const first = problems[0]
+        const t = getTranslator(userLocale(req.user))
+        const message = t(`monitors.validation.${first.key}`, first.values)
+        return first.index === null
+          ? message
+          : t('monitors.validation.assertionRow', { row: first.index + 1, message })
+      },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'kind',
+              type: 'select',
+              required: true,
+              options: ASSERTION_KINDS.map((kind) => ({ label: kind, value: kind })),
+            },
+            {
+              name: 'target',
+              type: 'text',
+              maxLength: 1000,
+              admin: { description: adminT('marmot:monitors:assertionTargetDescription') },
+            },
+            {
+              name: 'comparator',
+              type: 'select',
+              required: true,
+              options: ASSERTION_COMPARATORS.map((op) => ({ label: op, value: op })),
+            },
+            { name: 'value', type: 'text', maxLength: 2000 },
+          ],
+        },
+      ],
+    },
+
     // ---- Authentication -------------------------------------------------------------------------
     {
       type: 'collapsible',
@@ -792,6 +911,77 @@ export const Monitors: CollectionConfig = {
         condition: (data) => data?.type === 'push',
         description: adminT('marmot:monitors:pushTokenDescription'),
       },
+    },
+    {
+      type: 'collapsible',
+      label: adminT('marmot:labels:pushSchedule'),
+      admin: { condition: (data) => data?.type === 'push', initCollapsed: false },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'pushSchedule',
+              type: 'select',
+              defaultValue: 'interval',
+              options: [
+                { label: adminT('marmot:labels:pushScheduleInterval'), value: 'interval' },
+                { label: adminT('marmot:labels:pushScheduleCron'), value: 'cron' },
+              ] satisfies { label: unknown; value: (typeof PUSH_SCHEDULE_TYPES)[number] }[],
+              admin: { description: adminT('marmot:monitors:pushScheduleDescription') },
+            },
+            {
+              name: 'pushCron',
+              type: 'text',
+              maxLength: 200,
+              validate: (
+                value: string | null | undefined,
+                { siblingData }: { siblingData: Partial<Monitor> },
+              ) =>
+                siblingData?.type !== 'push' ||
+                siblingData?.pushSchedule !== 'cron' ||
+                isValidCronPattern(value) ||
+                'Invalid cron expression',
+              admin: {
+                condition: (data) => data?.pushSchedule === 'cron',
+                placeholder: '0 2 * * *',
+                description: adminT('marmot:monitors:pushCronDescription'),
+              },
+            },
+            {
+              name: 'pushTimezone',
+              type: 'text',
+              defaultValue: SAME_AS_SERVER,
+              maxLength: 100,
+              validate: (value: string | null | undefined) =>
+                !value || isValidTimezone(value) || 'Unknown time zone',
+              admin: {
+                condition: (data) => data?.pushSchedule === 'cron',
+                description: adminT('marmot:monitors:pushTimezoneDescription'),
+              },
+            },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'pushGrace',
+              type: 'number',
+              min: 0,
+              max: MAX_PUSH_SECONDS,
+              admin: { description: adminT('marmot:monitors:pushGraceDescription') },
+            },
+            {
+              name: 'pushMaxDuration',
+              type: 'number',
+              min: 1,
+              max: MAX_PUSH_SECONDS,
+              admin: { description: adminT('marmot:monitors:pushMaxDurationDescription') },
+            },
+          ],
+        },
+      ],
     },
 
     // ---- Manual ---------------------------------------------------------------------------------

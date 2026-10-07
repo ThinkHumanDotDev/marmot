@@ -116,9 +116,10 @@ impact (components the page no longer has are skipped; the composer merges them 
 the declared impact, and for maintenance the end of a single window (start + duration) or a cron window's
 duration. The page's own templates and the organization-wide ones are offered.
 
-Placeholders are `{{ name }}` with a plain identifier, rendered by the same tiny, safe renderer as
-notification templates (`src/lib/placeholders.ts`: no expressions, no code; the Liquid renderer of #150 will
-replace it). These variables are filled in when the template is applied:
+Placeholders are `{{ name }}` with a plain identifier, rendered by a tiny, safe renderer
+(`src/lib/placeholders.ts`: no expressions, no code). Unlike notification templates, which are Liquid
+([Notifications → Templates](Notifications.md#templates)), unknown placeholders stay in the text for the
+author to fill in. These variables are filled in when the template is applied:
 
 | Variable                   | Kinds                     | Value                                       |
 | -------------------------- | ------------------------- | ------------------------------------------- |

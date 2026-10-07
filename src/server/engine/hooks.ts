@@ -33,6 +33,11 @@ export interface HeartbeatEvent {
   tlsInfo?: TlsInfo | null
   /** The leaf certificate differs from the one seen before (first capture included). */
   certChanged?: boolean
+  /**
+   * The check was held because the worker itself was offline (#148): a PENDING "checker offline"
+   * beat that must not count as downtime.
+   */
+  checkerOffline?: boolean
 }
 
 export type HeartbeatListener = (event: HeartbeatEvent) => void | Promise<void>

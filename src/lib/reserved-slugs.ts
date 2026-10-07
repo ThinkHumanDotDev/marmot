@@ -3,6 +3,7 @@
  * to claim. Keep this list in sync with the top-level routes under `src/app`.
  */
 export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
+  'ack',
   'admin',
   'api',
   'app',

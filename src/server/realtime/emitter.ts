@@ -21,6 +21,7 @@ import {
   type RealtimeRange,
   type ServerToClientEvents,
 } from './events'
+import type { MonitorIncidentSummary } from '@/lib/monitor-incidents'
 import { toRealtimeMonitor, type MonitorSummarySource } from './serialize'
 
 const log = childLogger('realtime:emitter')
@@ -233,4 +234,24 @@ export function emitCertInfo(
     monitorId: id(monitorId),
     info,
   })
+}
+
+/** A monitor incident changed (`monitorIncident`). */
+export function emitMonitorIncident(
+  organizationId: string | number,
+  incident: MonitorIncidentSummary,
+): void {
+  emitToOrg(organizationId, RealtimeEvents.monitorIncident, {
+    organizationId: id(organizationId),
+    incident,
+  })
+}
+
+/** Instance-wide: broadcast the checker status to every connected socket (all organizations). */
+export function emitCheckerStatus(payload: RealtimePayloads['checkerStatus']): void {
+  try {
+    getEmitter().emit(RealtimeEvents.checkerStatus, payload)
+  } catch (err) {
+    log.error({ err }, 'failed to emit the checker status')
+  }
 }

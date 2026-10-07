@@ -1,18 +1,26 @@
 /**
- * Default notification text and a tiny, safe template renderer.
+ * Default notification text and the context of message templates.
  *
  * The default text mirrors Uptime Kuma 2.5.5 `Monitor.sendNotification`
- * (`server/model/monitor.js`, MIT, Louis Lam): `[monitor.name] [✅ Up] msg`. Templates support
- * `{{ path }}` placeholders resolved against an allow-listed context — no expressions, no eval.
+ * (`server/model/monitor.js`, MIT, Louis Lam): `[monitor.name] [✅ Up] msg`. Templates are
+ * sandboxed Liquid (`./liquid.ts`, #150) rendered against an allow-listed, plain-data context.
  * The words in it (status labels, fallbacks) come from `notifications.messages.*` in the
  * organization's language; the English catalogue reproduces Kuma's text byte for byte.
  */
+import { env } from '@/env'
 import { defaultLocale, type Locale } from '@/i18n/locales'
 import type { Messages } from '@/i18n/messages'
-import { renderPlaceholders } from '@/lib/placeholders'
+import type { ChannelEvent } from '@/lib/notification-events'
+import { escapeHtml } from '@/lib/markdown'
+import type { TEMPLATE_VARIABLES } from '@/lib/notification-template-variables'
+import { childLogger } from '@/lib/logger'
+import { humanDuration } from '@/lib/validation/monitor'
 import type { Heartbeat, Monitor } from '@/payload-types'
 import { serverTranslator } from '@/server/i18n'
 import { extractAddress } from '@/server/notification-providers/http'
+import { renderLiquid, TemplateError, type RenderLiquidOptions, type TemplateMode } from './liquid'
+
+const log = childLogger('notifications:template')
 
 export type NotificationStatus = Heartbeat['status']
 
@@ -52,11 +60,33 @@ export function timeLine(heartbeat: Heartbeat | null, locale: Locale = defaultLo
   })
 }
 
-/** `[name] [🔴 Down] msg` — what every provider sends unless it formats richer content. */
+/** What a message is about, beyond the monitor and heartbeat (#126). */
+export interface MessageExtras {
+  /** Why the channel is told (`down`, `up`, …); null for test messages without an event. */
+  event?: ChannelEvent | null
+  /** How long the monitor was DOWN, on `up` (recovery) messages; null when unknown. */
+  downtimeSeconds?: number | null
+  /** The channel's organization (`{{ organization.name }}`, monitor links); null when unknown. */
+  organization?: TemplateOrganization | null
+  /** The organization's time zone for the `date` filter; UTC by default. */
+  timeZone?: string
+}
+
+/** `1 hour 5 minutes` in `locale` (`common.duration.*`). */
+export function formatDowntime(seconds: number, locale: Locale = defaultLocale): string {
+  const t = serverTranslator(locale)
+  return humanDuration(seconds, (unit, count) => t(`common.duration.${unit}`, { count }))
+}
+
+/**
+ * `[name] [🔴 Down] msg` — what every provider sends unless it formats richer content. Recovery
+ * messages with a known downtime end with ` (down for 5 minutes 3 seconds)`.
+ */
 export function buildDefaultMessage(
   monitor: Monitor | null,
   heartbeat: Heartbeat | null,
   locale: Locale = defaultLocale,
+  extras: MessageExtras = {},
 ): string {
   const t = serverTranslator(locale)
   const name = monitor?.name ?? 'Marmot'
@@ -66,114 +96,247 @@ export function buildDefaultMessage(
     (heartbeat
       ? t('notifications.messages.noMessage')
       : t('notifications.messages.testNotification'))
-  return `[${name}] [${label}] ${msg}`
+  const downtime =
+    extras.event === 'up' && extras.downtimeSeconds != null && extras.downtimeSeconds > 0
+      ? t('notifications.messages.downtimeSuffix', {
+          duration: formatDowntime(extras.downtimeSeconds, locale),
+        })
+      : ''
+  return `[${name}] [${label}] ${msg}${downtime}`
 }
 
-/** Message used by the "Test" button. */
-export function buildTestMessage(channelName?: string, locale: Locale = defaultLocale): string {
+/** Display name of a channel event in `locale` (`notifications.events.*`). */
+export function channelEventLabel(event: ChannelEvent, locale: Locale = defaultLocale): string {
+  return serverTranslator(locale)(`notifications.events.${event}.label`)
+}
+
+/**
+ * Message used by the "Test" button. With `event` it is the sample of that event
+ * (`[Marmot] [⚠️ Test] Down: "Ops" is configured correctly.`).
+ */
+export function buildTestMessage(
+  channelName?: string,
+  locale: Locale = defaultLocale,
+  event?: ChannelEvent | null,
+): string {
   const t = serverTranslator(locale)
   const text = channelName
     ? t('notifications.messages.testConfigured', { channel: channelName })
     : t('notifications.messages.testing')
-  return `[Marmot] [${statusLabel(null, locale)}] ${text}`
+  const prefix = event ? `${channelEventLabel(event, locale)}: ` : ''
+  return `[Marmot] [${statusLabel(null, locale)}] ${prefix}${text}`
 }
 
-/** Variables available to `{{ }}` templates. Keep this list in `docs/Notifications.md`. */
+/** The organization a message is sent for, as templates and the default email see it. */
+export interface TemplateOrganization {
+  name: string
+  slug: string
+  /** Absolute URL of the organization logo, or null without one. */
+  logoUrl: string | null
+}
+
+type TemplateMonitor = {
+  id: string
+  name: string
+  type: string
+  url: string
+  hostname: string
+  port: string
+  description: string
+  /** Link to the monitor in Marmot (`''` without an organization, e.g. test messages). */
+  dashboardUrl: string
+}
+
+type TemplateHeartbeat = {
+  status: string
+  msg: string
+  ping: string
+  time: string
+  duration: string
+  retries: string
+  downCount: string
+  /** `time` in the organization's time zone, `YYYY-MM-DD HH:mm:ss` (Uptime Kuma's field). */
+  localDateTime: string
+  /** The organization's time zone (`Europe/Berlin`). */
+  timezone: string
+}
+
+/**
+ * Variables available to templates. Keep `TEMPLATE_VARIABLES` (checked below) and
+ * `docs/Notifications.md` in step with it.
+ */
 export interface TemplateContext {
   msg: string
   status: string
+  /** Channel event (`down`, `up`, `degraded`, `reminder`, `certificate`, `maintenance`) or ''. */
+  event: string
+  /** Downtime of a recovery (`5 minutes 3 seconds`) or ''. */
+  downtime: string
+  /** Downtime of a recovery in seconds, or ''. */
+  downtimeSeconds: string
   name: string
   hostnameOrURL: string
-  monitor: {
-    id: string
-    name: string
-    type: string
-    url: string
-    hostname: string
-    port: string
-    description: string
-  } | null
-  heartbeat: {
-    status: string
-    msg: string
-    ping: string
-    time: string
-    duration: string
-    retries: string
-    downCount: string
-  } | null
+  monitor: TemplateMonitor | null
+  heartbeat: TemplateHeartbeat | null
+  organization: { name: string; slug: string; logoUrl: string }
+  /** Uptime Kuma's name for `monitor`. */
+  monitorJSON: TemplateMonitor | null
+  /** Uptime Kuma's name for `heartbeat`. */
+  heartbeatJSON: TemplateHeartbeat | null
 }
+
+// The context and the variable list used to check templates must name the same variables.
+type VariableShape<T> = {
+  [K in keyof T]-?: NonNullable<T[K]> extends string ? true : VariableShape<NonNullable<T[K]>>
+}
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+type Assert<T extends true> = T
+/** Compile-time check only: fails to type-check when the two lists drift apart. */
+export type TemplateVariablesMatchContext = Assert<
+  Same<VariableShape<TemplateContext>, typeof TEMPLATE_VARIABLES>
+>
 
 const str = (value: unknown): string =>
   value === null || value === undefined ? '' : typeof value === 'string' ? value : String(value)
+
+/**
+ * `2026-03-10 10:30:00` in `timeZone`: the shape of Uptime Kuma's `heartbeatJSON.localDateTime`.
+ * A fixed, locale-neutral format like `formatHeartbeatTime`, so not routed through the formatter.
+ */
+function localDateTime(time: string | null | undefined, timeZone: string): string {
+  if (!time) return ''
+  const date = new Date(time)
+  if (Number.isNaN(date.getTime())) return time
+  try {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat('en-GB', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23',
+      })
+        .formatToParts(date)
+        .map((part) => [part.type, part.value]),
+    )
+    return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
+  } catch {
+    return date.toISOString().replace('T', ' ').slice(0, 19)
+  }
+}
+
+/** Link to a monitor's page in Marmot, or '' without an organization. */
+export function monitorDashboardUrl(
+  monitor: Pick<Monitor, 'id'> | null,
+  organization: Pick<TemplateOrganization, 'slug'> | null | undefined,
+): string {
+  if (!monitor || !organization?.slug) return ''
+  const base = env.NEXT_PUBLIC_SERVER_URL.replace(/\/+$/, '')
+  return `${base}/${encodeURIComponent(organization.slug)}/monitors/${encodeURIComponent(String(monitor.id))}`
+}
 
 export function buildTemplateContext(
   message: string,
   monitor: Monitor | null,
   heartbeat: Heartbeat | null,
   locale: Locale = defaultLocale,
+  extras: MessageExtras = {},
 ): TemplateContext {
+  const downtimeSeconds =
+    extras.downtimeSeconds != null && extras.downtimeSeconds > 0
+      ? Math.round(extras.downtimeSeconds)
+      : null
+  const org = extras.organization ?? null
+  const monitorVars: TemplateMonitor | null = monitor
+    ? {
+        id: str(monitor.id),
+        name: str(monitor.name),
+        type: str(monitor.type),
+        url: str(monitor.url),
+        hostname: str(monitor.hostname),
+        port: str(monitor.port),
+        description: str(monitor.description),
+        dashboardUrl: monitorDashboardUrl(monitor, org),
+      }
+    : null
+  const heartbeatVars: TemplateHeartbeat | null = heartbeat
+    ? {
+        status: str(heartbeat.status),
+        msg: str(heartbeat.msg),
+        ping: str(heartbeat.ping),
+        time: str(heartbeat.time),
+        duration: str(heartbeat.duration),
+        retries: str(heartbeat.retries),
+        downCount: str(heartbeat.downCount),
+        localDateTime: localDateTime(heartbeat.time, extras.timeZone ?? 'UTC'),
+        timezone: extras.timeZone ?? 'UTC',
+      }
+    : null
   return {
     msg: message,
     status: statusLabel(heartbeat?.status, locale),
+    event: extras.event ?? '',
+    downtime: downtimeSeconds !== null ? formatDowntime(downtimeSeconds, locale) : '',
+    downtimeSeconds: downtimeSeconds !== null ? String(downtimeSeconds) : '',
     name:
       monitor?.name ?? serverTranslator(locale)('notifications.messages.monitorNameUnavailable'),
     hostnameOrURL: monitor ? extractAddress(monitor) : 'testing.hostname',
-    monitor: monitor
-      ? {
-          id: str(monitor.id),
-          name: str(monitor.name),
-          type: str(monitor.type),
-          url: str(monitor.url),
-          hostname: str(monitor.hostname),
-          port: str(monitor.port),
-          description: str(monitor.description),
-        }
-      : null,
-    heartbeat: heartbeat
-      ? {
-          status: str(heartbeat.status),
-          msg: str(heartbeat.msg),
-          ping: str(heartbeat.ping),
-          time: str(heartbeat.time),
-          duration: str(heartbeat.duration),
-          retries: str(heartbeat.retries),
-          downCount: str(heartbeat.downCount),
-        }
-      : null,
+    monitor: monitorVars,
+    heartbeat: heartbeatVars,
+    organization: { name: org?.name ?? '', slug: org?.slug ?? '', logoUrl: org?.logoUrl ?? '' },
+    monitorJSON: monitorVars,
+    heartbeatJSON: heartbeatVars,
   }
-}
-
-/** Resolve `a.b.c` against a plain-data context; unknown paths resolve to ''. */
-function lookup(context: TemplateContext, path: string): string {
-  let current: unknown = context
-  for (const segment of path.split('.')) {
-    if (current === null || typeof current !== 'object') return ''
-    if (!Object.prototype.hasOwnProperty.call(current, segment)) return ''
-    current = (current as Record<string, unknown>)[segment]
-  }
-  if (current === null || current === undefined) return ''
-  return typeof current === 'object' ? JSON.stringify(current) : String(current)
 }
 
 /**
- * Replace `{{ monitor.name }}`-style placeholders (the shared renderer in `src/lib/placeholders.ts`).
- * Anything that is not a plain dotted path is left untouched, so templates can never execute code
- * or reach outside the context object; unknown paths render as ''.
+ * Render a Liquid template (`src/server/notifications/liquid.ts`) against `context`. Plain
+ * `{{ monitor.name }}` templates render as they always did; unknown variables are empty. Throws
+ * `TemplateError` when the template is invalid or exceeds a limit.
  */
-export function renderTemplate(template: string, context: TemplateContext): string {
-  return renderPlaceholders(template, (path) => lookup(context, path))
+export function renderTemplate(
+  template: string,
+  context: TemplateContext,
+  options: RenderLiquidOptions = {},
+): string {
+  return renderLiquid(template, context, options)
 }
 
-/** Convenience: render against monitor/heartbeat/message in one call. */
+/**
+ * Convenience: render against monitor/heartbeat/message in one call. Providers pass the send
+ * context's `event`, `downtimeSeconds` and `organization` as `extras` so `{{ event }}`,
+ * `{{ downtime }}` and `{{ monitor.dashboardUrl }}` work.
+ *
+ * Never throws for a bad template: a template that does not parse or render (a limit, an error in
+ * a filter) is logged and the default message `message` is sent instead, so an alert is never
+ * lost to a template. Saving a channel rejects invalid templates up front (`validateTemplate`).
+ */
 export function renderMessageTemplate(
   template: string,
   message: string,
   monitor: Monitor | null,
   heartbeat: Heartbeat | null,
   locale: Locale = defaultLocale,
+  extras: MessageExtras = {},
+  mode: TemplateMode = 'text',
 ): string {
-  return renderTemplate(template, buildTemplateContext(message, monitor, heartbeat, locale))
+  try {
+    return renderTemplate(
+      template,
+      buildTemplateContext(message, monitor, heartbeat, locale, extras),
+      { mode, locale, timeZone: extras.timeZone },
+    )
+  } catch (error) {
+    if (!(error instanceof TemplateError)) throw error
+    log.warn(
+      { err: error, code: error.code, monitorId: monitor?.id, event: extras.event },
+      'notification template failed; sending the default message',
+    )
+    return mode === 'html' ? escapeHtml(message) : message
+  }
 }
 
 /**

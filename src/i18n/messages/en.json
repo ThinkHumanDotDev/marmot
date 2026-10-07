@@ -84,7 +84,8 @@
       "maintenance": "Maintenance",
       "notifications": "Notifications",
       "members": "Members",
-      "settings": "Settings"
+      "settings": "Settings",
+      "incidents": "Incidents"
     },
     "orgSwitcher": {
       "trigger": "Organization: {name}. Switch organization",
@@ -140,7 +141,17 @@
       "signOut": "Sign out",
       "resumed": "Resumed “{name}”",
       "pausedToast": "Paused “{name}”",
-      "updateFailed": "Could not update the monitor"
+      "updateFailed": "Could not update the monitor",
+      "checkNow": "Check “{name}” now",
+      "checkingMonitor": "Checking “{name}”…",
+      "checkResult": "“{name}” is {status, select, up {up} down {down} pending {pending} maintenance {under maintenance} degraded {degraded} other {unknown}}: {msg}",
+      "checkFailed": "Could not run the check"
+    },
+    "checkerOffline": {
+      "title": "Checker offline",
+      "since": "Marmot lost its own internet connectivity at {time}.",
+      "now": "Marmot lost its own internet connectivity.",
+      "description": "Checks of external targets are paused and do not count as downtime; they resume automatically when connectivity returns."
     }
   },
   "dashboard": {
@@ -202,15 +213,26 @@
       "checked": "Checked {when}",
       "paused": "This monitor is paused. Resume it to start checking again; history is kept.",
       "latestHeartbeats": "Latest heartbeats",
-      "pushUrl": "Push URL",
-      "pushHint": "Call this URL at least every {seconds} seconds. Optional query parameters:<code> status</code> (up|down), <code>msg</code>, <code>ping</code>.",
       "description": "Description",
       "noDescription": "No description yet. Add one from Edit.",
       "tabs": {
         "events": "Important events",
         "activity": "Activity"
       },
-      "activityDescription": "Changes to this monitor from the audit log."
+      "activityDescription": "Changes to this monitor from the audit log.",
+      "assertions": {
+        "title": "Assertions",
+        "description": "Result of each check in the last run.",
+        "check": "Check",
+        "condition": "Condition",
+        "actual": "Actual",
+        "result": "Result",
+        "passed": "Passed",
+        "failed": "Failed",
+        "none": "(none)",
+        "inRange": "in",
+        "legacy": "monitor setting"
+      }
     },
     "new": {
       "pageTitle": "New monitor",
@@ -242,6 +264,32 @@
       "deleteDescription": "This removes the monitor together with its heartbeats and statistics. Child monitors of a group are kept and detached. This cannot be undone.",
       "cancel": "Cancel",
       "confirmDelete": "Delete monitor"
+    },
+    "check": {
+      "checkNow": "Check now",
+      "checking": "Checking… {seconds}s",
+      "failed": "Could not run the check",
+      "resultTitle": "Check result: {name}",
+      "resultDescription": "The worker ran the check just now. The heartbeat also appears in the list.",
+      "test": "Test",
+      "testing": "Testing… {seconds}s",
+      "testTitle": "Test result",
+      "testDescription": "The worker ran this configuration once. Nothing was saved.",
+      "testRunning": "Running the check on the worker… {seconds}s",
+      "httpStatus": "HTTP {code}",
+      "message": "Message",
+      "noMessage": "No message",
+      "responseTime": "Response time",
+      "took": "Took",
+      "milliseconds": "{ms} ms",
+      "checkedAt": "Checked at",
+      "certificate": "Certificate",
+      "certificateValid": "Trusted, expires in {days, plural, one {# day} other {# days}}",
+      "certificateInvalid": "Not trusted",
+      "blocked": "The outbound address guard refused this target (private or denied address).",
+      "maintenance": "The monitor is in a maintenance window, so the check did not run.",
+      "recorded": "Stored as a heartbeat (trigger: manual).",
+      "notRecorded": "Nothing was stored."
     },
     "stats": {
       "response": "Response",
@@ -481,9 +529,65 @@
       "nodeRequired": "Add at least one node URL",
       "nodeUrl": "Nodes are management API URLs such as https://node1:15672",
       "gameRequired": "Game is required",
-      "channelsUnique": "Each channel may only be added once"
+      "channelsUnique": "Each channel may only be added once",
+      "cronRequired": "Cron expression is required",
+      "cronInvalid": "Not a valid cron expression, e.g. 0 2 * * * for 02:00 every day",
+      "timezoneInvalid": "Unknown time zone, e.g. Europe/Berlin",
+      "assertionRow": "Assertion {row}: {message}",
+      "assertionKind": "This kind of assertion does not apply to this monitor type",
+      "assertionComparator": "This comparison does not apply to this kind of assertion",
+      "assertionTooMany": "At most {max} assertions of each kind ({kind})",
+      "assertionTargetRequired": "Enter the header name or expression to check",
+      "assertionHeaderName": "Enter a valid header name, e.g. content-type",
+      "assertionRecordType": "Use a record type such as A, AAAA, CNAME, MX, NS or TXT",
+      "assertionValueRequired": "Enter the expected value",
+      "assertionStatusCode": "Enter a status code between 100 and 599",
+      "assertionNumber": "Enter a number",
+      "assertionRegex": "Enter a valid regular expression of at most {max} characters",
+      "assertionTooLong": "At most {max} characters"
     },
     "form": {
+      "assertions": {
+        "title": "Assertions",
+        "description": "Extra checks on the response. All must pass. Status assertions replace the accepted status codes.",
+        "descriptionDns": "Checks on the records. All must pass. Equals, contains and matches pass when any record matches; their negations when none does.",
+        "empty": "No assertions yet.",
+        "add": "Add assertion",
+        "remove": "Remove assertion {index}",
+        "limit": "Up to {max} assertions of each kind.",
+        "kind": "Check",
+        "comparator": "Condition",
+        "value": "Expected value",
+        "monitorRecordType": "Monitor record type ({type})",
+        "kinds": {
+          "status": "Status code",
+          "header": "Header",
+          "textBody": "Body text",
+          "jsonBody": "JSON body",
+          "dnsRecord": "DNS record"
+        },
+        "targets": {
+          "status": "Target",
+          "header": "Header name",
+          "textBody": "Target",
+          "jsonBody": "JSONata / JSONPath",
+          "dnsRecord": "Record type"
+        },
+        "comparators": {
+          "eq": "equals",
+          "not_eq": "does not equal",
+          "gt": "greater than",
+          "gte": "at least",
+          "lt": "less than",
+          "lte": "at most",
+          "contains": "contains",
+          "not_contains": "does not contain",
+          "empty": "is empty",
+          "not_empty": "is not empty",
+          "matches": "matches regex",
+          "not_matches": "does not match regex"
+        }
+      },
       "onePerLine": "One per line.",
       "choose": "Choose…",
       "none": "None",
@@ -547,7 +651,7 @@
         "dockerHost": "Docker host",
         "dockerHostEmpty": "No Docker hosts yet; an admin can add one in <link>settings</link>.",
         "dockerContainer": "Container name / id",
-        "push": "A push URL is generated when the monitor is saved. Call it at least every interval; a missed call marks the monitor DOWN.",
+        "push": "A push URL is generated when the monitor is saved. Call it on the schedule below; a late ping or a reported failure marks the monitor DOWN.",
         "group": "Monitor group",
         "groupEmpty": "Create a Group monitor to nest monitors under it.",
         "groupDescription": "Groups aggregate the status of their children.",
@@ -569,6 +673,18 @@
         "resend": "Resend notification",
         "resendHint": "Re-notify every {count} consecutive DOWN beats",
         "resendDescription": "Every N consecutive DOWN beats (0 = never)",
+        "reminderBackoff": "Reminder spacing",
+        "reminderBackoffDescription": "Wait longer between reminders the longer an outage lasts.",
+        "reminderBackoffOptions": {
+          "none": "Fixed (every resend interval)",
+          "linear": "Linear (1×, 2×, 3× …)",
+          "exponential": "Exponential (1×, 2×, 4× …)"
+        },
+        "maxReminders": "Maximum reminders",
+        "maxRemindersDescription": "Stop reminding after this many per incident (0 = unlimited). Acknowledging also stops them.",
+        "successThreshold": "Recovery threshold",
+        "successThresholdDescription": "Successful checks in a row before a DOWN monitor is UP again.",
+        "successThresholdHint": "UP after {count} successful checks in a row; the checks before are pending (recovering)",
         "timeout": "Request timeout",
         "timeoutDefault": "0 uses 80% of the interval",
         "degradedAfter": "Degraded after",
@@ -726,6 +842,23 @@
         "domainExpiryDescription": "Look the registration up via RDAP once a day and warn before the domain expires.",
         "active": "Active",
         "activeDescription": "Paused monitors keep their history but are not checked."
+      },
+      "push": {
+        "title": "Schedule",
+        "description": "When your job is expected to call the push URL, and how late it may be.",
+        "schedule": "Expect a ping",
+        "scheduleInterval": "Every interval",
+        "scheduleCron": "On a cron schedule",
+        "cron": "Cron expression",
+        "cronHint": "Five fields: minute, hour, day of month, month, day of week.",
+        "cronPreview": "{schedule}. Next: {runs}",
+        "cronChecked": "Checked every minute.",
+        "timezone": "Time zone",
+        "timezoneDefault": "Organization time zone ({zone})",
+        "grace": "Grace period",
+        "graceDescription": "How late a ping may be, and how long a started run may take, before the monitor goes DOWN. Empty: automatic (10 % of the interval, 1 minute for cron).",
+        "maxDuration": "Maximum run duration",
+        "maxDurationDescription": "Optional. Runs (from /start to success) that take longer are reported DOWN."
       }
     },
     "channels": {
@@ -743,6 +876,66 @@
       "testLabel": "Send a test message through {name}",
       "testSent": "Test message sent",
       "testFailed": "Test failed"
+    },
+    "push": {
+      "schedule": {
+        "interval": "Every {duration}",
+        "cron": "{schedule} · {timeZone}",
+        "cronRaw": "Cron {pattern}",
+        "everyMinute": "Every minute",
+        "everyMinutes": "Every {minutes} minutes",
+        "hourly": "Every hour at minute {minute}",
+        "everyHours": "Every {hours} hours at minute {minute}",
+        "daily": "Every day at {time}",
+        "weekly": "Every {weekdays} at {time}",
+        "monthly": "On day {day} of every month at {time}"
+      },
+      "panel": {
+        "title": "Push",
+        "description": "Your job calls these URLs. Marmot alerts when a ping is late, a run fails or a started run does not finish in time.",
+        "schedule": "Schedule",
+        "grace": "Grace period",
+        "graceAutomatic": "{duration} (automatic)",
+        "maxDuration": "Maximum run duration",
+        "noMaxDuration": "Not set",
+        "lastPing": "Last ping",
+        "never": "Never",
+        "nextExpected": "Next ping expected",
+        "nextExpectedValue": "By {when}",
+        "overdue": "Overdue since {when}",
+        "running": "{count, plural, one {Run in progress since {since}} other {# runs in progress, oldest since {since}}}",
+        "signals": "Append <code>/start</code> when the job starts and <code>/fail</code> or the exit code (<code>/0</code>, <code>/1</code>, …) when it ends; <code>/log</code> records output without changing the status. Add <code>?rid=…</code> to pair overlapping runs. The first 10 000 bytes of a request body are kept in the ping log.",
+        "tabs": {
+          "url": "URL",
+          "curl": "curl",
+          "wrapper": "Bash wrapper",
+          "crontab": "crontab"
+        },
+        "wrapperHint": "Save as marmot-run.sh, make it executable and put it in front of your command: it reports the start, the exit code, the duration and the last 10 000 bytes of output.",
+        "crontabHint": "Runs your command through the wrapper on this monitor's schedule.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copyFailed": "Could not copy to the clipboard",
+        "runs": "Runs in progress"
+      },
+      "events": {
+        "title": "Ping log",
+        "description": "The latest signals with their message and captured output (the newest {count} are kept).",
+        "empty": "No pings received yet.",
+        "time": "Time",
+        "kind": "Signal",
+        "message": "Message",
+        "duration": "Run duration",
+        "kinds": {
+          "success": "Success",
+          "fail": "Failure",
+          "start": "Start",
+          "log": "Log"
+        },
+        "exitCode": "Exit code {code}",
+        "output": "Output",
+        "truncated": "Truncated to the first 10 000 bytes."
+      }
     }
   },
   "auth": {
@@ -1201,6 +1394,7 @@
         "subscriber_notification": "Subscriber notification",
         "maintenance": "Maintenance",
         "maintenance_occurrence": "Maintenance window",
+        "monitor_incident": "Monitor incident",
         "template": "Template",
         "api_key": "API key",
         "sso_connection": "SSO connection",
@@ -1227,6 +1421,9 @@
         "removed": "removed",
         "ownership_transferred": "ownership transferred",
         "completed": "completed",
+        "acknowledged": "acknowledged",
+        "resolved": "resolved",
+        "published": "published",
         "added": "added",
         "sync_skipped": "change skipped",
         "superadmin_granted": "granted superadmin",
@@ -1476,7 +1673,8 @@
         "apiKey": "API keys",
         "auditLog": "Audit log",
         "sso": "Single sign-on",
-        "subscriber": "Status page subscribers"
+        "subscriber": "Status page subscribers",
+        "monitorIncident": "Monitor incidents"
       },
       "actions": {
         "read": "View",
@@ -1487,7 +1685,9 @@
         "remove": "Remove",
         "updateRole": "Change roles",
         "manage": "Manage",
-        "send": "Send"
+        "send": "Send",
+        "acknowledge": "Acknowledge",
+        "resolve": "Resolve"
       },
       "custom": "Custom",
       "fixed": "(fixed)",
@@ -1936,7 +2136,8 @@
         "provider": "Provider",
         "lastSent": "Last sent",
         "active": "Active",
-        "actions": "Actions"
+        "actions": "Actions",
+        "events": "Events"
       },
       "default": "Default",
       "error": "Error",
@@ -1953,11 +2154,13 @@
       "confirmDeleteTitle": "Delete “{name}”?",
       "confirmDeleteDescription": "Monitors using this channel stop alerting through it. This cannot be undone.",
       "confirmDelete": "Delete channel",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "eventsLabel": "Events sent to {name}"
     },
     "test": {
       "sent": "Test message sent",
-      "failed": "Test failed"
+      "failed": "Test failed",
+      "sentSamples": "{count, plural, one {Sent a sample of 1 event} other {Sent a sample of each of the # events}}: {events}"
     },
     "dialog": {
       "newTitle": "New notification channel",
@@ -1984,7 +2187,10 @@
       "create": "Create channel",
       "updated": "Channel updated",
       "created": "Channel created",
-      "failed": "Something went wrong."
+      "failed": "Something went wrong.",
+      "events": "Events",
+      "eventsHint": "What this channel is told about. Send test sends a sample of each selected event.",
+      "eventsRequired": "Choose at least one event."
     },
     "field": {
       "required": "{label} is required",
@@ -2009,6 +2215,40 @@
       "loadFailed": "Could not load the monitors",
       "saveFailed": "Could not update the monitors"
     },
+    "events": {
+      "down": {
+        "label": "Down",
+        "description": "A monitor stops responding."
+      },
+      "up": {
+        "label": "Recovery",
+        "description": "A monitor is back up; the message includes how long it was down."
+      },
+      "degraded": {
+        "label": "Degraded",
+        "description": "A monitor gets slower than its degraded threshold, or fast again."
+      },
+      "reminder": {
+        "label": "Reminders",
+        "description": "Repeats while a monitor stays down (the monitor's resend interval)."
+      },
+      "certificate": {
+        "label": "Certificate and domain expiry",
+        "description": "TLS certificate and domain name expiry warnings."
+      },
+      "maintenance": {
+        "label": "Maintenance",
+        "description": "A maintenance window of a monitor starts or ends."
+      },
+      "acknowledged": {
+        "label": "Incident acknowledged",
+        "description": "A member acknowledged the incident of a monitor that is down."
+      },
+      "resolved": {
+        "label": "Incident resolved by hand",
+        "description": "A member resolved an incident before the monitor recovered."
+      }
+    },
     "messages": {
       "status": {
         "up": "✅ Up",
@@ -2025,6 +2265,9 @@
       "sentSuccessfully": "Sent Successfully.",
       "monitorNameUnavailable": "Monitor Name not available",
       "timeLine": "Time: {time}",
+      "downtimeSuffix": " (down for {duration})",
+      "maintenanceStarted": "Maintenance \"{title}\" started for {monitors}.",
+      "maintenanceCompleted": "Maintenance \"{title}\" ended for {monitors}.",
       "certificateExpiry": "[{name}][{address}] {certType} certificate {commonName} will expire in {count, plural, other {{days} days}}",
       "noCommonName": "(no CN)",
       "domainExpiry": "[{name}][{address}] Domain name {domain} will expire in {count, plural, other {{days} days}}",
@@ -2076,6 +2319,19 @@
         "name": "Name",
         "description": "Description",
         "monitor": "Monitor"
+      },
+      "incident": {
+        "label": {
+          "acknowledged": "👀 Acknowledged",
+          "resolved": "✅ Resolved"
+        },
+        "acknowledged": "Acknowledged.",
+        "acknowledgedBy": "Acknowledged by {name}.",
+        "acknowledgedViaLink": "Acknowledged from a notification link.",
+        "resolved": "Resolved by hand after {duration}.",
+        "resolvedBy": "Resolved by {name} after {duration}.",
+        "note": "Note: {note}",
+        "ackLink": "Acknowledge: {url}"
       }
     },
     "providers": {
@@ -2607,6 +2863,10 @@
           "subject": {
             "label": "Subject",
             "placeholder": "Notification from Marmot"
+          },
+          "htmlTemplate": {
+            "label": "HTML template",
+            "description": "Liquid template for the HTML part; values are HTML-escaped and the text part is generated. Defaults to a branded email."
           }
         }
       },
@@ -2650,6 +2910,10 @@
           "subject": {
             "label": "Subject",
             "placeholder": "Notification from Marmot"
+          },
+          "htmlTemplate": {
+            "label": "HTML template",
+            "description": "Liquid template for the HTML part; values are HTML-escaped and the text part is generated. Defaults to a branded email."
           }
         }
       },
@@ -2758,7 +3022,7 @@
           },
           "body": {
             "label": "Body template",
-            "description": "Defaults to the message and time."
+            "description": "Defaults to a branded HTML email with a plain-text part. With \"Send the body as HTML\", values are HTML-escaped and the text part is generated."
           },
           "htmlBody": {
             "label": "Send the body as HTML"
@@ -2913,7 +3177,7 @@
           },
           "customBody": {
             "label": "Custom body",
-            "description": "Sent verbatim after '{{' '}}' substitution, e.g. '{'\"text\": \"'{{' msg '}}'\"'}'. Set Content-Type in the headers below."
+            "description": "Liquid template sent as the body, e.g. '{'\"text\": '{{' msg | json '}}}'. Set Content-Type in the headers below."
           },
           "additionalHeaders": {
             "label": "Additional headers (JSON)"
@@ -2962,6 +3226,48 @@
             "label": "Webhook URL"
           }
         }
+      }
+    },
+    "email": {
+      "time": "Time",
+      "downtime": "Down for",
+      "address": "Address",
+      "viewMonitor": "View monitor",
+      "viewMonitorLink": "View monitor: {url}",
+      "footer": "Sent by Marmot for {organization}.",
+      "footerNoOrg": "Sent by Marmot."
+    },
+    "templates": {
+      "errors": {
+        "syntax": "Template error: {detail}",
+        "render": "Template error: {detail}",
+        "tooLong": "The template is longer than {max} characters.",
+        "outputTooLong": "The template output is longer than {max} characters.",
+        "unknownVariable": "Unknown template variable \"{name}\"."
+      }
+    },
+    "preview": {
+      "title": "Preview",
+      "description": "Renders the default message and this channel's templates with sample data. Nothing is sent.",
+      "event": "Sample event",
+      "show": "Show preview",
+      "hide": "Hide preview",
+      "rendering": "Rendering…",
+      "failed": "Could not render the preview.",
+      "defaultMessage": "Default message",
+      "subject": "Subject",
+      "html": "HTML",
+      "text": "Plain text",
+      "emailFrame": "Email preview",
+      "fallback": "This template fails and the default message is sent instead.",
+      "variables": "Template variables",
+      "variablesHint": "Templates use Liquid: print a variable with double braces and branch with if tags. Filters such as date, duration and json are available.",
+      "sample": {
+        "monitorName": "Example API",
+        "downMessage": "Request failed with status code 503",
+        "upMessage": "200 - OK",
+        "degradedMessage": "Response time 2400 ms is above the 1000 ms threshold",
+        "maintenanceTitle": "Database upgrade"
       }
     }
   },
@@ -4173,6 +4479,152 @@
       "hoursUnit": "h"
     }
   },
+  "incidents": {
+    "status": {
+      "open": "Open",
+      "acknowledged": "Acknowledged",
+      "resolved": "Resolved"
+    },
+    "list": {
+      "pageTitle": "Incidents",
+      "title": "Incidents",
+      "description": "Outages of your monitors: opened when a monitor goes down, resolved when it recovers.",
+      "loading": "Loading incidents",
+      "emptyTitle": "No incidents",
+      "emptyDescription": "Nothing matches these filters. An incident opens automatically when a monitor goes down.",
+      "columns": {
+        "monitor": "Monitor",
+        "status": "Status",
+        "started": "Started",
+        "duration": "Duration",
+        "response": "Response"
+      },
+      "ongoing": "{duration} so far",
+      "acknowledgedBy": "Acknowledged by {name}",
+      "acknowledgedViaLink": "Acknowledged from a notification link",
+      "notAcknowledged": "Not acknowledged yet",
+      "resolvedAuto": "Resolved automatically",
+      "resolvedBy": "Resolved by {name}",
+      "resolvedManually": "Resolved by hand",
+      "unknownMonitor": "Deleted monitor",
+      "pagination": "Page {page} of {total}",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "filters": {
+      "status": "Status",
+      "monitor": "Monitor",
+      "range": "Period",
+      "allMonitors": "All monitors",
+      "statuses": {
+        "active": "Unresolved",
+        "all": "All statuses",
+        "open": "Open",
+        "acknowledged": "Acknowledged",
+        "resolved": "Resolved"
+      },
+      "ranges": {
+        "24h": "Last 24 hours",
+        "7d": "Last 7 days",
+        "30d": "Last 30 days",
+        "90d": "Last 90 days",
+        "all": "All time"
+      }
+    },
+    "stats": {
+      "total": "Incidents",
+      "unresolved": "Unresolved",
+      "unresolvedHint": "{open} open · {acknowledged} acknowledged",
+      "mtta": "Mean time to acknowledge",
+      "mttr": "Mean time to resolve",
+      "noData": "No data",
+      "label": "Summary for the selected period and monitor"
+    },
+    "detail": {
+      "breadcrumb": "Incidents",
+      "title": "{monitor} is down",
+      "titleResolved": "{monitor} was down",
+      "started": "Started",
+      "duration": "Duration",
+      "cause": "Cause",
+      "noCause": "No message",
+      "acknowledged": "Acknowledged",
+      "resolved": "Resolved",
+      "reminders": "Reminders sent",
+      "timeline": "Timeline",
+      "viewMonitor": "View monitor",
+      "statusPageIncident": "Status page incident",
+      "openStatusPage": "Open in the status page editor",
+      "notYet": "Not yet"
+    },
+    "timeline": {
+      "opened": "The monitor went down",
+      "maintenance": "The monitor entered maintenance",
+      "acknowledged": "Acknowledged by {name}",
+      "acknowledgedAnonymous": "Acknowledged from a notification link",
+      "resolvedAuto": "Resolved automatically: the monitor recovered",
+      "resolved": "Resolved by {name}",
+      "resolvedAnonymous": "Resolved by hand",
+      "published": "Published to a status page as “{title}”",
+      "publishedBy": "{name} published it to a status page as “{title}”",
+      "via": {
+        "dashboard": "from the dashboard",
+        "api": "through the API",
+        "link": "from a notification link"
+      }
+    },
+    "actions": {
+      "acknowledge": "Acknowledge",
+      "resolve": "Resolve",
+      "publish": "Publish to status page",
+      "note": "Note (optional)",
+      "notePlaceholder": "What is being done about it?",
+      "acknowledgeTitle": "Acknowledge this incident?",
+      "acknowledgeDescription": "Reminders stop re-sending and the monitor’s channels are told that you are on it.",
+      "resolveTitle": "Resolve this incident?",
+      "resolveDescription": "Use this when the outage is handled although the monitor has not recovered. The monitor’s channels are told; a new incident opens the next time the monitor goes down.",
+      "acknowledged": "Incident acknowledged",
+      "resolved": "Incident resolved",
+      "failed": "Could not update the incident.",
+      "cancel": "Cancel",
+      "working": "Working…"
+    },
+    "publish": {
+      "title": "Publish to a status page",
+      "description": "Creates a public incident on the status page. It names the page’s components that show this monitor.",
+      "statusPage": "Status page",
+      "chooseStatusPage": "Choose a status page",
+      "noStatusPages": "This organization has no status pages yet.",
+      "incidentTitle": "Title",
+      "message": "Message",
+      "messagePlaceholder": "We are investigating problems with this service.",
+      "submit": "Publish",
+      "published": "Published to the status page",
+      "failed": "Could not publish the incident."
+    },
+    "monitorCard": {
+      "title": "Recent incidents",
+      "empty": "No incidents yet.",
+      "viewAll": "View all"
+    },
+    "ack": {
+      "pageTitle": "Acknowledge incident",
+      "title": "Acknowledge this incident?",
+      "description": "{monitor} has been down since {time}.",
+      "cause": "Cause: {cause}",
+      "signedIn": "The acknowledgement will carry your name ({name}).",
+      "anonymous": "You are not signed in: the acknowledgement is recorded as coming from a notification link.",
+      "confirm": "Acknowledge",
+      "working": "Acknowledging…",
+      "done": "Acknowledged. Reminders stop until the monitor recovers.",
+      "alreadyAcknowledged": "This incident is already acknowledged.",
+      "resolved": "This incident is resolved.",
+      "invalidTitle": "Link expired or invalid",
+      "invalidDescription": "Acknowledge the incident from the dashboard instead.",
+      "failed": "Could not acknowledge the incident.",
+      "openDashboard": "Open Marmot"
+    }
+  },
   "templates": {
     "kinds": {
       "incident": "New incident",
@@ -4429,6 +4881,13 @@
         "intro": "This address already receives updates from <strong>{siteName}</strong>. You can change the components you follow or unsubscribe at any time.",
         "ignore": "If you did not ask for this email, you can ignore it."
       }
+    },
+    "checker": {
+      "offlineSubject": "Marmot checker offline",
+      "offlineText": "The Marmot worker lost its own internet connectivity at {time}{location, select, default {} other { (location {location})}}. Checks of external targets are paused and recorded as \"checker offline\": they send no notifications and do not count as downtime. Monitors of private or local addresses keep running. You will get another message when connectivity returns.",
+      "results": "Probe results: {results}",
+      "onlineSubject": "Marmot checker back online",
+      "onlineText": "The Marmot worker is back online since {time}{location, select, default {} other { (location {location})}} after {minutes, plural, one {# minute} other {# minutes}} offline. Held monitors are being checked again."
     }
   },
   "errors": {
@@ -4492,6 +4951,11 @@
     "localLoginDisabled": "Password sign-in is turned off on this server. Sign in with single sign-on instead.",
     "organizationNotFound": "Organization not found",
     "monitorNotFound": "Monitor not found",
+    "monitorPausedNoCheck": "The monitor is paused. Resume it to run a check.",
+    "checkNotApplicable": "Push monitors are not checked by Marmot: they wait for the monitored system to call the push URL.",
+    "adhocTypeNotSupported": "This monitor type cannot be tested before it is saved.",
+    "checkTimedOut": "No result arrived in time. Check that the worker is running.",
+    "checkFailed": "The check could not be run.",
     "monitorForeignReference": "Must belong to the same organization as the monitor.",
     "tagDuplicate": "Each tag may only be added once.",
     "unknownMonitors": "{count, plural, one {Unknown monitor} other {Unknown monitors}}: {ids}",
@@ -4626,7 +5090,11 @@
     "subscriberNotFound": "Subscriber not found.",
     "subscriberNotificationNotFound": "Notification not found.",
     "subscriberNotificationState": "This notification cannot be {action, select, send {sent} discard {discarded} retry {retried} other {changed}} in its current state.",
-    "subscriberImportInvalid": "Upload a CSV file with the columns channel, target and (optionally) components."
+    "subscriberImportInvalid": "Upload a CSV file with the columns channel, target and (optionally) components.",
+    "incidentAlreadyAcknowledged": "This incident is already acknowledged.",
+    "incidentAlreadyResolved": "This incident is already resolved.",
+    "incidentAlreadyPublished": "This incident is already published to a status page.",
+    "incidentAckLinkInvalid": "This acknowledge link is invalid or has expired."
   },
   "subscriberMessages": {
     "sms": {

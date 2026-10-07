@@ -95,7 +95,12 @@ const recipients = (count: number, domain = 'example.com') =>
 
 async function createAs(
   user: User | null,
-  data: { name: string; config: Record<string, unknown>; organization?: Organization['id'] },
+  data: {
+    name: string
+    config: Record<string, unknown>
+    organization?: Organization['id']
+    events?: Notification['events']
+  },
 ): Promise<Notification> {
   return (await payload.create({
     collection: 'notifications',
@@ -331,7 +336,11 @@ describe('NOTIFICATIONS_SERVER_SMTP=superadmin (default)', () => {
   })
 
   it('keeps existing channels sending; org admins may rename or turn the option off but not retarget', async () => {
-    const existing = await createAs(null, { name: 'grandfathered', config: serverConfig() })
+    const existing = await createAs(null, {
+      name: 'grandfathered',
+      config: serverConfig(),
+      events: ['down'], // one Test sample per press
+    })
 
     // Test button on the saved channel goes through the server transport.
     const tested = await postTest(orgAdmin, { notificationId: existing.id })
@@ -481,10 +490,12 @@ describe('NOTIFICATIONS_SERVER_SMTP_RATE', () => {
     setEnv({ NOTIFICATIONS_SERVER_SMTP_RATE: '3' })
     await clearRateBucket(rateOrg)
 
+    // One event, so each Test press sends one sample (#126).
     const channel = await createAs(root, {
       name: 'rate-limited',
       config: serverConfig(),
       organization: rateOrg.id,
+      events: ['down'],
     })
     const { monitor, heartbeat } = await createMonitorAndHeartbeat(rateOrg, channel)
 
