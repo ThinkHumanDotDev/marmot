@@ -39,6 +39,9 @@ Postgres migrations live in `src/migrations/postgres` and run when the `web` rol
 | ----------- | ------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `REDIS_URL` | `redis://localhost:6379` | all     | BullMQ queues and job schedulers (worker, and the web process when monitors change) plus socket.io pub/sub (realtime, and the emitters in web and worker). Run Redis with `maxmemory-policy noeviction`. |
 
+On networks where the Redis hostname resolves only to IPv6 (Railway's `*.railway.internal`), append
+`?family=0` to `REDIS_URL` so the client looks up IPv6 addresses too; it defaults to IPv4.
+
 Redis holds only queue state and live socket rooms. It does not need a backup: the worker re-creates every
 job scheduler from the database on start.
 
@@ -174,16 +177,19 @@ documented in [Telemetry](Telemetry.md) _(landing in the current release)_.
 These are read by `docker/entrypoint.sh`, `docker/docker-compose.yml` or the Caddyfile rather than by
 `src/env.ts`, so they only matter for Docker deployments.
 
-| Variable                | Default  | Used by          | Description                                                                                               |
-| ----------------------- | -------- | ---------------- | --------------------------------------------------------------------------------------------------------- |
-| `DOMAIN`                | —        | compose → Caddy  | Hostname for automatic HTTPS. Unset = Caddy serves plain HTTP on port 80 (for use behind your own proxy). |
-| `ACME_EMAIL`            | —        | compose → Caddy  | Contact address passed to the certificate authority.                                                      |
-| `SITE_ADDRESS`          | `:80`    | Caddyfile        | Derived from `DOMAIN` by compose; set it directly when running Caddy by hand.                             |
-| `POSTGRES_PASSWORD`     | `marmot` | compose          | Password of the bundled Postgres; the default `DATABASE_URL` picks it up.                                 |
-| `MARMOT_VERSION`        | release  | compose          | Image tag of `ghcr.io/thinkhumandotdev/marmot` to run; a release's compose file defaults to that release. |
-| `PORT`                  | `3000`   | entrypoint (web) | Port of the Next.js server inside the container.                                                          |
-| `SKIP_MIGRATIONS`       | `false`  | entrypoint (web) | `true` skips `migrate` on start, for when you run migrations yourself (init container, CI/CD step).       |
-| `WORKER_SCHEMA_WAIT_MS` | `120000` | worker           | How long the worker waits for the database schema (migrations running in `web`) before giving up on boot. |
+| Variable                | Default         | Used by          | Description                                                                                                                               |
+| ----------------------- | --------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `DOMAIN`                | —               | compose → Caddy  | Hostname for automatic HTTPS. Unset = Caddy serves plain HTTP on port 80 (for use behind your own proxy).                                 |
+| `ACME_EMAIL`            | —               | compose → Caddy  | Contact address passed to the certificate authority.                                                                                      |
+| `SITE_ADDRESS`          | `:80`           | Caddyfile        | Derived from `DOMAIN` by compose; set it directly when running Caddy by hand.                                                             |
+| `WEB_UPSTREAM`          | `web:3000`      | Caddyfile        | `host:port` of the web process. Override when the proxy cannot reach it as `web` (the Railway template uses `web.railway.internal:3000`). |
+| `REALTIME_UPSTREAM`     | `realtime:3001` | Caddyfile        | `host:port` of the realtime process, for `/socket.io/*`.                                                                                  |
+| `POSTGRES_PASSWORD`     | `marmot`        | compose          | Password of the bundled Postgres; the default `DATABASE_URL` picks it up.                                                                 |
+| `MARMOT_VERSION`        | release         | compose          | Image tag of `ghcr.io/thinkhumandotdev/marmot` to run; a release's compose file defaults to that release.                                 |
+| `PORT`                  | `3000`          | entrypoint (web) | Port of the Next.js server inside the container.                                                                                          |
+| `BIND_HOST`             | `0.0.0.0`       | entrypoint (web) | Address the Next.js server listens on. `::` listens on IPv6 and IPv4, for IPv6-only private networks such as Railway's.                   |
+| `SKIP_MIGRATIONS`       | `false`         | entrypoint (web) | `true` skips `migrate` on start, for when you run migrations yourself (init container, CI/CD step).                                       |
+| `WORKER_SCHEMA_WAIT_MS` | `120000`        | worker           | How long the worker waits for the database schema (migrations running in `web`) before giving up on boot.                                 |
 
 ## Instance settings
 

@@ -53,7 +53,8 @@ Nothing is tagged or pushed automatically from a developer machine; the steps be
   ```
 
   [`scripts/release.sh`](../scripts/release.sh) sets `package.json` `version`, the default image tag
-  (`${MARMOT_VERSION:-0.1.0}`) in `docker/docker-compose.yml` and regenerates `CHANGELOG.md` with
+  (`${MARMOT_VERSION:-0.1.0}`) in `docker/docker-compose.yml`, the image tag of the Railway template images
+  (`deploy/railway/*/Dockerfile`) and regenerates `CHANGELOG.md` with
   `pnpm dlx git-cliff@2` (set `GIT_CLIFF` to use another binary). It prints the next commands and does not
   commit, tag or push.
 
@@ -68,7 +69,7 @@ Nothing is tagged or pushed automatically from a developer machine; the steps be
 
   ```bash
   git switch -c chore/release-0.1.0
-  git add package.json docker/docker-compose.yml CHANGELOG.md
+  git add package.json docker/docker-compose.yml deploy/railway CHANGELOG.md
   git commit -m "chore(release): v0.1.0"
   git push -u origin chore/release-0.1.0
   ```
