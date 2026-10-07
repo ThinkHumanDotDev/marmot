@@ -6,10 +6,15 @@ import { childLogger } from '@/lib/logger'
 import type { Heartbeat, Monitor, Notification } from '@/payload-types'
 import { QUEUE_NAMES } from '@/server/engine/names'
 import { createWorker, type QueueFactoryOptions } from '@/server/engine/queues'
-import { NOTIFICATION_JOB_NAME, type NotificationJobData } from './dispatch'
+import type { NotificationJobData } from './dispatch'
 import { buildDefaultMessage } from './message'
 import { getChannelLocale, sendNotification } from './send'
 import { ServerSmtpSendError } from './server-smtp'
+import {
+  isSubscriberJobName,
+  type SubscriberJobData,
+} from '@/server/status-pages/subscribers/queue'
+import { processSubscriberJob } from '@/server/status-pages/subscribers/worker'
 
 const log = childLogger('notifications:worker')
 
@@ -117,15 +122,23 @@ export interface StartNotificationWorkerOptions extends QueueFactoryOptions {
   concurrency?: number
 }
 
-/** Start the BullMQ worker consuming the notifications queue. */
+/**
+ * Start the BullMQ worker consuming the notifications queue: monitor alerts (`notify`) and status
+ * page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`).
+ */
 export function startNotificationWorker(
   payload: Payload,
   options: StartNotificationWorkerOptions = {},
-): Worker<NotificationJobData, void, typeof NOTIFICATION_JOB_NAME> {
+): Worker<NotificationJobData, void, string> {
   const concurrency = options.concurrency ?? env.WORKER_CONCURRENCY
-  const worker = createWorker<NotificationJobData, void, typeof NOTIFICATION_JOB_NAME>(
+  const worker = createWorker<NotificationJobData, void, string>(
     QUEUE_NAMES.notifications,
     async (job) => {
+      // Subscriber jobs share the queue; their data has another shape.
+      if (isSubscriberJobName(job.name)) {
+        await processSubscriberJob(payload, job as unknown as Job<SubscriberJobData>)
+        return
+      }
       await processNotificationJob(payload, job)
     },
     { connection: options.connection, prefix: options.prefix, concurrency },
@@ -133,7 +146,7 @@ export function startNotificationWorker(
 
   worker.on('failed', (job, err) => {
     log.error(
-      { err, jobId: job?.id, notificationId: job?.data.notificationId, attempt: job?.attemptsMade },
+      { err, jobId: job?.id, name: job?.name, attempt: job?.attemptsMade },
       'notification job failed',
     )
   })

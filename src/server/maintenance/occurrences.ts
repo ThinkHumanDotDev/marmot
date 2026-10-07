@@ -30,6 +30,7 @@ import { afterCommit } from '@/db/after-commit'
 import { LocalizedAPIError } from '@/server/errors'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
+import { publicIdOf } from '@/server/status-pages/public-ids'
 import {
   canPostStatus,
   isFinishedState,
@@ -91,6 +92,7 @@ export function toOccurrenceUpdate(row: UpdateRow, index: number): OccurrenceUpd
 export function toOccurrenceSummary(doc: MaintenanceOccurrence): OccurrenceSummary {
   return {
     id: String(doc.id),
+    publicId: publicIdOf('maintenance-occurrences', doc),
     maintenanceId: String(relationId(doc.maintenance)),
     state: doc.state,
     start: doc.start,

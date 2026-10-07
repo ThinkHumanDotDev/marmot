@@ -71,9 +71,11 @@ Uploads (organization logos, status-page logos) go to local disk unless `S3_BUCK
 
 ## Email
 
-Marmot sends invitations and password-reset mail through the Payload email adapter. Without `SMTP_HOST` the
-messages are written to the web process log instead of being sent, which is enough to copy an invitation
-link during evaluation. The `smtp` notification provider can reuse these settings (**Use the server SMTP
+Marmot sends invitations, password-reset mail and [status page subscriber](Status-Pages.md#subscribers)
+emails (confirmations and announcements, sent by the worker) through the Payload email adapter, over a
+pooled SMTP connection (at most five at a time per process). Without `SMTP_HOST` the messages are written
+to the process log instead of being sent, which is enough to copy an invitation link during evaluation.
+Subscriber SMS use a Twilio notification channel chosen per page, so they need no variable either. The `smtp` notification provider can reuse these settings (**Use the server SMTP
 settings**); the last two variables decide who may do that and how much mail it may send.
 
 | Variable                         | Default                     | Read by     | Description                                                                                                                                                                                                          |

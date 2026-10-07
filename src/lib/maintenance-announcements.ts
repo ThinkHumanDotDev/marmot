@@ -109,6 +109,8 @@ export interface OccurrenceUpdate {
 /** An occurrence as the API and the editor see it. */
 export interface OccurrenceSummary {
   id: string
+  /** Short id of the public permalink (`<status page>/events/maintenance/<publicId>`, #107). */
+  publicId: string
   maintenanceId: string
   state: OccurrenceState
   /** Planned window (ISO). `end` is null for manual maintenances. */

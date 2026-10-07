@@ -78,6 +78,7 @@ export function ThemePreview({
 
   const incident: PublicIncident = {
     id: 'preview',
+    publicId: 'preview0',
     title: t('sampleIncident'),
     status: 'identified',
     impact: 'degraded_performance',
@@ -96,6 +97,7 @@ export function ThemePreview({
     style: 'warning',
     pinned: true,
     active: true,
+    startedAt: '2026-01-01T00:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     resolvedAt: null,

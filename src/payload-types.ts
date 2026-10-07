@@ -87,6 +87,9 @@ export interface Config {
     'status-pages': StatusPage;
     'status-page-viewers': StatusPageViewer;
     incidents: Incident;
+    'status-page-subscribers': StatusPageSubscriber;
+    'subscriber-notifications': SubscriberNotification;
+    'subscriber-deliveries': SubscriberDelivery;
     maintenance: Maintenance;
     'maintenance-occurrences': MaintenanceOccurrence;
     'api-keys': ApiKey;
@@ -118,6 +121,9 @@ export interface Config {
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
     'status-page-viewers': StatusPageViewersSelect<false> | StatusPageViewersSelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
+    'status-page-subscribers': StatusPageSubscribersSelect<false> | StatusPageSubscribersSelect<true>;
+    'subscriber-notifications': SubscriberNotificationsSelect<false> | SubscriberNotificationsSelect<true>;
+    'subscriber-deliveries': SubscriberDeliveriesSelect<false> | SubscriberDeliveriesSelect<true>;
     maintenance: MaintenanceSelect<false> | MaintenanceSelect<true>;
     'maintenance-occurrences': MaintenanceOccurrencesSelect<false> | MaintenanceOccurrencesSelect<true>;
     'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
@@ -775,9 +781,23 @@ export interface StatusPage {
   showValues?: boolean | null;
   autoRefreshInterval?: number | null;
   maintenanceVisibilityHours?: number | null;
+  pastIncidentsDays?: number | null;
   footerText?: string | null;
   customCSS?: string | null;
   googleAnalyticsId?: string | null;
+  subscriptions?: {
+    enabled?: boolean | null;
+    deliveryMode?: ('review' | 'auto') | null;
+    channels?: ('email' | 'sms' | 'webhook' | 'slack')[] | null;
+    smsChannel?: (number | null) | Notification;
+    smsMaxSegments?: number | null;
+    smsTemplates?: {
+      incidentOpened?: string | null;
+      incidentUpdated?: string | null;
+      maintenanceScheduled?: string | null;
+      maintenanceUpdated?: string | null;
+    };
+  };
   domains?:
     | {
         hostname: string;
@@ -829,6 +849,7 @@ export interface Incident {
   organization: number | Organization;
   statusPage: number | StatusPage;
   title: string;
+  publicId?: string | null;
   status?: ('investigating' | 'identified' | 'monitoring' | 'resolved') | null;
   impact?: ('operational' | 'degraded_performance' | 'partial_outage' | 'major_outage') | null;
   updates?:
@@ -859,6 +880,86 @@ export interface Incident {
   resolvedAt?: string | null;
   content?: string | null;
   style?: ('info' | 'warning' | 'danger' | 'primary') | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "status-page-subscribers".
+ */
+export interface StatusPageSubscriber {
+  id: number;
+  organization: number | Organization;
+  statusPage: number | StatusPage;
+  channel: 'email' | 'sms' | 'webhook' | 'slack';
+  target: string;
+  components?: string[] | null;
+  source?: ('self_signup' | 'added_by_owner' | 'import') | null;
+  confirmedAt?: string | null;
+  locale?: 'en' | null;
+  token?: string | null;
+  secret?: string | null;
+  headers?:
+    | {
+        name: string;
+        value: string;
+        id?: string | null;
+      }[]
+    | null;
+  verification?: {
+    codeHash?: string | null;
+    expiresAt?: string | null;
+    attempts?: number | null;
+    sentAt?: string | null;
+  };
+  lastDeliveredAt?: string | null;
+  lastError?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscriber-notifications".
+ */
+export interface SubscriberNotification {
+  id: number;
+  organization: number | Organization;
+  statusPage: number | StatusPage;
+  dedupeKey: string;
+  event:
+    | 'incident_opened'
+    | 'incident_updated'
+    | 'incident_resolved'
+    | 'maintenance_scheduled'
+    | 'maintenance_reminder'
+    | 'maintenance_started'
+    | 'maintenance_updated'
+    | 'maintenance_completed'
+    | 'maintenance_cancelled';
+  state: 'pending_review' | 'sending' | 'sent' | 'partially_failed' | 'failed' | 'discarded';
+  title: string;
+  status?: string | null;
+  message?: string | null;
+  window?: {
+    start?: string | null;
+    end?: string | null;
+    reminderMinutes?: number | null;
+  };
+  components?: string[] | null;
+  incident?: (number | null) | Incident;
+  incidentUpdateId?: string | null;
+  maintenance?: (number | null) | Maintenance;
+  occurrence?: (number | null) | MaintenanceOccurrence;
+  eventPublicId?: string | null;
+  occurredAt: string;
+  channels?: ('email' | 'sms' | 'webhook' | 'slack')[] | null;
+  recipientCount?: number | null;
+  sendingStartedAt?: string | null;
+  completedAt?: string | null;
+  approvedBy?: (number | null) | User;
+  approvedAt?: string | null;
+  discardedBy?: (number | null) | User;
+  discardedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -942,6 +1043,7 @@ export interface MaintenanceOccurrence {
   id: number;
   organization: number | Organization;
   maintenance: number | Maintenance;
+  publicId?: string | null;
   start: string;
   end?: string | null;
   state: 'scheduled' | 'in-progress' | 'verifying' | 'completed' | 'cancelled';
@@ -957,6 +1059,23 @@ export interface MaintenanceOccurrence {
         id?: string | null;
       }[]
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscriber-deliveries".
+ */
+export interface SubscriberDelivery {
+  id: number;
+  organization: number | Organization;
+  notification: number | SubscriberNotification;
+  subscriber: number | StatusPageSubscriber;
+  channel: 'email' | 'sms' | 'webhook' | 'slack';
+  state: 'queued' | 'retrying' | 'sent' | 'failed' | 'skipped';
+  attempts?: number | null;
+  error?: string | null;
+  sentAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1104,6 +1223,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'incidents';
         value: number | Incident;
+      } | null)
+    | ({
+        relationTo: 'status-page-subscribers';
+        value: number | StatusPageSubscriber;
+      } | null)
+    | ({
+        relationTo: 'subscriber-notifications';
+        value: number | SubscriberNotification;
+      } | null)
+    | ({
+        relationTo: 'subscriber-deliveries';
+        value: number | SubscriberDelivery;
       } | null)
     | ({
         relationTo: 'maintenance';
@@ -1615,9 +1746,27 @@ export interface StatusPagesSelect<T extends boolean = true> {
   showValues?: T;
   autoRefreshInterval?: T;
   maintenanceVisibilityHours?: T;
+  pastIncidentsDays?: T;
   footerText?: T;
   customCSS?: T;
   googleAnalyticsId?: T;
+  subscriptions?:
+    | T
+    | {
+        enabled?: T;
+        deliveryMode?: T;
+        channels?: T;
+        smsChannel?: T;
+        smsMaxSegments?: T;
+        smsTemplates?:
+          | T
+          | {
+              incidentOpened?: T;
+              incidentUpdated?: T;
+              maintenanceScheduled?: T;
+              maintenanceUpdated?: T;
+            };
+      };
   domains?:
     | T
     | {
@@ -1667,6 +1816,7 @@ export interface IncidentsSelect<T extends boolean = true> {
   organization?: T;
   statusPage?: T;
   title?: T;
+  publicId?: T;
   status?: T;
   impact?: T;
   updates?:
@@ -1697,6 +1847,95 @@ export interface IncidentsSelect<T extends boolean = true> {
   resolvedAt?: T;
   content?: T;
   style?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "status-page-subscribers_select".
+ */
+export interface StatusPageSubscribersSelect<T extends boolean = true> {
+  organization?: T;
+  statusPage?: T;
+  channel?: T;
+  target?: T;
+  components?: T;
+  source?: T;
+  confirmedAt?: T;
+  locale?: T;
+  token?: T;
+  secret?: T;
+  headers?:
+    | T
+    | {
+        name?: T;
+        value?: T;
+        id?: T;
+      };
+  verification?:
+    | T
+    | {
+        codeHash?: T;
+        expiresAt?: T;
+        attempts?: T;
+        sentAt?: T;
+      };
+  lastDeliveredAt?: T;
+  lastError?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscriber-notifications_select".
+ */
+export interface SubscriberNotificationsSelect<T extends boolean = true> {
+  organization?: T;
+  statusPage?: T;
+  dedupeKey?: T;
+  event?: T;
+  state?: T;
+  title?: T;
+  status?: T;
+  message?: T;
+  window?:
+    | T
+    | {
+        start?: T;
+        end?: T;
+        reminderMinutes?: T;
+      };
+  components?: T;
+  incident?: T;
+  incidentUpdateId?: T;
+  maintenance?: T;
+  occurrence?: T;
+  eventPublicId?: T;
+  occurredAt?: T;
+  channels?: T;
+  recipientCount?: T;
+  sendingStartedAt?: T;
+  completedAt?: T;
+  approvedBy?: T;
+  approvedAt?: T;
+  discardedBy?: T;
+  discardedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscriber-deliveries_select".
+ */
+export interface SubscriberDeliveriesSelect<T extends boolean = true> {
+  organization?: T;
+  notification?: T;
+  subscriber?: T;
+  channel?: T;
+  state?: T;
+  attempts?: T;
+  error?: T;
+  sentAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1744,6 +1983,7 @@ export interface MaintenanceSelect<T extends boolean = true> {
 export interface MaintenanceOccurrencesSelect<T extends boolean = true> {
   organization?: T;
   maintenance?: T;
+  publicId?: T;
   start?: T;
   end?: T;
   state?: T;
