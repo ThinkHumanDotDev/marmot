@@ -140,6 +140,12 @@ export function ApiKeysView({ orgId, initial, canManage }: ApiKeysViewProps) {
             <CardDescription>
               {t.rich('description', { code: (chunks) => <code>{chunks}</code> })}
             </CardDescription>
+            <CardDescription>
+              {t.rich('organizationId', {
+                id: orgId,
+                code: (chunks) => <code data-testid="api-keys-org-id">{chunks}</code>,
+              })}
+            </CardDescription>
           </div>
           {canManage && (
             <Button onClick={() => setCreateOpen(true)}>

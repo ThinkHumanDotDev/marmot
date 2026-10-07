@@ -165,6 +165,10 @@ const dockerTestBody = z.object({
   url: z.string().optional(),
 })
 
+const tagBody = z.object({
+  name: z.string().trim().min(1).max(100),
+  color: z.string().optional().describe('Hex colour such as #2563EB'),
+})
 const roleBody = z.object({ role: z.enum(ROLES) })
 const inviteLinkBody = z.object({ role: z.enum(ROLES).optional() })
 const transferBody = z.object({ userId: id })
@@ -503,6 +507,11 @@ export const OPERATIONS: OperationSpec[] = [
         description: 'Only active (`true`) or paused (`false`) monitors',
         schema: { type: 'string', enum: ['true', 'false'] },
       },
+      {
+        name: 'key',
+        description: 'Only the monitor with this monitors-as-code key',
+        schema: { type: 'string' },
+      },
     ],
     response: { description: 'Monitors, sorted by name', schema: docsPage },
   },
@@ -543,6 +552,49 @@ export const OPERATIONS: OperationSpec[] = [
     summary: 'Delete a monitor with its heartbeats and statistics',
     tag: 'Monitors',
     permission: 'monitor:delete',
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/monitors/{id}/heartbeats`,
+    operationId: 'listMonitorHeartbeats',
+    summary: 'Latest heartbeats of a monitor, newest first',
+    description:
+      'Raw heartbeats are kept for 24 hours, important ones (status changes) for `KEEP_DATA_PERIOD_DAYS`.',
+    tag: 'Monitors',
+    permission: 'monitor:read',
+    query: [
+      { name: 'limit', description: '1–500, default 50', schema: { type: 'integer' } },
+      {
+        name: 'important',
+        description: '`true` for status changes only',
+        schema: { type: 'string', enum: ['true', 'false'] },
+      },
+    ],
+    response: {
+      description: '`{ docs: [{ id, status, msg, ping, important, time }] }`',
+      schema: docsList,
+    },
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/tags`,
+    operationId: 'listTags',
+    summary: 'List monitor tags',
+    tag: 'Monitors',
+    permission: 'tag:read',
+    response: { description: 'Tags, sorted by name', schema: docsList },
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/tags`,
+    operationId: 'createTag',
+    summary: 'Create a monitor tag',
+    description: 'Names are unique per organization; a taken name answers 409.',
+    tag: 'Monitors',
+    permission: 'tag:create',
+    body: { schema: tagBody },
+    status: 201,
+    response: { description: 'The created tag', schema: anyObject },
   },
   {
     method: 'POST',

@@ -195,6 +195,8 @@ export const adminTranslations = {
         activeDescription: 'Paused monitors are not checked.',
         parentDescription: 'Group this monitor belongs to.',
         publicNameDescription: 'Name shown on status pages instead of the monitor name.',
+        keyDescription:
+          'Monitors-as-code key: `marmot monitors apply` manages the monitor with this key. Unique per organization.',
         tagsDescription: 'Tags (optionally with a value, e.g. env: prod) shown as chips.',
         notificationsDescription: 'Channels alerted when this monitor changes status.',
         weightDescription: 'Sort order on status pages.',

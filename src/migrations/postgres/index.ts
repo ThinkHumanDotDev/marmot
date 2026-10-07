@@ -32,6 +32,7 @@ import * as migration_20261007_085940_status_page_subscribers from './20261007_0
 import * as migration_20261007_094147_templates from './20261007_094147_templates';
 import * as migration_20261007_103631_monitor_degraded_state from './20261007_103631_monitor_degraded_state';
 import * as migration_20261007_112515_api_key_scopes from './20261007_112515_api_key_scopes';
+import * as migration_20261007_142836_monitor_key from './20261007_142836_monitor_key';
 
 export const migrations = [
   {
@@ -202,6 +203,11 @@ export const migrations = [
   {
     up: migration_20261007_112515_api_key_scopes.up,
     down: migration_20261007_112515_api_key_scopes.down,
-    name: '20261007_112515_api_key_scopes'
+    name: '20261007_112515_api_key_scopes',
+  },
+  {
+    up: migration_20261007_142836_monitor_key.up,
+    down: migration_20261007_142836_monitor_key.down,
+    name: '20261007_142836_monitor_key'
   },
 ];

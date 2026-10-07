@@ -130,6 +130,14 @@ The optional **Public name** (`publicName`) is what status pages show instead of
 name, so `prod-api-eu-west-1 /healthz` can appear as "API". A status page component can override it again
 with its own name (see [Status pages → Components](Status-Pages.md#components)).
 
+## Monitors-as-code key
+
+The optional **key** (`key`, in the admin sidebar as _Monitors-as-code key_) is the stable identifier the
+[`marmot` CLI](CLI.md) maps entries of a monitors file to: `marmot monitors apply` creates, updates and
+(with `--prune`) deletes the monitors that carry a key. Keys are unique per organization and use letters,
+digits, `.`, `-` and `_`. Monitors without a key are left alone by `--prune`. A clone gets no key, and an
+import drops keys that are already in use.
+
 ## Pause, resume, clone, delete
 
 - **Pause** sets `active: false`: the scheduler is removed, no checks run, the monitor keeps its history and
@@ -168,7 +176,9 @@ same permissions as the UI (`monitor:read` for viewers, `monitor:create|update|d
 
 | Method & path                                    | Purpose                                           |
 | ------------------------------------------------ | ------------------------------------------------- |
+| `GET /api/orgs/:orgId/monitors[?key=]`           | List (filter by type, active state or key)        |
 | `POST /api/orgs/:orgId/monitors`                 | Create (body validated by `monitorFormSchema`)    |
+| `GET /api/orgs/:orgId/monitors/:id/heartbeats`   | Latest heartbeats, newest first                   |
 | `PATCH` / `DELETE /api/orgs/:orgId/monitors/:id` | Update / delete                                   |
 | `POST /api/orgs/:orgId/monitors/:id/pause`       | Pause                                             |
 | `POST /api/orgs/:orgId/monitors/:id/resume`      | Resume                                            |

@@ -8,6 +8,9 @@ Marmot is a single TypeScript codebase that runs as three processes from one Doc
 | `worker`   | `src/worker.ts`   | BullMQ job schedulers (one per monitor), check execution, heartbeat state machine, stats rollups, retention, notifications |
 | `realtime` | `src/realtime.ts` | socket.io server; authenticates Payload sessions; joins users to `org:<id>` rooms                                          |
 
+The `marmot` command-line tool (`src/cli/`, bundled into `dist/cli/marmot.mjs`) is a client of the
+management API only; see [CLI and monitors as code](CLI.md).
+
 Shared infrastructure: the Payload database (Postgres by default, MongoDB supported, SQLite for dev) and Redis
 (BullMQ queues + socket.io pub/sub). Caddy terminates TLS and routes `/socket.io/*` to `realtime`.
 

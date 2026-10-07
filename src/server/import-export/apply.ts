@@ -183,6 +183,35 @@ export async function applyImportPlan(
     }
   }
 
+  // Monitors-as-code keys are unique per organization: a key already in use (or repeated in the
+  // file) is dropped, the monitor is imported without one.
+  const plannedKeys = plan.monitors.flatMap((m) => (m.data.key ? [m.data.key] : []))
+  if (plannedKeys.length > 0) {
+    const { docs } = await payload.find({
+      collection: 'monitors',
+      where: { and: [{ organization: { equals: orgId } }, { key: { in: plannedKeys } }] },
+      depth: 0,
+      limit: 0,
+      pagination: false,
+      overrideAccess: true,
+      select: { key: true },
+    })
+    const taken = new Set((docs as Pick<Monitor, 'key'>[]).map((doc) => doc.key))
+    plan = {
+      ...plan,
+      monitors: plan.monitors.map((planned) => {
+        const key = planned.data.key
+        if (!key) return planned
+        if (!taken.has(key)) {
+          taken.add(key)
+          return planned
+        }
+        report.warnings.push(t('monitorKeyDropped', { name: planned.data.name, key }))
+        return { ...planned, data: { ...planned.data, key: null } }
+      }),
+    }
+  }
+
   if (plan.templates.length > 0) {
     const { docs } = await payload.find({
       collection: 'templates',

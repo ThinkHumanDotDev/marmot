@@ -12,6 +12,9 @@ compose stack the `.env` file is passed to all three, so you can simply restart 
 
 Boolean variables accept `1`, `true`, `yes`, `on` (case-insensitive) as true and anything else as false.
 
+The `marmot` command-line tool is a client, not one of these processes: its variables (`MARMOT_URL`,
+`MARMOT_API_KEY`, `MARMOT_ORG`, …) are described in [CLI and monitors as code](CLI.md#connect).
+
 ## Core
 
 | Variable                 | Default                 | Read by | Description                                                                                                                                                                                                                                  |

@@ -82,6 +82,9 @@ curl -X POST -H "Authorization: Bearer $MARMOT_KEY" -H 'content-type: applicatio
   https://marmot.example.com/api/orgs/1/monitors
 ```
 
+The [`marmot` CLI](CLI.md) is a client of this API: monitors as code (`plan`/`apply` of a YAML file),
+status, heartbeats, incidents and maintenance from the terminal or CI.
+
 ## Badges
 
 ```
