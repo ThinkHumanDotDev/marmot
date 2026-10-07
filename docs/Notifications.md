@@ -4,12 +4,11 @@
 
 A **notification channel** is one destination for alerts: a Slack webhook, a Telegram chat, an email
 address, a PagerDuty integration, a plain webhook. Channels belong to an organization and are managed on
-`/{org}/notifications`; each monitor carries the list of channels that should hear about it (filled from
-the default channels and **Apply to all existing monitors**; a per-monitor picker in the monitor form is
-landing in the current release). When a monitor changes
-state (UP → DOWN, DOWN → UP, PENDING → DOWN) the worker sends one message per attached channel; with a
-`resendInterval` on the monitor it repeats the DOWN message every N beats while the outage lasts. Nothing is
-sent for PENDING (retrying) beats or for beats inside a maintenance window.
+`/{org}/notifications`; each monitor carries the list of channels that should hear about it, chosen in the
+monitor form (default channels start selected on new monitors) or from the channel's **Monitors** dialog.
+When a monitor changes state (UP → DOWN, DOWN → UP, PENDING → DOWN) the worker sends one message per
+attached channel; with a `resendInterval` on the monitor it repeats the DOWN message every N beats while
+the outage lasts. Nothing is sent for PENDING (retrying) beats or for beats inside a maintenance window.
 
 Setting up a channel is a form: pick a **provider**, fill in the fields the provider needs (the form is
 generated from the provider's schema, so required fields and secrets are marked), press **Send test**, save.
@@ -21,9 +20,12 @@ grouped as Chat, Push, Email and Generic (webhooks, incident management, SMS).
 
 Marmot alerts through **notification channels**: org-scoped documents in the `notifications` collection that
 name a provider (`type`) and carry its settings (`config`). Monitors reference channels through their
-`notifications` relationship; a channel flagged `isDefault` is attached to every monitor created afterwards, and
-"Apply to all existing monitors" attaches it to the organization's current monitors. Members can see channels
-(`notification:read`, secrets masked); admins and owners create, edit, test and delete them
+`notifications` relationship; a channel flagged `isDefault` is attached to every monitor created afterwards
+(unless the monitor form or API call lists its channels explicitly), and "Apply to all existing monitors"
+attaches it to the organization's current monitors. The **Monitors** entry of a channel's menu attaches the
+channel to, or detaches it from, any monitor of the organization
+(`GET`/`PUT /api/orgs/:orgId/notifications/:id/monitors`, `{ "monitors": [id, …] }`). Members can see
+channels (`notification:read`, secrets masked); admins and owners create, edit, test and delete them
 (`notification:create|update|delete`).
 
 ## Pipeline

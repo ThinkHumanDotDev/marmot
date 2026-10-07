@@ -212,14 +212,16 @@ export async function getDefaultNotificationIds(
 
 /**
  * `monitors` beforeChange hook: a new monitor created without explicit channels gets the
- * organization's default channels (Uptime Kuma's "Default enabled" behaviour).
+ * organization's default channels (Uptime Kuma's "Default enabled" behaviour). Callers that pass
+ * a deliberate selection (the monitor form, clone) set `context.explicitNotifications`, so
+ * an empty selection stays empty.
  */
 export const attachDefaultNotifications: CollectionBeforeChangeHook<Monitor> = async ({
   data,
   operation,
   req,
 }) => {
-  if (operation !== 'create') return data
+  if (operation !== 'create' || req.context?.explicitNotifications) return data
   if (Array.isArray(data.notifications) && data.notifications.length > 0) return data
   const orgId = extractId(data.organization as OrgId | { id: OrgId } | null | undefined)
   if (orgId === null) return data

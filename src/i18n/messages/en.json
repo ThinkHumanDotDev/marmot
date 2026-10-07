@@ -696,5 +696,43 @@
       },
       "pushHeartbeat": "push heartbeat"
     }
+  },
+  "monitors": {
+    "channels": {
+      "title": "Notifications",
+      "description": "Channels alerted when this monitor changes status.",
+      "defaultsHint": "Default channels are selected for new monitors.",
+      "empty": "No notification channels in this organization yet.",
+      "manage": "Manage channels",
+      "toggle": "Alert through {name}",
+      "default": "Default",
+      "paused": "Paused",
+      "none": "No channels attached: status changes of this monitor alert nobody.",
+      "noneEditable": "No channels attached: status changes of this monitor alert nobody. Choose channels under Edit.",
+      "test": "Test",
+      "testLabel": "Send a test message through {name}",
+      "testSent": "Test message sent",
+      "testFailed": "Test failed"
+    }
+  },
+  "notifications": {
+    "monitors": {
+      "action": "Monitors",
+      "title": "Monitors using “{name}”",
+      "description": "Monitors that alert through this channel. Changes apply from their next status change.",
+      "search": "Search monitors",
+      "empty": "No monitors in this organization yet.",
+      "noMatch": "No monitors match your search.",
+      "selected": "{count, plural, one {# monitor selected} other {# monitors selected}}",
+      "selectAll": "Select all",
+      "clear": "Clear",
+      "toggle": "Alert {name} through this channel",
+      "paused": "Paused",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Monitors updated",
+      "loadFailed": "Could not load the monitors",
+      "saveFailed": "Could not update the monitors"
+    }
   }
 }
