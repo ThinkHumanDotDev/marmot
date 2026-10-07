@@ -11,6 +11,7 @@ import {
   type IncidentStatus,
 } from '@/lib/incident-timeline'
 import type { Incident } from '@/payload-types'
+import type { ErrorKey } from '@/server/errors'
 
 import { coerceId, loadOrgStatusPage, type Authenticated } from './http'
 
@@ -30,31 +31,31 @@ export interface IncidentUpdateInput {
 export function parseUpdateInput(
   body: Record<string, unknown>,
   defaults: { status?: IncidentStatus } = {},
-): { ok: true; input: IncidentUpdateInput } | { ok: false; error: string } {
+): { ok: true; input: IncidentUpdateInput } | { ok: false; error: ErrorKey } {
   const status = body.status ?? defaults.status
   if (!isIncidentStatus(status)) {
-    return { ok: false, error: 'status must be investigating, identified, monitoring or resolved' }
+    return { ok: false, error: 'incidentUpdateStatusInvalid' }
   }
   if (body.message !== undefined && body.message !== null && typeof body.message !== 'string') {
-    return { ok: false, error: 'message must be a string' }
+    return { ok: false, error: 'incidentMessageInvalid' }
   }
   if (body.components !== undefined && !Array.isArray(body.components)) {
-    return { ok: false, error: 'components must be an array of { component, impact }' }
+    return { ok: false, error: 'incidentComponentsShape' }
   }
   const components: IncidentUpdateInput['components'] = []
   for (const entry of (body.components as unknown[] | undefined) ?? []) {
     const row = entry as { component?: unknown; impact?: unknown } | null
     const component = row?.component
     if (typeof component !== 'string' || !component || !isComponentImpact(row?.impact)) {
-      return { ok: false, error: 'components must be an array of { component, impact }' }
+      return { ok: false, error: 'incidentComponentsShape' }
     }
     components.push({ component, impact: row.impact })
   }
   if (body.postedAt !== undefined && typeof body.postedAt !== 'string') {
-    return { ok: false, error: 'postedAt must be an ISO date string' }
+    return { ok: false, error: 'incidentPostedAtInvalid' }
   }
   if (body.impact !== undefined && !isComponentImpact(body.impact)) {
-    return { ok: false, error: 'impact is not a valid impact' }
+    return { ok: false, error: 'incidentImpactInvalid' }
   }
   return {
     ok: true,

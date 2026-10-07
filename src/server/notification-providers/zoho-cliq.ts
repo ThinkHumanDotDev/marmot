@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { extractAddress, OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -24,10 +25,14 @@ export const zohoCliqFieldMeta: Record<keyof ZohoCliqConfig, NotificationFieldMe
   },
 }
 
-const statusLine = (status: Heartbeat['status'] | undefined, monitorName: string | undefined) => {
-  if (status === 'down') return `🔴 [${monitorName}] went down\n`
-  if (status === 'up') return `### ✅ [${monitorName}] is back online\n`
-  return 'Notification\n'
+const statusLine = (
+  status: Heartbeat['status'] | undefined,
+  monitorName: string | undefined,
+  p: ReturnType<typeof providerText>,
+) => {
+  if (status === 'down') return `🔴 ${p('wentDown', { name: `[${monitorName}]` })}\n`
+  if (status === 'up') return `### ✅ ${p('backOnline', { name: `[${monitorName}]` })}\n`
+  return `${p('notification')}\n`
 }
 
 registerNotificationProvider({
@@ -37,10 +42,11 @@ registerNotificationProvider({
   docsUrl: 'https://www.zoho.com/cliq/help/platform/webhook-tokens.html',
   configSchema: zohoCliqConfigSchema,
   fieldMeta: zohoCliqFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = zohoCliqConfigSchema.parse(raw)
-    const lines = [statusLine(heartbeat?.status, monitor?.name)]
-    lines.push(`*Description:* ${heartbeat ? heartbeat.msg || message : message}`)
+    const p = providerText(locale)
+    const lines = [statusLine(heartbeat?.status, monitor?.name, p)]
+    lines.push(`*${p('description')}:* ${heartbeat ? heartbeat.msg || message : message}`)
     const address = extractAddress(monitor)
     if (heartbeat && address && address !== 'https://') lines.push(`*URL:* ${address}`)
 

@@ -20,6 +20,7 @@ import {
   type RequestUser,
   type RouteId,
 } from '@/server/monitors/http'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,7 +54,7 @@ async function resolve(
   if (forbidden) return { response: forbidden }
 
   const doc = await loadOrgMaintenance(payload, auth.user, orgId, id)
-  if (!doc) return { response: jsonError(404, 'Maintenance not found') }
+  if (!doc) return { response: jsonError(404, errorText(request, 'maintenanceNotFound')) }
   return { payload, user: auth.user, orgId, id, doc }
 }
 
@@ -74,13 +75,13 @@ export async function PATCH(request: Request, { params }: RouteContext): Promise
 
   const body = await readJson(request)
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    return jsonError(400, 'Expected a JSON body')
+    return jsonError(400, errorText(request, 'expectedJsonBody'))
   }
   const patch = { ...(body as Record<string, unknown>) }
   for (const key of PROTECTED_MAINTENANCE_FIELDS) delete patch[key]
 
   const parsed = maintenanceFormSchema.safeParse({ ...maintenanceToFormValues(ctx.doc), ...patch })
-  if (!parsed.success) return validationError(parsed.error)
+  if (!parsed.success) return validationError(parsed.error, request)
 
   try {
     const doc = (await ctx.payload.update({
@@ -93,7 +94,7 @@ export async function PATCH(request: Request, { params }: RouteContext): Promise
     })) as Maintenance
     return Response.json(await summarizeMaintenance(ctx.payload, doc))
   } catch (error) {
-    return payloadError(error)
+    return payloadError(error, request)
   }
 }
 
@@ -112,6 +113,6 @@ export async function DELETE(request: Request, { params }: RouteContext): Promis
     })
     return Response.json({ id: String(ctx.id), deleted: true })
   } catch (error) {
-    return payloadError(error)
+    return payloadError(error, request)
   }
 }

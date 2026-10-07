@@ -9,6 +9,7 @@ import {
 } from '@/server/status-pages/http'
 
 import type { StatusPage } from '@/payload-types'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,7 +34,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     })
     return Response.json(result)
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }
 
@@ -45,7 +46,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { orgId } = await params
 
   const body = await readJson(request)
-  if (!body) return jsonError('Invalid JSON body', 400)
+  if (!body) return jsonError(errorText(request, 'invalidJsonBody'), 400)
 
   try {
     const doc = await payload.create({
@@ -62,6 +63,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     })
     return Response.json({ doc }, { status: 201 })
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }

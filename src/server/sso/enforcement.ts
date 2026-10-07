@@ -1,4 +1,4 @@
-import { APIError, type CollectionBeforeLoginHook, type Payload } from 'payload'
+import type { CollectionBeforeLoginHook, Payload } from 'payload'
 
 import { getUserRole } from '@/access/permissions'
 import { SSO_DOMAINS_SLUG } from '@/collections/SsoDomains'
@@ -7,6 +7,7 @@ import type { Organization, User } from '@/payload-types'
 import { recordRequestAuditEvent } from '@/server/security/audit'
 
 import { emailDomain } from './domains'
+import { apiError } from '@/server/errors'
 
 const log = childLogger('sso')
 
@@ -75,5 +76,5 @@ export const enforceSsoOnPasswordLogin: CollectionBeforeLoginHook = async ({ use
   }
 
   log.info({ user: account.id, organization: org.id }, 'password login refused: SSO enforced')
-  throw new APIError(SSO_ENFORCED_MESSAGE, 403)
+  throw apiError('ssoEnforced', 403)
 }

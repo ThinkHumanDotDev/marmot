@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -45,8 +46,9 @@ registerNotificationProvider({
   docsUrl: 'https://www.twilio.com/docs/sendgrid/api-reference/mail-send/mail-send',
   configSchema: sendgridConfigSchema,
   fieldMeta: sendgridFieldMeta,
-  async send({ config: raw, message }) {
+  async send({ config: raw, message, locale }) {
     const config = sendgridConfigSchema.parse(raw)
+    const p = providerText(locale)
     const personalization: Record<string, unknown> = { to: [{ email: config.toEmail.trim() }] }
     const cc = emailList(config.ccEmail)
     const bcc = emailList(config.bccEmail)
@@ -58,7 +60,7 @@ registerNotificationProvider({
       {
         personalizations: [personalization],
         from: { email: config.fromEmail.trim() },
-        subject: config.subject || 'Notification from Marmot',
+        subject: config.subject || p('fromMarmot'),
         content: [{ type: 'text/plain', value: message }],
       },
       { Authorization: `Bearer ${config.apiKey}` },

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import { AuthCard } from '@/components/auth/auth-card'
@@ -10,7 +11,10 @@ import { getCurrentUser } from '@/lib/auth'
 import { safeNextPath } from '@/lib/utils'
 import { lookupSsoForOrg } from '@/server/sso/domains'
 
-export const metadata: Metadata = { title: 'Sign in with SSO' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('auth.ssoLookup')
+  return { title: t('pageTitle') }
+}
 export const dynamic = 'force-dynamic'
 
 /**
@@ -34,16 +38,17 @@ export default async function SsoLoginPage({
     redirect(safeNext ? `${only.loginPath}?next=${encodeURIComponent(safeNext)}` : only.loginPath)
   }
 
+  const t = await getTranslations('auth.ssoLookup')
   return (
     <AuthCard
-      title="Sign in with your organization"
-      description="Use the identity provider your organization set up for Marmot."
+      title={t('title')}
+      description={t('description')}
       footer={
         <Link
           href={safeNext ? `/login?next=${encodeURIComponent(safeNext)}` : '/login'}
           className="font-medium text-foreground underline-offset-4 hover:underline"
         >
-          Back to sign in
+          {t('backToSignIn')}
         </Link>
       }
     >

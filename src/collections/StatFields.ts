@@ -1,6 +1,6 @@
 import type { Access, CollectionConfig } from 'payload'
 
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 
 /**
  * Shared definition of the three time-series aggregate collections
@@ -29,7 +29,7 @@ export function buildStatCollection({ slug, bucket }: StatCollectionOptions): Co
     slug,
     labels: { singular: label, plural: label },
     admin: {
-      group: 'Statistics',
+      group: adminGroup('statistics'),
       description: adminT(`marmot:stats:${bucket}:description`),
       defaultColumns: ['monitor', 'timestamp', 'up', 'down', 'ping'],
       hideAPIURL: true,

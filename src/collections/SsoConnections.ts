@@ -4,7 +4,7 @@ import { orgScoped } from '@/access/org-scoped'
 import { ROLES } from '@/access/permissions'
 import { decryptSecret, encryptSecret } from '@/auth/two-factor/crypto'
 import { env } from '@/env'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 
 export const SSO_CONNECTIONS_SLUG = 'sso-connections' as const
 export const SSO_CONNECTION_TYPES = ['oidc', 'saml'] as const
@@ -72,7 +72,7 @@ export const SsoConnections: CollectionConfig = {
   slug: SSO_CONNECTIONS_SLUG,
   admin: {
     useAsTitle: 'name',
-    group: 'Access',
+    group: adminGroup('access'),
     defaultColumns: ['name', 'slug', 'type', 'organization', 'enabled'],
   },
   access: {

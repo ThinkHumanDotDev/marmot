@@ -13,6 +13,7 @@ import {
   readJson,
   validationError,
 } from '@/server/monitors/http'
+import { errorText, requestLocale } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,10 +36,11 @@ export async function GET(request: Request, { params }: RouteContext) {
     const docs = await listOrgMaintenance(payload, orgId, {
       user: auth.user,
       overrideAccess: false,
+      locale: requestLocale(request),
     })
     return Response.json({ docs })
   } catch (error) {
-    return payloadError(error)
+    return payloadError(error, request)
   }
 }
 
@@ -57,10 +59,10 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const body = await readJson(request)
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    return jsonError(400, 'Expected a JSON body')
+    return jsonError(400, errorText(request, 'expectedJsonBody'))
   }
   const parsed = maintenanceFormSchema.safeParse(body)
-  if (!parsed.success) return validationError(parsed.error)
+  if (!parsed.success) return validationError(parsed.error, request)
 
   try {
     const doc = (await payload.create({
@@ -74,6 +76,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     })) as Maintenance
     return Response.json(await summarizeMaintenance(payload, doc), { status: 201 })
   } catch (error) {
-    return payloadError(error)
+    return payloadError(error, request)
   }
 }

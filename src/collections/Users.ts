@@ -1,5 +1,4 @@
 import {
-  APIError,
   type CollectionBeforeDeleteHook,
   type CollectionBeforeLoginHook,
   type CollectionConfig,
@@ -9,11 +8,12 @@ import {
 import { authenticated, selfOrSuperadmin, superadminOnly } from '@/access/org-scoped'
 import { isSuperadmin, type UserLike } from '@/access/permissions'
 import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import { defaultLocale, localeNames, locales } from '@/i18n/locales'
 import { auditAuthFailure, auditLogin, rateLimitAuthOperations } from '@/server/security/auth-hooks'
 import { enforceSsoOnPasswordLogin } from '@/server/sso/enforcement'
 import { isSignupAllowed } from '@/server/settings'
+import { apiError } from '@/server/errors'
 
 const superadminField: FieldAccess = ({ req }) => isSuperadmin(req.user)
 /** Server-owned: written with `overrideAccess: true` only, never readable through the API. */
@@ -51,10 +51,7 @@ export const TWO_FACTOR_GATE_CONTEXT = 'twoFactorGate'
  */
 const requireTwoFactorGate: CollectionBeforeLoginHook = ({ user, context }) => {
   if (user?.twoFactorEnabled === true && context?.[TWO_FACTOR_GATE_CONTEXT] !== true) {
-    throw new APIError(
-      'This account uses two-factor authentication. Sign in through the Marmot login page.',
-      401,
-    )
+    throw apiError('twoFactorUseLoginPage', 401)
   }
   return user
 }
@@ -92,7 +89,7 @@ export const Users: CollectionConfig = {
   slug: 'users',
   admin: {
     useAsTitle: 'email',
-    group: 'Access',
+    group: adminGroup('access'),
     defaultColumns: ['email', 'name', 'superadmin'],
   },
   auth: true,

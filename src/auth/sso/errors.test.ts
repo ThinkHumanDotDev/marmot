@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { isSsoErrorCode, ssoErrorMessage } from './errors'
+import { getTranslator } from '@/i18n/translator'
+import { isSsoErrorCode, SSO_ERROR_MESSAGES, ssoErrorMessage, type SsoErrorCode } from './errors'
 
 describe('SSO error codes', () => {
   it('maps plugin, Marmot and legacy codes to messages and ignores unknown input', () => {
@@ -12,5 +13,12 @@ describe('SSO error codes', () => {
     expect(isSsoErrorCode('<script>')).toBe(false)
     expect(ssoErrorMessage('nope')).toBeUndefined()
     expect(ssoErrorMessage(undefined)).toBeUndefined()
+  })
+
+  it('has a catalogue message for every code, identical in English', () => {
+    const t = getTranslator('en')
+    for (const code of Object.keys(SSO_ERROR_MESSAGES) as SsoErrorCode[]) {
+      expect(t(`auth.ssoErrors.${code}`)).toBe(SSO_ERROR_MESSAGES[code])
+    }
   })
 })

@@ -3,6 +3,9 @@ import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible'
 
 import { childLogger } from '@/lib/logger'
 import { createRedis } from '@/server/redis'
+import { defaultLocale } from '@/i18n/locales'
+import { translateError } from '@/server/errors'
+import { errorText } from '@/server/request-locale'
 
 const log = childLogger('rate-limit')
 
@@ -186,10 +189,13 @@ export function rateLimitHeaders(decision: RateLimitDecision): Record<string, st
   return headers
 }
 
-/** JSON 429 response with `Retry-After` and `X-RateLimit-*` headers. */
-export function tooManyRequests(decision: RateLimitDecision): Response {
+/** JSON 429 response with `Retry-After` and `X-RateLimit-*` headers, in the request's language. */
+export function tooManyRequests(decision: RateLimitDecision, request?: Request): Response {
+  const message = request
+    ? errorText(request, 'tooManyRequests')
+    : translateError(defaultLocale, 'tooManyRequests')
   return Response.json(
-    { errors: [{ message: 'Too many requests. Please try again later.' }] },
+    { errors: [{ message }] },
     { status: 429, headers: rateLimitHeaders(decision) },
   )
 }
@@ -219,7 +225,7 @@ export function withRateLimit<Args extends unknown[]>(
     if (key === null) return handler(request, ...rest)
 
     const decision = await limiter.consume(key)
-    if (!decision.allowed) return tooManyRequests(decision)
+    if (!decision.allowed) return tooManyRequests(decision, request)
 
     const response = await handler(request, ...rest)
     return decision.degraded ? response : withHeaders(response, rateLimitHeaders(decision))

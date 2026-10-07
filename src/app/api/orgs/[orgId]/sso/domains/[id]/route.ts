@@ -8,6 +8,7 @@ import {
   resolveOrgRequest,
   type OrgRequestContext,
 } from '@/server/notifications/api'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,7 +41,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const existing = await loadOrgDomain(ctx, id)
-  if (!existing) return jsonError(404, 'Domain not found')
+  if (!existing) return jsonError(404, errorText(request, 'domainNotFound'))
 
   try {
     await ctx.payload.delete({
@@ -52,6 +53,6 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     })
     return Response.json({ deleted: String(existing.id) })
   } catch (error) {
-    return jsonError(errorStatus(error), errorMessage(error))
+    return jsonError(errorStatus(error), errorMessage(error, request))
   }
 }

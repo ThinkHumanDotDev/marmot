@@ -12,6 +12,7 @@ import {
 import { toConnectionRow } from '@/server/sso/connections'
 
 import { connectionSchema, reloadConnection } from '../route'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,16 +48,16 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const body = await readJson(request)
-  if (!body) return jsonError(400, 'Invalid JSON body')
+  if (!body) return jsonError(400, errorText(request, 'invalidJsonBody'))
   const parsed = connectionSchema.partial().safeParse(body)
   if (!parsed.success) {
-    return jsonError(400, parsed.error.issues[0]?.message ?? 'Validation failed')
+    return jsonError(400, parsed.error.issues[0]?.message ?? errorText(request, 'validationFailed'))
   }
   const data = { ...parsed.data }
   if (!data.clientSecret) delete data.clientSecret
 
   const existing = await loadOrgConnection(ctx, id)
-  if (!existing) return jsonError(404, 'Connection not found')
+  if (!existing) return jsonError(404, errorText(request, 'connectionNotFound'))
 
   try {
     await ctx.payload.update({
@@ -69,7 +70,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     })
     return Response.json({ doc: toConnectionRow(await reloadConnection(ctx.payload, existing.id)) })
   } catch (error) {
-    return jsonError(errorStatus(error), errorMessage(error))
+    return jsonError(errorStatus(error), errorMessage(error, request))
   }
 }
 
@@ -80,7 +81,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const existing = await loadOrgConnection(ctx, id)
-  if (!existing) return jsonError(404, 'Connection not found')
+  if (!existing) return jsonError(404, errorText(request, 'connectionNotFound'))
 
   try {
     await ctx.payload.delete({
@@ -92,6 +93,6 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     })
     return Response.json({ deleted: String(existing.id) })
   } catch (error) {
-    return jsonError(errorStatus(error), errorMessage(error))
+    return jsonError(errorStatus(error), errorMessage(error, request))
   }
 }

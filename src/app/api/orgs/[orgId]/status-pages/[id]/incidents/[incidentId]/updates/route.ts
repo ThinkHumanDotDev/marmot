@@ -6,6 +6,8 @@ import {
 } from '@/server/status-pages/incident-updates'
 import { incidentTimeline } from '@/lib/incident-timeline'
 
+import { errorText } from '@/server/request-locale'
+
 export const dynamic = 'force-dynamic'
 
 type RouteContext = { params: Promise<{ orgId: string; id: string; incidentId: string }> }
@@ -18,11 +20,11 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   try {
     const incident = await loadOrgIncident(auth.ctx, orgId, id, incidentId)
-    if (!incident) return jsonError('Incident not found', 404)
+    if (!incident) return jsonError(errorText(request, 'incidentNotFound'), 404)
     const { updates, state } = incidentTimeline(incident)
     return Response.json({ docs: updates, state })
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }
 
@@ -38,16 +40,16 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { orgId, id, incidentId } = await params
 
   const body = await readJson(request)
-  if (!body) return jsonError('Invalid JSON body', 400)
+  if (!body) return jsonError(errorText(request, 'invalidJsonBody'), 400)
   const parsed = parseUpdateInput(body)
-  if (!parsed.ok) return jsonError(parsed.error, 400)
+  if (!parsed.ok) return jsonError(errorText(request, parsed.error), 400)
 
   try {
     const incident = await loadOrgIncident(auth.ctx, orgId, id, incidentId)
-    if (!incident) return jsonError('Incident not found', 404)
+    if (!incident) return jsonError(errorText(request, 'incidentNotFound'), 404)
     const result = await postIncidentUpdate(auth.ctx, incident, parsed.input)
     return Response.json(result, { status: 201 })
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }

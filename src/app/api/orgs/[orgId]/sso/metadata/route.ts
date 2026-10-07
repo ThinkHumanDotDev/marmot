@@ -2,6 +2,7 @@ import { parseIdpMetadata } from '@thinkhuman/payload-plugin-auth/saml'
 import { z } from 'zod'
 
 import { jsonError, readJson, resolveOrgRequest } from '@/server/notifications/api'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,28 +26,32 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const parsed = schema.safeParse(await readJson(request))
-  if (!parsed.success) return jsonError(400, 'Provide a metadata URL or the metadata XML')
+  if (!parsed.success) return jsonError(400, errorText(request, 'samlMetadataRequired'))
 
   let xml: string
   if ('xml' in parsed.data) {
     xml = parsed.data.xml
   } else {
     if (!parsed.data.url.startsWith('https://'))
-      return jsonError(400, 'Metadata URL must use https')
+      return jsonError(400, errorText(request, 'samlMetadataHttps'))
     try {
       const response = await fetch(parsed.data.url, {
         headers: { accept: 'application/samlmetadata+xml, application/xml, text/xml' },
         signal: AbortSignal.timeout(10_000),
         redirect: 'follow',
       })
-      if (!response.ok) return jsonError(400, `Metadata URL responded with ${response.status}`)
+      if (!response.ok) {
+        return jsonError(400, errorText(request, 'samlMetadataStatus', { status: response.status }))
+      }
       const length = Number(response.headers.get('content-length') ?? 0)
-      if (length > MAX_BYTES) return jsonError(400, 'Metadata document is too large')
+      if (length > MAX_BYTES) return jsonError(400, errorText(request, 'samlMetadataTooLarge'))
       xml = (await response.text()).slice(0, MAX_BYTES)
     } catch (error) {
       return jsonError(
         400,
-        `Could not fetch the metadata: ${error instanceof Error ? error.message : String(error)}`,
+        errorText(request, 'samlMetadataFetchFailed', {
+          error: error instanceof Error ? error.message : String(error),
+        }),
       )
     }
   }
@@ -63,6 +68,9 @@ export async function POST(request: Request, { params }: RouteContext) {
       nameIdFormats: metadata.nameIdFormats,
     })
   } catch (error) {
-    return jsonError(400, error instanceof Error ? error.message : 'Invalid metadata')
+    return jsonError(
+      400,
+      error instanceof Error ? error.message : errorText(request, 'samlMetadataInvalid'),
+    )
   }
 }

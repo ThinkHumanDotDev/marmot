@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -34,8 +35,9 @@ registerNotificationProvider({
   docsUrl: 'https://docs.alerta.io/api/reference.html#create-an-alert',
   configSchema: alertaConfigSchema,
   fieldMeta: alertaFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = alertaConfigSchema.parse(raw)
+    const p = providerText(locale)
     const headers = {
       'Content-Type': 'application/json;charset=UTF-8',
       Authorization: `Key ${config.apiKey}`,
@@ -71,13 +73,21 @@ registerNotificationProvider({
     if (heartbeat.status === 'down') {
       await postJson(
         config.apiEndpoint,
-        { ...data, severity: config.alertState, text: `Service ${monitor.type} is down.` },
+        {
+          ...data,
+          severity: config.alertState,
+          text: p('serviceTypeDown', { type: monitor.type }),
+        },
         headers,
       )
     } else if (heartbeat.status === 'up') {
       await postJson(
         config.apiEndpoint,
-        { ...data, severity: config.recoverState, text: `Service ${monitor.type} is up.` },
+        {
+          ...data,
+          severity: config.recoverState,
+          text: p('serviceTypeUp', { type: monitor.type }),
+        },
         headers,
       )
     }

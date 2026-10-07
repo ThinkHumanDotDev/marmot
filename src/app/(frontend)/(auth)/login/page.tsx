@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
-import { getAuthProviders, ssoErrorMessage } from '@/auth/sso'
+import { getAuthProviders, isSsoErrorCode } from '@/auth/sso'
 import { AuthCard } from '@/components/auth/auth-card'
 import { LoginForm } from '@/components/auth/login-form'
 import { SsoButtons } from '@/components/auth/sso-button'
@@ -37,7 +37,8 @@ export default async function LoginPage({
 
   // Same data `GET /api/auth/providers` returns, read in-process to avoid a self-request.
   const providers = getAuthProviders()
-  const ssoError = ssoErrorMessage(error)
+  const tSsoErrors = await getTranslations('auth.ssoErrors')
+  const ssoError = isSsoErrorCode(error) ? tSsoErrors(error) : undefined
 
   return (
     <AuthCard
@@ -75,7 +76,7 @@ export default async function LoginPage({
               href={next ? `/login/sso?next=${encodeURIComponent(next)}` : '/login/sso'}
               className="font-medium text-foreground underline-offset-4 hover:underline"
             >
-              Sign in with your organization&apos;s SSO
+              {t('organizationSso')}
             </Link>
           </p>
         )}

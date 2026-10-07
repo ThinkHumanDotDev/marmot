@@ -27,6 +27,8 @@ import { createRateLimiter, type RateLimiter } from '@/server/security/rate-limi
 import { requestMeta } from '@/server/security/request'
 
 import type { StatusPage } from '@/payload-types'
+import { defaultLocale, type Locale } from '@/i18n/locales'
+import { translateError, type ErrorKey } from '@/server/errors'
 
 /** The fields of a page the access check reads (load the page with `overrideAccess: true`). */
 export type AccessPage = Pick<StatusPage, 'access' | 'passwordHash'> & { id: string | number }
@@ -314,21 +316,22 @@ export const protectedHeaders = (): Record<string, string> => ({
   'X-Robots-Tag': 'noindex, nofollow',
 })
 
-const DENIAL_MESSAGES: Record<AccessDenial, string> = {
-  'login-required': 'This status page is password protected.',
-  'invalid-password': 'The password is not correct.',
-  'rate-limited': 'Too many attempts. Please try again later.',
+const DENIAL_MESSAGES: Record<AccessDenial, ErrorKey> = {
+  'login-required': 'statusPageProtected',
+  'invalid-password': 'statusPagePasswordIncorrect',
+  'rate-limited': 'tooManyAttempts',
 }
 
 /** 401 (or 429 when rate limited) for machine endpoints, JSON or plain text. */
 export function accessDeniedResponse(
   decision: Extract<StatusPageAccessDecision, { allowed: false }>,
   format: 'json' | 'text' = 'json',
+  locale: Locale = defaultLocale,
 ): Response {
   const status = decision.reason === 'rate-limited' ? 429 : 401
   const headers: Record<string, string> = { ...protectedHeaders() }
   if (decision.retryAfterSeconds) headers['Retry-After'] = String(decision.retryAfterSeconds)
-  const message = DENIAL_MESSAGES[decision.reason]
+  const message = translateError(locale, DENIAL_MESSAGES[decision.reason])
   if (format === 'text') {
     return new Response(message, {
       status,

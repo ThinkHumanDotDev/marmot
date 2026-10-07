@@ -4,6 +4,7 @@
 import { getPayload, type Payload } from 'payload'
 
 import config from '@payload-config'
+import { defaultLocale, type Locale } from '@/i18n/locales'
 import { canInOrg } from '@/access/overrides'
 import { can, isSuperadmin, type OrgId, type Permission } from '@/access/permissions'
 import type { Notification, User } from '@/payload-types'
@@ -11,6 +12,8 @@ import {
   describeNotificationProviders,
   type NotificationProviderDescriptor,
 } from '@/server/notification-providers'
+import { LocalizedAPIError } from '@/server/errors'
+import { errorText, rememberRequestUser, requestLocale } from '@/server/request-locale'
 
 export type OrgRequestUser = User & { collection: 'users' }
 
@@ -40,10 +43,15 @@ export async function resolveOrgRequest(
 ): Promise<OrgRequestContext | Response> {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: request.headers })
-  if (!user || user.collection !== 'users') return jsonError(401, 'Unauthorized')
+  if (!user || user.collection !== 'users') {
+    return jsonError(401, errorText(request, 'unauthenticated'))
+  }
+  rememberRequestUser(request, user as OrgRequestUser)
 
   const orgId = parseDocId(payload, rawOrgId)
-  if (!(await canInOrg(payload, user, orgId, permission))) return jsonError(403, 'Forbidden')
+  if (!(await canInOrg(payload, user, orgId, permission))) {
+    return jsonError(403, errorText(request, 'forbidden'))
+  }
 
   return { payload, user: user as OrgRequestUser, orgId }
 }
@@ -58,11 +66,18 @@ export async function readJson<T = Record<string, unknown>>(request: Request): P
   }
 }
 
-let descriptorCache: NotificationProviderDescriptor[] | undefined
+const descriptorCache = new Map<Locale, NotificationProviderDescriptor[]>()
 
-export function getProviderDescriptors(): NotificationProviderDescriptor[] {
-  descriptorCache ??= describeNotificationProviders()
-  return descriptorCache
+/** Provider form descriptors with labels in `locale` (memoised per locale). */
+export function getProviderDescriptors(
+  locale: Locale = defaultLocale,
+): NotificationProviderDescriptor[] {
+  let descriptors = descriptorCache.get(locale)
+  if (!descriptors) {
+    descriptors = describeNotificationProviders(locale)
+    descriptorCache.set(locale, descriptors)
+  }
+  return descriptors
 }
 
 /** Secret config keys per provider (webhook URLs, tokens, passwords). */
@@ -95,8 +110,12 @@ export function toClientNotification(
   return { ...doc, config }
 }
 
-/** Payload REST-style error body → first message, for 400 responses. */
-export function errorMessage(error: unknown): string {
+/**
+ * Payload REST-style error body → first message, for 400 responses. `apiError(…)` messages are
+ * rendered in the request locale.
+ */
+export function errorMessage(error: unknown, request: Request): string {
+  if (error instanceof LocalizedAPIError) return error.messageIn(requestLocale(request))
   if (error && typeof error === 'object') {
     const data = (error as { data?: { errors?: { message?: string; path?: string }[] } }).data
     const first = data?.errors?.[0]

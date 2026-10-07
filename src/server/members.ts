@@ -14,6 +14,7 @@ import {
 
 import type { Media, User } from '@/payload-types'
 import { apiError } from '@/server/errors'
+import { defaultLocale, type Locale } from '@/i18n/locales'
 
 /**
  * Organization membership management shared by the `/api/orgs/:orgId/members` route handlers and
@@ -44,8 +45,15 @@ const avatarUrl = (avatar: User['avatar']): string | null =>
 export async function listOrgMembers(
   payload: Payload,
   orgId: OrgId,
-  options: { req?: PayloadRequest; user?: Actor; overrideAccess?: boolean } = {},
+  options: {
+    req?: PayloadRequest
+    user?: Actor
+    overrideAccess?: boolean
+    /** Locale for ordering e-mail addresses within a role (the viewer's language). */
+    locale?: Locale
+  } = {},
 ): Promise<MemberSummary[]> {
+  const collator = new Intl.Collator(options.locale ?? defaultLocale)
   const { docs } = await payload.find({
     collection: 'users',
     where: { 'organizations.organization': { equals: orgId } },
@@ -73,7 +81,7 @@ export async function listOrgMembers(
         },
       ]
     })
-    .sort((a, b) => rank[a.role] - rank[b.role] || a.email.localeCompare(b.email))
+    .sort((a, b) => rank[a.role] - rank[b.role] || collator.compare(a.email, b.email))
 }
 
 export const countOwners = (members: Pick<MemberSummary, 'role'>[]): number =>

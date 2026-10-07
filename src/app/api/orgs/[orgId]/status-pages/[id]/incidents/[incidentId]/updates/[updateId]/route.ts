@@ -1,6 +1,8 @@
 import { authenticate, errorResponse, jsonError, readJson } from '@/server/status-pages/http'
 import { editIncidentUpdate, loadOrgIncident } from '@/server/status-pages/incident-updates'
 
+import { errorText } from '@/server/request-locale'
+
 export const dynamic = 'force-dynamic'
 
 type RouteContext = {
@@ -19,16 +21,16 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
   const body = await readJson(request)
   if (!body || typeof body.message !== 'string') {
-    return jsonError('Body must be { message: string }', 400)
+    return jsonError(errorText(request, 'incidentMessageInvalid'), 400)
   }
 
   try {
     const incident = await loadOrgIncident(auth.ctx, orgId, id, incidentId)
-    if (!incident) return jsonError('Incident not found', 404)
+    if (!incident) return jsonError(errorText(request, 'incidentNotFound'), 404)
     const result = await editIncidentUpdate(auth.ctx, incident, updateId, body.message)
-    if (!result) return jsonError('Update not found', 404)
+    if (!result) return jsonError(errorText(request, 'incidentUpdateNotFound'), 404)
     return Response.json(result)
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }

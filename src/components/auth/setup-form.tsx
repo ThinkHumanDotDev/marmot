@@ -21,7 +21,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { api, ApiError } from '@/lib/api'
-import { validateOrganizationSlug } from '@/lib/reserved-slugs'
+import { SLUG_ERROR_KEYS, validateOrganizationSlug, type SlugMessage } from '@/lib/reserved-slugs'
 
 /** "Acme Corp." → "acme-corp"; mirrors the server-side slug rules. */
 export function slugify(input: string): string {
@@ -45,7 +45,7 @@ type Values = {
 
 type Validation = ReturnType<typeof useTranslations<'auth.validation'>>
 
-const buildSchema = (tv: Validation) =>
+const buildSchema = (tv: Validation, slugMessage: SlugMessage) =>
   z.object({
     name: z.string().trim().min(1, tv('nameRequired')).max(120),
     email: z.email(tv('email')),
@@ -57,8 +57,8 @@ const buildSchema = (tv: Validation) =>
       .toLowerCase()
       .refine((slug) => validateOrganizationSlug(slug) === true, {
         error: (issue) => {
-          // The slug rules (and their messages) are shared with the API in src/lib/reserved-slugs.
-          const result = validateOrganizationSlug(issue.input)
+          // The slug rules are shared with the API in src/lib/reserved-slugs.
+          const result = validateOrganizationSlug(issue.input, slugMessage)
           return typeof result === 'string' ? result : tv('slugInvalid')
         },
       }),
@@ -73,7 +73,11 @@ export function SetupForm() {
   const t = useTranslations('auth.setup')
   const tf = useTranslations('auth.fields')
   const tv = useTranslations('auth.validation')
-  const schema = React.useMemo(() => buildSchema(tv), [tv])
+  const te = useTranslations('errors')
+  const schema = React.useMemo(
+    () => buildSchema(tv, (problem, slug) => te(SLUG_ERROR_KEYS[problem], { slug })),
+    [tv, te],
+  )
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
   const [slugEdited, setSlugEdited] = React.useState(false)

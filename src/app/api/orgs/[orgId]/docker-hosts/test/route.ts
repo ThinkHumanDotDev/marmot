@@ -2,6 +2,7 @@ import { DOCKER_CONNECTION_TYPES, type DockerConnectionType } from '@/lib/monito
 import type { DockerHost } from '@/payload-types'
 import { testDockerHost, type DockerHostConfig } from '@/server/docker/client'
 import { jsonError, parseDocId, readJson, resolveOrgRequest } from '@/server/notifications/api'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +28,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const body = await readJson<TestBody>(request)
-  if (!body) return jsonError(400, 'Invalid JSON body', { ok: false })
+  if (!body) return jsonError(400, errorText(request, 'invalidJsonBody'), { ok: false })
 
   let host: DockerHostConfig
   if (body.dockerHostId !== undefined && body.dockerHostId !== null) {
@@ -43,7 +44,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       if (String(org) !== String(ctx.orgId)) throw new Error('wrong organization')
       host = doc
     } catch {
-      return jsonError(404, 'Docker host not found', { ok: false })
+      return jsonError(404, errorText(request, 'dockerHostNotFound'), { ok: false })
     }
   } else if (
     typeof body.connectionType === 'string' &&
@@ -55,10 +56,10 @@ export async function POST(request: Request, { params }: RouteContext) {
       url: typeof body.url === 'string' ? body.url.trim() : null,
     }
     if (host.connectionType === 'socket' && !host.socketPath?.startsWith('/')) {
-      return jsonError(400, 'Enter an absolute socket path.', { ok: false })
+      return jsonError(400, errorText(request, 'socketPathAbsolute'), { ok: false })
     }
   } else {
-    return jsonError(400, 'Provide dockerHostId or connectionType + socketPath/url', { ok: false })
+    return jsonError(400, errorText(request, 'dockerTestTargetRequired'), { ok: false })
   }
 
   try {

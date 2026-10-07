@@ -9,7 +9,7 @@ import {
 } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import {
   COMPONENT_IMPACTS,
   INCIDENT_STATUSES,
@@ -26,6 +26,8 @@ import {
   type IncidentStatus,
   type TimelineUpdate,
 } from '@/lib/incident-timeline'
+import type { ErrorKey } from '@/server/errors'
+import { userErrorText } from '@/server/request-locale'
 import { emitIncidentUpdatePosted } from '@/server/status-pages/incident-events'
 
 import type { Incident, StatusPage } from '@/payload-types'
@@ -59,6 +61,10 @@ const newRowId = (): string =>
 const invalid = (message: string, path: string): never => {
   throw new ValidationError({ collection: 'incidents', errors: [{ message, path }] })
 }
+
+/** Validation error in the language of the user the operation runs as (`errors.<key>`). */
+const invalidKey = (req: PayloadRequest, key: ErrorKey, path: string): never =>
+  invalid(userErrorText(req, key), path)
 
 function silentIds(req: PayloadRequest): Set<string> {
   const existing = req.context[SILENT_UPDATES]
@@ -106,7 +112,7 @@ const deriveFromStatusPage: CollectionBeforeChangeHook<Incident> = async ({
 }) => {
   const statusPageId = relId(data.statusPage ?? originalDoc?.statusPage)
   if (statusPageId === null) {
-    return invalid('An incident belongs to a status page.', 'statusPage')
+    return invalid(userErrorText(req, 'incidentStatusPageRequired'), 'statusPage')
   }
 
   const page = await req.payload.findByID({
@@ -191,11 +197,13 @@ const buildTimeline: CollectionBeforeChangeHook<Incident> = ({
       return { ...previous, message, editedAt: edited ? now : (previous.editedAt ?? null) }
     }
 
-    if (!isIncidentStatus(row.status)) invalid('Choose a valid update status.', `${path}.status`)
+    if (!isIncidentStatus(row.status))
+      invalidKey(req, 'incidentUpdateStatusInvalid', `${path}.status`)
     const postedAt = row.postedAt ? new Date(row.postedAt) : new Date(now)
-    if (Number.isNaN(postedAt.getTime())) invalid('Enter a valid date.', `${path}.postedAt`)
+    if (Number.isNaN(postedAt.getTime()))
+      invalidKey(req, 'incidentPostedAtInvalid', `${path}.postedAt`)
     if (postedAt.getTime() > Date.now() + FUTURE_TOLERANCE_MS) {
-      invalid('Updates cannot be posted in the future.', `${path}.postedAt`)
+      invalidKey(req, 'incidentPostedAtFuture', `${path}.postedAt`)
     }
 
     // Rows migrated from a stored incident keep their components even if the page changed since.
@@ -204,13 +212,10 @@ const buildTimeline: CollectionBeforeChangeHook<Incident> = ({
     for (const [i, entry] of (row.components ?? []).entries()) {
       const component = entry?.component ? String(entry.component) : ''
       if (!migrated && (!components.has(component) || impacts.has(component))) {
-        invalid(
-          'Each affected component must be listed once and belong to the status page.',
-          `${path}.components.${i}`,
-        )
+        invalidKey(req, 'incidentComponentsInvalid', `${path}.components.${i}`)
       }
       if (!isComponentImpact(entry.impact)) {
-        invalid('Choose a valid impact.', `${path}.components.${i}.impact`)
+        invalidKey(req, 'incidentImpactInvalid', `${path}.components.${i}.impact`)
       }
       impacts.set(component, { component, impact: entry.impact })
     }
@@ -249,13 +254,10 @@ const buildTimeline: CollectionBeforeChangeHook<Incident> = ({
     for (const [i, row] of data.affectedComponents.entries()) {
       const component = row?.component ? String(row.component) : ''
       if (!components.has(component) || wanted.has(component)) {
-        invalid(
-          'Each affected component must be listed once and belong to the status page.',
-          `affectedComponents.${i}`,
-        )
+        invalidKey(req, 'incidentComponentsInvalid', `affectedComponents.${i}`)
       }
       if (!isComponentImpact(row.impact))
-        invalid('Choose a valid impact.', `affectedComponents.${i}`)
+        invalidKey(req, 'incidentImpactInvalid', `affectedComponents.${i}`)
       wanted.set(component, row.impact)
     }
     const changes: ImpactRow[] = []
@@ -388,7 +390,7 @@ export const Incidents: CollectionConfig = {
   slug: 'incidents',
   admin: {
     useAsTitle: 'title',
-    group: 'Status pages',
+    group: adminGroup('statusPages'),
     defaultColumns: ['title', 'statusPage', 'status', 'impact', 'pinned', 'createdAt'],
   },
   access: {

@@ -36,19 +36,25 @@ export {
   type PlannedNotification,
   type PlannedStatusPage,
 } from './types'
+import { importText, type ImportText } from './text'
 export { parseUptimeKumaBackup } from './uptime-kuma'
 
-/** Parses `json` in the given format, or auto-detects it when `format` is omitted. */
-export function parseImportFile(json: unknown, format?: ImportFormat): ImportPlan {
+/**
+ * Parses `json` in the given format, or auto-detects it when `format` is omitted. Skip reasons and
+ * warnings are written with `t` (English by default).
+ */
+export function parseImportFile(
+  json: unknown,
+  format?: ImportFormat,
+  t: ImportText = importText(),
+): ImportPlan {
   const detected = format ?? detectImportFormat(json)
   switch (detected) {
     case 'uptime-kuma':
-      return parseUptimeKumaBackup(json)
+      return parseUptimeKumaBackup(json, t)
     case 'marmot':
-      return parseMarmotExport(json)
+      return parseMarmotExport(json, t)
     default:
-      throw new ImportFormatError(
-        'Unrecognised file: expected an Uptime Kuma backup (monitorList/notificationList) or a Marmot export (format "marmot").',
-      )
+      throw new ImportFormatError(t('unrecognisedFile'))
   }
 }

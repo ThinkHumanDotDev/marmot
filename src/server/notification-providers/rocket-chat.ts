@@ -5,7 +5,7 @@
  */
 import { z } from 'zod'
 
-import { formatHeartbeatTime } from '@/server/notifications/message'
+import { formatHeartbeatTime, providerText } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -37,8 +37,9 @@ registerNotificationProvider({
   docsUrl: 'https://docs.rocket.chat/docs/integrations',
   configSchema: rocketChatConfigSchema,
   fieldMeta: rocketChatFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = rocketChatConfigSchema.parse(raw)
+    const p = providerText(locale)
     const base = {
       channel: config.channel || undefined,
       username: config.username || undefined,
@@ -52,11 +53,11 @@ registerNotificationProvider({
 
     await postJson(config.webhookUrl, {
       ...base,
-      text: 'Marmot Alert',
+      text: p('alert'),
       attachments: [
         {
-          title: `Marmot Alert *Time*\n${formatHeartbeatTime(heartbeat)}`,
-          text: `*Message*\n${message}`,
+          title: `${p('alert')} *${p('time')}*\n${formatHeartbeatTime(heartbeat)}`,
+          text: `*${p('messageField')}*\n${message}`,
           color: heartbeat.status === 'down' ? '#ff0000' : '#32cd32',
           ...(monitor.url ? { title_link: monitor.url } : {}),
         },

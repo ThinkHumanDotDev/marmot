@@ -10,6 +10,13 @@ import type { ZodError } from 'zod'
 import { canInOrg } from '@/access/overrides'
 import type { Permission } from '@/access/permissions'
 import type { Monitor, User } from '@/payload-types'
+import { translateError } from '@/server/errors'
+import {
+  errorMessageFor,
+  errorText,
+  rememberRequestUser,
+  userLocale,
+} from '@/server/request-locale'
 
 export type RequestUser = User & { collection: 'users' }
 export type RouteId = string | number
@@ -32,7 +39,8 @@ export type AuthResult =
 /** Resolves the Payload user from cookie / Authorization header, or a 401 response. */
 export async function authenticate(payload: Payload, request: Request): Promise<AuthResult> {
   const { user } = await payload.auth({ headers: request.headers })
-  if (!user) return { response: jsonError(401, 'Unauthorized') }
+  if (!user) return { response: jsonError(401, errorText(request, 'unauthenticated')) }
+  rememberRequestUser(request, user as RequestUser)
   return { user: user as RequestUser }
 }
 
@@ -43,7 +51,9 @@ export async function authorize(
   orgId: RouteId,
   permission: Permission,
 ): Promise<Response | null> {
-  return (await canInOrg(payload, user, orgId, permission)) ? null : jsonError(403, 'Forbidden')
+  return (await canInOrg(payload, user, orgId, permission))
+    ? null
+    : jsonError(403, translateError(userLocale(user), 'forbidden'))
 }
 
 export async function readJson(request: Request): Promise<unknown> {
@@ -54,8 +64,8 @@ export async function readJson(request: Request): Promise<unknown> {
   }
 }
 
-export function validationError(error: ZodError): Response {
-  return jsonError(400, 'Validation failed', {
+export function validationError(error: ZodError, request: Request): Response {
+  return jsonError(400, errorText(request, 'validationFailed'), {
     issues: error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
   })
 }
@@ -103,13 +113,16 @@ export const PROTECTED_MONITOR_FIELDS = [
   'updatedAt',
 ] as const
 
-/** Unwraps a Payload/Local API error into an HTTP response (validation → 400, access → 403). */
-export function payloadError(error: unknown): Response {
+/**
+ * Unwraps a Payload/Local API error into an HTTP response (validation → 400, access → 403), with
+ * `apiError(…)` messages in the request locale.
+ */
+export function payloadError(error: unknown, request: Request): Response {
   const status =
     error && typeof error === 'object' && 'status' in error
       ? Number((error as { status: unknown }).status)
       : 500
-  const message = error instanceof Error ? error.message : 'Unexpected error'
+  const message = errorMessageFor(request, error, 'unexpected')
   const data =
     error && typeof error === 'object' && 'data' in error
       ? (error as { data: unknown }).data

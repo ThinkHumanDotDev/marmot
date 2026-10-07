@@ -47,7 +47,7 @@ export function ImageUpload({
       const media = await uploadMedia(file, label)
       await onChange(media)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('failed'))
+      toast.error((error instanceof Error && error.message) || t('failed'))
     } finally {
       setBusy(false)
     }

@@ -1222,6 +1222,7 @@ export function MonitorForm({
                       label={type === 'mongodb' ? t('connection.command') : t('connection.query')}
                       mono
                       rows={3}
+                      // eslint-disable-next-line marmot/no-literal-jsx-text -- example value, not prose
                       placeholder={type === 'mongodb' ? '{"ping": 1}' : 'SELECT 1'}
                       description={
                         type === 'mongodb'
@@ -1303,6 +1304,7 @@ export function MonitorForm({
                     name="kafkaProducerMessage"
                     label={t('connection.message')}
                     rows={2}
+                    // eslint-disable-next-line marmot/no-literal-jsx-text -- example value, not prose
                     placeholder="marmot heartbeat"
                   />
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -1577,6 +1579,7 @@ export function MonitorForm({
                     control={control}
                     name="wsSubprotocol"
                     label={t('connection.subprotocols')}
+                    // eslint-disable-next-line marmot/no-literal-jsx-text -- example value, not prose
                     placeholder="graphql-ws, mqtt"
                     description={t('connection.subprotocolsDescription')}
                   />
@@ -1820,6 +1823,7 @@ export function MonitorForm({
                       control={control}
                       name="oauthScopes"
                       label={t('auth.scopes')}
+                      // eslint-disable-next-line marmot/no-literal-jsx-text -- example value, not prose
                       placeholder="read write"
                     />
                     <SelectField

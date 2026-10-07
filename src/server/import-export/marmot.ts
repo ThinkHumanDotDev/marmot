@@ -45,6 +45,7 @@ import {
   type PlannedIncident,
   type PlannedStatusPage,
 } from './types'
+import { importText, type ImportText } from './text'
 
 // ---- Export --------------------------------------------------------------------------------------
 
@@ -380,11 +381,15 @@ const issueList = (issues: { path: PropertyKey[]; message: string }[]): string =
     .join('; ')
 
 /** Parses a Marmot export into an import plan. Pure: no database access. */
-export function parseMarmotExport(json: unknown): ImportPlan {
+export function parseMarmotExport(json: unknown, t: ImportText = importText()): ImportPlan {
   const envelope = envelopeSchema.safeParse(json)
   if (!envelope.success) {
     throw new ImportFormatError(
-      `Not a Marmot export (format "${MARMOT_EXPORT_FORMAT}" version ${MARMOT_EXPORT_VERSION}): ${issueList(envelope.error.issues)}`,
+      t('notMarmotExport', {
+        format: MARMOT_EXPORT_FORMAT,
+        version: MARMOT_EXPORT_VERSION,
+        issues: issueList(envelope.error.issues),
+      }),
     )
   }
   const plan = emptyPlan('marmot')
@@ -393,13 +398,12 @@ export function parseMarmotExport(json: unknown): ImportPlan {
   const seenNames = new Set<string>()
   file.notifications.forEach((entry, index) => {
     const parsed = notificationSchema.safeParse(entry)
-    const name = isRecord(entry)
-      ? (asText(entry.name) ?? `notification #${index + 1}`)
-      : `notification #${index + 1}`
+    const fallback = t('unnamed', { kind: 'notification', id: index + 1 })
+    const name = isRecord(entry) ? (asText(entry.name) ?? fallback) : fallback
     if (!parsed.success) {
       plan.skipped.notifications.push({
         name,
-        reason: `Invalid notification: ${issueList(parsed.error.issues)}`,
+        reason: t('invalidNotification', { issues: issueList(parsed.error.issues) }),
       })
       return
     }
@@ -412,14 +416,14 @@ export function parseMarmotExport(json: unknown): ImportPlan {
         reason:
           error instanceof NotificationConfigError
             ? error.message
-            : `Unknown notification type "${parsed.data.type}"`,
+            : t('unknownNotificationType', { type: parsed.data.type }),
       })
       return
     }
     if (seenNames.has(parsed.data.name)) {
       plan.skipped.notifications.push({
         name,
-        reason: 'Another notification in the file has the same name',
+        reason: t('duplicateNotification'),
       })
       return
     }
@@ -435,14 +439,15 @@ export function parseMarmotExport(json: unknown): ImportPlan {
   })
 
   file.monitors.forEach((entry, index) => {
-    const name = isRecord(entry)
-      ? (asText(entry.name) ?? `monitor #${index + 1}`)
-      : `monitor #${index + 1}`
+    const fallback = t('unnamed', { kind: 'monitor', id: index + 1 })
+    const name = isRecord(entry) ? (asText(entry.name) ?? fallback) : fallback
     const envelope = monitorEnvelopeSchema.safeParse(entry)
     if (!envelope.success || !isRecord(entry)) {
       plan.skipped.monitors.push({
         name,
-        reason: `Invalid monitor: ${envelope.success ? 'not an object' : issueList(envelope.error.issues)}`,
+        reason: t('invalidMonitor', {
+          issues: envelope.success ? t('notAnObject') : issueList(envelope.error.issues),
+        }),
       })
       return
     }
@@ -452,16 +457,15 @@ export function parseMarmotExport(json: unknown): ImportPlan {
     if (fields.type === 'docker') {
       plan.skipped.monitors.push({
         name,
-        reason:
-          'Docker monitors reference a Docker host of the exporting organization; recreate it',
+        reason: t('dockerMonitorSkipped'),
       })
       return
     }
     const hasTags = Array.isArray(fields.tags) && fields.tags.length > 0
     const hasProxy = fields.proxy !== null && fields.proxy !== undefined
     if (hasTags || hasProxy) {
-      const dropped = [hasTags && 'tags', hasProxy && 'proxy'].filter(Boolean).join(' and ')
-      plan.warnings.push(`"${name}": ${dropped} not imported; assign them again after the import`)
+      const resources = hasTags && hasProxy ? 'both' : hasTags ? 'tags' : 'proxy'
+      plan.warnings.push(t('resourcesDropped', { name, resources }))
     }
     const parsed = monitorFormSchema.safeParse({
       ...fields,
@@ -473,7 +477,7 @@ export function parseMarmotExport(json: unknown): ImportPlan {
     if (!parsed.success) {
       plan.skipped.monitors.push({
         name,
-        reason: `Invalid monitor: ${issueList(parsed.error.issues)}`,
+        reason: t('invalidMonitor', { issues: issueList(parsed.error.issues) }),
       })
       return
     }
@@ -493,7 +497,7 @@ export function parseMarmotExport(json: unknown): ImportPlan {
   for (const monitor of plan.monitors) {
     if (monitor.parentKey !== null && !groupKeys.has(monitor.parentKey)) {
       plan.warnings.push(
-        `"${monitor.data.name}": parent group #${monitor.parentKey} was not imported; the monitor is placed at the top level`,
+        t('parentNotImported', { name: monitor.data.name, parent: monitor.parentKey }),
       )
       monitor.parentKey = null
     }
@@ -506,21 +510,18 @@ export function parseMarmotExport(json: unknown): ImportPlan {
     monitor.notificationKeys = kept
   }
   if (droppedLinks > 0) {
-    plan.warnings.push(
-      `${droppedLinks} monitor → notification link${droppedLinks === 1 ? '' : 's'} dropped because the notification was not imported`,
-    )
+    plan.warnings.push(t('linksDropped', { count: droppedLinks }))
   }
 
   const monitorKeys = new Set(plan.monitors.map((m) => m.key))
   file.statusPages.forEach((entry, index) => {
-    const name = isRecord(entry)
-      ? (asText(entry.title) ?? `status page #${index + 1}`)
-      : `status page #${index + 1}`
+    const fallback = t('unnamed', { kind: 'statusPage', id: index + 1 })
+    const name = isRecord(entry) ? (asText(entry.title) ?? fallback) : fallback
     const parsed = statusPageSchema.safeParse(entry)
     if (!parsed.success) {
       plan.skipped.statusPages.push({
         name,
-        reason: `Invalid status page: ${issueList(parsed.error.issues)}`,
+        reason: t('invalidStatusPage', { issues: issueList(parsed.error.issues) }),
       })
       return
     }
@@ -581,9 +582,7 @@ export function parseMarmotExport(json: unknown): ImportPlan {
       })),
     }
     if (droppedRows > 0) {
-      plan.warnings.push(
-        `"${page.title}": ${droppedRows} monitor row${droppedRows === 1 ? '' : 's'} dropped because the monitor was not imported`,
-      )
+      plan.warnings.push(t('rowsDropped', { title: page.title, count: droppedRows }))
     }
     plan.statusPages.push(planned)
   })

@@ -10,6 +10,7 @@ import {
   readJson,
   resolveOrgRequest,
 } from '@/server/notifications/api'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +30,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const parsed = schema.safeParse(await readJson(request))
-  if (!parsed.success) return jsonError(400, 'enforceSso (boolean) is required')
+  if (!parsed.success) return jsonError(400, errorText(request, 'enforceSsoRequired'))
 
   if (parsed.data.enforceSso) {
     const [domains, connections] = await Promise.all([
@@ -45,10 +46,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       }),
     ])
     if (domains.totalDocs === 0 || connections.totalDocs === 0) {
-      return jsonError(
-        409,
-        'Verify a domain and enable a connection before enforcing single sign-on.',
-      )
+      return jsonError(409, errorText(request, 'ssoEnforcementPrerequisites'))
     }
   }
 
@@ -63,6 +61,6 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     })) as Organization
     return Response.json({ enforceSso: doc.enforceSso === true })
   } catch (error) {
-    return jsonError(errorStatus(error), errorMessage(error))
+    return jsonError(errorStatus(error), errorMessage(error, request))
   }
 }

@@ -1,4 +1,5 @@
 import { getProviderDescriptors, resolveOrgRequest } from '@/server/notifications/api'
+import { requestLocale } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,5 +10,5 @@ export async function GET(request: Request, { params }: RouteContext) {
   const { orgId } = await params
   const ctx = await resolveOrgRequest(request, orgId, 'notification:read')
   if (ctx instanceof Response) return ctx
-  return Response.json({ providers: getProviderDescriptors() })
+  return Response.json({ providers: getProviderDescriptors(requestLocale(request)) })
 }
