@@ -40,7 +40,7 @@ import type { Incident } from '@/payload-types'
 
 import { statusPagesApi, type IncidentPatch, type IncidentUpdateDraft, type OrgId } from '../api'
 
-/** A component of the page an incident can affect (today: a monitor in one of the groups). */
+/** A component of the page an incident can affect: a group row (monitor or static), by row id. */
 export interface IncidentComponentOption {
   id: string
   name: string
@@ -67,9 +67,9 @@ const MARKDOWN_CLASS =
   'max-w-none text-sm leading-relaxed [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5'
 
 function useLabels() {
-  const t = useTranslations('statusPages.public.incidents')
+  const t = useTranslations('statusPages.public')
   return {
-    status: (status: IncidentStatus) => t(`status.${status}`),
+    status: (status: IncidentStatus) => t(`incidents.status.${status}`),
     impact: (impact: ComponentImpact) => t(`impact.${impact}`),
   }
 }
@@ -94,7 +94,7 @@ function ComponentImpactEditor({
 }) {
   const t = useTranslations('statusPages.incidents.components')
   const labels = useLabels()
-  const nameOf = (id: string) => options.find((o) => o.id === id)?.name ?? t('unknown', { id })
+  const nameOf = (id: string) => options.find((o) => o.id === id)?.name ?? t('unknown')
   const selected = Object.keys(value)
   const available = options.filter((o) => !(o.id in value))
 
@@ -115,7 +115,7 @@ function ComponentImpactEditor({
               >
                 <SelectTrigger
                   id={`${idPrefix}-impact-${id}`}
-                  aria-label={nameOf(id)}
+                  aria-label={t('impact', { name: nameOf(id) })}
                   className="w-48"
                 >
                   <SelectValue />
@@ -231,7 +231,7 @@ function UpdateComposer({
   const { state } = incidentTimeline(incident)
   // The parent remounts the composer (via `key`) when the current impacts change.
   const current = Object.fromEntries(
-    state.components.map((c) => [String(c.monitor), c.impact]),
+    state.components.map((c) => [c.component, c.impact]),
   ) as ImpactMap
   const [status, setStatus] = React.useState<IncidentStatus>(NEXT_STATUS[state.status])
   const [message, setMessage] = React.useState('')
@@ -246,7 +246,7 @@ function UpdateComposer({
     // Send only what changed: components left out keep their impact.
     const components = Object.entries(impacts)
       .filter(([id, impact]) => current[id] !== impact)
-      .map(([monitor, impact]) => ({ monitor, impact }))
+      .map(([component, impact]) => ({ component, impact }))
     const componentless = Object.keys(impacts).length === 0
     const resolving = status === 'resolved'
     const ok = await onPost({
@@ -336,8 +336,7 @@ function TimelineEntry({
   const [editing, setEditing] = React.useState(false)
   const [draft, setDraft] = React.useState(update.message ?? '')
   const [pending, setPending] = React.useState(false)
-  const nameOf = (id: string) =>
-    options.find((o) => o.id === id)?.name ?? t('components.unknown', { id })
+  const nameOf = (id: string) => options.find((o) => o.id === id)?.name ?? t('components.unknown')
 
   async function save() {
     setPending(true)
@@ -410,9 +409,9 @@ function TimelineEntry({
       {(update.components ?? []).length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-1">
           {(update.components ?? []).map((c) => (
-            <li key={String(c.monitor)}>
+            <li key={c.component}>
               <Badge className={cn('text-foreground', impactBadge[c.impact])}>
-                {nameOf(String(c.monitor))}: {labels.impact(c.impact)}
+                {nameOf(c.component)}: {labels.impact(c.impact)}
               </Badge>
             </li>
           ))}
@@ -450,8 +449,7 @@ function IncidentItem({
   const [expanded, setExpanded] = React.useState(state.active)
   const formatTime = (iso: string) => format.dateTime(new Date(iso), 'short', { timeZone })
   const newestFirst = updates.slice().reverse()
-  const nameOf = (id: string) =>
-    options.find((o) => o.id === id)?.name ?? t('components.unknown', { id })
+  const nameOf = (id: string) => options.find((o) => o.id === id)?.name ?? t('components.unknown')
 
   async function patch(data: IncidentPatch, message: string) {
     try {
@@ -525,9 +523,9 @@ function IncidentItem({
           {state.active && impacted.length > 0 && (
             <ul className="mt-2 flex flex-wrap gap-1" aria-label={t('components.title')}>
               {impacted.map((c) => (
-                <li key={String(c.monitor)}>
+                <li key={c.component}>
                   <Badge className={cn('text-foreground', impactBadge[c.impact])}>
-                    {nameOf(String(c.monitor))}: {labels.impact(c.impact)}
+                    {nameOf(c.component)}: {labels.impact(c.impact)}
                   </Badge>
                 </li>
               ))}
@@ -590,7 +588,7 @@ function IncidentItem({
         <div className="flex flex-col gap-4">
           {canEdit && (
             <UpdateComposer
-              key={`${state.status}|${state.components.map((c) => `${c.monitor}:${c.impact}`).join(',')}`}
+              key={`${state.status}|${state.components.map((c) => `${c.component}:${c.impact}`).join(',')}`}
               incident={incident}
               options={options}
               onPost={postUpdate}
@@ -678,8 +676,8 @@ export function IncidentsPanel({
         pinned: draft.pinned,
         status: draft.status,
         message: draft.message,
-        components: Object.entries(draft.impacts).map(([monitor, impact]) => ({
-          monitor,
+        components: Object.entries(draft.impacts).map(([component, impact]) => ({
+          component,
           impact,
         })),
         ...(componentless ? { impact: draft.impact } : {}),

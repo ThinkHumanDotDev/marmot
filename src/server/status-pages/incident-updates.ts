@@ -19,7 +19,8 @@ type UpdateRow = NonNullable<Incident['updates']>[number]
 export interface IncidentUpdateInput {
   status: IncidentStatus
   message: string
-  components: { monitor: string | number; impact: ComponentImpact }[]
+  /** Component ids (group row ids of the page) and their impact. */
+  components: { component: string; impact: ComponentImpact }[]
   postedAt?: string
   /** Incident-level impact for incidents that affect no component. */
   impact?: ComponentImpact
@@ -27,7 +28,6 @@ export interface IncidentUpdateInput {
 
 /** Validates the JSON body of "post an update" (and the first update of a new incident). */
 export function parseUpdateInput(
-  ctx: Authenticated,
   body: Record<string, unknown>,
   defaults: { status?: IncidentStatus } = {},
 ): { ok: true; input: IncidentUpdateInput } | { ok: false; error: string } {
@@ -39,19 +39,16 @@ export function parseUpdateInput(
     return { ok: false, error: 'message must be a string' }
   }
   if (body.components !== undefined && !Array.isArray(body.components)) {
-    return { ok: false, error: 'components must be an array of { monitor, impact }' }
+    return { ok: false, error: 'components must be an array of { component, impact }' }
   }
   const components: IncidentUpdateInput['components'] = []
   for (const entry of (body.components as unknown[] | undefined) ?? []) {
-    const row = entry as { monitor?: unknown; impact?: unknown } | null
-    const monitor = row?.monitor
-    if (
-      (typeof monitor !== 'string' && typeof monitor !== 'number') ||
-      !isComponentImpact(row?.impact)
-    ) {
-      return { ok: false, error: 'components must be an array of { monitor, impact }' }
+    const row = entry as { component?: unknown; impact?: unknown } | null
+    const component = row?.component
+    if (typeof component !== 'string' || !component || !isComponentImpact(row?.impact)) {
+      return { ok: false, error: 'components must be an array of { component, impact }' }
     }
-    components.push({ monitor: coerceId(ctx.payload, String(monitor)), impact: row.impact })
+    components.push({ component, impact: row.impact })
   }
   if (body.postedAt !== undefined && typeof body.postedAt !== 'string') {
     return { ok: false, error: 'postedAt must be an ISO date string' }
@@ -105,15 +102,8 @@ export async function loadOrgIncident(
   return docs[0] ?? null
 }
 
-/** Existing rows as the hook expects them back: ids kept, relations as ids. */
-const keepRows = (incident: Incident): UpdateRow[] =>
-  (incident.updates ?? []).map((row) => ({
-    ...row,
-    components: (row.components ?? []).map((c) => ({
-      ...c,
-      monitor: c.monitor && typeof c.monitor === 'object' ? c.monitor.id : c.monitor,
-    })),
-  }))
+/** Existing rows as the hook expects them back (ids kept). */
+const keepRows = (incident: Incident): UpdateRow[] => [...(incident.updates ?? [])]
 
 /** Appends an update to the timeline. Returns the saved incident and the new update. */
 export async function postIncidentUpdate(

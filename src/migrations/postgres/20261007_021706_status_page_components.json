@@ -1777,6 +1777,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "public_name": {
+          "name": "public_name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "description": {
           "name": "description",
           "type": "varchar",
@@ -4493,11 +4499,38 @@
           "primaryKey": true,
           "notNull": true
         },
+        "type": {
+          "name": "type",
+          "type": "enum_status_pages_groups_monitors_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'monitor'"
+        },
         "monitor_id": {
           "name": "monitor_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "show_values": {
+          "name": "show_values",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
         },
         "send_url": {
           "name": "send_url",
@@ -4621,6 +4654,13 @@
           "type": "varchar",
           "primaryKey": false,
           "notNull": true
+        },
+        "default_open": {
+          "name": "default_open",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
         }
       },
       "indexes": {
@@ -4716,6 +4756,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "homepage_url": {
+          "name": "homepage_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contact_url": {
+          "name": "contact_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "theme": {
           "name": "theme",
           "type": "enum_status_pages_theme",
@@ -4762,6 +4814,13 @@
         },
         "show_powered_by": {
           "name": "show_powered_by",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "show_values": {
+          "name": "show_values",
           "type": "boolean",
           "primaryKey": false,
           "notNull": false,
@@ -4954,8 +5013,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.incidents_updates_components": {
-      "name": "incidents_updates_components",
+    "public.incidents_affected_components": {
+      "name": "incidents_affected_components",
       "schema": "",
       "columns": {
         "_order": {
@@ -4966,7 +5025,7 @@
         },
         "_parent_id": {
           "name": "_parent_id",
-          "type": "varchar",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -4976,24 +5035,24 @@
           "primaryKey": true,
           "notNull": true
         },
-        "monitor_id": {
-          "name": "monitor_id",
-          "type": "integer",
+        "component": {
+          "name": "component",
+          "type": "varchar",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "impact": {
           "name": "impact",
-          "type": "enum_incidents_updates_components_impact",
+          "type": "enum_incidents_affected_components_impact",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'major_outage'"
+          "default": "'partial_outage'"
         }
       },
       "indexes": {
-        "incidents_updates_components_order_idx": {
-          "name": "incidents_updates_components_order_idx",
+        "incidents_affected_components_order_idx": {
+          "name": "incidents_affected_components_order_idx",
           "columns": [
             {
               "expression": "_order",
@@ -5007,138 +5066,8 @@
           "method": "btree",
           "with": {}
         },
-        "incidents_updates_components_parent_id_idx": {
-          "name": "incidents_updates_components_parent_id_idx",
-          "columns": [
-            {
-              "expression": "_parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "incidents_updates_components_monitor_idx": {
-          "name": "incidents_updates_components_monitor_idx",
-          "columns": [
-            {
-              "expression": "monitor_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "incidents_updates_components_monitor_id_monitors_id_fk": {
-          "name": "incidents_updates_components_monitor_id_monitors_id_fk",
-          "tableFrom": "incidents_updates_components",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "monitor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "incidents_updates_components_parent_id_fk": {
-          "name": "incidents_updates_components_parent_id_fk",
-          "tableFrom": "incidents_updates_components",
-          "tableTo": "incidents_updates",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.incidents_updates": {
-      "name": "incidents_updates",
-      "schema": "",
-      "columns": {
-        "_order": {
-          "name": "_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "_parent_id": {
-          "name": "_parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "varchar",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "enum_incidents_updates_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'investigating'"
-        },
-        "posted_at": {
-          "name": "posted_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "edited_at": {
-          "name": "edited_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "message": {
-          "name": "message",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "incidents_updates_order_idx": {
-          "name": "incidents_updates_order_idx",
-          "columns": [
-            {
-              "expression": "_order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "incidents_updates_parent_id_idx": {
-          "name": "incidents_updates_parent_id_idx",
+        "incidents_affected_components_parent_id_idx": {
+          "name": "incidents_affected_components_parent_id_idx",
           "columns": [
             {
               "expression": "_parent_id",
@@ -5154,127 +5083,9 @@
         }
       },
       "foreignKeys": {
-        "incidents_updates_parent_id_fk": {
-          "name": "incidents_updates_parent_id_fk",
-          "tableFrom": "incidents_updates",
-          "tableTo": "incidents",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.incidents_affected_monitors": {
-      "name": "incidents_affected_monitors",
-      "schema": "",
-      "columns": {
-        "_order": {
-          "name": "_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "_parent_id": {
-          "name": "_parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "varchar",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "monitor_id": {
-          "name": "monitor_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "impact": {
-          "name": "impact",
-          "type": "enum_incidents_affected_monitors_impact",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'major_outage'"
-        }
-      },
-      "indexes": {
-        "incidents_affected_monitors_order_idx": {
-          "name": "incidents_affected_monitors_order_idx",
-          "columns": [
-            {
-              "expression": "_order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "incidents_affected_monitors_parent_id_idx": {
-          "name": "incidents_affected_monitors_parent_id_idx",
-          "columns": [
-            {
-              "expression": "_parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "incidents_affected_monitors_monitor_idx": {
-          "name": "incidents_affected_monitors_monitor_idx",
-          "columns": [
-            {
-              "expression": "monitor_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "incidents_affected_monitors_monitor_id_monitors_id_fk": {
-          "name": "incidents_affected_monitors_monitor_id_monitors_id_fk",
-          "tableFrom": "incidents_affected_monitors",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "monitor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "incidents_affected_monitors_parent_id_fk": {
-          "name": "incidents_affected_monitors_parent_id_fk",
-          "tableFrom": "incidents_affected_monitors",
+        "incidents_affected_components_parent_id_fk": {
+          "name": "incidents_affected_components_parent_id_fk",
+          "tableFrom": "incidents_affected_components",
           "tableTo": "incidents",
           "columnsFrom": [
             "_parent_id"
@@ -5320,19 +5131,19 @@
           "primaryKey": false,
           "notNull": true
         },
-        "status": {
-          "name": "status",
-          "type": "enum_incidents_status",
-          "typeSchema": "public",
+        "content": {
+          "name": "content",
+          "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
-        "impact": {
-          "name": "impact",
-          "type": "enum_incidents_impact",
+        "style": {
+          "name": "style",
+          "type": "enum_incidents_style",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "default": "'info'"
         },
         "pinned": {
           "name": "pinned",
@@ -5353,20 +5164,6 @@
           "type": "timestamp(3) with time zone",
           "primaryKey": false,
           "notNull": false
-        },
-        "content": {
-          "name": "content",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "style": {
-          "name": "style",
-          "type": "enum_incidents_style",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'info'"
         },
         "updated_at": {
           "name": "updated_at",
@@ -5404,21 +5201,6 @@
           "columns": [
             {
               "expression": "status_page_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "incidents_status_idx": {
-          "name": "incidents_status_idx",
-          "columns": [
-            {
-              "expression": "status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -8269,6 +8051,14 @@
         "maintenance"
       ]
     },
+    "public.enum_status_pages_groups_monitors_type": {
+      "name": "enum_status_pages_groups_monitors_type",
+      "schema": "public",
+      "values": [
+        "monitor",
+        "static"
+      ]
+    },
     "public.enum_status_pages_theme": {
       "name": "enum_status_pages_theme",
       "schema": "public",
@@ -8286,48 +8076,8 @@
         "en"
       ]
     },
-    "public.enum_incidents_updates_components_impact": {
-      "name": "enum_incidents_updates_components_impact",
-      "schema": "public",
-      "values": [
-        "operational",
-        "degraded_performance",
-        "partial_outage",
-        "major_outage"
-      ]
-    },
-    "public.enum_incidents_updates_status": {
-      "name": "enum_incidents_updates_status",
-      "schema": "public",
-      "values": [
-        "investigating",
-        "identified",
-        "monitoring",
-        "resolved"
-      ]
-    },
-    "public.enum_incidents_affected_monitors_impact": {
-      "name": "enum_incidents_affected_monitors_impact",
-      "schema": "public",
-      "values": [
-        "operational",
-        "degraded_performance",
-        "partial_outage",
-        "major_outage"
-      ]
-    },
-    "public.enum_incidents_status": {
-      "name": "enum_incidents_status",
-      "schema": "public",
-      "values": [
-        "investigating",
-        "identified",
-        "monitoring",
-        "resolved"
-      ]
-    },
-    "public.enum_incidents_impact": {
-      "name": "enum_incidents_impact",
+    "public.enum_incidents_affected_components_impact": {
+      "name": "enum_incidents_affected_components_impact",
       "schema": "public",
       "values": [
         "operational",
@@ -8442,6 +8192,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "3d7c5b92-3522-49ae-bc63-baf35bf761a1",
+  "id": "ee9a900b-bdbc-441d-92e0-4b39179b0c4c",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

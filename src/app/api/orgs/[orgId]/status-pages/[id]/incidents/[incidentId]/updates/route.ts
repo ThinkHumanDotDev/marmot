@@ -39,7 +39,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const body = await readJson(request)
   if (!body) return jsonError('Invalid JSON body', 400)
-  const parsed = parseUpdateInput(auth.ctx, body)
+  const parsed = parseUpdateInput(body)
   if (!parsed.ok) return jsonError(parsed.error, 400)
 
   try {

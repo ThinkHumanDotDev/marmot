@@ -137,7 +137,7 @@ Routes: `GET/POST /api/orgs/:orgId/maintenance`, `GET/PATCH/DELETE .../:id`, `PO
 ## Status page incidents
 
 An incident (`src/collections/Incidents.ts`) is a title plus a **timeline** of updates stored as an array
-on the document (`updates[] { status, message, postedAt, editedAt, components[] { monitor, impact } }`),
+on the document (`updates[] { status, message, postedAt, editedAt, components[] { component, impact } }`),
 so posting an update and deriving the incident's state is one atomic write on Postgres and MongoDB. The
 rules live in one pure module, `src/lib/incident-timeline.ts`, shared by the collection hook, the public
 payload, the RSS feed and the editor:
@@ -146,15 +146,17 @@ payload, the RSS feed and the editor:
   `partial_outage`, `major_outage`) of the components it names, others keep their last impact, and a
   `resolved` update resets them all to `operational`;
 - `status`, `impact` (worst current component impact, or a declared impact when no component is
-  named), `active`, `resolvedAt` and `affectedMonitors` are derived by the `beforeChange` hook and stored,
+  named), `active`, `resolvedAt` and `affectedComponents` are derived by the `beforeChange` hook and stored,
   so queries (`active`, `status`) stay cheap;
 - posted updates are history: only `message` may change afterwards (stamping `editedAt`);
 - incidents stored before the timeline (only `content`/`style`) are migrated lazily: read paths treat them
   as one update (`legacyUpdate`, style mapped to an impact) and the next write stores it. No data migration
   runs, so the same code works on both databases.
 
-Components are the monitors in the page's groups (`affectedMonitors` / `components[].monitor`). Static
-components (#106) are expected to add a second reference next to `monitor`.
+Components are the rows of the page's groups (monitor or static, `src/lib/status-page-components.ts`),
+referenced by their row id (`components[].component`, `affectedComponents[].component`).
+`affectedComponents` is the current state the public page reads; writing it directly posts an update so it
+never diverges from the timeline.
 
 After every write the `afterChange` hook calls `emitIncidentUpdatePosted()`
 (`src/server/status-pages/incident-events.ts`) once per new update, with `kind` `opened`, `updated`,

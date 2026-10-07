@@ -64,7 +64,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     const timeline = ['status', 'message', 'components'].some((key) => key in body)
     let updates: Incident['updates'] | undefined
     if (timeline) {
-      const parsed = parseUpdateInput(auth.ctx, body, { status: 'investigating' })
+      const parsed = parseUpdateInput(body, { status: 'investigating' })
       if (!parsed.ok) return jsonError(parsed.error, 400)
       updates = [toUpdateRow(parsed.input)]
     }

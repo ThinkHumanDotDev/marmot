@@ -386,6 +386,7 @@ export interface Monitor {
     | 'gamedig';
   active?: boolean | null;
   parent?: (number | null) | Monitor;
+  publicName?: string | null;
   description?: string | null;
   tags?:
     | {
@@ -696,6 +697,8 @@ export interface StatusPage {
   slug: string;
   description?: string | null;
   logo?: (number | null) | Media;
+  homepageUrl?: string | null;
+  contactUrl?: string | null;
   theme?: ('auto' | 'light' | 'dark') | null;
   language?: ('auto' | 'en') | null;
   published?: boolean | null;
@@ -703,6 +706,7 @@ export interface StatusPage {
   showTags?: boolean | null;
   showCertificateExpiry?: boolean | null;
   showPoweredBy?: boolean | null;
+  showValues?: boolean | null;
   autoRefreshInterval?: number | null;
   footerText?: string | null;
   customCSS?: string | null;
@@ -716,9 +720,14 @@ export interface StatusPage {
   groups?:
     | {
         name: string;
+        defaultOpen?: boolean | null;
         monitors?:
           | {
-              monitor: number | Monitor;
+              type?: ('monitor' | 'static') | null;
+              monitor?: (number | null) | Monitor;
+              name?: string | null;
+              description?: string | null;
+              showValues?: boolean | null;
               sendUrl?: boolean | null;
               customUrl?: string | null;
               id?: string | null;
@@ -749,7 +758,7 @@ export interface Incident {
         message?: string | null;
         components?:
           | {
-              monitor?: (number | null) | Monitor;
+              component: string;
               impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
               id?: string | null;
             }[]
@@ -757,9 +766,9 @@ export interface Incident {
         id?: string | null;
       }[]
     | null;
-  affectedMonitors?:
+  affectedComponents?:
     | {
-        monitor?: (number | null) | Monitor;
+        component: string;
         impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
         id?: string | null;
       }[]
@@ -1199,6 +1208,7 @@ export interface MonitorsSelect<T extends boolean = true> {
   type?: T;
   active?: T;
   parent?: T;
+  publicName?: T;
   description?: T;
   tags?:
     | T
@@ -1453,6 +1463,8 @@ export interface StatusPagesSelect<T extends boolean = true> {
   slug?: T;
   description?: T;
   logo?: T;
+  homepageUrl?: T;
+  contactUrl?: T;
   theme?: T;
   language?: T;
   published?: T;
@@ -1460,6 +1472,7 @@ export interface StatusPagesSelect<T extends boolean = true> {
   showTags?: T;
   showCertificateExpiry?: T;
   showPoweredBy?: T;
+  showValues?: T;
   autoRefreshInterval?: T;
   footerText?: T;
   customCSS?: T;
@@ -1474,10 +1487,15 @@ export interface StatusPagesSelect<T extends boolean = true> {
     | T
     | {
         name?: T;
+        defaultOpen?: T;
         monitors?:
           | T
           | {
+              type?: T;
               monitor?: T;
+              name?: T;
+              description?: T;
+              showValues?: T;
               sendUrl?: T;
               customUrl?: T;
               id?: T;
@@ -1507,16 +1525,16 @@ export interface IncidentsSelect<T extends boolean = true> {
         components?:
           | T
           | {
-              monitor?: T;
+              component?: T;
               impact?: T;
               id?: T;
             };
         id?: T;
       };
-  affectedMonitors?:
+  affectedComponents?:
     | T
     | {
-        monitor?: T;
+        component?: T;
         impact?: T;
         id?: T;
       };

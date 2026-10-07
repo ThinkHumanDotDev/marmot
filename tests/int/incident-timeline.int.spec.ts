@@ -40,6 +40,9 @@ let org: Organization
 let api: Monitor
 let website: Monitor
 let unlisted: Monitor
+/** Component ids (group row ids) of API and Website on the page. */
+let apiC: string
+let webC: string
 let page: StatusPage
 let ownerToken: string
 let viewerToken: string
@@ -93,7 +96,7 @@ async function stripTimeline(id: Incident['id']) {
   await payload.db.updateOne({
     collection: 'incidents',
     id,
-    data: { ...doc, updates: [], affectedMonitors: [], status: null, impact: null },
+    data: { ...doc, updates: [], affectedComponents: [], status: null, impact: null },
     req: {} as never,
   })
 }
@@ -163,6 +166,10 @@ describe('incident timeline', () => {
       },
     })
 
+    const rows = page.groups?.[0]?.monitors ?? []
+    apiC = String(rows[0]?.id)
+    webC = String(rows[1]?.id)
+
     ownerToken = await login(owner)
     viewerToken = await login(viewer)
   })
@@ -189,7 +196,7 @@ describe('incident timeline', () => {
       title: 'API outage',
       status: 'investigating',
       message: 'We are **looking** into errors.',
-      components: [{ monitor: api.id, impact: 'major_outage' }],
+      components: [{ component: apiC, impact: 'major_outage' }],
     })
     expect(opened.status).toBe(201)
     const incident = opened.json.doc as Incident
@@ -197,13 +204,13 @@ describe('incident timeline', () => {
     expect(incident.impact).toBe('major_outage')
     expect(incident.active).toBe(true)
     expect(incident.updates).toHaveLength(1)
-    expect(incident.affectedMonitors).toEqual([
-      expect.objectContaining({ monitor: api.id, impact: 'major_outage' }),
+    expect(incident.affectedComponents).toEqual([
+      expect.objectContaining({ component: apiC, impact: 'major_outage' }),
     ])
 
     let data = await publicData()
     expect(monitorRow(data, api)?.impact).toBe('major_outage')
-    expect(monitorRow(data, website)?.impact).toBeUndefined()
+    expect(monitorRow(data, website)?.impact).toBeNull()
     // API counts as down, Website is up.
     expect(data.overall).toBe('partial')
     expect(data.incidents[0]).toMatchObject({
@@ -212,7 +219,7 @@ describe('incident timeline', () => {
       impact: 'major_outage',
       style: 'danger',
       content: 'We are **looking** into errors.',
-      components: [{ id: String(api.id), name: 'API', impact: 'major_outage' }],
+      components: [{ id: apiC, name: 'API', impact: 'major_outage' }],
     })
 
     const params = { ...pageParams(), incidentId: String(incident.id) }
@@ -232,7 +239,7 @@ describe('incident timeline', () => {
     const monitoring = await call(postUpdateRoute, 'POST', params, ownerToken, {
       status: 'monitoring',
       message: 'Rolled back; watching.',
-      components: [{ monitor: String(api.id), impact: 'degraded_performance' }],
+      components: [{ component: apiC, impact: 'degraded_performance' }],
     })
     expect(monitoring.status).toBe(201)
     data = await publicData()
@@ -249,11 +256,11 @@ describe('incident timeline', () => {
     expect(done).toMatchObject({ status: 'resolved', impact: 'operational', active: false })
     expect(done.pinned).toBe(false)
     expect(done.resolvedAt).toBe((resolved.json.update as { postedAt: string }).postedAt)
-    expect(done.affectedMonitors).toEqual([
-      expect.objectContaining({ monitor: api.id, impact: 'operational' }),
+    expect(done.affectedComponents).toEqual([
+      expect.objectContaining({ component: apiC, impact: 'operational' }),
     ])
     data = await publicData()
-    expect(monitorRow(data, api)?.impact).toBeUndefined()
+    expect(monitorRow(data, api)?.impact).toBeNull()
     expect(data.overall).toBe('up')
     expect(data.incidents.find((i) => i.id === String(incident.id))).toBeUndefined()
 
@@ -297,7 +304,7 @@ describe('incident timeline', () => {
     const opened = await call(createIncidentRoute, 'POST', pageParams(), ownerToken, {
       title: 'Slow website',
       message: 'Pages load slowly.',
-      components: [{ monitor: website.id, impact: 'partial_outage' }],
+      components: [{ component: webC, impact: 'partial_outage' }],
     })
     const incident = opened.json.doc as Incident
     const params = { ...pageParams(), incidentId: String(incident.id) }
@@ -313,7 +320,7 @@ describe('incident timeline', () => {
       ['investigating', 'Pages load slowly.'],
     ])
     expect(shown?.updates[1].components).toEqual([
-      { id: String(website.id), name: 'Website', impact: 'partial_outage' },
+      { id: webC, name: 'Website', impact: 'partial_outage' },
     ])
     expect(shown?.content).toBe('CDN issue.')
     expect(monitorRow(data, website)?.impact).toBe('partial_outage')
@@ -325,7 +332,7 @@ describe('incident timeline', () => {
     const opened = await call(createIncidentRoute, 'POST', pageParams(), ownerToken, {
       title: 'Typo incident',
       message: 'Investigatign.',
-      components: [{ monitor: api.id, impact: 'degraded_performance' }],
+      components: [{ component: apiC, impact: 'degraded_performance' }],
     })
     const incident = opened.json.doc as Incident
     const first = incident.updates?.[0]
@@ -354,7 +361,7 @@ describe('incident timeline', () => {
         updates: (doc.updates ?? []).map((row) => ({
           ...row,
           status: 'resolved' as const,
-          components: [{ monitor: api.id, impact: 'major_outage' as const }],
+          components: [{ component: apiC, impact: 'major_outage' as const }],
         })),
       },
       user: {
@@ -388,7 +395,7 @@ describe('incident timeline', () => {
 
     const offPage = await call(createIncidentRoute, 'POST', pageParams(), ownerToken, {
       title: 'Off page',
-      components: [{ monitor: unlisted.id, impact: 'major_outage' }],
+      components: [{ component: `not-${unlisted.id}`, impact: 'major_outage' }],
     })
     expect(offPage.status).toBe(400)
 
@@ -516,32 +523,109 @@ describe('incident timeline', () => {
     expect(data.overall).toBe('up')
   })
 
-  it('keeps the history when an affected monitor is deleted', async () => {
-    const temp = await payload.create({
-      collection: 'monitors',
-      data: { ...MONITOR_DEFAULTS, name: 'Temp', organization: org.id },
-    })
-    const groups = [{ name: 'Core', monitors: [{ monitor: api.id }, { monitor: website.id }] }]
-    await payload.update({
+  it('keeps the history when an affected component is removed from the page', async () => {
+    const base = (page.groups ?? []).map((group) => ({
+      ...group,
+      monitors: (group.monitors ?? []).map((row) => ({ ...row })),
+    }))
+    const withStatic = await payload.update({
       collection: 'status-pages',
       id: page.id,
-      data: { groups: [{ ...groups[0], monitors: [...groups[0].monitors, { monitor: temp.id }] }] },
+      data: {
+        groups: [
+          {
+            ...base[0],
+            monitors: [...(base[0].monitors ?? []), { type: 'static', name: 'Support desk' }],
+          },
+        ],
+      },
     })
+    const staticC = String(withStatic.groups?.[0]?.monitors?.[2]?.id)
     const opened = await call(createIncidentRoute, 'POST', pageParams(), ownerToken, {
-      title: 'Temp down',
-      components: [{ monitor: temp.id, impact: 'major_outage' }],
+      title: 'Support backlog',
+      components: [{ component: staticC, impact: 'partial_outage' }],
     })
     expect(opened.status).toBe(201)
-    const incident = opened.json.doc as Incident
+    const shown = (await publicData()).groups[0].monitors.find((m) => m.componentId === staticC)
+    expect(shown).toMatchObject({ type: 'static', status: 'pending', impact: 'partial_outage' })
 
-    await payload.update({ collection: 'status-pages', id: page.id, data: { groups } })
-    await payload.delete({ collection: 'monitors', id: temp.id })
-
-    const params = { ...pageParams(), incidentId: String(incident.id) }
+    await payload.update({ collection: 'status-pages', id: page.id, data: { groups: base } })
+    const params = { ...pageParams(), incidentId: String((opened.json.doc as Incident).id) }
     const resolved = await call(postUpdateRoute, 'POST', params, ownerToken, {
       status: 'resolved',
     })
     expect(resolved.status).toBe(201)
     expect((resolved.json.doc as Incident).updates).toHaveLength(2)
+  })
+
+  it('keeps affectedComponents in sync: editing it directly posts an update', async () => {
+    events.length = 0
+    // Component-model clients (#106) send affectedComponents instead of a first update.
+    const opened = await call(createIncidentRoute, 'POST', pageParams(), ownerToken, {
+      title: 'Direct edit',
+      content: 'Investigating.',
+      affectedComponents: [{ component: apiC, impact: 'partial_outage' }],
+    })
+    expect(opened.status).toBe(201)
+    const incident = opened.json.doc as Incident
+    expect(incident.updates?.[0]?.components).toEqual([
+      expect.objectContaining({ component: apiC, impact: 'partial_outage' }),
+    ])
+    expect(incident.impact).toBe('partial_outage')
+
+    const params = { ...pageParams(), incidentId: String(incident.id) }
+    const patched = await call(patchIncidentRoute, 'PATCH', params, ownerToken, {
+      affectedComponents: [{ component: webC, impact: 'major_outage' }],
+    })
+    expect(patched.status).toBe(200)
+    const doc = patched.json.doc as Incident
+    expect(doc.updates).toHaveLength(2)
+    expect(doc.updates?.[1]).toMatchObject({ status: 'investigating' })
+    expect(doc.affectedComponents).toEqual([
+      expect.objectContaining({ component: apiC, impact: 'operational' }),
+      expect.objectContaining({ component: webC, impact: 'major_outage' }),
+    ])
+    expect(events.map((e) => e.kind)).toEqual(['opened', 'updated'])
+
+    const bad = await call(patchIncidentRoute, 'PATCH', params, ownerToken, {
+      affectedComponents: [{ component: 'nope', impact: 'major_outage' }],
+    })
+    expect(bad.status).toBe(400)
+
+    // Pinning (no change to affectedComponents) posts nothing.
+    const pinned = await call(patchIncidentRoute, 'PATCH', params, ownerToken, { pinned: false })
+    expect((pinned.json.doc as Incident).updates).toHaveLength(2)
+
+    await call(postUpdateRoute, 'POST', params, ownerToken, { status: 'resolved' })
+  })
+
+  it('migrates component-model incidents stored without updates', async () => {
+    const created = await payload.create({
+      collection: 'incidents',
+      data: {
+        statusPage: page.id,
+        organization: org.id,
+        title: 'Stored with components',
+        affectedComponents: [{ component: webC, impact: 'major_outage' }],
+      },
+    })
+    const doc = await payload.findByID({ collection: 'incidents', id: created.id, depth: 0 })
+    await payload.db.updateOne({
+      collection: 'incidents',
+      id: created.id,
+      data: { ...doc, updates: [], status: null, impact: null },
+      req: {} as never,
+    })
+    const data = await publicData()
+    expect(monitorRow(data, website)?.impact).toBe('major_outage')
+    expect(data.incidents.find((i) => i.id === String(created.id))?.updates[0].components).toEqual([
+      { id: webC, name: 'Website', impact: 'major_outage' },
+    ])
+    const params = { ...pageParams(), incidentId: String(created.id) }
+    const resolved = await call(postUpdateRoute, 'POST', params, ownerToken, { status: 'resolved' })
+    expect((resolved.json.doc as Incident).updates?.map((u) => u.status)).toEqual([
+      'investigating',
+      'resolved',
+    ])
   })
 })

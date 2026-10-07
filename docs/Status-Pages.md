@@ -6,7 +6,8 @@ slug and lives at `/status/<slug>` (or at the root of a custom domain).
 
 To publish one: **Status pages → New page**, give it a title and slug, add groups and drag monitors into
 them on the **Groups & monitors** tab, then flip **Published** in the header. Visitors see each monitor's
-current status, its last 50 heartbeats and 24h/30d uptime, the incidents you post, running and upcoming
+current status, its last 50 heartbeats and 24h/30d uptime (unless hidden), [static components](#components)
+whose status you set through incidents, the incidents you post, running and upcoming
 [maintenance windows](Maintenance.md), and (landing in the current release) status badges. Members and above can edit pages; viewers can see
 drafts but not change them.
 
@@ -19,38 +20,41 @@ Two org-scoped collections (`src/collections/StatusPages.ts`, `src/collections/I
 | `organization`                                       | Owning organization (required).                                                |
 | `slug`                                               | Globally unique, lower-cased; reserved words from `src/lib/reserved-slugs.ts`. |
 | `title`, `description`, `logo` (media), `footerText` | Shown on the page; description and footer accept the Markdown subset below.    |
+| `homepageUrl`                                        | Where the logo (or the title, without a logo) links to; `http(s)` only.        |
+| `contactUrl`                                         | "Contact us" button in the header; `http(s)` URL or `mailto:` address.         |
 | `theme`                                              | `auto` (visitor preference), `light` or `dark`.                                |
 | `language`                                           | Locale of the page text (`en`), or `auto` to follow the visitor's browser.     |
 | `published`                                          | Only published pages are served; drafts 404 for visitors.                      |
 | `searchEngineIndex`                                  | Emits `robots: index, follow` instead of `noindex`.                            |
 | `showTags`, `showCertificateExpiry`, `showPoweredBy` | Display toggles.                                                               |
+| `showValues`                                         | Default `true`. Off hides uptime % and response times page-wide (HTML + JSON). |
 | `autoRefreshInterval`                                | Seconds between client refreshes of the public API; `0` disables.              |
 | `customCSS`                                          | Injected into the public page as a `<style>` tag.                              |
 | `googleAnalyticsId`                                  | `G-…` measurement id; the gtag snippet is only emitted when set.               |
 | `domains[].hostname`                                 | Custom hostnames (see below). Unique across all pages.                         |
-| `groups[]`                                           | `name` + `monitors[] { monitor, sendUrl, customUrl }`, in display order.       |
+| `groups[]`                                           | `name`, `defaultOpen` + `monitors[]` (components, see below), in order.        |
 
-| `incidents` field            | Notes                                                                                                     |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `statusPage`, `organization` | The organization is derived from the page in a `beforeChange` hook.                                       |
-| `title`                      | Shown on the card.                                                                                        |
-| `updates[]`                  | The timeline: `status`, `message` (Markdown), `postedAt`, `editedAt`, `components[] { monitor, impact }`. |
-| `status`                     | Derived: status of the latest update (`investigating`, `identified`, `monitoring`, `resolved`).           |
-| `impact`                     | Derived: worst current component impact; set directly for incidents that name no component.               |
-| `affectedMonitors[]`         | Derived: current `{ monitor, impact }` per component named by any update.                                 |
-| `pinned`                     | Pinned incidents render above the monitor groups; resolving unpins.                                       |
-| `active`, `resolvedAt`       | Derived from the timeline. Setting `active: false` posts a `resolved` update (and `true` reopens).        |
-| `content`, `style`           | Legacy (pre-timeline). Still accepted on create and turned into the first update.                         |
+| `incidents` field            | Notes                                                                                                       |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `statusPage`, `organization` | The organization is derived from the page in a `beforeChange` hook.                                         |
+| `title`                      | Shown on the card.                                                                                          |
+| `updates[]`                  | The timeline: `status`, `message` (Markdown), `postedAt`, `editedAt`, `components[] { component, impact }`. |
+| `status`                     | Derived: status of the latest update (`investigating`, `identified`, `monitoring`, `resolved`).             |
+| `impact`                     | Derived: worst current component impact; set directly for incidents that name no component.                 |
+| `affectedComponents[]`       | Current `{ component, impact }` per component named by any update (derived; editing it posts an update).    |
+| `pinned`                     | Pinned incidents render above the monitor groups; resolving unpins.                                         |
+| `active`, `resolvedAt`       | Derived from the timeline. Setting `active: false` posts a `resolved` update (and `true` reopens).          |
+| `content`, `style`           | Legacy (pre-timeline). Still accepted on create and turned into the first update.                           |
 
 ### Incident timeline
 
 An incident is a list of updates. Each update has a status — **investigating → identified → monitoring →
 resolved** — a Markdown message, the time it was posted and, optionally, the impact it declares on page
-components (the monitors in the page's groups):
+components (rows of the page's groups, by component id — see [Components](#components)):
 
 | Impact                 | Shown as             | Counts for the page's overall status as |
 | ---------------------- | -------------------- | --------------------------------------- |
-| `operational`          | Operational          | the monitor's own status                |
+| `operational`          | Operational          | the component's own status              |
 | `degraded_performance` | Degraded performance | not fully up (→ partially degraded)     |
 | `partial_outage`       | Partial outage       | not fully up (→ partially degraded)     |
 | `major_outage`         | Major outage         | down                                    |
@@ -62,14 +66,54 @@ components (the monitors in the page's groups):
   "partially degraded", `major_outage` makes it "major outage".
 - Posted updates are history. Their text can be corrected later — the update is then shown as _edited_ —
   but status, time and impacts stay as posted. Updates may be back-dated, not post-dated.
-- Only components of the incident's page can be affected. Deleting a monitor keeps the history (the
-  reference becomes empty).
+- Only components of the incident's page can be affected, each once per update. Components removed
+  from the page later stay in the history and are ignored publicly.
+- `affectedComponents` is the incident's current state, kept in sync with the timeline. Clients that
+  write it directly (the Payload admin, API clients of the component model) post an update with the changed
+  impacts and the current status; components they drop go back to operational.
 - Incidents created before the timeline existed migrate without data loss: they read as one update with
-  their old text, posted when they were created (or when they were resolved), and their `style` maps to an
+  their old text and `affectedComponents`, posted when they were created (or when they were resolved), and
+  their `style` maps to an
   impact (`info`/`primary` → operational, `warning` → degraded performance, `danger` → major outage). The
   update is stored on the incident's next write; no migration job is needed on either database.
 - Every new update is announced through `onIncidentUpdatePosted()`
   (`src/server/status-pages/incident-events.ts`), the hook subscriber notifications build on.
+
+### Components
+
+Every row of `groups[].monitors[]` is a **component** (`src/lib/status-page-components.ts`). The array
+keeps its original name, so pages created before components existed migrate unchanged (every row becomes
+a `monitor` component with values shown, every group starts expanded).
+
+| Component field        | Notes                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `id`                   | Payload array row id (a string on every database). The stable component id incidents point at.   |
+| `type`                 | `monitor` (default) or `static`.                                                                 |
+| `monitor`              | Required for `monitor` components; always cleared on `static` ones.                              |
+| `name`                 | Public display name. Required for `static`. For monitors it overrides the monitor's name.        |
+| `description`          | Shown to visitors as a tooltip next to the name.                                                 |
+| `showValues`           | Default `true`. Off hides this component's uptime and response times (needs the page toggle on). |
+| `sendUrl`, `customUrl` | Link shown to visitors (the monitor URL, or a custom link).                                      |
+
+- **Display name**: component `name` → the monitor's `publicName` (Monitor form → _Public name_) → the
+  monitor's `name`. The internal monitor name never reaches the public page, its JSON or the RSS feed when a
+  public name is set.
+- **Impact**: incident updates set the impact of the components they affect (`operational`,
+  `degraded_performance`, `partial_outage` or `major_outage`; see [Incident timeline](#incident-timeline)).
+  While an incident is active, each affected component reports the worst impact of all active incidents
+  (`impact` in the JSON, a label on the page), and the page's overall status counts it.
+- **Static component status** comes only from incidents and maintenance: a non-operational impact maps to
+  `pending` (degraded / partial outage) or `down` (major outage); otherwise a running
+  [maintenance window](Maintenance.md) attached to the page shows `maintenance`; otherwise `up`. Monitor
+  components keep their monitor's status and show the impact next to it.
+- **Groups** render as collapsible sections; `defaultOpen: false` starts them closed. The header shows the
+  worst status of the group's components (`down` > `pending` > `maintenance` > `up` > `unknown`).
+- **Values**: when `showValues` is off (page or component), the public JSON omits `uptime24h`/`uptime30d`
+  and the beats carry no `ping`; the page renders neither.
+
+Removing a component from a page leaves incident references dangling; they are ignored on the public page
+and shown as "Removed component" in the builder. The builder sends row ids back on save so components keep
+their ids when groups are reordered or edited.
 
 Access (`src/access/permissions.ts`): `status-page:read` is granted to every role, `status-page:create`
 /`update`/`delete` to members and above. Reads of `status-pages` are special-cased: anonymous requests
@@ -96,11 +140,14 @@ All of these are anonymous and return 404 for unknown or unpublished slugs.
     "title": "Acme Status",
     "description": "…",
     "logo": "/api/media/file/logo.png",
+    "homepageUrl": "https://example.com",
+    "contactUrl": "mailto:support@example.com",
     "theme": "auto",
     "published": true,
     "showTags": false,
     "showCertificateExpiry": false,
     "showPoweredBy": true,
+    "showValues": true,
     "autoRefreshInterval": 300,
     "customCSS": null,
     "footerText": null,
@@ -110,17 +157,33 @@ All of these are anonymous and return 404 for unknown or unpublished slugs.
   "groups": [
     {
       "name": "Core",
+      "defaultOpen": true,
+      "status": "pending", // worst status of the components
       "monitors": [
         {
-          "id": "12",
-          "name": "Website",
+          "id": "12", // monitor id (component id for static components)
+          "componentId": "6702f1c4e1b2a3d4e5f60718",
+          "type": "monitor", // monitor | static
+          "name": "Website", // display name
+          "description": "Marketing site", // only when set
           "url": "https://example.com", // url only when sendUrl/customUrl
           "status": "up", // up | down | pending | maintenance | unknown
-          "uptime24h": 0.9993,
-          "uptime30d": 0.9981,
-          "beats": [{ "status": "up", "time": "2026-10-05T03:00:00.000Z", "ping": 42 }], // oldest first, ≤ 50
+          "impact": null, // worst active incident impact, or null
+          "showValues": true,
+          "uptime24h": 0.9993, // only when showValues
+          "uptime30d": 0.9981, // only when showValues
+          "beats": [{ "status": "up", "time": "2026-10-05T03:00:00.000Z", "ping": 42 }], // oldest first, ≤ 50; ping only when showValues
           "tags": [{ "name": "env", "color": "#2563EB", "value": "prod" }], // only when showTags
-          "impact": "major_outage", // worst impact of active incidents; omitted while operational
+        },
+        {
+          "id": "6702f1c4e1b2a3d4e5f60719",
+          "componentId": "6702f1c4e1b2a3d4e5f60719",
+          "type": "static",
+          "name": "Customer support",
+          "status": "pending",
+          "impact": "partial_outage",
+          "showValues": true,
+          "beats": [], // always empty for static components
         },
       ],
     },
@@ -132,7 +195,7 @@ All of these are anonymous and return 404 for unknown or unpublished slugs.
       "title": "API errors",
       "status": "identified", // investigating | identified | monitoring | resolved
       "impact": "major_outage", // operational | degraded_performance | partial_outage | major_outage
-      "components": [{ "id": "12", "name": "API", "impact": "major_outage" }], // current, visible components only
+      "components": [{ "id": "6702f1c4e1b2a3d4e5f60718", "name": "API", "impact": "major_outage" }], // current, visible components only
       "updates": [
         // newest first
         {
@@ -149,7 +212,9 @@ All of these are anonymous and return 404 for unknown or unpublished slugs.
           "message": "We are looking into errors.",
           "postedAt": "2026-10-05T03:00:00.000Z",
           "editedAt": null,
-          "components": [{ "id": "12", "name": "API", "impact": "major_outage" }],
+          "components": [
+            { "id": "6702f1c4e1b2a3d4e5f60718", "name": "API", "impact": "major_outage" },
+          ],
         },
       ],
       "content": "A bad deploy; rolling back.", // latest message (pre-timeline clients)
@@ -188,8 +253,10 @@ realtime socket is not used on public pages).
 `/{orgSlug}/status-pages` lists the organization's pages; `/{orgSlug}/status-pages/{id}` edits one with
 four tabs: **Settings** (title, slug, description, theme, language once Marmot ships more than one, refresh,
 custom CSS, analytics id, logo upload,
-display toggles, delete), **Groups & monitors** (drag-and-drop groups and monitors with `dnd-kit`,
-per-monitor "show URL" / custom link), **Incidents** (post, edit, pin, resolve, reopen, delete) and
+header links, display toggles, delete), **Groups & monitors** (drag-and-drop groups and components with
+`dnd-kit`, static components, per-component public name, description, values toggle, "show URL" / custom
+link, per-group "expanded by default"), **Incidents** (post, edit, pin, resolve, reopen, delete, affected
+components and their impact) and
 **Domains**. The header switch publishes/unpublishes.
 
 Mutations go through route handlers under `/api/orgs/:orgId/status-pages/**`
@@ -207,9 +274,9 @@ with `overrideAccess: false`, so the collections' access rules decide what each 
 | `PATCH …/incidents/:incidentId/updates/:updateId`        | Edit an update's text (`{ message }`)        |
 
 Opening an incident: `POST …/incidents` with
-`{ title, pinned?, status?, message?, components?: [{ monitor, impact }], impact? }` (`status` defaults to
+`{ title, pinned?, status?, message?, components?: [{ component, impact }], impact? }` (`status` defaults to
 `investigating`; `impact` is the declared impact when no component is named). Pre-timeline clients may
-still send `{ title, content, style }`. Posting an update: `POST …/updates` with
+still send `{ title, content, style, affectedComponents }`. Posting an update: `POST …/updates` with
 `{ status, message?, components?, postedAt?, impact? }`; it returns `201 { doc, update }`. Invalid statuses
 or impacts, components that are not on the page and future `postedAt` values are refused with `400`;
 viewers get `403`. The Payload REST API (`/api/incidents`) applies the same hooks.
@@ -282,6 +349,9 @@ With another proxy (nginx, Traefik, Cloudflare), terminate TLS there, forward th
   update, edited text, validation and roles, declared impacts, legacy migration and the update event.
 - `src/lib/incident-timeline.test.ts` — the timeline rules (impact carry-over, resolve reset, ordering,
   style mapping).
+- `tests/int/status-page-components.int.spec.ts` — static components driven by incident impact and
+  maintenance, public names, collapsible group status, `showValues` stripping the JSON, validation and the
+  component helpers.
 - `tests/int/status-pages.int.spec.ts` — access rules (anonymous / member / other organization), slug and
   hostname normalisation, cross-organization monitor refusal, incident derivation and resolution, the public
   payload shape, 404s, `resolve-domain`, RSS validity and escaping, manifest.

@@ -14,11 +14,17 @@ import { defaultLocale } from '@/i18n/locales'
 import {
   incidentTimeline,
   legacyStyleFromImpact,
-  worstImpact,
-  type ComponentImpact,
   type IncidentStatus,
   type LegacyIncidentStyle,
 } from '@/lib/incident-timeline'
+import {
+  componentDisplayName,
+  staticComponentStatus,
+  worstImpact,
+  worstStatus,
+  type ComponentImpact,
+  type ComponentType,
+} from '@/lib/status-page-components'
 import {
   getActiveMaintenanceForStatusPage,
   type PublicMaintenance,
@@ -38,34 +44,54 @@ export interface PublicBeat {
   status: BeatStatus
   /** ISO timestamp. */
   time: string
-  ping: number | null
+  /** Response time in ms; absent when the component hides its values. */
+  ping?: number | null
 }
 
+/**
+ * One row of a group: a monitor or a static component (see `src/lib/status-page-components.ts`).
+ * The interface keeps its historical name; `PublicComponent` is the same type.
+ */
 export interface PublicMonitor {
+  /** Monitor id for `monitor` components (unchanged from before components), component id otherwise. */
   id: string
+  /** Stable component id (the group row id); incidents reference components by it. */
+  componentId: string | null
+  type: ComponentType
+  /** Public display name: component override → monitor `publicName` → monitor name. */
   name: string
+  /** Shown as a tooltip. */
+  description?: string
   /** Link shown to visitors (custom URL, or the monitor's URL when `sendUrl` is on). */
   url?: string
   status: MonitorPublicStatus
-  /** 0..1 */
-  uptime24h: number
-  /** 0..1 */
-  uptime30d: number
-  /** Oldest first, at most `BEATS_PER_MONITOR`. */
+  /** Worst impact of the active incidents affecting this component, or null. */
+  impact: ComponentImpact | null
+  /** False when the page or the component hides uptime and response times. */
+  showValues: boolean
+  /** 0..1; only present when `showValues`. */
+  uptime24h?: number
+  /** 0..1; only present when `showValues`. */
+  uptime30d?: number
+  /** Oldest first, at most `BEATS_PER_MONITOR`; always empty for static components. */
   beats: PublicBeat[]
   tags?: { name: string; color?: string | null; value?: string | null }[]
-  /** Worst impact declared by active incidents; omitted while the component is operational. */
-  impact?: ComponentImpact
 }
+
+export type PublicComponent = PublicMonitor
 
 export interface PublicGroup {
   name: string
+  /** Expanded on load; collapsed groups show `status` in their header. */
+  defaultOpen: boolean
+  /** Worst status of the group's components. */
+  status: MonitorPublicStatus
   monitors: PublicMonitor[]
 }
 
 /** A status page component named by an incident (only components visible on the page). */
 export interface PublicIncidentComponent {
-  /** Monitor id, as in `groups[].monitors[].id`. */
+  /** Component id, as in `groups[].monitors[].componentId`. */
   id: string
   name: string
   impact: ComponentImpact
@@ -110,6 +136,10 @@ export interface PublicConfig {
   title: string
   description: string | null
   logo: string | null
+  /** Where the logo and title link to. */
+  homepageUrl: string | null
+  /** Header contact link (http(s) or mailto:). */
+  contactUrl: string | null
   theme: StatusPageTheme
   /** Fixed locale, or `auto` to follow the visitor's browser. */
   language: StatusPageLanguage
@@ -117,6 +147,8 @@ export interface PublicConfig {
   showTags: boolean
   showCertificateExpiry: boolean
   showPoweredBy: boolean
+  /** Page-wide switch for uptime percentages and response times. */
+  showValues: boolean
   autoRefreshInterval: number
   customCSS: string | null
   footerText: string | null
@@ -170,12 +202,15 @@ export function toPublicConfig(page: StatusPage): PublicConfig {
     title: page.title,
     description: page.description ?? null,
     logo: mediaUrl(page.logo),
+    homepageUrl: page.homepageUrl ?? null,
+    contactUrl: page.contactUrl ?? null,
     theme: page.theme ?? 'auto',
     language: page.language ?? defaultLocale,
     published: Boolean(page.published),
     showTags: Boolean(page.showTags),
     showCertificateExpiry: Boolean(page.showCertificateExpiry),
     showPoweredBy: page.showPoweredBy !== false,
+    showValues: page.showValues !== false,
     autoRefreshInterval: Math.max(0, page.autoRefreshInterval ?? 0),
     customCSS: page.customCSS ?? null,
     footerText: page.footerText ?? null,
@@ -184,18 +219,18 @@ export function toPublicConfig(page: StatusPage): PublicConfig {
 }
 
 /**
- * Public view of an incident. `componentNames` maps monitor ids to the names shown on the page;
- * components that are not visible there (removed, paused, other pages) are left out.
+ * Public view of an incident. `componentNames` maps component ids to the names shown on the page;
+ * components that are not visible there (removed rows, paused monitors) are left out.
  */
 export function toPublicIncident(
   incident: Incident,
   componentNames: ReadonlyMap<string, string> = new Map(),
 ): PublicIncident {
   const { updates, state } = incidentTimeline(incident)
-  const visible = (rows: readonly { monitor: string | number; impact: ComponentImpact }[]) =>
+  const visible = (rows: readonly { component: string; impact: ComponentImpact }[]) =>
     rows.flatMap((row) => {
-      const name = componentNames.get(String(row.monitor))
-      return name === undefined ? [] : [{ id: String(row.monitor), name, impact: row.impact }]
+      const name = componentNames.get(row.component)
+      return name === undefined ? [] : [{ id: row.component, name, impact: row.impact }]
     })
   const newestFirst = updates.slice().reverse()
   return {
@@ -222,20 +257,13 @@ export function toPublicIncident(
   }
 }
 
-/** Worst impact per component across the active incidents (operational components omitted). */
-export function componentImpacts(
-  incidents: readonly PublicIncident[],
-): Map<string, ComponentImpact> {
-  const impacts = new Map<string, ComponentImpact>()
-  for (const incident of incidents) {
-    if (!incident.active) continue
-    for (const row of incident.components) {
-      const worst = worstImpact([impacts.get(row.id) ?? 'operational', row.impact])
-      if (worst !== 'operational') impacts.set(row.id, worst)
-    }
-  }
-  return impacts
-}
+/** Component id → public name of every component visible in `groups`. */
+export const componentNamesOf = (groups: readonly PublicGroup[]): Map<string, string> =>
+  new Map(
+    groups.flatMap((group) =>
+      group.monitors.flatMap((m) => (m.componentId ? [[m.componentId, m.name] as const] : [])),
+    ),
+  )
 
 const OVERALL_RANK: Record<OverallStatus, number> = {
   unknown: 0,
@@ -246,37 +274,31 @@ const OVERALL_RANK: Record<OverallStatus, number> = {
 }
 
 /**
- * Overall page state from monitor statuses *and* active incidents: a component with a
- * `major_outage` counts as down and one with a degraded or partial impact as not fully up (Uptime
- * Kuma's rule then applies); incidents that name no component raise the page to `partial`
- * (degraded / partial outage) or `down` (major outage).
+ * Overall page state from component statuses *and* active incident impacts: a component with a
+ * `major_outage` counts as down and one with a degraded or partial impact as not fully up (then
+ * Uptime Kuma's rule applies); active incidents that name no component raise the page to
+ * `partial` (degraded / partial outage) or `down` (major outage).
  */
 export function pageOverallStatus(
   groups: readonly PublicGroup[],
   incidents: readonly PublicIncident[],
 ): OverallStatus {
-  const impacts = componentImpacts(incidents)
   const statuses = groups.flatMap((group) =>
-    group.monitors.map((monitor): MonitorPublicStatus => {
-      const impact = impacts.get(monitor.id)
-      if (impact === 'major_outage') return 'down'
-      if (impact && monitor.status === 'up') return 'pending'
-      return monitor.status
+    group.monitors.map((row): MonitorPublicStatus => {
+      if (row.impact === 'major_outage') return 'down'
+      if (row.impact && row.impact !== 'operational' && row.status === 'up') return 'pending'
+      return row.status
     }),
   )
   let overall = overallStatus(statuses)
   for (const incident of incidents) {
-    if (!incident.active || incident.components.length > 0) continue
-    if (incident.impact === 'operational') continue
+    if (!incident.active || incident.impact === 'operational') continue
+    if (incident.components.length > 0) continue
     const fromIncident: OverallStatus = incident.impact === 'major_outage' ? 'down' : 'partial'
     if (OVERALL_RANK[fromIncident] > OVERALL_RANK[overall]) overall = fromIncident
   }
   return overall
 }
-
-/** Monitor id → public name of every component visible in `groups`. */
-export const componentNamesOf = (groups: readonly PublicGroup[]): Map<string, string> =>
-  new Map(groups.flatMap((group) => group.monitors.map((m) => [m.id, m.name] as const)))
 
 /**
  * Overall page state from the monitors' last statuses (Uptime Kuma `StatusPage.overallStatus`):
@@ -293,7 +315,11 @@ export function overallStatus(statuses: readonly MonitorPublicStatus[]): Overall
   return 'partial'
 }
 
-async function lastBeats(payload: Payload, monitorId: string | number): Promise<PublicBeat[]> {
+async function lastBeats(
+  payload: Payload,
+  monitorId: string | number,
+  showValues: boolean,
+): Promise<PublicBeat[]> {
   const { docs } = await payload.find({
     collection: 'heartbeats',
     where: { monitor: { equals: monitorId } },
@@ -304,26 +330,37 @@ async function lastBeats(payload: Payload, monitorId: string | number): Promise<
     overrideAccess: true,
   })
   return docs
-    .map((beat) => ({ status: beat.status, time: beat.time, ping: beat.ping ?? null }))
+    .map((beat) =>
+      showValues
+        ? { status: beat.status, time: beat.time, ping: beat.ping ?? null }
+        : { status: beat.status, time: beat.time },
+    )
     .reverse()
 }
 
 type GroupRow = NonNullable<StatusPage['groups']>[number]
 type MonitorRow = NonNullable<GroupRow['monitors']>[number]
 
+const rowShowsValues = (page: StatusPage, row: MonitorRow): boolean =>
+  page.showValues !== false && row.showValues !== false
+
 async function toPublicMonitor(
   payload: Payload,
+  page: StatusPage,
   row: MonitorRow,
   monitor: Monitor,
-  showTags: boolean,
+  impact: ComponentImpact | null,
 ): Promise<PublicMonitor> {
+  const showValues = rowShowsValues(page, row)
+  const showTags = Boolean(page.showTags)
   const [uptime24h, uptime30d, beats] = await Promise.all([
-    getUptime(payload, monitor.id, '24h'),
-    getUptime(payload, monitor.id, '30d'),
-    lastBeats(payload, monitor.id),
+    showValues ? getUptime(payload, monitor.id, '24h') : undefined,
+    showValues ? getUptime(payload, monitor.id, '30d') : undefined,
+    lastBeats(payload, monitor.id, showValues),
   ])
 
   const url = row.customUrl?.trim() || (row.sendUrl ? monitor.url?.trim() : undefined) || undefined
+  const description = row.description?.trim()
   // Public: name, colour and value only (no tag ids).
   const tags = showTags
     ? toRealtimeTags(monitor.tags).map(({ name, color, value }) => ({ name, color, value }))
@@ -331,59 +368,148 @@ async function toPublicMonitor(
 
   return {
     id: String(monitor.id),
-    name: monitor.name,
+    componentId: row.id ? String(row.id) : null,
+    type: 'monitor',
+    name: componentDisplayName(row.name, monitor),
+    ...(description ? { description } : {}),
     ...(url ? { url } : {}),
     status: monitor.status?.lastStatus ?? 'unknown',
-    uptime24h,
-    uptime30d,
+    impact,
+    showValues,
+    ...(showValues ? { uptime24h, uptime30d } : {}),
     beats,
     ...(showTags ? { tags } : {}),
   }
 }
 
+function toPublicStaticComponent(
+  page: StatusPage,
+  row: MonitorRow,
+  fallbackId: string,
+  impact: ComponentImpact | null,
+  underMaintenance: boolean,
+): PublicMonitor {
+  const id = row.id ? String(row.id) : fallbackId
+  const url = row.customUrl?.trim() || undefined
+  const description = row.description?.trim()
+  return {
+    id,
+    componentId: row.id ? String(row.id) : null,
+    type: 'static',
+    name: componentDisplayName(row.name),
+    ...(description ? { description } : {}),
+    ...(url ? { url } : {}),
+    status: staticComponentStatus(impact, underMaintenance),
+    impact,
+    showValues: rowShowsValues(page, row),
+    beats: [],
+  }
+}
+
+/** Worst impact per component id over the active incidents. */
+export function impactsByComponent(
+  incidents: readonly Pick<Incident, 'active' | 'affectedComponents'>[],
+): Map<string, ComponentImpact> {
+  const out = new Map<string, ComponentImpact>()
+  for (const incident of incidents) {
+    if (incident.active === false) continue
+    for (const row of incident.affectedComponents ?? []) {
+      if (!row?.component) continue
+      const key = String(row.component)
+      const worst = worstImpact([out.get(key), row.impact])
+      if (worst) out.set(key, worst)
+    }
+  }
+  return out
+}
+
+export interface PublicGroupsContext {
+  /** Active incidents of the page (fetched when omitted). */
+  incidents?: Incident[]
+  /** Maintenance of the page (fetched when omitted). */
+  maintenance?: PublicMaintenance[]
+}
+
 /**
  * Resolves every monitor referenced by the page in one query (active monitors only; paused or
- * deleted monitors are dropped from the public view) and builds the public groups.
+ * deleted monitors are dropped from the public view) and builds the public groups. Static
+ * components take their status from the active incidents' impacts and running maintenance.
  */
 export async function buildPublicGroups(
   payload: Payload,
   page: StatusPage,
+  context: PublicGroupsContext = {},
 ): Promise<PublicGroup[]> {
   const ids = new Set<string>()
+  let hasStatic = false
   for (const group of page.groups ?? []) {
     for (const row of group.monitors ?? []) {
+      if (row.type === 'static') {
+        hasStatic = true
+        continue
+      }
       const id = relId(row.monitor)
       if (id !== null) ids.add(String(id))
     }
   }
-  if (ids.size === 0) return (page.groups ?? []).map((g) => ({ name: g.name, monitors: [] }))
 
-  const { docs } = await payload.find({
-    collection: 'monitors',
-    where: {
-      and: [
-        { id: { in: [...ids] } },
-        { organization: { equals: relId(page.organization) } },
-        { active: { equals: true } },
-      ],
-    },
-    depth: 0,
-    limit: ids.size,
-    pagination: false,
-    overrideAccess: true,
-  })
-  const monitors = page.showTags ? await populateMonitorTags(payload, docs) : docs
+  const [docs, incidents, maintenance] = await Promise.all([
+    ids.size === 0
+      ? Promise.resolve([] as Monitor[])
+      : payload
+          .find({
+            collection: 'monitors',
+            where: {
+              and: [
+                { id: { in: [...ids] } },
+                { organization: { equals: relId(page.organization) } },
+                { active: { equals: true } },
+              ],
+            },
+            depth: 0,
+            limit: ids.size,
+            pagination: false,
+            overrideAccess: true,
+          })
+          .then((result) => result.docs),
+    context.incidents ?? findActiveIncidents(payload, page.id),
+    context.maintenance ??
+      (hasStatic ? getActiveMaintenanceForStatusPage(payload, page.id) : Promise.resolve([])),
+  ])
+  const monitors =
+    page.showTags && docs.length > 0 ? await populateMonitorTags(payload, docs) : docs
   const byId = new Map(monitors.map((m) => [String(m.id), m]))
+  const impacts = impactsByComponent(incidents)
+  const underMaintenance = maintenance.some((m) => m.status === 'under-maintenance')
 
   const groups: PublicGroup[] = []
-  for (const group of page.groups ?? []) {
-    const monitors = await Promise.all(
-      (group.monitors ?? []).flatMap((row) => {
+  for (const [groupIndex, group] of (page.groups ?? []).entries()) {
+    const rows = await Promise.all(
+      (group.monitors ?? []).flatMap((row, rowIndex): Promise<PublicMonitor>[] => {
+        const impact = row.id ? (impacts.get(String(row.id)) ?? null) : null
+        if (row.type === 'static') {
+          return [
+            Promise.resolve(
+              toPublicStaticComponent(
+                page,
+                row,
+                `static-${groupIndex}-${rowIndex}`,
+                impact,
+                underMaintenance,
+              ),
+            ),
+          ]
+        }
         const monitor = byId.get(String(relId(row.monitor)))
-        return monitor ? [toPublicMonitor(payload, row, monitor, Boolean(page.showTags))] : []
+        return monitor ? [toPublicMonitor(payload, page, row, monitor, impact)] : []
       }),
     )
-    groups.push({ name: group.name, monitors })
+    groups.push({
+      name: group.name,
+      defaultOpen: group.defaultOpen !== false,
+      status: worstStatus(rows.map((row) => row.status)),
+      monitors: rows,
+    })
   }
   return groups
 }
@@ -419,27 +545,19 @@ export async function buildPublicStatusPageData(
   payload: Payload,
   page: StatusPage,
 ): Promise<PublicStatusPageData> {
-  const [groups, incidents, maintenance] = await Promise.all([
-    buildPublicGroups(payload, page),
+  const [incidents, maintenance] = await Promise.all([
     findActiveIncidents(payload, page.id),
     getActiveMaintenanceForStatusPage(payload, page.id),
   ])
+  const groups = await buildPublicGroups(payload, page, { incidents, maintenance })
 
   const names = componentNamesOf(groups)
   const publicIncidents = incidents.map((incident) => toPublicIncident(incident, names))
-  const impacts = componentImpacts(publicIncidents)
-  const groupsWithImpact = groups.map((group) => ({
-    ...group,
-    monitors: group.monitors.map((monitor) => {
-      const impact = impacts.get(monitor.id)
-      return impact ? { ...monitor, impact } : monitor
-    }),
-  }))
 
   return {
     config: toPublicConfig(page),
-    overall: pageOverallStatus(groupsWithImpact, publicIncidents),
-    groups: groupsWithImpact,
+    overall: pageOverallStatus(groups, publicIncidents),
+    groups,
     incidents: publicIncidents,
     maintenance,
     generatedAt: new Date().toISOString(),

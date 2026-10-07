@@ -62,7 +62,9 @@ export const adminTranslations = {
           'Timeline, oldest first. Posted updates keep their status and impact; editing the text marks them as edited.',
         componentsDescription:
           'Impact on status page components. Components left out keep their last impact; "resolved" resets them.',
-        affectedDescription: 'Current impact per component, derived from the updates.',
+        affectedComponentsDescription:
+          'Current impact per component, derived from the updates. Editing it posts an update.',
+        componentDescription: 'Id of a component (group row) of the status page.',
       },
       invitations: {
         tokenDescription: 'Generated on create.',
@@ -90,6 +92,7 @@ export const adminTranslations = {
         lastPushAtDescription: 'Push monitors: time of the last call to the push endpoint.',
         activeDescription: 'Paused monitors are not checked.',
         parentDescription: 'Group this monitor belongs to.',
+        publicNameDescription: 'Name shown on status pages instead of the monitor name.',
         tagsDescription: 'Tags (optionally with a value, e.g. env: prod) shown as chips.',
         notificationsDescription: 'Channels alerted when this monitor changes status.',
         weightDescription: 'Sort order on status pages.',
@@ -221,6 +224,20 @@ export const adminTranslations = {
         groupsDescription: 'Monitors are shown in these groups, in this order.',
         sendUrlDescription: "Show the monitor's URL to visitors.",
         customUrlDescription: 'Link visitors to this URL instead.',
+        homepageUrlDescription: 'Where the logo and title link to (http or https).',
+        contactUrlDescription:
+          'Contact link in the page header: an http(s) URL or mailto: address.',
+        showValuesDescription: 'Show uptime percentages and response times to visitors.',
+        defaultOpenDescription: 'Expanded when the page loads; visitors can still collapse it.',
+        componentsDescription:
+          'Components of the group: monitors, or static entries set by incidents.',
+        componentTypeDescription:
+          'monitor mirrors a monitor; static has no monitor and follows incidents and maintenance.',
+        componentNameDescription:
+          "Public name. Defaults to the monitor's public name, then its name. Required for static.",
+        componentDescriptionDescription: 'Shown to visitors as a tooltip.',
+        componentShowValuesDescription:
+          'Show uptime and response time for this component (the page setting must be on too).',
       },
       tags: {
         colorDescription: 'Hex colour of the chip, e.g. #2563EB.',

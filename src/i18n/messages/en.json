@@ -543,6 +543,8 @@
         "group": "Monitor group",
         "groupEmpty": "Create a Group monitor to nest monitors under it.",
         "groupDescription": "Groups aggregate the status of their children.",
+        "publicName": "Public name",
+        "publicNameDescription": "Shown on status pages instead of the friendly name. Leave empty to use the friendly name.",
         "descriptionLabel": "Description",
         "descriptionPlaceholder": "Shown on the detail page and status pages."
       },
@@ -874,6 +876,35 @@
       "window24h": "24h",
       "window30d": "30d"
     },
+    "public": {
+      "contact": "Contact us",
+      "homepage": "{title} home page",
+      "aboutComponent": "About {name}",
+      "componentMaintenance": "Under maintenance",
+      "impact": {
+        "operational": "Operational",
+        "degraded_performance": "Degraded performance",
+        "partial_outage": "Partial outage",
+        "major_outage": "Major outage"
+      },
+      "incidents": {
+        "status": {
+          "investigating": "Investigating",
+          "identified": "Identified",
+          "monitoring": "Monitoring",
+          "resolved": "Resolved"
+        },
+        "feedTitle": "[{status}] {title}",
+        "affected": "Affected: {components}",
+        "affectedLabel": "Affected components",
+        "componentImpact": "{name} ({impact})",
+        "latestUpdate": "Latest update",
+        "showTimeline": "Show all {count, plural, one {# update} other {# updates}}",
+        "timelineLabel": "Updates for {title}",
+        "edited": "edited",
+        "editedAt": "Edited {time}"
+      }
+    },
     "beats": {
       "none": "No checks yet",
       "summary": "Last {count, plural, one {# check} other {# checks}}: {parts}. Latest: {latest}.",
@@ -1002,7 +1033,9 @@
         "showTags": "Show tags",
         "showTagsHint": "Display monitor tags next to their names.",
         "showCertificateExpiry": "Show certificate expiry",
-        "showPoweredBy": "Show “Powered by Marmot”"
+        "showPoweredBy": "Show “Powered by Marmot”",
+        "showValues": "Show uptime & response times",
+        "showValuesHint": "Off hides uptime percentages and latency everywhere on the page and in its JSON."
       },
       "reset": "Reset",
       "save": "Save settings",
@@ -1016,6 +1049,13 @@
         "confirm": "Delete \"{title}\" and all of its incidents? This cannot be undone.",
         "deleted": "Status page deleted",
         "failed": "Could not delete"
+      },
+      "links": {
+        "title": "Header links",
+        "homepageUrl": "Homepage URL",
+        "homepageUrlHint": "The logo and title link here.",
+        "contactUrl": "Contact URL",
+        "contactUrlHint": "Shown as a “Contact us” button. An https:// URL or mailto: address."
       }
     },
     "groups": {
@@ -1033,17 +1073,27 @@
       "groupName": "Group name",
       "reorderGroup": "Reorder group {name}",
       "removeGroup": "Remove group",
-      "monitorCount": "{count, plural, one {# monitor} other {# monitors}}",
       "addMonitor": "Add monitor",
       "addMonitorPlaceholder": "Add a monitor…",
       "allMonitorsAdded": "All monitors are in this group",
       "reorderMonitor": "Reorder {name}",
-      "monitorFallback": "monitor",
       "unknownMonitor": "Monitor #{id}",
       "pausedHidden": "(paused, hidden publicly)",
       "showUrl": "Show URL",
       "customUrlPlaceholder": "Custom link (optional)",
-      "removeMonitor": "Remove monitor from group"
+      "addStatic": "Add static component",
+      "staticBadge": "Static",
+      "staticHint": "Status set by incidents and maintenance",
+      "componentName": "Public name",
+      "componentNamePlaceholder": "Public name (default: {name})",
+      "staticNamePlaceholder": "Name, e.g. Customer support",
+      "componentDescription": "Description (tooltip)",
+      "showValues": "Show uptime & response time",
+      "defaultOpen": "Expanded by default",
+      "componentFallback": "component",
+      "removeComponent": "Remove component from group",
+      "componentCount": "{count, plural, one {# component} other {# components}}",
+      "staticNameRequired": "Static components need a name."
     },
     "incidents": {
       "title": "Incidents",
@@ -1095,11 +1145,12 @@
         "hint": "Components you leave unchanged keep their current impact.",
         "add": "Add component",
         "addPlaceholder": "Add a component…",
-        "none": "Add monitors to this page's groups to mark them as affected.",
+        "none": "Add components to the page's groups first.",
         "remove": "Remove {name}",
-        "unknown": "Monitor #{id}",
+        "unknown": "Removed component",
         "overallImpact": "Impact",
-        "overallImpactHint": "No component selected: this impact applies to the whole page."
+        "overallImpactHint": "No component selected: this impact applies to the whole page.",
+        "impact": "Impact of {name}"
       },
       "newDialog": {
         "title": "New incident",
@@ -1135,31 +1186,6 @@
         "cname": "Create a <code>CNAME</code> record for the hostname pointing at <host></host>.",
         "addHere": "Add the hostname here, save, and make sure the page is published.",
         "certificate": "Your reverse proxy must obtain a certificate for the hostname (Caddy on-demand TLS is documented in <code>docs/Status-Pages.md</code>)."
-      }
-    },
-    "public": {
-      "incidents": {
-        "status": {
-          "investigating": "Investigating",
-          "identified": "Identified",
-          "monitoring": "Monitoring",
-          "resolved": "Resolved"
-        },
-        "impact": {
-          "operational": "Operational",
-          "degraded_performance": "Degraded performance",
-          "partial_outage": "Partial outage",
-          "major_outage": "Major outage"
-        },
-        "feedTitle": "[{status}] {title}",
-        "affected": "Affected: {components}",
-        "affectedLabel": "Affected components",
-        "componentImpact": "{name} ({impact})",
-        "latestUpdate": "Latest update",
-        "showTimeline": "Show all {count, plural, one {# update} other {# updates}}",
-        "timelineLabel": "Updates for {title}",
-        "edited": "edited",
-        "editedAt": "Edited {time}"
       }
     }
   },

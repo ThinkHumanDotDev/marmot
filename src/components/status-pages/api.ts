@@ -14,6 +14,7 @@ export type StatusPageDomain = NonNullable<StatusPage['domains']>[number]
 
 /** The subset of a monitor the builder needs for pickers and labels. */
 export type MonitorOption = Pick<Monitor, 'id' | 'name' | 'type' | 'active'> & {
+  publicName?: string | null
   url?: string | null
   hostname?: string | null
   lastStatus?: 'up' | 'down' | 'pending' | 'maintenance' | null
@@ -26,6 +27,8 @@ export type StatusPagePatch = Partial<
     | 'slug'
     | 'description'
     | 'logo'
+    | 'homepageUrl'
+    | 'contactUrl'
     | 'theme'
     | 'language'
     | 'published'
@@ -33,6 +36,7 @@ export type StatusPagePatch = Partial<
     | 'showTags'
     | 'showCertificateExpiry'
     | 'showPoweredBy'
+    | 'showValues'
     | 'autoRefreshInterval'
     | 'footerText'
     | 'customCSS'
@@ -42,15 +46,20 @@ export type StatusPagePatch = Partial<
   >
 >
 
-export type IncidentPatch = Partial<Pick<Incident, 'title' | 'pinned' | 'active' | 'impact'>>
+export type IncidentPatch = Partial<
+  Pick<Incident, 'title' | 'pinned' | 'active' | 'impact' | 'affectedComponents'>
+>
 
 export type IncidentUpdateRow = NonNullable<Incident['updates']>[number]
 
-/** A new timeline entry. Components left out keep their impact; `impact` is for incidents without components. */
+/**
+ * A new timeline entry. `components` are component ids (group row ids); components left out keep
+ * their impact. `impact` is for incidents without components.
+ */
 export interface IncidentUpdateDraft {
   status: IncidentStatus
   message?: string
-  components?: { monitor: OrgId; impact: ComponentImpact }[]
+  components?: { component: string; impact: ComponentImpact }[]
   impact?: ComponentImpact
   postedAt?: string
 }

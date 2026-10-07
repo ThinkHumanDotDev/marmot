@@ -72,12 +72,15 @@ export interface ExportedStatusPage {
   title: string
   slug: string
   description: string | null
+  homepageUrl?: string | null
+  contactUrl?: string | null
   theme: StatusPage['theme']
   published: boolean
   searchEngineIndex: boolean
   showTags: boolean
   showCertificateExpiry: boolean
   showPoweredBy: boolean
+  showValues?: boolean
   autoRefreshInterval: number | null
   footerText: string | null
   customCSS: string | null
@@ -85,9 +88,21 @@ export interface ExportedStatusPage {
   domains: string[]
   groups: {
     name: string
-    monitors: { monitor: OrgId; sendUrl: boolean; customUrl: string | null }[]
+    defaultOpen?: boolean
+    /** Components; `monitor` is null for static ones. */
+    monitors: ExportedComponent[]
   }[]
   incidents: ExportedIncident[]
+}
+
+export interface ExportedComponent {
+  type?: 'monitor' | 'static'
+  monitor: OrgId | null
+  name?: string | null
+  description?: string | null
+  showValues?: boolean
+  sendUrl: boolean
+  customUrl: string | null
 }
 
 export interface MarmotExport {
@@ -118,12 +133,15 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
   title: doc.title,
   slug: doc.slug,
   description: doc.description ?? null,
+  homepageUrl: doc.homepageUrl ?? null,
+  contactUrl: doc.contactUrl ?? null,
   theme: doc.theme ?? 'auto',
   published: doc.published ?? false,
   searchEngineIndex: doc.searchEngineIndex ?? false,
   showTags: doc.showTags ?? false,
   showCertificateExpiry: doc.showCertificateExpiry ?? false,
   showPoweredBy: doc.showPoweredBy ?? true,
+  showValues: doc.showValues ?? true,
   autoRefreshInterval: doc.autoRefreshInterval ?? null,
   footerText: doc.footerText ?? null,
   customCSS: doc.customCSS ?? null,
@@ -131,16 +149,18 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
   domains: (doc.domains ?? []).map((row) => row.hostname),
   groups: (doc.groups ?? []).map((group) => ({
     name: group.name,
+    defaultOpen: group.defaultOpen ?? true,
     monitors: (group.monitors ?? [])
-      .map((row) => ({
-        monitor: relationId(row.monitor),
+      .map((row): ExportedComponent => ({
+        type: row.type === 'static' ? 'static' : 'monitor',
+        monitor: row.type === 'static' ? null : relationId(row.monitor),
+        name: row.name ?? null,
+        description: row.description ?? null,
+        showValues: row.showValues ?? true,
         sendUrl: row.sendUrl ?? false,
         customUrl: row.customUrl ?? null,
       }))
-      .filter(
-        (row): row is { monitor: OrgId; sendUrl: boolean; customUrl: string | null } =>
-          row.monitor !== null,
-      ),
+      .filter((row) => row.type === 'static' || row.monitor !== null),
   })),
   // The update timeline is not exported yet: an incident travels as its latest message and its
   // impact as the legacy style, which the importer turns back into a single update.
@@ -270,12 +290,15 @@ const statusPageSchema = z.object({
   title: z.string().trim().min(1).max(200),
   slug: z.string().trim().min(1).max(100),
   description: z.string().nullish(),
+  homepageUrl: z.string().nullish(),
+  contactUrl: z.string().nullish(),
   theme: z.enum(['auto', 'light', 'dark']).nullish(),
   published: z.boolean().nullish(),
   searchEngineIndex: z.boolean().nullish(),
   showTags: z.boolean().nullish(),
   showCertificateExpiry: z.boolean().nullish(),
   showPoweredBy: z.boolean().nullish(),
+  showValues: z.boolean().nullish(),
   autoRefreshInterval: z.number().int().min(0).nullish(),
   footerText: z.string().nullish(),
   customCSS: z.string().nullish(),
@@ -285,13 +308,29 @@ const statusPageSchema = z.object({
     .array(
       z.object({
         name: z.string().trim().min(1),
+        defaultOpen: z.boolean().nullish(),
         monitors: z
           .array(
-            z.object({
-              monitor: idSchema,
-              sendUrl: z.boolean().nullish(),
-              customUrl: z.string().nullish(),
-            }),
+            z.union([
+              z.object({
+                type: z.literal('static'),
+                monitor: z.null().optional(),
+                name: z.string().trim().min(1),
+                description: z.string().nullish(),
+                showValues: z.boolean().nullish(),
+                sendUrl: z.boolean().nullish(),
+                customUrl: z.string().nullish(),
+              }),
+              z.object({
+                type: z.literal('monitor').optional(),
+                monitor: idSchema,
+                name: z.string().nullish(),
+                description: z.string().nullish(),
+                showValues: z.boolean().nullish(),
+                sendUrl: z.boolean().nullish(),
+                customUrl: z.string().nullish(),
+              }),
+            ]),
           )
           .default([]),
       }),
@@ -471,12 +510,15 @@ export function parseMarmotExport(json: unknown): ImportPlan {
         title: page.title,
         slug: page.slug.toLowerCase(),
         description: page.description ?? null,
+        homepageUrl: page.homepageUrl ?? null,
+        contactUrl: page.contactUrl ?? null,
         theme: page.theme ?? 'auto',
         published: page.published ?? false,
         searchEngineIndex: page.searchEngineIndex ?? false,
         showTags: page.showTags ?? false,
         showCertificateExpiry: page.showCertificateExpiry ?? false,
         showPoweredBy: page.showPoweredBy ?? true,
+        showValues: page.showValues ?? true,
         autoRefreshInterval: page.autoRefreshInterval ?? 300,
         footerText: page.footerText ?? null,
         customCSS: page.customCSS ?? null,
@@ -485,14 +527,20 @@ export function parseMarmotExport(json: unknown): ImportPlan {
       domains: page.domains.map((d) => d.trim().toLowerCase()).filter(Boolean),
       groups: page.groups.map((group) => ({
         name: group.name,
+        defaultOpen: group.defaultOpen ?? true,
         monitors: group.monitors
           .filter((row) => {
+            if (row.type === 'static') return true
             const keep = monitorKeys.has(String(row.monitor))
             if (!keep) droppedRows += 1
             return keep
           })
           .map((row) => ({
-            monitorKey: String(row.monitor),
+            monitorKey: row.type === 'static' ? null : String(row.monitor),
+            type: row.type === 'static' ? ('static' as const) : ('monitor' as const),
+            name: asText(row.name),
+            description: asText(row.description),
+            showValues: asBool(row.showValues) ?? true,
             sendUrl: asBool(row.sendUrl) ?? false,
             customUrl: asText(row.customUrl),
           })),

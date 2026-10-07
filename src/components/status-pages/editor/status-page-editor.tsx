@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { track } from '@/lib/analytics'
+import { componentDisplayName } from '@/lib/status-page-components'
 import type { Incident, StatusPage } from '@/payload-types'
 
 import {
@@ -39,20 +40,18 @@ export interface EditorProps {
   timeZone: string
 }
 
-/** Monitors placed in the page's groups, in display order: what an incident can affect. */
+/** The page's components (group rows, by row id) in display order: what an incident can affect. */
 function pageComponents(page: StatusPage, monitors: MonitorOption[]): IncidentComponentOption[] {
-  const names = new Map(monitors.map((m) => [String(m.id), m.name]))
-  const seen = new Set<string>()
-  const options: IncidentComponentOption[] = []
-  for (const group of page.groups ?? []) {
-    for (const row of group.monitors ?? []) {
-      const id = relationId(row.monitor)
-      if (seen.has(id)) continue
-      seen.add(id)
-      options.push({ id, name: names.get(id) ?? `#${id}` })
-    }
-  }
-  return options
+  const byId = new Map(monitors.map((m) => [String(m.id), m]))
+  return (page.groups ?? []).flatMap((group) =>
+    (group.monitors ?? []).flatMap((row) => {
+      if (!row.id) return []
+      const monitor =
+        row.type === 'static' || row.monitor == null ? null : byId.get(relationId(row.monitor))
+      const name = componentDisplayName(row.name, monitor) || `${group.name} #${row.id.slice(-4)}`
+      return [{ id: row.id, name }]
+    }),
+  )
 }
 
 export function StatusPageEditor({

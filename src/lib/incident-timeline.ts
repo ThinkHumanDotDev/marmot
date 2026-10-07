@@ -10,29 +10,28 @@
  * - a `resolved` update resets every component to `operational`;
  * - the incident's `status` is the latest update's status and its `impact` the worst current
  *   component impact. Incidents without components carry a declared `impact` instead.
+ *
+ * Components are status page components (`src/lib/status-page-components.ts`), referenced by their
+ * stable id (the group row id), with the same impact vocabulary.
  */
+import {
+  COMPONENT_IMPACTS,
+  worstImpact as worstOf,
+  type ComponentImpact,
+} from '@/lib/status-page-components'
+
+export { COMPONENT_IMPACTS, type ComponentImpact }
 
 export const INCIDENT_STATUSES = ['investigating', 'identified', 'monitoring', 'resolved'] as const
 export type IncidentStatus = (typeof INCIDENT_STATUSES)[number]
-
-/** Ordered from best to worst. */
-export const COMPONENT_IMPACTS = [
-  'operational',
-  'degraded_performance',
-  'partial_outage',
-  'major_outage',
-] as const
-export type ComponentImpact = (typeof COMPONENT_IMPACTS)[number]
 
 /** Legacy card colours of incidents created before the timeline existed. */
 export const LEGACY_INCIDENT_STYLES = ['info', 'warning', 'danger', 'primary'] as const
 export type LegacyIncidentStyle = (typeof LEGACY_INCIDENT_STYLES)[number]
 
-export type RelationId = string | number
-
 export interface TimelineComponentImpact {
-  /** Monitor id (a status page component). */
-  monitor: RelationId
+  /** Component id: the row id in `status-pages.groups[].monitors[]`. */
+  component: string
   impact: ComponentImpact
 }
 
@@ -57,8 +56,6 @@ export interface IncidentState {
   resolvedAt: string | null
 }
 
-const impactRank = (impact: ComponentImpact): number => COMPONENT_IMPACTS.indexOf(impact)
-
 export const isIncidentStatus = (value: unknown): value is IncidentStatus =>
   typeof value === 'string' && (INCIDENT_STATUSES as readonly string[]).includes(value)
 
@@ -66,11 +63,8 @@ export const isComponentImpact = (value: unknown): value is ComponentImpact =>
   typeof value === 'string' && (COMPONENT_IMPACTS as readonly string[]).includes(value)
 
 /** The worst of `impacts` (`operational` for an empty list). */
-export function worstImpact(impacts: Iterable<ComponentImpact>): ComponentImpact {
-  let worst: ComponentImpact = 'operational'
-  for (const impact of impacts) if (impactRank(impact) > impactRank(worst)) worst = impact
-  return worst
-}
+export const worstImpact = (impacts: readonly ComponentImpact[]): ComponentImpact =>
+  worstOf(impacts) ?? 'operational'
 
 /** Migration of the legacy `style` field: info/primary are notices, warning degrades, danger is an outage. */
 export function impactFromLegacyStyle(style: string | null | undefined): ComponentImpact {
@@ -97,8 +91,6 @@ export function legacyStyleFromImpact(impact: ComponentImpact): LegacyIncidentSt
   }
 }
 
-const relKey = (id: RelationId): string => String(id)
-
 /** Updates oldest first: by `postedAt`, then by their position in the stored list. */
 export function sortUpdates<T extends Pick<TimelineUpdate, 'postedAt'>>(
   updates: readonly T[],
@@ -124,7 +116,7 @@ export function deriveIncidentState(
   for (const update of sortUpdates(updates)) {
     status = update.status
     for (const row of update.components ?? []) {
-      current.set(relKey(row.monitor), { monitor: row.monitor, impact: row.impact })
+      current.set(row.component, { component: row.component, impact: row.impact })
     }
     if (update.status === 'resolved') {
       for (const row of current.values()) row.impact = 'operational'
@@ -149,12 +141,21 @@ export const latestUpdate = <T extends Pick<TimelineUpdate, 'postedAt'>>(
   updates: readonly T[],
 ): T | undefined => sortUpdates(updates).at(-1)
 
+type StoredImpactRow = { component?: string | null; impact?: ComponentImpact | null }
+
+const toImpactRows = (rows: readonly StoredImpactRow[] | null | undefined) =>
+  (rows ?? []).flatMap((row) =>
+    row?.component && row.impact ? [{ component: String(row.component), impact: row.impact }] : [],
+  )
+
 /**
- * The single update that represents an incident written before the timeline existed: its `content`,
- * posted when it was created (or when it was resolved, so `resolvedAt` survives).
+ * The single update that represents an incident written before the timeline existed: its `content`
+ * and `affectedComponents`, posted when it was created (or when it was resolved, so `resolvedAt`
+ * survives).
  */
 export function legacyUpdate(incident: {
   content?: string | null
+  affectedComponents?: readonly StoredImpactRow[] | null
   active?: boolean | null
   createdAt?: string | null
   resolvedAt?: string | null
@@ -169,7 +170,7 @@ export function legacyUpdate(incident: {
     status: resolved ? 'resolved' : 'investigating',
     message: incident.content ?? '',
     postedAt,
-    components: [],
+    components: resolved ? [] : toImpactRows(incident.affectedComponents),
   }
 }
 
@@ -182,10 +183,10 @@ export interface IncidentLike {
         message?: string | null
         postedAt: string
         editedAt?: string | null
-        components?:
-          { monitor?: RelationId | { id: RelationId } | null; impact: ComponentImpact }[] | null
+        components?: StoredImpactRow[] | null
       }[]
     | null
+  affectedComponents?: StoredImpactRow[] | null
   impact?: ComponentImpact | null
   style?: string | null
   content?: string | null
@@ -194,9 +195,6 @@ export interface IncidentLike {
   updatedAt?: string | null
   resolvedAt?: string | null
 }
-
-const toRelationId = (value: RelationId | { id: RelationId }): RelationId =>
-  typeof value === 'object' && value !== null ? value.id : value
 
 /**
  * The incident's updates (oldest first) and derived state, for documents written before or after
@@ -219,12 +217,7 @@ export function incidentTimeline(incident: IncidentLike): {
       message: row.message ?? '',
       postedAt: row.postedAt,
       editedAt: row.editedAt ?? null,
-      // A deleted monitor leaves a null reference behind; it no longer affects anything.
-      components: (row.components ?? []).flatMap((c) =>
-        c.monitor === null || c.monitor === undefined
-          ? []
-          : [{ monitor: toRelationId(c.monitor), impact: c.impact }],
-      ),
+      components: toImpactRows(row.components),
     })),
   )
   return { updates, state: deriveIncidentState(updates, incident.impact ?? 'operational') }

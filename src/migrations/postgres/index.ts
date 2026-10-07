@@ -21,7 +21,8 @@ import * as migration_20261006_141212_add_auth_provider_values from './20261006_
 import * as migration_20261006_143503_add_sso_connections from './20261006_143503_add_sso_connections';
 import * as migration_20261006_144923_add_enforce_sso from './20261006_144923_add_enforce_sso';
 import * as migration_20261006_212748_add_language_fields from './20261006_212748_add_language_fields';
-import * as migration_20261007_023007_incident_timeline from './20261007_023007_incident_timeline';
+import * as migration_20261007_021706_status_page_components from './20261007_021706_status_page_components';
+import * as migration_20261007_030425_incident_timeline from './20261007_030425_incident_timeline';
 
 export const migrations = [
   {
@@ -140,8 +141,13 @@ export const migrations = [
     name: '20261006_212748_add_language_fields',
   },
   {
-    up: migration_20261007_023007_incident_timeline.up,
-    down: migration_20261007_023007_incident_timeline.down,
-    name: '20261007_023007_incident_timeline'
+    up: migration_20261007_021706_status_page_components.up,
+    down: migration_20261007_021706_status_page_components.down,
+    name: '20261007_021706_status_page_components',
+  },
+  {
+    up: migration_20261007_030425_incident_timeline.up,
+    down: migration_20261007_030425_incident_timeline.down,
+    name: '20261007_030425_incident_timeline'
   },
 ];

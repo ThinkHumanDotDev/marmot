@@ -18,15 +18,15 @@ describe('incident timeline', () => {
         status: 'investigating',
         postedAt: at(0),
         components: [
-          { monitor: 1, impact: 'major_outage' },
-          { monitor: 2, impact: 'degraded_performance' },
+          { component: 'c1', impact: 'major_outage' },
+          { component: 'c2', impact: 'degraded_performance' },
         ],
       },
       { status: 'identified', postedAt: at(5), components: [] },
       {
         status: 'monitoring',
         postedAt: at(10),
-        components: [{ monitor: 1, impact: 'partial_outage' }],
+        components: [{ component: 'c1', impact: 'partial_outage' }],
       },
     ]
     expect(deriveIncidentState(updates)).toEqual({
@@ -35,8 +35,8 @@ describe('incident timeline', () => {
       active: true,
       resolvedAt: null,
       components: [
-        { monitor: 1, impact: 'partial_outage' },
-        { monitor: 2, impact: 'degraded_performance' },
+        { component: 'c1', impact: 'partial_outage' },
+        { component: 'c2', impact: 'degraded_performance' },
       ],
     })
   })
@@ -46,14 +46,14 @@ describe('incident timeline', () => {
       {
         status: 'investigating',
         postedAt: at(0),
-        components: [{ monitor: 'a', impact: 'major_outage' }],
+        components: [{ component: 'a', impact: 'major_outage' }],
       },
       { status: 'resolved', postedAt: at(30) },
     ]
     const resolved = deriveIncidentState(updates)
     expect(resolved).toMatchObject({ status: 'resolved', impact: 'operational', active: false })
     expect(resolved.resolvedAt).toBe(at(30))
-    expect(resolved.components).toEqual([{ monitor: 'a', impact: 'operational' }])
+    expect(resolved.components).toEqual([{ component: 'a', impact: 'operational' }])
 
     const reopened = deriveIncidentState([
       ...updates,
@@ -68,7 +68,7 @@ describe('incident timeline', () => {
       {
         status: 'investigating',
         postedAt: at(0),
-        components: [{ monitor: 1, impact: 'major_outage' }],
+        components: [{ component: 'c1', impact: 'major_outage' }],
       },
       { status: 'identified', postedAt: at(20) },
     ]

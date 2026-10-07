@@ -68,14 +68,11 @@ function silentIds(req: PayloadRequest): Set<string> {
   return created
 }
 
-/** Monitor ids that are components of the status page. */
+/** Component ids (group row ids) of the status page. */
 export function pageComponentIds(page: Pick<StatusPage, 'groups'>): Set<string> {
   const ids = new Set<string>()
   for (const group of page.groups ?? []) {
-    for (const row of group.monitors ?? []) {
-      const id = relId(row.monitor)
-      if (id !== null) ids.add(String(id))
-    }
+    for (const row of group.monitors ?? []) if (row.id) ids.add(String(row.id))
   }
   return ids
 }
@@ -87,11 +84,16 @@ const toTimeline = (rows: UpdateRow[]): TimelineUpdate[] =>
     message: row.message,
     postedAt: row.postedAt ?? '',
     editedAt: row.editedAt,
-    components: (row.components ?? []).flatMap((c) => {
-      const monitor = relId(c.monitor)
-      return monitor === null ? [] : [{ monitor, impact: c.impact }]
-    }),
+    components: (row.components ?? []).flatMap((c) =>
+      c?.component ? [{ component: String(c.component), impact: c.impact }] : [],
+    ),
   }))
+
+const impactKey = (rows: readonly ImpactRow[] | null | undefined): string =>
+  (rows ?? [])
+    .map((row) => `${row?.component}:${row?.impact}`)
+    .sort()
+    .join(',')
 
 /**
  * The incident's `organization` is derived from its status page (so it can never point at a page
@@ -129,8 +131,10 @@ const deriveFromStatusPage: CollectionBeforeChangeHook<Incident> = async ({
  *   `content`/`style`) get one update built from the legacy fields;
  * - posted updates are history: only their `message` may change later, which stamps `editedAt`;
  * - new updates get an id and `postedAt`, and may only name components of the page;
- * - setting `active` without sending `updates` posts a `resolved` (or `investigating`) update;
- * - `status`, `impact`, `active`, `resolvedAt`, `affectedMonitors` and the legacy `style` are derived,
+ * - setting `active` without sending `updates` posts a `resolved` (or `investigating`) update, and
+ *   editing `affectedComponents` posts the changed impacts with the current status;
+ * - `status`, `impact`, `active`, `resolvedAt`, `affectedComponents` and the legacy `style` are
+ *   derived,
  *   and resolving unpins.
  */
 const buildTimeline: CollectionBeforeChangeHook<Incident> = ({
@@ -157,6 +161,7 @@ const buildTimeline: CollectionBeforeChangeHook<Incident> = ({
     const source = originalDoc ?? { ...data, createdAt: data.createdAt ?? now }
     const legacy = legacyUpdate({
       content: data.content ?? source.content,
+      affectedComponents: source.affectedComponents,
       active: source.active,
       createdAt: source.createdAt,
       resolvedAt: source.resolvedAt,
@@ -165,7 +170,7 @@ const buildTimeline: CollectionBeforeChangeHook<Incident> = ({
     const id = newRowId()
     synthesized.add(id)
     if (originalDoc) silent.add(id)
-    rows = [{ ...legacy, id, components: [] }, ...rows]
+    rows = [{ ...legacy, id }, ...rows]
     if (!isComponentImpact(data.impact)) {
       data.impact = impactFromLegacyStyle(data.style ?? originalDoc?.style)
     }
@@ -193,19 +198,21 @@ const buildTimeline: CollectionBeforeChangeHook<Incident> = ({
       invalid('Updates cannot be posted in the future.', `${path}.postedAt`)
     }
 
+    // Rows migrated from a stored incident keep their components even if the page changed since.
+    const migrated = originalDoc !== undefined && synthesized.has(String(row.id))
     const impacts = new Map<string, ImpactRow>()
     for (const [i, entry] of (row.components ?? []).entries()) {
-      const monitor = relId(entry?.monitor)
-      if (monitor === null || !components.has(String(monitor))) {
-        invalid('Only components of this status page can be affected.', `${path}.components.${i}`)
+      const component = entry?.component ? String(entry.component) : ''
+      if (!migrated && (!components.has(component) || impacts.has(component))) {
+        invalid(
+          'Each affected component must be listed once and belong to the status page.',
+          `${path}.components.${i}`,
+        )
       }
       if (!isComponentImpact(entry.impact)) {
         invalid('Choose a valid impact.', `${path}.components.${i}.impact`)
       }
-      impacts.set(String(monitor), {
-        monitor: monitor as ImpactRow['monitor'],
-        impact: entry.impact,
-      })
+      impacts.set(component, { component, impact: entry.impact })
     }
 
     let id = row.id ? String(row.id) : newRowId()
@@ -226,10 +233,55 @@ const buildTimeline: CollectionBeforeChangeHook<Incident> = ({
     : (originalDoc?.impact ?? 'operational')
 
   let state = deriveIncidentState(toTimeline(rows), declared)
-  // `active` toggles from clients that do not post updates (Payload admin, old API clients).
   const postedNew = rows.some(
     (row) => !originalById.has(String(row.id)) && !synthesized.has(String(row.id)),
   )
+
+  // Clients that edit `affectedComponents` directly (Payload admin, API clients of the component
+  // model) post an update with the changed impacts and the current status.
+  if (
+    originalDoc &&
+    !postedNew &&
+    Array.isArray(data.affectedComponents) &&
+    impactKey(data.affectedComponents) !== impactKey(originalDoc.affectedComponents)
+  ) {
+    const wanted = new Map<string, ComponentImpact>()
+    for (const [i, row] of data.affectedComponents.entries()) {
+      const component = row?.component ? String(row.component) : ''
+      if (!components.has(component) || wanted.has(component)) {
+        invalid(
+          'Each affected component must be listed once and belong to the status page.',
+          `affectedComponents.${i}`,
+        )
+      }
+      if (!isComponentImpact(row.impact))
+        invalid('Choose a valid impact.', `affectedComponents.${i}`)
+      wanted.set(component, row.impact)
+    }
+    const changes: ImpactRow[] = []
+    for (const [component, impact] of wanted) {
+      const current = state.components.find((c) => c.component === component)?.impact
+      if (current !== impact) changes.push({ component, impact })
+    }
+    for (const current of state.components) {
+      if (!wanted.has(current.component) && current.impact !== 'operational') {
+        changes.push({ component: current.component, impact: 'operational' })
+      }
+    }
+    if (changes.length > 0) {
+      rows.push({
+        id: newRowId(),
+        status: state.status === 'resolved' ? 'investigating' : state.status,
+        message: '',
+        postedAt: now,
+        editedAt: null,
+        components: changes,
+      })
+      state = deriveIncidentState(toTimeline(rows), declared)
+    }
+  }
+
+  // `active` toggles from clients that do not post updates (Payload admin, old API clients).
   const wasActive = originalDoc ? originalDoc.active !== false : true
   if (
     !postedNew &&
@@ -254,8 +306,8 @@ const buildTimeline: CollectionBeforeChangeHook<Incident> = ({
   data.impact = state.impact
   data.active = state.active
   data.resolvedAt = state.resolvedAt
-  data.affectedMonitors = state.components.map((row) => ({
-    monitor: row.monitor as ImpactRow['monitor'],
+  data.affectedComponents = state.components.map((row) => ({
+    component: row.component,
     impact: row.impact,
   }))
   data.style = legacyStyleFromImpact(state.impact)
@@ -310,21 +362,17 @@ const componentFields: Field[] = [
     type: 'row',
     fields: [
       {
-        // Not required: deleting a monitor nulls the reference (history keeps the row) instead of
-        // failing on the NOT NULL constraint. New updates must name a monitor (see buildTimeline).
-        name: 'monitor',
-        type: 'relationship',
-        relationTo: 'monitors',
-        filterOptions: ({ data }): Where | true => {
-          const organization = relId((data as { organization?: unknown })?.organization)
-          return organization === null ? true : { organization: { equals: organization } }
-        },
+        // A component id (group row id of the page, see src/lib/status-page-components.ts).
+        name: 'component',
+        type: 'text',
+        required: true,
+        admin: { description: adminT('marmot:incidents:componentDescription') },
       },
       {
         name: 'impact',
         type: 'select',
         required: true,
-        defaultValue: 'major_outage',
+        defaultValue: 'partial_outage',
         options: impactOptions,
       },
     ],
@@ -439,9 +487,11 @@ export const Incidents: CollectionConfig = {
       ],
     },
     {
-      name: 'affectedMonitors',
+      // Current impact per component, derived from the updates (kept in sync by `buildTimeline`).
+      // Static components (#106) take their status from it.
+      name: 'affectedComponents',
       type: 'array',
-      admin: { readOnly: true, description: adminT('marmot:incidents:affectedDescription') },
+      admin: { description: adminT('marmot:incidents:affectedComponentsDescription') },
       fields: componentFields,
     },
     {

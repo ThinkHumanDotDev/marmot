@@ -119,7 +119,7 @@ export function incidentUpdateItems(
       .map((c) =>
         t('statusPages.public.incidents.componentImpact', {
           name: c.name,
-          impact: t(`statusPages.public.incidents.impact.${c.impact}`),
+          impact: t(`statusPages.public.impact.${c.impact}`),
         }),
       )
       .join(', ')

@@ -11,7 +11,7 @@ const publishedSlug = `e2e-status-${run}`
 const draftSlug = `e2e-draft-${run}`
 
 const created: { collection: string; id: DocId }[] = []
-const seeded: { org?: DocId; page?: DocId; monitor?: DocId } = {}
+const seeded: { org?: DocId; page?: DocId; component?: string } = {}
 
 test.use({ storageState: ANONYMOUS })
 
@@ -50,14 +50,24 @@ test.describe('Status pages', () => {
 
     const page = track(
       'status-pages',
-      await adminApi.create('status-pages', {
-        organization: org.id,
-        title: 'E2E Acme Status',
-        slug: publishedSlug,
-        description: 'Everything we run, in one place.',
-        published: true,
-        groups: [{ name: 'Public services', monitors: [{ monitor: monitor.id, sendUrl: true }] }],
-      }),
+      await adminApi.create<{ id: DocId; groups: { monitors: { id: string }[] }[] }>(
+        'status-pages',
+        {
+          organization: org.id,
+          title: 'E2E Acme Status',
+          slug: publishedSlug,
+          description: 'Everything we run, in one place.',
+          published: true,
+          groups: [
+            { name: 'Public services', monitors: [{ monitor: monitor.id, sendUrl: true }] },
+            {
+              name: 'People',
+              defaultOpen: false,
+              monitors: [{ type: 'static', name: 'Customer support' }],
+            },
+          ],
+        },
+      ),
     )
 
     track(
@@ -72,7 +82,8 @@ test.describe('Status pages', () => {
       }),
     )
 
-    Object.assign(seeded, { org: org.id, page: page.id, monitor: monitor.id })
+    // The monitor's component id (its group row id) is what incident updates reference.
+    Object.assign(seeded, { org: org.id, page: page.id, component: page.groups[0].monitors[0].id })
 
     track(
       'status-pages',
@@ -102,6 +113,13 @@ test.describe('Status pages', () => {
       'href',
       monitorUrl,
     )
+    // Collapsed group: closed on load, opens on click (#106).
+    const people = page.getByRole('button', { name: 'People' })
+    await expect(people).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.getByText('Customer support')).toBeHidden()
+    await people.click()
+    await expect(people).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.getByText('Customer support')).toBeVisible()
     await expect(
       page.getByRole('heading', { level: 3, name: 'E2E planned maintenance' }),
     ).toBeVisible()
@@ -122,7 +140,7 @@ test.describe('Status pages', () => {
         {
           status: 'investigating',
           message: 'The site is unreachable.',
-          components: [{ monitor: seeded.monitor, impact: 'major_outage' }],
+          components: [{ component: seeded.component, impact: 'major_outage' }],
         },
         { status: 'identified', message: 'A bad **certificate**.' },
       ],
@@ -130,7 +148,8 @@ test.describe('Status pages', () => {
     created.unshift({ collection: 'incidents', id: incident.id })
 
     await page.goto(`/status/${publishedSlug}`)
-    await expect(page.getByRole('status')).toHaveText(/Major outage/)
+    // The monitor counts as down; the static component is still up.
+    await expect(page.getByRole('status')).toHaveText(/Partially degraded/)
     await expect(page.locator(`[data-monitor-impact="major_outage"]`)).toContainText(
       'Marketing site',
     )

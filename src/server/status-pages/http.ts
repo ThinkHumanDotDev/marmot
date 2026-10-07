@@ -77,6 +77,8 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'slug',
   'description',
   'logo',
+  'homepageUrl',
+  'contactUrl',
   'theme',
   'language',
   'published',
@@ -84,6 +86,7 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'showTags',
   'showCertificateExpiry',
   'showPoweredBy',
+  'showValues',
   'autoRefreshInterval',
   'footerText',
   'customCSS',
@@ -92,14 +95,31 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'groups',
 ] as const
 
-/** Fields a client may send when opening an incident (`content`/`style`: pre-timeline clients). */
-export const INCIDENT_CREATE_FIELDS = ['title', 'pinned', 'impact', 'content', 'style'] as const
+/**
+ * Fields a client may send when opening an incident. `content`/`style` (pre-timeline clients) and
+ * `affectedComponents` become the first update.
+ */
+export const INCIDENT_CREATE_FIELDS = [
+  'title',
+  'pinned',
+  'impact',
+  'content',
+  'style',
+  'affectedComponents',
+] as const
 
 /**
  * Fields a client may patch on an incident. The timeline is changed through the updates routes;
- * `active` is still accepted and posts a `resolved` / `investigating` update.
+ * `active` and `affectedComponents` are still accepted and post an update (`resolved` /
+ * `investigating`, or the changed impacts with the current status).
  */
-export const INCIDENT_WRITABLE_FIELDS = ['title', 'pinned', 'active', 'impact'] as const
+export const INCIDENT_WRITABLE_FIELDS = [
+  'title',
+  'pinned',
+  'active',
+  'impact',
+  'affectedComponents',
+] as const
 
 /** Keeps only `allowed` keys so clients cannot move documents between organizations. */
 export function pick<T extends Record<string, unknown>>(
