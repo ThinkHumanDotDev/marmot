@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2, Pencil, Pin, PinOff, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { CheckCircle2, Pencil, Pin, PinOff, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -27,10 +27,21 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  COMPONENT_IMPACTS,
+  componentDisplayName,
+  type ComponentImpact,
+} from '@/lib/status-page-components'
 import { cn } from '@/lib/utils'
-import type { Incident } from '@/payload-types'
+import type { Incident, StatusPage } from '@/payload-types'
 
-import { statusPagesApi, type IncidentPatch, type OrgId } from '../api'
+import {
+  relationId,
+  statusPagesApi,
+  type IncidentPatch,
+  type MonitorOption,
+  type OrgId,
+} from '../api'
 
 const styleBadge: Record<NonNullable<Incident['style']>, string> = {
   info: 'bg-status-maintenance/15',
@@ -39,9 +50,42 @@ const styleBadge: Record<NonNullable<Incident['style']>, string> = {
   primary: 'bg-primary/15',
 }
 
-type Draft = Required<Pick<IncidentPatch, 'title' | 'content' | 'style' | 'pinned'>>
+interface AffectedDraft {
+  component: string
+  impact: ComponentImpact
+}
 
-const emptyDraft: Draft = { title: '', content: '', style: 'info', pinned: true }
+type Draft = Required<Pick<IncidentPatch, 'title' | 'content' | 'style' | 'pinned'>> & {
+  affectedComponents: AffectedDraft[]
+}
+
+const emptyDraft: Draft = {
+  title: '',
+  content: '',
+  style: 'info',
+  pinned: true,
+  affectedComponents: [],
+}
+
+interface ComponentOption {
+  id: string
+  label: string
+  group: string
+}
+
+/** Every component (group row) of the page that has a stored id, labelled with its public name. */
+function componentOptions(page: StatusPage, monitors: MonitorOption[]): ComponentOption[] {
+  const byId = new Map(monitors.map((m) => [String(m.id), m]))
+  return (page.groups ?? []).flatMap((group) =>
+    (group.monitors ?? []).flatMap((row) => {
+      if (!row.id) return []
+      const monitor =
+        row.type === 'static' || row.monitor == null ? null : byId.get(relationId(row.monitor))
+      const label = componentDisplayName(row.name, monitor) || relationId(row.monitor)
+      return [{ id: row.id, label, group: group.name }]
+    }),
+  )
+}
 
 export function IncidentsPanel({
   orgId,
@@ -49,10 +93,15 @@ export function IncidentsPanel({
   initialIncidents,
   canEdit,
   timeZone,
+  page,
+  monitors,
 }: {
   orgId: OrgId
   pageId: OrgId
   initialIncidents: Incident[]
+  /** The page, for the components an incident can affect. */
+  page: StatusPage
+  monitors: MonitorOption[]
   canEdit: boolean
   /** Organization time zone the timestamps render in. */
   timeZone: string
@@ -64,6 +113,10 @@ export function IncidentsPanel({
   const [editing, setEditing] = React.useState<Incident | 'new' | null>(null)
   const [draft, setDraft] = React.useState<Draft>(emptyDraft)
   const [pending, setPending] = React.useState(false)
+  const [picker, setPicker] = React.useState('')
+  const components = React.useMemo(() => componentOptions(page, monitors), [page, monitors])
+  const componentLabel = (id: string) =>
+    components.find((c) => c.id === id)?.label ?? t('components.unknown')
 
   const upsert = (doc: Incident) =>
     setIncidents((list) => {
@@ -85,6 +138,10 @@ export function IncidentsPanel({
       content: incident.content ?? '',
       style: incident.style ?? 'info',
       pinned: Boolean(incident.pinned),
+      affectedComponents: (incident.affectedComponents ?? []).map((row) => ({
+        component: row.component,
+        impact: row.impact,
+      })),
     })
     setEditing(incident)
   }
@@ -150,6 +207,15 @@ export function IncidentsPanel({
         {incident.content && (
           <p className="mt-1 line-clamp-2 text-sm whitespace-pre-line text-muted-foreground">
             {incident.content}
+          </p>
+        )}
+        {(incident.affectedComponents ?? []).length > 0 && (
+          <p className="mt-1 flex flex-wrap gap-1">
+            {(incident.affectedComponents ?? []).map((row) => (
+              <Badge key={row.component} variant="outline" className="font-normal">
+                {componentLabel(row.component)}: {t(`components.impacts.${row.impact}`)}
+              </Badge>
+            ))}
           </p>
         )}
         <p className="mt-1 text-xs text-muted-foreground">
@@ -306,6 +372,94 @@ export function IncidentsPanel({
                 />
               </div>
             </div>
+            <fieldset className="grid gap-2">
+              <legend className="text-sm leading-none font-medium">{t('components.label')}</legend>
+              <p className="text-xs text-muted-foreground">{t('components.hint')}</p>
+              {draft.affectedComponents.length > 0 && (
+                <ul className="flex flex-col gap-2">
+                  {draft.affectedComponents.map((row, index) => {
+                    const name = componentLabel(row.component)
+                    return (
+                      <li key={row.component} className="flex items-center gap-2">
+                        <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
+                        <Select
+                          value={row.impact}
+                          onValueChange={(v) => {
+                            const next = draft.affectedComponents.slice()
+                            next[index] = { ...row, impact: v as ComponentImpact }
+                            setDraft({ ...draft, affectedComponents: next })
+                          }}
+                        >
+                          <SelectTrigger
+                            className="h-8 w-48 text-xs"
+                            aria-label={t('components.impact', { name })}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {COMPONENT_IMPACTS.map((impact) => (
+                              <SelectItem key={impact} value={impact}>
+                                {t(`components.impacts.${impact}`)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={t('components.remove', { name })}
+                          onClick={() =>
+                            setDraft({
+                              ...draft,
+                              affectedComponents: draft.affectedComponents.filter(
+                                (_, i) => i !== index,
+                              ),
+                            })
+                          }
+                        >
+                          <X />
+                        </Button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              {components.length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t('components.none')}</p>
+              ) : (
+                <Select
+                  value={picker}
+                  onValueChange={(id) => {
+                    if (!id) return
+                    setDraft({
+                      ...draft,
+                      affectedComponents: [
+                        ...draft.affectedComponents,
+                        { component: id, impact: 'partial_outage' },
+                      ],
+                    })
+                    setPicker('')
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs" aria-label={t('components.add')}>
+                    <SelectValue placeholder={t('components.add')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {components
+                      .filter(
+                        (c) => !draft.affectedComponents.some((row) => row.component === c.id),
+                      )
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.label}
+                          <span className="text-xs text-muted-foreground">{c.group}</span>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </fieldset>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
                 {t('dialog.cancel')}

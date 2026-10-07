@@ -417,7 +417,17 @@ describe('Marmot export parser', () => {
         slug: 'Acme',
         published: true,
         domains: ['status.example.com'],
-        groups: [{ name: 'Core', monitors: [{ monitor: 'm1', sendUrl: true }, { monitor: 'm3' }] }],
+        groups: [
+          {
+            name: 'Core',
+            defaultOpen: false,
+            monitors: [
+              { monitor: 'm1', sendUrl: true, name: 'Website' },
+              { monitor: 'm3' },
+              { type: 'static', monitor: null, name: 'Support', description: 'Mon-Fri' },
+            ],
+          },
+        ],
         incidents: [
           {
             title: 'Incident',
@@ -462,7 +472,30 @@ describe('Marmot export parser', () => {
     })
     expect(page.domains).toEqual(['status.example.com'])
     expect(page.groups).toEqual([
-      { name: 'Core', monitors: [{ monitorKey: 'm1', sendUrl: true, customUrl: null }] },
+      {
+        name: 'Core',
+        defaultOpen: false,
+        monitors: [
+          {
+            monitorKey: 'm1',
+            type: 'monitor',
+            name: 'Website',
+            description: null,
+            showValues: true,
+            sendUrl: true,
+            customUrl: null,
+          },
+          {
+            monitorKey: null,
+            type: 'static',
+            name: 'Support',
+            description: 'Mon-Fri',
+            showValues: true,
+            sendUrl: false,
+            customUrl: null,
+          },
+        ],
+      },
     ])
     expect(page.incidents).toEqual([
       expect.objectContaining({ title: 'Incident', style: 'danger', active: false }),

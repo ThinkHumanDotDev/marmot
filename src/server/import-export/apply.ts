@@ -288,13 +288,21 @@ export async function applyImportPlan(
           domains: planned.domains.map((hostname) => ({ hostname })),
           groups: planned.groups.map((group) => ({
             name: group.name,
+            defaultOpen: group.defaultOpen ?? true,
             monitors: group.monitors
               .map((row) => ({
-                monitor: monitorIds.get(row.monitorKey),
+                type: row.type ?? 'monitor',
+                monitor:
+                  row.type === 'static' || row.monitorKey === null
+                    ? null
+                    : monitorIds.get(row.monitorKey),
+                name: row.name ?? null,
+                description: row.description ?? null,
+                showValues: row.showValues ?? true,
                 sendUrl: row.sendUrl,
                 customUrl: row.customUrl,
               }))
-              .filter((row) => row.monitor !== undefined),
+              .filter((row) => row.type === 'static' || row.monitor != null),
           })),
         } as never,
         depth: 0,
