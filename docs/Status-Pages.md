@@ -658,7 +658,7 @@ Requests carry `X-Marmot-Event`, `X-Marmot-Delivery` (stable across retries) and
 `X-Marmot-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>` with the
 subscriber's `whsec_…` secret (shown to owners in the builder and sent once in the `test` request). Reject
 signatures older than five minutes. The signer lives in `src/server/webhooks/signature.ts` and is the one
-organization-level outbound webhooks (#157) will use. Owners can add custom headers (for example an
+organization-level [outbound webhooks](Integrations.md#outbound-webhooks) use too. Owners can add custom headers (for example an
 `Authorization` token) to a webhook subscriber. Discord webhook URLs get a Discord embed instead (unsigned);
 Slack subscribers must use an incoming-webhook URL (`https://hooks.slack.com/services/…`) and get Block
 Kit messages.

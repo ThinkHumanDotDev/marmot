@@ -1,13 +1,11 @@
-import type { CollectionBeforeLoginHook, Payload } from 'payload'
+import type { Payload } from 'payload'
 
-import { getUserRole } from '@/access/permissions'
+import { getUserRole, type OrgId } from '@/access/permissions'
 import { SSO_DOMAINS_SLUG } from '@/collections/SsoDomains'
 import { childLogger } from '@/lib/logger'
 import type { Organization, User } from '@/payload-types'
-import { recordRequestAuditEvent } from '@/server/security/audit'
 
 import { emailDomain } from './domains'
-import { apiError } from '@/server/errors'
 
 const log = childLogger('sso')
 
@@ -46,35 +44,22 @@ export async function enforcingOrganizationFor(
 }
 
 /**
- * `users.beforeLogin`: with `enforceSso` on, password logins for users on the organization's
- * verified domains are refused (`POST /api/users/login`, `payload.login` and therefore Marmot's own
- * `POST /api/auth/login` all pass through here). Owners of the organization keep a break-glass
- * password login so a misconfigured identity provider cannot lock everyone out; each one is written
- * to the audit log as `auth.break_glass`. Single sign-on logins never call `login`, so they are
- * unaffected.
+ * The organization-enforcement half of the password policy (`./local-login.ts` combines it with
+ * the instance-wide SSO-only mode): with `enforceSso` on, password logins are refused for users on
+ * the organization's verified domains. Owners of the organization (and superadmins) keep a
+ * break-glass password login so a misconfigured identity provider cannot lock everyone out.
+ *
+ * Returns `null` when no organization enforces single sign-on for the user, the enforcing
+ * organization's id when the user may still use the password (break-glass), `false` otherwise.
  */
-export const enforceSsoOnPasswordLogin: CollectionBeforeLoginHook = async ({ user, req }) => {
-  const account = user as User | null | undefined
-  if (!account?.email) return user
-  const org = await enforcingOrganizationFor(req.payload, account.email)
-  if (!org) return user
-
-  if (getUserRole(account, org.id) === 'owner' || account.superadmin === true) {
-    log.warn(
-      { user: account.id, organization: org.id },
-      'break-glass password login under SSO enforcement',
-    )
-    await recordRequestAuditEvent(req.payload, req, {
-      action: 'auth.break_glass',
-      actor: account.id,
-      organization: org.id,
-      target: `users:${String(account.id)}`,
-      metadata: { reason: 'password login while single sign-on is enforced' },
-      req,
-    })
-    return user
-  }
-
-  log.info({ user: account.id, organization: org.id }, 'password login refused: SSO enforced')
-  throw apiError('ssoEnforced', 403)
+export async function passwordAllowedUnderEnforcement(
+  payload: Payload,
+  account: Pick<User, 'id' | 'email' | 'superadmin' | 'organizations'>,
+): Promise<OrgId | false | null> {
+  if (!account.email) return null
+  const org = await enforcingOrganizationFor(payload, account.email)
+  if (!org) return null
+  if (getUserRole(account, org.id) === 'owner' || account.superadmin === true) return org.id
+  log.info({ user: account.id, organization: org.id }, 'password refused: SSO enforced')
+  return false
 }

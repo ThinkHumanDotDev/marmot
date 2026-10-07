@@ -13,6 +13,7 @@ import type { Payload } from 'payload'
 import type { IncidentStatus } from '@/lib/incident-timeline'
 import type { ComponentImpact } from '@/lib/status-page-components'
 import type { Incident, Monitor, MonitorIncident, StatusPage } from '@/payload-types'
+import { apiKeyOf, principalUserId } from '@/server/auth/request-auth'
 import { apiError } from '@/server/errors'
 import type { RequestUser } from '@/server/monitors/http'
 
@@ -100,8 +101,8 @@ export async function publishToStatusPage(
   })) as Incident
 
   const updated = await linkStatusPageIncident(payload, incident, created, {
-    userId: user.id,
-    via: 'dashboard',
+    userId: principalUserId(user),
+    via: apiKeyOf(user) ? 'api' : 'dashboard',
   })
   const summary =
     (await publishIncident(payload, updated)) ?? (await serializeIncident(payload, updated))

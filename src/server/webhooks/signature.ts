@@ -27,18 +27,25 @@ export const generateWebhookSecret = (): string =>
 const digest = (secret: string, timestamp: number, body: string): string =>
   createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex')
 
-/** The `X-Marmot-Signature` value for `body` (the exact bytes sent) at `timestamp` (unix seconds). */
+/**
+ * The `X-Marmot-Signature` value for `body` (the exact bytes sent) at `timestamp` (unix seconds).
+ * Several secrets (a rotation in progress: new first, previous second) give one `v1=` each.
+ */
 export function signWebhookPayload(
-  secret: string,
+  secret: string | readonly string[],
   body: string,
   timestamp: number = Math.floor(Date.now() / 1000),
 ): string {
-  return `t=${timestamp},${WEBHOOK_SIGNATURE_VERSION}=${digest(secret, timestamp, body)}`
+  const secrets = typeof secret === 'string' ? [secret] : secret
+  const signatures = secrets.map(
+    (value) => `${WEBHOOK_SIGNATURE_VERSION}=${digest(value, timestamp, body)}`,
+  )
+  return [`t=${timestamp}`, ...signatures].join(',')
 }
 
 /** Headers to add to a signed delivery. */
 export function webhookSignatureHeaders(
-  secret: string,
+  secret: string | readonly string[],
   body: string,
   { event, deliveryId, timestamp }: { event: string; deliveryId: string; timestamp?: number },
 ): Record<string, string> {

@@ -2,7 +2,7 @@
 
 Marmot is a self-hosted status monitor for teams: Uptime Kuma's monitoring and alerting, kan.bn-style
 organizations, built on Payload CMS 3 and Next.js. These pages are written for the people who run it, the
-people who use it and the people who change it. Pages marked describe
+people who use it and the people who change it. Pages marked _(landing in the current release)_ describe
 features whose pull requests are merging alongside this documentation.
 
 ## Run it
@@ -19,16 +19,16 @@ features whose pull requests are merging alongside this documentation.
 
 ## Use it
 
-| Page                                                      | What it covers                                                                              |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| [Monitors](Monitors.md)                                   | Monitor concepts: types, intervals and retries, groups, push monitors, pausing and cloning. |
-| [Monitor types](Monitor-Types.md)                         | Field-by-field reference for every monitor type.                                            |
-| [Notifications](Notifications.md)                         | Notification channels, the delivery pipeline, message templates and the provider reference. |
-| [Status pages](Status-Pages.md)                           | Public status pages, incidents, custom domains and the public JSON/RSS endpoints.           |
-| [Maintenance](Maintenance.md)                             | Maintenance windows and how they silence alerts.                                            |
-| [Organizations and members](Organizations-and-Members.md) | Roles and permissions, invitations, invite links, ownership transfer, account settings.     |
-| [Integrations](Integrations.md)                           | Status badges, the push endpoint, Prometheus metrics and organization API keys.             |
-| [Import and export](Import-and-Export.md)                 | Importing an Uptime Kuma backup or a Marmot export, and exporting an organization.          |
+| Page                                                      | What it covers                                                                                           |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [Monitors](Monitors.md)                                   | Monitor concepts: types, intervals and retries, groups, push monitors, pausing and cloning.              |
+| [Monitor types](Monitor-Types.md)                         | Field-by-field reference for every monitor type.                                                         |
+| [Notifications](Notifications.md)                         | Notification channels, the delivery pipeline, message templates and the provider reference.              |
+| [Status pages](Status-Pages.md)                           | Public status pages, incidents, custom domains and the public JSON/RSS endpoints.                        |
+| [Maintenance](Maintenance.md)                             | Maintenance windows and how they silence alerts.                                                         |
+| [Organizations and members](Organizations-and-Members.md) | Roles and permissions, invitations, invite links, ownership transfer, account settings.                  |
+| [Integrations](Integrations.md)                           | Status badges, the push endpoint, Prometheus metrics, organization API keys and outbound event webhooks. |
+| [Import and export](Import-and-Export.md)                 | Importing an Uptime Kuma backup or a Marmot export, and exporting an organization.                       |
 
 ## Change it
 

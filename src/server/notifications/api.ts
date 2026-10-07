@@ -14,7 +14,8 @@ import {
   type NotificationProviderDescriptor,
 } from '@/server/notification-providers'
 import { LocalizedAPIError } from '@/server/errors'
-import { errorText, rememberRequestUser, requestLocale } from '@/server/request-locale'
+import { authenticateRequest } from '@/server/auth/request-auth'
+import { errorText, requestLocale } from '@/server/request-locale'
 
 export type OrgRequestUser = User & { collection: 'users' }
 
@@ -43,11 +44,11 @@ export async function resolveOrgRequest(
   permission: Permission,
 ): Promise<OrgRequestContext | Response> {
   const payload = await getPayload({ config })
-  const { user } = await payload.auth({ headers: request.headers })
-  if (!user || user.collection !== 'users') {
-    return jsonError(401, errorText(request, 'unauthenticated'))
-  }
-  rememberRequestUser(request, user as OrgRequestUser)
+  // Session or organization API key (`src/server/auth/request-auth.ts`).
+  const auth = await authenticateRequest(payload, request)
+  if (auth.response) return auth.response
+  const user = auth.user
+  if (!user) return jsonError(401, errorText(request, 'unauthenticated'))
 
   const orgId = parseDocId(payload, rawOrgId)
   if (!(await canInOrg(payload, user, orgId, permission))) {

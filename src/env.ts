@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { cidrListError } from '@/lib/cidr-syntax'
 import { connectivityTargetsError } from '@/lib/connectivity-targets'
+import { roleMappingSchema } from '@/lib/sso-groups'
 
 /**
  * Central, validated view of process.env. Import `env` everywhere instead of reading
@@ -71,6 +72,14 @@ const schema = z.object({
   OIDC_DISPLAY_NAME: z.string().default('Single sign-on'),
   OIDC_AUTO_PROVISION: booleanish.default(true),
   OIDC_SCOPES: z.string().default('openid email profile'),
+  // Groups (docs/Single-Sign-On.md → Groups): claim to read, allow-list, group → role mapping.
+  OIDC_GROUP_CLAIM: z.string().trim().min(1).default('groups'),
+  OIDC_ALLOWED_GROUPS: z.string().default(''),
+  OIDC_ROLE_MAPPING: roleMappingSchema,
+  OIDC_ROLE_MAPPING_REMOVE: booleanish.default(false),
+  // SSO-only mode: no password logins, sign-ups or resets (break-glass superadmins aside).
+  OIDC_DISABLE_LOCAL_LOGIN: booleanish.default(false),
+  OIDC_BREAK_GLASS: booleanish.default(false),
   // Social sign-in presets; each pair enables its button.
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
@@ -79,6 +88,12 @@ const schema = z.object({
 
   // Monitoring defaults
   KEEP_DATA_PERIOD_DAYS: z.coerce.number().int().default(365),
+  // Audit log rows are pruned after this many days by the retention job; 0 keeps them forever.
+  AUDIT_LOG_RETENTION_DAYS: z.coerce.number().int().min(0).default(365),
+  // Outbound webhooks (#157): days the delivery log keeps a delivery, and how many deliveries in a
+  // row must fail (after their retries) before an endpoint is disabled (0 never disables).
+  WEBHOOK_DELIVERY_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(14),
+  WEBHOOK_DISABLE_AFTER_FAILURES: z.coerce.number().int().min(0).default(5),
   // Polling engine (worker): parallel checks per worker process.
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(10),
   // On-demand checks ("Check now" and ad-hoc tests) allowed per organization and minute.
@@ -114,6 +129,11 @@ const schema = z.object({
   MONITOR_ALLOW_CIDRS: cidrList,
   // Skip the Redis side effects of the `monitors` hooks (tests without Redis).
   MARMOT_DISABLE_ENGINE_HOOKS: booleanish.default(false),
+
+  // Management API (#115): requests per minute per organization API key, and how many of them may
+  // be writes (POST/PUT/PATCH/DELETE). 0 turns the respective limit off.
+  API_KEY_RATE_LIMIT: z.coerce.number().int().min(0).default(600),
+  API_KEY_WRITE_RATE_LIMIT: z.coerce.number().int().min(0).default(60),
 
   // Lifetime of the cookie a visitor gets after signing in to a protected status page.
   STATUS_PAGE_SESSION_DAYS: z.coerce.number().int().min(1).max(365).default(30),

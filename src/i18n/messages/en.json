@@ -215,6 +215,11 @@
       "latestHeartbeats": "Latest heartbeats",
       "description": "Description",
       "noDescription": "No description yet. Add one from Edit.",
+      "tabs": {
+        "events": "Important events",
+        "activity": "Activity"
+      },
+      "activityDescription": "Changes to this monitor from the audit log.",
       "assertions": {
         "title": "Assertions",
         "description": "Result of each check in the last run.",
@@ -977,7 +982,9 @@
         "passwordAgain": "Enter your password again.",
         "invalidCode": "That code is not valid."
       },
-      "organizationSso": "Sign in with your organization's SSO"
+      "organizationSso": "Sign in with your organization's SSO",
+      "localDisabled": "Password sign-in is turned off on this server. Use single sign-on to continue.",
+      "breakGlass": "Break-glass sign-in for instance administrators. Every sign-in here is recorded in the audit log."
     },
     "sso": {
       "continueWith": "Continue with {provider}",
@@ -1000,7 +1007,9 @@
       "backToSignIn": "Back to sign in",
       "submit": "Send reset link",
       "submitting": "Sending…",
-      "sent": "If an account exists for <email></email>, a reset link is on its way. It expires in one hour."
+      "sent": "If an account exists for <email></email>, a reset link is on its way. It expires in one hour.",
+      "disabledTitle": "Password reset is turned off",
+      "disabledDescription": "This server only allows sign-in with single sign-on, so there is no password to reset. Sign in with your identity provider instead."
     },
     "resetPassword": {
       "pageTitle": "Choose a new password",
@@ -1013,7 +1022,9 @@
       "submit": "Set new password",
       "submitting": "Updating…",
       "updated": "Password updated",
-      "failed": "This reset link is invalid or has expired. Request a new one."
+      "failed": "This reset link is invalid or has expired. Request a new one.",
+      "disabledTitle": "Password reset is turned off",
+      "disabledDescription": "This server only allows sign-in with single sign-on, so there is no password to reset. Sign in with your identity provider instead."
     },
     "setup": {
       "pageTitle": "Set up Marmot",
@@ -1047,7 +1058,9 @@
       "oidc_disabled": "Single sign-on is not configured on this server.",
       "oidc_state": "Your sign-in session expired or was tampered with. Please try again.",
       "oidc_denied": "The identity provider refused the sign-in request.",
-      "oidc_failed": "Single sign-on failed. Please try again or contact your administrator."
+      "oidc_failed": "Single sign-on failed. Please try again or contact your administrator.",
+      "group_not_allowed": "Your account is not in a group that may sign in to Marmot. Ask your administrator for access.",
+      "groups_missing": "Your identity provider did not send your group memberships, so Marmot cannot check your access. Ask your administrator."
     },
     "ssoLookup": {
       "pageTitle": "Sign in with SSO",
@@ -1091,12 +1104,14 @@
       "proxies": "Proxies",
       "dockerHosts": "Docker hosts",
       "apiKeys": "API keys",
+      "auditLog": "Audit log",
       "importExport": "Import / Export",
       "billing": "Billing",
       "permissions": "Permissions",
       "security": "Security",
       "notifications": "Notifications",
-      "instance": "Instance"
+      "instance": "Instance",
+      "webhooks": "Webhooks"
     },
     "pageTitles": {
       "account": "Account settings",
@@ -1106,12 +1121,15 @@
       "proxies": "Proxies",
       "dockerHosts": "Docker hosts",
       "apiKeys": "API keys",
+      "auditLog": "Audit log",
       "importExport": "Import / Export",
       "billing": "Billing",
       "permissions": "Permissions",
       "security": "Security settings",
       "notifications": "Notification settings",
-      "instance": "Instance settings"
+      "instance": "Instance settings",
+      "webhooks": "Webhooks",
+      "webhookDeliveries": "Webhook deliveries"
     },
     "account": {
       "profile": {
@@ -1245,7 +1263,7 @@
       "adminsOnlyTitle": "Admins only",
       "adminsOnlyDescription": "API keys are managed by admins and owners of this organization.",
       "title": "API keys",
-      "description": "Keys authenticate Prometheus scrapes of <code>/api/metrics</code> and badges of monitors that are not on a public status page. Send them as <code>Authorization: Bearer</code> or <code>X-API-Key</code>.",
+      "description": "Keys authenticate automation against the management API (<code>/api/orgs/…</code>, documented at <code>/api/docs</code>), Prometheus scrapes of <code>/api/metrics</code> and badges of monitors that are not on a public status page. Send them as <code>Authorization: Bearer</code> or <code>X-API-Key</code>.",
       "newKey": "New key",
       "emptyTitle": "No API keys yet",
       "emptyDescription": "Create a key to scrape metrics or embed private badges.",
@@ -1253,6 +1271,7 @@
       "columns": {
         "name": "Name",
         "key": "Key",
+        "scope": "Scope",
         "status": "Status",
         "expires": "Expires",
         "lastUsed": "Last used"
@@ -1261,6 +1280,10 @@
         "active": "Active",
         "expired": "Expired",
         "disabled": "Disabled"
+      },
+      "scope": {
+        "read": "Read",
+        "write": "Read & write"
       },
       "lastUsed": {
         "never": "Never",
@@ -1286,6 +1309,12 @@
         "description": "Give the key a name you will recognise in this list, for example the system that will use it.",
         "name": "Name",
         "namePlaceholder": "Prometheus",
+        "scope": "Scope",
+        "scopeOptions": {
+          "read": "Read: GET requests only, like a viewer",
+          "write": "Read & write: also changes monitors, status pages, incidents and maintenance, like a member"
+        },
+        "scopeHint": "The scope cannot be changed later. No key can manage members, keys, single sign-on or billing.",
         "expiry": "Expiry",
         "expiryOptions": {
           "never": "Never expires",
@@ -1306,6 +1335,129 @@
         "copied": "Copied",
         "copyFailed": "Copy failed. Select the key and copy it manually.",
         "done": "Done"
+      }
+    },
+    "auditLog": {
+      "title": "Audit log",
+      "description": "Who changed what in this organization, and when. Secret values are never shown.",
+      "adminsOnlyTitle": "Admins only",
+      "adminsOnlyDescription": "Only owners and admins can read the audit log. An owner can change this under Permissions.",
+      "empty": "No events match these filters.",
+      "emptyActivity": "No recorded changes to this monitor yet.",
+      "loadMore": "Load more",
+      "loading": "Loading…",
+      "loadFailed": "Could not load the audit log.",
+      "exportCsv": "Export CSV",
+      "clearFilters": "Clear filters",
+      "showDetails": "Show details",
+      "hideDetails": "Hide details",
+      "total": "{count, plural, one {# event} other {# events}}",
+      "filters": {
+        "label": "Filters",
+        "actor": "Actor",
+        "action": "Action",
+        "entityType": "Resource",
+        "from": "From",
+        "to": "To",
+        "scope": "Scope",
+        "all": "All",
+        "anyActor": "Anyone",
+        "anyAction": "Any action",
+        "anyEntity": "Any resource",
+        "allMembers": "All members",
+        "scopeOrganization": "This organization",
+        "scopeInstance": "Instance (sign-ins, instance settings)"
+      },
+      "columns": {
+        "time": "Time",
+        "actor": "Actor",
+        "action": "Action",
+        "entity": "Resource"
+      },
+      "actorTypes": {
+        "user": "Member",
+        "apiKey": "API key",
+        "mcp": "MCP client",
+        "system": "System"
+      },
+      "unknownActor": "Unknown",
+      "detail": {
+        "field": "Field",
+        "before": "Before",
+        "after": "After",
+        "created": "Created with",
+        "deleted": "Deleted values",
+        "noChanges": "No field values recorded for this event.",
+        "metadata": "Details",
+        "ip": "IP address",
+        "userAgent": "User agent",
+        "entityId": "Resource id",
+        "empty": "—"
+      },
+      "entities": {
+        "auth": "Sign-in",
+        "monitor": "Monitor",
+        "notification": "Notification channel",
+        "tag": "Tag",
+        "proxy": "Proxy",
+        "docker_host": "Docker host",
+        "status_page": "Status page",
+        "status_page_viewer": "Status page viewer",
+        "incident": "Incident",
+        "subscriber": "Subscriber",
+        "subscriber_notification": "Subscriber notification",
+        "maintenance": "Maintenance",
+        "maintenance_occurrence": "Maintenance window",
+        "monitor_incident": "Monitor incident",
+        "template": "Template",
+        "api_key": "API key",
+        "sso_connection": "SSO connection",
+        "sso_domain": "SSO domain",
+        "invitation": "Invitation",
+        "organization": "Organization",
+        "member": "Member",
+        "user": "Account",
+        "instance_settings": "Instance settings",
+        "import": "Import",
+        "webhook_endpoint": "Webhook endpoint"
+      },
+      "verbs": {
+        "created": "created",
+        "updated": "updated",
+        "deleted": "deleted",
+        "paused": "paused",
+        "resumed": "resumed",
+        "cloned": "cloned",
+        "enabled": "enabled",
+        "disabled": "disabled",
+        "revoked": "revoked",
+        "accepted": "accepted",
+        "role_changed": "role changed",
+        "removed": "removed",
+        "ownership_transferred": "ownership transferred",
+        "completed": "completed",
+        "acknowledged": "acknowledged",
+        "resolved": "resolved",
+        "published": "published",
+        "added": "added",
+        "sync_skipped": "change skipped",
+        "superadmin_granted": "granted superadmin",
+        "superadmin_revoked": "superadmin revoked"
+      },
+      "authActions": {
+        "login": "Signed in",
+        "login_failed": "Failed sign-in",
+        "rate_limited": "Sign-in rate limited",
+        "forgot_password": "Password reset requested",
+        "password_changed": "Password changed",
+        "break_glass": "Break-glass password sign-in",
+        "two_factor_failed": "Wrong two-factor code",
+        "two_factor_enabled": "Two-factor authentication enabled",
+        "two_factor_disabled": "Two-factor authentication disabled",
+        "backup_codes_regenerated": "Backup codes regenerated",
+        "sso_login": "Signed in with single sign-on",
+        "sso_login_failed": "Failed single sign-on",
+        "sso_group_denied": "Single sign-on refused: not in an allowed group"
       }
     },
     "billing": {
@@ -1537,7 +1689,8 @@
         "auditLog": "Audit log",
         "sso": "Single sign-on",
         "subscriber": "Status page subscribers",
-        "monitorIncident": "Monitor incidents"
+        "monitorIncident": "Monitor incidents",
+        "webhook": "Webhooks"
       },
       "actions": {
         "read": "View",
@@ -1709,6 +1862,7 @@
         "saml": "SAML 2.0"
       },
       "roles": {
+        "owner": "owner",
         "admin": "admin",
         "member": "member",
         "viewer": "viewer"
@@ -1808,10 +1962,143 @@
         "allowIdpInitiated": "Allow IdP-initiated login",
         "autoProvision": "Create accounts on first login",
         "autoProvisionHint": "Off: only existing Marmot users can sign in through this connection.",
+        "groups": {
+          "title": "Groups",
+          "hint": "Use the groups your identity provider sends to decide who may sign in and with which role. Applied on every login.",
+          "claim": "Group claim or attribute",
+          "allowed": "Allowed groups",
+          "allowedPlaceholder": "marmot-users, sre (empty: everyone)",
+          "roles": "Group roles",
+          "group": "Group",
+          "groupPlaceholder": "Group name",
+          "role": "Role",
+          "addRule": "Add group role",
+          "removeRule": "Remove group role",
+          "rolesHint": "Members of these groups get the role in this organization on every login (the highest one wins); users in none of them join with the default role. The last owner is never demoted."
+        },
         "cancel": "Cancel",
         "save": "Save",
         "create": "Create",
         "saving": "Saving…"
+      }
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "description": "Marmot POSTs a JSON event to each endpoint when something happens in this organization. Every request is signed with the endpoint's secret in the <code>X-Marmot-Signature</code> header.",
+      "newEndpoint": "Add endpoint",
+      "emptyTitle": "No webhook endpoints",
+      "emptyDescription": "Add an endpoint to receive monitor, incident, maintenance and other events.",
+      "emptyReadOnly": "No webhook endpoints have been added yet.",
+      "adminsOnlyTitle": "Admins only",
+      "adminsOnlyDescription": "Only organization admins and owners can see and manage webhooks.",
+      "columns": {
+        "endpoint": "Endpoint",
+        "events": "Events",
+        "status": "Status",
+        "lastDelivery": "Last delivery"
+      },
+      "status": {
+        "active": "Active",
+        "disabled": "Disabled",
+        "disabledFailures": "Disabled after failures"
+      },
+      "allEvents": "All events",
+      "eventCount": "{count, plural, one {# event} other {# events}}",
+      "lastDelivery": "{state, select, succeeded {Succeeded} failed {Failed} other {Sent}} · {time}",
+      "never": "Never",
+      "enabled": "Endpoint enabled",
+      "disabledToast": "Endpoint disabled",
+      "updateFailed": "Could not update the endpoint.",
+      "testSucceeded": "Test event delivered (HTTP {status}).",
+      "testFailed": "Test event failed. {error}",
+      "rotateFailed": "Could not rotate the secret.",
+      "deleted": "Endpoint deleted",
+      "deleteFailed": "Could not delete the endpoint.",
+      "disableEndpoint": "Disable endpoint",
+      "enableEndpoint": "Enable endpoint",
+      "actionsLabel": "Actions for {url}",
+      "viewDeliveries": "Delivery log",
+      "sendTest": "Send test event",
+      "edit": "Edit",
+      "rotateSecret": "Rotate secret",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "rotateTitle": "Rotate the signing secret?",
+      "rotateDescription": "A new secret is shown once. The current secret keeps signing deliveries next to the new one for 24 hours, so you can update your receiver without missing events.",
+      "deleteTitle": "Delete this endpoint?",
+      "deleteDescription": "{url} stops receiving events and its delivery log is deleted. This cannot be undone.",
+      "form": {
+        "createTitle": "Add webhook endpoint",
+        "editTitle": "Edit webhook endpoint",
+        "description": "Choose where events are sent and which events to send.",
+        "url": "Endpoint URL",
+        "urlPlaceholder": "https://example.com/hooks/marmot",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "What receives these events (optional)",
+        "events": "Events",
+        "allEvents": "All events, including ones added later",
+        "selectedEvents": "Selected events",
+        "groupAll": "All {group} events",
+        "eventsRequired": "Select at least one event.",
+        "cancel": "Cancel",
+        "create": "Add endpoint",
+        "save": "Save",
+        "failed": "Could not save the endpoint."
+      },
+      "reveal": {
+        "title": "Signing secret",
+        "description": "Copy the secret of {url} now: it is not shown again. Use it to verify the <code>X-Marmot-Signature</code> header of each delivery.",
+        "secretLabel": "Signing secret",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copyLabel": "Copy the secret",
+        "copyFailed": "Could not copy to the clipboard.",
+        "done": "Done"
+      },
+      "deliveries": {
+        "back": "All webhooks",
+        "description": "{count, plural, =0 {No deliveries} one {# delivery} other {# deliveries}} from the last {days, plural, one {day} other {# days}}. Failed deliveries are retried with backoff for about a day.",
+        "sendTest": "Send test event",
+        "emptyTitle": "No deliveries yet",
+        "emptyDescription": "Deliveries appear here once an event is sent to this endpoint.",
+        "columns": {
+          "event": "Event",
+          "state": "Result",
+          "response": "Response",
+          "duration": "Duration",
+          "time": "Time"
+        },
+        "showDetails": "Show request and response",
+        "hideDetails": "Hide request and response",
+        "attempts": "{count, plural, one {# attempt} other {# attempts}}",
+        "durationMs": "{ms, number, integer} ms",
+        "redeliver": "Redeliver",
+        "pageOf": "Page {page} of {total}",
+        "previous": "Previous",
+        "next": "Next",
+        "loadFailed": "Could not load the deliveries.",
+        "sentOk": "Delivered (HTTP {status}).",
+        "sentFailed": "Delivery failed. {error}",
+        "redeliverFailed": "Could not send the event.",
+        "triggers": {
+          "event": "Event",
+          "redelivery": "Redelivery",
+          "test": "Test event"
+        },
+        "states": {
+          "pending": "Pending",
+          "retrying": "Retrying",
+          "succeeded": "Succeeded",
+          "failed": "Failed",
+          "cancelled": "Cancelled"
+        },
+        "detail": {
+          "request": "Request",
+          "notSent": "Not sent yet",
+          "response": "Response",
+          "responseStatus": "Response · HTTP {status}",
+          "noResponse": "No response"
+        }
       }
     }
   },
@@ -4736,7 +5023,17 @@
       "results": "Probe results: {results}",
       "onlineSubject": "Marmot checker back online",
       "onlineText": "The Marmot worker is back online since {time}{location, select, default {} other { (location {location})}} after {minutes, plural, one {# minute} other {# minutes}} offline. Held monitors are being checked again."
+    },
+    "webhookDisabled": {
+      "subject": "Webhook endpoint disabled: {url}",
+      "intro": "Marmot disabled the webhook endpoint {url} of {organization} after {count, plural, one {# delivery} other {# deliveries in a row}} failed.",
+      "lastError": "Last error: {error}",
+      "action": "Fix the receiver, then re-enable the endpoint under Settings → Webhooks:"
     }
+  },
+  "apiDocs": {
+    "title": "Marmot management API",
+    "fallback": "The API reference needs JavaScript. Open the OpenAPI document (JSON) instead."
   },
   "errors": {
     "unauthorized": "You must be signed in.",
@@ -4796,6 +5093,7 @@
     "twoFactorCodeInvalid": "That code is not valid. Try the next one.",
     "twoFactorUseLoginPage": "This account uses two-factor authentication. Sign in through the Marmot login page.",
     "ssoEnforced": "Your organization requires single sign-on. Use “Sign in with your organization's SSO” on the login page.",
+    "localLoginDisabled": "Password sign-in is turned off on this server. Sign in with single sign-on instead.",
     "organizationNotFound": "Organization not found",
     "monitorNotFound": "Monitor not found",
     "monitorPausedNoCheck": "The monitor is paused. Resume it to run a check.",
@@ -4842,6 +5140,10 @@
     "apiKeyNotFound": "API key not found",
     "expiresAtInPast": "expiresAt must be in the future",
     "activeRequired": "active (boolean) is required",
+    "apiKeyInvalid": "The API key is unknown, disabled, expired or revoked.",
+    "apiKeyReadOnly": "This API key has the read scope and may only send GET requests. Create a key with the write scope for changes.",
+    "apiKeyRouteForbidden": "API keys cannot manage members, invitations, API keys, single sign-on, billing or ownership. Sign in to do this.",
+    "apiKeyWrongOrganization": "This API key belongs to another organization.",
     "dockerHostNotFound": "Docker host not found",
     "socketPathAbsolute": "Enter an absolute socket path.",
     "dockerTestTargetRequired": "Provide dockerHostId or connectionType + socketPath/url",
@@ -4941,7 +5243,13 @@
     "incidentAlreadyAcknowledged": "This incident is already acknowledged.",
     "incidentAlreadyResolved": "This incident is already resolved.",
     "incidentAlreadyPublished": "This incident is already published to a status page.",
-    "incidentAckLinkInvalid": "This acknowledge link is invalid or has expired."
+    "incidentAckLinkInvalid": "This acknowledge link is invalid or has expired.",
+    "webhookUrlInvalid": "Enter an http:// or https:// URL.",
+    "webhookUrlBlocked": "This URL is not allowed: {reason}",
+    "webhookEventsRequired": "Select at least one event.",
+    "webhookEventUnknown": "Unknown event type: {event}",
+    "webhookNotFound": "Webhook endpoint not found.",
+    "webhookDeliveryNotFound": "Webhook delivery not found."
   },
   "subscriberMessages": {
     "sms": {

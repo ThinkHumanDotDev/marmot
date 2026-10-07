@@ -4,6 +4,7 @@ import {
   verifyTwoFactorCode,
 } from '@/auth/two-factor/service'
 import { getRequestContext, readJson, unauthorized, withErrors } from '@/server/http'
+import { recordUserAuditEvent } from '@/server/security/audit'
 
 import { requireCode } from '../shared'
 import { apiError } from '@/server/errors'
@@ -34,5 +35,6 @@ export const POST = withErrors(async (request: Request) => {
   const method = await verifyTwoFactorCode(payload, user.id, requireCode(code))
   if (method !== 'totp') throw apiError('totpCodeRequired', 400)
   const { backupCodes } = await regenerateBackupCodes(payload, user.id)
+  await recordUserAuditEvent(payload, request, user, 'auth.backup_codes_regenerated')
   return Response.json({ backupCodes }, { headers: { 'Cache-Control': 'no-store' } })
 })

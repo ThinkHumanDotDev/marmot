@@ -20,6 +20,22 @@ export const dynamic = 'force-dynamic'
 
 type RouteContext = { params: Promise<{ orgId: string; id: string }> }
 
+/** GET /api/orgs/:orgId/monitors/:id — one monitor of the organization (`monitor:read`). */
+export async function GET(request: Request, { params }: RouteContext) {
+  const payload = await getPayload({ config })
+  const { orgId: rawOrgId, id: rawId } = await params
+  const orgId = parseId(payload, rawOrgId)
+
+  const auth = await authenticate(payload, request)
+  if (auth.response) return auth.response
+  const forbidden = await authorize(payload, auth.user, orgId, 'monitor:read')
+  if (forbidden) return forbidden
+
+  const monitor = await loadOrgMonitor(payload, auth.user, orgId, parseId(payload, rawId))
+  if (!monitor) return jsonError(404, errorText(request, 'monitorNotFound'))
+  return Response.json(monitor)
+}
+
 /**
  * PATCH /api/orgs/:orgId/monitors/:id — update a monitor. Accepts a partial body: it is merged
  * over the stored document and the result is validated as a whole, so type requirements hold.

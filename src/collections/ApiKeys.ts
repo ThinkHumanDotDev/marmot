@@ -2,11 +2,14 @@ import type { CollectionConfig, FieldAccess } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
 import { adminGroup, adminT } from '@/i18n/admin'
+import { API_KEY_SCOPES } from '@/lib/api-key-scopes'
 
 /**
  * Organization API keys (`api-key:*` permissions, admin and owner only). A key authenticates
  * machine clients — Prometheus scraping `/api/metrics`, badge embeds of monitors that are not on a
- * public status page — as the organization it belongs to, never as a user.
+ * public status page, and the management API under `/api/orgs/:orgId/**` — as the organization it
+ * belongs to, never as a user. `scope` is fixed at creation: `read` keys act as a `viewer` and may
+ * only send `GET` requests, `write` keys act as a `member` (`src/server/auth/request-auth.ts`).
  *
  * Only the SHA-256 of the plaintext key is stored; the plaintext is returned once by
  * `POST /api/orgs/:orgId/api-keys` (`src/server/api-keys`). `prefix` is the short public part the
@@ -23,7 +26,15 @@ export const ApiKeys: CollectionConfig = {
   admin: {
     useAsTitle: 'name',
     group: adminGroup('access'),
-    defaultColumns: ['name', 'prefix', 'organization', 'active', 'expiresAt', 'lastUsedAt'],
+    defaultColumns: [
+      'name',
+      'prefix',
+      'scope',
+      'organization',
+      'active',
+      'expiresAt',
+      'lastUsedAt',
+    ],
   },
   access: {
     read: orgScoped('api-key:read'),
@@ -58,6 +69,18 @@ export const ApiKeys: CollectionConfig = {
       index: true,
       access: { create: serverOnly, update: serverOnly },
       admin: { readOnly: true, description: adminT('marmot:apiKeys:prefixDescription') },
+    },
+    {
+      // Immutable: a key's power never changes after the plaintext was handed out. Existing keys
+      // (created before scopes existed) are `read`.
+      name: 'scope',
+      type: 'select',
+      required: true,
+      defaultValue: 'read',
+      options: [...API_KEY_SCOPES],
+      index: true,
+      access: { update: serverOnly },
+      admin: { position: 'sidebar', description: adminT('marmot:apiKeys:scopeDescription') },
     },
     {
       name: 'active',

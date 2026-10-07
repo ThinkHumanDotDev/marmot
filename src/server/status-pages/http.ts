@@ -7,7 +7,8 @@
 import { APIError, getPayload, type Payload, type TypedUser } from 'payload'
 
 import config from '@payload-config'
-import { errorMessageFor, errorText, rememberRequestUser } from '@/server/request-locale'
+import { authenticateRequest } from '@/server/auth/request-auth'
+import { errorMessageFor, errorText } from '@/server/request-locale'
 
 import type { StatusPage } from '@/payload-types'
 
@@ -20,10 +21,13 @@ export async function authenticate(
   request: Request,
 ): Promise<{ ok: true; ctx: Authenticated } | { ok: false; response: Response }> {
   const payload = await getPayload({ config })
-  const { user } = await payload.auth({ headers: request.headers })
-  if (!user) return { ok: false, response: jsonError(errorText(request, 'unauthenticated'), 401) }
-  rememberRequestUser(request, user)
-  return { ok: true, ctx: { payload, user } }
+  // Session or organization API key (`src/server/auth/request-auth.ts`).
+  const auth = await authenticateRequest(payload, request)
+  if (auth.response) return { ok: false, response: auth.response }
+  if (!auth.user) {
+    return { ok: false, response: jsonError(errorText(request, 'unauthenticated'), 401) }
+  }
+  return { ok: true, ctx: { payload, user: auth.user } }
 }
 
 /** Postgres/SQLite use numeric ids, MongoDB uses strings. */

@@ -37,6 +37,10 @@ import * as migration_20261007_145743_heartbeat_trigger from './20261007_145743_
 import * as migration_20261007_160552_push_monitor_cron from './20261007_160552_push_monitor_cron';
 import * as migration_20261007_163630_monitor_incidents from './20261007_163630_monitor_incidents';
 import * as migration_20261007_173835_engine_recovery from './20261007_173835_engine_recovery';
+import * as migration_20261007_181153_audit_log_coverage from './20261007_181153_audit_log_coverage';
+import * as migration_20261007_192808_sso_group_mapping from './20261007_192808_sso_group_mapping';
+import * as migration_20261007_201419_outbound_webhooks from './20261007_201419_outbound_webhooks';
+import * as migration_20261007_204902_api_key_scopes from './20261007_204902_api_key_scopes';
 
 export const migrations = [
   {
@@ -232,6 +236,26 @@ export const migrations = [
   {
     up: migration_20261007_173835_engine_recovery.up,
     down: migration_20261007_173835_engine_recovery.down,
-    name: '20261007_173835_engine_recovery'
+    name: '20261007_173835_engine_recovery',
+  },
+  {
+    up: migration_20261007_181153_audit_log_coverage.up,
+    down: migration_20261007_181153_audit_log_coverage.down,
+    name: '20261007_181153_audit_log_coverage',
+  },
+  {
+    up: migration_20261007_192808_sso_group_mapping.up,
+    down: migration_20261007_192808_sso_group_mapping.down,
+    name: '20261007_192808_sso_group_mapping',
+  },
+  {
+    up: migration_20261007_201419_outbound_webhooks.up,
+    down: migration_20261007_201419_outbound_webhooks.down,
+    name: '20261007_201419_outbound_webhooks',
+  },
+  {
+    up: migration_20261007_204902_api_key_scopes.up,
+    down: migration_20261007_204902_api_key_scopes.down,
+    name: '20261007_204902_api_key_scopes'
   },
 ];

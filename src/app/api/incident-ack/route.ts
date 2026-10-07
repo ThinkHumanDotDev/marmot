@@ -4,6 +4,7 @@ import config from '@payload-config'
 import { canInOrg } from '@/access/overrides'
 import { acknowledge } from '@/server/incidents/actions'
 import { verifyAckToken } from '@/server/incidents/ack-link'
+import { auditIncidentAction } from '@/server/incidents/audit'
 import { getIncident, relId } from '@/server/incidents/store'
 import { jsonError, parseId, payloadError, readJson } from '@/server/monitors/http'
 import { errorText, rememberRequestUser } from '@/server/request-locale'
@@ -39,6 +40,14 @@ export async function POST(request: Request) {
       userId: member && user ? user.id : null,
       via: 'link',
     })
+    await auditIncidentAction(
+      payload,
+      request,
+      summary,
+      'monitor_incident.acknowledged',
+      member && user ? (user as RequestUser) : null,
+      { via: 'link' },
+    )
     return Response.json({ status: summary.status })
   } catch (error) {
     return payloadError(error, request)

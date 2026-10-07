@@ -9,7 +9,8 @@ import {
   type ErrorKey,
   type ErrorValues,
 } from '@/server/errors'
-import { rememberRequestUser, requestLocale } from '@/server/request-locale'
+import { authenticateRequest } from '@/server/auth/request-auth'
+import { requestLocale } from '@/server/request-locale'
 
 export { errorText, requestLocale } from '@/server/request-locale'
 
@@ -22,13 +23,18 @@ export { errorText, requestLocale } from '@/server/request-locale'
 
 export type RequestUser = User & { collection: 'users' }
 
+/**
+ * The Payload instance and the request principal (`authenticateRequest`: session, or an organization
+ * API key on `/api/orgs/:orgId/…`). `response` is set when an API key was sent but may not make this
+ * request (401/403/429); return it as is.
+ */
 export async function getRequestContext(
   request: Request,
-): Promise<{ payload: Payload; user: RequestUser | null }> {
+): Promise<{ payload: Payload; user: RequestUser | null; response?: Response }> {
   const payload = await getPayload({ config })
-  const { user } = await payload.auth({ headers: request.headers })
-  rememberRequestUser(request, user as User | null)
-  return { payload, user: (user as RequestUser | null) ?? null }
+  const auth = await authenticateRequest(payload, request)
+  if (auth.response) return { payload, user: null, response: auth.response }
+  return { payload, user: auth.user }
 }
 
 /** Postgres/SQLite use numeric ids, MongoDB uses strings. */

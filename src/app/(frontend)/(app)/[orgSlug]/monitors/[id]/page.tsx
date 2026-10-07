@@ -22,14 +22,17 @@ import { MonitorStatusBadge } from '@/components/monitors/status-badge'
 import { TagList } from '@/components/monitors/tag-chip'
 import { UptimeCards } from '@/components/monitors/uptime-cards'
 import { PageHeader } from '@/components/page-header'
+import { AuditLogView } from '@/components/settings/audit-log-view'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { env } from '@/env'
 import { timeZoneOrDefault } from '@/i18n/formats'
 import { isHttpMonitorType } from '@/lib/validation/monitor'
 import type { Heartbeat, Monitor, PushEvent } from '@/payload-types'
 import { recentMonitorIncidents, renderTime } from '@/server/incidents/store'
 import { toRealtimeTags } from '@/server/realtime/serialize'
+import { listAuditEvents } from '@/server/audit/query'
 import { getMonitorChannels, getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
 import { getStats, getUptime } from '@/server/stats/uptime-calculator'
 
@@ -123,6 +126,13 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         ? recentMonitorIncidents(payload, monitor.id, { user: ctx.requestUser })
         : Promise.resolve(null),
     ])
+  // Activity tab: this monitor's audit events, for holders of `audit-log:read`.
+  const activity = ctx.allowed('audit-log:read')
+    ? await listAuditEvents(payload, ctx.requestUser, ctx.org.id, {
+        entityType: 'monitor',
+        entityId: String(monitor.id),
+      })
+    : null
 
   const hasHistory = latest.docs.length > 0 || stats24h.buckets.length > 0
   // Per-assertion results of the last check (HTTP and DNS monitors). A lone accepted-status-code
@@ -138,6 +148,19 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
     monitor.type === 'push' && monitor.pushToken
       ? `${env.NEXT_PUBLIC_SERVER_URL.replace(/\/$/, '')}/api/push/${monitor.pushToken}`
       : null
+
+  const eventsTable = (
+    <ImportantEventsTable
+      events={{
+        docs: events.docs.map(toBeat),
+        page: events.page ?? page,
+        totalPages: events.totalPages,
+        totalDocs: events.totalDocs,
+      }}
+      basePath={`/${orgSlug}/monitors/${monitor.id}`}
+      timeZone={timeZone}
+    />
+  )
 
   return (
     <>
@@ -241,16 +264,28 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="flex min-w-0 flex-col gap-6">
-            <ImportantEventsTable
-              events={{
-                docs: events.docs.map(toBeat),
-                page: events.page ?? page,
-                totalPages: events.totalPages,
-                totalDocs: events.totalDocs,
-              }}
-              basePath={`/${orgSlug}/monitors/${monitor.id}`}
-              timeZone={timeZone}
-            />
+            {activity ? (
+              <Tabs defaultValue="events" className="min-w-0">
+                <TabsList>
+                  <TabsTrigger value="events">{t('tabs.events')}</TabsTrigger>
+                  <TabsTrigger value="activity" data-testid="monitor-activity-tab">
+                    {t('tabs.activity')}
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="events">{eventsTable}</TabsContent>
+                <TabsContent value="activity" className="flex flex-col gap-3">
+                  <p className="text-sm text-muted-foreground">{t('activityDescription')}</p>
+                  <AuditLogView
+                    orgId={String(ctx.org.id)}
+                    initial={activity}
+                    entity={{ type: 'monitor', id: String(monitor.id) }}
+                    timeZone={timeZone}
+                  />
+                </TabsContent>
+              </Tabs>
+            ) : (
+              eventsTable
+            )}
             {pushEvents && (
               <PushEventsTable events={pushEvents.docs as PushEvent[]} timeZone={timeZone} />
             )}

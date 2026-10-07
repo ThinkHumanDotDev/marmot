@@ -97,6 +97,8 @@ export interface Config {
     templates: Template;
     'api-keys': ApiKey;
     'audit-logs': AuditLog;
+    'webhook-endpoints': WebhookEndpoint;
+    'webhook-deliveries': WebhookDelivery;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -134,6 +136,8 @@ export interface Config {
     templates: TemplatesSelect<false> | TemplatesSelect<true>;
     'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
+    'webhook-endpoints': WebhookEndpointsSelect<false> | WebhookEndpointsSelect<true>;
+    'webhook-deliveries': WebhookDeliveriesSelect<false> | WebhookDeliveriesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -330,6 +334,15 @@ export interface SsoConnection {
   allowIdpInitiated?: boolean | null;
   autoProvision?: boolean | null;
   defaultRole?: ('admin' | 'member' | 'viewer') | null;
+  groupClaim?: string | null;
+  allowedGroups?: string | null;
+  groupRoles?:
+    | {
+        group: string;
+        role: 'owner' | 'admin' | 'member' | 'viewer';
+        id?: string | null;
+      }[]
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1226,6 +1239,7 @@ export interface ApiKey {
   name: string;
   keyHash: string;
   prefix: string;
+  scope: 'read' | 'write';
   active?: boolean | null;
   expiresAt?: string | null;
   lastUsedAt?: string | null;
@@ -1240,9 +1254,42 @@ export interface ApiKey {
 export interface AuditLog {
   id: number;
   action: string;
+  actorType?: ('user' | 'apiKey' | 'mcp' | 'system') | null;
   actor?: (number | null) | User;
+  actorRef?: string | null;
+  actorLabel?: string | null;
   organization?: (number | null) | Organization;
   target?: string | null;
+  entityType?: string | null;
+  entityId?: string | null;
+  entityLabel?: string | null;
+  changedFields?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  before?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  after?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   ip?: string | null;
   userAgent?: string | null;
   metadata?:
@@ -1254,6 +1301,86 @@ export interface AuditLog {
     | number
     | boolean
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "webhook-endpoints".
+ */
+export interface WebhookEndpoint {
+  id: number;
+  organization: number | Organization;
+  url: string;
+  description?: string | null;
+  events:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  active?: boolean | null;
+  secret?: string | null;
+  previousSecret?: string | null;
+  previousSecretExpiresAt?: string | null;
+  consecutiveFailures?: number | null;
+  disabledReason?: 'failures' | null;
+  disabledAt?: string | null;
+  lastDeliveryAt?: string | null;
+  lastDeliveryState?: ('succeeded' | 'failed') | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "webhook-deliveries".
+ */
+export interface WebhookDelivery {
+  id: number;
+  organization: number | Organization;
+  endpoint: number | WebhookEndpoint;
+  eventId: string;
+  eventType: string;
+  trigger: 'event' | 'redelivery' | 'test';
+  state: 'pending' | 'retrying' | 'succeeded' | 'failed' | 'cancelled';
+  attempts?: number | null;
+  body:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  requestHeaders?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  responseStatus?: number | null;
+  responseHeaders?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  responseBody?: string | null;
+  durationMs?: number | null;
+  error?: string | null;
+  deliveredAt?: string | null;
+  redeliveryOf?: (number | null) | WebhookDelivery;
   updatedAt: string;
   createdAt: string;
 }
@@ -1400,6 +1527,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'audit-logs';
         value: number | AuditLog;
+      } | null)
+    | ({
+        relationTo: 'webhook-endpoints';
+        value: number | WebhookEndpoint;
+      } | null)
+    | ({
+        relationTo: 'webhook-deliveries';
+        value: number | WebhookDelivery;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1548,6 +1683,15 @@ export interface SsoConnectionsSelect<T extends boolean = true> {
   allowIdpInitiated?: T;
   autoProvision?: T;
   defaultRole?: T;
+  groupClaim?: T;
+  allowedGroups?: T;
+  groupRoles?:
+    | T
+    | {
+        group?: T;
+        role?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2259,6 +2403,7 @@ export interface ApiKeysSelect<T extends boolean = true> {
   name?: T;
   keyHash?: T;
   prefix?: T;
+  scope?: T;
   active?: T;
   expiresAt?: T;
   lastUsedAt?: T;
@@ -2272,12 +2417,67 @@ export interface ApiKeysSelect<T extends boolean = true> {
  */
 export interface AuditLogsSelect<T extends boolean = true> {
   action?: T;
+  actorType?: T;
   actor?: T;
+  actorRef?: T;
+  actorLabel?: T;
   organization?: T;
   target?: T;
+  entityType?: T;
+  entityId?: T;
+  entityLabel?: T;
+  changedFields?: T;
+  before?: T;
+  after?: T;
   ip?: T;
   userAgent?: T;
   metadata?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "webhook-endpoints_select".
+ */
+export interface WebhookEndpointsSelect<T extends boolean = true> {
+  organization?: T;
+  url?: T;
+  description?: T;
+  events?: T;
+  active?: T;
+  secret?: T;
+  previousSecret?: T;
+  previousSecretExpiresAt?: T;
+  consecutiveFailures?: T;
+  disabledReason?: T;
+  disabledAt?: T;
+  lastDeliveryAt?: T;
+  lastDeliveryState?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "webhook-deliveries_select".
+ */
+export interface WebhookDeliveriesSelect<T extends boolean = true> {
+  organization?: T;
+  endpoint?: T;
+  eventId?: T;
+  eventType?: T;
+  trigger?: T;
+  state?: T;
+  attempts?: T;
+  body?: T;
+  requestHeaders?: T;
+  responseStatus?: T;
+  responseHeaders?: T;
+  responseBody?: T;
+  durationMs?: T;
+  error?: T;
+  deliveredAt?: T;
+  redeliveryOf?: T;
   updatedAt?: T;
   createdAt?: T;
 }

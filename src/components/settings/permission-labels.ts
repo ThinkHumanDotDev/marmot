@@ -18,6 +18,7 @@ export const PERMISSION_RESOURCE_KEYS = {
   'docker-host': 'dockerHost',
   'api-key': 'apiKey',
   'audit-log': 'auditLog',
+  webhook: 'webhook',
   sso: 'sso',
 } as const
 

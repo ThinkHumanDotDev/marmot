@@ -140,16 +140,20 @@ export const authApi = {
   /** Ends the Payload session; `redirectTo` is the provider's end-session URL or `/login`. */
   ssoLogout: () => api.post<{ redirectTo: string }>('/api/auth/sso/logout'),
   /** Marmot's login wrapper: honours two-factor authentication (see `src/auth/two-factor`). */
-  login: (data: { email: string; password: string }) =>
-    api.post<LoginResponse>('/api/auth/login', data),
+  /** `local`: the break-glass login of the SSO-only mode (`/login?local=1`). */
+  login: (data: { email: string; password: string }, options: { local?: boolean } = {}) =>
+    api.post<LoginResponse>(options.local ? '/api/auth/login?local=1' : '/api/auth/login', data),
   /** Second step: TOTP or backup code for the pending challenge. */
   twoFactor: (data: { code: string; challenge?: string }) =>
     api.post<TwoFactorLoginResponse>('/api/auth/2fa', data),
   signup: (data: { email: string; password: string; name?: string }) =>
     api.post<{ doc: SessionUser }>('/api/users', data),
   logout: () => api.post<{ message?: string }>('/api/users/logout'),
-  forgotPassword: (data: { email: string }) =>
-    api.post<{ message?: string }>('/api/users/forgot-password', data),
+  forgotPassword: (data: { email: string }, options: { local?: boolean } = {}) =>
+    api.post<{ message?: string }>(
+      options.local ? '/api/users/forgot-password?local=1' : '/api/users/forgot-password',
+      data,
+    ),
   resetPassword: (data: { token: string; password: string }) =>
     api.post<LoginResponse>('/api/users/reset-password', data),
   me: () => api.get<{ user: SessionUser | null }>('/api/users/me'),

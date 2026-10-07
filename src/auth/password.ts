@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 
 import { TWO_FACTOR_GATE_CONTEXT } from '@/collections/Users'
 import type { User } from '@/payload-types'
+import { LOCAL_LOGIN_CONTEXT } from '@/server/sso/local-login'
 
 import { revokePayloadSession } from './session'
 
@@ -24,7 +25,9 @@ export async function verifyPassword(
       collection: 'users',
       data: { email, password },
       depth: 0,
-      context: { [TWO_FACTOR_GATE_CONTEXT]: true },
+      // A re-authentication, not a login: in SSO-only mode only break-glass superadmins still
+      // have a usable password (`src/server/sso/local-login.ts`).
+      context: { [TWO_FACTOR_GATE_CONTEXT]: true, [LOCAL_LOGIN_CONTEXT]: true },
     })
     token = result.token
     userId = result.user?.id

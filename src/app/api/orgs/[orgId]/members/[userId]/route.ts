@@ -8,7 +8,8 @@ type RouteContext = { params: Promise<{ orgId: string; userId: string }> }
 
 /** PATCH /api/orgs/:orgId/members/:userId  `{ role }` — change a member's role. */
 export const PATCH = withErrors(async (request: Request, { params }: RouteContext) => {
-  const { payload, user } = await getRequestContext(request)
+  const { payload, user, response } = await getRequestContext(request)
+  if (response) return response
   if (!user) return unauthorized(request)
   const { orgId, userId } = await params
   const { role } = await readJson<{ role?: unknown }>(request)
@@ -23,8 +24,12 @@ export const PATCH = withErrors(async (request: Request, { params }: RouteContex
   await recordRequestAuditEvent(payload, request, {
     action: 'member.role_changed',
     actor: user.id,
+    actorLabel: user.email,
     organization: parseId(payload, orgId),
     target: auditTarget('users', member.id),
+    entityType: 'member',
+    entityId: member.id,
+    entityLabel: member.email ?? null,
     metadata: { role: member.role },
   })
   return Response.json({ member })
@@ -32,7 +37,8 @@ export const PATCH = withErrors(async (request: Request, { params }: RouteContex
 
 /** DELETE /api/orgs/:orgId/members/:userId — remove a member, or leave when it is yourself. */
 export const DELETE = withErrors(async (request: Request, { params }: RouteContext) => {
-  const { payload, user } = await getRequestContext(request)
+  const { payload, user, response } = await getRequestContext(request)
+  if (response) return response
   if (!user) return unauthorized(request)
   const { orgId, userId } = await params
 
@@ -45,8 +51,11 @@ export const DELETE = withErrors(async (request: Request, { params }: RouteConte
   await recordRequestAuditEvent(payload, request, {
     action: 'member.removed',
     actor: user.id,
+    actorLabel: user.email,
     organization: parseId(payload, orgId),
     target: auditTarget('users', result.removed),
+    entityType: 'member',
+    entityId: result.removed,
     metadata: { self: result.self },
   })
   return Response.json(result)

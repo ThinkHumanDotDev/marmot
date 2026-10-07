@@ -110,11 +110,26 @@ export const adminTranslations = {
         prefixDescription: 'Public identifier shown in the UI (mk_<prefix>).',
         activeDescription: 'Disabled keys are rejected.',
         expiresAtDescription: 'Leave empty for a key that never expires.',
+        scopeDescription:
+          'read: GET requests only (acts as a viewer). write: also mutations (acts as a member). Fixed at creation.',
+      },
+      webhookEndpoints: {
+        description:
+          'Outbound event webhooks of an organization. Manage them under Settings → Webhooks; the signing secret is shown once.',
+        eventsDescription: 'Event types, group wildcards (incident.*) or * for every event.',
+        consecutiveFailuresDescription:
+          'Deliveries in a row that failed for good; the endpoint is disabled at WEBHOOK_DISABLE_AFTER_FAILURES.',
+      },
+      webhookDeliveries: {
+        description:
+          'Delivery log of outbound webhooks, pruned after WEBHOOK_DELIVERY_RETENTION_DAYS.',
       },
       auditLogs: {
         description:
-          'Security-relevant events. Rows are written by the server and cannot be edited.',
-        targetDescription: 'Affected record, e.g. user:42.',
+          'Security events and changes to organization resources. Rows are written by the server and cannot be edited.',
+        targetDescription: 'Affected record, e.g. monitor:42.',
+        actorLabelDescription: 'Email or API key name at the time of the event.',
+        changedFieldsDescription: 'Paths that changed; secret values are redacted in before/after.',
       },
       authAccounts: {
         description: 'Single sign-on identities linked to users. Managed by the login flows.',
@@ -348,6 +363,12 @@ export const adminTranslations = {
         autoProvisionDescription:
           'Create a Marmot account on first login and add it to the organization.',
         defaultRoleDescription: 'Role given to users who join through SSO.',
+        groupClaimDescription:
+          'OIDC claim or SAML attribute that lists the groups (default `groups`; dotted paths such as `realm_access.roles` work).',
+        allowedGroupsDescription:
+          'Comma-separated, case-insensitive. When set, only members of these groups can sign in through this connection.',
+        groupRolesDescription:
+          'Organization role per group, applied on every login; the highest matching role wins. The last owner is never demoted.',
       },
       ssoDomains: {
         verificationTokenDescription: 'Value of the DNS TXT record that proves ownership.',

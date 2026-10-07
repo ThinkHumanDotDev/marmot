@@ -2,7 +2,6 @@ import crypto from 'node:crypto'
 
 import type {
   CollectionAfterChangeHook,
-  CollectionAfterDeleteHook,
   CollectionBeforeDeleteHook,
   CollectionBeforeValidateHook,
   CollectionConfig,
@@ -24,7 +23,6 @@ import { adminGroup, adminT } from '@/i18n/admin'
 import { defaultLocale, localeNames, locales, type Locale } from '@/i18n/locales'
 import { PLANS, SUBSCRIPTION_STATUSES } from '@/lib/entitlements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
-import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 import { captureServerEvent, hashAnalyticsId } from '@/server/analytics'
 
 import { translateError, type ErrorKey, type ErrorValues } from '@/server/errors'
@@ -226,49 +224,17 @@ const removeApiKeys: CollectionBeforeDeleteHook = async ({ id, req }) => {
   })
 }
 
-const actorId = (req: { user?: { id: string | number; collection?: string } | null }) =>
-  req.user && req.user.collection === 'users' ? req.user.id : null
-
-/** Audit `organization.updated` with the list of changed top-level fields (never their values). */
-const auditOrganizationUpdated: CollectionAfterChangeHook<Organization> = async ({
-  doc,
-  previousDoc,
-  operation,
-  req,
-}) => {
-  if (operation !== 'update' || req.context?.skipOrganizationAudit) return doc
-  const current = doc as unknown as Record<string, unknown>
-  const previous = (previousDoc ?? {}) as unknown as Record<string, unknown>
-  const changed = Object.keys(current).filter(
-    (key) =>
-      !['updatedAt', 'createdAt'].includes(key) &&
-      JSON.stringify(current[key]) !== JSON.stringify(previous[key]),
-  )
-  if (changed.length === 0) return doc
-  await recordRequestAuditEvent(req.payload, req, {
-    action: 'organization.updated',
-    actor: actorId(req),
-    organization: doc.id,
-    target: auditTarget('organizations', doc.id),
-    metadata: { changed },
-    req,
-  })
-  return doc
-}
-
-/**
- * Audit `organization.deleted`. The row cannot point at the deleted organization (the relationship
- * would dangle), so it is instance-level (superadmins) and names the organization in `metadata`.
- */
-const auditOrganizationDeleted: CollectionAfterDeleteHook<Organization> = async ({ doc, req }) => {
-  await recordRequestAuditEvent(req.payload, req, {
-    action: 'organization.deleted',
-    actor: actorId(req),
-    organization: null,
-    target: auditTarget('organizations', doc.id),
-    metadata: { name: doc.name, slug: doc.slug },
-    req,
-  })
+/** Webhook endpoints and their delivery log carry a NOT NULL `organization` on Postgres too. */
+const removeWebhooks: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  for (const collection of ['webhook-deliveries', 'webhook-endpoints'] as const) {
+    await req.payload.delete({
+      collection,
+      where: { organization: { equals: id } },
+      depth: 0,
+      req,
+      overrideAccess: true,
+    })
+  }
 }
 
 /**
@@ -292,14 +258,8 @@ export const Organizations: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [normalizeSlug],
-    afterChange: [
-      grantOwnerMembership,
-      syncStripeCustomer,
-      trackOrgCreated,
-      auditOrganizationUpdated,
-    ],
-    beforeDelete: [removeInvitations, removeApiKeys, removeSso, removeMemberships],
-    afterDelete: [auditOrganizationDeleted],
+    afterChange: [grantOwnerMembership, syncStripeCustomer, trackOrgCreated],
+    beforeDelete: [removeInvitations, removeApiKeys, removeSso, removeWebhooks, removeMemberships],
   },
   fields: [
     {

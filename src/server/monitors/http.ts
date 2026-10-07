@@ -10,13 +10,9 @@ import type { ZodError } from 'zod'
 import { canInOrg } from '@/access/overrides'
 import type { Permission } from '@/access/permissions'
 import type { Monitor, User } from '@/payload-types'
+import { authenticateRequest } from '@/server/auth/request-auth'
 import { translateError } from '@/server/errors'
-import {
-  errorMessageFor,
-  errorText,
-  rememberRequestUser,
-  userLocale,
-} from '@/server/request-locale'
+import { errorMessageFor, errorText, userLocale } from '@/server/request-locale'
 
 export type RequestUser = User & { collection: 'users' }
 export type RouteId = string | number
@@ -36,12 +32,15 @@ export function jsonError(status: number, message: string, details?: unknown): R
 export type AuthResult =
   { user: RequestUser; response?: undefined } | { user?: undefined; response: Response }
 
-/** Resolves the Payload user from cookie / Authorization header, or a 401 response. */
+/**
+ * Resolves the request principal — a signed-in user or an organization API key
+ * (`authenticateRequest`) — or a 401/403/429 response.
+ */
 export async function authenticate(payload: Payload, request: Request): Promise<AuthResult> {
-  const { user } = await payload.auth({ headers: request.headers })
-  if (!user) return { response: jsonError(401, errorText(request, 'unauthenticated')) }
-  rememberRequestUser(request, user as RequestUser)
-  return { user: user as RequestUser }
+  const auth = await authenticateRequest(payload, request)
+  if (auth.response) return { response: auth.response }
+  if (!auth.user) return { response: jsonError(401, errorText(request, 'unauthenticated')) }
+  return { user: auth.user }
 }
 
 /** 403 unless the user holds `permission` in `orgId` (honouring the organization's overrides). */

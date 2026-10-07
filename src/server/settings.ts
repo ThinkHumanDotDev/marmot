@@ -95,7 +95,12 @@ export async function getInstanceSettings(payload: Payload): Promise<InstanceSet
   return value
 }
 
-/** Whether anonymous visitors may create accounts (`allowSignup`, defaulting to `!DISABLE_SIGNUP`). */
+/**
+ * Whether anonymous visitors may create (password) accounts: `allowSignup`, defaulting to
+ * `!DISABLE_SIGNUP`, and never in SSO-only mode (`OIDC_DISABLE_LOCAL_LOGIN`), where accounts come
+ * from single sign-on only.
+ */
 export async function isSignupAllowed(payload: Payload): Promise<boolean> {
+  if (env.OIDC_DISABLE_LOCAL_LOGIN) return false
   return (await getInstanceSettings(payload)).allowSignup
 }

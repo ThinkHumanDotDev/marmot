@@ -1,4 +1,5 @@
 import type { SubscriberDelivery } from '@/payload-types'
+import { principalUserId } from '@/server/auth/request-auth'
 import { errorResponse, jsonError, readJson } from '@/server/status-pages/http'
 import { errorText } from '@/server/request-locale'
 import {
@@ -84,7 +85,12 @@ export async function POST(request: Request, { params }: RouteContext) {
   try {
     const notification = await loadOwnerNotification(owner.ctx, notificationId)
     if (!notification) return jsonError(errorText(request, 'subscriberNotificationNotFound'), 404)
-    const doc = await applyBatchAction(owner.ctx.payload, notification, action, owner.ctx.user.id)
+    const doc = await applyBatchAction(
+      owner.ctx.payload,
+      notification,
+      action,
+      principalUserId(owner.ctx.user),
+    )
     return Response.json({ doc: ownerNotification(doc) })
   } catch (error) {
     if (error instanceof BatchStateError) {

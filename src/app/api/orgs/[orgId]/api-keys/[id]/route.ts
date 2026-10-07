@@ -1,7 +1,6 @@
-import { z } from 'zod'
-
 import type { ApiKey } from '@/payload-types'
 import { toApiKeyRow } from '@/server/api-keys'
+import { apiKeyPatchSchema } from '@/server/api-keys/schemas'
 import {
   errorMessage,
   errorStatus,
@@ -16,8 +15,6 @@ import { errorText } from '@/server/request-locale'
 export const dynamic = 'force-dynamic'
 
 type RouteContext = { params: Promise<{ orgId: string; id: string }> }
-
-const patchSchema = z.object({ active: z.boolean() })
 
 /** Loads the key as the user and only when it belongs to the organization in the URL. */
 async function loadOrgApiKey(ctx: OrgRequestContext, rawId: string): Promise<ApiKey | null> {
@@ -43,7 +40,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const body = await readJson(request)
-  const parsed = patchSchema.safeParse(body)
+  const parsed = apiKeyPatchSchema.safeParse(body)
   if (!parsed.success) return jsonError(400, errorText(request, 'activeRequired'))
 
   const existing = await loadOrgApiKey(ctx, id)
