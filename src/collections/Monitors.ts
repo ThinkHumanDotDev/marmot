@@ -18,6 +18,7 @@ import { outboundGuardActive } from '@/server/security/outbound-guard'
 
 import { HEARTBEAT_STATUSES } from './Heartbeats'
 import { relId } from './shared'
+import { adminT } from '@/i18n/admin'
 
 const log = childLogger('monitors')
 
@@ -104,7 +105,7 @@ const statusGroup: Field = {
   type: 'group',
   admin: {
     readOnly: true,
-    description: 'Maintained by the worker. Mirrors the latest heartbeat.',
+    description: adminT('marmot:monitors:statusDescription'),
   },
   fields: [
     {
@@ -122,7 +123,7 @@ const statusGroup: Field = {
       type: 'date',
       admin: {
         date: { pickerAppearance: 'dayAndTime' },
-        description: 'Push monitors: time of the last call to the push endpoint.',
+        description: adminT('marmot:monitors:lastPushAtDescription'),
       },
     },
   ],
@@ -373,7 +374,7 @@ export const Monitors: CollectionConfig = {
       type: 'checkbox',
       defaultValue: true,
       index: true,
-      admin: { position: 'sidebar', description: 'Paused monitors are not checked.' },
+      admin: { position: 'sidebar', description: adminT('marmot:monitors:activeDescription') },
     },
     {
       name: 'parent',
@@ -384,13 +385,13 @@ export const Monitors: CollectionConfig = {
         if (id) where.push({ id: { not_equals: id } })
         return { and: where }
       },
-      admin: { position: 'sidebar', description: 'Group this monitor belongs to.' },
+      admin: { position: 'sidebar', description: adminT('marmot:monitors:parentDescription') },
     },
     { name: 'description', type: 'textarea' },
     {
       name: 'tags',
       type: 'array',
-      admin: { description: 'Tags (optionally with a value, e.g. env: prod) shown as chips.' },
+      admin: { description: adminT('marmot:monitors:tagsDescription') },
       fields: [
         {
           type: 'row',
@@ -416,14 +417,14 @@ export const Monitors: CollectionConfig = {
         data?.organization ? { organization: { equals: data.organization } } : true,
       admin: {
         position: 'sidebar',
-        description: 'Channels alerted when this monitor changes status.',
+        description: adminT('marmot:monitors:notificationsDescription'),
       },
     },
     {
       name: 'weight',
       type: 'number',
       defaultValue: 2000,
-      admin: { position: 'sidebar', description: 'Sort order on status pages.' },
+      admin: { position: 'sidebar', description: adminT('marmot:monitors:weightDescription') },
     },
 
     // ---- Target ---------------------------------------------------------------------------------
@@ -439,7 +440,7 @@ export const Monitors: CollectionConfig = {
       filterOptions: sameOrganization,
       admin: {
         condition: typeIn(HTTP_TYPES),
-        description: 'Send the request through this proxy (inactive proxies are skipped).',
+        description: adminT('marmot:monitors:proxyDescription'),
       },
     },
     {
@@ -456,7 +457,7 @@ export const Monitors: CollectionConfig = {
           name: 'dockerContainer',
           type: 'text',
           maxLength: 255,
-          admin: { description: 'Container name or id.' },
+          admin: { description: adminT('marmot:monitors:dockerContainerDescription') },
         },
       ],
     },
@@ -475,7 +476,7 @@ export const Monitors: CollectionConfig = {
           max: 65535,
           admin: {
             condition: typeIn(PORT_TYPES),
-            description: 'DNS monitors: port of the resolver (default 53).',
+            description: adminT('marmot:monitors:portDescription'),
           },
         },
       ],
@@ -491,7 +492,7 @@ export const Monitors: CollectionConfig = {
           required: true,
           defaultValue: 60,
           min: 1,
-          admin: { description: 'Seconds between checks (UI minimum 20).' },
+          admin: { description: adminT('marmot:monitors:intervalDescription') },
         },
         {
           name: 'retryInterval',
@@ -499,7 +500,7 @@ export const Monitors: CollectionConfig = {
           required: true,
           defaultValue: 60,
           min: 1,
-          admin: { description: 'Seconds between checks while pending (retrying).' },
+          admin: { description: adminT('marmot:monitors:retryIntervalDescription') },
         },
         {
           name: 'maxRetries',
@@ -507,7 +508,7 @@ export const Monitors: CollectionConfig = {
           required: true,
           defaultValue: 0,
           min: 0,
-          admin: { description: 'Retries before the monitor is marked DOWN.' },
+          admin: { description: adminT('marmot:monitors:maxRetriesDescription') },
         },
       ],
     },
@@ -520,7 +521,7 @@ export const Monitors: CollectionConfig = {
           required: true,
           defaultValue: 0,
           min: 0,
-          admin: { description: 'Re-notify every N consecutive DOWN beats (0 = never).' },
+          admin: { description: adminT('marmot:monitors:resendIntervalDescription') },
         },
         {
           name: 'timeout',
@@ -528,7 +529,7 @@ export const Monitors: CollectionConfig = {
           required: true,
           defaultValue: 48,
           min: 0,
-          admin: { description: 'Request timeout in seconds (0 = 80% of the interval).' },
+          admin: { description: adminT('marmot:monitors:timeoutDescription') },
         },
       ],
     },
@@ -536,7 +537,7 @@ export const Monitors: CollectionConfig = {
       name: 'upsideDown',
       type: 'checkbox',
       defaultValue: false,
-      admin: { description: 'Flip status: a failed check counts as UP and vice versa.' },
+      admin: { description: adminT('marmot:monitors:upsideDownDescription') },
     },
 
     // ---- HTTP -----------------------------------------------------------------------------------
@@ -571,14 +572,14 @@ export const Monitors: CollectionConfig = {
         {
           name: 'headers',
           type: 'textarea',
-          admin: { description: 'JSON object of extra request headers.' },
+          admin: { description: adminT('marmot:monitors:headersDescription') },
         },
         {
           name: 'acceptedStatusCodes',
           type: 'text',
           hasMany: true,
           defaultValue: ['200-299'],
-          admin: { description: 'Status codes or ranges counted as UP, e.g. 200-299, 304.' },
+          admin: { description: adminT('marmot:monitors:acceptedStatusCodesDescription') },
         },
         { name: 'ignoreTls', type: 'checkbox', defaultValue: false },
       ],
@@ -594,7 +595,7 @@ export const Monitors: CollectionConfig = {
           defaultValue: false,
           admin: {
             condition: typeIn(HTTP_TYPES),
-            description: 'Notify before the TLS certificate expires (tlsExpiryNotifyDays).',
+            description: adminT('marmot:monitors:expiryNotificationDescription'),
           },
         },
         {
@@ -603,7 +604,7 @@ export const Monitors: CollectionConfig = {
           defaultValue: false,
           admin: {
             condition: (data) => isDomainType(data),
-            description: 'Notify before the domain registration expires (domainExpiryNotifyDays).',
+            description: adminT('marmot:monitors:domainExpiryNotificationDescription'),
           },
         },
       ],
@@ -614,7 +615,7 @@ export const Monitors: CollectionConfig = {
       admin: {
         readOnly: true,
         condition: typeIn(HTTP_TYPES),
-        description: 'Maintained by the worker: TLS certificate seen by the last HTTPS check.',
+        description: adminT('marmot:monitors:certInfoDescription'),
       },
     },
     {
@@ -623,7 +624,7 @@ export const Monitors: CollectionConfig = {
       admin: {
         readOnly: true,
         condition: (data) => isDomainType(data),
-        description: 'Maintained by the worker: cached RDAP domain expiry lookup.',
+        description: adminT('marmot:monitors:domainExpiryDescription'),
       },
     },
     {
@@ -636,7 +637,7 @@ export const Monitors: CollectionConfig = {
           name: 'invertKeyword',
           type: 'checkbox',
           defaultValue: false,
-          admin: { description: 'UP when the keyword is absent.' },
+          admin: { description: adminT('marmot:monitors:invertKeywordDescription') },
         },
       ],
     },
@@ -648,7 +649,7 @@ export const Monitors: CollectionConfig = {
         {
           name: 'jsonPath',
           type: 'text',
-          admin: { description: 'JSONata expression, e.g. `$.status` or `data[0].ok`.' },
+          admin: { description: adminT('marmot:monitors:jsonPathDescription') },
         },
         {
           type: 'row',
@@ -749,7 +750,7 @@ export const Monitors: CollectionConfig = {
           name: 'dnsResolveServer',
           type: 'text',
           defaultValue: '1.1.1.1',
-          admin: { description: 'Comma-separated resolver IPs or hostnames.' },
+          admin: { description: adminT('marmot:monitors:dnsResolveServerDescription') },
         },
         {
           name: 'dnsResolveType',
@@ -767,7 +768,7 @@ export const Monitors: CollectionConfig = {
       index: true,
       admin: {
         condition: (data) => data?.type === 'push',
-        description: 'Generated automatically. Call /api/push/<token> to report a heartbeat.',
+        description: adminT('marmot:monitors:pushTokenDescription'),
       },
     },
 
@@ -793,8 +794,7 @@ export const Monitors: CollectionConfig = {
           name: 'databaseConnectionString',
           type: 'text',
           admin: {
-            description:
-              'Driver connection string, e.g. postgres://user:pass@host:5432/db, mysql://…, mongodb://…, redis://….',
+            description: adminT('marmot:monitors:databaseConnectionStringDescription'),
           },
         },
         {
@@ -802,8 +802,7 @@ export const Monitors: CollectionConfig = {
           type: 'textarea',
           admin: {
             condition: typeIn(['mysql', 'postgres', 'sqlserver', 'mongodb']),
-            description:
-              'SQL statement to run (default SELECT 1). MongoDB: JSON command document (default {"ping": 1}).',
+            description: adminT('marmot:monitors:databaseQueryDescription'),
           },
         },
       ],
@@ -835,7 +834,7 @@ export const Monitors: CollectionConfig = {
         {
           name: 'mqttSuccessMessage',
           type: 'text',
-          admin: { description: 'Keyword mode: the received message must contain this text.' },
+          admin: { description: adminT('marmot:monitors:mqttSuccessMessageDescription') },
         },
       ],
     },
@@ -850,7 +849,7 @@ export const Monitors: CollectionConfig = {
           name: 'kafkaProducerBrokers',
           type: 'text',
           hasMany: true,
-          admin: { description: 'Broker addresses, e.g. kafka1:9092.' },
+          admin: { description: adminT('marmot:monitors:kafkaProducerBrokersDescription') },
         },
         { name: 'kafkaProducerTopic', type: 'text' },
         { name: 'kafkaProducerMessage', type: 'textarea' },
@@ -869,8 +868,7 @@ export const Monitors: CollectionConfig = {
           name: 'kafkaProducerSaslOptions',
           type: 'textarea',
           admin: {
-            description:
-              'JSON object with mechanism (plain, scram-sha-256, scram-sha-512) and username/password.',
+            description: adminT('marmot:monitors:kafkaProducerSaslOptionsDescription'),
           },
         },
       ],
@@ -894,13 +892,17 @@ export const Monitors: CollectionConfig = {
         {
           name: 'grpcProtobuf',
           type: 'textarea',
-          admin: { description: 'Proto definition of the service.' },
+          admin: { description: adminT('marmot:monitors:grpcProtobufDescription') },
         },
-        { name: 'grpcBody', type: 'textarea', admin: { description: 'JSON request body.' } },
+        {
+          name: 'grpcBody',
+          type: 'textarea',
+          admin: { description: adminT('marmot:monitors:grpcBodyDescription') },
+        },
         {
           name: 'grpcMetadata',
           type: 'textarea',
-          admin: { description: 'JSON object of request metadata.' },
+          admin: { description: adminT('marmot:monitors:grpcMetadataDescription') },
         },
       ],
     },
@@ -1007,7 +1009,7 @@ export const Monitors: CollectionConfig = {
         {
           name: 'sftpPath',
           type: 'text',
-          admin: { description: 'Optional remote path that must exist.' },
+          admin: { description: adminT('marmot:monitors:sftpPathDescription') },
         },
       ],
     },
@@ -1022,7 +1024,7 @@ export const Monitors: CollectionConfig = {
           name: 'rabbitmqNodes',
           type: 'text',
           hasMany: true,
-          admin: { description: 'Management API base URLs, e.g. https://node1:15672.' },
+          admin: { description: adminT('marmot:monitors:rabbitmqNodesDescription') },
         },
         {
           type: 'row',
@@ -1042,13 +1044,15 @@ export const Monitors: CollectionConfig = {
         {
           name: 'wsSubprotocol',
           type: 'text',
-          admin: { description: 'Comma-separated Sec-WebSocket-Protocol values.' },
+          admin: { description: adminT('marmot:monitors:wsSubprotocolDescription') },
         },
         {
           name: 'wsIgnoreSecWebsocketAcceptHeader',
           type: 'checkbox',
           defaultValue: false,
-          admin: { description: 'Accept non-compliant servers that omit Sec-WebSocket-Accept.' },
+          admin: {
+            description: adminT('marmot:monitors:wsIgnoreSecWebsocketAcceptHeaderDescription'),
+          },
         },
       ],
     },
@@ -1058,12 +1062,16 @@ export const Monitors: CollectionConfig = {
       type: 'row',
       admin: { condition: (data) => data?.type === 'gamedig' },
       fields: [
-        { name: 'game', type: 'text', admin: { description: 'GameDig game id, e.g. minecraft.' } },
+        {
+          name: 'game',
+          type: 'text',
+          admin: { description: adminT('marmot:monitors:gameDescription') },
+        },
         {
           name: 'gamedigGivenPortOnly',
           type: 'checkbox',
           defaultValue: true,
-          admin: { description: 'Do not probe the other ports a game commonly uses.' },
+          admin: { description: adminT('marmot:monitors:gamedigGivenPortOnlyDescription') },
         },
       ],
     },
@@ -1075,7 +1083,7 @@ export const Monitors: CollectionConfig = {
       admin: {
         condition: (data) => data?.type === 'real-browser',
         placeholder: 'ws://browserless:3000',
-        description: 'Playwright-compatible remote browser websocket URL.',
+        description: adminT('marmot:monitors:remoteBrowserDescription'),
       },
     },
 

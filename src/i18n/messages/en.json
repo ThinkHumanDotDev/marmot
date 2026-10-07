@@ -1429,6 +1429,81 @@
       "saved": "Monitors updated",
       "loadFailed": "Could not load the monitors",
       "saveFailed": "Could not update the monitors"
+    },
+    "messages": {
+      "status": {
+        "up": "✅ Up",
+        "down": "🔴 Down",
+        "pending": "⚠️ Pending",
+        "maintenance": "🔧 Maintenance",
+        "test": "⚠️ Test"
+      },
+      "noMessage": "N/A",
+      "testNotification": "Test notification",
+      "testConfigured": "\"{channel}\" is configured correctly.",
+      "testing": "Testing",
+      "monitorNameUnavailable": "Monitor Name not available",
+      "timeLine": "Time: {time}",
+      "certificateExpiry": "[{name}][{address}] {certType} certificate {commonName} will expire in {count, plural, other {{days} days}}",
+      "noCommonName": "(no CN)",
+      "domainExpiry": "[{name}][{address}] Domain name {domain} will expire in {count, plural, other {{days} days}}"
     }
+  },
+  "email": {
+    "invitation": {
+      "subject": "You have been invited to {organization} on Marmot",
+      "intro": "You have been invited to join <strong>{organization}</strong> as <strong>{role}</strong>.",
+      "accept": "Accept the invitation",
+      "acceptLink": "Accept the invitation: {url}",
+      "expiresOn": "This link expires on {date}.",
+      "expiresSoon": "This link expires in 7 days.",
+      "unknownOrganization": "an organization"
+    },
+    "smtpTest": {
+      "subject": "Marmot test email",
+      "text": "This is a test message from Marmot ({url}). If you can read this, SMTP works."
+    }
+  },
+  "errors": {
+    "unauthorized": "You must be signed in.",
+    "forbidden": "Forbidden",
+    "invalidJson": "Request body must be JSON.",
+    "smtpNotConfigured": "SMTP is not configured. Set SMTP_HOST (and friends) and restart.",
+    "smtpSendFailed": "Sending failed: {error}",
+    "confirmEmail": "Type your email address to confirm.",
+    "soleOwner": "You are the only owner of {organizations}. Transfer ownership or delete the organization first.",
+    "enterPassword": "Enter your password.",
+    "passwordIncorrect": "Your password is incorrect.",
+    "enterCurrentPassword": "Enter your current password.",
+    "currentPasswordIncorrect": "Your current password is incorrect.",
+    "passwordTooShort": "The new password must be at least {min, number} characters.",
+    "twoFactorNotEnabled": "Two-factor authentication is not enabled.",
+    "enterTotpCode": "Enter the code from your authenticator app.",
+    "totpCodeRequired": "Enter a code from your authenticator app.",
+    "invalidCode": "That code is not valid.",
+    "linkedAccountNotFound": "Linked account not found.",
+    "lastSignInMethod": "This is the only way to sign in to your account. Set a password or link another account first.",
+    "onlyOwnersChangePermissions": "Only owners can change permissions.",
+    "userIdRequired": "userId is required.",
+    "memberNotFound": "Member not found.",
+    "invalidRole": "Invalid role.",
+    "cannotChangeRoles": "You cannot change roles in this organization.",
+    "cannotAssignHigherRole": "You cannot assign a role above your own.",
+    "onlyOwnerChangeRole": "This is the only owner. Transfer ownership before changing their role.",
+    "cannotRemoveMembers": "You cannot remove members from this organization.",
+    "cannotRemoveHigherRanked": "You cannot remove a member ranked above you.",
+    "onlyOwnerLeave": "You are the only owner. Transfer ownership before leaving.",
+    "onlyOwnerRemove": "This is the only owner. Transfer ownership before removing them.",
+    "onlyOwnerTransfers": "Only an owner can transfer ownership.",
+    "alreadyOwner": "You already own this organization.",
+    "invitationNotFound": "Invitation not found.",
+    "invitationTokenRequired": "Invitation token is required.",
+    "invitationExpired": "This invitation has expired.",
+    "invitationNotValid": "This invitation is {status, select, accepted {accepted} revoked {revoked} expired {expired} other {no longer valid}}.",
+    "signInToAcceptInvitation": "You must be logged in to accept an invitation.",
+    "invitationNotPending": "This invitation is {status, select, accepted {accepted} revoked {revoked} expired {expired} other {no longer pending}}.",
+    "inviteLinkInvalid": "This invite link is not valid.",
+    "cannotManageInviteLinks": "You cannot manage invite links in this organization.",
+    "cannotGrantHigherRole": "You cannot grant a role above your own."
   }
 }

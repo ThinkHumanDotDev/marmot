@@ -1,4 +1,4 @@
-import { APIError, type Payload, type PayloadRequest } from 'payload'
+import type { Payload, PayloadRequest } from 'payload'
 
 import { toMembershipData } from '@/access/memberships'
 import { canInOrg } from '@/access/overrides'
@@ -13,6 +13,7 @@ import {
 } from '@/access/permissions'
 
 import type { Media, User } from '@/payload-types'
+import { apiError } from '@/server/errors'
 
 /**
  * Organization membership management shared by the `/api/orgs/:orgId/members` route handlers and
@@ -95,10 +96,10 @@ async function loadMember(payload: Payload, orgId: OrgId, userId: OrgId, req?: P
       overrideAccess: true,
     })
   } catch {
-    throw new APIError('Member not found.', 404)
+    throw apiError('memberNotFound', 404)
   }
   const role = getUserRole(user, orgId)
-  if (!role) throw new APIError('Member not found.', 404)
+  if (!role) throw apiError('memberNotFound', 404)
   return { user, role }
 }
 
@@ -139,25 +140,22 @@ export async function changeMemberRole({
   role,
   req,
 }: MemberArgs & { role: unknown }): Promise<MemberSummary> {
-  if (!isRole(role)) throw new APIError('Invalid role.', 400)
+  if (!isRole(role)) throw apiError('invalidRole', 400)
   if (!(await canInOrg(payload, actor, orgId, 'member:update-role'))) {
-    throw new APIError('You cannot change roles in this organization.', 403)
+    throw apiError('cannotChangeRoles', 403)
   }
   const manager = actorRole(actor, orgId) as Role
   const { user, role: current } = await loadMember(payload, orgId, userId, req)
 
   if (!canManageRole(manager, current) || !canManageRole(manager, role)) {
-    throw new APIError('You cannot assign a role above your own.', 403)
+    throw apiError('cannotAssignHigherRole', 403)
   }
   if (current === role) return summarize(user, role)
 
   if (current === 'owner') {
     const owners = countOwners(await listOrgMembers(payload, orgId, { req }))
     if (owners <= 1) {
-      throw new APIError(
-        'This is the only owner. Transfer ownership before changing their role.',
-        409,
-      )
+      throw apiError('onlyOwnerChangeRole', 409)
     }
   }
 
@@ -178,22 +176,17 @@ export async function removeMember({ payload, actor, orgId, userId, req }: Membe
 
   if (!self) {
     if (!(await canInOrg(payload, actor, orgId, 'member:remove'))) {
-      throw new APIError('You cannot remove members from this organization.', 403)
+      throw apiError('cannotRemoveMembers', 403)
     }
     if (!canManageRole(actorRole(actor, orgId) as Role, current)) {
-      throw new APIError('You cannot remove a member ranked above you.', 403)
+      throw apiError('cannotRemoveHigherRanked', 403)
     }
   }
 
   if (current === 'owner') {
     const owners = countOwners(await listOrgMembers(payload, orgId, { req }))
     if (owners <= 1) {
-      throw new APIError(
-        self
-          ? 'You are the only owner. Transfer ownership before leaving.'
-          : 'This is the only owner. Transfer ownership before removing them.',
-        409,
-      )
+      throw apiError(self ? 'onlyOwnerLeave' : 'onlyOwnerRemove', 409)
     }
   }
 
@@ -208,9 +201,9 @@ export async function removeMember({ payload, actor, orgId, userId, req }: Membe
  */
 export async function transferOwnership({ payload, actor, orgId, userId, req }: MemberArgs) {
   if (actorRole(actor, orgId) !== 'owner') {
-    throw new APIError('Only an owner can transfer ownership.', 403)
+    throw apiError('onlyOwnerTransfers', 403)
   }
-  if (same(actor.id, userId)) throw new APIError('You already own this organization.', 400)
+  if (same(actor.id, userId)) throw apiError('alreadyOwner', 400)
 
   const target = await loadMember(payload, orgId, userId, req)
   if (target.role !== 'owner') {

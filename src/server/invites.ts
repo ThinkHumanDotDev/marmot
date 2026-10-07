@@ -1,4 +1,4 @@
-import { APIError, type Payload, type PayloadRequest } from 'payload'
+import type { Payload, PayloadRequest } from 'payload'
 
 import { addOrgMembership } from '@/access/memberships'
 import { canInOrg } from '@/access/overrides'
@@ -16,6 +16,7 @@ import { generateInviteLinkToken } from '@/collections/Organizations'
 import { env } from '@/env'
 
 import type { Organization } from '@/payload-types'
+import { apiError } from '@/server/errors'
 
 /**
  * `/invite/<code>` accepts two kinds of secrets: a personal invitation token (emailed, single use)
@@ -110,7 +111,7 @@ export async function acceptInviteCode({
   req?: PayloadRequest
 }): Promise<{ organization: InviteOrganization; role: Role }> {
   const resolved = await resolveInviteCode(payload, code, req)
-  if (!resolved) throw new APIError('This invite link is not valid.', 404)
+  if (!resolved) throw apiError('inviteLinkInvalid', 404)
 
   if (resolved.kind === 'invitation') {
     const result = await acceptInvitation({ payload, token: code, user, req })
@@ -148,13 +149,13 @@ export async function regenerateInviteLink({
   req?: PayloadRequest
 }): Promise<{ url: string; role: Role }> {
   if (!(await canInOrg(payload, actor, orgId, 'member:invite'))) {
-    throw new APIError('You cannot manage invite links in this organization.', 403)
+    throw apiError('cannotManageInviteLinks', 403)
   }
   const nextRole = role === undefined ? undefined : isRole(role) ? role : null
-  if (nextRole === null) throw new APIError('Invalid role.', 400)
+  if (nextRole === null) throw apiError('invalidRole', 400)
   const actorRole = isSuperadmin(actor) ? 'owner' : getUserRole(actor, orgId)
   if (nextRole && (!actorRole || !canManageRole(actorRole, nextRole))) {
-    throw new APIError('You cannot grant a role above your own.', 403)
+    throw apiError('cannotGrantHigherRole', 403)
   }
 
   const token = generateInviteLinkToken()
@@ -185,7 +186,7 @@ export async function disableInviteLink({
   req?: PayloadRequest
 }): Promise<void> {
   if (!(await canInOrg(payload, actor, orgId, 'member:invite'))) {
-    throw new APIError('You cannot manage invite links in this organization.', 403)
+    throw apiError('cannotManageInviteLinks', 403)
   }
   await payload.update({
     collection: 'organizations',

@@ -1,5 +1,7 @@
 import type { Access, CollectionConfig } from 'payload'
 
+import { adminT } from '@/i18n/admin'
+
 /**
  * Shared definition of the three time-series aggregate collections
  * (`stat-minutely`, `stat-hourly`, `stat-daily`). One row per `(monitor, bucket timestamp)`.
@@ -13,23 +15,22 @@ const localApiOnly: Access = () => false
 
 export type StatCollectionSlug = 'stat-minutely' | 'stat-hourly' | 'stat-daily'
 
+export type StatBucket = 'minute' | 'hour' | 'day'
+
 export type StatCollectionOptions = {
   slug: StatCollectionSlug
-  label: string
-  bucket: string
+  /** Bucket size; also selects the admin labels (`marmot:stats:<bucket>:*` in `src/i18n/admin.ts`). */
+  bucket: StatBucket
 }
 
-export function buildStatCollection({
-  slug,
-  label,
-  bucket,
-}: StatCollectionOptions): CollectionConfig {
+export function buildStatCollection({ slug, bucket }: StatCollectionOptions): CollectionConfig {
+  const label = adminT(`marmot:stats:${bucket}:label`)
   return {
     slug,
     labels: { singular: label, plural: label },
     admin: {
       group: 'Statistics',
-      description: `Per-monitor heartbeat aggregates, one row per ${bucket}.`,
+      description: adminT(`marmot:stats:${bucket}:description`),
       defaultColumns: ['monitor', 'timestamp', 'up', 'down', 'ping'],
       hideAPIURL: true,
     },
@@ -63,17 +64,21 @@ export function buildStatCollection({
         type: 'number',
         required: true,
         index: true,
-        admin: { description: `Unix seconds, truncated to the start of the ${bucket} (UTC).` },
+        admin: { description: adminT(`marmot:stats:${bucket}:timestampDescription`) },
       },
       { name: 'up', type: 'number', required: true, defaultValue: 0 },
       { name: 'down', type: 'number', required: true, defaultValue: 0 },
-      { name: 'ping', type: 'number', admin: { description: 'Average ping (ms) of UP beats.' } },
+      {
+        name: 'ping',
+        type: 'number',
+        admin: { description: adminT('marmot:stats:pingDescription') },
+      },
       { name: 'pingMin', type: 'number' },
       { name: 'pingMax', type: 'number' },
       {
         name: 'extras',
         type: 'json',
-        admin: { description: 'Additional counters, e.g. { maintenance, pingCount }.' },
+        admin: { description: adminT('marmot:stats:extrasDescription') },
       },
     ],
   }

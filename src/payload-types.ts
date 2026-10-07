@@ -169,30 +169,12 @@ export interface User {
   id: number;
   name?: string | null;
   avatar?: (number | null) | Media;
-  /**
-   * Instance administrator: can access the Payload admin panel and every organization.
-   */
   superadmin?: boolean | null;
-  /**
-   * How the account was created: password signup, the OIDC client, a social OAuth provider or SAML.
-   */
   authProvider?: ('local' | 'oidc' | 'oauth' | 'saml') | null;
-  /**
-   * Legacy: identities now live in Auth accounts.
-   */
   oidcIssuer?: string | null;
-  /**
-   * Legacy `sub` claim; identities now live in Auth accounts.
-   */
   oidcSubject?: string | null;
-  /**
-   * Colour scheme preference, applied on every device after sign-in.
-   */
   theme?: ('system' | 'light' | 'dark') | null;
   language?: 'en' | null;
-  /**
-   * Managed from Settings → Account → Two-factor authentication.
-   */
   twoFactorEnabled?: boolean | null;
   twoFactorVerifiedAt?: string | null;
   twoFactorSecret?: string | null;
@@ -260,32 +242,14 @@ export interface Media {
 export interface Organization {
   id: number;
   name: string;
-  /**
-   * Lowercase letters, numbers and hyphens. Used in URLs.
-   */
   slug: string;
   logo?: (number | null) | Media;
-  /**
-   * Self-hosted installs are unlimited regardless of plan.
-   */
   plan?: ('free' | 'team' | 'pro' | 'enterprise') | null;
-  /**
-   * Maintained by Stripe webhooks when billing is enabled.
-   */
   subscriptionStatus?: ('none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid') | null;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
-  /**
-   * Secret of the shareable invite link. Regenerate from the members page.
-   */
   inviteLinkToken?: string | null;
-  /**
-   * Role granted to people who join through the invite link.
-   */
   inviteLinkRole?: ('owner' | 'admin' | 'member' | 'viewer') | null;
-  /**
-   * Per-organization minimum roles, e.g. { "monitor:create": "admin" }. Unset permissions use the defaults in src/access/permissions.ts.
-   */
   permissionOverrides?:
     | {
         [k: string]: unknown;
@@ -295,14 +259,8 @@ export interface Organization {
     | number
     | boolean
     | null;
-  /**
-   * Require single sign-on: password logins are refused for users on this organization's verified domains. Owners keep a break-glass password login (audited).
-   */
   enforceSso?: boolean | null;
   settings?: {
-    /**
-     * IANA time zone, e.g. Europe/London.
-     */
     timezone?: string | null;
     weekStart?: ('monday' | 'sunday') | null;
     language?: 'en' | null;
@@ -311,8 +269,6 @@ export interface Organization {
   createdAt: string;
 }
 /**
- * Single sign-on identities linked to users. Managed by the login flows.
- *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "auth-accounts".
  */
@@ -343,53 +299,20 @@ export interface AuthAccount {
 export interface SsoConnection {
   id: number;
   organization: number | Organization;
-  /**
-   * Login button label.
-   */
   name: string;
-  /**
-   * Used in the login URLs; lowercase letters, numbers and hyphens.
-   */
   slug: string;
   type: 'oidc' | 'saml';
-  /**
-   * Disabled connections refuse logins.
-   */
   enabled?: boolean | null;
-  /**
-   * Issuer identifier (the `iss` claim); discovery is read from it.
-   */
   issuerUrl?: string | null;
   clientId?: string | null;
-  /**
-   * Sealed at rest. Leave empty to keep the current secret.
-   */
   clientSecret?: string | null;
   scopes?: string | null;
-  /**
-   * IdP single sign-on URL (HTTP-Redirect binding).
-   */
   idpEntryPoint?: string | null;
-  /**
-   * IdP entity id (issuer). Responses from any other issuer are refused.
-   */
   idpEntityId?: string | null;
-  /**
-   * IdP signing certificate (PEM or bare base64).
-   */
   idpCert?: string | null;
   wantAssertionsSigned?: boolean | null;
-  /**
-   * Accept logins started at the identity provider (unsolicited responses).
-   */
   allowIdpInitiated?: boolean | null;
-  /**
-   * Create a Marmot account on first login and add it to the organization.
-   */
   autoProvision?: boolean | null;
-  /**
-   * Role given to users who join through SSO.
-   */
   defaultRole?: ('admin' | 'member' | 'viewer') | null;
   updatedAt: string;
   createdAt: string;
@@ -402,9 +325,6 @@ export interface SsoDomain {
   id: number;
   organization: number | Organization;
   domain: string;
-  /**
-   * Value of the DNS TXT record that proves ownership.
-   */
   verificationToken: string;
   verifiedAt?: string | null;
   updatedAt: string;
@@ -419,9 +339,6 @@ export interface Invitation {
   organization: number | Organization;
   email: string;
   role: 'owner' | 'admin' | 'member' | 'viewer';
-  /**
-   * Generated on create.
-   */
   token?: string | null;
   status?: ('pending' | 'accepted' | 'revoked' | 'expired') | null;
   expiresAt?: string | null;
@@ -467,18 +384,9 @@ export interface Monitor {
     | 'redis'
     | 'steam'
     | 'gamedig';
-  /**
-   * Paused monitors are not checked.
-   */
   active?: boolean | null;
-  /**
-   * Group this monitor belongs to.
-   */
   parent?: (number | null) | Monitor;
   description?: string | null;
-  /**
-   * Tags (optionally with a value, e.g. env: prod) shown as chips.
-   */
   tags?:
     | {
         tag: number | Tag;
@@ -486,77 +394,29 @@ export interface Monitor {
         id?: string | null;
       }[]
     | null;
-  /**
-   * Channels alerted when this monitor changes status.
-   */
   notifications?: (number | Notification)[] | null;
-  /**
-   * Sort order on status pages.
-   */
   weight?: number | null;
   url?: string | null;
-  /**
-   * Send the request through this proxy (inactive proxies are skipped).
-   */
   proxy?: (number | null) | MonitorProxy;
   dockerHost?: (number | null) | DockerHost;
-  /**
-   * Container name or id.
-   */
   dockerContainer?: string | null;
   hostname?: string | null;
-  /**
-   * DNS monitors: port of the resolver (default 53).
-   */
   port?: number | null;
-  /**
-   * Seconds between checks (UI minimum 20).
-   */
   interval: number;
-  /**
-   * Seconds between checks while pending (retrying).
-   */
   retryInterval: number;
-  /**
-   * Retries before the monitor is marked DOWN.
-   */
   maxRetries: number;
-  /**
-   * Re-notify every N consecutive DOWN beats (0 = never).
-   */
   resendInterval: number;
-  /**
-   * Request timeout in seconds (0 = 80% of the interval).
-   */
   timeout: number;
-  /**
-   * Flip status: a failed check counts as UP and vice versa.
-   */
   upsideDown?: boolean | null;
   method?: ('GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS') | null;
   httpBodyEncoding?: ('json' | 'form' | 'xml') | null;
   maxRedirects?: number | null;
   body?: string | null;
-  /**
-   * JSON object of extra request headers.
-   */
   headers?: string | null;
-  /**
-   * Status codes or ranges counted as UP, e.g. 200-299, 304.
-   */
   acceptedStatusCodes?: string[] | null;
   ignoreTls?: boolean | null;
-  /**
-   * Notify before the TLS certificate expires (tlsExpiryNotifyDays).
-   */
   expiryNotification?: boolean | null;
-  /**
-   * Notify before the domain registration expires (domainExpiryNotifyDays).
-   */
   domainExpiryNotification?: boolean | null;
-  /**
-   * Maintained by the worker: TLS certificate seen by the last HTTPS check.
-   */
   certInfo?:
     | {
         [k: string]: unknown;
@@ -566,9 +426,6 @@ export interface Monitor {
     | number
     | boolean
     | null;
-  /**
-   * Maintained by the worker: cached RDAP domain expiry lookup.
-   */
   domainExpiry?:
     | {
         [k: string]: unknown;
@@ -579,13 +436,7 @@ export interface Monitor {
     | boolean
     | null;
   keyword?: string | null;
-  /**
-   * UP when the keyword is absent.
-   */
   invertKeyword?: boolean | null;
-  /**
-   * JSONata expression, e.g. `$.status` or `data[0].ok`.
-   */
   jsonPath?: string | null;
   jsonPathOperator?: ('==' | '!=' | '<' | '>' | '<=' | '>=' | 'contains') | null;
   expectedValue?: string | null;
@@ -603,59 +454,29 @@ export interface Monitor {
   tlsCert?: string | null;
   tlsKey?: string | null;
   tlsCa?: string | null;
-  /**
-   * Comma-separated resolver IPs or hostnames.
-   */
   dnsResolveServer?: string | null;
   dnsResolveType?: ('A' | 'AAAA' | 'CAA' | 'CNAME' | 'MX' | 'NS' | 'PTR' | 'SOA' | 'SRV' | 'TXT') | null;
-  /**
-   * Generated automatically. Call /api/push/<token> to report a heartbeat.
-   */
   pushToken?: string | null;
   manualStatus?: ('up' | 'down' | 'pending') | null;
-  /**
-   * Driver connection string, e.g. postgres://user:pass@host:5432/db, mysql://…, mongodb://…, redis://….
-   */
   databaseConnectionString?: string | null;
-  /**
-   * SQL statement to run (default SELECT 1). MongoDB: JSON command document (default {"ping": 1}).
-   */
   databaseQuery?: string | null;
   mqttTopic?: string | null;
   mqttUsername?: string | null;
   mqttPassword?: string | null;
   mqttCheckType?: ('keyword' | 'json-query') | null;
-  /**
-   * Keyword mode: the received message must contain this text.
-   */
   mqttSuccessMessage?: string | null;
-  /**
-   * Broker addresses, e.g. kafka1:9092.
-   */
   kafkaProducerBrokers?: string[] | null;
   kafkaProducerTopic?: string | null;
   kafkaProducerMessage?: string | null;
   kafkaProducerSsl?: boolean | null;
   kafkaProducerAllowAutoTopicCreation?: boolean | null;
-  /**
-   * JSON object with mechanism (plain, scram-sha-256, scram-sha-512) and username/password.
-   */
   kafkaProducerSaslOptions?: string | null;
   grpcUrl?: string | null;
   grpcServiceName?: string | null;
   grpcMethod?: string | null;
   grpcEnableTls?: boolean | null;
-  /**
-   * Proto definition of the service.
-   */
   grpcProtobuf?: string | null;
-  /**
-   * JSON request body.
-   */
   grpcBody?: string | null;
-  /**
-   * JSON object of request metadata.
-   */
   grpcMetadata?: string | null;
   radiusUsername?: string | null;
   radiusPassword?: string | null;
@@ -671,39 +492,15 @@ export interface Monitor {
   sshPassword?: string | null;
   sshPrivateKey?: string | null;
   sshPassphrase?: string | null;
-  /**
-   * Optional remote path that must exist.
-   */
   sftpPath?: string | null;
-  /**
-   * Management API base URLs, e.g. https://node1:15672.
-   */
   rabbitmqNodes?: string[] | null;
   rabbitmqUsername?: string | null;
   rabbitmqPassword?: string | null;
-  /**
-   * Comma-separated Sec-WebSocket-Protocol values.
-   */
   wsSubprotocol?: string | null;
-  /**
-   * Accept non-compliant servers that omit Sec-WebSocket-Accept.
-   */
   wsIgnoreSecWebsocketAcceptHeader?: boolean | null;
-  /**
-   * GameDig game id, e.g. minecraft.
-   */
   game?: string | null;
-  /**
-   * Do not probe the other ports a game commonly uses.
-   */
   gamedigGivenPortOnly?: boolean | null;
-  /**
-   * Playwright-compatible remote browser websocket URL.
-   */
   remoteBrowser?: string | null;
-  /**
-   * Maintained by the worker. Mirrors the latest heartbeat.
-   */
   status?: {
     lastStatus?: ('up' | 'down' | 'pending' | 'maintenance') | null;
     lastCheckAt?: string | null;
@@ -711,9 +508,6 @@ export interface Monitor {
     lastMsg?: string | null;
     retries?: number | null;
     downCount?: number | null;
-    /**
-     * Push monitors: time of the last call to the push endpoint.
-     */
     lastPushAt?: string | null;
   };
   updatedAt: string;
@@ -727,9 +521,6 @@ export interface Tag {
   id: number;
   organization: number | Organization;
   name: string;
-  /**
-   * Hex colour of the chip, e.g. #2563EB.
-   */
   color: string;
   updatedAt: string;
   createdAt: string;
@@ -742,13 +533,7 @@ export interface Notification {
   id: number;
   organization: number | Organization;
   name: string;
-  /**
-   * Provider slug, e.g. discord, slack, smtp (see docs/Notifications.md).
-   */
   type: string;
-  /**
-   * Provider-specific settings; validated against the provider schema.
-   */
   config:
     | {
         [k: string]: unknown;
@@ -758,25 +543,10 @@ export interface Notification {
     | number
     | boolean
     | null;
-  /**
-   * Attach this channel to every new monitor of the organization.
-   */
   isDefault?: boolean | null;
-  /**
-   * On save, also attach this channel to all existing monitors.
-   */
   applyExisting?: boolean | null;
-  /**
-   * Inactive channels are never sent to.
-   */
   active?: boolean | null;
-  /**
-   * Maintained by the worker.
-   */
   lastSentAt?: string | null;
-  /**
-   * Last delivery error; cleared on the next success.
-   */
   lastError?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -791,22 +561,10 @@ export interface MonitorProxy {
   protocol: 'http' | 'https' | 'socks' | 'socks5' | 'socks5h' | 'socks4';
   host: string;
   port: number;
-  /**
-   * The proxy requires a username and password.
-   */
   auth?: boolean | null;
   username?: string | null;
-  /**
-   * Only visible to users who may edit proxies.
-   */
   password?: string | null;
-  /**
-   * Inactive proxies are ignored: monitors connect directly.
-   */
   active?: boolean | null;
-  /**
-   * Preselected for new HTTP monitors. One per organization.
-   */
   default?: boolean | null;
   updatedAt: string;
   createdAt: string;
@@ -820,34 +578,20 @@ export interface DockerHost {
   organization: number | Organization;
   name: string;
   connectionType: 'socket' | 'tcp';
-  /**
-   * Unix socket of the Docker daemon, as seen by the worker.
-   */
   socketPath?: string | null;
-  /**
-   * tcp:// and http:// connect in plain text; https:// uses TLS.
-   */
   url?: string | null;
   updatedAt: string;
   createdAt: string;
 }
 /**
- * Expiry warnings already sent per monitor and threshold. Maintained by the worker.
- *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "notification-sent-history".
  */
 export interface NotificationSentHistory {
   id: number;
-  /**
-   * Denormalised from the monitor for org-scoped queries.
-   */
   organization?: (number | null) | Organization;
   monitor: number | Monitor;
   type: 'certificate' | 'domain';
-  /**
-   * Threshold (days before expiry) the warning was sent for.
-   */
   days: number;
   updatedAt: string;
   createdAt: string;
@@ -859,31 +603,17 @@ export interface NotificationSentHistory {
 export interface Heartbeat {
   id: number;
   monitor: number | Monitor;
-  /**
-   * Denormalised from the monitor for org-scoped queries.
-   */
   organization?: (number | null) | Organization;
   status: 'up' | 'down' | 'pending' | 'maintenance';
   msg?: string | null;
-  /**
-   * Response time in milliseconds (null when not measured).
-   */
   ping?: number | null;
-  /**
-   * Seconds since the previous heartbeat of this monitor.
-   */
   duration?: number | null;
-  /**
-   * True when the status changed compared to the previous heartbeat.
-   */
   important?: boolean | null;
   retries?: number | null;
   downCount?: number | null;
   time: string;
 }
 /**
- * Per-monitor heartbeat aggregates, one row per minute.
- *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "stat-minutely".
  */
@@ -891,21 +621,12 @@ export interface StatMinutely {
   id: number;
   monitor: number | Monitor;
   organization: number | Organization;
-  /**
-   * Unix seconds, truncated to the start of the minute (UTC).
-   */
   timestamp: number;
   up: number;
   down: number;
-  /**
-   * Average ping (ms) of UP beats.
-   */
   ping?: number | null;
   pingMin?: number | null;
   pingMax?: number | null;
-  /**
-   * Additional counters, e.g. { maintenance, pingCount }.
-   */
   extras?:
     | {
         [k: string]: unknown;
@@ -917,8 +638,6 @@ export interface StatMinutely {
     | null;
 }
 /**
- * Per-monitor heartbeat aggregates, one row per hour.
- *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "stat-hourly".
  */
@@ -926,21 +645,12 @@ export interface StatHourly {
   id: number;
   monitor: number | Monitor;
   organization: number | Organization;
-  /**
-   * Unix seconds, truncated to the start of the hour (UTC).
-   */
   timestamp: number;
   up: number;
   down: number;
-  /**
-   * Average ping (ms) of UP beats.
-   */
   ping?: number | null;
   pingMin?: number | null;
   pingMax?: number | null;
-  /**
-   * Additional counters, e.g. { maintenance, pingCount }.
-   */
   extras?:
     | {
         [k: string]: unknown;
@@ -952,8 +662,6 @@ export interface StatHourly {
     | null;
 }
 /**
- * Per-monitor heartbeat aggregates, one row per day.
- *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "stat-daily".
  */
@@ -961,21 +669,12 @@ export interface StatDaily {
   id: number;
   monitor: number | Monitor;
   organization: number | Organization;
-  /**
-   * Unix seconds, truncated to the start of the day (UTC).
-   */
   timestamp: number;
   up: number;
   down: number;
-  /**
-   * Average ping (ms) of UP beats.
-   */
   ping?: number | null;
   pingMin?: number | null;
   pingMax?: number | null;
-  /**
-   * Additional counters, e.g. { maintenance, pingCount }.
-   */
   extras?:
     | {
         [k: string]: unknown;
@@ -994,57 +693,33 @@ export interface StatusPage {
   id: number;
   organization: number | Organization;
   title: string;
-  /**
-   * Public URL: /status/<slug>. Lowercase letters, numbers, hyphens.
-   */
   slug: string;
   description?: string | null;
   logo?: (number | null) | Media;
   theme?: ('auto' | 'light' | 'dark') | null;
   language?: ('auto' | 'en') | null;
-  /**
-   * Unpublished pages return 404 to visitors.
-   */
   published?: boolean | null;
   searchEngineIndex?: boolean | null;
   showTags?: boolean | null;
   showCertificateExpiry?: boolean | null;
   showPoweredBy?: boolean | null;
-  /**
-   * Seconds between client refreshes; 0 disables auto refresh.
-   */
   autoRefreshInterval?: number | null;
   footerText?: string | null;
-  /**
-   * Injected into the public page as a <style> tag.
-   */
   customCSS?: string | null;
   googleAnalyticsId?: string | null;
-  /**
-   * Custom hostnames that serve this page at their root (CNAME them to this server).
-   */
   domains?:
     | {
         hostname: string;
         id?: string | null;
       }[]
     | null;
-  /**
-   * Monitors are shown in these groups, in this order.
-   */
   groups?:
     | {
         name: string;
         monitors?:
           | {
               monitor: number | Monitor;
-              /**
-               * Show the monitor's URL to visitors.
-               */
               sendUrl?: boolean | null;
-              /**
-               * Link visitors to this URL instead.
-               */
               customUrl?: string | null;
               id?: string | null;
             }[]
@@ -1061,24 +736,12 @@ export interface StatusPage {
  */
 export interface Incident {
   id: number;
-  /**
-   * Derived from the status page.
-   */
   organization: number | Organization;
   statusPage: number | StatusPage;
   title: string;
-  /**
-   * Markdown: paragraphs, **bold**, _italics_, `code` and links.
-   */
   content?: string | null;
   style?: ('info' | 'warning' | 'danger' | 'primary') | null;
-  /**
-   * Pinned incidents are shown above the monitor groups.
-   */
   pinned?: boolean | null;
-  /**
-   * Uncheck to resolve the incident.
-   */
   active?: boolean | null;
   resolvedAt?: string | null;
   updatedAt: string;
@@ -1092,45 +755,21 @@ export interface Maintenance {
   id: number;
   organization: number | Organization;
   title: string;
-  /**
-   * Shown on status pages.
-   */
   description?: string | null;
   strategy: 'manual' | 'single' | 'recurring-interval' | 'recurring-weekday' | 'recurring-day-of-month' | 'cron';
-  /**
-   * IANA time zone the schedule is written in, or SAME_AS_SERVER for the organization's zone.
-   */
   timezone?: string | null;
-  /**
-   * Paused maintenances never run.
-   */
   active?: boolean | null;
-  /**
-   * Maintained by the server; recomputed every minute.
-   */
   status?: ('inactive' | 'scheduled' | 'under-maintenance' | 'ended' | 'unknown') | null;
-  /**
-   * Single window: when it runs. Recurring/cron: optional effective range. Wall-clock in the time zone above (YYYY-MM-DDTHH:mm).
-   */
   dateRange?: {
     start?: string | null;
     end?: string | null;
   };
-  /**
-   * Daily window (HH:mm); an end before the start runs past midnight.
-   */
   timeRange?: {
     start?: string | null;
     end?: string | null;
   };
-  /**
-   * Run every N days, counted from the start date.
-   */
   intervalDay?: number | null;
   weekdays?: ('1' | '2' | '3' | '4' | '5' | '6' | '0')[] | null;
-  /**
-   * Only "Last day of the month" has a cron equivalent; 2nd–4th last are ignored.
-   */
   daysOfMonth?:
     | (
         | '1'
@@ -1170,21 +809,9 @@ export interface Maintenance {
         | 'lastDay4'
       )[]
     | null;
-  /**
-   * Five-field cron expression, evaluated in the time zone.
-   */
   cron?: string | null;
-  /**
-   * Minutes each occurrence lasts.
-   */
   duration?: number | null;
-  /**
-   * Affected monitors: checks are skipped and MAINTENANCE heartbeats written.
-   */
   monitors?: (number | Monitor)[] | null;
-  /**
-   * Status pages that announce this maintenance.
-   */
   statusPages?: (number | StatusPage)[] | null;
   updatedAt: string;
   createdAt: string;
@@ -1197,21 +824,9 @@ export interface ApiKey {
   id: number;
   organization: number | Organization;
   name: string;
-  /**
-   * SHA-256 of the plaintext key.
-   */
   keyHash: string;
-  /**
-   * Public identifier shown in the UI (mk_<prefix>).
-   */
   prefix: string;
-  /**
-   * Disabled keys are rejected.
-   */
   active?: boolean | null;
-  /**
-   * Leave empty for a key that never expires.
-   */
   expiresAt?: string | null;
   lastUsedAt?: string | null;
   createdBy?: (number | null) | User;
@@ -1219,8 +834,6 @@ export interface ApiKey {
   createdAt: string;
 }
 /**
- * Security-relevant events. Rows are written by the server and cannot be edited.
- *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "audit-logs".
  */
@@ -1229,9 +842,6 @@ export interface AuditLog {
   action: string;
   actor?: (number | null) | User;
   organization?: (number | null) | Organization;
-  /**
-   * Affected record, e.g. user:42.
-   */
   target?: string | null;
   ip?: string | null;
   userAgent?: string | null;

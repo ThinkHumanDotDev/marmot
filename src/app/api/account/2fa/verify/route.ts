@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
  */
 export const POST = withErrors(async (request: Request) => {
   const { payload, user } = await getRequestContext(request)
-  if (!user) return unauthorized()
+  if (!user) return unauthorized(request)
   const { code } = await readJson<{ code?: unknown }>(request)
   const { backupCodes } = await confirmTwoFactorSetup(payload, user.id, requireCode(code))
   return Response.json({ enabled: true, backupCodes }, { headers: { 'Cache-Control': 'no-store' } })

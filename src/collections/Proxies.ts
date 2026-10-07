@@ -11,6 +11,7 @@ import type { MonitorProxy } from '@/payload-types'
 import { literalTargetDenial } from '@/server/security/outbound-guard'
 
 import { detachMonitorRelation, relId, secretReadAccess } from './shared'
+import { adminT } from '@/i18n/admin'
 
 /** Trim the host and drop credentials when authentication is off. */
 const normalize: CollectionBeforeValidateHook<MonitorProxy> = ({ data, originalDoc }) => {
@@ -117,7 +118,7 @@ export const Proxies: CollectionConfig = {
       name: 'auth',
       type: 'checkbox',
       defaultValue: false,
-      admin: { description: 'The proxy requires a username and password.' },
+      admin: { description: adminT('marmot:proxies:authDescription') },
     },
     {
       type: 'row',
@@ -129,7 +130,7 @@ export const Proxies: CollectionConfig = {
           type: 'text',
           maxLength: 500,
           access: { read: secretReadAccess('proxy:update') },
-          admin: { description: 'Only visible to users who may edit proxies.' },
+          admin: { description: adminT('marmot:proxies:passwordDescription') },
         },
       ],
     },
@@ -139,7 +140,7 @@ export const Proxies: CollectionConfig = {
       defaultValue: true,
       admin: {
         position: 'sidebar',
-        description: 'Inactive proxies are ignored: monitors connect directly.',
+        description: adminT('marmot:proxies:activeDescription'),
       },
     },
     {
@@ -149,7 +150,7 @@ export const Proxies: CollectionConfig = {
       index: true,
       admin: {
         position: 'sidebar',
-        description: 'Preselected for new HTTP monitors. One per organization.',
+        description: adminT('marmot:proxies:defaultDescription'),
       },
     },
   ],

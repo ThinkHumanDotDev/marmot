@@ -91,7 +91,7 @@ registerNotificationProvider({
   docsUrl: 'https://api.slack.com/messaging/webhooks',
   configSchema: slackConfigSchema,
   fieldMeta: slackFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = slackConfigSchema.parse(raw)
     let msg = message
     if (config.channelNotify) msg += ' <!channel>'
@@ -108,7 +108,7 @@ registerNotificationProvider({
     }
 
     if (config.useTemplate && config.template?.trim()) {
-      const text = renderMessageTemplate(config.template.trim(), msg, monitor, heartbeat)
+      const text = renderMessageTemplate(config.template.trim(), msg, monitor, heartbeat, locale)
       await postJson(config.webhookUrl, { ...base, text })
       return OK_MESSAGE
     }

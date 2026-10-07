@@ -1,5 +1,3 @@
-import { APIError } from 'payload'
-
 import {
   getTwoFactorStatus,
   regenerateBackupCodes,
@@ -8,13 +6,14 @@ import {
 import { getRequestContext, readJson, unauthorized, withErrors } from '@/server/http'
 
 import { requireCode } from '../shared'
+import { apiError } from '@/server/errors'
 
 export const dynamic = 'force-dynamic'
 
 /** GET /api/account/2fa/backup-codes → `{ enabled, verifiedAt, backupCodesRemaining }` */
 export const GET = withErrors(async (request: Request) => {
   const { payload, user } = await getRequestContext(request)
-  if (!user) return unauthorized()
+  if (!user) return unauthorized(request)
   return Response.json(await getTwoFactorStatus(payload, user.id), {
     headers: { 'Cache-Control': 'no-store' },
   })
@@ -27,13 +26,13 @@ export const GET = withErrors(async (request: Request) => {
  */
 export const POST = withErrors(async (request: Request) => {
   const { payload, user } = await getRequestContext(request)
-  if (!user) return unauthorized()
+  if (!user) return unauthorized(request)
   const { code } = await readJson<{ code?: unknown }>(request)
   if (user.twoFactorEnabled !== true) {
-    throw new APIError('Two-factor authentication is not enabled.', 409)
+    throw apiError('twoFactorNotEnabled', 409)
   }
   const method = await verifyTwoFactorCode(payload, user.id, requireCode(code))
-  if (method !== 'totp') throw new APIError('Enter a code from your authenticator app.', 400)
+  if (method !== 'totp') throw apiError('totpCodeRequired', 400)
   const { backupCodes } = await regenerateBackupCodes(payload, user.id)
   return Response.json({ backupCodes }, { headers: { 'Cache-Control': 'no-store' } })
 })

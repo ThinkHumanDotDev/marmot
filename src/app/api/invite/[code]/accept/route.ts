@@ -11,7 +11,7 @@ type RouteContext = { params: Promise<{ code: string }> }
  */
 export const POST = withErrors(async (request: Request, { params }: RouteContext) => {
   const { payload, user } = await getRequestContext(request)
-  if (!user) return unauthorized()
+  if (!user) return unauthorized(request)
   const { code } = await params
 
   const result = await acceptInviteCode({ payload, code, user })

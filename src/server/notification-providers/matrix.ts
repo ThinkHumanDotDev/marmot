@@ -44,7 +44,7 @@ registerNotificationProvider({
   docsUrl: 'https://spec.matrix.org/latest/client-server-api/#mroommessage',
   configSchema: matrixConfigSchema,
   fieldMeta: matrixFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = matrixConfigSchema.parse(raw)
     const size = 20
     const txnId = encodeURIComponent(randomBytes(size).toString('base64').slice(0, size))
@@ -52,7 +52,7 @@ registerNotificationProvider({
 
     const body =
       config.useTemplate && config.template?.trim()
-        ? renderMessageTemplate(config.template.trim(), message, monitor, heartbeat)
+        ? renderMessageTemplate(config.template.trim(), message, monitor, heartbeat, locale)
         : message
 
     await httpRequest(

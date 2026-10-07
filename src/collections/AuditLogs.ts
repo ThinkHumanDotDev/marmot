@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
+import { adminT } from '@/i18n/admin'
 
 /** Clients never write audit rows; `recordAuditEvent` does, server-side with `overrideAccess`. */
 const serverOnly = () => false
@@ -17,7 +18,7 @@ export const AuditLogs: CollectionConfig = {
     useAsTitle: 'action',
     group: 'Access',
     defaultColumns: ['action', 'actor', 'organization', 'target', 'ip', 'createdAt'],
-    description: 'Security-relevant events. Rows are written by the server and cannot be edited.',
+    description: adminT('marmot:auditLogs:description'),
   },
   access: {
     read: orgScoped('audit-log:read'),
@@ -50,7 +51,7 @@ export const AuditLogs: CollectionConfig = {
     {
       name: 'target',
       type: 'text',
-      admin: { readOnly: true, description: 'Affected record, e.g. user:42.' },
+      admin: { readOnly: true, description: adminT('marmot:auditLogs:targetDescription') },
     },
     {
       name: 'ip',

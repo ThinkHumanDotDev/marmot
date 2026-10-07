@@ -199,7 +199,7 @@ export const StatusPages: CollectionConfig = {
           index: true,
           validate: (value: unknown) => validateOrganizationSlug(value),
           admin: {
-            description: 'Public URL: /status/<slug>. Lowercase letters, numbers, hyphens.',
+            description: adminT('marmot:statusPages:slugDescription'),
           },
         },
       ],
@@ -228,7 +228,10 @@ export const StatusPages: CollectionConfig = {
       type: 'checkbox',
       defaultValue: false,
       index: true,
-      admin: { position: 'sidebar', description: 'Unpublished pages return 404 to visitors.' },
+      admin: {
+        position: 'sidebar',
+        description: adminT('marmot:statusPages:publishedDescription'),
+      },
     },
     {
       type: 'row',
@@ -244,13 +247,13 @@ export const StatusPages: CollectionConfig = {
       type: 'number',
       defaultValue: 300,
       min: 0,
-      admin: { description: 'Seconds between client refreshes; 0 disables auto refresh.' },
+      admin: { description: adminT('marmot:statusPages:autoRefreshIntervalDescription') },
     },
     { name: 'footerText', type: 'textarea' },
     {
       name: 'customCSS',
       type: 'code',
-      admin: { language: 'css', description: 'Injected into the public page as a <style> tag.' },
+      admin: { language: 'css', description: adminT('marmot:statusPages:customCSSDescription') },
     },
     {
       name: 'googleAnalyticsId',
@@ -264,8 +267,7 @@ export const StatusPages: CollectionConfig = {
       name: 'domains',
       type: 'array',
       admin: {
-        description:
-          'Custom hostnames that serve this page at their root (CNAME them to this server).',
+        description: adminT('marmot:statusPages:domainsDescription'),
       },
       fields: [
         {
@@ -280,7 +282,7 @@ export const StatusPages: CollectionConfig = {
     {
       name: 'groups',
       type: 'array',
-      admin: { description: 'Monitors are shown in these groups, in this order.' },
+      admin: { description: adminT('marmot:statusPages:groupsDescription') },
       fields: [
         { name: 'name', type: 'text', required: true },
         {
@@ -304,12 +306,12 @@ export const StatusPages: CollectionConfig = {
                   name: 'sendUrl',
                   type: 'checkbox',
                   defaultValue: false,
-                  admin: { description: "Show the monitor's URL to visitors." },
+                  admin: { description: adminT('marmot:statusPages:sendUrlDescription') },
                 },
                 {
                   name: 'customUrl',
                   type: 'text',
-                  admin: { description: 'Link visitors to this URL instead.' },
+                  admin: { description: adminT('marmot:statusPages:customUrlDescription') },
                 },
               ],
             },

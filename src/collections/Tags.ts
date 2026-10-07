@@ -5,6 +5,7 @@ import { TAG_COLOR_PATTERN, TAG_COLORS } from '@/lib/monitor-resources'
 import type { Monitor } from '@/payload-types'
 
 import { relId } from './shared'
+import { adminT } from '@/i18n/admin'
 
 /**
  * `monitors.tags[].tag` is required, so a deleted tag must first be removed from every monitor that
@@ -84,7 +85,7 @@ export const Tags: CollectionConfig = {
             typeof value === 'string' && TAG_COLOR_PATTERN.test(value)
               ? true
               : 'Use a hex colour such as #2563EB.',
-          admin: { description: 'Hex colour of the chip, e.g. #2563EB.' },
+          admin: { description: adminT('marmot:tags:colorDescription') },
         },
       ],
     },

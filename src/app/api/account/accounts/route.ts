@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
  */
 export const GET = withErrors(async (request: Request) => {
   const { payload, user } = await getRequestContext(request)
-  if (!user) return unauthorized()
+  if (!user) return unauthorized(request)
   return Response.json(await listConnectedAccounts(payload, user), {
     headers: { 'Cache-Control': 'no-store' },
   })

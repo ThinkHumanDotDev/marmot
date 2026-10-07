@@ -1,5 +1,6 @@
 import type { z } from 'zod'
 
+import type { Locale } from '@/i18n/locales'
 import type { Heartbeat, Monitor } from '@/payload-types'
 
 /**
@@ -39,6 +40,12 @@ export interface NotificationSendContext {
   monitor: Monitor | null
   /** Heartbeat document, or null for test notifications. */
   heartbeat: Heartbeat | null
+  /**
+   * Language of the owning organization (`settings.language`); `message` is already rendered in it.
+   * Pass it to the shared builders (`statusLabel`, `renderMessageTemplate`) for any extra text.
+   * Optional so a context without it (tests, older callers) renders English.
+   */
+  locale?: Locale
 }
 
 export interface NotificationProvider {
