@@ -37,6 +37,7 @@ import { track } from '@/lib/analytics'
 import { api, ApiError } from '@/lib/api'
 import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
 import { supportsAdhocTest, type OnDemandCheckResult } from '@/lib/on-demand-check'
+import { REMINDER_BACKOFFS } from '@/lib/reminder-backoff'
 import {
   AUTH_METHODS,
   BODY_ENCODINGS,
@@ -773,6 +774,7 @@ export function MonitorForm({
     interval,
     retryInterval,
     resendInterval,
+    successThreshold,
     timeout,
     httpBodyEncoding,
     mqttCheckType,
@@ -789,6 +791,7 @@ export function MonitorForm({
       'interval',
       'retryInterval',
       'resendInterval',
+      'successThreshold',
       'timeout',
       'httpBodyEncoding',
       'mqttCheckType',
@@ -1338,6 +1341,38 @@ export function MonitorForm({
                   typeof resendInterval === 'number' && resendInterval > 0
                     ? t('timing.resendHint', { count: resendInterval })
                     : t('timing.resendDescription')
+                }
+              />
+              {typeof resendInterval === 'number' && resendInterval > 0 && (
+                <>
+                  <SelectField
+                    control={control}
+                    name="reminderBackoff"
+                    label={t('timing.reminderBackoff')}
+                    description={t('timing.reminderBackoffDescription')}
+                    options={REMINDER_BACKOFFS.map((value) => ({
+                      value,
+                      label: t(`timing.reminderBackoffOptions.${value}`),
+                    }))}
+                  />
+                  <NumberField
+                    control={control}
+                    name="maxReminders"
+                    label={t('timing.maxReminders')}
+                    min={0}
+                    description={t('timing.maxRemindersDescription')}
+                  />
+                </>
+              )}
+              <NumberField
+                control={control}
+                name="successThreshold"
+                label={t('timing.successThreshold')}
+                min={1}
+                description={
+                  typeof successThreshold === 'number' && successThreshold > 1
+                    ? t('timing.successThresholdHint', { count: successThreshold })
+                    : t('timing.successThresholdDescription')
                 }
               />
               {type !== 'push' && (

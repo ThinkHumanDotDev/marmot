@@ -406,7 +406,10 @@ describe('Marmot export parser', () => {
         interval: 60,
         retryInterval: 60,
         maxRetries: 0,
-        resendInterval: 0,
+        resendInterval: 5,
+        successThreshold: 3,
+        reminderBackoff: 'exponential',
+        maxReminders: 4,
         timeout: 48,
       },
     ],
@@ -461,6 +464,17 @@ describe('Marmot export parser', () => {
     expect(site.notificationKeys).toEqual(['5'])
     expect(plan.monitors.find((m) => m.data.name === 'Orphan')!.parentKey).toBeNull()
     expect(plan.monitors.find((m) => m.data.name === 'Job')!.pushToken).toBe('tok')
+    // Recovery threshold and reminder backoff (#147) round-trip; older files get the defaults.
+    expect(plan.monitors.find((m) => m.data.name === 'Job')!.data).toMatchObject({
+      successThreshold: 3,
+      reminderBackoff: 'exponential',
+      maxReminders: 4,
+    })
+    expect(site.data).toMatchObject({
+      successThreshold: 1,
+      reminderBackoff: 'none',
+      maxReminders: 0,
+    })
 
     expect(plan.statusPages).toHaveLength(1)
     const page = plan.statusPages[0]

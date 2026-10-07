@@ -30,12 +30,17 @@ maintenance?  → MAINTENANCE
 check ok      → ping > degradedAfter ? DEGRADED : UP
 check failed  → retries < maxretries ? PENDING (scheduler switched to retryInterval) : DOWN
 upsideDown    → flip UP/DOWN (the degraded threshold does not apply)
+was DOWN, ok  → successThreshold reached ? UP : PENDING "Recovering n/N" (applyRecoveryThreshold)
 ```
 
 Important beats (status transitions) trigger notifications; `resendInterval` re-notifies while down. Each
 notifying beat carries a `notificationEvent` (`down`, `up`, `degraded`, `reminder`) that the dispatcher
 filters channels on. `status.settledStatus` remembers the last non-PENDING status so that leaving a retry
 streak (DEGRADED → PENDING → UP) is still recognised as a transition.
+
+Reminders are spaced by the reminder policy (`reminderBackoff`, `maxReminders`). The recovery threshold
+(#147) is applied after the ported rules: during a recovery streak the previous status counts as DOWN, so its
+PENDING beats are silent, a failure returns to DOWN without notifying, and the beat that completes it is DOWN → UP.
 
 On-demand checks (`src/server/engine/on-demand.ts`, worker side in `on-demand-jobs.ts`) use the same queue:
 `POST /api/orgs/:orgId/monitors/:id/check` adds a `manual-check` job (LIFO, deduplicated per monitor while
@@ -60,7 +65,7 @@ replica sends it) and re-enqueues the held monitors when connectivity returns. `
 the hook for multi-location checks (#92): every location will run its own monitor.
 
 After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
-`lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`) and calls every listener registered with
+`lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`, `recoveries`) and calls every listener registered with
 `registerHeartbeatListener()` (`src/server/engine/hooks.ts`); stats, realtime and notifications plug in there.
 
 ## Time-series storage

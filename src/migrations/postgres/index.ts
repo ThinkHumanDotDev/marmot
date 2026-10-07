@@ -36,6 +36,7 @@ import * as migration_20261007_140856_monitor_assertions from './20261007_140856
 import * as migration_20261007_145743_heartbeat_trigger from './20261007_145743_heartbeat_trigger';
 import * as migration_20261007_160552_push_monitor_cron from './20261007_160552_push_monitor_cron';
 import * as migration_20261007_163630_monitor_incidents from './20261007_163630_monitor_incidents';
+import * as migration_20261007_173835_engine_recovery from './20261007_173835_engine_recovery';
 
 export const migrations = [
   {
@@ -226,6 +227,11 @@ export const migrations = [
   {
     up: migration_20261007_163630_monitor_incidents.up,
     down: migration_20261007_163630_monitor_incidents.down,
-    name: '20261007_163630_monitor_incidents'
+    name: '20261007_163630_monitor_incidents',
+  },
+  {
+    up: migration_20261007_173835_engine_recovery.up,
+    down: migration_20261007_173835_engine_recovery.down,
+    name: '20261007_173835_engine_recovery'
   },
 ];

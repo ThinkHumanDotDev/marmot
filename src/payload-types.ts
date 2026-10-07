@@ -425,6 +425,9 @@ export interface Monitor {
   resendInterval: number;
   timeout: number;
   degradedAfter?: number | null;
+  successThreshold?: number | null;
+  reminderBackoff?: ('none' | 'linear' | 'exponential') | null;
+  maxReminders?: number | null;
   upsideDown?: boolean | null;
   method?: ('GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS') | null;
   httpBodyEncoding?: ('json' | 'form' | 'xml') | null;
@@ -553,6 +556,7 @@ export interface Monitor {
     retries?: number | null;
     downCount?: number | null;
     settledStatus?: ('up' | 'down' | 'pending' | 'maintenance' | 'degraded') | null;
+    recoveries?: number | null;
     lastPushAt?: string | null;
     lastPushStatus?: ('up' | 'down') | null;
     pushRuns?:
@@ -1625,6 +1629,9 @@ export interface MonitorsSelect<T extends boolean = true> {
   resendInterval?: T;
   timeout?: T;
   degradedAfter?: T;
+  successThreshold?: T;
+  reminderBackoff?: T;
+  maxReminders?: T;
   upsideDown?: T;
   method?: T;
   httpBodyEncoding?: T;
@@ -1727,6 +1734,7 @@ export interface MonitorsSelect<T extends boolean = true> {
         retries?: T;
         downCount?: T;
         settledStatus?: T;
+        recoveries?: T;
         lastPushAt?: T;
         lastPushStatus?: T;
         pushRuns?: T;

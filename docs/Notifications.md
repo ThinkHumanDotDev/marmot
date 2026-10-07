@@ -99,9 +99,12 @@ notes and cancellations stay with status page subscribers.
 Before enqueuing, the listener asks the **notification gates** (`registerNotificationGate` in
 `src/server/notifications/gates.ts`); any gate answering `false` holds the beat back, and a gate that throws
 is ignored. Monitor incidents register one that runs the **reminder policy**
-(`src/server/incidents/reminders.ts`, replaceable with `setReminderPolicy`) on `resendInterval` reminders: by
-default reminders stop while the monitor's incident is acknowledged. Reminders that go out are counted on the
-incident (`remindersSent`, `lastReminderAt`).
+(`src/server/incidents/reminders.ts`, replaceable with `setReminderPolicy`) on `resendInterval` reminders. The
+default, `backoffReminderPolicy`, stops reminders while the monitor's incident is acknowledged and applies the
+monitor's reminder backoff: `reminderBackoff` (`none`, `linear` or `exponential`) spaces them and `maxReminders`
+caps them ([Monitors](Monitors.md#recovery-threshold-and-reminder-backoff)). Reminders that go out are counted
+on the incident (`remindersSent`, `lastReminderAt`), which is what the backoff reads; it measures time on the
+beats' own clock.
 
 ### Incident notifications
 

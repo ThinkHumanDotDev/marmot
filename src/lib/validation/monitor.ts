@@ -22,6 +22,11 @@ import {
   normalizeAssertions,
   supportsAssertions,
 } from './assertions'
+import {
+  MAX_REMINDERS_LIMIT,
+  MAX_SUCCESS_THRESHOLD,
+  REMINDER_BACKOFFS,
+} from '@/lib/reminder-backoff'
 
 /** Key of a validation message under `monitors.validation` in the catalogues. */
 export type MonitorValidationKey = keyof Messages['monitors']['validation']
@@ -470,6 +475,10 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         .max(MAX_INTERVAL_SECONDS),
       maxRetries: nonNegativeInt(1000),
       resendInterval: nonNegativeInt(100_000),
+      // Older exports and Uptime Kuma backups lack these: default to the Uptime Kuma behaviour.
+      successThreshold: z.number().int().min(1).max(MAX_SUCCESS_THRESHOLD).default(1),
+      reminderBackoff: z.enum(REMINDER_BACKOFFS).default('none'),
+      maxReminders: nonNegativeInt(MAX_REMINDERS_LIMIT).default(0),
       timeout: z.number().min(0).max(MAX_INTERVAL_SECONDS),
       /** Response time (ms) above which a successful check is DEGRADED; empty or 0 = off (#93). */
       // `null` (not `undefined`) when cleared, so a PATCH really removes the stored value.
@@ -858,6 +867,9 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     retryInterval: 60,
     maxRetries: 0,
     resendInterval: 0,
+    successThreshold: 1,
+    reminderBackoff: 'none',
+    maxReminders: 0,
     timeout: 48,
     degradedAfter: null,
     upsideDown: false,

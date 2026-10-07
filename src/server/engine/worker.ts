@@ -203,6 +203,7 @@ export async function recordBeat(
     retries: monitor.status?.retries,
     downCount: monitor.status?.downCount,
     settledStatus: monitor.status?.settledStatus,
+    recoveries: monitor.status?.recoveries,
   }
   const next = computeNextBeat(prev, result, monitor)
   // A beat held while the worker was offline leaves the cached status as it was (#148).
@@ -262,6 +263,7 @@ export async function recordBeat(
         ...(held
           ? { lastStatus: monitor.status?.lastStatus, lastPing: monitor.status?.lastPing }
           : {}),
+        recoveries: next.recoveries,
         ...options.statusPatch,
       },
       ...(tlsInfo ? { certInfo: tlsInfo as unknown as Monitor['certInfo'] } : {}),

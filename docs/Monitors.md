@@ -38,15 +38,18 @@ code is in many cases a direct port, see `THIRD_PARTY_NOTICES.md`).
 
 ## Intervals, retries and timeouts
 
-| Field            | Default | Meaning                                                                                                              |
-| ---------------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| `interval`       | 60 s    | Seconds between checks. The UI minimum is 20 s.                                                                      |
-| `maxRetries`     | 0       | Failed checks tolerated before the monitor goes DOWN. While retrying the monitor is PENDING.                         |
-| `retryInterval`  | 60 s    | Seconds between checks while PENDING (usually shorter than `interval` to confirm an outage quickly).                 |
-| `resendInterval` | 0       | Re-send the DOWN notification every N consecutive DOWN beats. `0` notifies once per transition.                      |
-| `timeout`        | 48 s    | Seconds before a check is aborted. `0` means 80 % of the interval.                                                   |
-| `degradedAfter`  | empty   | Milliseconds. A successful check slower than this is DEGRADED instead of UP (see below). Empty or `0` turns it off.  |
-| `upsideDown`     | off     | Invert the result: a failed check counts as UP and a successful one as DOWN (useful for "this port must be closed"). |
+| Field              | Default | Meaning                                                                                                              |
+| ------------------ | ------- | -------------------------------------------------------------------------------------------------------------------- |
+| `interval`         | 60 s    | Seconds between checks. The UI minimum is 20 s.                                                                      |
+| `maxRetries`       | 0       | Failed checks tolerated before the monitor goes DOWN. While retrying the monitor is PENDING.                         |
+| `retryInterval`    | 60 s    | Seconds between checks while PENDING (usually shorter than `interval` to confirm an outage quickly).                 |
+| `resendInterval`   | 0       | Re-send the DOWN notification every N consecutive DOWN beats. `0` notifies once per transition.                      |
+| `reminderBackoff`  | `none`  | Spacing of those reminders: `none` (every `resendInterval`), `linear` or `exponential` (see below).                  |
+| `maxReminders`     | 0       | Stop reminding after this many reminders per incident. `0` means unlimited.                                          |
+| `successThreshold` | 1       | Consecutive successful checks a DOWN monitor needs before it is UP again (see below).                                |
+| `timeout`          | 48 s    | Seconds before a check is aborted. `0` means 80 % of the interval.                                                   |
+| `degradedAfter`    | empty   | Milliseconds. A successful check slower than this is DEGRADED instead of UP (see below). Empty or `0` turns it off.  |
+| `upsideDown`       | off     | Invert the result: a failed check counts as UP and a successful one as DOWN (useful for "this port must be closed"). |
 
 The state machine (a port of Uptime Kuma's) is:
 
@@ -86,6 +89,26 @@ crossed. Other types ignore the setting.
 When the [self connectivity check](Configuration.md#self-connectivity-check) is on and the worker itself
 loses its internet connection, checks of external targets are held as PENDING `checker offline` beats
 instead: no notification, no downtime, and the monitor keeps the status it had before the outage.
+
+### Recovery threshold and reminder backoff
+
+`maxRetries` delays the first DOWN, but by default **one** successful check brings a monitor back UP, so a
+flapping service produces a storm of DOWN/UP alerts. Two settings calm it down (#147):
+
+- **Recovery threshold** (`successThreshold`, default 1). A DOWN monitor needs N successful checks in a row
+  before it is UP again (a slow, DEGRADED success counts too and then completes the recovery as DEGRADED). The checks in between are PENDING beats labelled `Recovering 1/3: <message>`, polled
+  at `retryInterval` like retries, and notify nobody. A failure during the streak puts the monitor straight back
+  to DOWN, without a new retry round, a new DOWN notification or a new incident, and the count starts over. The
+  beat that completes the streak is the DOWN → UP transition: it sends the UP notification and resolves the
+  incident. Maintenance ends a streak as it ends an outage. It only applies to monitors that are DOWN; a PENDING
+  retry after an UP beat still recovers on the first success. With `successThreshold: 3` and `maxRetries: 1`, the
+  check sequence ok, fail, fail, ok, fail, ok, ok, fail, ok, ok, ok sends exactly one DOWN and one UP notification.
+- **Reminder backoff** (`reminderBackoff`, `maxReminders`). The engine still marks a reminder every
+  `resendInterval` DOWN beats; the base interval is `resendInterval × interval`. With `linear` reminder _k_
+  waits _k_ base intervals after the previous one (1×, 2×, 3× …), with `exponential` it waits 2^(k−1) (1×, 2×,
+  4× …), so with `exponential` reminders go out 1, 3, 7, 15 … base intervals after the DOWN. `maxReminders`
+  stops them after that many, and acknowledging the incident stops them in any case. The default, `none` with
+  no cap, keeps Uptime Kuma's fixed cadence.
 
 Scheduling is handled by the worker process through BullMQ job schedulers (one per active monitor); the
 web process only writes the monitor and nudges the scheduler. Several worker replicas share the load and a
@@ -135,7 +158,8 @@ took. This is the internal, on-call side of an outage; the public side is the st
 - **Opened** by the engine on the transition to DOWN (from UP, PENDING, MAINTENANCE or a first DOWN beat), with
   the message of that beat as its **cause**. A monitor has at most one unresolved incident.
 - **Acknowledged** by a member: from the incident page, the API or the signed link at the end of DOWN
-  messages. While an incident is acknowledged, `resendInterval` reminders stop; the acknowledgement is sent to
+  messages. While an incident is acknowledged, `resendInterval` reminders stop (they also follow the
+  monitor's [reminder backoff](#recovery-threshold-and-reminder-backoff)); the acknowledgement is sent to
   the monitor's channels (`[name] [👀 Acknowledged] Acknowledged by Ada.`).
 - **Resolved** automatically when the monitor recovers (UP), with the duration shown. A member can also
   resolve it by hand (the channels are told); it then stays resolved until the monitor recovers and fails

@@ -25,6 +25,11 @@ import {
 } from '@/lib/validation/assertions'
 
 import { HEARTBEAT_STATUSES } from './Heartbeats'
+import {
+  MAX_REMINDERS_LIMIT,
+  MAX_SUCCESS_THRESHOLD,
+  REMINDER_BACKOFFS,
+} from '@/lib/reminder-backoff'
 import { relId } from './shared'
 import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
@@ -135,6 +140,12 @@ const statusGroup: Field = {
       type: 'select',
       options: HEARTBEAT_STATUSES.map((s) => ({ label: s, value: s })),
       admin: { description: adminT('marmot:monitors:settledStatusDescription') },
+    },
+    {
+      name: 'recoveries',
+      type: 'number',
+      defaultValue: 0,
+      admin: { description: adminT('marmot:monitors:recoveriesDescription') },
     },
     {
       name: 'lastPushAt',
@@ -579,6 +590,37 @@ export const Monitors: CollectionConfig = {
         condition: (data) => supportsDegradedThreshold(data?.type),
         description: adminT('marmot:monitors:degradedAfterDescription'),
       },
+    },
+    {
+      type: 'row',
+      fields: [
+        {
+          name: 'successThreshold',
+          type: 'number',
+          defaultValue: 1,
+          min: 1,
+          max: MAX_SUCCESS_THRESHOLD,
+          admin: { description: adminT('marmot:monitors:successThresholdDescription') },
+        },
+        {
+          name: 'reminderBackoff',
+          type: 'select',
+          defaultValue: 'none',
+          options: REMINDER_BACKOFFS.map((value) => ({
+            label: adminT(`marmot:monitors:reminderBackoff_${value}`),
+            value,
+          })),
+          admin: { description: adminT('marmot:monitors:reminderBackoffDescription') },
+        },
+        {
+          name: 'maxReminders',
+          type: 'number',
+          defaultValue: 0,
+          min: 0,
+          max: MAX_REMINDERS_LIMIT,
+          admin: { description: adminT('marmot:monitors:maxRemindersDescription') },
+        },
+      ],
     },
     {
       name: 'upsideDown',
