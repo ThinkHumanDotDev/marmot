@@ -19,9 +19,9 @@ interface ImportReportViewProps {
   report: ImportReport
 }
 
-type SectionKey = 'monitors' | 'notifications' | 'statusPages' | 'tags'
+type SectionKey = 'monitors' | 'notifications' | 'statusPages' | 'templates' | 'tags'
 
-const SECTIONS: SectionKey[] = ['monitors', 'notifications', 'statusPages', 'tags']
+const SECTIONS: SectionKey[] = ['monitors', 'notifications', 'statusPages', 'templates', 'tags']
 
 function SectionRow({ label, section }: { label: string; section: ImportSectionReport }) {
   const [open, setOpen] = React.useState(false)

@@ -2,6 +2,7 @@ import { getPayload, type Payload } from 'payload'
 
 import config from '@payload-config'
 import { maintenanceFormSchema, maintenanceToFormValues } from '@/lib/validation/maintenance'
+import { unfilledPlaceholders } from '@/lib/templates'
 import type { Maintenance } from '@/payload-types'
 import {
   loadOrgMaintenance,
@@ -79,6 +80,9 @@ export async function PATCH(request: Request, { params }: RouteContext): Promise
   }
   const patch = { ...(body as Record<string, unknown>) }
   for (const key of PROTECTED_MAINTENANCE_FIELDS) delete patch[key]
+  // Only the fields being changed: stored text is not re-checked.
+  const unfilled = unfilledPlaceholders(patch.title, patch.description)
+  if (unfilled) return jsonError(400, errorText(request, 'templatePlaceholdersUnfilled', unfilled))
 
   const parsed = maintenanceFormSchema.safeParse({ ...maintenanceToFormValues(ctx.doc), ...patch })
   if (!parsed.success) return validationError(parsed.error, request)

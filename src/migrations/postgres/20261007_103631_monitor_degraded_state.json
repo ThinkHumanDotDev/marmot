@@ -1734,108 +1734,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.monitors_assertions": {
-      "name": "monitors_assertions",
-      "schema": "",
-      "columns": {
-        "_order": {
-          "name": "_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "_parent_id": {
-          "name": "_parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "varchar",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "enum_monitors_assertions_kind",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "target": {
-          "name": "target",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "comparator": {
-          "name": "comparator",
-          "type": "enum_monitors_assertions_comparator",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "value": {
-          "name": "value",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "monitors_assertions_order_idx": {
-          "name": "monitors_assertions_order_idx",
-          "columns": [
-            {
-              "expression": "_order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitors_assertions_parent_id_idx": {
-          "name": "monitors_assertions_parent_id_idx",
-          "columns": [
-            {
-              "expression": "_parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "monitors_assertions_parent_id_fk": {
-          "name": "monitors_assertions_parent_id_fk",
-          "tableFrom": "monitors_assertions",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.monitors": {
       "name": "monitors",
       "schema": "",
@@ -1968,6 +1866,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": 48
+        },
+        "degraded_after": {
+          "name": "degraded_after",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
         },
         "upside_down": {
           "name": "upside_down",
@@ -2491,6 +2395,13 @@
           "primaryKey": false,
           "notNull": false,
           "default": 0
+        },
+        "status_settled_status": {
+          "name": "status_settled_status",
+          "type": "enum_monitors_status_settled_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
         },
         "status_last_push_at": {
           "name": "status_last_push_at",
@@ -3809,12 +3720,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": false
-        },
-        "assertions": {
-          "name": "assertions",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
         },
         "retries": {
           "name": "retries",
@@ -8739,6 +8644,296 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.templates_components": {
+      "name": "templates_components",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "component": {
+          "name": "component",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "impact": {
+          "name": "impact",
+          "type": "enum_templates_components_impact",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'major_outage'"
+        }
+      },
+      "indexes": {
+        "templates_components_order_idx": {
+          "name": "templates_components_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "templates_components_parent_id_idx": {
+          "name": "templates_components_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "templates_components_parent_id_fk": {
+          "name": "templates_components_parent_id_fk",
+          "tableFrom": "templates_components",
+          "tableTo": "templates",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.templates": {
+      "name": "templates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "enum_templates_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'incident'"
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "body": {
+          "name": "body",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum_templates_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "impact": {
+          "name": "impact",
+          "type": "enum_templates_impact",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration": {
+          "name": "duration",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_page_id": {
+          "name": "status_page_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "templates_organization_idx": {
+          "name": "templates_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "templates_status_page_idx": {
+          "name": "templates_status_page_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "templates_updated_at_idx": {
+          "name": "templates_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "templates_created_at_idx": {
+          "name": "templates_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organization_name_1_idx": {
+          "name": "organization_name_1_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "templates_organization_id_organizations_id_fk": {
+          "name": "templates_organization_id_organizations_id_fk",
+          "tableFrom": "templates",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "templates_status_page_id_status_pages_id_fk": {
+          "name": "templates_status_page_id_status_pages_id_fk",
+          "tableFrom": "templates",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "status_page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.api_keys": {
       "name": "api_keys",
       "schema": "",
@@ -9463,6 +9658,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "templates_id": {
+          "name": "templates_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "api_keys_id": {
           "name": "api_keys_id",
           "type": "integer",
@@ -9897,6 +10098,21 @@
           "method": "btree",
           "with": {}
         },
+        "payload_locked_documents_rels_templates_id_idx": {
+          "name": "payload_locked_documents_rels_templates_id_idx",
+          "columns": [
+            {
+              "expression": "templates_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "payload_locked_documents_rels_api_keys_id_idx": {
           "name": "payload_locked_documents_rels_api_keys_id_idx",
           "columns": [
@@ -10260,6 +10476,19 @@
           "tableTo": "maintenance_occurrences",
           "columnsFrom": [
             "maintenance_occurrences_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_templates_fk": {
+          "name": "payload_locked_documents_rels_templates_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "templates",
+          "columnsFrom": [
+            "templates_id"
           ],
           "columnsTo": [
             "id"
@@ -10875,35 +11104,6 @@
         "expired"
       ]
     },
-    "public.enum_monitors_assertions_kind": {
-      "name": "enum_monitors_assertions_kind",
-      "schema": "public",
-      "values": [
-        "status",
-        "header",
-        "textBody",
-        "jsonBody",
-        "dnsRecord"
-      ]
-    },
-    "public.enum_monitors_assertions_comparator": {
-      "name": "enum_monitors_assertions_comparator",
-      "schema": "public",
-      "values": [
-        "eq",
-        "not_eq",
-        "gt",
-        "gte",
-        "lt",
-        "lte",
-        "contains",
-        "not_contains",
-        "empty",
-        "not_empty",
-        "matches",
-        "not_matches"
-      ]
-    },
     "public.enum_monitors_type": {
       "name": "enum_monitors_type",
       "schema": "public",
@@ -11060,7 +11260,19 @@
         "up",
         "down",
         "pending",
-        "maintenance"
+        "maintenance",
+        "degraded"
+      ]
+    },
+    "public.enum_monitors_status_settled_status": {
+      "name": "enum_monitors_status_settled_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending",
+        "maintenance",
+        "degraded"
       ]
     },
     "public.enum_proxies_protocol": {
@@ -11098,7 +11310,8 @@
         "up",
         "down",
         "pending",
-        "maintenance"
+        "maintenance",
+        "degraded"
       ]
     },
     "public.enum_status_pages_subscriptions_channels": {
@@ -11435,6 +11648,46 @@
         "cancelled"
       ]
     },
+    "public.enum_templates_components_impact": {
+      "name": "enum_templates_components_impact",
+      "schema": "public",
+      "values": [
+        "operational",
+        "degraded_performance",
+        "partial_outage",
+        "major_outage"
+      ]
+    },
+    "public.enum_templates_kind": {
+      "name": "enum_templates_kind",
+      "schema": "public",
+      "values": [
+        "incident",
+        "incident-update",
+        "maintenance",
+        "maintenance-update"
+      ]
+    },
+    "public.enum_templates_status": {
+      "name": "enum_templates_status",
+      "schema": "public",
+      "values": [
+        "investigating",
+        "identified",
+        "monitoring",
+        "resolved"
+      ]
+    },
+    "public.enum_templates_impact": {
+      "name": "enum_templates_impact",
+      "schema": "public",
+      "values": [
+        "operational",
+        "degraded_performance",
+        "partial_outage",
+        "major_outage"
+      ]
+    },
     "public.enum_instance_settings_entry_page": {
       "name": "enum_instance_settings_entry_page",
       "schema": "public",
@@ -11454,6 +11707,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "6951912c-d6f5-42b4-9648-a1611bda98a3",
+  "id": "aead2829-61f1-4158-83ee-8dbedf453a97",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

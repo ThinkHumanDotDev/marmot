@@ -2,6 +2,7 @@
  * Group monitor: aggregates the cached status of its active children.
  * Ported from Uptime Kuma 2.5.5 `server/monitor-types/group.js` — Copyright (c) 2021 Louis Lam,
  * MIT License. See THIRD_PARTY_NOTICES.md.
+ * Marmot addition (#93): a degraded child (and no worse one) makes the group degraded.
  */
 import { registerMonitorType } from './registry'
 
@@ -27,9 +28,10 @@ registerMonitorType({
       return
     }
 
-    let worstStatus: 'up' | 'pending' | 'down' = 'up'
+    let worstStatus: 'up' | 'degraded' | 'pending' | 'down' = 'up'
     const downChildren: string[] = []
     const pendingChildren: string[] = []
+    const degradedChildren: string[] = []
 
     for (const child of children) {
       if (!child.active) continue // ignore paused children
@@ -49,12 +51,21 @@ registerMonitorType({
       } else if (lastStatus === 'pending') {
         if (worstStatus !== 'down') worstStatus = 'pending'
         pendingChildren.push(label)
+      } else if (lastStatus === 'degraded') {
+        if (worstStatus === 'up') worstStatus = 'degraded'
+        degradedChildren.push(label)
       }
     }
 
     if (worstStatus === 'up') {
       ctx.heartbeat.status = 'up'
       ctx.heartbeat.msg = 'All children up and running'
+      return
+    }
+
+    if (worstStatus === 'degraded') {
+      ctx.heartbeat.status = 'degraded'
+      ctx.heartbeat.msg = `Degraded child monitors: ${degradedChildren.join(', ')}`
       return
     }
 

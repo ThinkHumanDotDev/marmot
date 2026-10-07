@@ -343,6 +343,8 @@ export const SSH_AUTH_METHODS = ['password', 'privateKey'] as const
 /** Uptime Kuma's UI minimum for `interval` and `retryInterval`. */
 export const MIN_INTERVAL_SECONDS = 20
 export const MAX_INTERVAL_SECONDS = 24 * 60 * 60 * 365
+/** Upper bound of the degraded threshold (10 minutes, well above any check timeout). */
+export const MAX_DEGRADED_AFTER_MS = 600_000
 
 /** HTTP status codes (`200`, `200-299`) and WebSocket close codes (`1000`, `4000-4999`). */
 const STATUS_CODE_PATTERN = /^([1-5]\d{2}|[1-4]\d{3})(-([1-5]\d{2}|[1-4]\d{3}))?$/
@@ -467,6 +469,15 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       maxRetries: nonNegativeInt(1000),
       resendInterval: nonNegativeInt(100_000),
       timeout: z.number().min(0).max(MAX_INTERVAL_SECONDS),
+      /** Response time (ms) above which a successful check is DEGRADED; empty or 0 = off (#93). */
+      // `null` (not `undefined`) when cleared, so a PATCH really removes the stored value.
+      degradedAfter: z
+        .number()
+        .int()
+        .min(0)
+        .max(MAX_DEGRADED_AFTER_MS)
+        .nullish()
+        .transform((value) => value ?? null),
       upsideDown: z.boolean().default(false),
 
       // HTTP
@@ -829,6 +840,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     maxRetries: 0,
     resendInterval: 0,
     timeout: 48,
+    degradedAfter: null,
     upsideDown: false,
     method: 'GET',
     httpBodyEncoding: 'json',

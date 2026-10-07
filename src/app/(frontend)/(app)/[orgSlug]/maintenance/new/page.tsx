@@ -9,6 +9,7 @@ import { defaultMaintenanceValues } from '@/lib/validation/maintenance'
 import { getOrgMonitorOptions, getOrgStatusPageOptions } from '@/server/maintenance/page-data'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 import { getOrgPageContext } from '@/server/monitors/page-data'
+import { getOrgTemplates } from '@/server/templates/page-data'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('maintenance.newPage')
@@ -27,10 +28,11 @@ export default async function NewMaintenancePage({ params }: NewMaintenancePageP
   if (!ctx.allowed('maintenance:create')) redirect(`/${orgSlug}/maintenance`)
 
   const t = await getTranslations('maintenance.newPage')
-  const [monitors, statusPages, orgTimezone] = await Promise.all([
+  const [monitors, statusPages, orgTimezone, templates] = await Promise.all([
     getOrgMonitorOptions(ctx),
     getOrgStatusPageOptions(ctx),
     getOrganizationTimezone(ctx.payload, ctx.org.id),
+    getOrgTemplates(ctx, ['maintenance']),
   ])
 
   return (
@@ -53,6 +55,8 @@ export default async function NewMaintenancePage({ params }: NewMaintenancePageP
           monitors={monitors}
           statusPages={statusPages}
           orgTimezone={orgTimezone}
+          templates={templates}
+          orgName={ctx.org.name}
         />
       </section>
     </>

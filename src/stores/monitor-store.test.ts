@@ -114,6 +114,7 @@ describe('useMonitorStore', () => {
       down: 1,
       pending: 0,
       maintenance: 0,
+      degraded: 0,
       unknown: 2,
     })
   })

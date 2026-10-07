@@ -403,7 +403,8 @@ describe('status page components', () => {
       expect(staticComponentStatus(null, false)).toBe('up')
       expect(staticComponentStatus('operational', true)).toBe('maintenance')
       expect(staticComponentStatus('major_outage', true)).toBe('down')
-      expect(staticComponentStatus('degraded_performance', false)).toBe('pending')
+      expect(staticComponentStatus('degraded_performance', false)).toBe('degraded')
+      expect(staticComponentStatus('partial_outage', false)).toBe('pending')
     })
 
     it('ignores resolved incidents when collecting impacts', () => {

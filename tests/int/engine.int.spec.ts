@@ -179,6 +179,12 @@ beforeAll(async () => {
         req.on('data', (c) => (body += c))
         req.on('end', () => res.end(`${req.method} ${req.headers['content-type']} ${body}`))
         return
+      case '/delayed':
+        setTimeout(() => {
+          res.writeHead(200, { 'content-type': 'text/plain' })
+          res.end('late but fine')
+        }, 60)
+        return
       case '/slow':
         return // never answers
       default:
@@ -539,6 +545,32 @@ describe('check pipeline (processCheckJob with a fake job)', () => {
       ['textBody', true],
       ['textBody', false],
     ])
+  })
+
+  it('assertions: a slow check with passing assertions is DEGRADED, a failing one DOWN', async () => {
+    const slow = await createMonitor({
+      name: 'assert-degraded',
+      type: 'http',
+      url: `http://127.0.0.1:${httpPort}/delayed`,
+      degradedAfter: 20,
+      assertions: [{ kind: 'textBody', comparator: 'contains', value: 'fine' }],
+    })
+    const degraded = await run(slow.id)
+    expect(degraded.heartbeat?.status).toBe('degraded')
+    expect(degraded.heartbeat?.msg).toMatch(/^200 - OK, 1 assertion passed/)
+    expect(degraded.heartbeat?.assertions).toHaveLength(2)
+
+    const failing = await createMonitor({
+      name: 'assert-degraded-fail',
+      type: 'http',
+      url: `http://127.0.0.1:${httpPort}/delayed`,
+      degradedAfter: 20,
+      assertions: [{ kind: 'textBody', comparator: 'contains', value: 'broken' }],
+    })
+    expect((await run(failing.id)).heartbeat).toMatchObject({
+      status: 'down',
+      msg: 'body: expected contains "broken", got "late but fine"',
+    })
   })
 
   it('assertions: rejected on save when they do not fit the type', async () => {

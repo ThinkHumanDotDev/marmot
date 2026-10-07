@@ -16,6 +16,7 @@ import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 import { MONITOR_TARGET_FIELDS, monitorTargetProblem } from '@/server/security/monitor-targets'
 import { outboundGuardActive } from '@/server/security/outbound-guard'
 
+import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
 import {
   ASSERTION_COMPARATORS,
   ASSERTION_KINDS,
@@ -127,6 +128,12 @@ const statusGroup: Field = {
     { name: 'lastMsg', type: 'text' },
     { name: 'retries', type: 'number', defaultValue: 0 },
     { name: 'downCount', type: 'number', defaultValue: 0 },
+    {
+      name: 'settledStatus',
+      type: 'select',
+      options: HEARTBEAT_STATUSES.map((s) => ({ label: s, value: s })),
+      admin: { description: adminT('marmot:monitors:settledStatusDescription') },
+    },
     {
       name: 'lastPushAt',
       type: 'date',
@@ -545,6 +552,15 @@ export const Monitors: CollectionConfig = {
           admin: { description: adminT('marmot:monitors:timeoutDescription') },
         },
       ],
+    },
+    {
+      name: 'degradedAfter',
+      type: 'number',
+      min: 0,
+      admin: {
+        condition: (data) => supportsDegradedThreshold(data?.type),
+        description: adminT('marmot:monitors:degradedAfterDescription'),
+      },
     },
     {
       name: 'upsideDown',

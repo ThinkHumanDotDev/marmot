@@ -6,7 +6,7 @@ import { adminGroup, adminT } from '@/i18n/admin'
  * Raw rows are pruned after 24h by the retention job; `important` rows (status transitions) are kept
  * for `KEEP_DATA_PERIOD_DAYS`.
  */
-export const HEARTBEAT_STATUSES = ['up', 'down', 'pending', 'maintenance'] as const
+export const HEARTBEAT_STATUSES = ['up', 'down', 'pending', 'maintenance', 'degraded'] as const
 
 export const Heartbeats: CollectionConfig = {
   slug: 'heartbeats',

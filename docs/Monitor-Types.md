@@ -10,7 +10,8 @@ imported lazily inside `check()`, so the worker starts without them; a monitor w
 goes DOWN with the message `The "<pkg>" package is not installed. Install <pkg> to use the <type> monitor`.
 The Docker image installs all of them. Shared fields (`interval`, `retryInterval`, `maxRetries`,
 `resendInterval`, `timeout`, `upsideDown`, `active`, `parent`, `description`) apply to every type and are
-not repeated below.
+not repeated below. `degradedAfter` (ms, [Monitors → Degraded](Monitors.md#degraded)) applies to HTTP(s),
+keyword, JSON query, TCP port, ping, DNS and gRPC monitors.
 
 | Type                | Label                                      | Fields                                                                                                                                                                                                   | Driver / requirement                 |
 | ------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
@@ -83,6 +84,8 @@ check is UP only when **all** pass. Each row is `{ kind, target, comparator, val
 - **Messages**: a failing check is DOWN with the first failing assertion, e.g.
   `header content-type: expected contains "json", got "text/html"` (status and type checks come first,
   then the assertions in order). A passing check appends `, N assertions passed` to the usual message.
+  A failing assertion is always DOWN (with retries); a check whose assertions all pass but that answers
+  slower than `degradedAfter` is DEGRADED like any other slow success.
 - **Results**: every assertion is evaluated on every check. The results are stored on the heartbeat
   (`heartbeats.assertions`: `kind`, `target`, `comparator`, `expected`, `actual` (≤ 500 characters),
   `passed`, `error`, `legacy`) and the monitor page shows those of the last check. `runCheck()` returns

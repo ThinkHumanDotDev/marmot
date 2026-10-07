@@ -206,6 +206,10 @@ export const adminTranslations = {
         maxRetriesDescription: 'Retries before the monitor is marked DOWN.',
         resendIntervalDescription: 'Re-notify every N consecutive DOWN beats (0 = never).',
         timeoutDescription: 'Request timeout in seconds (0 = 80% of the interval).',
+        degradedAfterDescription:
+          'Response time in ms above which a successful check is marked DEGRADED (empty or 0 = off).',
+        settledStatusDescription:
+          'Last status other than pending (decides transitions after retries).',
         upsideDownDescription: 'Flip status: a failed check counts as UP and vice versa.',
         headersDescription: 'JSON object of extra request headers.',
         acceptedStatusCodesDescription: 'Status codes or ranges counted as UP, e.g. 200-299, 304.',
@@ -388,6 +392,17 @@ export const adminTranslations = {
       },
       tags: {
         colorDescription: 'Hex colour of the chip, e.g. #2563EB.',
+      },
+      templates: {
+        kindDescription:
+          'incident pre-fills a new incident, incident-update the incident update composer, maintenance the maintenance form, maintenance-update the maintenance update composer.',
+        bodyDescription:
+          'Markdown with placeholders in double braces (page, components, eta, …). Unfilled placeholders block publishing.',
+        statusPageDescription:
+          'Status page the default components belong to. Empty: the template is offered on every page.',
+        componentsDescription: 'Default affected components (group row ids of the status page).',
+        impactDescription: 'Overall impact when the template names no component.',
+        durationDescription: 'Maintenance: default window length in minutes.',
       },
       users: {
         superadminDescription:

@@ -8,7 +8,7 @@ import type { AssertionResult } from '@/lib/validation/assertions'
 import type { Monitor } from '@/payload-types'
 import type { TlsInfo } from '@/server/engine/tls'
 
-export type HeartbeatStatus = 'up' | 'down' | 'pending' | 'maintenance'
+export type HeartbeatStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded'
 
 export interface MonitorCheckContext {
   /** Monitor document as stored in the `monitors` collection (depth 0: relationships are ids). */

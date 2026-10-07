@@ -1,8 +1,8 @@
 # Monitors
 
 A monitor is one thing Marmot checks on a schedule: a URL, a host and port, a DNS name, a database, or a
-system that reports in by itself. Each check produces a **heartbeat** (`up`, `down`, `pending` or
-`maintenance`, with a message and a response time), the heartbeats feed the uptime statistics and the
+system that reports in by itself. Each check produces a **heartbeat** (`up`, `degraded`, `down`, `pending`
+or `maintenance`, with a message and a response time), the heartbeats feed the uptime statistics and the
 status pages, and status changes trigger notifications. Monitors belong to an organization; viewers can
 see them, members and above can create, edit, pause and delete them
 ([Organizations and members](Organizations-and-Members.md)).
@@ -45,20 +45,43 @@ code is in many cases a direct port, see `THIRD_PARTY_NOTICES.md`).
 | `retryInterval`  | 60 s    | Seconds between checks while PENDING (usually shorter than `interval` to confirm an outage quickly).                 |
 | `resendInterval` | 0       | Re-send the DOWN notification every N consecutive DOWN beats. `0` notifies once per transition.                      |
 | `timeout`        | 48 s    | Seconds before a check is aborted. `0` means 80 % of the interval.                                                   |
+| `degradedAfter`  | empty   | Milliseconds. A successful check slower than this is DEGRADED instead of UP (see below). Empty or `0` turns it off.  |
 | `upsideDown`     | off     | Invert the result: a failed check counts as UP and a successful one as DOWN (useful for "this port must be closed"). |
 
 The state machine (a port of Uptime Kuma's) is:
 
 ```
-maintenance window active  → MAINTENANCE (no notifications)
-check ok                   → UP
-check failed, retries left → PENDING, next check after retryInterval
-check failed, no retries   → DOWN
+maintenance window active                  → MAINTENANCE (no notifications)
+check ok, response time > degradedAfter    → DEGRADED
+check ok                                   → UP
+check failed, retries left                 → PENDING, next check after retryInterval
+check failed, no retries                   → DOWN
 ```
 
-Only **important** beats (a change between UP, DOWN and MAINTENANCE, or the first beat when it is DOWN)
-notify. PENDING never notifies, so `maxRetries: 2` with `retryInterval: 20` gives a flaky endpoint 40 seconds
-to recover before anyone is paged.
+Only **important** beats (a change between UP, DEGRADED, DOWN and MAINTENANCE, or the first beat when it is
+DOWN) notify. PENDING never notifies, so `maxRetries: 2` with `retryInterval: 20` gives a flaky endpoint 40
+seconds to recover before anyone is paged.
+
+### Degraded
+
+A service that answers correctly but slowly is not healthy. Set **Degraded after** (`degradedAfter`, in ms) on
+an HTTP(s), keyword, JSON query, TCP port, ping, DNS or gRPC monitor and every successful check whose
+response time exceeds it is recorded as **degraded** (yellow in the heartbeat and uptime bars, a "Degraded"
+badge, "Degraded performance" on status pages). The heartbeat message says by how much the threshold was
+crossed. Other types ignore the setting.
+
+- Degraded counts as **up** for uptime; the statistics count degraded checks separately (`extras.degraded`
+  in the buckets, `degraded` in `GET /api/monitors/:id/stats`, "N degraded checks" on the detail page) and
+  include their response times in the average.
+- Transitions UP ↔ DEGRADED ↔ DOWN are important beats. A failed check while degraded goes through PENDING
+  and retries like any other failure; when the retries end, the monitor's status before them
+  (`status.settledStatus`) decides whether anything changed, so DEGRADED → PENDING → UP still announces
+  the recovery.
+- Upside-down monitors ignore the threshold (their UP comes from a failed check). Maintenance overrides
+  degraded like every other status.
+- Notifications carry an event: `down`, `up` (recovered from DOWN, also to DEGRADED), `degraded` (UP ↔
+  DEGRADED) and `reminder` (`resendInterval`). Channels receive `down`, `up` and `reminder` by default;
+  `degraded` is opt-in per channel ([Notifications](Notifications.md)).
 
 Scheduling is handled by the worker process through BullMQ job schedulers (one per active monitor); the
 web process only writes the monitor and nudges the scheduler. Several worker replicas share the load and a
@@ -69,7 +92,8 @@ monitor is never checked twice at once ([Architecture](Architecture.md#polling-e
 `/{org}/monitors` lists every monitor with its live status, a bar of the last 100 heartbeats and the 24 h
 uptime; it updates over the WebSocket connection without reloading. The detail page adds:
 
-- uptime for 24 h and 30 d, average and current response time;
+- uptime for 24 h and 30 d, average and current response time, and the number of degraded checks in the
+  last 24 hours;
 - a response-time chart;
 - the list of **important events** (status changes with their message);
 - the certificate panel for HTTPS targets (issuer, expiry; filled by the certificate job landing in the
@@ -83,8 +107,8 @@ year) buckets, so a monitor's history survives the pruning of raw heartbeats aft
 ## Groups
 
 A **Group** monitor has no target of its own; set `parent` on other monitors to put them inside it. The
-group is UP when all children are UP, DOWN as soon as one child is DOWN, and PENDING while a child is
-retrying. Groups nest, show as a tree in the monitor list and can be placed on status pages like any other
+group is UP when all children are UP, DOWN as soon as one child is DOWN, PENDING while a child is
+retrying, and DEGRADED when a child is degraded and none is worse. Groups nest, show as a tree in the monitor list and can be placed on status pages like any other
 monitor, which is the easy way to publish "API: operational" over a dozen internal checks. Deleting a group
 detaches its children instead of deleting them.
 
