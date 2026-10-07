@@ -496,6 +496,39 @@ describe('outbound webhooks', () => {
     })
   })
 
+  describe('without database transactions (MongoDB without a replica set)', () => {
+    it('still delivers incident events', async () => {
+      // The Mongo adapter returns no transaction id without a replica set; Payload then runs every
+      // operation outside a transaction and its dataloader leaves `{}` as `req.transactionID`.
+      vi.spyOn(payload.db, 'beginTransaction').mockResolvedValue(null)
+      const created = await createEndpoint(owner, {
+        url: `${receiverUrl}/no-tx`,
+        events: ['incident.opened', 'incident.update_posted'],
+      })
+      expect(created.status).toBe(201)
+      received.length = 0
+      await payload.create({
+        collection: 'incidents',
+        data: {
+          organization: orgA.id,
+          statusPage: page.id,
+          title: 'Queue backlog',
+          updates: [{ status: 'investigating', postedAt: new Date().toISOString(), message: 'Hm' }],
+        },
+        user: await asUser(owner),
+        overrideAccess: false,
+      })
+      const hits = await waitFor(async () => {
+        const list = receivedAt('/no-tx')
+        return list.length >= 2 ? list : null
+      })
+      expect(hits.map((hit) => JSON.parse(hit.body).type).sort()).toEqual([
+        'incident.opened',
+        'incident.update_posted',
+      ])
+    })
+  })
+
   describe('monitor state events', () => {
     it('sends monitor.down for a notifying beat and skips reminders', async () => {
       const created = await createEndpoint(owner, {
