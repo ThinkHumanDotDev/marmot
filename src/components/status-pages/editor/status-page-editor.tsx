@@ -145,6 +145,8 @@ export function StatusPageEditor({
               initialIncidents={initialIncidents}
               timeZone={timeZone}
               canEdit={canEdit}
+              page={page}
+              monitors={monitors}
             />
           </TabsContent>
           <TabsContent value="domains" className="pt-6">
