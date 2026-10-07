@@ -31,6 +31,8 @@ import { StatusPageViewers } from './StatusPageViewers'
 import { Tags } from './Tags'
 import { Templates } from './Templates'
 import { Users } from './Users'
+import { WebhookDeliveries } from './WebhookDeliveries'
+import { WebhookEndpoints } from './WebhookEndpoints'
 
 /**
  * Registry of every Payload collection. Add new collections here (one import + one entry) and
@@ -67,4 +69,6 @@ export const collections: CollectionConfig[] = [
   Templates,
   ApiKeys,
   AuditLogs,
+  WebhookEndpoints,
+  WebhookDeliveries,
 ].map(withAuditHooks)

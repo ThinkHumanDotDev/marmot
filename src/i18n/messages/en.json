@@ -1110,7 +1110,8 @@
       "permissions": "Permissions",
       "security": "Security",
       "notifications": "Notifications",
-      "instance": "Instance"
+      "instance": "Instance",
+      "webhooks": "Webhooks"
     },
     "pageTitles": {
       "account": "Account settings",
@@ -1126,7 +1127,9 @@
       "permissions": "Permissions",
       "security": "Security settings",
       "notifications": "Notification settings",
-      "instance": "Instance settings"
+      "instance": "Instance settings",
+      "webhooks": "Webhooks",
+      "webhookDeliveries": "Webhook deliveries"
     },
     "account": {
       "profile": {
@@ -1415,7 +1418,8 @@
         "member": "Member",
         "user": "Account",
         "instance_settings": "Instance settings",
-        "import": "Import"
+        "import": "Import",
+        "webhook_endpoint": "Webhook endpoint"
       },
       "verbs": {
         "created": "created",
@@ -1685,7 +1689,8 @@
         "auditLog": "Audit log",
         "sso": "Single sign-on",
         "subscriber": "Status page subscribers",
-        "monitorIncident": "Monitor incidents"
+        "monitorIncident": "Monitor incidents",
+        "webhook": "Webhooks"
       },
       "actions": {
         "read": "View",
@@ -1975,6 +1980,125 @@
         "save": "Save",
         "create": "Create",
         "saving": "Saving…"
+      }
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "description": "Marmot POSTs a JSON event to each endpoint when something happens in this organization. Every request is signed with the endpoint's secret in the <code>X-Marmot-Signature</code> header.",
+      "newEndpoint": "Add endpoint",
+      "emptyTitle": "No webhook endpoints",
+      "emptyDescription": "Add an endpoint to receive monitor, incident, maintenance and other events.",
+      "emptyReadOnly": "No webhook endpoints have been added yet.",
+      "adminsOnlyTitle": "Admins only",
+      "adminsOnlyDescription": "Only organization admins and owners can see and manage webhooks.",
+      "columns": {
+        "endpoint": "Endpoint",
+        "events": "Events",
+        "status": "Status",
+        "lastDelivery": "Last delivery"
+      },
+      "status": {
+        "active": "Active",
+        "disabled": "Disabled",
+        "disabledFailures": "Disabled after failures"
+      },
+      "allEvents": "All events",
+      "eventCount": "{count, plural, one {# event} other {# events}}",
+      "lastDelivery": "{state, select, succeeded {Succeeded} failed {Failed} other {Sent}} · {time}",
+      "never": "Never",
+      "enabled": "Endpoint enabled",
+      "disabledToast": "Endpoint disabled",
+      "updateFailed": "Could not update the endpoint.",
+      "testSucceeded": "Test event delivered (HTTP {status}).",
+      "testFailed": "Test event failed. {error}",
+      "rotateFailed": "Could not rotate the secret.",
+      "deleted": "Endpoint deleted",
+      "deleteFailed": "Could not delete the endpoint.",
+      "disableEndpoint": "Disable endpoint",
+      "enableEndpoint": "Enable endpoint",
+      "actionsLabel": "Actions for {url}",
+      "viewDeliveries": "Delivery log",
+      "sendTest": "Send test event",
+      "edit": "Edit",
+      "rotateSecret": "Rotate secret",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "rotateTitle": "Rotate the signing secret?",
+      "rotateDescription": "A new secret is shown once. The current secret keeps signing deliveries next to the new one for 24 hours, so you can update your receiver without missing events.",
+      "deleteTitle": "Delete this endpoint?",
+      "deleteDescription": "{url} stops receiving events and its delivery log is deleted. This cannot be undone.",
+      "form": {
+        "createTitle": "Add webhook endpoint",
+        "editTitle": "Edit webhook endpoint",
+        "description": "Choose where events are sent and which events to send.",
+        "url": "Endpoint URL",
+        "urlPlaceholder": "https://example.com/hooks/marmot",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "What receives these events (optional)",
+        "events": "Events",
+        "allEvents": "All events, including ones added later",
+        "selectedEvents": "Selected events",
+        "groupAll": "All {group} events",
+        "eventsRequired": "Select at least one event.",
+        "cancel": "Cancel",
+        "create": "Add endpoint",
+        "save": "Save",
+        "failed": "Could not save the endpoint."
+      },
+      "reveal": {
+        "title": "Signing secret",
+        "description": "Copy the secret of {url} now: it is not shown again. Use it to verify the <code>X-Marmot-Signature</code> header of each delivery.",
+        "secretLabel": "Signing secret",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copyLabel": "Copy the secret",
+        "copyFailed": "Could not copy to the clipboard.",
+        "done": "Done"
+      },
+      "deliveries": {
+        "back": "All webhooks",
+        "description": "{count, plural, =0 {No deliveries} one {# delivery} other {# deliveries}} from the last {days, plural, one {day} other {# days}}. Failed deliveries are retried with backoff for about a day.",
+        "sendTest": "Send test event",
+        "emptyTitle": "No deliveries yet",
+        "emptyDescription": "Deliveries appear here once an event is sent to this endpoint.",
+        "columns": {
+          "event": "Event",
+          "state": "Result",
+          "response": "Response",
+          "duration": "Duration",
+          "time": "Time"
+        },
+        "showDetails": "Show request and response",
+        "hideDetails": "Hide request and response",
+        "attempts": "{count, plural, one {# attempt} other {# attempts}}",
+        "durationMs": "{ms, number, integer} ms",
+        "redeliver": "Redeliver",
+        "pageOf": "Page {page} of {total}",
+        "previous": "Previous",
+        "next": "Next",
+        "loadFailed": "Could not load the deliveries.",
+        "sentOk": "Delivered (HTTP {status}).",
+        "sentFailed": "Delivery failed. {error}",
+        "redeliverFailed": "Could not send the event.",
+        "triggers": {
+          "event": "Event",
+          "redelivery": "Redelivery",
+          "test": "Test event"
+        },
+        "states": {
+          "pending": "Pending",
+          "retrying": "Retrying",
+          "succeeded": "Succeeded",
+          "failed": "Failed",
+          "cancelled": "Cancelled"
+        },
+        "detail": {
+          "request": "Request",
+          "notSent": "Not sent yet",
+          "response": "Response",
+          "responseStatus": "Response · HTTP {status}",
+          "noResponse": "No response"
+        }
       }
     }
   },
@@ -4899,6 +5023,12 @@
       "results": "Probe results: {results}",
       "onlineSubject": "Marmot checker back online",
       "onlineText": "The Marmot worker is back online since {time}{location, select, default {} other { (location {location})}} after {minutes, plural, one {# minute} other {# minutes}} offline. Held monitors are being checked again."
+    },
+    "webhookDisabled": {
+      "subject": "Webhook endpoint disabled: {url}",
+      "intro": "Marmot disabled the webhook endpoint {url} of {organization} after {count, plural, one {# delivery} other {# deliveries in a row}} failed.",
+      "lastError": "Last error: {error}",
+      "action": "Fix the receiver, then re-enable the endpoint under Settings → Webhooks:"
     }
   },
   "apiDocs": {
@@ -5113,7 +5243,13 @@
     "incidentAlreadyAcknowledged": "This incident is already acknowledged.",
     "incidentAlreadyResolved": "This incident is already resolved.",
     "incidentAlreadyPublished": "This incident is already published to a status page.",
-    "incidentAckLinkInvalid": "This acknowledge link is invalid or has expired."
+    "incidentAckLinkInvalid": "This acknowledge link is invalid or has expired.",
+    "webhookUrlInvalid": "Enter an http:// or https:// URL.",
+    "webhookUrlBlocked": "This URL is not allowed: {reason}",
+    "webhookEventsRequired": "Select at least one event.",
+    "webhookEventUnknown": "Unknown event type: {event}",
+    "webhookNotFound": "Webhook endpoint not found.",
+    "webhookDeliveryNotFound": "Webhook delivery not found."
   },
   "subscriberMessages": {
     "sms": {

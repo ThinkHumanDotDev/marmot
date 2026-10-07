@@ -30,6 +30,7 @@ import { maintenanceFormSchema } from '@/lib/validation/maintenance'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
 import { apiKeyCreateSchema, apiKeyPatchSchema } from '@/server/api-keys/schemas'
 import { API_KEY_FORBIDDEN_SECTIONS, isWriteMethod } from '@/server/auth/request-auth'
+import { createEndpointSchema, updateEndpointSchema } from '@/server/webhooks/manage'
 
 /** Version of the management API contract. Breaking changes bump the major version. */
 export const MANAGEMENT_API_VERSION = '1.0.0'
@@ -1163,6 +1164,90 @@ export const OPERATIONS: OperationSpec[] = [
     summary: 'Forget a visitor',
     tag: 'Status pages',
     permission: 'status-page:update',
+  },
+
+  // Outbound webhooks (admins by default; keys only where the organization lowered `webhook:*`)
+  {
+    method: 'GET',
+    path: `${ORG}/webhooks`,
+    operationId: 'listWebhookEndpoints',
+    summary: 'Webhook endpoints (without secrets) and the event catalogue',
+    tag: 'Webhooks',
+    permission: 'webhook:read',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/webhooks`,
+    operationId: 'createWebhookEndpoint',
+    summary: 'Create a webhook endpoint',
+    description: 'The response carries the signing `secret` exactly once.',
+    tag: 'Webhooks',
+    permission: 'webhook:manage',
+    body: { schema: createEndpointSchema },
+    status: 201,
+    response: { description: '`{ doc, secret }`', schema: anyObject },
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/webhooks/{id}`,
+    operationId: 'getWebhookEndpoint',
+    summary: 'A webhook endpoint (without its secret)',
+    tag: 'Webhooks',
+    permission: 'webhook:read',
+  },
+  {
+    method: 'PATCH',
+    path: `${ORG}/webhooks/{id}`,
+    operationId: 'updateWebhookEndpoint',
+    summary: 'Update a webhook endpoint (re-enabling resets its failure streak)',
+    tag: 'Webhooks',
+    permission: 'webhook:manage',
+    body: { schema: updateEndpointSchema },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/webhooks/{id}`,
+    operationId: 'deleteWebhookEndpoint',
+    summary: 'Delete a webhook endpoint',
+    tag: 'Webhooks',
+    permission: 'webhook:manage',
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/webhooks/{id}/deliveries`,
+    operationId: 'listWebhookDeliveries',
+    summary: "An endpoint's delivery log, 25 per page",
+    tag: 'Webhooks',
+    permission: 'webhook:read',
+    query: [
+      { name: 'page', description: 'Page number', schema: { type: 'integer' } },
+      { name: 'state', description: 'Only deliveries in this state', schema: { type: 'string' } },
+    ],
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/webhooks/{id}/deliveries/{deliveryId}/redeliver`,
+    operationId: 'redeliverWebhookDelivery',
+    summary: 'Send a logged event again',
+    tag: 'Webhooks',
+    permission: 'webhook:manage',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/webhooks/{id}/rotate-secret`,
+    operationId: 'rotateWebhookSecret',
+    summary: 'Rotate the signing secret (the old one keeps signing for 24 hours)',
+    tag: 'Webhooks',
+    permission: 'webhook:manage',
+    response: { description: '`{ doc, secret }`, the secret shown once', schema: anyObject },
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/webhooks/{id}/test`,
+    operationId: 'testWebhookEndpoint',
+    summary: 'Send a signed `webhook.test` event now',
+    tag: 'Webhooks',
+    permission: 'webhook:manage',
   },
 
   // Not organization-scoped

@@ -86,6 +86,10 @@ export const PERMISSIONS = {
 
   'audit-log:read': 'admin',
 
+  // Outbound event webhooks (#157): endpoints, their delivery log, test events and redeliveries.
+  'webhook:read': 'admin',
+  'webhook:manage': 'admin',
+
   // Single sign-on connections and verified domains (Settings → Security).
   'sso:read': 'admin',
   'sso:manage': 'owner',

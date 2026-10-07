@@ -15,6 +15,7 @@ import { GET as getMonitor } from '@/app/api/orgs/[orgId]/monitors/[id]/route'
 import { GET as listMonitors, POST as createMonitor } from '@/app/api/orgs/[orgId]/monitors/route'
 import { GET as listStatusPages } from '@/app/api/orgs/[orgId]/status-pages/route'
 import { GET as openApiRoute } from '@/app/api/openapi.json/route'
+import { GET as listWebhooks, POST as createWebhook } from '@/app/api/orgs/[orgId]/webhooks/route'
 import { env, resetEnvCache } from '@/env'
 import { defaultMonitorValues } from '@/lib/validation/monitor'
 import type { AuditLog, Monitor, Organization, User } from '@/payload-types'
@@ -249,6 +250,40 @@ describe('management API with API keys', () => {
       if (before === undefined) delete process.env.OIDC_DISABLE_LOCAL_LOGIN
       else process.env.OIDC_DISABLE_LOCAL_LOGIN = before
       resetEnvCache()
+    }
+  })
+
+  it('webhooks follow the permissions: admin-only by default, keys where the org lowered them', async () => {
+    const url = orgUrl(orgA, 'webhooks')
+    const byDefault = await listWebhooks(keyRequest(url, writeKey), { params: params(orgA.id) })
+    expect(byDefault.status).toBe(403)
+
+    await payload.update({
+      collection: 'organizations',
+      id: orgA.id,
+      overrideAccess: true,
+      data: { permissionOverrides: { 'webhook:read': 'viewer' } },
+    })
+    try {
+      const lowered = await listWebhooks(keyRequest(url, readKey), { params: params(orgA.id) })
+      expect(lowered.status).toBe(200)
+      expect(JSON.stringify(await lowered.json())).not.toMatch(/"secret"/)
+      // `webhook:manage` is still admin: a write key (member) may not create endpoints.
+      const create = await createWebhook(
+        keyRequest(url, writeKey, {
+          method: 'POST',
+          body: { url: 'https://hooks.example.com/marmot', events: ['monitor.down'] },
+        }),
+        { params: params(orgA.id) },
+      )
+      expect(create.status).toBe(403)
+    } finally {
+      await payload.update({
+        collection: 'organizations',
+        id: orgA.id,
+        overrideAccess: true,
+        data: { permissionOverrides: {} },
+      })
     }
   })
 

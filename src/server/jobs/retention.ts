@@ -13,6 +13,7 @@
  *                        `KEEP_DATA_PERIOD_DAYS` (only when the engine's collection exists)
  * - `status-page-subscribers` self sign-ups never confirmed within 72 hours
  * - `subscriber-deliveries` older than 90 days (the per-subscriber delivery log)
+ * - `webhook-deliveries` older than `WEBHOOK_DELIVERY_RETENTION_DAYS` (default 14)
  * - `audit-logs`         older than `AUDIT_LOG_RETENTION_DAYS` (default 365; 0 keeps them forever)
  *
  * Runs hourly as a BullMQ job scheduler on the `marmot:maintenance` queue.
@@ -52,6 +53,8 @@ export type RetentionOptions = {
   keepDataPeriodDays?: number
   /** Days to keep audit rows (0 = forever). Defaults to `AUDIT_LOG_RETENTION_DAYS`. */
   auditLogRetentionDays?: number
+  /** Days to keep the webhook delivery log. Defaults to `WEBHOOK_DELIVERY_RETENTION_DAYS`. */
+  webhookDeliveryRetentionDays?: number
 }
 
 export type RetentionResult = {
@@ -63,6 +66,7 @@ export type RetentionResult = {
   auditLogs: number
   unconfirmedSubscribers: number
   subscriberDeliveries: number
+  webhookDeliveries: number
 }
 
 const subtractSeconds = (date: Date, seconds: number): Date =>
@@ -118,6 +122,7 @@ export async function runRetention(
     auditLogs: 0,
     unconfirmedSubscribers: 0,
     subscriberDeliveries: 0,
+    webhookDeliveries: 0,
   }
 
   result.minutely = await deleteWhere(payload, 'stat-minutely', {
@@ -169,6 +174,13 @@ export async function runRetention(
     })
     result.subscriberDeliveries = await deleteWhere(payload, 'subscriber-deliveries', {
       createdAt: { less_than: cutoffs.subscriberDeliveries.toISOString() },
+    })
+  }
+
+  if (hasCollection(payload, 'webhook-deliveries')) {
+    const days = opts.webhookDeliveryRetentionDays ?? env.WEBHOOK_DELIVERY_RETENTION_DAYS
+    result.webhookDeliveries = await deleteWhere(payload, 'webhook-deliveries', {
+      createdAt: { less_than: subtractSeconds(now, days * 86400).toISOString() },
     })
   }
 

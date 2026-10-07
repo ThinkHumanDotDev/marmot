@@ -38,4 +38,12 @@ describe('webhook signatures', () => {
     expect(headers['X-Marmot-Signature']).toMatch(/^t=\d+,v1=[0-9a-f]{64}$/)
     expect(generateWebhookSecret()).toMatch(/^whsec_[A-Za-z0-9_-]{43}$/)
   })
+
+  it('signs with every secret of a rotation, and either one verifies', () => {
+    const header = signWebhookPayload(['whsec_new', 'whsec_old'], body)
+    expect(header.match(/v1=/g)).toHaveLength(2)
+    expect(verifyWebhookSignature('whsec_new', body, header)).toBe(true)
+    expect(verifyWebhookSignature('whsec_old', body, header)).toBe(true)
+    expect(verifyWebhookSignature('whsec_other', body, header)).toBe(false)
+  })
 })
