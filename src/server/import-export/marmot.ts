@@ -632,7 +632,7 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
             return keep
           })
           .map((row) => ({
-            key: row.id ?? null,
+            ...(row.id ? { key: row.id } : {}),
             monitorKey: row.type === 'static' ? null : String(row.monitor),
             type: row.type === 'static' ? ('static' as const) : ('monitor' as const),
             name: asText(row.name),
