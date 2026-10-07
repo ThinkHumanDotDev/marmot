@@ -6,7 +6,9 @@ import config from '@payload-config'
 import { AnalyticsIdentity } from '@/components/consent/analytics-identity'
 import { SocketProvider } from '@/components/realtime/socket-provider'
 import { AppShell } from '@/components/shell/app-shell'
+import { OrgTimeZoneProvider } from '@/components/shell/org-time-zone-provider'
 import { ThemeSync } from '@/components/theme-sync'
+import { timeZoneOrDefault } from '@/i18n/formats'
 import {
   getUserOrganizations,
   homePathFor,
@@ -14,6 +16,7 @@ import {
   type CurrentUser,
   type OrgMembership,
 } from '@/lib/auth'
+import type { Organization } from '@/payload-types'
 import { hashAnalyticsId, isServerAnalyticsEnabled } from '@/server/analytics'
 
 export const dynamic = 'force-dynamic'
@@ -23,13 +26,11 @@ interface OrgLayoutProps {
   params: Promise<{ orgSlug: string }>
 }
 
-/** Plan of one of the user's organizations when the membership row carries the populated doc. */
-function membershipPlan(user: CurrentUser, orgId: string | number): string | undefined {
+/** One of the user's organizations when the membership row carries the populated doc. */
+function membershipOrg(user: CurrentUser, orgId: string | number): Organization | undefined {
   for (const row of user.organizations ?? []) {
     const org = row.organization
-    if (org && typeof org === 'object' && String(org.id) === String(orgId)) {
-      return org.plan ?? undefined
-    }
+    if (org && typeof org === 'object' && String(org.id) === String(orgId)) return org
   }
   return undefined
 }
@@ -41,7 +42,9 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
   const organizations = await getUserOrganizations(user)
 
   let currentOrg: OrgMembership | undefined = organizations.find((org) => org.slug === orgSlug)
-  let plan = currentOrg ? membershipPlan(user, currentOrg.id) : undefined
+  const membership = currentOrg ? membershipOrg(user, currentOrg.id) : undefined
+  let plan = membership?.plan ?? undefined
+  let timeZone = membership?.settings?.timezone
 
   if (!currentOrg) {
     if (user.superadmin) {
@@ -58,6 +61,7 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
       if (!org) notFound()
       currentOrg = { id: org.id, slug: org.slug, name: org.name, role: 'superadmin' }
       plan = org.plan ?? undefined
+      timeZone = org.settings?.timezone
     } else if (organizations.length > 0) {
       redirect(homePathFor(organizations))
     } else {
@@ -83,7 +87,10 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
       currentOrg={currentOrg}
     >
       <ThemeSync theme={user.theme} />
-      <SocketProvider organizationId={currentOrg.id}>{children}</SocketProvider>
+      {/* Dates on the organization's pages render in its time zone (UTC unless configured). */}
+      <OrgTimeZoneProvider timeZone={timeZoneOrDefault(timeZone)}>
+        <SocketProvider organizationId={currentOrg.id}>{children}</SocketProvider>
+      </OrgTimeZoneProvider>
       {isServerAnalyticsEnabled() && (
         // Only a keyed hash of the id reaches the browser/PostHog, never email or name.
         <AnalyticsIdentity hashedUserId={hashAnalyticsId(user.id)} plan={plan} />

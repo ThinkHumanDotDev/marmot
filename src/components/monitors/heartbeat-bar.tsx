@@ -1,8 +1,8 @@
-import { describeBeats } from '@/components/status-dot'
+import { useDescribeBeats } from '@/components/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
-import { formatDateTime, formatPing, type MonitorStatus } from './format'
+import { useMonitorFormat, type MonitorStatus } from './format'
 
 export interface BeatLike {
   id: string | number
@@ -27,12 +27,17 @@ export function HeartbeatBar({
   beats,
   size = 100,
   className,
+  timeZone,
 }: {
   /** Newest first (as returned by the heartbeats query). */
   beats: BeatLike[]
   size?: number
   className?: string
+  /** Zone of the tooltips' timestamps (the organization's). */
+  timeZone?: string
 }) {
+  const describeBeats = useDescribeBeats()
+  const format = useMonitorFormat(timeZone)
   const shown = beats.slice(0, size).reverse()
   const missing = Math.max(0, size - shown.length)
 
@@ -58,9 +63,9 @@ export function HeartbeatBar({
             />
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
-            <div className="font-medium capitalize">{beat.status}</div>
-            <div>{formatDateTime(beat.time)}</div>
-            {beat.ping != null && <div>{formatPing(beat.ping)}</div>}
+            <div className="font-medium">{format.statusText(beat.status)}</div>
+            <div>{format.dateTime(beat.time)}</div>
+            {beat.ping != null && <div>{format.ping(beat.ping)}</div>}
             {beat.msg && <div className="max-w-64 truncate opacity-80">{beat.msg}</div>}
           </TooltipContent>
         </Tooltip>

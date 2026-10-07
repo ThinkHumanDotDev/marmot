@@ -2,7 +2,7 @@ import { StatusDot } from '@/components/status-dot'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
-import { statusKey, statusText, type MonitorStatus } from './format'
+import { statusKey, useMonitorFormat, type MonitorStatus } from './format'
 
 const tone: Record<ReturnType<typeof statusKey>, string> = {
   up: 'border-status-up/40 bg-status-up/10 text-foreground',
@@ -23,6 +23,7 @@ export function MonitorStatusBadge({
   className?: string
 }) {
   const key = statusKey(status, active)
+  const { statusText } = useMonitorFormat()
   return (
     <Badge
       variant="outline"

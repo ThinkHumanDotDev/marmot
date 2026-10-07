@@ -16,6 +16,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -35,7 +36,12 @@ import { publicStatusPagePath } from '@/components/status-pages/api'
 import { isRole, PERMISSIONS, roleSatisfies, type Permission } from '@/access/permissions'
 import { api, authApi } from '@/lib/api'
 import type { OrgMembership } from '@/lib/auth'
-import { statusKey, useMonitorStore, type MonitorStatusKey } from '@/stores/monitor-store'
+import {
+  selectMonitorList,
+  statusKey,
+  useMonitorStore,
+  type MonitorStatusKey,
+} from '@/stores/monitor-store'
 import { useUiStore } from '@/stores/ui-store'
 
 import { useGoShortcuts } from './keyboard-shortcuts'
@@ -79,6 +85,7 @@ const lastStatusKey: Record<string, MonitorStatusKey> = {
  * store is not hydrated yet (realtime offline, or the palette opened before the socket joined).
  */
 function usePaletteData(open: boolean, orgId: string | number) {
+  const locale = useLocale()
   const storeHydrated = useMonitorStore((s) => s.hydrated)
   const storeMonitors = useMonitorStore((s) => s.monitors)
   const storeHeartbeats = useMonitorStore((s) => s.heartbeats)
@@ -138,15 +145,13 @@ function usePaletteData(open: boolean, orgId: string | number) {
 
   const monitors = React.useMemo<PaletteMonitor[]>(() => {
     if (!storeHydrated) return fetchedMonitors ?? []
-    return Object.values(storeMonitors)
-      .map((m) => ({
-        id: m.id,
-        name: m.name,
-        active: m.active,
-        status: m.active ? statusKey(storeHeartbeats[m.id]?.last()?.status) : ('unknown' as const),
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [storeHydrated, storeMonitors, storeHeartbeats, fetchedMonitors])
+    return selectMonitorList({ monitors: storeMonitors }, locale).map((m) => ({
+      id: m.id,
+      name: m.name,
+      active: m.active,
+      status: m.active ? statusKey(storeHeartbeats[m.id]?.last()?.status) : ('unknown' as const),
+    }))
+  }, [storeHydrated, storeMonitors, storeHeartbeats, fetchedMonitors, locale])
 
   return { monitors, statusPages: statusPages ?? [] }
 }
@@ -157,6 +162,9 @@ function usePaletteData(open: boolean, orgId: string | number) {
  * the `g <key>` navigation sequences.
  */
 export function CommandPalette({ organizations, currentOrg }: CommandPaletteProps) {
+  const t = useTranslations('shell.palette')
+  const tNav = useTranslations('shell.nav')
+  const tTheme = useTranslations('shell.theme')
   const router = useRouter()
   const pathname = usePathname()
   const { setTheme, resolvedTheme } = useTheme()
@@ -204,11 +212,13 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
       await api.post(
         `/api/orgs/${currentOrg.id}/monitors/${monitor.id}/${active ? 'resume' : 'pause'}`,
       )
-      toast.success(active ? `Resumed “${monitor.name}”` : `Paused “${monitor.name}”`)
+      toast.success(
+        active ? t('resumed', { name: monitor.name }) : t('pausedToast', { name: monitor.name }),
+      )
       router.refresh()
     } catch (error) {
       if (previous) useMonitorStore.getState().upsertMonitor(previous)
-      toast.error(error instanceof Error ? error.message : 'Could not update the monitor')
+      toast.error(error instanceof Error ? error.message : t('updateFailed'))
     }
   }
 
@@ -219,29 +229,31 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
     <CommandDialog
       open={open}
       onOpenChange={setOpen}
-      title="Command palette"
-      description="Jump to a page or monitor, or run an action"
+      title={t('title')}
+      description={t('description')}
       className="top-[12%] translate-y-0 sm:top-[20%] sm:max-w-lg"
     >
-      <CommandInput placeholder="Search pages, monitors, actions…" aria-label="Search commands" />
+      <CommandInput placeholder={t('placeholder')} aria-label={t('inputLabel')} />
       <CommandList>
-        <CommandEmpty>No results.</CommandEmpty>
+        <CommandEmpty>{t('empty')}</CommandEmpty>
 
-        <CommandGroup heading="Actions">
+        <CommandGroup heading={t('actions')}>
           {canCreateMonitors && (
             <CommandItem
               value="new monitor create add"
+              keywords={[t('newMonitor')]}
               onSelect={run(() => router.push(orgPath(currentOrg.slug, 'monitors/new')))}
             >
-              <Plus aria-hidden /> New monitor
+              <Plus aria-hidden /> {t('newMonitor')}
             </CommandItem>
           )}
           {canCreateMaintenance && (
             <CommandItem
               value="schedule maintenance window new create"
+              keywords={[t('scheduleMaintenance')]}
               onSelect={run(() => router.push(orgPath(currentOrg.slug, 'maintenance/new')))}
             >
-              <Wrench aria-hidden /> Schedule maintenance
+              <Wrench aria-hidden /> {t('scheduleMaintenance')}
             </CommandItem>
           )}
           {currentMonitor && canWriteMonitors && (
@@ -250,7 +262,9 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
               onSelect={run(() => setMonitorActive(currentMonitor, !currentMonitor.active))}
             >
               {currentMonitor.active ? <Pause aria-hidden /> : <Play aria-hidden />}
-              {currentMonitor.active ? 'Pause' : 'Resume'} “{currentMonitor.name}”
+              {currentMonitor.active
+                ? t('pauseMonitor', { name: currentMonitor.name })
+                : t('resumeMonitor', { name: currentMonitor.name })}
             </CommandItem>
           )}
           {currentMonitor && canWriteMonitors && (
@@ -260,28 +274,28 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
                 router.push(orgPath(currentOrg.slug, `monitors/${currentMonitor.id}/edit`)),
               )}
             >
-              <Pencil aria-hidden /> Edit “{currentMonitor.name}”
+              <Pencil aria-hidden /> {t('editMonitor', { name: currentMonitor.name })}
             </CommandItem>
           )}
           <CommandItem
             value={`toggle theme ${nextTheme} mode`}
             onSelect={run(() => setTheme(nextTheme))}
           >
-            <SunMoon aria-hidden /> Switch to {nextTheme} theme
+            <SunMoon aria-hidden /> {t('switchTheme', { theme: nextTheme })}
           </CommandItem>
         </CommandGroup>
 
         <CommandSeparator />
-        <CommandGroup heading="Go to">
+        <CommandGroup heading={t('goTo')}>
           {orgNavigation.map((item) => (
             <CommandItem
               key={item.segment}
-              value={`go ${item.label}`}
+              value={`go ${tNav(item.label)}`}
               onSelect={run(() => router.push(orgPath(currentOrg.slug, item.segment)))}
             >
               <item.icon aria-hidden />
-              {item.label}
-              <CommandShortcut aria-label={`Shortcut: G then ${item.shortcut}`}>
+              {tNav(item.label)}
+              <CommandShortcut aria-label={t('shortcut', { key: item.shortcut })}>
                 G {item.shortcut.toUpperCase()}
               </CommandShortcut>
             </CommandItem>
@@ -291,7 +305,7 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
         {monitors.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Monitors">
+            <CommandGroup heading={t('monitors')}>
               {monitors.map((monitor) => (
                 <CommandItem
                   key={monitor.id}
@@ -305,7 +319,7 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
                   {monitor.active ? (
                     <StatusDot status={monitor.status} pulse={false} className="size-2" />
                   ) : (
-                    <span className="text-xs text-muted-foreground">Paused</span>
+                    <span className="text-xs text-muted-foreground">{t('paused')}</span>
                   )}
                 </CommandItem>
               ))}
@@ -316,7 +330,7 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
         {statusPages.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Status pages">
+            <CommandGroup heading={t('statusPages')}>
               {statusPages.map((page) =>
                 page.published ? (
                   <CommandItem
@@ -327,7 +341,9 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
                     })}
                   >
                     <ExternalLink aria-hidden />
-                    <span className="min-w-0 flex-1 truncate">Open {page.title}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {t('openStatusPage', { title: page.title })}
+                    </span>
                     <span className="font-mono text-xs text-muted-foreground">
                       /status/{page.slug}
                     </span>
@@ -341,8 +357,10 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
                     )}
                   >
                     <Globe aria-hidden />
-                    <span className="min-w-0 flex-1 truncate">Edit {page.title}</span>
-                    <span className="text-xs text-muted-foreground">Draft</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {t('editStatusPage', { title: page.title })}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{t('draft')}</span>
                   </CommandItem>
                 ),
               )}
@@ -353,7 +371,7 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
         {otherOrgs.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Switch organization">
+            <CommandGroup heading={t('switchOrganization')}>
               {otherOrgs.map((org) => (
                 <CommandItem
                   key={String(org.id)}
@@ -373,24 +391,41 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
           </>
         )}
         <CommandSeparator />
-        <CommandGroup heading="Theme">
-          <CommandItem value="theme light" onSelect={run(() => setTheme('light'))}>
-            <Sun aria-hidden /> Light
+        <CommandGroup heading={t('theme')}>
+          <CommandItem
+            value="theme light"
+            keywords={[tTheme('light')]}
+            onSelect={run(() => setTheme('light'))}
+          >
+            <Sun aria-hidden /> {tTheme('light')}
           </CommandItem>
-          <CommandItem value="theme dark" onSelect={run(() => setTheme('dark'))}>
-            <Moon aria-hidden /> Dark
+          <CommandItem
+            value="theme dark"
+            keywords={[tTheme('dark')]}
+            onSelect={run(() => setTheme('dark'))}
+          >
+            <Moon aria-hidden /> {tTheme('dark')}
           </CommandItem>
-          <CommandItem value="theme system" onSelect={run(() => setTheme('system'))}>
-            <Monitor aria-hidden /> System
+          <CommandItem
+            value="theme system"
+            keywords={[tTheme('system')]}
+            onSelect={run(() => setTheme('system'))}
+          >
+            <Monitor aria-hidden /> {tTheme('system')}
           </CommandItem>
         </CommandGroup>
         <CommandSeparator />
-        <CommandGroup heading="Account">
-          <CommandItem value="new organization" onSelect={run(() => router.push('/onboarding'))}>
-            <Plus aria-hidden /> New organization
+        <CommandGroup heading={t('account')}>
+          <CommandItem
+            value="new organization"
+            keywords={[t('newOrganization')]}
+            onSelect={run(() => router.push('/onboarding'))}
+          >
+            <Plus aria-hidden /> {t('newOrganization')}
           </CommandItem>
           <CommandItem
             value="sign out"
+            keywords={[t('signOut')]}
             onSelect={run(async () => {
               try {
                 await authApi.logout()
@@ -400,7 +435,7 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
               }
             })}
           >
-            <LogOut aria-hidden /> Sign out
+            <LogOut aria-hidden /> {t('signOut')}
           </CommandItem>
         </CommandGroup>
       </CommandList>

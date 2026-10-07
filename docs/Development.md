@@ -147,10 +147,18 @@ key fails `pnpm typecheck`, and `tests/int/i18n.int.spec.ts` checks that every c
 4. Dates and numbers never go through `toLocaleString()`: use `useFormatter()` / `getFormatter()` with a
    named format (`format.dateTime(date, 'short')`, `format.number(fraction, 'percent')`). The request config
    renders in UTC, public status pages in the organization's `settings.timezone`; passing the zone explicitly
-   is what keeps the server HTML and the client hydration identical.
+   is what keeps the server HTML and the client hydration identical. Inside an organization
+   (`/[orgSlug]/…`) the layout wraps the pages in `OrgTimeZoneProvider`, so client islands format in the
+   organization's zone automatically; server components there take a `timeZone` prop and pass it as an
+   override (`format.dateTime(date, 'precise', { timeZone })`). Sorting by name uses the locale too
+   (`new Intl.Collator(useLocale())`, see `selectMonitorList`).
 5. Stable identifiers stay untranslated: monitor type slugs, status enum values, webhook payload keys, log
    lines and the `code` of API errors. Only their display labels are messages.
-6. A zod schema shared by a form and its route handlers takes its messages as a parameter
+6. Schemas shared by a form and a route handler take their messages from a resolver: the form builds
+   them with its translator (`createMonitorFormSchema((key, values) => t(key, values))`), the API keeps
+   the English instance (`monitorFormSchema` in `monitor-schema.ts`, a separate module so the catalogue
+   is not bundled into the browser), so API responses stay stable.
+7. The maintenance schema takes a message map instead of a resolver
    (`createMaintenanceFormSchema(messages)`): the handlers use the English defaults, the form passes
    `t(…)` values built in a `useMemo`.
 

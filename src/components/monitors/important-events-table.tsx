@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 import { StatusDot } from '@/components/status-dot'
 import { Button } from '@/components/ui/button'
@@ -14,7 +15,7 @@ import {
 } from '@/components/ui/table'
 
 import type { BeatLike } from './heartbeat-bar'
-import { formatDateTime, statusText } from './format'
+import { useMonitorFormat } from './format'
 
 export interface EventsPage {
   docs: BeatLike[]
@@ -30,30 +31,33 @@ export interface EventsPage {
 export function ImportantEventsTable({
   events,
   basePath,
+  timeZone,
 }: {
   events: EventsPage
   basePath: string
+  /** Zone of the event timestamps (the organization's). */
+  timeZone?: string
 }) {
+  const t = useTranslations('monitors.events')
+  const format = useMonitorFormat(timeZone)
   const pageHref = (page: number) => (page <= 1 ? basePath : `${basePath}?page=${page}`)
 
   return (
     <Card className="gap-3" data-testid="important-events">
       <CardHeader>
-        <CardTitle className="text-base">Important events</CardTitle>
-        <CardDescription>Every status change, with the message the check returned.</CardDescription>
+        <CardTitle className="text-base">{t('title')}</CardTitle>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="px-0">
         {events.docs.length === 0 ? (
-          <p className="px-6 py-8 text-center text-sm text-muted-foreground">
-            No status changes recorded yet.
-          </p>
+          <p className="px-6 py-8 text-center text-sm text-muted-foreground">{t('empty')}</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-32 pl-6">Status</TableHead>
-                <TableHead className="w-48">Time</TableHead>
-                <TableHead className="pr-6">Message</TableHead>
+                <TableHead className="w-32 pl-6">{t('status')}</TableHead>
+                <TableHead className="w-48">{t('time')}</TableHead>
+                <TableHead className="pr-6">{t('message')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -62,11 +66,11 @@ export function ImportantEventsTable({
                   <TableCell className="pl-6">
                     <span className="inline-flex items-center gap-2">
                       <StatusDot status={beat.status} pulse={false} />
-                      {statusText(beat.status)}
+                      {format.statusText(beat.status)}
                     </span>
                   </TableCell>
                   <TableCell className="tabular-nums text-muted-foreground">
-                    {formatDateTime(beat.time)}
+                    {format.dateTime(beat.time)}
                   </TableCell>
                   <TableCell className="max-w-xl truncate pr-6" title={beat.msg ?? undefined}>
                     {beat.msg || <span className="text-muted-foreground">–</span>}
@@ -79,7 +83,11 @@ export function ImportantEventsTable({
         {events.totalPages > 1 && (
           <div className="flex items-center justify-between border-t px-6 pt-4 text-xs text-muted-foreground">
             <span>
-              Page {events.page} of {events.totalPages} · {events.totalDocs} events
+              {t('pagination', {
+                page: events.page,
+                totalPages: events.totalPages,
+                totalDocs: events.totalDocs,
+              })}
             </span>
             <div className="flex gap-1">
               <Button
@@ -90,11 +98,11 @@ export function ImportantEventsTable({
               >
                 {events.page > 1 ? (
                   <Link href={pageHref(events.page - 1)} scroll={false}>
-                    <ChevronLeft /> Newer
+                    <ChevronLeft /> {t('newer')}
                   </Link>
                 ) : (
                   <>
-                    <ChevronLeft /> Newer
+                    <ChevronLeft /> {t('newer')}
                   </>
                 )}
               </Button>
@@ -106,11 +114,11 @@ export function ImportantEventsTable({
               >
                 {events.page < events.totalPages ? (
                   <Link href={pageHref(events.page + 1)} scroll={false}>
-                    Older <ChevronRight />
+                    {t('older')} <ChevronRight />
                   </Link>
                 ) : (
                   <>
-                    Older <ChevronRight />
+                    {t('older')} <ChevronRight />
                   </>
                 )}
               </Button>

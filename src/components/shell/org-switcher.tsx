@@ -3,6 +3,7 @@
 import { Check, ChevronsUpDown, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 import {
   DropdownMenu,
@@ -13,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { isRole } from '@/access/permissions'
 import type { OrgMembership } from '@/lib/auth'
 import { cn, initials } from '@/lib/utils'
 
@@ -37,12 +39,16 @@ function OrgBadge({ name, className }: { name: string; className?: string }) {
 }
 
 export function OrgSwitcher({ organizations, currentOrg, collapsed = false }: OrgSwitcherProps) {
+  const t = useTranslations('shell.orgSwitcher')
   const router = useRouter()
+  const role = currentOrg.role
+  const roleLabel =
+    role && (isRole(role) || role === 'superadmin') ? t(`role.${role}`) : (role ?? null)
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label={`Organization: ${currentOrg.name}. Switch organization`}
+        aria-label={t('trigger', { name: currentOrg.name })}
         className={cn(
           'flex h-10 w-full items-center gap-2.5 rounded-lg px-2 text-left text-sm outline-none transition-colors',
           'hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring data-[state=open]:bg-sidebar-accent',
@@ -54,9 +60,9 @@ export function OrgSwitcher({ organizations, currentOrg, collapsed = false }: Or
           <>
             <span className="min-w-0 flex-1">
               <span className="block truncate font-semibold">{currentOrg.name}</span>
-              {currentOrg.role && (
+              {roleLabel && (
                 <span className="block truncate text-xs text-muted-foreground capitalize">
-                  {currentOrg.role}
+                  {roleLabel}
                 </span>
               )}
             </span>
@@ -66,7 +72,7 @@ export function OrgSwitcher({ organizations, currentOrg, collapsed = false }: Or
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="bottom" className="w-60">
         <DropdownMenuLabel className="text-xs text-muted-foreground">
-          Organizations
+          {t('organizations')}
         </DropdownMenuLabel>
         <DropdownMenuGroup>
           {organizations.map((org) => {
@@ -88,7 +94,7 @@ export function OrgSwitcher({ organizations, currentOrg, collapsed = false }: Or
         <DropdownMenuItem asChild>
           <Link href="/onboarding" className="gap-2.5">
             <Plus className="size-4" aria-hidden />
-            New organization
+            {t('newOrganization')}
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

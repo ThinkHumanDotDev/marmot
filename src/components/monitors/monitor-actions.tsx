@@ -3,6 +3,7 @@
 import { Copy, Loader2, MoreHorizontal, Pause, Pencil, Play, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -49,6 +50,7 @@ export function MonitorActions({
   canEdit,
   canDelete,
 }: MonitorActionsProps) {
+  const t = useTranslations('monitors.actions')
   const router = useRouter()
   const [busy, setBusy] = React.useState<null | 'clone' | 'delete'>(null)
   const [confirmDelete, setConfirmDelete] = React.useState(false)
@@ -68,11 +70,11 @@ export function MonitorActions({
       if (live) store.upsertMonitor({ ...live, active: next })
       try {
         await api.post(`${base}/${next ? 'resume' : 'pause'}`)
-        toast.success(next ? 'Monitor resumed' : 'Monitor paused')
+        toast.success(next ? t('resumed') : t('paused'))
         router.refresh()
       } catch (error) {
         if (live) useMonitorStore.getState().upsertMonitor(live)
-        toast.error(message(error, 'Could not update the monitor'))
+        toast.error(message(error, t('updateFailed')))
       }
     })
   }
@@ -81,10 +83,10 @@ export function MonitorActions({
     setBusy('clone')
     try {
       const doc = await api.post<{ id: string | number }>(`${base}/clone`)
-      toast.success('Monitor cloned (paused)')
+      toast.success(t('cloned'))
       router.push(`/${orgSlug}/monitors/${doc.id}/edit`)
     } catch (error) {
-      toast.error(message(error, 'Could not clone the monitor'))
+      toast.error(message(error, t('cloneFailed')))
       setBusy(null)
     }
   }
@@ -93,11 +95,11 @@ export function MonitorActions({
     setBusy('delete')
     try {
       await api.delete(base)
-      toast.success(`Deleted “${monitor.name}”`)
+      toast.success(t('deleted', { name: monitor.name }))
       router.push(`/${orgSlug}/monitors`)
       router.refresh()
     } catch (error) {
-      toast.error(message(error, 'Could not delete the monitor'))
+      toast.error(message(error, t('deleteFailed')))
       setBusy(null)
       setConfirmDelete(false)
     }
@@ -115,32 +117,32 @@ export function MonitorActions({
           data-testid="toggle-active"
         >
           {active ? <Pause aria-hidden /> : <Play aria-hidden />}
-          {active ? 'Pause' : 'Resume'}
+          {active ? t('pause') : t('resume')}
         </Button>
       )}
       {canEdit && (
         <Button asChild>
           <Link href={`/${orgSlug}/monitors/${monitor.id}/edit`}>
-            <Pencil /> Edit
+            <Pencil /> {t('edit')}
           </Link>
         </Button>
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon" aria-label="More actions" disabled={busy !== null}>
+          <Button variant="outline" size="icon" aria-label={t('more')} disabled={busy !== null}>
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {canEdit && (
             <DropdownMenuItem onSelect={clone}>
-              <Copy /> Clone
+              <Copy /> {t('clone')}
             </DropdownMenuItem>
           )}
           {canEdit && canDelete && <DropdownMenuSeparator />}
           {canDelete && (
             <DropdownMenuItem variant="destructive" onSelect={() => setConfirmDelete(true)}>
-              <Trash2 /> Delete
+              <Trash2 /> {t('delete')}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -149,11 +151,8 @@ export function MonitorActions({
       <Dialog open={confirmDelete} onOpenChange={(open) => busy === null && setConfirmDelete(open)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete “{monitor.name}”?</DialogTitle>
-            <DialogDescription>
-              This removes the monitor together with its heartbeats and statistics. Child monitors
-              of a group are kept and detached. This cannot be undone.
-            </DialogDescription>
+            <DialogTitle>{t('deleteTitle', { name: monitor.name })}</DialogTitle>
+            <DialogDescription>{t('deleteDescription')}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
@@ -161,7 +160,7 @@ export function MonitorActions({
               onClick={() => setConfirmDelete(false)}
               disabled={busy === 'delete'}
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -170,7 +169,7 @@ export function MonitorActions({
               data-testid="confirm-delete"
             >
               {busy === 'delete' && <Loader2 className="animate-spin" />}
-              Delete monitor
+              {t('confirmDelete')}
             </Button>
           </DialogFooter>
         </DialogContent>

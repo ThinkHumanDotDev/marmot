@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 
 import { MonitorForm } from '@/components/monitors/monitor-form'
@@ -23,7 +24,8 @@ export async function generateMetadata({ params }: EditMonitorPageProps): Promis
   const { orgSlug, id } = await params
   const ctx = await getOrgPageContext(orgSlug, `/${orgSlug}/monitors/${id}/edit`)
   const monitor = await getOrgMonitor(ctx, id, 0)
-  return { title: `Edit ${monitor.name}` }
+  const t = await getTranslations('monitors.edit')
+  return { title: t('pageTitle', { name: monitor.name }) }
 }
 
 export default async function EditMonitorPage({ params }: EditMonitorPageProps) {
@@ -33,6 +35,7 @@ export default async function EditMonitorPage({ params }: EditMonitorPageProps) 
   if (!ctx.allowed('monitor:update')) redirect(`/${orgSlug}/monitors/${monitor.id}`)
 
   const [groups, resources] = await Promise.all([getOrgGroups(ctx), getMonitorFormResources(ctx)])
+  const t = await getTranslations('monitors.edit')
   const types = listMonitorTypes().map(({ name, label }) => ({ name, label }))
 
   return (
@@ -43,8 +46,8 @@ export default async function EditMonitorPage({ params }: EditMonitorPageProps) 
             ← {monitor.name}
           </Link>
         }
-        title="Edit monitor"
-        description="Changes apply from the next check."
+        title={t('title')}
+        description={t('description')}
       />
       <section className="p-4 sm:p-6 md:p-8">
         <MonitorForm

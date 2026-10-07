@@ -2,6 +2,7 @@
 
 import { Menu, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import { Logo, LogoMark } from '@/components/logo'
@@ -34,6 +35,7 @@ interface AppShellProps extends ShellContext {
  * sidebar becomes a Sheet drawer behind a slim top bar.
  */
 export function AppShell({ user, organizations, currentOrg, children }: AppShellProps) {
+  const t = useTranslations('shell')
   const collapsed = useUiStore((s) => s.sidebarCollapsed)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
   const mobileNavOpen = useUiStore((s) => s.mobileNavOpen)
@@ -66,12 +68,12 @@ export function AppShell({ user, organizations, currentOrg, children }: AppShell
                 size="icon"
                 className="w-full text-muted-foreground"
                 onClick={() => openPalette(true)}
-                aria-label="Search (⌘K)"
+                aria-label={t('searchShortcut')}
               >
                 <Search />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right">Search · ⌘K</TooltipContent>
+            <TooltipContent side="right">{t('searchTooltip')}</TooltipContent>
           </Tooltip>
         ) : (
           <button
@@ -81,7 +83,7 @@ export function AppShell({ user, organizations, currentOrg, children }: AppShell
             className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors outline-none hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           >
             <Search className="size-4" aria-hidden />
-            <span className="flex-1 text-left">Search</span>
+            <span className="flex-1 text-left">{t('search')}</span>
             <kbd
               aria-hidden
               className="rounded-sm border bg-background px-1.5 py-0.5 font-sans text-[10px] font-medium text-muted-foreground"
@@ -102,25 +104,25 @@ export function AppShell({ user, organizations, currentOrg, children }: AppShell
         href="#main-content"
         className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm font-medium text-foreground shadow-md focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:ring-2 focus:ring-ring"
       >
-        Skip to content
+        {t('skipToContent')}
       </a>
       {/* Mobile top bar */}
       <header className="flex h-14 items-center justify-between border-b border-sidebar-border px-3 md:hidden">
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Open navigation"
+          aria-label={t('openNavigation')}
           onClick={() => setMobileNavOpen(true)}
         >
           <Menu />
         </Button>
-        <Link href={`/${currentOrg.slug}`} aria-label="Marmot home">
+        <Link href={`/${currentOrg.slug}`} aria-label={t('home')}>
           <Logo />
         </Link>
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Search and commands"
+          aria-label={t('searchAndCommands')}
           aria-keyshortcuts="Meta+K Control+K"
           onClick={() => openPalette(true)}
         >
@@ -131,8 +133,8 @@ export function AppShell({ user, organizations, currentOrg, children }: AppShell
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-[18rem] bg-sidebar p-3 text-sidebar-foreground">
           <SheetHeader className="sr-only">
-            <SheetTitle>Navigation</SheetTitle>
-            <SheetDescription>Organization pages and account</SheetDescription>
+            <SheetTitle>{t('navigationTitle')}</SheetTitle>
+            <SheetDescription>{t('navigationDescription')}</SheetDescription>
           </SheetHeader>
           <div className="flex h-full flex-col pt-8">{sidebarBody(false, closeMobileNav)}</div>
         </SheetContent>
@@ -152,7 +154,7 @@ export function AppShell({ user, organizations, currentOrg, children }: AppShell
             collapsed ? 'justify-center' : 'justify-between pl-1',
           )}
         >
-          <Link href={`/${currentOrg.slug}`} aria-label="Marmot home" className="flex items-center">
+          <Link href={`/${currentOrg.slug}`} aria-label={t('home')} className="flex items-center">
             {collapsed ? <LogoMark /> : <Logo />}
           </Link>
           {!collapsed && (
@@ -161,7 +163,7 @@ export function AppShell({ user, organizations, currentOrg, children }: AppShell
               size="icon-sm"
               className="text-muted-foreground"
               onClick={toggleSidebar}
-              aria-label="Collapse sidebar"
+              aria-label={t('collapseSidebar')}
             >
               <PanelLeftClose />
             </Button>
@@ -173,7 +175,7 @@ export function AppShell({ user, organizations, currentOrg, children }: AppShell
             size="icon-sm"
             className="mb-2 w-full text-muted-foreground"
             onClick={toggleSidebar}
-            aria-label="Expand sidebar"
+            aria-label={t('expandSidebar')}
           >
             <PanelLeftOpen />
           </Button>

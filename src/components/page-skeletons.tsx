@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import { Skeleton } from '@/components/ui/skeleton'
@@ -100,8 +101,9 @@ export function ListPageSkeleton({
 }
 
 export function MonitorDetailSkeleton() {
+  const t = useTranslations('common.loading')
   return (
-    <LoadingRegion label="Loading monitor">
+    <LoadingRegion label={t('monitor')}>
       <PageHeaderSkeleton eyebrow actions={3} />
       <section className="flex flex-col gap-6 p-4 sm:p-6 md:p-8">
         <Skeleton className="h-20 w-full rounded-xl" />
@@ -138,8 +140,9 @@ export function FormPageSkeleton({ title, label }: { title?: string; label: stri
 }
 
 export function SettingsSkeleton() {
+  const t = useTranslations('common.loading')
   return (
-    <LoadingRegion label="Loading settings" className="flex flex-col gap-8">
+    <LoadingRegion label={t('settings')} className="flex flex-col gap-8">
       {Array.from({ length: 2 }, (_, i) => (
         <div key={i} className="space-y-4 rounded-xl border p-6">
           <Skeleton className="h-5 w-40" />

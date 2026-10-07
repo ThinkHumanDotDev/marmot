@@ -1,11 +1,16 @@
 /**
- * Presentation helpers shared by the monitor pages. Pure functions, safe on server and client.
+ * Presentation helpers shared by the monitor pages. `statusKey` and `monitorTarget` are pure;
+ * the text and number helpers come from `useMonitorFormat()`, which reads the request's locale
+ * and works in server components (non-async) and client components alike.
  */
+import { useFormatter, useTranslations } from 'next-intl'
+
 import {
   isHostMonitorType,
   isPortMonitorType,
   isUrlMonitorType,
-  MONITOR_TYPE_GROUPS,
+  MONITOR_TYPE_NAMES,
+  type MonitorTypeName,
 } from '@/lib/validation/monitor'
 import type { Monitor } from '@/payload-types'
 import type { MonitorStatusKey } from '@/stores/monitor-store'
@@ -20,26 +25,6 @@ export function statusKey(
   if (!status) return 'unknown'
   if (active === false) return 'unknown'
   return status
-}
-
-/** Human label for the status badge, including paused. */
-export function statusText(
-  status: MonitorStatus | null | undefined,
-  active: boolean | null | undefined = true,
-): string {
-  if (active === false) return 'Paused'
-  switch (status) {
-    case 'up':
-      return 'Up'
-    case 'down':
-      return 'Down'
-    case 'pending':
-      return 'Pending'
-    case 'maintenance':
-      return 'Maintenance'
-    default:
-      return 'No data'
-  }
 }
 
 /** What the monitor watches: URL for HTTP types, host[:port] for network types, nothing otherwise. */
@@ -61,56 +46,73 @@ export function monitorTarget(
   return null
 }
 
-export function formatPing(ms: number | null | undefined): string {
-  if (ms === null || ms === undefined || !Number.isFinite(ms)) return '–'
-  return `${Math.round(ms)} ms`
-}
+const isKnownType = (type: string): type is MonitorTypeName =>
+  (MONITOR_TYPE_NAMES as readonly string[]).includes(type)
 
-/** 0..1 → "99.95%" (two decimals, trimmed to whole numbers when exact). */
-export function formatUptime(fraction: number | null | undefined): string {
-  if (fraction === null || fraction === undefined || !Number.isFinite(fraction)) return '–'
-  const pct = fraction * 100
-  const rounded = Math.round(pct * 100) / 100
-  return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(2)}%`
-}
-
-const dateTime = new Intl.DateTimeFormat('en-GB', {
-  year: 'numeric',
-  month: 'short',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: false,
-})
-
-export function formatDateTime(value: string | number | Date | null | undefined): string {
-  if (!value) return '–'
+const toDate = (value: string | number | Date | null | undefined): Date | null => {
+  if (value === null || value === undefined || value === '') return null
   const date = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(date.getTime()) ? '–' : dateTime.format(date)
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
-const TYPE_LABELS: Record<string, string> = Object.fromEntries(
-  Object.values(MONITOR_TYPE_GROUPS).flatMap((group) =>
-    group.types.map((option) => [option.name, option.label]),
-  ),
-)
+/**
+ * Locale-aware formatters for the monitor pages. Pass `timeZone` from server components (the
+ * organization's zone); client components inherit it from `OrgTimeZoneProvider`.
+ */
+export function useMonitorFormat(timeZone?: string) {
+  const t = useTranslations('monitors')
+  const tStatus = useTranslations('common.status')
+  const tRelative = useTranslations('common.relativeTime')
+  const format = useFormatter()
 
-/** Display label of a monitor type (falls back to the raw slug for types added later). */
-export function humanTypeLabel(type: string): string {
-  return TYPE_LABELS[type] ?? type
-}
+  return {
+    /** Badge label, including paused. */
+    statusText(
+      status: MonitorStatus | null | undefined,
+      active: boolean | null | undefined = true,
+    ): string {
+      if (active === false) return t('status.paused')
+      return status ? tStatus(status) : t('status.noData')
+    },
 
-/** "3 minutes ago" style relative time for the header. */
-export function formatRelative(value: string | Date | null | undefined, now = Date.now()): string {
-  if (!value) return 'never'
-  const t = (value instanceof Date ? value : new Date(value)).getTime()
-  if (Number.isNaN(t)) return 'never'
-  const seconds = Math.max(0, Math.round((now - t) / 1000))
-  if (seconds < 45) return 'just now'
-  const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${minutes} min ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 48) return `${hours} h ago`
-  return `${Math.round(hours / 24)} d ago`
+    ping(ms: number | null | undefined): string {
+      if (ms === null || ms === undefined || !Number.isFinite(ms)) return '–'
+      return t('format.ping', { ms: Math.round(ms) })
+    },
+
+    /** 0..1 → "99.95%" (two decimals, whole numbers when exact). */
+    uptime(fraction: number | null | undefined): string {
+      if (fraction === null || fraction === undefined || !Number.isFinite(fraction)) return '–'
+      const basisPoints = Math.round(fraction * 10_000)
+      return format.number(
+        basisPoints / 10_000,
+        basisPoints % 100 === 0 ? 'wholePercent' : 'percent',
+      )
+    },
+
+    /** Date and time to the second, in the organization's zone. */
+    dateTime(value: string | number | Date | null | undefined): string {
+      const date = toDate(value)
+      if (!date) return '–'
+      return format.dateTime(date, 'precise', timeZone ? { timeZone } : undefined)
+    },
+
+    /** "3 min ago" style relative time for the header. */
+    relative(value: string | Date | null | undefined, now = Date.now()): string {
+      const date = toDate(value)
+      if (!date) return tRelative('never')
+      const seconds = Math.max(0, Math.round((now - date.getTime()) / 1000))
+      if (seconds < 45) return tRelative('justNow')
+      const minutes = Math.round(seconds / 60)
+      if (minutes < 60) return tRelative('minutes', { count: minutes })
+      const hours = Math.round(minutes / 60)
+      if (hours < 48) return tRelative('hours', { count: hours })
+      return tRelative('days', { count: Math.round(hours / 24) })
+    },
+
+    /** Display label of a monitor type (falls back to the raw slug for types added later). */
+    typeLabel(type: string): string {
+      return isKnownType(type) ? t(`types.${type}.label`) : type
+    },
+  }
 }

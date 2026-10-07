@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -13,6 +14,7 @@ import { slugify } from '@/lib/slugify'
 
 /** Name → auto slug (editable) with live availability; `POST /api/organizations` on submit. */
 export function CreateOrganizationForm() {
+  const t = useTranslations('dashboard.onboarding')
   const router = useRouter()
   const [name, setName] = React.useState('')
   const [slug, setSlug] = React.useState('')
@@ -36,11 +38,11 @@ export function CreateOrganizationForm() {
     setError(null)
     try {
       const { doc } = await orgApi.create({ name: name.trim(), slug: slug.trim().toLowerCase() })
-      toast.success(`Welcome to ${name.trim()}`)
+      toast.success(t('welcome', { name: name.trim() }))
       router.replace(`/${doc.slug}`)
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create the organization.')
+      setError(err instanceof Error ? err.message : t('failed'))
       setPending(false)
     }
   }
@@ -48,12 +50,12 @@ export function CreateOrganizationForm() {
   return (
     <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
       <div className="grid gap-2">
-        <Label htmlFor={ids.name}>Organization name</Label>
+        <Label htmlFor={ids.name}>{t('nameLabel')}</Label>
         <Input
           id={ids.name}
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
-          placeholder="Acme Inc."
+          placeholder={t('namePlaceholder')}
           autoComplete="organization"
           autoFocus
           maxLength={120}
@@ -61,7 +63,7 @@ export function CreateOrganizationForm() {
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor={ids.slug}>URL slug</Label>
+        <Label htmlFor={ids.slug}>{t('slugLabel')}</Label>
         <SlugField
           id={ids.slug}
           value={slug}
@@ -70,7 +72,7 @@ export function CreateOrganizationForm() {
             setSlug(value)
           }}
           status={status}
-          placeholder="acme"
+          placeholder={t('slugPlaceholder')}
         />
       </div>
       {error && (
@@ -79,7 +81,7 @@ export function CreateOrganizationForm() {
         </p>
       )}
       <Button type="submit" className="w-full" disabled={!canSubmit}>
-        {pending ? 'Creating…' : 'Create organization'}
+        {pending ? t('submitting') : t('submit')}
       </Button>
     </form>
   )

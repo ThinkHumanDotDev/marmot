@@ -23,6 +23,8 @@ export const formats = {
     date: { dateStyle: 'medium' },
     /** `10:00 AM` */
     time: { timeStyle: 'short' },
+    /** `Oct 6, 2026, 10:00:42 AM`: heartbeats and events, where seconds matter. */
+    precise: { dateStyle: 'medium', timeStyle: 'medium' },
   },
   number: {
     /** `99.98%` */
