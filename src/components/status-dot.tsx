@@ -8,10 +8,11 @@ const colour: Record<MonitorStatusKey, string> = {
   down: 'bg-status-down',
   pending: 'bg-status-pending',
   maintenance: 'bg-status-maintenance',
+  degraded: 'bg-status-degraded',
   unknown: 'bg-muted-foreground/40',
 }
 
-const STATUS_ORDER = ['up', 'down', 'pending', 'maintenance', 'unknown'] as const
+const STATUS_ORDER = ['up', 'degraded', 'down', 'pending', 'maintenance', 'unknown'] as const
 
 /**
  * Screen-reader summary for a row of heartbeat bars, e.g.

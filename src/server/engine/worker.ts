@@ -98,6 +98,7 @@ export async function runCheck(
       duration: typeof ctx.heartbeat.duration === 'number' ? ctx.heartbeat.duration : null,
       tlsInfo: ctx.tlsInfo ?? null,
       details: heartbeatDetails(ctx.heartbeat),
+      assertions: ctx.assertions ?? null,
     }
   }
 
@@ -117,6 +118,7 @@ export async function runCheck(
     duration: typeof ctx.heartbeat.duration === 'number' ? ctx.heartbeat.duration : null,
     tlsInfo: ctx.tlsInfo ?? null,
     details: heartbeatDetails(ctx.heartbeat),
+    assertions: ctx.assertions ?? null,
   }
 }
 
@@ -197,6 +199,7 @@ export async function recordBeat(
     status: monitor.status?.lastStatus,
     retries: monitor.status?.retries,
     downCount: monitor.status?.downCount,
+    settledStatus: monitor.status?.settledStatus,
   }
   const next = computeNextBeat(prev, result, monitor)
 
@@ -227,6 +230,11 @@ export async function recordBeat(
       downCount: next.downCount,
       time: now.toISOString(),
       ...(options.trigger ? { trigger: options.trigger } : {}),
+      // Per-assertion results for the monitor page (and run-on-demand results); omitted when the
+      // type has none, so plain beats stay small.
+      ...(result.assertions?.length
+        ? { assertions: result.assertions as unknown as Heartbeat['assertions'] }
+        : {}),
     },
   })) as Heartbeat
 
@@ -245,6 +253,7 @@ export async function recordBeat(
         lastMsg: next.msg,
         retries: next.retries,
         downCount: next.downCount,
+        settledStatus: next.settledStatus,
         ...options.statusPatch,
       },
       ...(tlsInfo ? { certInfo: tlsInfo as unknown as Monitor['certInfo'] } : {}),
@@ -260,7 +269,7 @@ export async function recordBeat(
     }
   }
 
-  const level = next.status === 'up' ? 'debug' : 'warn'
+  const level = next.status === 'up' ? 'debug' : next.status === 'degraded' ? 'info' : 'warn'
   log[level](
     {
       monitorId,
@@ -282,6 +291,7 @@ export async function recordBeat(
     previousStatus: prev.status,
     isFirstBeat: next.isFirstBeat,
     notify: next.notify,
+    notificationEvent: next.notificationEvent,
     organizationId,
     tlsInfo,
     certChanged,

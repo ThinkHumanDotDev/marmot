@@ -12,7 +12,12 @@
  */
 import type { Payload } from 'payload'
 
-import { worstImpact, type ComponentImpact } from '@/lib/status-page-components'
+import {
+  effectiveImpact,
+  worstImpact,
+  type ComponentImpact,
+  type ComponentStatus,
+} from '@/lib/status-page-components'
 import {
   renderStatusPageBadge,
   statusPageBadgeOptions,
@@ -38,7 +43,9 @@ import type { StatusPage } from '@/payload-types'
 export interface BadgeStateInput {
   overall: OverallStatus
   /** Components; `impact` is the worst impact of the active incidents affecting the component. */
-  groups: readonly { monitors: readonly { impact: ComponentImpact | null }[] }[]
+  groups: readonly {
+    monitors: readonly { impact: ComponentImpact | null; status?: ComponentStatus }[]
+  }[]
   maintenance: readonly { status: string }[]
   /** Active incidents; those naming no component raise the badge to their declared impact. */
   incidents?: readonly {
@@ -50,6 +57,7 @@ export interface BadgeStateInput {
 
 const FROM_OVERALL: Record<OverallStatus, StatusPageBadgeState> = {
   up: 'operational',
+  degraded: 'degraded',
   partial: 'partial',
   down: 'major',
   maintenance: 'maintenance',
@@ -67,9 +75,11 @@ const severity = (state: StatusPageBadgeState) => STATUS_PAGE_BADGE_STATES.index
 
 /**
  * Headline state of a page: the most severe of
- * - the page's `overall` status (all up → operational, some down → partial, all down → major,
- *   monitors in maintenance → maintenance, nothing checked yet → unknown);
- * - the worst incident impact on any component (degraded performance / partial / major outage);
+ * - the page's `overall` status (all up → operational, all up but some degraded → degraded, some
+ *   down → partial, all down → major, monitors in maintenance → maintenance, nothing checked yet →
+ *   unknown);
+ * - the worst impact on any component (degraded performance / partial / major outage), a degraded
+ *   monitor counting as degraded performance;
  * - a running maintenance window attached to the page.
  *
  * Severity: major > partial > degraded > maintenance > operational > unknown.
@@ -79,7 +89,11 @@ export function statusPageBadgeState(data: BadgeStateInput): StatusPageBadgeStat
   const raise = (next: StatusPageBadgeState | undefined) => {
     if (next && severity(next) > severity(state)) state = next
   }
-  const impact = worstImpact(data.groups.flatMap((g) => g.monitors.map((m) => m.impact)))
+  const impact = worstImpact(
+    data.groups.flatMap((g) =>
+      g.monitors.map((m) => (m.status ? effectiveImpact(m.status, m.impact) : m.impact)),
+    ),
+  )
   if (impact) raise(FROM_IMPACT[impact])
   for (const incident of data.incidents ?? []) {
     if (incident.active && incident.components.length === 0) raise(FROM_IMPACT[incident.impact])
@@ -89,9 +103,9 @@ export function statusPageBadgeState(data: BadgeStateInput): StatusPageBadgeStat
 }
 
 /**
- * Badge input from the public payload. The page's `overall` already counts incident impact (a
- * degraded component reads as "partially degraded"); the badge distinguishes degraded from partial,
- * so it starts from the components' own statuses and applies impacts itself.
+ * Badge input from the public payload. The page's `overall` already counts incident impact; the
+ * badge ranks impacts on its own scale (degraded below partial, both above maintenance), so it
+ * starts from the components' own statuses and applies impacts itself.
  */
 export const badgeInput = (data: PublicStatusPageData): BadgeStateInput => ({
   overall: overallStatus(data.groups.flatMap((g) => g.monitors.map((m) => m.status))),

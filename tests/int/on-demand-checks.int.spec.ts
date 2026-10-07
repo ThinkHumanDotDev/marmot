@@ -332,6 +332,30 @@ describe('on-demand checks', () => {
       expect(after.totalDocs).toBe(before.totalDocs)
     })
 
+    it('returns per-assertion results', async () => {
+      const res = await adhocCheck(
+        request(
+          path(),
+          {
+            ...httpConfig('/ok'),
+            assertions: [
+              { kind: 'status', comparator: 'eq', value: '200' },
+              { kind: 'textBody', comparator: 'contains', value: 'missing' },
+            ],
+          },
+          member,
+        ),
+        orgParams(orgA.id),
+      )
+      expect(res.status).toBe(200)
+      const result = (await res.json()) as OnDemandCheckResult
+      expect(result.status).toBe('down')
+      expect(result.assertions).toEqual([
+        expect.objectContaining({ kind: 'status', passed: true, actual: '200' }),
+        expect.objectContaining({ kind: 'textBody', passed: false }),
+      ])
+    })
+
     it('applies upside-down mode', async () => {
       const res = await adhocCheck(
         request(path(), { ...httpConfig('/fail'), upsideDown: true }, member),

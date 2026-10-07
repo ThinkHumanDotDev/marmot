@@ -40,6 +40,7 @@ export const adminTranslations = {
         httpOptions: 'HTTP options',
         keyword: 'Keyword',
         jsonQuery: 'JSON query',
+        assertions: 'Assertions',
         authentication: 'Authentication',
         none: 'None',
         bearerToken: 'Bearer token',
@@ -128,6 +129,7 @@ export const adminTranslations = {
         importantDescription: 'True when the status changed compared to the previous heartbeat.',
         triggerDescription:
           'What started the check: "manual" for Check now; empty for scheduled checks and pushes.',
+        assertionsDescription: 'Per-assertion results of this check (HTTP and DNS monitors).',
       },
       incidents: {
         organizationDescription: 'Derived from the status page.',
@@ -206,6 +208,10 @@ export const adminTranslations = {
         maxRetriesDescription: 'Retries before the monitor is marked DOWN.',
         resendIntervalDescription: 'Re-notify every N consecutive DOWN beats (0 = never).',
         timeoutDescription: 'Request timeout in seconds (0 = 80% of the interval).',
+        degradedAfterDescription:
+          'Response time in ms above which a successful check is marked DEGRADED (empty or 0 = off).',
+        settledStatusDescription:
+          'Last status other than pending (decides transitions after retries).',
         upsideDownDescription: 'Flip status: a failed check counts as UP and vice versa.',
         headersDescription: 'JSON object of extra request headers.',
         acceptedStatusCodesDescription: 'Status codes or ranges counted as UP, e.g. 200-299, 304.',
@@ -218,6 +224,10 @@ export const adminTranslations = {
         domainExpiryDescription: 'Maintained by the worker: cached RDAP domain expiry lookup.',
         invertKeywordDescription: 'UP when the keyword is absent.',
         jsonPathDescription: 'JSONata expression, e.g. `$.status` or `data[0].ok`.',
+        assertionsDescription:
+          'All must pass. HTTP monitors: status, header, textBody, jsonBody; DNS monitors: dnsRecord. At most 10 per kind.',
+        assertionTargetDescription:
+          'Header name, JSONata expression (jsonBody) or record type (dnsRecord).',
         dnsResolveServerDescription: 'Comma-separated resolver IPs or hostnames.',
         pushTokenDescription:
           'Generated automatically. Call /api/push/<token> to report a heartbeat.',
@@ -255,6 +265,8 @@ export const adminTranslations = {
         activeDescription: 'Inactive channels are never sent to.',
         lastSentAtDescription: 'Maintained by the worker.',
         lastErrorDescription: 'Last delivery error; cleared on the next success.',
+        eventsDescription:
+          'Events this channel is told about. Leave empty for the defaults (down, recovery, reminders, certificate and domain expiry).',
       },
       organizations: {
         slugDescription: 'Lowercase letters, numbers and hyphens. Used in URLs.',
@@ -384,6 +396,17 @@ export const adminTranslations = {
       },
       tags: {
         colorDescription: 'Hex colour of the chip, e.g. #2563EB.',
+      },
+      templates: {
+        kindDescription:
+          'incident pre-fills a new incident, incident-update the incident update composer, maintenance the maintenance form, maintenance-update the maintenance update composer.',
+        bodyDescription:
+          'Markdown with placeholders in double braces (page, components, eta, …). Unfilled placeholders block publishing.',
+        statusPageDescription:
+          'Status page the default components belong to. Empty: the template is offered on every page.',
+        componentsDescription: 'Default affected components (group row ids of the status page).',
+        impactDescription: 'Overall impact when the template names no component.',
+        durationDescription: 'Maintenance: default window length in minutes.',
       },
       users: {
         superadminDescription:

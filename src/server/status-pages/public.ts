@@ -23,6 +23,7 @@ import {
 } from '@/lib/incident-timeline'
 import {
   componentDisplayName,
+  effectiveImpact,
   staticComponentStatus,
   worstImpact,
   worstStatus,
@@ -42,7 +43,7 @@ import type { Incident, Media, Monitor, StatusPage } from '@/payload-types'
 
 export type BeatStatus = (typeof HEARTBEAT_STATUSES)[number]
 export type MonitorPublicStatus = BeatStatus | 'unknown'
-export type OverallStatus = 'up' | 'partial' | 'down' | 'maintenance' | 'unknown'
+export type OverallStatus = 'up' | 'degraded' | 'partial' | 'down' | 'maintenance' | 'unknown'
 
 export const BEATS_PER_MONITOR = 50
 
@@ -307,15 +308,16 @@ const OVERALL_RANK: Record<OverallStatus, number> = {
   unknown: 0,
   up: 1,
   maintenance: 2,
-  partial: 3,
-  down: 4,
+  degraded: 3,
+  partial: 4,
+  down: 5,
 }
 
 /**
  * Overall page state from component statuses *and* active incident impacts: a component with a
- * `major_outage` counts as down and one with a degraded or partial impact as not fully up (then
- * Uptime Kuma's rule applies); active incidents that name no component raise the page to
- * `partial` (degraded / partial outage) or `down` (major outage).
+ * `major_outage` counts as down, one with a partial outage as not fully up and one with degraded
+ * performance (an incident or its degraded monitor) as degraded (then `overallStatus` applies);
+ * active incidents that name no component raise the page to `degraded`, `partial` or `down`.
  */
 export function pageOverallStatus(
   groups: readonly PublicGroup[],
@@ -324,7 +326,11 @@ export function pageOverallStatus(
   const statuses = groups.flatMap((group) =>
     group.monitors.map((row): MonitorPublicStatus => {
       if (row.impact === 'major_outage') return 'down'
-      if (row.impact && row.impact !== 'operational' && row.status === 'up') return 'pending'
+      const working = row.status === 'up' || row.status === 'degraded'
+      if (row.impact === 'partial_outage' && working) return 'pending'
+      if (effectiveImpact(row.status, row.impact) === 'degraded_performance' && working) {
+        return 'degraded'
+      }
       return row.status
     }),
   )
@@ -332,7 +338,12 @@ export function pageOverallStatus(
   for (const incident of incidents) {
     if (!incident.active || incident.impact === 'operational') continue
     if (incident.components.length > 0) continue
-    const fromIncident: OverallStatus = incident.impact === 'major_outage' ? 'down' : 'partial'
+    const fromIncident: OverallStatus =
+      incident.impact === 'major_outage'
+        ? 'down'
+        : incident.impact === 'degraded_performance'
+          ? 'degraded'
+          : 'partial'
     if (OVERALL_RANK[fromIncident] > OVERALL_RANK[overall]) overall = fromIncident
   }
   return overall
@@ -341,14 +352,16 @@ export function pageOverallStatus(
 /**
  * Overall page state from the monitors' last statuses (Uptime Kuma `StatusPage.overallStatus`):
  * any monitor in maintenance → `maintenance`; all up → `up`; some up → `partial`; none up → `down`.
- * Monitors that were never checked are ignored; no checked monitors → `unknown`.
+ * Degraded monitors (#93) count as up for that rule, and all up with at least one degraded is
+ * `degraded` ("Degraded performance"). Monitors that were never checked are ignored; no checked
+ * monitors → `unknown`.
  */
 export function overallStatus(statuses: readonly MonitorPublicStatus[]): OverallStatus {
   const known = statuses.filter((s) => s !== 'unknown')
   if (known.length === 0) return 'unknown'
   if (known.includes('maintenance')) return 'maintenance'
-  const ups = known.filter((s) => s === 'up').length
-  if (ups === known.length) return 'up'
+  const ups = known.filter((s) => s === 'up' || s === 'degraded').length
+  if (ups === known.length) return known.includes('degraded') ? 'degraded' : 'up'
   if (ups === 0) return 'down'
   return 'partial'
 }

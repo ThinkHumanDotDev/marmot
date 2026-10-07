@@ -33,7 +33,7 @@ export const signalFieldMeta: Record<keyof SignalConfig, NotificationFieldMeta> 
     description: 'Comma-separated numbers or group ids.',
   },
   useTemplate: { label: 'Use a custom message template' },
-  template: { label: 'Message template', multiline: true },
+  template: { template: 'text', label: 'Message template', multiline: true },
 }
 
 registerNotificationProvider({
@@ -43,11 +43,12 @@ registerNotificationProvider({
   docsUrl: 'https://github.com/bbernhard/signal-cli-rest-api',
   configSchema: signalConfigSchema,
   fieldMeta: signalFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat, locale }) {
+  async send(ctx) {
+    const { config: raw, message, monitor, heartbeat, locale } = ctx
     const config = signalConfigSchema.parse(raw)
     const text =
       config.useTemplate && config.template?.trim()
-        ? renderMessageTemplate(config.template.trim(), message, monitor, heartbeat, locale)
+        ? renderMessageTemplate(config.template.trim(), message, monitor, heartbeat, locale, ctx)
         : message
 
     await postJson(config.apiUrl, {

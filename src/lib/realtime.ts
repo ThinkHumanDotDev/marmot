@@ -14,6 +14,7 @@ const STATUS_BY_NAME: Record<RealtimeHeartbeatStatus, HeartbeatStatus> = {
   down: HeartbeatStatus.DOWN,
   pending: HeartbeatStatus.PENDING,
   maintenance: HeartbeatStatus.MAINTENANCE,
+  degraded: HeartbeatStatus.DEGRADED,
 }
 
 const NAME_BY_STATUS: Record<HeartbeatStatus, RealtimeHeartbeatStatus> = {
@@ -21,6 +22,7 @@ const NAME_BY_STATUS: Record<HeartbeatStatus, RealtimeHeartbeatStatus> = {
   [HeartbeatStatus.DOWN]: 'down',
   [HeartbeatStatus.PENDING]: 'pending',
   [HeartbeatStatus.MAINTENANCE]: 'maintenance',
+  [HeartbeatStatus.DEGRADED]: 'degraded',
 }
 
 /**

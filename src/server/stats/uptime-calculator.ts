@@ -11,6 +11,8 @@
  *   so several worker processes may record beats concurrently.
  * - `maintenance` beats count as `up` (they never lower uptime) and are additionally counted in
  *   `extras.maintenance`; `pending` beats count as `down`.
+ * - `degraded` beats (#93, a slow success) count as `up`, are counted in `extras.degraded` and
+ *   their response time feeds the ping statistics like any other successful check.
  * - The running ping average is weighted by the number of beats that actually carried a ping
  *   (`extras.pingCount`) rather than by `up`, which keeps it exact when pings are missing.
  * - Retention is a separate hourly job (`src/server/jobs/retention.ts`), not part of `update`.
@@ -22,7 +24,7 @@ import { childLogger } from '@/lib/logger'
 
 const log = childLogger('stats')
 
-export type HeartbeatStatus = 'up' | 'down' | 'pending' | 'maintenance'
+export type HeartbeatStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded'
 export type FlatStatus = 'up' | 'down'
 export type Granularity = 'minute' | 'hour' | 'day'
 export type StatsRange = '24h' | '30d' | '1y'
@@ -65,7 +67,7 @@ export const COLLECTION_BY_GRANULARITY: Record<Granularity, StatCollectionSlug> 
 export type BucketData = {
   up: number
   down: number
-  /** Average ping of UP beats, null until the first beat with a ping. */
+  /** Average ping of UP and DEGRADED beats, null until the first beat with a ping. */
   ping: number | null
   pingMin: number | null
   pingMax: number | null
@@ -75,6 +77,8 @@ export type BucketData = {
 export type BucketExtras = {
   /** Number of maintenance beats (also counted in `up`). */
   maintenance?: number
+  /** Number of degraded beats (also counted in `up`). */
+  degraded?: number
   /** Number of UP beats that carried a ping; weight of `ping` in the running average. */
   pingCount?: number
   [key: string]: unknown
@@ -87,6 +91,8 @@ export type UptimeDataResult = {
   uptime: number
   /** Average ping in ms, null when no UP beat carried a ping. */
   avgPing: number | null
+  /** Degraded checks in the summed buckets (included in the uptime as up). */
+  degraded: number
 }
 
 export type MonitorStats = UptimeDataResult & {
@@ -121,10 +127,11 @@ export function getKey(date: Date, granularity: Granularity): number {
   }
 }
 
-/** Flatten a status to UP or DOWN: maintenance → up, pending → down. */
+/** Flatten a status to UP or DOWN: maintenance and degraded → up, pending → down. */
 export function flatStatus(status: HeartbeatStatus): FlatStatus {
   switch (status) {
     case 'up':
+    case 'degraded':
     case 'maintenance':
       return 'up'
     case 'down':
@@ -148,7 +155,7 @@ const isUsablePing = (ping: unknown): ping is number =>
 
 /**
  * Apply one heartbeat to a bucket and return the new bucket (the input is not mutated).
- * Only genuine `up` beats update the ping statistics; maintenance beats count as up but carry
+ * Only genuine `up` and `degraded` beats update the ping statistics; maintenance beats count as up but carry
  * no ping, and the running average stays exact because it is weighted by `extras.pingCount`.
  */
 export function applyBeat(
@@ -162,10 +169,13 @@ export function applyBeat(
   if (status === 'maintenance') {
     next.extras.maintenance = (next.extras.maintenance ?? 0) + 1
   }
+  if (status === 'degraded') {
+    next.extras.degraded = (next.extras.degraded ?? 0) + 1
+  }
 
   if (flat === 'up') {
     next.up += 1
-    if (status === 'up' && isUsablePing(ping)) {
+    if ((status === 'up' || status === 'degraded') && isUsablePing(ping)) {
       const count = (next.extras.pingCount ?? 0) + 1
       if (count === 1 || next.ping === null) {
         next.ping = ping
@@ -198,10 +208,12 @@ export function summarize(buckets: readonly BucketData[]): UptimeDataResult {
   let down = 0
   let pingTotal = 0
   let pingWeightTotal = 0
+  let degraded = 0
 
   for (const bucket of buckets) {
     up += bucket.up
     down += bucket.down
+    degraded += typeof bucket.extras?.degraded === 'number' ? bucket.extras.degraded : 0
     if (bucket.ping !== null) {
       const weight = pingWeight(bucket)
       pingTotal += bucket.ping * weight
@@ -212,6 +224,7 @@ export function summarize(buckets: readonly BucketData[]): UptimeDataResult {
   return {
     uptime: up + down === 0 ? 0 : up / (up + down),
     avgPing: pingWeightTotal === 0 ? null : pingTotal / pingWeightTotal,
+    degraded,
   }
 }
 

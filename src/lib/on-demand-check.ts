@@ -3,8 +3,9 @@
  * Shared by the worker (which produces it), the route handlers (which return it as JSON) and the UI
  * (which renders it), so it must stay free of Node-only imports.
  */
+import type { AssertionResult } from '@/lib/validation/assertions'
 
-export type OnDemandCheckStatus = 'up' | 'down' | 'pending' | 'maintenance'
+export type OnDemandCheckStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded'
 
 export interface OnDemandCheckTls {
   valid: boolean
@@ -42,9 +43,11 @@ export interface OnDemandCheckResult {
   /** HTTP status code for HTTP-based types. */
   statusCode: number | null
   tls: OnDemandCheckTls | null
+  /** Per-assertion results (HTTP and DNS monitors), `null` when the type has none. */
+  assertions: AssertionResult[] | null
   /**
-   * Extra, type-specific fields the check reported (for example assertion results). Rendered
-   * generically so new fields show up without UI changes.
+   * Extra, type-specific fields the check reported. Rendered generically so new fields show up
+   * without UI changes.
    */
   details: Record<string, unknown>
   /** Whether a heartbeat was stored (`trigger: manual`). */

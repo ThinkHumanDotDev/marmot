@@ -10,6 +10,7 @@
       "down": "Down",
       "pending": "Pending",
       "maintenance": "Maintenance",
+      "degraded": "Degraded",
       "unknown": "Unknown"
     },
     "notFound": {
@@ -46,6 +47,7 @@
         "down": "down",
         "pending": "pending",
         "maintenance": "maintenance",
+        "degraded": "degraded",
         "unknown": "unknown"
       }
     },
@@ -141,7 +143,7 @@
       "updateFailed": "Could not update the monitor",
       "checkNow": "Check “{name}” now",
       "checkingMonitor": "Checking “{name}”…",
-      "checkResult": "“{name}” is {status, select, up {up} down {down} pending {pending} maintenance {under maintenance} other {unknown}}: {msg}",
+      "checkResult": "“{name}” is {status, select, up {up} down {down} pending {pending} maintenance {under maintenance} degraded {degraded} other {unknown}}: {msg}",
       "checkFailed": "Could not run the check"
     }
   },
@@ -207,7 +209,20 @@
       "pushUrl": "Push URL",
       "pushHint": "Call this URL at least every {seconds} seconds. Optional query parameters:<code> status</code> (up|down), <code>msg</code>, <code>ping</code>.",
       "description": "Description",
-      "noDescription": "No description yet. Add one from Edit."
+      "noDescription": "No description yet. Add one from Edit.",
+      "assertions": {
+        "title": "Assertions",
+        "description": "Result of each check in the last run.",
+        "check": "Check",
+        "condition": "Condition",
+        "actual": "Actual",
+        "result": "Result",
+        "passed": "Passed",
+        "failed": "Failed",
+        "none": "(none)",
+        "inRange": "in",
+        "legacy": "monitor setting"
+      }
     },
     "new": {
       "pageTitle": "New monitor",
@@ -263,11 +278,6 @@
       "certificateInvalid": "Not trusted",
       "blocked": "The outbound address guard refused this target (private or denied address).",
       "maintenance": "The monitor is in a maintenance window, so the check did not run.",
-      "assertions": "Assertions",
-      "assertionNumber": "Assertion {number}",
-      "assertionValues": "Got {actual}, expected {expected}",
-      "assertionPassed": "passed",
-      "assertionFailed": "failed",
       "recorded": "Stored as a heartbeat (trigger: manual).",
       "notRecorded": "Nothing was stored."
     },
@@ -278,7 +288,8 @@
       "uptime": "Uptime",
       "last24Hours": "Last 24 hours",
       "last30Days": "Last 30 days",
-      "lastYear": "Last year"
+      "lastYear": "Last year",
+      "last24HoursDegraded": "Last 24 hours · {count, plural, one {# degraded check} other {# degraded checks}}"
     },
     "chart": {
       "title": "Response time",
@@ -508,9 +519,62 @@
       "nodeRequired": "Add at least one node URL",
       "nodeUrl": "Nodes are management API URLs such as https://node1:15672",
       "gameRequired": "Game is required",
-      "channelsUnique": "Each channel may only be added once"
+      "channelsUnique": "Each channel may only be added once",
+      "assertionRow": "Assertion {row}: {message}",
+      "assertionKind": "This kind of assertion does not apply to this monitor type",
+      "assertionComparator": "This comparison does not apply to this kind of assertion",
+      "assertionTooMany": "At most {max} assertions of each kind ({kind})",
+      "assertionTargetRequired": "Enter the header name or expression to check",
+      "assertionHeaderName": "Enter a valid header name, e.g. content-type",
+      "assertionRecordType": "Use a record type such as A, AAAA, CNAME, MX, NS or TXT",
+      "assertionValueRequired": "Enter the expected value",
+      "assertionStatusCode": "Enter a status code between 100 and 599",
+      "assertionNumber": "Enter a number",
+      "assertionRegex": "Enter a valid regular expression of at most {max} characters",
+      "assertionTooLong": "At most {max} characters"
     },
     "form": {
+      "assertions": {
+        "title": "Assertions",
+        "description": "Extra checks on the response. All must pass. Status assertions replace the accepted status codes.",
+        "descriptionDns": "Checks on the records. All must pass. Equals, contains and matches pass when any record matches; their negations when none does.",
+        "empty": "No assertions yet.",
+        "add": "Add assertion",
+        "remove": "Remove assertion {index}",
+        "limit": "Up to {max} assertions of each kind.",
+        "kind": "Check",
+        "comparator": "Condition",
+        "value": "Expected value",
+        "monitorRecordType": "Monitor record type ({type})",
+        "kinds": {
+          "status": "Status code",
+          "header": "Header",
+          "textBody": "Body text",
+          "jsonBody": "JSON body",
+          "dnsRecord": "DNS record"
+        },
+        "targets": {
+          "status": "Target",
+          "header": "Header name",
+          "textBody": "Target",
+          "jsonBody": "JSONata / JSONPath",
+          "dnsRecord": "Record type"
+        },
+        "comparators": {
+          "eq": "equals",
+          "not_eq": "does not equal",
+          "gt": "greater than",
+          "gte": "at least",
+          "lt": "less than",
+          "lte": "at most",
+          "contains": "contains",
+          "not_contains": "does not contain",
+          "empty": "is empty",
+          "not_empty": "is not empty",
+          "matches": "matches regex",
+          "not_matches": "does not match regex"
+        }
+      },
       "onePerLine": "One per line.",
       "choose": "Choose…",
       "none": "None",
@@ -597,7 +661,10 @@
         "resendHint": "Re-notify every {count} consecutive DOWN beats",
         "resendDescription": "Every N consecutive DOWN beats (0 = never)",
         "timeout": "Request timeout",
-        "timeoutDefault": "0 uses 80% of the interval"
+        "timeoutDefault": "0 uses 80% of the interval",
+        "degradedAfter": "Degraded after",
+        "milliseconds": "ms",
+        "degradedAfterDescription": "Mark a successful check as DEGRADED when it takes longer than this. Empty or 0 turns it off."
       },
       "connection": {
         "title": "Connection",
@@ -923,6 +990,7 @@
       "organization": "Organization",
       "members": "Members",
       "tags": "Tags",
+      "templates": "Templates",
       "proxies": "Proxies",
       "dockerHosts": "Docker hosts",
       "apiKeys": "API keys",
@@ -937,6 +1005,7 @@
       "account": "Account settings",
       "organization": "Organization settings",
       "tags": "Tags",
+      "templates": "Templates",
       "proxies": "Proxies",
       "dockerHosts": "Docker hosts",
       "apiKeys": "API keys",
@@ -1363,6 +1432,7 @@
         "notification": "Notifications",
         "statusPage": "Status pages",
         "maintenance": "Maintenance",
+        "template": "Templates",
         "tag": "Tags",
         "proxy": "Proxies",
         "dockerHost": "Docker hosts",
@@ -1481,6 +1551,52 @@
         "saved": "Tag saved",
         "created": "Tag created",
         "failed": "Could not save the tag"
+      }
+    },
+    "templates": {
+      "title": "Incident and maintenance templates",
+      "description": "Pre-approved wording for common incidents, updates and maintenance windows. Pick one with <strong>Use template</strong> in the incident dialog, the update composer or the maintenance form.",
+      "new": "New template",
+      "emptyTitle": "No templates yet",
+      "emptyDescription": "Create a template such as “Database failover” to open incidents with the right wording in one click.",
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "confirmDeleteTitle": "Delete template “{name}”?",
+      "confirmDeleteDescription": "Incidents and maintenance created from it are not affected. This cannot be undone.",
+      "confirmDelete": "Delete template",
+      "deleted": "Template deleted",
+      "deleteFailed": "Could not delete the template",
+      "allPages": "All status pages",
+      "componentCount": "{count, plural, one {# component} other {# components}}",
+      "form": {
+        "newTitle": "New template",
+        "editTitle": "Edit template",
+        "description": "Names are unique within the organization.",
+        "name": "Name",
+        "namePlaceholder": "Database failover",
+        "kind": "Used for",
+        "title": "Title",
+        "body": "Message",
+        "bodyHint": "Markdown. Placeholders in double braces are filled in when the template is used; any other placeholder (such as an ETA) must be replaced before publishing.",
+        "variables": "Filled in automatically:",
+        "status": "Status",
+        "statusNone": "Default",
+        "statusHint": "New incidents start as investigating and updates suggest the next step unless the template sets a status.",
+        "impact": "Overall impact",
+        "impactHint": "Used when the template names no component.",
+        "impactNone": "Keep the current impact",
+        "statusPage": "Status page",
+        "statusPageHint": "Default components belong to one status page. Templates for all pages are offered everywhere but carry no components.",
+        "components": "Default affected components",
+        "duration": "Default duration",
+        "durationHint": "Sets the end of a single window from its start, or the duration of a cron window.",
+        "minutesUnit": "minutes",
+        "cancel": "Cancel",
+        "save": "Save",
+        "create": "Create template",
+        "saved": "Template saved",
+        "created": "Template created",
+        "failed": "Could not save the template"
       }
     },
     "sso": {
@@ -1768,7 +1884,8 @@
         "provider": "Provider",
         "lastSent": "Last sent",
         "active": "Active",
-        "actions": "Actions"
+        "actions": "Actions",
+        "events": "Events"
       },
       "default": "Default",
       "error": "Error",
@@ -1785,11 +1902,13 @@
       "confirmDeleteTitle": "Delete “{name}”?",
       "confirmDeleteDescription": "Monitors using this channel stop alerting through it. This cannot be undone.",
       "confirmDelete": "Delete channel",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "eventsLabel": "Events sent to {name}"
     },
     "test": {
       "sent": "Test message sent",
-      "failed": "Test failed"
+      "failed": "Test failed",
+      "sentSamples": "{count, plural, one {Sent a sample of 1 event} other {Sent a sample of each of the # events}}: {events}"
     },
     "dialog": {
       "newTitle": "New notification channel",
@@ -1816,7 +1935,10 @@
       "create": "Create channel",
       "updated": "Channel updated",
       "created": "Channel created",
-      "failed": "Something went wrong."
+      "failed": "Something went wrong.",
+      "events": "Events",
+      "eventsHint": "What this channel is told about. Send test sends a sample of each selected event.",
+      "eventsRequired": "Choose at least one event."
     },
     "field": {
       "required": "{label} is required",
@@ -1841,12 +1963,39 @@
       "loadFailed": "Could not load the monitors",
       "saveFailed": "Could not update the monitors"
     },
+    "events": {
+      "down": {
+        "label": "Down",
+        "description": "A monitor stops responding."
+      },
+      "up": {
+        "label": "Recovery",
+        "description": "A monitor is back up; the message includes how long it was down."
+      },
+      "degraded": {
+        "label": "Degraded",
+        "description": "A monitor gets slower than its degraded threshold, or fast again."
+      },
+      "reminder": {
+        "label": "Reminders",
+        "description": "Repeats while a monitor stays down (the monitor's resend interval)."
+      },
+      "certificate": {
+        "label": "Certificate and domain expiry",
+        "description": "TLS certificate and domain name expiry warnings."
+      },
+      "maintenance": {
+        "label": "Maintenance",
+        "description": "A maintenance window of a monitor starts or ends."
+      }
+    },
     "messages": {
       "status": {
         "up": "✅ Up",
         "down": "🔴 Down",
         "pending": "⚠️ Pending",
         "maintenance": "🔧 Maintenance",
+        "degraded": "🐢 Degraded",
         "test": "⚠️ Test"
       },
       "noMessage": "N/A",
@@ -1856,6 +2005,9 @@
       "sentSuccessfully": "Sent Successfully.",
       "monitorNameUnavailable": "Monitor Name not available",
       "timeLine": "Time: {time}",
+      "downtimeSuffix": " (down for {duration})",
+      "maintenanceStarted": "Maintenance \"{title}\" started for {monitors}.",
+      "maintenanceCompleted": "Maintenance \"{title}\" ended for {monitors}.",
       "certificateExpiry": "[{name}][{address}] {certType} certificate {commonName} will expire in {count, plural, other {{days} days}}",
       "noCommonName": "(no CN)",
       "domainExpiry": "[{name}][{address}] Domain name {domain} will expire in {count, plural, other {{days} days}}",
@@ -2438,6 +2590,10 @@
           "subject": {
             "label": "Subject",
             "placeholder": "Notification from Marmot"
+          },
+          "htmlTemplate": {
+            "label": "HTML template",
+            "description": "Liquid template for the HTML part; values are HTML-escaped and the text part is generated. Defaults to a branded email."
           }
         }
       },
@@ -2481,6 +2637,10 @@
           "subject": {
             "label": "Subject",
             "placeholder": "Notification from Marmot"
+          },
+          "htmlTemplate": {
+            "label": "HTML template",
+            "description": "Liquid template for the HTML part; values are HTML-escaped and the text part is generated. Defaults to a branded email."
           }
         }
       },
@@ -2589,7 +2749,7 @@
           },
           "body": {
             "label": "Body template",
-            "description": "Defaults to the message and time."
+            "description": "Defaults to a branded HTML email with a plain-text part. With \"Send the body as HTML\", values are HTML-escaped and the text part is generated."
           },
           "htmlBody": {
             "label": "Send the body as HTML"
@@ -2744,7 +2904,7 @@
           },
           "customBody": {
             "label": "Custom body",
-            "description": "Sent verbatim after '{{' '}}' substitution, e.g. '{'\"text\": \"'{{' msg '}}'\"'}'. Set Content-Type in the headers below."
+            "description": "Liquid template sent as the body, e.g. '{'\"text\": '{{' msg | json '}}}'. Set Content-Type in the headers below."
           },
           "additionalHeaders": {
             "label": "Additional headers (JSON)"
@@ -2794,6 +2954,48 @@
           }
         }
       }
+    },
+    "email": {
+      "time": "Time",
+      "downtime": "Down for",
+      "address": "Address",
+      "viewMonitor": "View monitor",
+      "viewMonitorLink": "View monitor: {url}",
+      "footer": "Sent by Marmot for {organization}.",
+      "footerNoOrg": "Sent by Marmot."
+    },
+    "templates": {
+      "errors": {
+        "syntax": "Template error: {detail}",
+        "render": "Template error: {detail}",
+        "tooLong": "The template is longer than {max} characters.",
+        "outputTooLong": "The template output is longer than {max} characters.",
+        "unknownVariable": "Unknown template variable \"{name}\"."
+      }
+    },
+    "preview": {
+      "title": "Preview",
+      "description": "Renders the default message and this channel's templates with sample data. Nothing is sent.",
+      "event": "Sample event",
+      "show": "Show preview",
+      "hide": "Hide preview",
+      "rendering": "Rendering…",
+      "failed": "Could not render the preview.",
+      "defaultMessage": "Default message",
+      "subject": "Subject",
+      "html": "HTML",
+      "text": "Plain text",
+      "emailFrame": "Email preview",
+      "fallback": "This template fails and the default message is sent instead.",
+      "variables": "Template variables",
+      "variablesHint": "Templates use Liquid: print a variable with double braces and branch with if tags. Filters such as date, duration and json are available.",
+      "sample": {
+        "monitorName": "Example API",
+        "downMessage": "Request failed with status code 503",
+        "upMessage": "200 - OK",
+        "degradedMessage": "Response time 2400 ms is above the 1000 ms threshold",
+        "maintenanceTitle": "Database upgrade"
+      }
     }
   },
   "consent": {
@@ -2824,6 +3026,7 @@
     "overall": {
       "up": "All systems operational",
       "partial": "Partially degraded service",
+      "degraded": "Degraded performance",
       "down": "Major outage",
       "maintenance": "Under maintenance",
       "unknown": "No data yet"
@@ -2908,6 +3111,7 @@
         "down": "down",
         "pending": "pending",
         "maintenance": "maintenance",
+        "degraded": "degraded",
         "unknown": "unknown"
       },
       "ping": "{ms} ms"
@@ -2925,6 +3129,63 @@
       "monitorDown": "{name} is down",
       "monitorDownSince": "{name} has been down since {since}.",
       "monitorDownDescription": "{name} is down."
+    },
+    "machine": {
+      "indicator": {
+        "none": "All Systems Operational",
+        "minor": "Minor Service Outage",
+        "major": "Partial System Outage",
+        "critical": "Major System Outage",
+        "maintenance": "Service Under Maintenance"
+      },
+      "componentStatus": {
+        "operational": "Operational",
+        "degraded_performance": "Degraded performance",
+        "partial_outage": "Partial outage",
+        "major_outage": "Major outage",
+        "under_maintenance": "Under maintenance"
+      },
+      "calendarName": "{title} maintenance",
+      "markdown": {
+        "currentStatus": "Current status",
+        "status": "Status",
+        "impact": "Impact",
+        "started": "Started",
+        "resolved": "Resolved",
+        "statusPage": "Status page",
+        "updates": "Updates",
+        "details": "Details",
+        "when": "When",
+        "window": "{start} to {end}",
+        "untilFurtherNotice": "Until further notice",
+        "noIncidents": "No ongoing incidents.",
+        "noMaintenance": "No maintenance scheduled.",
+        "machineReadable": "Machine-readable versions"
+      },
+      "llms": {
+        "summary": "Live status of {title}: components, incidents and scheduled maintenance.",
+        "currentStatus": "Current status: {status}.",
+        "incidentMarkdown": "Every incident and maintenance permalink has a Markdown version: append .md to its URL.",
+        "statusSection": "Status",
+        "feedsSection": "Feeds",
+        "markdownLabel": "Status page (Markdown)",
+        "markdown": "current status, components, ongoing incidents and maintenance as Markdown",
+        "api": {
+          "summary": "Statuspage-compatible summary: page, components, unresolved incidents, upcoming maintenance and the overall indicator",
+          "status": "overall indicator (none, minor, major or critical) and its description",
+          "components": "every component and its status",
+          "incidents": "the 50 most recent incidents with all their updates",
+          "scheduled-maintenances": "maintenance occurrences, upcoming and from the last 30 days, with their updates"
+        },
+        "atom": "Atom 1.0 feed, one entry per incident update",
+        "jsonFeed": "JSON Feed 1.1, one item per incident update",
+        "rss": "RSS 2.0 feed, one item per incident update",
+        "calendar": "maintenance windows as an iCalendar subscription",
+        "openapi": "OpenAPI 3.1 description of these read-only endpoints",
+        "page": "the human-readable status page",
+        "eventsLabel": "History",
+        "events": "past incidents and maintenance, each with a permalink"
+      }
     },
     "editor": {
       "language": "Language",
@@ -3945,6 +4206,38 @@
       "hoursUnit": "h"
     }
   },
+  "templates": {
+    "kinds": {
+      "incident": "New incident",
+      "incidentUpdate": "Incident update",
+      "maintenance": "Maintenance",
+      "maintenanceUpdate": "Maintenance update"
+    },
+    "variables": {
+      "organization": "the organization's name",
+      "page": "the status page's title",
+      "components": "the affected components",
+      "component": "same as components",
+      "incident": "the incident's title",
+      "maintenance": "the maintenance's title",
+      "date": "today's date",
+      "start": "the window's start",
+      "end": "the window's end",
+      "duration": "the window's length"
+    },
+    "picker": {
+      "label": "Use template",
+      "placeholder": "Use a template…",
+      "applied": "Template “{name}” applied"
+    },
+    "placeholders": {
+      "title": "Replace the placeholders before publishing",
+      "description": "Fill in a value here or edit the text directly.",
+      "valueLabel": "Value for {name}",
+      "fill": "Fill in"
+    },
+    "duration": "{minutes, plural, one {# minute} other {# minutes}}"
+  },
   "importExport": {
     "formats": {
       "uptime-kuma": "Uptime Kuma backup",
@@ -3956,6 +4249,7 @@
       "forbidden": "Importing requires the member role or higher in this organization.",
       "skipNotifications": "Notification channels in the file will be skipped (admin role required). ",
       "skipStatusPages": "Status pages in the file will be skipped.",
+      "skipTemplates": "Templates in the file will be skipped.",
       "choose": "Choose a JSON file…",
       "checking": "Checking {fileName}…",
       "imported": "Imported",
@@ -3973,7 +4267,7 @@
     },
     "export": {
       "title": "Export",
-      "description": "Download this organization's monitors, notification channels and status pages as a Marmot export file. It can be imported into another organization or instance.",
+      "description": "Download this organization's monitors, notification channels, status pages and templates as a Marmot export file. It can be imported into another organization or instance.",
       "secrets": "<strong>The file contains secrets.</strong> Notification channel settings (webhook URLs, tokens, SMTP passwords) and monitor credentials are exported exactly as stored. Treat it like a password file.",
       "download": "Download export",
       "forbidden": "Exporting requires the admin role in this organization."
@@ -3988,6 +4282,7 @@
         "monitors": "Monitors",
         "notifications": "Notification channels",
         "statusPages": "Status pages",
+        "templates": "Templates",
         "tags": "Tags"
       }
     },
@@ -3996,7 +4291,7 @@
       "notKumaBackup": "Not an Uptime Kuma backup: expected a JSON object with \"monitorList\" and \"notificationList\".",
       "notMarmotExport": "Not a Marmot export (format \"{format}\" version {version}): {issues}",
       "kumaVersion": "Uptime Kuma backup version {version}",
-      "unnamed": "{kind, select, monitor {monitor} notification {notification} statusPage {status page} other {tag}} #{id}",
+      "unnamed": "{kind, select, monitor {monitor} notification {notification} statusPage {status page} template {template} other {tag}} #{id}",
       "notificationConfigNotJson": "Notification config is not valid JSON",
       "notificationNoType": "Notification has no provider type",
       "notificationProviderUnsupported": "Notification provider \"{type}\" is not supported by Marmot",
@@ -4008,6 +4303,12 @@
       "invalidMonitor": "Invalid monitor: {issues}",
       "notAnObject": "not an object",
       "invalidStatusPage": "Invalid status page: {issues}",
+      "invalidTemplate": "Invalid template: {issues}",
+      "duplicateTemplate": "Another template in the file has the same name",
+      "templateExists": "A template with this name already exists",
+      "templatesSkipped": "Templates were skipped: you may not create templates in this organization.",
+      "noTemplatePermission": "You may not create templates in this organization",
+      "templateComponentsDropped": "\"{name}\": {count} default {count, plural, one {component} other {components}} dropped because the status page was not imported",
       "monitorTypeUnsupported": "Monitor type \"{type}\" is not supported by Marmot yet",
       "dockerNeedsHost": "Monitor type \"Docker Container\" needs a Docker host in Marmot; add one and recreate the monitor",
       "realBrowserNeedsUrl": "Monitor type \"HTTP(s) - Browser Engine\" needs a remote browser URL, which Uptime Kuma backups do not contain",
@@ -4321,6 +4622,9 @@
     "incidentPostedAtFuture": "Updates cannot be posted in the future.",
     "incidentMessageInvalid": "message must be a string.",
     "incidentUpdateNotFound": "Update not found",
+    "templatePlaceholdersUnfilled": "Replace the template placeholders before publishing: {names}.",
+    "templateStatusPageInvalid": "The status page must belong to the template's organization.",
+    "templateComponentsInvalid": "Each default component must be listed once and belong to the template's status page.",
     "httpUrlRequired": "Enter an http(s) URL.",
     "contactUrlInvalid": "Enter an http(s) URL or a mailto: address.",
     "componentMonitorRequired": "Pick a monitor for this component.",

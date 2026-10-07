@@ -53,6 +53,9 @@ export function toOnDemandResult(
     maintenance: Boolean(result.underMaintenance),
     statusCode: typeof statusCode === 'number' ? statusCode : null,
     tls: tlsSummary(result.tlsInfo),
+    assertions: result.assertions?.length
+      ? (JSON.parse(JSON.stringify(result.assertions)) as OnDemandCheckResult['assertions'])
+      : null,
     details: JSON.parse(JSON.stringify(details)) as Record<string, unknown>,
     recorded: heartbeat !== null,
     heartbeat: heartbeat

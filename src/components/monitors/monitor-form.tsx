@@ -35,6 +35,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { track } from '@/lib/analytics'
 import { api, ApiError } from '@/lib/api'
+import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
 import { supportsAdhocTest, type OnDemandCheckResult } from '@/lib/on-demand-check'
 import {
   AUTH_METHODS,
@@ -66,8 +67,10 @@ import {
   type MonitorFormValues,
   type MonitorTypeName,
 } from '@/lib/validation/monitor'
+import { supportsAssertions } from '@/lib/validation/assertions'
 import type { MonitorFormResources } from '@/server/monitors/page-data'
 
+import { AssertionsField } from './assertions-field'
 import { useElapsedSeconds } from './check-now'
 import { CheckResultView } from './check-result'
 import { NotificationPicker } from './notification-picker'
@@ -769,6 +772,7 @@ export function MonitorForm({
     httpBodyEncoding,
     mqttCheckType,
     sshAuthMethod,
+    dnsResolveType,
   ] = useWatch({
     control,
     name: [
@@ -781,6 +785,7 @@ export function MonitorForm({
       'httpBodyEncoding',
       'mqttCheckType',
       'sshAuthMethod',
+      'dnsResolveType',
     ],
   })
 
@@ -825,8 +830,10 @@ export function MonitorForm({
     setPending(true)
     // Without the picker a new monitor gets the organization's default channels (server side).
     let values: Partial<MonitorFormValues> = formValues
+    // Rows left over from a type that has assertions are dropped with the type.
+    if (!supportsAssertions(formValues.type)) values = { ...values, assertions: [] }
     if (mode === 'create' && !canPickChannels) {
-      const { notifications: _omit, ...rest } = formValues
+      const { notifications: _omit, ...rest } = values
       values = rest
     }
     try {
@@ -1227,6 +1234,17 @@ export function MonitorForm({
                       ? t('timing.timeoutDefault')
                       : timingHint(timeout)
                   }
+                />
+              )}
+              {supportsDegradedThreshold(type) && (
+                <NumberField
+                  control={control}
+                  name="degradedAfter"
+                  label={t('timing.degradedAfter')}
+                  unit={t('timing.milliseconds')}
+                  min={0}
+                  step={1}
+                  description={t('timing.degradedAfterDescription')}
                 />
               )}
             </CardContent>
@@ -1774,6 +1792,26 @@ export function MonitorForm({
                 name="ignoreTls"
                 label={t('http.ignoreTls')}
                 description={t('http.ignoreTlsDescription')}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Assertions ---------------------------------------------------------------------- */}
+        {supportsAssertions(type) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('assertions.title')}</CardTitle>
+              <CardDescription>
+                {type === 'dns' ? t('assertions.descriptionDns') : t('assertions.description')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AssertionsField
+                control={control}
+                setValue={setValue}
+                monitorType={type}
+                dnsRecordType={dnsResolveType}
               />
             </CardContent>
           </Card>
