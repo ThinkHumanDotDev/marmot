@@ -15,6 +15,7 @@ const teamSlug = `e2e-team-${run}`
 const officeSlug = `e2e-office-${run}`
 
 const created: { collection: string; id: DocId }[] = []
+const seeded: { org?: DocId; page?: DocId; component?: string } = {}
 
 test.use({ storageState: ANONYMOUS })
 
@@ -53,21 +54,24 @@ test.describe('Status pages', () => {
 
     const page = track(
       'status-pages',
-      await adminApi.create('status-pages', {
-        organization: org.id,
-        title: 'E2E Acme Status',
-        slug: publishedSlug,
-        description: 'Everything we run, in one place.',
-        published: true,
-        groups: [
-          { name: 'Public services', monitors: [{ monitor: monitor.id, sendUrl: true }] },
-          {
-            name: 'People',
-            defaultOpen: false,
-            monitors: [{ type: 'static', name: 'Customer support' }],
-          },
-        ],
-      }),
+      await adminApi.create<{ id: DocId; groups: { monitors: { id: string }[] }[] }>(
+        'status-pages',
+        {
+          organization: org.id,
+          title: 'E2E Acme Status',
+          slug: publishedSlug,
+          description: 'Everything we run, in one place.',
+          published: true,
+          groups: [
+            { name: 'Public services', monitors: [{ monitor: monitor.id, sendUrl: true }] },
+            {
+              name: 'People',
+              defaultOpen: false,
+              monitors: [{ type: 'static', name: 'Customer support' }],
+            },
+          ],
+        },
+      ),
     )
 
     track(
@@ -76,10 +80,14 @@ test.describe('Status pages', () => {
         statusPage: page.id,
         organization: org.id,
         title: 'E2E planned maintenance',
+        // Pre-timeline shape (content + style): still accepted and shown as one update.
         content: 'We are **upgrading** the database tonight.',
-        style: 'warning',
+        style: 'info',
       }),
     )
+
+    // The monitor's component id (its group row id) is what incident updates reference.
+    Object.assign(seeded, { org: org.id, page: page.id, component: page.groups[0].monitors[0].id })
 
     track(
       'status-pages',
@@ -161,6 +169,47 @@ test.describe('Status pages', () => {
     await expect(page.locator('strong', { hasText: 'upgrading' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Powered by Marmot' })).toBeVisible()
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+  })
+
+  test('shows the incident timeline and component impact until resolved', async ({
+    page,
+    adminApi,
+  }) => {
+    const incident = await adminApi.create('incidents', {
+      statusPage: seeded.page,
+      organization: seeded.org,
+      title: 'E2E site outage',
+      updates: [
+        {
+          status: 'investigating',
+          message: 'The site is unreachable.',
+          components: [{ component: seeded.component, impact: 'major_outage' }],
+        },
+        { status: 'identified', message: 'A bad **certificate**.' },
+      ],
+    })
+    created.unshift({ collection: 'incidents', id: incident.id })
+
+    await page.goto(`/status/${publishedSlug}`)
+    // The monitor counts as down; the static component is still up.
+    await expect(page.getByRole('status')).toHaveText(/Partially degraded/)
+    await expect(page.locator(`[data-monitor-impact="major_outage"]`)).toContainText(
+      'Marketing site',
+    )
+    const card = page.locator('article', {
+      has: page.getByRole('heading', { level: 3, name: 'E2E site outage' }),
+    })
+    // Latest update inline, the rest behind the disclosure.
+    await expect(card.locator('strong', { hasText: 'certificate' })).toBeVisible()
+    await expect(card.getByText('The site is unreachable.')).toBeHidden()
+    await card.getByText(/Show all 2 updates/).click()
+    await expect(card.getByText('The site is unreachable.')).toBeVisible()
+    await expect(card.locator('time')).toHaveCount(2)
+
+    await adminApi.update('incidents', incident.id, { active: false })
+    await page.reload()
+    await expect(page.getByRole('status')).toHaveText(/All systems operational/)
+    await expect(page.locator('[data-monitor-impact]')).toHaveCount(0)
   })
 
   test('serves the public API, RSS feed and manifest', async ({ request }) => {

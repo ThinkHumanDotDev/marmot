@@ -828,10 +828,24 @@ export interface Incident {
   organization: number | Organization;
   statusPage: number | StatusPage;
   title: string;
-  content?: string | null;
-  style?: ('info' | 'warning' | 'danger' | 'primary') | null;
-  pinned?: boolean | null;
-  active?: boolean | null;
+  status?: ('investigating' | 'identified' | 'monitoring' | 'resolved') | null;
+  impact?: ('operational' | 'degraded_performance' | 'partial_outage' | 'major_outage') | null;
+  updates?:
+    | {
+        status: 'investigating' | 'identified' | 'monitoring' | 'resolved';
+        postedAt: string;
+        editedAt?: string | null;
+        message?: string | null;
+        components?:
+          | {
+              component: string;
+              impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
   affectedComponents?:
     | {
         component: string;
@@ -839,7 +853,11 @@ export interface Incident {
         id?: string | null;
       }[]
     | null;
+  pinned?: boolean | null;
+  active?: boolean | null;
   resolvedAt?: string | null;
+  content?: string | null;
+  style?: ('info' | 'warning' | 'danger' | 'primary') | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1647,10 +1665,24 @@ export interface IncidentsSelect<T extends boolean = true> {
   organization?: T;
   statusPage?: T;
   title?: T;
-  content?: T;
-  style?: T;
-  pinned?: T;
-  active?: T;
+  status?: T;
+  impact?: T;
+  updates?:
+    | T
+    | {
+        status?: T;
+        postedAt?: T;
+        editedAt?: T;
+        message?: T;
+        components?:
+          | T
+          | {
+              component?: T;
+              impact?: T;
+              id?: T;
+            };
+        id?: T;
+      };
   affectedComponents?:
     | T
     | {
@@ -1658,7 +1690,11 @@ export interface IncidentsSelect<T extends boolean = true> {
         impact?: T;
         id?: T;
       };
+  pinned?: T;
+  active?: T;
   resolvedAt?: T;
+  content?: T;
+  style?: T;
   updatedAt?: T;
   createdAt?: T;
 }

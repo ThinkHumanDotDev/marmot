@@ -27,7 +27,9 @@ import {
 import {
   buildPublicStatusPageData,
   findPublishedStatusPage,
+  overallStatus,
   type OverallStatus,
+  type PublicStatusPageData,
 } from '@/server/status-pages/public'
 
 import type { StatusPage } from '@/payload-types'
@@ -38,6 +40,12 @@ export interface BadgeStateInput {
   /** Components; `impact` is the worst impact of the active incidents affecting the component. */
   groups: readonly { monitors: readonly { impact: ComponentImpact | null }[] }[]
   maintenance: readonly { status: string }[]
+  /** Active incidents; those naming no component raise the badge to their declared impact. */
+  incidents?: readonly {
+    active: boolean
+    impact: ComponentImpact
+    components: readonly unknown[]
+  }[]
 }
 
 const FROM_OVERALL: Record<OverallStatus, StatusPageBadgeState> = {
@@ -73,9 +81,24 @@ export function statusPageBadgeState(data: BadgeStateInput): StatusPageBadgeStat
   }
   const impact = worstImpact(data.groups.flatMap((g) => g.monitors.map((m) => m.impact)))
   if (impact) raise(FROM_IMPACT[impact])
+  for (const incident of data.incidents ?? []) {
+    if (incident.active && incident.components.length === 0) raise(FROM_IMPACT[incident.impact])
+  }
   if (data.maintenance.some((m) => m.status === 'under-maintenance')) raise('maintenance')
   return state
 }
+
+/**
+ * Badge input from the public payload. The page's `overall` already counts incident impact (a
+ * degraded component reads as "partially degraded"); the badge distinguishes degraded from partial,
+ * so it starts from the components' own statuses and applies impacts itself.
+ */
+export const badgeInput = (data: PublicStatusPageData): BadgeStateInput => ({
+  overall: overallStatus(data.groups.flatMap((g) => g.monitors.map((m) => m.status))),
+  groups: data.groups,
+  maintenance: data.maintenance,
+  incidents: data.incidents,
+})
 
 export type BadgePageAccess =
   | {
@@ -146,7 +169,7 @@ export async function serveStatusPageBadge(
   }
 
   const data = await buildPublicStatusPageData(payload, page)
-  const state = statusPageBadgeState(data)
+  const state = statusPageBadgeState(badgeInput(data))
   return new Response(renderStatusPageBadge(state, options), {
     status: 200,
     headers: access.restricted

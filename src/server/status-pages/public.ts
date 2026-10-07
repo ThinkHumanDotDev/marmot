@@ -9,10 +9,15 @@
 import type { Payload } from 'payload'
 
 import type { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
-import type { IncidentStyle } from '@/collections/Incidents'
 import type { StatusPageLanguage, StatusPageTheme } from '@/collections/StatusPages'
 import { defaultLocale } from '@/i18n/locales'
 import { getThemePreset } from '@/lib/status-page-themes'
+import {
+  incidentTimeline,
+  legacyStyleFromImpact,
+  type IncidentStatus,
+  type LegacyIncidentStyle,
+} from '@/lib/incident-timeline'
 import {
   componentDisplayName,
   staticComponentStatus,
@@ -85,11 +90,41 @@ export interface PublicGroup {
   monitors: PublicMonitor[]
 }
 
+/** A status page component named by an incident (only components visible on the page). */
+export interface PublicIncidentComponent {
+  /** Component id, as in `groups[].monitors[].componentId`. */
+  id: string
+  name: string
+  impact: ComponentImpact
+}
+
+export interface PublicIncidentUpdate {
+  id: string
+  status: IncidentStatus
+  /** Markdown. */
+  message: string
+  postedAt: string
+  /** Set when the text was edited after posting. */
+  editedAt: string | null
+  /** Impacts this update set (components it left out keep their previous impact). */
+  components: PublicIncidentComponent[]
+}
+
 export interface PublicIncident {
   id: string
   title: string
+  /** Status of the latest update. */
+  status: IncidentStatus
+  /** Worst current impact (the incident's indicator). */
+  impact: ComponentImpact
+  /** Current impact per affected component. */
+  components: PublicIncidentComponent[]
+  /** Timeline, newest first. */
+  updates: PublicIncidentUpdate[]
+  /** Latest update's message (kept for clients of the pre-timeline payload). */
   content: string
-  style: IncidentStyle
+  /** Card colour derived from `impact` (kept for clients of the pre-timeline payload). */
+  style: LegacyIncidentStyle
   pinned: boolean
   active: boolean
   createdAt: string
@@ -200,18 +235,86 @@ export function toPublicConfig(page: StatusPage): PublicConfig {
   }
 }
 
-export function toPublicIncident(incident: Incident): PublicIncident {
+/**
+ * Public view of an incident. `componentNames` maps component ids to the names shown on the page;
+ * components that are not visible there (removed rows, paused monitors) are left out.
+ */
+export function toPublicIncident(
+  incident: Incident,
+  componentNames: ReadonlyMap<string, string> = new Map(),
+): PublicIncident {
+  const { updates, state } = incidentTimeline(incident)
+  const visible = (rows: readonly { component: string; impact: ComponentImpact }[]) =>
+    rows.flatMap((row) => {
+      const name = componentNames.get(row.component)
+      return name === undefined ? [] : [{ id: row.component, name, impact: row.impact }]
+    })
+  const newestFirst = updates.slice().reverse()
   return {
     id: String(incident.id),
     title: incident.title,
-    content: incident.content ?? '',
-    style: incident.style ?? 'info',
+    status: state.status,
+    impact: state.impact,
+    components: visible(state.components),
+    updates: newestFirst.map((update, index) => ({
+      id: update.id ? String(update.id) : `${incident.id}-${index}`,
+      status: update.status,
+      message: update.message ?? '',
+      postedAt: update.postedAt,
+      editedAt: update.editedAt ?? null,
+      components: visible(update.components ?? []),
+    })),
+    content: newestFirst[0]?.message ?? '',
+    style: legacyStyleFromImpact(state.impact),
     pinned: Boolean(incident.pinned),
-    active: incident.active !== false,
+    active: state.active,
     createdAt: incident.createdAt,
     updatedAt: incident.updatedAt,
-    resolvedAt: incident.resolvedAt ?? null,
+    resolvedAt: state.resolvedAt ?? incident.resolvedAt ?? null,
   }
+}
+
+/** Component id → public name of every component visible in `groups`. */
+export const componentNamesOf = (groups: readonly PublicGroup[]): Map<string, string> =>
+  new Map(
+    groups.flatMap((group) =>
+      group.monitors.flatMap((m) => (m.componentId ? [[m.componentId, m.name] as const] : [])),
+    ),
+  )
+
+const OVERALL_RANK: Record<OverallStatus, number> = {
+  unknown: 0,
+  up: 1,
+  maintenance: 2,
+  partial: 3,
+  down: 4,
+}
+
+/**
+ * Overall page state from component statuses *and* active incident impacts: a component with a
+ * `major_outage` counts as down and one with a degraded or partial impact as not fully up (then
+ * Uptime Kuma's rule applies); active incidents that name no component raise the page to
+ * `partial` (degraded / partial outage) or `down` (major outage).
+ */
+export function pageOverallStatus(
+  groups: readonly PublicGroup[],
+  incidents: readonly PublicIncident[],
+): OverallStatus {
+  const statuses = groups.flatMap((group) =>
+    group.monitors.map((row): MonitorPublicStatus => {
+      if (row.impact === 'major_outage') return 'down'
+      if (row.impact && row.impact !== 'operational' && row.status === 'up') return 'pending'
+      return row.status
+    }),
+  )
+  let overall = overallStatus(statuses)
+  for (const incident of incidents) {
+    if (!incident.active || incident.impact === 'operational') continue
+    if (incident.components.length > 0) continue
+    const fromIncident: OverallStatus = incident.impact === 'major_outage' ? 'down' : 'partial'
+    if (OVERALL_RANK[fromIncident] > OVERALL_RANK[overall]) overall = fromIncident
+  }
+  return overall
 }
 
 /**
@@ -467,11 +570,14 @@ export async function buildPublicStatusPageData(
   ])
   const groups = await buildPublicGroups(payload, page, { incidents, maintenance })
 
+  const names = componentNamesOf(groups)
+  const publicIncidents = incidents.map((incident) => toPublicIncident(incident, names))
+
   return {
     config: toPublicConfig(page),
-    overall: overallStatus(groups.flatMap((g) => g.monitors.map((m) => m.status))),
+    overall: pageOverallStatus(groups, publicIncidents),
     groups,
-    incidents: incidents.map(toPublicIncident),
+    incidents: publicIncidents,
     maintenance,
     generatedAt: new Date().toISOString(),
   }

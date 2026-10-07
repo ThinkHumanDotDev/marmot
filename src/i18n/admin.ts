@@ -131,9 +131,17 @@ export const adminTranslations = {
         organizationDescription: 'Derived from the status page.',
         contentDescription: 'Markdown: paragraphs, **bold**, _italics_, `code` and links.',
         pinnedDescription: 'Pinned incidents are shown above the monitor groups.',
-        activeDescription: 'Uncheck to resolve the incident.',
+        activeDescription:
+          'Derived from the timeline. Unchecking posts a "resolved" update; checking reopens.',
+        statusDescription: 'Status of the latest update.',
+        impactDescription:
+          'Worst current impact of the affected components; set it directly when no component is affected.',
+        updatesDescription:
+          'Timeline, oldest first. Posted updates keep their status and impact; editing the text marks them as edited.',
+        componentsDescription:
+          'Impact on status page components. Components left out keep their last impact; "resolved" resets them.',
         affectedComponentsDescription:
-          'Status page components this incident affects while it is active, with their impact.',
+          'Current impact per component, derived from the updates. Editing it posts an update.',
         componentDescription: 'Id of a component (group row) of the status page.',
       },
       invitations: {

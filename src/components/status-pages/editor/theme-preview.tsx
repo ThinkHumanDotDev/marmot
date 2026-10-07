@@ -79,6 +79,19 @@ export function ThemePreview({
   const incident: PublicIncident = {
     id: 'preview',
     title: t('sampleIncident'),
+    status: 'identified',
+    impact: 'degraded_performance',
+    components: [],
+    updates: [
+      {
+        id: 'preview-1',
+        status: 'identified',
+        message: t('sampleIncidentBody'),
+        postedAt: '2026-01-01T00:00:00.000Z',
+        editedAt: null,
+        components: [],
+      },
+    ],
     content: t('sampleIncidentBody'),
     style: 'warning',
     pinned: true,
