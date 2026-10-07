@@ -21,6 +21,7 @@
     "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "build:server": "node scripts/build-server.mjs",
+    "build:action": "node scripts/build-action.mjs",
     "marmot": "node scripts/run-ts.mjs src/cli/marmot.ts",
     "start:worker": "cross-env NODE_OPTIONS=--no-deprecation node dist/server/worker.mjs",
     "start:realtime": "cross-env NODE_OPTIONS=--no-deprecation node dist/server/realtime.mjs",

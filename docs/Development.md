@@ -55,15 +55,16 @@ organization. `/admin` is the Payload admin panel (superadmins only).
 
 ## Everyday commands
 
-| Command                     | What it does                                                                                           |
-| --------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `pnpm check`                | `lint` + `typecheck` + `test:int`. Run before every push.                                              |
-| `pnpm lint` / `pnpm format` | ESLint / Prettier check (`pnpm format:fix` writes).                                                    |
-| `pnpm typecheck`            | `tsc --noEmit` over app, server and tests.                                                             |
-| `pnpm generate:types`       | Regenerate `src/payload-types.ts` after changing a collection or global. Never edit that file by hand. |
-| `pnpm generate:importmap`   | Regenerate the admin import map after adding admin components.                                         |
-| `pnpm build`                | Production Next.js build (also typechecks test files against `DATABASE_ADAPTER`).                      |
-| `pnpm build:server`         | esbuild bundles of worker, realtime and migrate to `dist/server/*.mjs` (what the Docker image runs).   |
+| Command                     | What it does                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `pnpm check`                | `lint` + `typecheck` + `test:int`. Run before every push.                                               |
+| `pnpm lint` / `pnpm format` | ESLint / Prettier check (`pnpm format:fix` writes).                                                     |
+| `pnpm typecheck`            | `tsc --noEmit` over app, server and tests.                                                              |
+| `pnpm generate:types`       | Regenerate `src/payload-types.ts` after changing a collection or global. Never edit that file by hand.  |
+| `pnpm generate:importmap`   | Regenerate the admin import map after adding admin components.                                          |
+| `pnpm build`                | Production Next.js build (also typechecks test files against `DATABASE_ADAPTER`).                       |
+| `pnpm build:server`         | esbuild bundles of worker, realtime and migrate to `dist/server/*.mjs` (what the Docker image runs).    |
+| `pnpm build:action`         | Rebuild the committed GitHub Action bundle `action/dist/index.mjs` ([GitHub Action](GitHub-Action.md)). |
 
 ## Tests
 
@@ -288,6 +289,11 @@ with esbuild, keeping every package external. Consequences for server code:
   `src/collections/**` or `src/db/**`.
 
 `pnpm start:worker`, `pnpm start:realtime` and `pnpm migrate:prod` run the bundles locally.
+
+The [GitHub Action](GitHub-Action.md) is bundled separately (`pnpm build:action`, `scripts/build-action.mjs`)
+into `action/dist/index.mjs`, which is **committed**: run `pnpm build:action` and commit the result when you
+change `src/action/**`, `src/cli/**`, the monitor validation (`src/lib/validation/**`) or the `cli` /
+`monitors.validation` messages. The _GitHub Action_ workflow fails when the committed bundle is stale.
 
 ## Where things are
 
