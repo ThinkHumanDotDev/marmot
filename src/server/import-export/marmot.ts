@@ -16,7 +16,13 @@ import type { Payload } from 'payload'
 import { z } from 'zod'
 
 import type { OrgId } from '@/access/permissions'
+import { BANNER_TEXT_MAX_LENGTH } from '@/collections/status-page-theme'
 import { MARMOT_EXPORT_FORMAT, MARMOT_EXPORT_VERSION } from '@/lib/import-export'
+import {
+  DEFAULT_THEME_PRESET,
+  isThemePresetId,
+  parseThemeOverrides,
+} from '@/lib/status-page-themes'
 import {
   defaultMonitorValues,
   monitorToFormValues,
@@ -74,6 +80,9 @@ export interface ExportedStatusPage {
   homepageUrl?: string | null
   contactUrl?: string | null
   theme: StatusPage['theme']
+  themePreset: string | null
+  themeOverrides: StatusPage['themeOverrides']
+  bannerText: string | null
   published: boolean
   searchEngineIndex: boolean
   showTags: boolean
@@ -135,6 +144,9 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
   homepageUrl: doc.homepageUrl ?? null,
   contactUrl: doc.contactUrl ?? null,
   theme: doc.theme ?? 'auto',
+  themePreset: doc.themePreset ?? null,
+  themeOverrides: doc.themeOverrides ?? null,
+  bannerText: doc.bannerText ?? null,
   published: doc.published ?? false,
   searchEngineIndex: doc.searchEngineIndex ?? false,
   showTags: doc.showTags ?? false,
@@ -276,6 +288,11 @@ const monitorEnvelopeSchema = z.object({
   parent: idSchema.nullish(),
 })
 
+const importedThemeOverrides = (value: unknown): StatusPage['themeOverrides'] => {
+  const parsed = parseThemeOverrides(value)
+  return parsed.ok ? (parsed.value as StatusPage['themeOverrides']) : null
+}
+
 const statusPageSchema = z.object({
   id: idSchema,
   title: z.string().trim().min(1).max(200),
@@ -284,6 +301,9 @@ const statusPageSchema = z.object({
   homepageUrl: z.string().nullish(),
   contactUrl: z.string().nullish(),
   theme: z.enum(['auto', 'light', 'dark']).nullish(),
+  themePreset: z.string().nullish(),
+  themeOverrides: z.unknown().optional(),
+  bannerText: z.string().nullish(),
   published: z.boolean().nullish(),
   searchEngineIndex: z.boolean().nullish(),
   showTags: z.boolean().nullish(),
@@ -504,6 +524,10 @@ export function parseMarmotExport(json: unknown): ImportPlan {
         homepageUrl: page.homepageUrl ?? null,
         contactUrl: page.contactUrl ?? null,
         theme: page.theme ?? 'auto',
+        // Unknown presets and invalid overrides fall back to the defaults instead of failing the page.
+        themePreset: isThemePresetId(page.themePreset) ? page.themePreset : DEFAULT_THEME_PRESET,
+        themeOverrides: importedThemeOverrides(page.themeOverrides),
+        bannerText: page.bannerText?.trim().slice(0, BANNER_TEXT_MAX_LENGTH) || null,
         published: page.published ?? false,
         searchEngineIndex: page.searchEngineIndex ?? false,
         showTags: page.showTags ?? false,
