@@ -1386,6 +1386,7 @@
         "subscriber_notification": "Subscriber notification",
         "maintenance": "Maintenance",
         "maintenance_occurrence": "Maintenance window",
+        "monitor_incident": "Monitor incident",
         "template": "Template",
         "api_key": "API key",
         "sso_connection": "SSO connection",
@@ -1411,7 +1412,10 @@
         "role_changed": "role changed",
         "removed": "removed",
         "ownership_transferred": "ownership transferred",
-        "completed": "completed"
+        "completed": "completed",
+        "acknowledged": "acknowledged",
+        "resolved": "resolved",
+        "published": "published"
       },
       "authActions": {
         "login": "Signed in",

@@ -425,6 +425,27 @@ describe('routes and access', () => {
       params: params(org.id, incident.id),
     })
     expect(again.status).toBe(409)
+
+    // The audit log names who acknowledged (one row: the refused second attempt writes none).
+    const { docs: audit } = await payload.find({
+      collection: 'audit-logs',
+      where: {
+        and: [
+          { action: { equals: 'monitor_incident.acknowledged' } },
+          { entityId: { equals: String(incident.id) } },
+        ],
+      },
+      depth: 0,
+    })
+    expect(audit).toHaveLength(1)
+    expect(audit[0]).toMatchObject({
+      actorType: 'user',
+      actorRef: String(member.user.id),
+      organization: org.id,
+      entityType: 'monitor_incident',
+      after: { status: 'acknowledged' },
+      metadata: { via: 'dashboard' },
+    })
   })
 
   it('sends the acknowledgement through the provider in the [name] [label] text shape', async () => {
