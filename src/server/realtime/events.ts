@@ -21,6 +21,7 @@ export const RealtimeEvents = {
   maintenanceList: 'maintenanceList',
   notificationList: 'notificationList',
   info: 'info',
+  checkerStatus: 'checkerStatus',
 } as const
 
 export type RealtimeEvent = (typeof RealtimeEvents)[keyof typeof RealtimeEvents]
@@ -115,6 +116,11 @@ export interface RealtimePayloads {
   notificationList: { organizationId: RealtimeId; items: unknown[] }
   /** Server information, sent once per connection. */
   info: { version: string; serverTime: string }
+  /**
+   * Instance-wide status of the worker's self connectivity check (#148), broadcast to every socket
+   * when it changes. `since` is the start of the current outage while `offline`.
+   */
+  checkerStatus: { status: 'online' | 'offline' | 'unknown' | 'disabled'; since: string | null }
 }
 
 /** Typed server → client event map for `socket.io` / `socket.io-client`. */

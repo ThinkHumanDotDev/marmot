@@ -83,6 +83,10 @@ crossed. Other types ignore the setting.
   DEGRADED) and `reminder` (`resendInterval`). Channels receive `down`, `up` and `reminder` by default;
   `degraded` is opt-in per channel ([Notifications](Notifications.md)).
 
+When the [self connectivity check](Configuration.md#self-connectivity-check) is on and the worker itself
+loses its internet connection, checks of external targets are held as PENDING `checker offline` beats
+instead: no notification, no downtime, and the monitor keeps the status it had before the outage.
+
 Scheduling is handled by the worker process through BullMQ job schedulers (one per active monitor); the
 web process only writes the monitor and nudges the scheduler. Several worker replicas share the load and a
 monitor is never checked twice at once ([Architecture](Architecture.md#polling-engine)).

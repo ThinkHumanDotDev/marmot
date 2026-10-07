@@ -13,6 +13,7 @@ import {
 } from '@/lib/on-demand-check'
 import type { Heartbeat, Monitor } from '@/payload-types'
 import { computeNextBeat, type CheckResult } from './beat'
+import { guardAgainstOfflineChecker } from './connectivity'
 import { isUnderMaintenance } from './hooks'
 import { OnDemandSkipError } from './on-demand'
 import type { AdhocCheckJobData, ManualCheckJobData } from './queues'
@@ -98,7 +99,12 @@ export async function processManualCheckJob(
   const startedAt = new Date()
   const result: CheckResult = (await isUnderMaintenance(monitor, payload))
     ? { ok: false, msg: 'Monitor under maintenance', underMaintenance: true }
-    : await runCheck(payload, monitor, checkTimeoutMs(monitor))
+    : data.record
+      ? // A recorded check feeds the state machine: hold it while the worker is offline (#148).
+        await guardAgainstOfflineChecker(payload, monitor, () =>
+          runCheck(payload, monitor, checkTimeoutMs(monitor)),
+        )
+      : await runCheck(payload, monitor, checkTimeoutMs(monitor))
 
   if (!data.record) {
     const next = dryRunStatus(result, monitor)

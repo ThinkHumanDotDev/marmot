@@ -46,6 +46,19 @@ through the state machine with `heartbeats.trigger = 'manual'` or, for dry runs 
 returns the result. Jobs carry a deadline and are dropped when the worker picks them up after nobody waits
 any more. A per-organization limiter (`ON_DEMAND_CHECKS_PER_MINUTE`) bounds both routes.
 
+**Self connectivity check** (`src/server/engine/connectivity.ts`, opt-in with `CONNECTIVITY_CHECK_ENABLED`).
+The worker keeps a cached verdict per location (`ConnectivityMonitor`, probed every
+`CONNECTIVITY_CHECK_INTERVAL` seconds by a timer and again when a check fails on a verdict older than 10 s).
+`processCheckJob` runs the check through `guardAgainstOfflineChecker`: while offline, monitors that need the
+internet (`monitorNeedsInternet`) get a `checkerOffline` result, which the state machine turns into a silent
+PENDING `checker offline` beat (`holdBeatWhileCheckerOffline` in `beat.ts`); `recordBeat` keeps the cached
+`lastStatus`, and listeners see `event.checkerOffline` (the stats listener skips it). The worker wiring
+(`connectivity-runtime.ts`) publishes each verdict to Redis (`marmot:connectivity:status:<location>:<worker>`,
+read by `/api/health`, `/api/metrics` and the UI banner through `connectivity-state.ts`), broadcasts the
+`checkerStatus` realtime event, sends one offline / back-online notice per outage (claimed in Redis so one
+replica sends it) and re-enqueues the held monitors when connectivity returns. `connectivityLocationOf()` is
+the hook for multi-location checks (#92): every location will run its own monitor.
+
 After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
 `lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`) and calls every listener registered with
 `registerHeartbeatListener()` (`src/server/engine/hooks.ts`); stats, realtime and notifications plug in there.
