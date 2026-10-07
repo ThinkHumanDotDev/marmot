@@ -291,6 +291,7 @@ export function AuditLogView({
               <SelectItem value={ANY}>{t('filters.anyActor')}</SelectItem>
               <SelectItem value="type:user">{t('filters.allMembers')}</SelectItem>
               <SelectItem value="type:apiKey">{t('actorTypes.apiKey')}</SelectItem>
+              <SelectItem value="type:mcp">{t('actorTypes.mcp')}</SelectItem>
               <SelectItem value="type:system">{t('actorTypes.system')}</SelectItem>
               {actors.map((option) => (
                 <SelectItem key={option.id} value={`user:${option.id}`}>
