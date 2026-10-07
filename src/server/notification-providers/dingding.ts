@@ -6,7 +6,7 @@
 import { createHmac } from 'node:crypto'
 import { z } from 'zod'
 
-import { formatHeartbeatTime, timeLine } from '@/server/notifications/message'
+import { timeLine } from '@/server/notifications/message'
 import { httpRequest, OK_MESSAGE } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'

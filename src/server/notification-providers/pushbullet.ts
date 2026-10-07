@@ -5,12 +5,7 @@
  */
 import { z } from 'zod'
 
-import {
-  formatHeartbeatTime,
-  providerText,
-  statusLabel,
-  timeLine,
-} from '@/server/notifications/message'
+import { providerText, statusLabel, timeLine } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'

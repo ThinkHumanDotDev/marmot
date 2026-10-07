@@ -51,7 +51,7 @@ export function isTechnical(text) {
 }
 
 /** @type {import('eslint').Rule.RuleModule} */
-export default {
+const rule = {
   meta: {
     type: 'suggestion',
     docs: { description: 'Disallow literal user-facing text in JSX; use next-intl messages' },
@@ -135,3 +135,5 @@ export default {
     }
   },
 }
+
+export default rule
