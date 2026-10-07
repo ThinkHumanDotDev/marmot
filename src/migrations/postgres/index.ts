@@ -22,6 +22,8 @@ import * as migration_20261006_143503_add_sso_connections from './20261006_14350
 import * as migration_20261006_144923_add_enforce_sso from './20261006_144923_add_enforce_sso';
 import * as migration_20261006_212748_add_language_fields from './20261006_212748_add_language_fields';
 import * as migration_20261007_021706_status_page_components from './20261007_021706_status_page_components';
+import * as migration_20261007_031019_status_page_themes from './20261007_031019_status_page_themes';
+import * as migration_20261007_034435_status_page_access from './20261007_034435_status_page_access';
 
 export const migrations = [
   {
@@ -142,6 +144,16 @@ export const migrations = [
   {
     up: migration_20261007_021706_status_page_components.up,
     down: migration_20261007_021706_status_page_components.down,
-    name: '20261007_021706_status_page_components'
+    name: '20261007_021706_status_page_components',
+  },
+  {
+    up: migration_20261007_031019_status_page_themes.up,
+    down: migration_20261007_031019_status_page_themes.down,
+    name: '20261007_031019_status_page_themes',
+  },
+  {
+    up: migration_20261007_034435_status_page_access.up,
+    down: migration_20261007_034435_status_page_access.down,
+    name: '20261007_034435_status_page_access'
   },
 ];

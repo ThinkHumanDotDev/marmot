@@ -12,8 +12,12 @@ import { getOrgIdsWithPermission, isSuperadmin, type UserLike } from '@/access/p
 import { adminT } from '@/i18n/admin'
 import { defaultLocale, localeNames, locales } from '@/i18n/locales'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
+import { STATUS_PAGE_ACCESS_MODES } from '@/lib/status-page-access'
 import { COMPONENT_TYPES, isContactUrl, isHttpUrl } from '@/lib/status-page-components'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
+import { applyAccessPassword } from '@/server/status-pages/access-password'
+
+import { statusPageThemeFields } from './status-page-theme'
 
 import type { StatusPage } from '@/payload-types'
 
@@ -52,7 +56,13 @@ export const readStatusPages: Access = ({ req }) => {
   const user = req.user as UserLike | null | undefined
   if (user && isSuperadmin(user)) return true
 
-  const published: Where = { published: { equals: true } }
+  // Password-protected pages are only served through the public endpoints, which check access.
+  const published: Where = {
+    and: [
+      { published: { equals: true } },
+      { or: [{ access: { not_equals: 'password' } }, { access: { exists: false } }] },
+    ],
+  }
   if (!user) return published
 
   const orgIds = getOrgIdsWithPermission(user, 'status-page:read')
@@ -197,7 +207,11 @@ export const StatusPages: CollectionConfig = {
   hooks: {
     beforeValidate: [normalize],
     // Plan limits (no-op unless BILLING_ENABLED).
-    beforeChange: [validateReferences, enforceEntitlementOnCreate('statusPages')],
+    beforeChange: [
+      validateReferences,
+      applyAccessPassword,
+      enforceEntitlementOnCreate('statusPages'),
+    ],
   },
   indexes: [{ fields: ['organization', 'published'] }],
   fields: [
@@ -227,7 +241,12 @@ export const StatusPages: CollectionConfig = {
       ],
     },
     { name: 'description', type: 'textarea' },
-    { name: 'logo', type: 'upload', relationTo: 'media' },
+    {
+      name: 'logo',
+      type: 'upload',
+      relationTo: 'media',
+      admin: { description: adminT('marmot:statusPages:logoDescription') },
+    },
     {
       type: 'row',
       fields: [
@@ -250,7 +269,9 @@ export const StatusPages: CollectionConfig = {
       type: 'select',
       defaultValue: 'auto',
       options: STATUS_PAGE_THEMES.map((theme) => ({ label: theme, value: theme })),
+      admin: { description: adminT('marmot:statusPages:themeDescription') },
     },
+    ...statusPageThemeFields,
     {
       name: 'language',
       type: 'select',
@@ -271,6 +292,35 @@ export const StatusPages: CollectionConfig = {
         position: 'sidebar',
         description: adminT('marmot:statusPages:publishedDescription'),
       },
+    },
+    {
+      name: 'access',
+      type: 'select',
+      defaultValue: 'public',
+      options: STATUS_PAGE_ACCESS_MODES.map((mode) => ({ label: mode, value: mode })),
+      admin: {
+        position: 'sidebar',
+        description: adminT('marmot:statusPages:accessDescription'),
+      },
+    },
+    {
+      // Write-only: hashed into `passwordHash` by `applyAccessPassword`, never stored or returned.
+      name: 'password',
+      type: 'text',
+      virtual: true,
+      access: { read: () => false },
+      admin: {
+        position: 'sidebar',
+        condition: (data) => data?.access === 'password',
+        description: adminT('marmot:statusPages:passwordDescription'),
+      },
+    },
+    {
+      // scrypt hash of the page password. Only server code reading with `overrideAccess` sees it.
+      name: 'passwordHash',
+      type: 'text',
+      access: { read: () => false, create: () => false, update: () => false },
+      admin: { hidden: true },
     },
     {
       type: 'row',

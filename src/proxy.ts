@@ -10,6 +10,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  *   https://status.example.com/              → /status/<slug>
  *   https://status.example.com/rss           → /status/<slug>/rss
  *   https://status.example.com/manifest.json → /status/<slug>/manifest.json
+ *   https://status.example.com/login         → /status/<slug>/login (password-protected pages)
  *   https://status.example.com/badge.svg     → /status/<slug>/badge.svg
  *
  * Everything else (the app, API, admin) is untouched, and any failure falls through to the normal
@@ -17,13 +18,14 @@ import { NextResponse, type NextRequest } from 'next/server'
  */
 
 export const config = {
-  matcher: ['/', '/rss', '/manifest.json', '/badge.svg'],
+  matcher: ['/', '/rss', '/manifest.json', '/login', '/badge.svg'],
 }
 
 const REWRITES: Record<string, string> = {
   '/': '',
   '/rss': '/rss',
   '/manifest.json': '/manifest.json',
+  '/login': '/login',
   '/badge.svg': '/badge.svg',
 }
 

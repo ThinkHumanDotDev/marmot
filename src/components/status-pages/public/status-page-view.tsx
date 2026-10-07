@@ -10,9 +10,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { ComponentImpact } from '@/lib/status-page-components'
 import { renderMarkdown } from '@/lib/markdown'
 import { cn } from '@/lib/utils'
+
+import { ThemeToggle } from './theme-toggle'
 import type { PublicMaintenance } from '@/server/maintenance/status-page'
 import type {
   OverallStatus,
+  PublicConfig,
   PublicGroup,
   PublicIncident,
   PublicMonitor,
@@ -45,7 +48,11 @@ export const formatUptime = (format: Formatter, value: number): string => {
   return fraction >= 0.99995 ? format.number(1, 'wholePercent') : format.number(fraction, 'percent')
 }
 
-function OverallBanner({ status }: { status: OverallStatus }) {
+/**
+ * Overall state banner. A custom `text` (the page's banner override) replaces the automatic
+ * headline; the colour still follows the monitors and screen readers still hear the real state.
+ */
+export function OverallBanner({ status, text }: { status: OverallStatus; text?: string | null }) {
   const t = useTranslations('statusPages.overall')
   const style = overallStyles[status]
   return (
@@ -58,9 +65,53 @@ function OverallBanner({ status }: { status: OverallStatus }) {
       role="status"
     >
       <span className={cn('size-3 shrink-0 rounded-full', style.dot)} aria-hidden />
-      {t(status)}
+      {text ? (
+        <span data-banner-override>
+          {text}
+          <span className="sr-only"> ({t(status)})</span>
+        </span>
+      ) : (
+        t(status)
+      )}
     </div>
   )
+}
+
+/**
+ * Light and dark logos, swapped by the `dark` class (CSS only, so it follows the visitor toggle
+ * without re-rendering). With a single logo it is shown in both modes.
+ */
+export function StatusPageLogo({
+  config,
+  alt = '',
+  className,
+}: {
+  config: Pick<PublicConfig, 'logo' | 'logoDark'>
+  alt?: string
+  className?: string
+}) {
+  const { logo, logoDark } = config
+  if (!logo && !logoDark) return null
+  const img = (src: string, extra?: string, mode?: 'light' | 'dark') => (
+    // eslint-disable-next-line @next/next/no-img-element -- user upload, arbitrary size
+    <img
+      src={src}
+      alt={alt}
+      data-logo={mode}
+      className={cn('size-14 shrink-0 rounded-lg object-contain', className, extra)}
+      width={56}
+      height={56}
+    />
+  )
+  if (logo && logoDark) {
+    return (
+      <>
+        {img(logo, 'dark:hidden', 'light')}
+        {img(logoDark, 'hidden dark:block', 'dark')}
+      </>
+    )
+  }
+  return img((logo ?? logoDark)!)
 }
 
 export function IncidentCard({ incident }: { incident: PublicIncident }) {
@@ -350,6 +401,8 @@ export function StatusPageView({ slug, initial }: StatusPageViewProps) {
           cache: 'no-store',
           headers: { Accept: 'application/json' },
         })
+        // Access revoked (password changed, cookie expired): the server sends the login form.
+        if (res.status === 401) return window.location.reload()
         if (res.ok && !cancelled) setData((await res.json()) as PublicStatusPageData)
       } catch {
         // keep showing the last good payload
@@ -373,31 +426,20 @@ export function StatusPageView({ slug, initial }: StatusPageViewProps) {
     <TooltipProvider delayDuration={200}>
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-10 sm:px-6">
         <header className="flex items-start gap-4">
-          {config.logo &&
+          {(config.logo || config.logoDark) &&
             (config.homepageUrl ? (
               <a href={config.homepageUrl} className="shrink-0" data-homepage-link>
-                {/* eslint-disable-next-line @next/next/no-img-element -- user upload, arbitrary size */}
-                <img
-                  src={config.logo}
+                <StatusPageLogo
+                  config={config}
                   alt={t('public.homepage', { title: config.title })}
-                  className="size-14 rounded-lg object-contain"
-                  width={56}
-                  height={56}
                 />
               </a>
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element -- user upload, arbitrary size
-              <img
-                src={config.logo}
-                alt=""
-                className="size-14 shrink-0 rounded-lg object-contain"
-                width={56}
-                height={56}
-              />
+              <StatusPageLogo config={config} />
             ))}
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              {config.homepageUrl && !config.logo ? (
+              {config.homepageUrl && !config.logo && !config.logoDark ? (
                 <a
                   href={config.homepageUrl}
                   className="underline-offset-4 hover:underline"
@@ -428,9 +470,10 @@ export function StatusPageView({ slug, initial }: StatusPageViewProps) {
               {t('public.contact')}
             </a>
           )}
+          {config.theme === 'auto' && <ThemeToggle className="shrink-0" />}
         </header>
 
-        <OverallBanner status={overall} />
+        <OverallBanner status={overall} text={config.bannerText} />
 
         {maintenance.length > 0 && (
           <section aria-label={t('sections.maintenance')} className="flex flex-col gap-3">

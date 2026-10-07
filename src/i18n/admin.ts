@@ -208,6 +208,9 @@ export const adminTranslations = {
       statusPages: {
         slugDescription: 'Public URL: /status/<slug>. Lowercase letters, numbers, hyphens.',
         publishedDescription: 'Unpublished pages return 404 to visitors.',
+        accessDescription: 'password: visitors must enter the page password first.',
+        passwordDescription:
+          'Set or change the page password. Changing it signs every visitor out.',
         autoRefreshIntervalDescription:
           'Seconds between client refreshes; 0 disables auto refresh.',
         customCSSDescription: 'Injected into the public page as a <style> tag.',
@@ -230,6 +233,15 @@ export const adminTranslations = {
         componentDescriptionDescription: 'Shown to visitors as a tooltip.',
         componentShowValuesDescription:
           'Show uptime and response time for this component (the page setting must be on too).',
+        logoDescription: 'Shown in light mode, and in dark mode when there is no dark logo.',
+        themeDescription:
+          'auto lets visitors pick (system, light or dark); light and dark force that mode.',
+        themePresetDescription: 'Built-in palette id, e.g. default, high-contrast, ocean.',
+        themeOverridesDescription:
+          'Colour overrides per mode: { "light": { "primary": "#0b5cad" }, "dark": { … }, "radius": "0.5rem" }. Hex, rgb(), hsl() or oklch() only.',
+        bannerTextDescription: 'Replaces the automatic overall-status headline when set.',
+        logoDarkDescription: 'Shown instead of the logo in dark mode.',
+        faviconDescription: 'PNG, ICO or SVG; falls back to the logo.',
       },
       tags: {
         colorDescription: 'Hex colour of the chip, e.g. #2563EB.',

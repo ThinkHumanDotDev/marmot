@@ -7,7 +7,8 @@
  * the process: no uptime, response times or monitor names, whatever the page's display settings.
  *
  * Every request goes through `statusPageBadgeAccess`, the one place that decides whether the page
- * may be shown to this visitor; a page the visitor may not see renders an `Unknown` badge.
+ * may be shown to this visitor (`checkStatusPageAccess`, so password-protected pages need the access
+ * cookie or `?pw=`); a page the visitor may not see renders an `Unknown` badge.
  */
 import type { Payload } from 'payload'
 
@@ -18,6 +19,11 @@ import {
   type StatusPageBadgeState,
   STATUS_PAGE_BADGE_STATES,
 } from '@/server/badges/status-page'
+import {
+  accessRequestFrom,
+  checkStatusPageAccess,
+  protectedHeaders,
+} from '@/server/status-pages/access'
 import {
   buildPublicStatusPageData,
   findPublishedStatusPage,
@@ -71,23 +77,27 @@ export function statusPageBadgeState(data: BadgeStateInput): StatusPageBadgeStat
   return state
 }
 
-export interface BadgePageAccess {
-  allowed: boolean
-  /** The answer depends on the visitor's credentials: never store it in a shared cache. */
-  restricted: boolean
-}
+export type BadgePageAccess =
+  | {
+      allowed: true
+      /** The answer depends on the visitor's credentials: never store it in a shared cache. */
+      restricted: boolean
+    }
+  | { allowed: false }
 
 /**
- * May the page's real state be shown to the visitor behind `request`? The single access check of
- * the badge route: password protection (#102) and later access modes plug in here. Today every
- * published page is public.
+ * May the page's real state be shown to the visitor behind `request`? The badge route's single
+ * access check, delegating to `checkStatusPageAccess` like every other public surface of a page:
+ * public pages always, password-protected pages with the page's access cookie or `?pw=`. Any denial
+ * (no credentials, wrong password, rate limited) renders `Unknown`, never the real state.
  */
 export async function statusPageBadgeAccess(
-  _payload: Payload,
-  _page: StatusPage,
-  _request: Request,
+  payload: Payload,
+  page: StatusPage,
+  request: Request,
 ): Promise<BadgePageAccess> {
-  return { allowed: true, restricted: false }
+  const decision = await checkStatusPageAccess(payload, page, accessRequestFrom(request))
+  return decision.allowed ? { allowed: true, restricted: decision.restricted } : { allowed: false }
 }
 
 /** Shared caches keep a badge for the page's auto-refresh interval (5 minutes when it is off). */
@@ -107,7 +117,6 @@ const svgHeaders = (cacheControl: string): Record<string, string> => ({
 })
 
 const NO_STORE = 'no-store'
-const PRIVATE_NO_STORE = 'private, no-store'
 
 /**
  * Serves the badge. Unknown or unpublished slugs answer `404` with an `Unknown` badge (so an embed
@@ -129,13 +138,19 @@ export async function serveStatusPageBadge(
   if (!page) return unknown(404, NO_STORE)
 
   const access = await statusPageBadgeAccess(payload, page, request)
-  if (!access.allowed) return unknown(200, NO_STORE)
+  if (!access.allowed) {
+    return new Response(renderStatusPageBadge('unknown', options), {
+      status: 200,
+      headers: { ...svgHeaders(NO_STORE), ...protectedHeaders() },
+    })
+  }
 
   const data = await buildPublicStatusPageData(payload, page)
   const state = statusPageBadgeState(data)
-  const cacheControl = access.restricted ? PRIVATE_NO_STORE : `public, max-age=${badgeMaxAge(page)}`
   return new Response(renderStatusPageBadge(state, options), {
     status: 200,
-    headers: svgHeaders(cacheControl),
+    headers: access.restricted
+      ? { ...svgHeaders(NO_STORE), ...protectedHeaders() }
+      : svgHeaders(`public, max-age=${badgeMaxAge(page)}`),
   })
 }
