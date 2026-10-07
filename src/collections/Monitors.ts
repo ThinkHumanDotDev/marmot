@@ -133,9 +133,10 @@ const sameOrganization = ({ data }: { data?: { organization?: unknown } }): Wher
   data?.organization ? { organization: { equals: relId(data.organization) } } : true
 
 /**
- * Tags, the proxy and the Docker host must belong to the monitor's organization. `filterOptions`
- * only guards the admin UI; this hook guards every API so a member cannot attach another
- * organization's proxy (and its credentials) or Docker host to their monitor.
+ * Tags, notification channels, the proxy and the Docker host must belong to the monitor's
+ * organization. `filterOptions` only guards the admin UI; this hook guards every API so a member
+ * cannot attach another organization's channel, proxy (and its credentials) or Docker host to
+ * their monitor.
  */
 const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
   data,
@@ -155,6 +156,41 @@ const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
       })
     }
     if (ids.length > 0) checks.push({ collection: 'tags', ids, path: 'tags' })
+  }
+  if (Array.isArray(data.notifications) && data.notifications.length > 0) {
+    // Channels of another organization are refused; ids of deleted channels (MongoDB keeps them in
+    // the array) are dropped so the monitor stays editable. Duplicates collapse to one link.
+    const ids = [
+      ...new Map(
+        data.notifications
+          .map((item) => relId(item))
+          .filter((id) => id !== null)
+          .map((id) => [String(id), id] as const),
+      ).values(),
+    ]
+    const { docs } = await req.payload.find({
+      collection: 'notifications',
+      where: { id: { in: ids } },
+      select: { organization: true },
+      depth: 0,
+      limit: ids.length,
+      pagination: false,
+      req,
+      overrideAccess: true,
+    })
+    if (docs.some((doc) => String(relId(doc.organization)) !== String(organization))) {
+      throw new ValidationError({
+        collection: 'monitors',
+        errors: [
+          {
+            message: 'Must belong to the same organization as the monitor.',
+            path: 'notifications',
+          },
+        ],
+      })
+    }
+    const existing = new Set(docs.map((doc) => String(doc.id)))
+    data.notifications = ids.filter((id) => existing.has(String(id))) as Monitor['notifications']
   }
   const proxy = relId(data.proxy)
   if (proxy !== null) checks.push({ collection: 'proxies', ids: [proxy], path: 'proxy' })

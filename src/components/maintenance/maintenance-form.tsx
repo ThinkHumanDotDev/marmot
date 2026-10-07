@@ -5,6 +5,7 @@ import { Cron } from 'croner'
 import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { useForm, useWatch, type Control, type FieldPath } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -33,16 +34,15 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { timeZoneOrDefault } from '@/i18n/formats'
 import {
+  createMaintenanceFormSchema,
   hasSchedule,
   isRecurringStrategy,
-  LAST_DAY_LABELS,
   LAST_DAY_VALUES,
   MAINTENANCE_STRATEGIES,
-  MAINTENANCE_STRATEGY_LABELS,
   MAX_DURATION_MINUTES,
   MAX_INTERVAL_DAYS,
-  maintenanceFormSchema,
   SAME_AS_SERVER,
   toDateTimeLocal,
   WEEKDAY_OPTIONS,
@@ -71,26 +71,8 @@ export interface MaintenanceFormProps {
 type Name = FieldPath<MaintenanceFormInput>
 type FormControlType = Control<MaintenanceFormInput, unknown, MaintenanceFormValues>
 
-const STRATEGY_HELP: Record<MaintenanceStrategy, string> = {
-  manual: 'Starts now and stays active until you pause or delete it.',
-  single: 'One window between a start and an end date.',
-  'recurring-interval':
-    'Repeats every N days at the same time of day, counted from the start date.',
-  'recurring-weekday': 'Repeats on the chosen days of the week.',
-  'recurring-day-of-month': 'Repeats on the chosen days of the month.',
-  cron: 'Starts whenever the cron expression matches and lasts the given number of minutes.',
-}
-
-const QUICK_DURATIONS: { minutes: number; label: string }[] = [
-  { minutes: 15, label: '15 min' },
-  { minutes: 30, label: '30 min' },
-  { minutes: 60, label: '1 h' },
-  { minutes: 120, label: '2 h' },
-  { minutes: 240, label: '4 h' },
-  { minutes: 480, label: '8 h' },
-  { minutes: 720, label: '12 h' },
-  { minutes: 1440, label: '24 h' },
-]
+/** Quick end presets for single windows, in minutes (under an hour shown in minutes). */
+const QUICK_DURATIONS = [15, 30, 60, 120, 240, 480, 720, 1440]
 
 // ---- Field helpers ------------------------------------------------------------------------------
 
@@ -254,12 +236,14 @@ function ToggleGroupField<T extends string>({
   )
 }
 
-/** Next matches of a cron expression, for a quick sanity check while typing. */
-function cronPreview(pattern: string, timezone: string): string[] | null {
+/**
+ * Next matches of a cron expression, for a quick sanity check while typing. `SAME_AS_SERVER`
+ * runs in the organization's zone, as on the server (`getOrganizationTimezone`).
+ */
+function cronPreview(pattern: string, timezone: string, orgTimezone: string): Date[] | null {
   try {
-    const zone = timezone === SAME_AS_SERVER ? undefined : timezone
-    const job = new Cron(pattern, zone ? { timezone: zone } : {})
-    return job.nextRuns(3).map((d) => d.toLocaleString())
+    const zone = timezone === SAME_AS_SERVER ? orgTimezone : timezone
+    return new Cron(pattern, { timezone: zone }).nextRuns(3)
   } catch {
     return null
   }
@@ -277,11 +261,35 @@ export function MaintenanceForm({
   statusPages,
   orgTimezone,
 }: MaintenanceFormProps) {
+  const t = useTranslations('maintenance.form')
+  const tv = useTranslations('maintenance.validation')
+  const tStrategy = useTranslations('maintenance.strategies')
+  const tHelp = useTranslations('maintenance.strategyHelp')
+  const tWeekday = useTranslations('maintenance.weekdays')
+  const tLastDay = useTranslations('maintenance.lastDays')
+  const format = useFormatter()
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
 
+  const schema = React.useMemo(
+    () =>
+      createMaintenanceFormSchema({
+        titleRequired: tv('titleRequired'),
+        dateTime: tv('dateTime'),
+        time: tv('time'),
+        timezone: tv('timezone'),
+        startRequired: tv('startRequired'),
+        endRequired: tv('endRequired'),
+        endAfterStart: tv('endAfterStart'),
+        windowLength: tv('windowLength'),
+        pickDay: tv('pickDay'),
+        cron: tv('cron'),
+      }),
+    [tv],
+  )
+
   const form = useForm<MaintenanceFormInput, unknown, MaintenanceFormValues>({
-    resolver: zodResolver(maintenanceFormSchema),
+    resolver: zodResolver(schema),
     defaultValues: initialValues,
     mode: 'onTouched',
   })
@@ -293,9 +301,14 @@ export function MaintenanceForm({
   })
   const scheduled = hasSchedule(strategy)
   const recurring = isRecurringStrategy(strategy)
+  const previewZone =
+    timezone && timezone !== SAME_AS_SERVER ? timezone : timeZoneOrDefault(orgTimezone)
   const preview = React.useMemo(
-    () => (strategy === 'cron' && cron ? cronPreview(cron, timezone ?? SAME_AS_SERVER) : null),
-    [strategy, cron, timezone],
+    () =>
+      strategy === 'cron' && cron
+        ? cronPreview(cron, timezone ?? SAME_AS_SERVER, timeZoneOrDefault(orgTimezone))
+        : null,
+    [strategy, cron, timezone, orgTimezone],
   )
 
   const monitorOptions = React.useMemo(
@@ -316,7 +329,7 @@ export function MaintenanceForm({
   function applyQuickDuration(minutes: number) {
     const start = getValues('dateRange.start')
     if (!start) {
-      toast.error('Set the start first')
+      toast.error(t('setStartFirst'))
       return
     }
     const from = new Date(start)
@@ -330,7 +343,7 @@ export function MaintenanceForm({
   async function onSubmit(values: MaintenanceFormValues) {
     if (values.monitors.length === 0 && values.statusPages.length === 0) {
       form.setError('monitors', {
-        message: 'Pick at least one monitor or status page, otherwise the window does nothing.',
+        message: t('noTargets'),
       })
       return
     }
@@ -338,7 +351,7 @@ export function MaintenanceForm({
     try {
       if (mode === 'create') await maintenanceApi.create(orgId, values)
       else await maintenanceApi.update(orgId, maintenanceId as string, values)
-      toast.success(mode === 'create' ? 'Maintenance scheduled' : 'Maintenance saved')
+      toast.success(mode === 'create' ? t('created') : t('saved'))
       router.push(`/${orgSlug}/maintenance`)
       router.refresh()
     } catch (error) {
@@ -356,9 +369,9 @@ export function MaintenanceForm({
           : []
       if (issues.length) {
         for (const issue of issues) form.setError(issue.path as Name, { message: issue.message })
-        toast.error('Please fix the highlighted fields')
+        toast.error(t('fixFields'))
       } else {
-        toast.error(error instanceof Error ? error.message : 'Could not save the maintenance')
+        toast.error(error instanceof Error ? error.message : t('saveFailed'))
       }
     }
   }
@@ -372,8 +385,12 @@ export function MaintenanceForm({
     [],
   )
   const lastDayOptions = React.useMemo<{ value: DayOfMonthValue; label: string }[]>(
-    () => LAST_DAY_VALUES.map((value) => ({ value, label: LAST_DAY_LABELS[value] })),
-    [],
+    () => LAST_DAY_VALUES.map((value) => ({ value, label: tLastDay(value) })),
+    [tLastDay],
+  )
+  const weekdayOptions = React.useMemo<{ value: WeekdayValue; label: string }[]>(
+    () => WEEKDAY_OPTIONS.map(({ value }) => ({ value, label: tWeekday(value) })),
+    [tWeekday],
   )
 
   return (
@@ -387,33 +404,31 @@ export function MaintenanceForm({
         {/* General ------------------------------------------------------------------------- */}
         <Card>
           <CardHeader>
-            <CardTitle>General</CardTitle>
-            <CardDescription>What visitors and teammates read about this window.</CardDescription>
+            <CardTitle>{t('general.title')}</CardTitle>
+            <CardDescription>{t('general.description')}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5">
             <TextInputField
               control={control}
               name="title"
-              label="Title"
-              placeholder="Database upgrade"
+              label={t('title')}
+              placeholder={t('titlePlaceholder')}
             />
             <FormField
               control={control}
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('description')}</FormLabel>
                   <FormControl>
                     <Textarea
                       rows={3}
-                      placeholder="What is happening and what to expect."
+                      placeholder={t('descriptionPlaceholder')}
                       {...field}
                       value={(field.value as string | null | undefined) ?? ''}
                     />
                   </FormControl>
-                  <FormDescription>
-                    Shown on the selected status pages. Markdown supported.
-                  </FormDescription>
+                  <FormDescription>{t('descriptionHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -424,10 +439,8 @@ export function MaintenanceForm({
               render={({ field }) => (
                 <FormItem className="flex flex-row items-start justify-between gap-4 rounded-lg border p-3">
                   <div className="space-y-0.5">
-                    <FormLabel>Active</FormLabel>
-                    <FormDescription>
-                      Paused maintenances never apply, whatever the schedule.
-                    </FormDescription>
+                    <FormLabel>{t('active')}</FormLabel>
+                    <FormDescription>{t('activeHint')}</FormDescription>
                   </div>
                   <FormControl>
                     <Switch checked={field.value !== false} onCheckedChange={field.onChange} />
@@ -441,9 +454,9 @@ export function MaintenanceForm({
         {/* Schedule ------------------------------------------------------------------------ */}
         <Card>
           <CardHeader>
-            <CardTitle>Date and time</CardTitle>
+            <CardTitle>{t('schedule.title')}</CardTitle>
             <CardDescription>
-              {STRATEGY_HELP[(strategy as MaintenanceStrategy) ?? 'single']}
+              {tHelp((strategy as MaintenanceStrategy) ?? 'single')}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5">
@@ -452,7 +465,7 @@ export function MaintenanceForm({
               name="strategy"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Strategy</FormLabel>
+                  <FormLabel>{t('strategy')}</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger className="w-full" data-testid="strategy-select">
@@ -462,7 +475,7 @@ export function MaintenanceForm({
                     <SelectContent>
                       {MAINTENANCE_STRATEGIES.map((value) => (
                         <SelectItem key={value} value={value}>
-                          {MAINTENANCE_STRATEGY_LABELS[value]}
+                          {tStrategy(value)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -477,24 +490,30 @@ export function MaintenanceForm({
                 <TextInputField
                   control={control}
                   name="cron"
-                  label="Cron expression"
+                  label={t('cron')}
                   placeholder="30 3 * * *"
                   mono
                   description={
                     preview ? (
-                      <span suppressHydrationWarning>Next: {preview.join(' · ')}</span>
+                      <span suppressHydrationWarning>
+                        {t('cronNext', {
+                          runs: preview
+                            .map((d) => format.dateTime(d, 'zoned', { timeZone: previewZone }))
+                            .join(' · '),
+                        })}
+                      </span>
                     ) : (
-                      'minute hour day-of-month month day-of-week'
+                      t('cronHint')
                     )
                   }
                 />
                 <NumberInputField
                   control={control}
                   name="duration"
-                  label="Duration"
+                  label={t('duration')}
                   min={1}
                   max={MAX_DURATION_MINUTES}
-                  unit="min"
+                  unit={t('minutesUnit')}
                 />
               </div>
             )}
@@ -503,11 +522,11 @@ export function MaintenanceForm({
               <NumberInputField
                 control={control}
                 name="intervalDay"
-                label="Interval"
+                label={t('interval')}
                 min={1}
                 max={MAX_INTERVAL_DAYS}
-                unit="days"
-                description="1 = every day. Counted from the start date below."
+                unit={t('daysUnit')}
+                description={t('intervalHint')}
               />
             )}
 
@@ -515,8 +534,8 @@ export function MaintenanceForm({
               <ToggleGroupField<WeekdayValue>
                 control={control}
                 name="weekdays"
-                label="Days of the week"
-                options={WEEKDAY_OPTIONS}
+                label={t('weekdays')}
+                options={weekdayOptions}
                 columns="grid-cols-4 sm:grid-cols-7"
               />
             )}
@@ -526,17 +545,17 @@ export function MaintenanceForm({
                 <ToggleGroupField<DayOfMonthValue>
                   control={control}
                   name="daysOfMonth"
-                  label="Days of the month"
+                  label={t('daysOfMonth')}
                   options={dayOfMonthOptions}
                   columns="grid-cols-7 sm:grid-cols-11"
                 />
                 <ToggleGroupField<DayOfMonthValue>
                   control={control}
                   name="daysOfMonth"
-                  label="Last days of the month"
+                  label={t('lastDaysOfMonth')}
                   options={lastDayOptions}
                   columns="grid-cols-1 sm:grid-cols-2"
-                  description="Only the last day of the month has a cron equivalent; the others are accepted but not scheduled."
+                  description={t('lastDaysHint')}
                 />
               </>
             )}
@@ -546,15 +565,15 @@ export function MaintenanceForm({
                 <TextInputField
                   control={control}
                   name="timeRange.start"
-                  label="Window starts"
+                  label={t('windowStarts')}
                   type="time"
                 />
                 <TextInputField
                   control={control}
                   name="timeRange.end"
-                  label="Window ends"
+                  label={t('windowEnds')}
                   type="time"
-                  description="An end before the start runs past midnight."
+                  description={t('windowEndsHint')}
                 />
               </div>
             )}
@@ -565,17 +584,20 @@ export function MaintenanceForm({
                 name="timezone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Time zone</FormLabel>
+                    <FormLabel>{t('timezone')}</FormLabel>
                     <FormControl>
                       <TimezoneSelect
                         value={field.value ?? SAME_AS_SERVER}
                         onChange={field.onChange}
                         extraOptions={[
-                          { value: SAME_AS_SERVER, label: `Organization default (${orgTimezone})` },
+                          {
+                            value: SAME_AS_SERVER,
+                            label: t('timezoneDefault', { zone: orgTimezone }),
+                          },
                         ]}
                       />
                     </FormControl>
-                    <FormDescription>Dates and times above are read in this zone.</FormDescription>
+                    <FormDescription>{t('timezoneHint')}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -587,38 +609,36 @@ export function MaintenanceForm({
                 <TextInputField
                   control={control}
                   name="dateRange.start"
-                  label={strategy === 'single' ? 'Starts' : 'Effective from'}
+                  label={strategy === 'single' ? t('starts') : t('effectiveFrom')}
                   type="datetime-local"
                 />
                 <TextInputField
                   control={control}
                   name="dateRange.end"
-                  label={strategy === 'single' ? 'Ends' : 'Effective until'}
+                  label={strategy === 'single' ? t('ends') : t('effectiveUntil')}
                   type="datetime-local"
-                  description={
-                    strategy === 'single' ? undefined : 'Optional. Leave empty to repeat forever.'
-                  }
+                  description={strategy === 'single' ? undefined : t('effectiveUntilHint')}
                 />
               </div>
             )}
 
             {strategy === 'single' && (
-              <div className="flex flex-wrap gap-2" aria-label="Quick durations">
-                {QUICK_DURATIONS.map((preset) => (
+              <div className="flex flex-wrap gap-2" aria-label={t('quickDurations')}>
+                {QUICK_DURATIONS.map((minutes) => (
                   <Button
-                    key={preset.minutes}
+                    key={minutes}
                     type="button"
                     size="sm"
                     variant="outline"
                     disabled={!dateStart}
-                    onClick={() => applyQuickDuration(preset.minutes)}
+                    onClick={() => applyQuickDuration(minutes)}
                   >
-                    {preset.label}
+                    {minutes < 60
+                      ? t('quickMinutes', { minutes })
+                      : t('quickHours', { hours: minutes / 60 })}
                   </Button>
                 ))}
-                <span className="self-center text-xs text-muted-foreground">
-                  Sets the end relative to the start.
-                </span>
+                <span className="self-center text-xs text-muted-foreground">{t('quickHint')}</span>
               </div>
             )}
           </CardContent>
@@ -627,11 +647,8 @@ export function MaintenanceForm({
         {/* Targets ------------------------------------------------------------------------- */}
         <Card>
           <CardHeader>
-            <CardTitle>Affected monitors</CardTitle>
-            <CardDescription>
-              These monitors (and the children of selected groups) are not checked while the window
-              runs; they report MAINTENANCE instead.
-            </CardDescription>
+            <CardTitle>{t('monitors.title')}</CardTitle>
+            <CardDescription>{t('monitors.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <FormField
@@ -641,12 +658,12 @@ export function MaintenanceForm({
                 <FormItem>
                   <FormControl>
                     <PickerList
-                      label="monitors"
+                      label={t('monitors.label')}
                       options={monitorOptions}
                       value={((field.value as (string | number)[] | undefined) ?? []).map(String)}
                       onChange={field.onChange}
-                      placeholder="Search monitors…"
-                      emptyText="This organization has no monitors yet."
+                      placeholder={t('monitors.search')}
+                      emptyText={t('monitors.empty')}
                     />
                   </FormControl>
                   <FormMessage />
@@ -658,10 +675,8 @@ export function MaintenanceForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>Status pages</CardTitle>
-            <CardDescription>
-              Pages that announce the window to visitors, running or upcoming.
-            </CardDescription>
+            <CardTitle>{t('statusPages.title')}</CardTitle>
+            <CardDescription>{t('statusPages.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <FormField
@@ -671,12 +686,12 @@ export function MaintenanceForm({
                 <FormItem>
                   <FormControl>
                     <PickerList
-                      label="status pages"
+                      label={t('statusPages.label')}
                       options={pageOptions}
                       value={((field.value as (string | number)[] | undefined) ?? []).map(String)}
                       onChange={field.onChange}
-                      placeholder="Search status pages…"
-                      emptyText="This organization has no status pages yet."
+                      placeholder={t('statusPages.search')}
+                      emptyText={t('statusPages.empty')}
                     />
                   </FormControl>
                   <FormMessage />
@@ -688,11 +703,11 @@ export function MaintenanceForm({
 
         <div className="flex items-center justify-end gap-2">
           <Button variant="outline" asChild>
-            <Link href={`/${orgSlug}/maintenance`}>Cancel</Link>
+            <Link href={`/${orgSlug}/maintenance`}>{t('cancel')}</Link>
           </Button>
           <Button type="submit" disabled={pending} data-testid="maintenance-submit">
             {pending && <Loader2 className="animate-spin" />}
-            {mode === 'create' ? 'Schedule maintenance' : 'Save changes'}
+            {mode === 'create' ? t('create') : t('save')}
           </Button>
         </div>
       </form>

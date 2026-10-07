@@ -43,9 +43,13 @@ export default async function NewMonitorPage({ params, searchParams }: NewMonito
   const [groups, resources] = await Promise.all([getOrgGroups(ctx), getMonitorFormResources(ctx)])
   // Uptime Kuma preselects the default proxy for new monitors.
   const defaultProxy = resources.proxies.find((p) => p.isDefault && p.active)
+  // Default channels start selected; the user may untick them before saving.
   const initialValues = {
     ...defaultMonitorValues(initialType),
     proxy: defaultProxy ? defaultProxy.id : null,
+    notifications: resources.notifications
+      .filter((channel) => channel.isDefault && channel.active)
+      .map((channel) => channel.id),
   }
   const t = await getTranslations('monitors.new')
   const types = listMonitorTypes().map(({ name, label }) => ({ name, label }))
@@ -70,6 +74,7 @@ export default async function NewMonitorPage({ params, searchParams }: NewMonito
           types={types}
           groups={groups}
           resources={resources}
+          canPickChannels={ctx.allowed('notification:read')}
         />
       </section>
     </>

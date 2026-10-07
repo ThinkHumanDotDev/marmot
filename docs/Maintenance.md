@@ -49,6 +49,10 @@ description, strategy, date and time range, interval/weekdays/days of month or c
 and pickers for the affected monitors and status pages. A window can be paused (`inactive`) and resumed,
 edited while it runs, or deleted, after which affected monitors resume normal checks on their next run.
 
+Times in the list are shown in the zone each window is evaluated in (with the zone name), and the cron
+preview in the form lists the next matches in the window's timezone (the organization's for _same as
+server_), so what you read is what the worker will do.
+
 Route handlers follow the usual pattern (zod schema shared with the form in
 `src/lib/validation/maintenance.ts`):
 

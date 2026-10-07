@@ -61,6 +61,16 @@ export type NotificationInput = {
   active: boolean
 }
 
+/** Monitor as the channel's "Monitors" dialog lists it. */
+export interface ChannelMonitorRow {
+  id: string
+  name: string
+  type: string
+  active: boolean
+  /** The monitor alerts through this channel. */
+  attached: boolean
+}
+
 export interface TestResult {
   ok: boolean
   result?: string
@@ -79,6 +89,21 @@ export const notificationsApi = {
       (await api.patch<{ doc: Notification }>(`${base(orgId)}/${encodeURIComponent(id)}`, input))
         .doc,
     ),
+  /** Monitors of the organization and whether each uses the channel. */
+  monitors: async (orgId: string, id: string) =>
+    (
+      await api.get<{ monitors: ChannelMonitorRow[] }>(
+        `${base(orgId)}/${encodeURIComponent(id)}/monitors`,
+      )
+    ).monitors,
+  /** Attach the channel to exactly `monitorIds` (and detach it from the other monitors). */
+  setMonitors: async (orgId: string, id: string, monitorIds: string[]) =>
+    (
+      await api.put<{ monitors: ChannelMonitorRow[] }>(
+        `${base(orgId)}/${encodeURIComponent(id)}/monitors`,
+        { monitors: monitorIds },
+      )
+    ).monitors,
   remove: (orgId: string, id: string) =>
     api.delete<{ ok: boolean }>(`${base(orgId)}/${encodeURIComponent(id)}`),
   /** Saved channel (`notificationId`), unsaved edits of one (`notificationId` + `config`) or a new one. */

@@ -158,6 +158,9 @@ key fails `pnpm typecheck`, and `tests/int/i18n.int.spec.ts` checks that every c
    them with its translator (`createMonitorFormSchema((key, values) => t(key, values))`), the API keeps
    the English instance (`monitorFormSchema` in `monitor-schema.ts`, a separate module so the catalogue
    is not bundled into the browser), so API responses stay stable.
+7. The maintenance schema takes a message map instead of a resolver
+   (`createMaintenanceFormSchema(messages)`): the handlers use the English defaults, the form passes
+   `t(…)` values built in a `useMemo`.
 
 ### Locale resolution
 

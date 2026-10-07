@@ -19,6 +19,8 @@ type RouteContext = { params: Promise<{ orgId: string }> }
 /**
  * POST /api/orgs/:orgId/monitors — create a monitor in the organization.
  * Body: `MonitorFormValues` (see `src/lib/validation/monitor.ts`). Returns the created document.
+ * `notifications` lists the channels to attach; when the key is missing the organization's default
+ * channels are attached instead.
  */
 export async function POST(request: Request, { params }: RouteContext) {
   const payload = await getPayload({ config })
@@ -43,6 +45,11 @@ export async function POST(request: Request, { params }: RouteContext) {
       user: auth.user,
       overrideAccess: false,
       depth: 0,
+      // A body that lists `notifications` (the form always does) is a deliberate selection, even
+      // when empty; without the key the organization's default channels are attached.
+      context: {
+        explicitNotifications: Array.isArray((body as { notifications?: unknown }).notifications),
+      },
     })
     return Response.json(doc, { status: 201 })
   } catch (error) {

@@ -1,6 +1,8 @@
+import { useTranslations } from 'next-intl'
+
 import { StatusDot } from '@/components/status-dot'
 import { Badge } from '@/components/ui/badge'
-import { MAINTENANCE_STATUS_LABELS, type MaintenanceStatus } from '@/lib/validation/maintenance'
+import type { MaintenanceStatus } from '@/lib/validation/maintenance'
 import { cn } from '@/lib/utils'
 import type { MonitorStatusKey } from '@/stores/monitor-store'
 
@@ -28,6 +30,7 @@ export function MaintenanceStatusBadge({
   status: MaintenanceStatus
   className?: string
 }) {
+  const t = useTranslations('maintenance.status')
   return (
     <Badge
       variant="outline"
@@ -35,7 +38,7 @@ export function MaintenanceStatusBadge({
       className={cn('gap-1.5 px-2.5 py-1 text-xs', tone[status], className)}
     >
       <StatusDot status={dot[status]} className="size-2" pulse={false} />
-      {MAINTENANCE_STATUS_LABELS[status]}
+      {t(status)}
     </Badge>
   )
 }

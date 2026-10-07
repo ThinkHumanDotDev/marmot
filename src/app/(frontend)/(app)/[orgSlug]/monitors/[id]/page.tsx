@@ -9,6 +9,7 @@ import { monitorTarget, useMonitorFormat } from '@/components/monitors/format'
 import { HeartbeatBar, type BeatLike } from '@/components/monitors/heartbeat-bar'
 import { ImportantEventsTable } from '@/components/monitors/important-events-table'
 import { MonitorActions } from '@/components/monitors/monitor-actions'
+import { MonitorChannelsCard } from '@/components/monitors/monitor-channels-card'
 import { ResponseTimeChart } from '@/components/monitors/response-time-chart'
 import { MonitorStatusBadge } from '@/components/monitors/status-badge'
 import { TagList } from '@/components/monitors/tag-chip'
@@ -21,7 +22,7 @@ import { timeZoneOrDefault } from '@/i18n/formats'
 import { isHttpMonitorType } from '@/lib/validation/monitor'
 import type { Heartbeat, Monitor } from '@/payload-types'
 import { toRealtimeTags } from '@/server/realtime/serialize'
-import { getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
+import { getMonitorChannels, getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
 import { getStats, getUptime } from '@/server/stats/uptime-calculator'
 
 export const dynamic = 'force-dynamic'
@@ -75,7 +76,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
 
   const { payload } = ctx
   // Access was verified on the monitor; its history is read with the Local API directly.
-  const [stats24h, uptime30d, uptime1y, latest, events] = await Promise.all([
+  const [stats24h, uptime30d, uptime1y, latest, events, channels] = await Promise.all([
     getStats(payload, monitor.id, '24h'),
     getUptime(payload, monitor.id, '30d'),
     getUptime(payload, monitor.id, '1y'),
@@ -95,6 +96,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
       page,
       depth: 0,
     }),
+    getMonitorChannels(ctx, monitor),
   ])
 
   const hasHistory = latest.docs.length > 0 || stats24h.buckets.length > 0
@@ -235,6 +237,13 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
               monitor.domainExpiryNotification) && (
               <CertificatePanel monitor={monitor} timeZone={timeZone} />
             )}
+            <MonitorChannelsCard
+              orgId={ctx.org.id}
+              orgSlug={orgSlug}
+              channels={channels}
+              canTest={ctx.allowed('notification:update')}
+              canEdit={ctx.allowed('monitor:update')}
+            />
             <Card className="gap-3">
               <CardHeader>
                 <CardTitle className="text-base">{t('description')}</CardTitle>

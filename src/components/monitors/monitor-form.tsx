@@ -67,6 +67,7 @@ import {
 } from '@/lib/validation/monitor'
 import type { MonitorFormResources } from '@/server/monitors/page-data'
 
+import { NotificationPicker } from './notification-picker'
 import { TagChip } from './tag-chip'
 
 export interface MonitorTypeInfo {
@@ -89,11 +90,21 @@ export interface MonitorFormProps {
   types: MonitorTypeInfo[]
   /** Group monitors of the organization, for the parent select. */
   groups: GroupOption[]
-  /** Tags, proxies and Docker hosts of the organization for the selectors. */
+  /** Tags, proxies, Docker hosts and notification channels of the organization for the selectors. */
   resources?: MonitorFormResources
+  /**
+   * `notification:read`: show the channel picker. Without it the form leaves `notifications` alone
+   * (kept on edit, the organization's default channels on create).
+   */
+  canPickChannels?: boolean
 }
 
-const EMPTY_RESOURCES: MonitorFormResources = { tags: [], proxies: [], dockerHosts: [] }
+const EMPTY_RESOURCES: MonitorFormResources = {
+  tags: [],
+  proxies: [],
+  dockerHosts: [],
+  notifications: [],
+}
 
 type Name = FieldPath<MonitorFormInput>
 type FormControlType = Control<MonitorFormInput, unknown, MonitorFormValues>
@@ -704,12 +715,14 @@ export function MonitorForm({
   types,
   groups,
   resources = EMPTY_RESOURCES,
+  canPickChannels = false,
 }: MonitorFormProps) {
   const t = useTranslations('monitors.form')
   const tMonitors = useTranslations('monitors')
   const tValidation = useTranslations('monitors.validation')
   const tDuration = useTranslations('common.duration')
   const router = useRouter()
+  const tChannels = useTranslations('monitors.channels')
   const [pending, setPending] = React.useState(false)
   // Client-side validation messages in the user's language (the API answers in English).
   const schema = React.useMemo(
@@ -786,8 +799,14 @@ export function MonitorForm({
 
   const otherGroups = groups.filter((g) => String(g.id) !== String(monitorId))
 
-  async function onSubmit(values: MonitorFormValues) {
+  async function onSubmit(formValues: MonitorFormValues) {
     setPending(true)
+    // Without the picker a new monitor gets the organization's default channels (server side).
+    let values: Partial<MonitorFormValues> = formValues
+    if (mode === 'create' && !canPickChannels) {
+      const { notifications: _omit, ...rest } = formValues
+      values = rest
+    }
     try {
       const doc =
         mode === 'create'
@@ -796,7 +815,7 @@ export function MonitorForm({
               `/api/orgs/${orgId}/monitors/${monitorId}`,
               values,
             )
-      if (mode === 'create') track('monitor_created', { type: values.type })
+      if (mode === 'create') track('monitor_created', { type: formValues.type })
       toast.success(mode === 'create' ? t('created') : t('saved'))
       router.push(`/${orgSlug}/monitors/${doc.id}`)
       router.refresh()
@@ -1832,6 +1851,23 @@ export function MonitorForm({
                   />
                 </>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Notifications ------------------------------------------------------------------- */}
+        {canPickChannels && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{tChannels('title')}</CardTitle>
+              <CardDescription>{tChannels('description')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <NotificationPicker
+                control={control}
+                channels={resources.notifications}
+                orgSlug={orgSlug}
+              />
             </CardContent>
           </Card>
         )}

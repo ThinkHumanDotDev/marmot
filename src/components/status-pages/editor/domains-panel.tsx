@@ -1,6 +1,7 @@
 'use client'
 
 import { Globe, Plus, Trash2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -23,6 +24,7 @@ export function DomainsPanel({
   onSaved: (page: StatusPage) => void
   canEdit: boolean
 }) {
+  const t = useTranslations('statusPages.domains')
   const [hostnames, setHostnames] = React.useState<string[]>(() =>
     (page.domains ?? []).map((d) => d.hostname),
   )
@@ -30,7 +32,7 @@ export function DomainsPanel({
   const [error, setError] = React.useState<string | null>(null)
   const [saving, setSaving] = React.useState(false)
 
-  const serverHost = typeof window !== 'undefined' ? window.location.host : 'your Marmot host'
+  const serverHost = typeof window !== 'undefined' ? window.location.host : t('serverHostFallback')
   const dirty =
     JSON.stringify(hostnames) !== JSON.stringify((page.domains ?? []).map((d) => d.hostname))
 
@@ -39,7 +41,7 @@ export function DomainsPanel({
     const host = normalizeHostname(input)
     const valid = validateHostname(host)
     if (valid !== true) return setError(valid)
-    if (hostnames.includes(host)) return setError('Already listed.')
+    if (hostnames.includes(host)) return setError(t('alreadyListed'))
     setHostnames([...hostnames, host])
     setInput('')
     setError(null)
@@ -53,9 +55,9 @@ export function DomainsPanel({
       })
       onSaved(doc)
       setHostnames((doc.domains ?? []).map((d) => d.hostname))
-      toast.success('Domains saved')
+      toast.success(t('saved'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not save domains')
+      toast.error(err instanceof Error ? err.message : t('saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -65,16 +67,16 @@ export function DomainsPanel({
     <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <div className="flex flex-col gap-4">
         <div>
-          <Label className="text-base">Custom domains</Label>
+          <Label className="text-base">{t('title')}</Label>
           <p className="text-sm text-muted-foreground">
-            Serve this page at the root of your own hostname, e.g. <code>status.example.com</code>.
+            {t.rich('description', { code: (chunks) => <code>{chunks}</code> })}
           </p>
         </div>
 
         <form onSubmit={add} className="flex items-start gap-2">
           <div className="flex-1">
             <Input
-              aria-label="Hostname"
+              aria-label={t('hostname')}
               placeholder="status.example.com"
               value={input}
               disabled={!canEdit}
@@ -90,13 +92,16 @@ export function DomainsPanel({
             )}
           </div>
           <Button type="submit" variant="outline" disabled={!canEdit || !input.trim()}>
-            <Plus /> Add
+            <Plus /> {t('add')}
           </Button>
         </form>
 
         {hostnames.length === 0 ? (
           <p className="rounded-xl border border-dashed px-5 py-8 text-center text-sm text-muted-foreground">
-            No custom domains. The page is reachable at <code>/status/{page.slug}</code>.
+            {t.rich('empty', {
+              path: `/status/${page.slug}`,
+              code: (chunks) => <code>{chunks}</code>,
+            })}
           </p>
         ) : (
           <ul className="divide-y rounded-xl border">
@@ -110,7 +115,7 @@ export function DomainsPanel({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={`Remove ${host}`}
+                  aria-label={t('remove', { host })}
                   disabled={!canEdit}
                   onClick={() => setHostnames(hostnames.filter((h) => h !== host))}
                 >
@@ -123,23 +128,22 @@ export function DomainsPanel({
 
         <div className="flex justify-end">
           <Button type="button" disabled={!canEdit || !dirty || saving} onClick={save}>
-            {saving ? 'Saving…' : 'Save domains'}
+            {saving ? t('saving') : t('save')}
           </Button>
         </div>
       </div>
 
       <aside className="rounded-xl border bg-muted/40 p-4 text-sm">
-        <h3 className="font-medium">DNS setup</h3>
+        <h3 className="font-medium">{t('dns.title')}</h3>
         <ol className="mt-2 list-decimal space-y-2 pl-4 text-muted-foreground">
           <li>
-            Create a <code>CNAME</code> record for the hostname pointing at{' '}
-            <code className="text-foreground">{serverHost}</code>.
+            {t.rich('dns.cname', {
+              code: (chunks) => <code>{chunks}</code>,
+              host: () => <code className="text-foreground">{serverHost}</code>,
+            })}
           </li>
-          <li>Add the hostname here, save, and make sure the page is published.</li>
-          <li>
-            Your reverse proxy must obtain a certificate for the hostname (Caddy on-demand TLS is
-            documented in <code>docs/Status-Pages.md</code>).
-          </li>
+          <li>{t('dns.addHere')}</li>
+          <li>{t.rich('dns.certificate', { code: (chunks) => <code>{chunks}</code> })}</li>
         </ol>
       </aside>
     </div>

@@ -70,6 +70,7 @@ uptime; it updates over the WebSocket connection without reloading. The detail p
 - the list of **important events** (status changes with their message);
 - the certificate panel for HTTPS targets (issuer, expiry; filled by the certificate job landing in the
   current release);
+- the notification channels the monitor alerts through;
 - actions: **Pause/Resume**, **Edit**, **Clone**, **Delete**.
 
 Statistics are kept as minutely (24 h), hourly (30 d) and daily (`KEEP_DATA_PERIOD_DAYS`, default one
@@ -104,17 +105,22 @@ the full reference, badges and API keys.
 - **Pause** sets `active: false`: the scheduler is removed, no checks run, the monitor keeps its history and
   shows as paused in lists and on status pages (paused monitors are dropped from public pages). **Resume**
   re-creates the scheduler and the next check runs immediately.
-- **Clone** copies every setting into a new, **paused** monitor named "… (copy)" so you can adjust the
-  target before it starts checking. The status cache starts empty and push monitors get a fresh token.
+- **Clone** copies every setting, tags and notification channels included, into a new, **paused**
+  monitor named "… (copy)" so you can adjust the target before it starts checking. The status cache starts empty and push monitors get a fresh token.
 - **Delete** removes the monitor, its heartbeats and its statistics, and detaches child monitors from a
   deleted group.
 
 ## Notifications, maintenance and tags
 
 - **Notifications**: the channels attached to the monitor (`monitors.notifications`) are alerted on
-  important beats. Channels flagged as default attach to every new monitor and **Apply to all existing
-  monitors** attaches a channel to the current ones; a per-monitor picker in the form is landing in the
-  current release. See [Notifications](Notifications.md).
+  important beats. Pick them in the **Notifications** card of the monitor form: it lists the organization's
+  active channels, with the channels flagged as default already switched on for a new monitor. A change
+  takes effect from the next status change. The detail page lists the attached channels (read-only for
+  viewers) with a **Test** button for admins. From the channel side, **Monitors** in a channel's menu on
+  the Notifications page attaches or detaches it in bulk, and **Apply to all existing monitors** attaches
+  a channel to every current monitor. Clone keeps the channels and export/import carries them. The API
+  takes `notifications: [id, …]` on `POST`/`PATCH /api/orgs/:orgId/monitors`; a create without the key
+  gets the default channels. See [Notifications](Notifications.md).
 - **Maintenance**: a monitor inside an active maintenance window reports MAINTENANCE instead of DOWN and does
   not notify; see [Maintenance](Maintenance.md) _(landing in the current release)_.
 - **Tags**: coloured labels with optional values (`env: prod`), managed under Settings → Tags, shown in the

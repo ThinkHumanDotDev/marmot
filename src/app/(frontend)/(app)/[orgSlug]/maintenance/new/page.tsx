@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 
 import { MaintenanceForm } from '@/components/maintenance/maintenance-form'
 import { PageHeader } from '@/components/page-header'
@@ -9,7 +10,11 @@ import { getOrgMonitorOptions, getOrgStatusPageOptions } from '@/server/maintena
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 import { getOrgPageContext } from '@/server/monitors/page-data'
 
-export const metadata: Metadata = { title: 'Schedule maintenance' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('maintenance.newPage')
+  return { title: t('pageTitle') }
+}
+
 export const dynamic = 'force-dynamic'
 
 interface NewMaintenancePageProps {
@@ -21,6 +26,7 @@ export default async function NewMaintenancePage({ params }: NewMaintenancePageP
   const ctx = await getOrgPageContext(orgSlug, `/${orgSlug}/maintenance/new`)
   if (!ctx.allowed('maintenance:create')) redirect(`/${orgSlug}/maintenance`)
 
+  const t = await getTranslations('maintenance.newPage')
   const [monitors, statusPages, orgTimezone] = await Promise.all([
     getOrgMonitorOptions(ctx),
     getOrgStatusPageOptions(ctx),
@@ -32,11 +38,11 @@ export default async function NewMaintenancePage({ params }: NewMaintenancePageP
       <PageHeader
         eyebrow={
           <Link href={`/${orgSlug}/maintenance`} className="hover:text-foreground">
-            ← Maintenance
+            {t('back')}
           </Link>
         }
-        title="Schedule maintenance"
-        description="Affected monitors stop alerting while the window runs."
+        title={t('title')}
+        description={t('description')}
       />
       <section className="p-4 sm:p-6 md:p-8">
         <MaintenanceForm
