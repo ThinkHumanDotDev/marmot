@@ -9,6 +9,10 @@ export const SSO_ERROR_MESSAGES = {
   ...AUTH_ERROR_CODES,
   provider_unknown: 'This sign-in method is not configured on this server.',
   signup_disabled: 'Signup is disabled on this server. Ask an administrator for an invitation.',
+  group_not_allowed:
+    'Your account is not in a group that may sign in to Marmot. Ask your administrator for access.',
+  groups_missing:
+    'Your identity provider did not send your group memberships, so Marmot cannot check your access. Ask your administrator.',
   // Legacy aliases (before single sign-on moved to the payload-auth plugins).
   oidc_disabled: 'Single sign-on is not configured on this server.',
   oidc_state: AUTH_ERROR_CODES.state_mismatch,

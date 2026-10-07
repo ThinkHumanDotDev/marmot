@@ -35,7 +35,11 @@ import {
   type MonitorTypeName,
 } from '@/lib/validation/monitor'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
-import { NotificationConfigError, validateNotificationConfig } from '@/server/notifications/send'
+import {
+  NotificationConfigError,
+  validateNotificationConfig,
+  validateNotificationTemplates,
+} from '@/server/notifications/send'
 
 import { mapKumaNotificationConfig } from './kuma-notifications'
 import {
@@ -333,6 +337,7 @@ export function parseUptimeKumaBackup(json: unknown, t: ImportText = importText(
     }
     try {
       mapped.config = validateNotificationConfig(mapped.type, mapped.config)
+      validateNotificationTemplates(mapped.type, mapped.config, t.locale)
     } catch (error) {
       const reason =
         error instanceof NotificationConfigError && error.issues.length

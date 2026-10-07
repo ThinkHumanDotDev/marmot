@@ -8,18 +8,23 @@ import config from '@payload-config'
 import { addOrgMembership } from '@/access/memberships'
 import { can, type Role } from '@/access/permissions'
 import { GET as listKeys } from '@/app/api/orgs/[orgId]/api-keys/route'
+import { POST as adhocCheck } from '@/app/api/orgs/[orgId]/checks/route'
 import { PATCH as changeRole } from '@/app/api/orgs/[orgId]/members/[userId]/route'
+import { POST as checkMonitor } from '@/app/api/orgs/[orgId]/monitors/[id]/check/route'
 import { GET as getMonitor } from '@/app/api/orgs/[orgId]/monitors/[id]/route'
 import { GET as listMonitors, POST as createMonitor } from '@/app/api/orgs/[orgId]/monitors/route'
 import { GET as listStatusPages } from '@/app/api/orgs/[orgId]/status-pages/route'
 import { GET as openApiRoute } from '@/app/api/openapi.json/route'
-import { env } from '@/env'
+import { GET as listWebhooks, POST as createWebhook } from '@/app/api/orgs/[orgId]/webhooks/route'
+import { env, resetEnvCache } from '@/env'
 import { defaultMonitorValues } from '@/lib/validation/monitor'
 import type { AuditLog, Monitor, Organization, User } from '@/payload-types'
 import { generateApiKey } from '@/server/api-keys'
 import { buildManagementOpenApi, OPERATIONS, requiredScope } from '@/server/api/openapi'
 import { apiKeyPrincipal, consumeApiKeyBudget, orgRouteOf } from '@/server/auth/request-auth'
+import { resolveCheckActor } from '@/server/monitors/checks'
 import type { RateLimiter } from '@/server/security/rate-limit'
+import { isLocalLoginDisabled } from '@/server/sso/local-login'
 
 let payload: Payload
 
@@ -65,6 +70,16 @@ function keyRequest(
 }
 
 const orgUrl = (org: Organization, rest: string) => `http://localhost/api/orgs/${org.id}/${rest}`
+async function keyDoc(key: string) {
+  const { docs } = await payload.find({
+    collection: 'api-keys',
+    where: { prefix: { equals: key.split('_')[1] } },
+    depth: 0,
+    limit: 1,
+  })
+  return docs[0]
+}
+
 const params = (orgId: string | number, extra: Record<string, string> = {}) =>
   Promise.resolve({ orgId: String(orgId), id: '', userId: '', ...extra })
 
@@ -145,7 +160,7 @@ describe('management API with API keys', () => {
     expect(res.status).toBe(403)
   })
 
-  it('write keys create monitors and every write is audited as the key', async () => {
+  it('write keys create monitors, audited once with the key as actor', async () => {
     const res = await createMonitor(
       keyRequest(orgUrl(orgA, 'monitors'), writeKey, {
         method: 'POST',
@@ -157,24 +172,119 @@ describe('management API with API keys', () => {
     const created = (await res.json()) as Monitor
     expect(String(created.organization)).toBe(String(orgA.id))
 
+    // One row per change, written by the collection hooks (#225) with the key as the actor.
+    const writeKeyDoc = await keyDoc(writeKey)
     const { docs } = await payload.find({
       collection: 'audit-logs',
       where: {
         and: [
           { organization: { equals: orgA.id } },
-          { action: { equals: 'api_key.write_request' } },
+          { entityType: { equals: 'monitor' } },
+          { entityId: { equals: String(created.id) } },
         ],
       },
       depth: 0,
     })
-    const row = docs[0] as AuditLog | undefined
-    expect(row).toBeTruthy()
-    expect(row?.actor ?? null).toBeNull()
-    expect(row?.metadata).toMatchObject({
-      actorType: 'apiKey',
-      apiKeyPrefix: writeKey.split('_')[1],
-      method: 'POST',
+    expect(docs.map((d) => d.action)).toEqual(['monitor.created'])
+    const row = docs[0] as AuditLog
+    expect(row.actorType).toBe('apiKey')
+    expect(row.actorRef).toBe(String(writeKeyDoc.id))
+    expect(row.actorLabel).toBe('write')
+    expect(row.actor ?? null).toBeNull()
+  })
+
+  it('write keys trigger on-demand checks; read keys may not', async () => {
+    const paused = (await payload.create({
+      collection: 'monitors',
+      overrideAccess: true,
+      depth: 0,
+      data: { ...httpMonitor('paused'), organization: orgA.id } as never,
+    })) as Monitor
+    const checkUrl = orgUrl(orgA, `monitors/${paused.id}/check`)
+    const ctx = { params: params(orgA.id, { id: String(paused.id) }) }
+
+    const asReader = await checkMonitor(keyRequest(checkUrl, readKey, { method: 'POST' }), ctx)
+    expect(asReader.status).toBe(403)
+    // Authenticated and authorised: the paused monitor is what stops it (no worker needed).
+    const asWriter = await checkMonitor(keyRequest(checkUrl, writeKey, { method: 'POST' }), ctx)
+    expect(asWriter.status).toBe(409)
+
+    const adhoc = await adhocCheck(
+      keyRequest(orgUrl(orgA, 'checks'), readKey, { method: 'POST', body: httpMonitor('t') }),
+      { params: params(orgA.id) },
+    )
+    expect(adhoc.status).toBe(403)
+
+    const resolved = await resolveCheckActor(
+      payload,
+      keyRequest(checkUrl, writeKey, { method: 'POST' }),
+      orgA.id,
+      ['monitor:update'],
+    )
+    expect(resolved.response).toBeUndefined()
+    expect('actor' in resolved && resolved.actor).toMatchObject({
+      kind: 'api-key',
+      apiKey: { scope: 'write' },
     })
+  })
+
+  it('keeps working in SSO-only mode (keys are not password logins)', async () => {
+    const before = process.env.OIDC_DISABLE_LOCAL_LOGIN
+    Object.assign(process.env, { OIDC_DISABLE_LOCAL_LOGIN: 'true' })
+    resetEnvCache()
+    try {
+      expect(isLocalLoginDisabled()).toBe(true)
+      const list = await listMonitors(keyRequest(orgUrl(orgA, 'monitors'), readKey), {
+        params: params(orgA.id),
+      })
+      expect(list.status).toBe(200)
+      const created = await createMonitor(
+        keyRequest(orgUrl(orgA, 'monitors'), writeKey, {
+          method: 'POST',
+          body: httpMonitor('sso only'),
+        }),
+        { params: params(orgA.id) },
+      )
+      expect(created.status).toBe(201)
+    } finally {
+      if (before === undefined) delete process.env.OIDC_DISABLE_LOCAL_LOGIN
+      else process.env.OIDC_DISABLE_LOCAL_LOGIN = before
+      resetEnvCache()
+    }
+  })
+
+  it('webhooks follow the permissions: admin-only by default, keys where the org lowered them', async () => {
+    const url = orgUrl(orgA, 'webhooks')
+    const byDefault = await listWebhooks(keyRequest(url, writeKey), { params: params(orgA.id) })
+    expect(byDefault.status).toBe(403)
+
+    await payload.update({
+      collection: 'organizations',
+      id: orgA.id,
+      overrideAccess: true,
+      data: { permissionOverrides: { 'webhook:read': 'viewer' } },
+    })
+    try {
+      const lowered = await listWebhooks(keyRequest(url, readKey), { params: params(orgA.id) })
+      expect(lowered.status).toBe(200)
+      expect(JSON.stringify(await lowered.json())).not.toMatch(/"secret"/)
+      // `webhook:manage` is still admin: a write key (member) may not create endpoints.
+      const create = await createWebhook(
+        keyRequest(url, writeKey, {
+          method: 'POST',
+          body: { url: 'https://hooks.example.com/marmot', events: ['monitor.down'] },
+        }),
+        { params: params(orgA.id) },
+      )
+      expect(create.status).toBe(403)
+    } finally {
+      await payload.update({
+        collection: 'organizations',
+        id: orgA.id,
+        overrideAccess: true,
+        data: { permissionOverrides: {} },
+      })
+    }
   })
 
   it('refuses keys of another organization, unknown keys and anonymous requests', async () => {

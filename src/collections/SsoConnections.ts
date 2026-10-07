@@ -63,7 +63,8 @@ const sealSecrets: CollectionBeforeChangeHook = ({ data }) => {
  * reached at `/api/auth/sso/<slug>/…` (OIDC) or `/api/auth/saml/<slug>/…` (SAML); the login page
  * routes users to it by verified email domain (`sso-domains`) or organization slug. Users who sign
  * in through a connection are provisioned (when `autoProvision` is on) and join the organization
- * with `defaultRole`.
+ * with `defaultRole`, or with the role their identity-provider groups map to (`groupRoles`); an
+ * `allowedGroups` list refuses everybody outside those groups.
  *
  * The OIDC client secret is sealed at rest with a key derived from `PAYLOAD_SECRET` and is never
  * readable through the API; the login flow opens it server-side.
@@ -216,6 +217,33 @@ export const SsoConnections: CollectionConfig = {
         position: 'sidebar',
         description: adminT('marmot:ssoConnections:defaultRoleDescription'),
       },
+    },
+    // Groups (src/server/sso/group-mapping.ts): allow-list and group → role mapping, applied on
+    // every login through the connection.
+    {
+      name: 'groupClaim',
+      type: 'text',
+      admin: { description: adminT('marmot:ssoConnections:groupClaimDescription') },
+    },
+    {
+      name: 'allowedGroups',
+      type: 'text',
+      admin: { description: adminT('marmot:ssoConnections:allowedGroupsDescription') },
+    },
+    {
+      name: 'groupRoles',
+      type: 'array',
+      admin: { description: adminT('marmot:ssoConnections:groupRolesDescription') },
+      fields: [
+        { name: 'group', type: 'text', required: true },
+        {
+          name: 'role',
+          type: 'select',
+          required: true,
+          defaultValue: 'member',
+          options: ROLES.map((role) => ({ label: role, value: role })),
+        },
+      ],
     },
   ],
   timestamps: true,

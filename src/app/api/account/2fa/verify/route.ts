@@ -1,5 +1,6 @@
 import { confirmTwoFactorSetup } from '@/auth/two-factor/service'
 import { getRequestContext, readJson, unauthorized, withErrors } from '@/server/http'
+import { recordUserAuditEvent } from '@/server/security/audit'
 
 import { requireCode } from '../shared'
 
@@ -16,5 +17,6 @@ export const POST = withErrors(async (request: Request) => {
   if (!user) return unauthorized(request)
   const { code } = await readJson<{ code?: unknown }>(request)
   const { backupCodes } = await confirmTwoFactorSetup(payload, user.id, requireCode(code))
+  await recordUserAuditEvent(payload, request, user, 'auth.two_factor_enabled')
   return Response.json({ enabled: true, backupCodes }, { headers: { 'Cache-Control': 'no-store' } })
 })

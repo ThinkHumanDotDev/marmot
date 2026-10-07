@@ -68,7 +68,11 @@ export async function afterCommit(
   callback: Callback,
 ): Promise<void> {
   const id = await req.transactionID
-  if (id === null || id === undefined || typeof req.payload.db.commitTransaction !== 'function') {
+  // Only string and number ids name a transaction. Without transactions (MongoDB without a replica
+  // set) Payload's dataloader can leave a non-id behind: it round-trips the pending
+  // `transactionID` promise through JSON and assigns the result, `{}`, back to the request.
+  const isTransaction = typeof id === 'string' || typeof id === 'number'
+  if (!isTransaction || typeof req.payload.db.commitTransaction !== 'function') {
     await runAll([callback])
     return
   }

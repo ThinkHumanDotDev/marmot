@@ -13,6 +13,8 @@
  *                        `KEEP_DATA_PERIOD_DAYS` (only when the engine's collection exists)
  * - `status-page-subscribers` self sign-ups never confirmed within 72 hours
  * - `subscriber-deliveries` older than 90 days (the per-subscriber delivery log)
+ * - `webhook-deliveries` older than `WEBHOOK_DELIVERY_RETENTION_DAYS` (default 14)
+ * - `audit-logs`         older than `AUDIT_LOG_RETENTION_DAYS` (default 365; 0 keeps them forever)
  *
  * Runs hourly as a BullMQ job scheduler on the `marmot:maintenance` queue.
  */
@@ -34,7 +36,10 @@ export const RETENTION_INTERVAL_MS = 60 * 60 * 1000
 export const MINUTELY_KEEP_SECONDS = 24 * 60 * 60
 export const HOURLY_KEEP_SECONDS = 30 * 24 * 60 * 60
 export const HEARTBEAT_KEEP_SECONDS = 24 * 60 * 60
-/** Security audit rows (`audit-logs`) are kept for a year regardless of `KEEP_DATA_PERIOD_DAYS`. */
+/**
+ * Default retention of audit rows (`audit-logs`), independent of `KEEP_DATA_PERIOD_DAYS`; configured
+ * with `AUDIT_LOG_RETENTION_DAYS` (0 keeps them forever).
+ */
 export const AUDIT_LOG_KEEP_DAYS = 365
 /** Per-subscriber delivery log rows of status page notifications. */
 export const SUBSCRIBER_DELIVERY_KEEP_DAYS = 90
@@ -46,6 +51,10 @@ const AUDIT_LOGS_SLUG = 'audit-logs'
 export type RetentionOptions = {
   /** Days to keep daily aggregates and important heartbeats. Defaults to `KEEP_DATA_PERIOD_DAYS`. */
   keepDataPeriodDays?: number
+  /** Days to keep audit rows (0 = forever). Defaults to `AUDIT_LOG_RETENTION_DAYS`. */
+  auditLogRetentionDays?: number
+  /** Days to keep the webhook delivery log. Defaults to `WEBHOOK_DELIVERY_RETENTION_DAYS`. */
+  webhookDeliveryRetentionDays?: number
 }
 
 export type RetentionResult = {
@@ -57,20 +66,25 @@ export type RetentionResult = {
   auditLogs: number
   unconfirmedSubscribers: number
   subscriberDeliveries: number
+  webhookDeliveries: number
 }
 
 const subtractSeconds = (date: Date, seconds: number): Date =>
   new Date(date.getTime() - seconds * 1000)
 
 /** Cutoff bucket keys used by `runRetention`; rows with `timestamp < cutoff` are deleted. */
-export function retentionCutoffs(now: Date, keepDataPeriodDays: number) {
+export function retentionCutoffs(
+  now: Date,
+  keepDataPeriodDays: number,
+  auditLogRetentionDays: number = AUDIT_LOG_KEEP_DAYS,
+) {
   return {
     minutely: getMinutelyKey(subtractSeconds(now, MINUTELY_KEEP_SECONDS)),
     hourly: getHourlyKey(subtractSeconds(now, HOURLY_KEEP_SECONDS)),
     daily: getDailyKey(subtractSeconds(now, keepDataPeriodDays * 86400)),
     heartbeats: subtractSeconds(now, HEARTBEAT_KEEP_SECONDS),
     importantHeartbeats: subtractSeconds(now, keepDataPeriodDays * 86400),
-    auditLogs: subtractSeconds(now, AUDIT_LOG_KEEP_DAYS * 86400),
+    auditLogs: subtractSeconds(now, auditLogRetentionDays * 86400),
     unconfirmedSubscribers: subtractSeconds(now, UNCONFIRMED_SUBSCRIBER_TTL_HOURS * 3600),
     subscriberDeliveries: subtractSeconds(now, SUBSCRIBER_DELIVERY_KEEP_DAYS * 86400),
   }
@@ -97,7 +111,8 @@ export async function runRetention(
   opts: RetentionOptions = {},
 ): Promise<RetentionResult> {
   const keepDays = opts.keepDataPeriodDays ?? env.KEEP_DATA_PERIOD_DAYS
-  const cutoffs = retentionCutoffs(now, keepDays)
+  const auditDays = opts.auditLogRetentionDays ?? env.AUDIT_LOG_RETENTION_DAYS
+  const cutoffs = retentionCutoffs(now, keepDays, auditDays)
   const result: RetentionResult = {
     minutely: 0,
     hourly: 0,
@@ -107,6 +122,7 @@ export async function runRetention(
     auditLogs: 0,
     unconfirmedSubscribers: 0,
     subscriberDeliveries: 0,
+    webhookDeliveries: 0,
   }
 
   result.minutely = await deleteWhere(payload, 'stat-minutely', {
@@ -142,7 +158,7 @@ export async function runRetention(
     }
   }
 
-  if (hasCollection(payload, AUDIT_LOGS_SLUG)) {
+  if (hasCollection(payload, AUDIT_LOGS_SLUG) && auditDays >= 1) {
     result.auditLogs = await deleteWhere(payload, AUDIT_LOGS_SLUG, {
       createdAt: { less_than: cutoffs.auditLogs.toISOString() },
     })
@@ -158,6 +174,13 @@ export async function runRetention(
     })
     result.subscriberDeliveries = await deleteWhere(payload, 'subscriber-deliveries', {
       createdAt: { less_than: cutoffs.subscriberDeliveries.toISOString() },
+    })
+  }
+
+  if (hasCollection(payload, 'webhook-deliveries')) {
+    const days = opts.webhookDeliveryRetentionDays ?? env.WEBHOOK_DELIVERY_RETENTION_DAYS
+    result.webhookDeliveries = await deleteWhere(payload, 'webhook-deliveries', {
+      createdAt: { less_than: subtractSeconds(now, days * 86400).toISOString() },
     })
   }
 

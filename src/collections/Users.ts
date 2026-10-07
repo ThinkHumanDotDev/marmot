@@ -10,8 +10,13 @@ import { isSuperadmin, type UserLike } from '@/access/permissions'
 import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
 import { adminGroup, adminT } from '@/i18n/admin'
 import { defaultLocale, localeNames, locales } from '@/i18n/locales'
-import { auditAuthFailure, auditLogin, rateLimitAuthOperations } from '@/server/security/auth-hooks'
-import { enforceSsoOnPasswordLogin } from '@/server/sso/enforcement'
+import {
+  auditAuthFailure,
+  auditLogin,
+  rateLimitAuthOperations,
+  TWO_FACTOR_GATE_CONTEXT,
+} from '@/server/security/auth-hooks'
+import { refusePasswordLogin, refusePasswordReset } from '@/server/sso/local-login'
 import { isSignupAllowed } from '@/server/settings'
 import { apiError } from '@/server/errors'
 
@@ -41,7 +46,7 @@ export const THEMES = ['system', 'light', 'dark'] as const
 export type Theme = (typeof THEMES)[number]
 
 /** `req.context` flag with which Marmot's own login flow (`src/auth/two-factor`) calls `payload.login`. */
-export const TWO_FACTOR_GATE_CONTEXT = 'twoFactorGate'
+export { TWO_FACTOR_GATE_CONTEXT }
 
 /**
  * Payload's own login (`POST /api/users/login`, `payload.login`) issues a session as soon as the
@@ -105,8 +110,9 @@ export const Users: CollectionConfig = {
   },
   hooks: {
     // Rate limits `login` / `forgot-password` (REST only) and records the attempts in `audit-logs`.
-    beforeOperation: [rateLimitAuthOperations],
-    beforeLogin: [enforceSsoOnPasswordLogin, requireTwoFactorGate],
+    // Then the password policy (SSO-only mode, organization enforcement) refuses resets.
+    beforeOperation: [rateLimitAuthOperations, refusePasswordReset],
+    beforeLogin: [refusePasswordLogin, requireTwoFactorGate],
     beforeDelete: [removeAuthAccounts],
     afterLogin: [auditLogin],
     afterError: [auditAuthFailure],

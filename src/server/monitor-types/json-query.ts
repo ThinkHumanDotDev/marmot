@@ -5,9 +5,11 @@
  * Ported from Uptime Kuma 2.5.5 `src/util.ts` (`evaluateJsonQuery`) and the `json-query` branch of
  * `server/model/monitor.js` — Copyright (c) 2021 Louis Lam, MIT License. See THIRD_PARTY_NOTICES.md.
  */
-import jsonata from 'jsonata'
+import type { AssertionResult } from '@/lib/validation/assertions'
+import type { Monitor } from '@/payload-types'
 
-import { performHttpCheck } from './http-request'
+import { evaluateJsonata } from './assertions'
+import { performHttpCheck, type TypeCheckOutcome } from './http-request'
 import { registerMonitorType } from './registry'
 import { responseExcerpt } from './util'
 
@@ -36,7 +38,7 @@ export async function evaluateJsonQuery(
 
   try {
     // If a JSON path is provided, pre-evaluate the data using it.
-    response = jsonPath ? await jsonata(jsonPath).evaluate(response) : response
+    response = jsonPath ? await evaluateJsonata(jsonPath, response) : response
 
     if (response === null || response === undefined) {
       throw new Error('Empty or undefined response. Check query syntax and response structure')
@@ -84,7 +86,7 @@ export async function evaluateJsonQuery(
         throw new Error(`Invalid condition ${jsonPathOperator}`)
     }
 
-    const status = (await jsonata(jsonQueryExpression).evaluate({
+    const status = (await evaluateJsonata(jsonQueryExpression, {
       value: String(response),
       expected: String(expectedValue ?? ''),
     })) as boolean | undefined
@@ -104,27 +106,52 @@ export async function evaluateJsonQuery(
   }
 }
 
+const OPERATOR_COMPARATOR: Record<string, AssertionResult['comparator']> = {
+  '==': 'eq',
+  '!=': 'not_eq',
+  '<': 'lt',
+  '>': 'gt',
+  '<=': 'lte',
+  '>=': 'gte',
+  contains: 'contains',
+}
+
+/** The JSON query verdict of an HTTP response, reported as a legacy `jsonBody` assertion (#96). */
+export async function jsonQueryOutcome(
+  monitor: Pick<Monitor, 'jsonPath' | 'jsonPathOperator' | 'expectedValue'>,
+  body: string,
+): Promise<TypeCheckOutcome> {
+  const operator = monitor.jsonPathOperator ?? '=='
+  const expected = monitor.expectedValue ?? ''
+  const base = {
+    kind: 'jsonBody' as const,
+    target: monitor.jsonPath || null,
+    comparator: OPERATOR_COMPARATOR[operator] ?? 'eq',
+    expected,
+  }
+  try {
+    const { status, response } = await evaluateJsonQuery(body, monitor.jsonPath, operator, expected)
+    const actual = responseExcerpt(response)
+    return {
+      result: { ...base, actual, passed: Boolean(status) },
+      msg: status
+        ? `JSON query passes (comparing ${actual} ${operator} ${expected})`
+        : `JSON query does not pass (comparing ${actual} ${operator} ${expected})`,
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { result: { ...base, actual: null, passed: false, error: message }, msg: message }
+  }
+}
+
 registerMonitorType({
   name: 'json-query',
   label: 'HTTP(s) - Json Query',
   group: 'general',
   async check(ctx) {
-    const res = await performHttpCheck(ctx)
-    const operator = ctx.monitor.jsonPathOperator ?? '=='
-    const expected = ctx.monitor.expectedValue ?? ''
-    const { status, response } = await evaluateJsonQuery(
-      res.body,
-      ctx.monitor.jsonPath,
-      operator,
-      expected,
-    )
-    if (status) {
-      ctx.heartbeat.status = 'up'
-      ctx.heartbeat.msg = `JSON query passes (comparing ${responseExcerpt(response)} ${operator} ${expected})`
-      return
-    }
-    throw new Error(
-      `JSON query does not pass (comparing ${responseExcerpt(response)} ${operator} ${expected})`,
-    )
+    await performHttpCheck(ctx, {
+      typeCheck: async (res) => jsonQueryOutcome(ctx.monitor, res.body),
+    })
+    ctx.heartbeat.status = 'up'
   },
 })

@@ -24,12 +24,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { api, ApiError } from '@/lib/api'
+import { supportsCheckNow } from '@/lib/on-demand-check'
 import { useMonitorStore } from '@/stores/monitor-store'
+
+import { CheckNowButton } from './check-now'
 
 export interface MonitorActionsProps {
   orgId: string | number
   orgSlug: string
-  monitor: { id: string | number; name: string; active: boolean }
+  monitor: { id: string | number; name: string; active: boolean; type?: string }
   /** Hide write actions for viewers. */
   canEdit: boolean
   canDelete: boolean
@@ -39,7 +42,7 @@ const message = (error: unknown, fallback: string) =>
   error instanceof ApiError || error instanceof Error ? error.message : fallback
 
 /**
- * Detail-page header actions: pause/resume, edit, clone and delete (with confirmation).
+ * Detail-page header actions: check now, pause/resume, edit, clone and delete (with confirmation).
  * Mutations go through the org-scoped route handlers with the user's cookie, then the server
  * component tree is refreshed so the page reflects the stored document.
  */
@@ -109,6 +112,9 @@ export function MonitorActions({
 
   return (
     <>
+      {canEdit && active && supportsCheckNow(monitor.type) && (
+        <CheckNowButton orgId={orgId} monitor={monitor} />
+      )}
       {canEdit && (
         <Button
           variant="outline"

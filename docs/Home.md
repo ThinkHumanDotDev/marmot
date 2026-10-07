@@ -19,17 +19,17 @@ features whose pull requests are merging alongside this documentation.
 
 ## Use it
 
-| Page                                                      | What it covers                                                                                                     |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| [Monitors](Monitors.md)                                   | Monitor concepts: types, intervals and retries, groups, push monitors, pausing and cloning.                        |
-| [Monitor types](Monitor-Types.md)                         | Field-by-field reference for every monitor type.                                                                   |
-| [Notifications](Notifications.md)                         | Notification channels, the delivery pipeline, message templates and the provider reference.                        |
-| [Status pages](Status-Pages.md)                           | Public status pages, incidents, custom domains and the public JSON/RSS endpoints.                                  |
-| [Maintenance](Maintenance.md)                             | Maintenance windows and how they silence alerts.                                                                   |
-| [Organizations and members](Organizations-and-Members.md) | Roles and permissions, invitations, invite links, ownership transfer, account settings.                            |
-| [Integrations](Integrations.md)                           | Status badges, the push endpoint, Prometheus metrics and organization API keys _(landing in the current release)_. |
-| [MCP server for AI agents](MCP.md)                        | Connect Claude, Cursor and other MCP clients with an API key; the tools and how they map onto the management API.  |
-| [Import and export](Import-and-Export.md)                 | Importing an Uptime Kuma backup or a Marmot export, and exporting an organization.                                 |
+| Page                                                      | What it covers                                                                                                                              |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Monitors](Monitors.md)                                   | Monitor concepts: types, intervals and retries, groups, push monitors, pausing and cloning.                                                 |
+| [Monitor types](Monitor-Types.md)                         | Field-by-field reference for every monitor type.                                                                                            |
+| [Notifications](Notifications.md)                         | Notification channels, the delivery pipeline, message templates and the provider reference.                                                 |
+| [Status pages](Status-Pages.md)                           | Public status pages, incidents, custom domains and the public JSON/RSS endpoints.                                                           |
+| [Maintenance](Maintenance.md)                             | Maintenance windows and how they silence alerts.                                                                                            |
+| [Organizations and members](Organizations-and-Members.md) | Roles and permissions, invitations, invite links, ownership transfer, account settings.                                                     |
+| [Integrations](Integrations.md)                           | Status badges, the push endpoint, Prometheus metrics, organization API keys and outbound event webhooks _(landing in the current release)_. |
+| [MCP server for AI agents](MCP.md)                        | Connect Claude, Cursor and other MCP clients with an API key; the tools and how they map onto the management API.                           |
+| [Import and export](Import-and-Export.md)                 | Importing an Uptime Kuma backup or a Marmot export, and exporting an organization.                                                          |
 
 ## Change it
 

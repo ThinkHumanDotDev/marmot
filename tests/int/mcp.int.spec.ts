@@ -14,7 +14,7 @@ import { apiKeyPrincipal, authenticateRequest } from '@/server/auth/request-auth
 import { callRoute, type RouteHandler } from '@/server/mcp/dispatch'
 import { handleMcpRequest } from '@/server/mcp/handler'
 import { MCP_TOOLS } from '@/server/mcp/tools'
-import { queueMonitorCheck } from '@/server/monitors/activity'
+import { setIncidentJobSink } from '@/server/incidents/notify'
 import {
   onIncidentUpdatePosted,
   type IncidentUpdatePostedEvent,
@@ -51,6 +51,11 @@ async function mintKey(org: Organization, scope: 'read' | 'write') {
     },
   })
   return generated.key
+}
+
+const keyDoc = async (key: string) => {
+  const auth = await authenticateApiKeyValue(payload, key)
+  return auth!.apiKey
 }
 
 /** An MCP SDK client whose HTTP requests go straight to the `/api/mcp` route handler. */
@@ -101,6 +106,8 @@ const reload = (id: string | number) =>
 describe('MCP server', () => {
   beforeAll(async () => {
     payload = await getPayload({ config })
+    // Monitor incident notifications go to a queue; nothing to deliver in this suite.
+    setIncidentJobSink(async () => undefined)
     unsubscribe = onIncidentUpdatePosted((event) => {
       posted.push(event)
     })
@@ -165,12 +172,14 @@ describe('MCP server', () => {
 
   afterAll(async () => {
     unsubscribe()
+    setIncidentJobSink(null)
     const orgIds = [orgA?.id, orgB?.id].filter(Boolean)
     if (orgIds.length) {
       const where = { organization: { in: orgIds } }
       await payload.delete({ collection: 'incidents', where })
       await payload.delete({ collection: 'status-pages', where })
       await payload.delete({ collection: 'maintenance', where })
+      await payload.delete({ collection: 'monitor-incidents', where })
       await payload.delete({ collection: 'heartbeats', where })
       await payload.delete({ collection: 'monitors', where })
       await payload.delete({ collection: 'api-keys', where })
@@ -326,28 +335,38 @@ describe('MCP server', () => {
     expect(resumed.data).toMatchObject({ active: true })
     expect((await reload(monitor.id)).active).toBe(true)
 
+    // The collection audit hooks (#225) record the changes with the MCP client as the actor.
     const { docs } = await payload.find({
       collection: 'audit-logs',
       where: {
         and: [
           { organization: { equals: orgA.id } },
-          { action: { equals: 'api_key.write_request' } },
+          { entityType: { equals: 'monitor' } },
+          { entityId: { equals: String(monitor.id) } },
         ],
       },
       sort: 'createdAt',
+      depth: 0,
       overrideAccess: true,
     })
-    const tools = (docs as AuditLog[]).map(
-      (doc) => (doc.metadata as { actorType?: string; tool?: string; path?: string }) ?? {},
-    )
-    expect(tools).toEqual(
+    const rows = (docs as AuditLog[]).map((row) => ({
+      action: row.action,
+      actorType: row.actorType,
+      actorRef: row.actorRef,
+      actorLabel: row.actorLabel,
+      actor: row.actor ?? null,
+    }))
+    const key = await keyDoc(writeKey)
+    expect(rows).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
+        {
+          action: 'monitor.paused',
           actorType: 'mcp',
-          tool: 'pause_monitor',
-          path: `/api/orgs/${orgA.id}/monitors/${monitor.id}/pause`,
-        }),
-        expect.objectContaining({ actorType: 'mcp', tool: 'resume_monitor' }),
+          actorRef: String(key.id),
+          actorLabel: 'mcp write · pause_monitor',
+          actor: null,
+        },
+        expect.objectContaining({ action: 'monitor.resumed', actorType: 'mcp' }),
       ]),
     )
     await client.close()
@@ -437,17 +456,63 @@ describe('MCP server', () => {
     expect(plain.user).toBeNull()
   })
 
-  it('queues a one-off check on the checks queue', async () => {
-    const added: unknown[] = []
-    const queue = {
-      add: async (...args: unknown[]) => {
-        added.push(args)
-        return { id: 'job-1' }
+  it('lists, acknowledges and resolves monitor incidents, audited as MCP', async () => {
+    const open = await payload.create({
+      collection: 'monitor-incidents',
+      overrideAccess: true,
+      depth: 0,
+      data: {
+        organization: orgA.id,
+        monitor: monitor.id,
+        status: 'open',
+        cause: 'connect ECONNREFUSED',
+        startedAt: new Date().toISOString(),
+        timeline: [{ type: 'opened', at: new Date().toISOString() }],
+      } as never,
+    })
+
+    const reader = await connect(readKey)
+    const list = await call(reader, 'list_monitor_incidents', { status: 'active' })
+    expect(list.isError).toBe(false)
+    const ids = (list.data as { docs: { id: unknown }[] }).docs.map((d) => String(d.id))
+    expect(ids).toContain(String(open.id))
+    const one = await call(reader, 'get_monitor_incident', { monitorIncidentId: open.id })
+    expect(one.data).toMatchObject({ status: 'open' })
+    const readerTools = (await reader.listTools()).tools.map((t) => t.name)
+    expect(readerTools).not.toContain('acknowledge_monitor_incident')
+    await reader.close()
+
+    const writer = await connect(writeKey)
+    const ack = await call(writer, 'acknowledge_monitor_incident', {
+      monitorIncidentId: open.id,
+      note: 'On it',
+    })
+    expect(ack.isError).toBe(false)
+    expect(ack.data).toMatchObject({ status: 'acknowledged' })
+    const again = await call(writer, 'acknowledge_monitor_incident', { monitorIncidentId: open.id })
+    expect(again.isError).toBe(true)
+    const resolved = await call(writer, 'resolve_monitor_incident', { monitorIncidentId: open.id })
+    expect(resolved.data).toMatchObject({ status: 'resolved' })
+    await writer.close()
+
+    const { docs } = await payload.find({
+      collection: 'audit-logs',
+      where: {
+        and: [
+          { organization: { equals: orgA.id } },
+          { entityType: { equals: 'monitor_incident' } },
+          { entityId: { equals: String(open.id) } },
+        ],
       },
-    }
-    const result = await queueMonitorCheck(monitor, queue as never)
-    expect(result.jobId).toBe('job-1')
-    expect(added).toEqual([['check', { monitorId: String(monitor.id) }, expect.any(Object)]])
+      depth: 0,
+      overrideAccess: true,
+    })
+    expect(
+      (docs as AuditLog[]).map((row) => [row.action, row.actorType, row.actorLabel]).sort(),
+    ).toEqual([
+      ['monitor_incident.acknowledged', 'mcp', 'mcp write · acknowledge_monitor_incident'],
+      ['monitor_incident.resolved', 'mcp', 'mcp write · resolve_monitor_incident'],
+    ])
   })
 
   it('publishes a discovery document', async () => {

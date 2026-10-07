@@ -30,12 +30,17 @@ import {
 } from '@/app/api/orgs/[orgId]/status-pages/[id]/incidents/route'
 import { GET as getStatusPageRoute } from '@/app/api/orgs/[orgId]/status-pages/[id]/route'
 import { GET as listStatusPagesRoute } from '@/app/api/orgs/[orgId]/status-pages/route'
+import { POST as acknowledgeMonitorIncidentRoute } from '@/app/api/orgs/[orgId]/monitor-incidents/[id]/acknowledge/route'
+import { POST as resolveMonitorIncidentRoute } from '@/app/api/orgs/[orgId]/monitor-incidents/[id]/resolve/route'
+import { GET as getMonitorIncidentRoute } from '@/app/api/orgs/[orgId]/monitor-incidents/[id]/route'
+import { GET as listMonitorIncidentsRoute } from '@/app/api/orgs/[orgId]/monitor-incidents/route'
 import { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
+import { INCIDENT_RANGES, INCIDENT_STATUS_FILTERS } from '@/lib/monitor-incidents'
 import type { ApiKeyScope } from '@/lib/api-key-scopes'
 import { maintenanceFormSchema } from '@/lib/validation/maintenance'
 import { MONITOR_TYPE_NAMES } from '@/lib/validation/monitor'
 import type { Incident, Monitor, Notification, StatusPage } from '@/payload-types'
-import { incidentCreateBody, incidentUpdateBody } from '@/server/api/openapi'
+import { incidentCreateBody, incidentNoteBody, incidentUpdateBody } from '@/server/api/openapi'
 import type { ApiKeyPrincipal } from '@/server/auth/request-auth'
 import { STATS_RANGES } from '@/server/stats/uptime-calculator'
 
@@ -173,7 +178,8 @@ const components = (page: StatusPage) =>
 const id = z.union([z.string().min(1), z.number().int()])
 const monitorId = id.describe('Monitor id (see list_monitors)')
 const statusPageId = id.describe('Status page id (see list_status_pages)')
-const incidentId = id.describe('Incident id (see list_incidents)')
+const incidentId = id.describe('Status page incident id (see list_incidents)')
+const monitorIncidentId = id.describe('Monitor incident id (see list_monitor_incidents)')
 
 const {
   title: _legacyTitle,
@@ -329,17 +335,24 @@ export const MCP_TOOLS: McpTool[] = [
     name: 'check_monitor_now',
     title: 'Check a monitor now',
     description:
-      'Queue an immediate check of an active monitor. The result arrives as a heartbeat a few seconds later (see list_heartbeats).',
+      'Run a check of an active monitor right now and return its result (status, message, response time). The result is recorded as a heartbeat like a scheduled check. Rate-limited per organization.',
     scope: 'write',
     permission: 'monitor:update',
-    inputSchema: z.object({ monitorId }),
+    inputSchema: z.object({
+      monitorId,
+      wait: z
+        .boolean()
+        .default(true)
+        .describe('Wait for the result (up to the monitor timeout); false only queues the check'),
+    }),
     annotations: { ...WRITE, openWorldHint: true },
-    run: ({ monitorId }, ctx) =>
+    run: ({ monitorId, wait }, ctx) =>
       viaRoute(ctx, 'check_monitor_now', {
         handler: checkMonitorRoute,
         method: 'POST',
         path: `monitors/${monitorId}/check`,
         params: { id: String(monitorId) },
+        query: { wait },
       }),
   }),
   tool({
@@ -383,6 +396,92 @@ export const MCP_TOOLS: McpTool[] = [
         },
         monitorSummary,
       ),
+  }),
+
+  // Monitor incidents (alerting: a monitor went down and stays down until it recovers)
+  tool({
+    name: 'list_monitor_incidents',
+    title: 'List monitor incidents',
+    description:
+      'Outages detected by monitors (open, acknowledged or resolved), newest first, with MTTA/MTTR statistics. Not the incidents posted on status pages (see list_incidents).',
+    scope: 'read',
+    permission: 'monitor-incident:read',
+    inputSchema: z.object({
+      status: z
+        .enum(INCIDENT_STATUS_FILTERS)
+        .default('all')
+        .describe('active = open or acknowledged'),
+      monitorId: monitorId.optional(),
+      range: z.enum(INCIDENT_RANGES).default('30d').describe('By start time'),
+      page: z.number().int().min(1).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    }),
+    annotations: READ,
+    run: ({ status, monitorId, range, page, limit }, ctx) =>
+      viaRoute(ctx, 'list_monitor_incidents', {
+        handler: listMonitorIncidentsRoute,
+        method: 'GET',
+        path: 'monitor-incidents',
+        query: {
+          status,
+          range,
+          page,
+          limit,
+          monitor: monitorId === undefined ? undefined : String(monitorId),
+        },
+      }),
+  }),
+  tool({
+    name: 'get_monitor_incident',
+    title: 'Get a monitor incident',
+    description: 'One monitor incident with its timeline (down, acknowledged, notes, resolved).',
+    scope: 'read',
+    permission: 'monitor-incident:read',
+    inputSchema: z.object({ monitorIncidentId }),
+    annotations: READ,
+    run: ({ monitorIncidentId }, ctx) =>
+      viaRoute(ctx, 'get_monitor_incident', {
+        handler: getMonitorIncidentRoute,
+        method: 'GET',
+        path: `monitor-incidents/${monitorIncidentId}`,
+        params: { id: String(monitorIncidentId) },
+      }),
+  }),
+  tool({
+    name: 'acknowledge_monitor_incident',
+    title: 'Acknowledge a monitor incident',
+    description:
+      "Acknowledge an open monitor incident: reminders stop and the monitor's notification channels are told who is on it.",
+    scope: 'write',
+    permission: 'monitor-incident:acknowledge',
+    inputSchema: z.object({ monitorIncidentId, ...incidentNoteBody.shape }),
+    annotations: WRITE,
+    run: ({ monitorIncidentId, note }, ctx) =>
+      viaRoute(ctx, 'acknowledge_monitor_incident', {
+        handler: acknowledgeMonitorIncidentRoute,
+        method: 'POST',
+        path: `monitor-incidents/${monitorIncidentId}/acknowledge`,
+        params: { id: String(monitorIncidentId) },
+        body: note === undefined ? {} : { note },
+      }),
+  }),
+  tool({
+    name: 'resolve_monitor_incident',
+    title: 'Resolve a monitor incident',
+    description:
+      "Resolve a monitor incident by hand (the engine resolves it on recovery anyway); the monitor's channels are told.",
+    scope: 'write',
+    permission: 'monitor-incident:resolve',
+    inputSchema: z.object({ monitorIncidentId, ...incidentNoteBody.shape }),
+    annotations: WRITE,
+    run: ({ monitorIncidentId, note }, ctx) =>
+      viaRoute(ctx, 'resolve_monitor_incident', {
+        handler: resolveMonitorIncidentRoute,
+        method: 'POST',
+        path: `monitor-incidents/${monitorIncidentId}/resolve`,
+        params: { id: String(monitorIncidentId) },
+        body: note === undefined ? {} : { note },
+      }),
   }),
 
   // Status pages

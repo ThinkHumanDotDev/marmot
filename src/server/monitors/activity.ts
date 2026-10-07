@@ -1,14 +1,11 @@
 /**
- * Read-outs of a monitor's recent activity and the "check now" action, shared by the management
- * API (`/api/orgs/:orgId/monitors/:id/{heartbeats,stats,check}`) and, through those routes, the MCP
- * endpoint (#119). Callers load the monitor with `loadOrgMonitor` first, which enforces the
+ * A monitor's recent check results, for the management API
+ * (`GET /api/orgs/:orgId/monitors/:id/heartbeats`) and, through that route, the MCP endpoint (#119). Callers load the monitor with `loadOrgMonitor` first, which enforces the
  * organization and the user's access.
  */
 import type { Payload, Where } from 'payload'
 
 import type { Heartbeat, Monitor } from '@/payload-types'
-import { CHECK_JOB_NAME } from '@/server/engine/names'
-import { getChecksQueue, type ChecksQueue } from '@/server/engine/queues'
 import { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
 
 export const MAX_HEARTBEATS = 500
@@ -47,29 +44,4 @@ export async function listMonitorHeartbeats(
     overrideAccess: true,
   })
   return docs as Heartbeat[]
-}
-
-const QUEUE_TIMEOUT_MS = 5_000
-
-/**
- * Queue an immediate one-off check of an active monitor on the checks queue. The worker runs it like
- * a scheduled check (state machine, notifications); the regular schedule is left alone.
- */
-export async function queueMonitorCheck(
-  monitor: Pick<Monitor, 'id'>,
-  queue: ChecksQueue = getChecksQueue(),
-): Promise<{ jobId: string | null; queuedAt: string }> {
-  const queuedAt = new Date().toISOString()
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const job = await Promise.race([
-    queue.add(
-      CHECK_JOB_NAME,
-      { monitorId: String(monitor.id) },
-      { removeOnComplete: 100, removeOnFail: 100 },
-    ),
-    new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('check queue timed out')), QUEUE_TIMEOUT_MS)
-    }),
-  ]).finally(() => clearTimeout(timer))
-  return { jobId: job.id ?? null, queuedAt }
 }

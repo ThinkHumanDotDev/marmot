@@ -4,6 +4,7 @@
  */
 import type { Payload } from 'payload'
 
+import type { AssertionResult } from '@/lib/validation/assertions'
 import type { Monitor } from '@/payload-types'
 import type { TlsInfo } from '@/server/engine/tls'
 
@@ -28,6 +29,11 @@ export interface MonitorCheckContext {
    * The worker stores it in `monitors.certInfo` and feeds the expiry notifications.
    */
   tlsInfo?: TlsInfo | null
+  /**
+   * Per-assertion outcome of this check (HTTP and DNS types, see `./assertions.ts`), whatever the
+   * verdict. The worker stores it on the heartbeat (`heartbeats.assertions`).
+   */
+  assertions?: AssertionResult[] | null
 }
 
 export interface MonitorType {

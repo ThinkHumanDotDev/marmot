@@ -17,16 +17,18 @@
  * Keys are further limited here, before any handler code runs:
  * - the key must belong to the organization in the URL;
  * - `read` keys may only send `GET`/`HEAD`/`OPTIONS`;
- * - member, invitation, key, SSO, billing, permission and ownership routes are refused outright
+ * - member, invitation, key, audit log, SSO, billing, permission and ownership routes are refused
  *   (`API_KEY_FORBIDDEN_SECTIONS`), and `API_KEY_DENIED_PERMISSIONS` keeps collection access in line;
  * - requests are rate limited per key (`API_KEY_RATE_LIMIT`, `API_KEY_WRITE_RATE_LIMIT`), `429` with
  *   `Retry-After`;
- * - write requests are recorded in the audit log (`api_key.write_request`, `actorType: apiKey`).
+ * - the principal carries the key as `apiKey`, so the collection audit hooks record every change it
+ *   makes with `actorType: 'apiKey'` and the key as actor (`actorFromRequest` in
+ *   `src/server/audit/context.ts`); `rememberRequestUser` binds the client's IP and user agent.
  *
  * The MCP endpoint (`/api/mcp`, #119) authenticates the key itself and then calls these very route
  * handlers in-process with a *delegated* request (`delegateApiKeyRequest`): the key lookup and the
  * request budget are skipped (the MCP request already paid them), every other rule above applies,
- * and audit events carry `actorType: mcp` and the tool name.
+ * and the audit hooks record the changes with `actorType: 'mcp'` (`apiKey.via`).
  */
 import type { Payload } from 'payload'
 
@@ -35,7 +37,6 @@ import { API_KEY_SCOPE_ROLES, type ApiKeyScope } from '@/lib/api-key-scopes'
 import type { User } from '@/payload-types'
 import { authenticateApiKeyValue, extractApiKey, type ApiKeyAuth } from '@/server/api-keys'
 import { errorText, rememberRequestUser } from '@/server/request-locale'
-import { auditActorFields, recordRequestAuditEvent } from '@/server/security/audit'
 import { apiKeyLimiter, apiKeyWriteLimiter } from '@/server/security/limiters'
 import { tooManyRequests, type RateLimiter } from '@/server/security/rate-limit'
 
@@ -48,15 +49,16 @@ export interface ApiKeyPrincipalInfo {
   name: string
   scope: ApiKeyScope
   organization: OrgId
-  /** Set when the key acts through the MCP endpoint (`src/server/mcp`). */
+  /** Set when the key acts through the MCP endpoint (`src/server/mcp`); audited as `mcp`. */
   via?: 'mcp'
-  /** The MCP tool a delegated request runs for (audit metadata). */
+  /** The MCP tool a delegated request runs for (shown with the audit actor). */
   tool?: string
 }
 
 /**
  * The synthetic user an API key authenticates as. Its `id` (`api-key:<keyId>`) is not a user row:
- * code that stores "who did it" must use `auditActorFields` / `apiKeyOf` instead of `user.id`.
+ * code that stores "who did it" must use `apiKeyOf` / `principalUserId` (or `actorFromRequest`)
+ * instead of `user.id`.
  */
 export type ApiKeyPrincipal = RequestUser & { apiKey: ApiKeyPrincipalInfo }
 
@@ -66,6 +68,7 @@ export type RequestAuth =
 /** Sections below `/api/orgs/:orgId/` that API keys may never call, whatever their scope. */
 export const API_KEY_FORBIDDEN_SECTIONS: readonly string[] = [
   'api-keys',
+  'audit-logs',
   'billing',
   'invitations',
   'invite-link',
@@ -178,44 +181,25 @@ async function authenticateWithApiKey(
   )
   if (limited) return { response: limited }
 
-  return authorizeApiKeyRoute(payload, request, principal, route)
+  return authorizeApiKeyRoute(request, principal, route)
 }
 
-/** The org/section/scope rules of the module comment, and the audit event of a write. */
-async function authorizeApiKeyRoute(
-  payload: Payload,
+/** The organization, section and scope rules of the module comment. */
+function authorizeApiKeyRoute(
   request: Request,
   principal: ApiKeyPrincipal,
   route: { orgId: string; section: string | null },
-): Promise<RequestAuth> {
+): RequestAuth {
   const { apiKey } = principal
-  const write = isWriteMethod(request.method)
-
   if (String(apiKey.organization) !== route.orgId) {
     return { response: keyError(request, 403, 'apiKeyWrongOrganization') }
   }
   if (route.section === null || API_KEY_FORBIDDEN_SECTIONS.includes(route.section)) {
     return { response: keyError(request, 403, 'apiKeyRouteForbidden') }
   }
-  if (write && apiKey.scope !== 'write') {
+  if (isWriteMethod(request.method) && apiKey.scope !== 'write') {
     return { response: keyError(request, 403, 'apiKeyReadOnly') }
   }
-
-  if (write) {
-    const who = auditActorFields(principal)
-    await recordRequestAuditEvent(payload, request, {
-      action: 'api_key.write_request',
-      organization: apiKey.organization,
-      actor: who.actor,
-      target: `api-keys:${apiKey.id}`,
-      metadata: {
-        ...who.metadata,
-        method: request.method.toUpperCase(),
-        path: new URL(request.url).pathname,
-      },
-    })
-  }
-
   return { user: principal }
 }
 
@@ -229,8 +213,8 @@ const delegatedRequests = new WeakMap<Request, ApiKeyPrincipal>()
 /**
  * Mark `request` (built in-process, aimed at an `/api/orgs/:orgId/…` route handler) as sent by
  * `principal`. `authenticateRequest` then skips the key lookup and the request budget, which the
- * caller already spent, but still applies the organization, section and scope rules, spends the
- * write budget for mutations and records writes in the audit log.
+ * caller already spent, but still applies the organization, section and scope rules and spends the
+ * write budget for mutations.
  */
 export function delegateApiKeyRequest(request: Request, principal: ApiKeyPrincipal): Request {
   delegatedRequests.set(request, principal)
@@ -238,7 +222,6 @@ export function delegateApiKeyRequest(request: Request, principal: ApiKeyPrincip
 }
 
 async function authenticateDelegated(
-  payload: Payload,
   request: Request,
   principal: ApiKeyPrincipal,
   route: { orgId: string; section: string | null } | null,
@@ -252,7 +235,7 @@ async function authenticateDelegated(
     })
     if (limited) return { response: limited }
   }
-  return authorizeApiKeyRoute(payload, request, principal, route)
+  return authorizeApiKeyRoute(request, principal, route)
 }
 
 /**
@@ -266,7 +249,7 @@ export async function authenticateRequest(
 ): Promise<RequestAuth> {
   const route = orgRouteOf(request)
   const delegated = delegatedRequests.get(request)
-  if (delegated) return authenticateDelegated(payload, request, delegated, route)
+  if (delegated) return authenticateDelegated(request, delegated, route)
 
   const key = route ? extractApiKey(request.headers) : null
   if (route && key) return authenticateWithApiKey(payload, request, key, route)

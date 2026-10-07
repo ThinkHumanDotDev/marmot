@@ -31,7 +31,16 @@ import * as migration_20261007_082448_status_page_history from './20261007_08244
 import * as migration_20261007_085940_status_page_subscribers from './20261007_085940_status_page_subscribers';
 import * as migration_20261007_094147_templates from './20261007_094147_templates';
 import * as migration_20261007_103631_monitor_degraded_state from './20261007_103631_monitor_degraded_state';
-import * as migration_20261007_112515_api_key_scopes from './20261007_112515_api_key_scopes';
+import * as migration_20261007_110911_notification_event_filters from './20261007_110911_notification_event_filters';
+import * as migration_20261007_140856_monitor_assertions from './20261007_140856_monitor_assertions';
+import * as migration_20261007_145743_heartbeat_trigger from './20261007_145743_heartbeat_trigger';
+import * as migration_20261007_160552_push_monitor_cron from './20261007_160552_push_monitor_cron';
+import * as migration_20261007_163630_monitor_incidents from './20261007_163630_monitor_incidents';
+import * as migration_20261007_173835_engine_recovery from './20261007_173835_engine_recovery';
+import * as migration_20261007_181153_audit_log_coverage from './20261007_181153_audit_log_coverage';
+import * as migration_20261007_192808_sso_group_mapping from './20261007_192808_sso_group_mapping';
+import * as migration_20261007_201419_outbound_webhooks from './20261007_201419_outbound_webhooks';
+import * as migration_20261007_204902_api_key_scopes from './20261007_204902_api_key_scopes';
 
 export const migrations = [
   {
@@ -200,8 +209,53 @@ export const migrations = [
     name: '20261007_103631_monitor_degraded_state',
   },
   {
-    up: migration_20261007_112515_api_key_scopes.up,
-    down: migration_20261007_112515_api_key_scopes.down,
-    name: '20261007_112515_api_key_scopes'
+    up: migration_20261007_110911_notification_event_filters.up,
+    down: migration_20261007_110911_notification_event_filters.down,
+    name: '20261007_110911_notification_event_filters',
+  },
+  {
+    up: migration_20261007_140856_monitor_assertions.up,
+    down: migration_20261007_140856_monitor_assertions.down,
+    name: '20261007_140856_monitor_assertions',
+  },
+  {
+    up: migration_20261007_145743_heartbeat_trigger.up,
+    down: migration_20261007_145743_heartbeat_trigger.down,
+    name: '20261007_145743_heartbeat_trigger',
+  },
+  {
+    up: migration_20261007_160552_push_monitor_cron.up,
+    down: migration_20261007_160552_push_monitor_cron.down,
+    name: '20261007_160552_push_monitor_cron',
+  },
+  {
+    up: migration_20261007_163630_monitor_incidents.up,
+    down: migration_20261007_163630_monitor_incidents.down,
+    name: '20261007_163630_monitor_incidents',
+  },
+  {
+    up: migration_20261007_173835_engine_recovery.up,
+    down: migration_20261007_173835_engine_recovery.down,
+    name: '20261007_173835_engine_recovery',
+  },
+  {
+    up: migration_20261007_181153_audit_log_coverage.up,
+    down: migration_20261007_181153_audit_log_coverage.down,
+    name: '20261007_181153_audit_log_coverage',
+  },
+  {
+    up: migration_20261007_192808_sso_group_mapping.up,
+    down: migration_20261007_192808_sso_group_mapping.down,
+    name: '20261007_192808_sso_group_mapping',
+  },
+  {
+    up: migration_20261007_201419_outbound_webhooks.up,
+    down: migration_20261007_201419_outbound_webhooks.down,
+    name: '20261007_201419_outbound_webhooks',
+  },
+  {
+    up: migration_20261007_204902_api_key_scopes.up,
+    down: migration_20261007_204902_api_key_scopes.down,
+    name: '20261007_204902_api_key_scopes'
   },
 ];

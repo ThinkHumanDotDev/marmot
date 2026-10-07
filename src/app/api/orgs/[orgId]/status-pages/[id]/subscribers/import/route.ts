@@ -1,4 +1,7 @@
 import { isSubscriberChannel } from '@/lib/status-page-subscribers'
+import { relationId } from '@/server/audit/collection-hooks'
+import { actorFromRequest, AUDIT_SKIP_CONTEXT } from '@/server/audit/context'
+import { actorFields, recordRequestAuditEvent } from '@/server/security/audit'
 import { errorResponse, jsonError } from '@/server/status-pages/http'
 import { errorMessageFor, errorText } from '@/server/request-locale'
 import {
@@ -60,6 +63,8 @@ export async function POST(request: Request, { params }: RouteContext) {
           depth: 0,
           user,
           overrideAccess: false,
+          // Summarised by one `import.completed` row below instead of a row per subscriber.
+          context: { [AUDIT_SKIP_CONTEXT]: true },
         })
         created += 1
       } catch (error) {
@@ -70,6 +75,19 @@ export async function POST(request: Request, { params }: RouteContext) {
         })
       }
     }
+    await recordRequestAuditEvent(payload, request, {
+      ...actorFields(actorFromRequest({ user })),
+      action: 'import.completed',
+      organization: relationId(page.organization),
+      entityType: 'import',
+      entityLabel: 'subscribers',
+      metadata: {
+        format: 'subscribers-csv',
+        statusPageId: String(page.id),
+        subscribers: created,
+        skipped: skipped.length,
+      },
+    })
     return Response.json({ created, skipped })
   } catch (error) {
     return errorResponse(error, request)

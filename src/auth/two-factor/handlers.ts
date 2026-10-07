@@ -14,7 +14,9 @@ import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import { loginLimiter } from '@/server/security/auth-hooks'
 import { createRateLimiter, tooManyRequests, type RateLimiter } from '@/server/security/rate-limit'
+import { recordRequestAuditEvent, recordUserAuditEvent } from '@/server/security/audit'
 import { requestMeta } from '@/server/security/request'
+import { LOCAL_LOGIN_CONTEXT, wantsLocalLogin } from '@/server/sso/local-login'
 import { errorMessageFor, errorText } from '@/server/request-locale'
 import type { User } from '@/payload-types'
 
@@ -108,8 +110,15 @@ export async function handlePasswordLogin(request: Request): Promise<Response> {
   }
 
   const payload = await getPayload({ config })
-  const limited = await limitAttempt(loginLimiter, payload, request, email.trim().toLowerCase())
-  if (limited) return limited
+  const account = email.trim().toLowerCase()
+  const limited = await limitAttempt(loginLimiter, payload, request, account)
+  if (limited) {
+    await recordRequestAuditEvent(payload, request, {
+      action: 'auth.rate_limited',
+      metadata: { email: account, operation: 'login' },
+    })
+    return limited
+  }
   let token: string
   let exp: number | undefined
   let user: User
@@ -118,7 +127,13 @@ export async function handlePasswordLogin(request: Request): Promise<Response> {
       collection: 'users',
       data: { email: email.trim().toLowerCase(), password },
       depth: 0,
-      context: { [TWO_FACTOR_GATE_CONTEXT]: true },
+      // `?local=1`: the break-glass login of the SSO-only mode (`src/server/sso/local-login.ts`).
+      context: {
+        [TWO_FACTOR_GATE_CONTEXT]: true,
+        [LOCAL_LOGIN_CONTEXT]: wantsLocalLogin(request.url),
+      },
+      // The client's headers, so login hooks (break-glass audit) see its IP address and user agent.
+      req: { headers: request.headers },
     })
     if (!result.token) throw new APIError('Login did not produce a token.', 500)
     token = result.token
@@ -126,6 +141,12 @@ export async function handlePasswordLogin(request: Request): Promise<Response> {
     user = result.user as User
   } catch (error) {
     const status = apiErrorStatus(error)
+    if (status === 401 || status === 400 || status === 403 || status === 423) {
+      await recordRequestAuditEvent(payload, request, {
+        action: 'auth.login_failed',
+        metadata: { email: account, operation: 'login', status },
+      })
+    }
     if (status === 401 || status === 400) {
       return jsonError(errorText(request, 'invalidCredentials'), 401)
     }
@@ -150,6 +171,9 @@ export async function handlePasswordLogin(request: Request): Promise<Response> {
     return json({ requiresTwoFactor: true, challenge }, [cookie])
   }
 
+  await recordUserAuditEvent(payload, request, user, 'auth.login', {
+    metadata: { method: 'password' },
+  })
   const cookie = sessionCookieForToken(payload, token)
   return json({ user: publicUser(user), exp }, [cookie])
 }
@@ -204,6 +228,9 @@ export async function handleTwoFactorLogin(request: Request): Promise<Response> 
   const method = await verifyTwoFactorCode(payload, userId, code)
   if (!method) {
     const attempts = challenge.attempts + 1
+    await recordUserAuditEvent(payload, request, { id: userId }, 'auth.two_factor_failed', {
+      metadata: { attempts },
+    })
     if (attempts >= TWO_FACTOR_MAX_ATTEMPTS) {
       log.warn({ user: userId }, 'two-factor challenge exhausted')
       return jsonError(errorText(request, 'tooManyCodes'), 429, [clear])
@@ -227,5 +254,8 @@ export async function handleTwoFactorLogin(request: Request): Promise<Response> 
     overrideAccess: true,
   })
   log.info({ user: userId, method }, 'two-factor login succeeded')
+  await recordUserAuditEvent(payload, request, user, 'auth.login', {
+    metadata: { method: 'password', secondFactor: method },
+  })
   return json({ user: publicUser(user), exp: session.exp, method }, [session.cookie, clear])
 }

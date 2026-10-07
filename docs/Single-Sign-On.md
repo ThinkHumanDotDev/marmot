@@ -3,7 +3,9 @@
 Marmot can authenticate users against any OpenID Connect provider that supports discovery and the
 authorization code flow with PKCE (Keycloak, Authentik, Zitadel, Okta, Microsoft Entra ID, Google
 Workspace, Dex, …) and offers **Sign in with GitHub** and **Sign in with Google** buttons. Local password
-login stays available next to SSO, and a user can link several identities to one account.
+login stays available next to SSO unless you turn on the [SSO-only mode](#sso-only-mode), and a user can
+link several identities to one account. Identity-provider [groups](#groups-allow-list-and-role-mapping)
+can restrict who may sign in and decide organization memberships and roles.
 
 ## Configuration
 
@@ -40,6 +42,95 @@ The env-configured client has the id `oidc`; its flow starts at `/api/auth/sso/o
 Plain `http://` issuers are accepted only when `NODE_ENV` is not `production` (local Keycloak,
 tests). Production providers must use HTTPS.
 
+## Groups: allow-list and role mapping
+
+The OIDC client can read the user's groups from the ID token / UserInfo response and use them to decide
+who may sign in and which organizations and roles they get. All variables are optional; without them every
+user the identity provider authenticates may sign in, as before.
+
+| Variable                   | Default  | Description                                                                                                                                                                            |
+| -------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OIDC_GROUP_CLAIM`         | `groups` | Claim that lists the groups. A dotted path reads nested claims (Keycloak realm roles: `realm_access.roles`). The value may be a list, a string or a comma-separated string.            |
+| `OIDC_ALLOWED_GROUPS`      | —        | Comma-separated, case-insensitive. When set, only members of at least one of these groups can sign in **or be provisioned**; everybody else lands on `/login?error=group_not_allowed`. |
+| `OIDC_ROLE_MAPPING`        | —        | JSON object from group to organization role (see below). Applied on **every** login.                                                                                                   |
+| `OIDC_ROLE_MAPPING_REMOVE` | `false`  | Also remove memberships (and superadmin) that the user's groups no longer grant.                                                                                                       |
+
+```env
+OIDC_ALLOWED_GROUPS=marmot-users,platform-admins,sre
+OIDC_ROLE_MAPPING={"platform-admins": {"org": "acme", "role": "admin"}, "sre": [{"org": "acme", "role": "member"}, {"org": "ops", "role": "viewer"}], "marmot-admins": {"role": "superadmin"}}
+```
+
+Keys are group names (case-insensitive). A value is one rule or a list of rules: `{"org": "<organization slug>", "role":
+"owner" | "admin" | "member" | "viewer"}`, or `{"role": "superadmin"}` for the instance role. An invalid mapping stops
+the server at startup with a message naming the problem. Groups that are not in the mapping (such as `marmot-users`
+above) only matter for the allow-list.
+
+On every login through the OIDC client Marmot:
+
+1. **checks the allow-list** before it provisions or links an account and again on every later login, so a user removed
+   from the allowed groups at the identity provider can no longer sign in. A token without the group claim is refused with
+   `/login?error=groups_missing` while an allow-list is set. Refusals are written to the audit log as
+   `auth.sso_group_denied` with the email, the reason and the groups the provider sent;
+2. **applies the mapping**: per organization the highest role among the user's matching groups wins. A user who is not a
+   member yet is added (`member.added`), a member with a different role is moved to the mapped one, up or down
+   (`member.role_changed`). A matching superadmin rule grants superadmin (`user.superadmin_granted`);
+3. with `OIDC_ROLE_MAPPING_REMOVE=true`, **removes** memberships of organizations the mapping names when none of the user's
+   groups maps to them any more (`member.removed`) and revokes superadmin when no superadmin group matches
+   (`user.superadmin_revoked`). Organizations the mapping does not name are never touched, so people can still be invited
+   to them by hand.
+
+Rules that protect organizations and the instance:
+
+- **The last owner is never demoted or removed.** If the mapping would demote or remove the only owner of an
+  organization, the change is skipped and recorded as `member.sync_skipped` (reason `last_owner`); it applies on a later
+  login once the organization has another owner (transfer ownership or map a second owner).
+- **The last superadmin keeps superadmin**, even with removal on (`user.sync_skipped`, reason `last_superadmin`).
+- A token **without** the group claim leaves memberships alone, even with removal on, so a provider that stops releasing
+  the claim cannot strip everybody's access. Make sure the client is allowed to see the claim (see the provider notes
+  below).
+- Organizations are referenced by slug; a slug that does not exist is ignored with a warning in the web log.
+
+Every mapping decision is written to the audit log with the provider as the actor (actor type _system_,
+`sso:oidc`), the organization, the role before and after and the groups the provider sent. The mapping only applies to
+the OIDC client: GitHub and Google send no groups and are not subject to the allow-list, so leave them unconfigured if the
+allow-list must cover everybody.
+
+**Provider notes.** Keycloak: add a _Group Membership_ mapper (token claim name `groups`, _Full group path_ off) to the
+client's dedicated scope, or use realm roles with `OIDC_GROUP_CLAIM=realm_access.roles`. Authentik releases `groups` with
+the `profile` scope. Microsoft Entra ID: **Token configuration → Add groups claim**; Entra sends group **object ids**, so
+use those ids as group names (or emit `sAMAccountName` for synced groups). Okta: add a `groups` claim with a filter to the
+authorization server and request the `groups` scope (`OIDC_SCOPES=openid email profile groups`).
+
+## SSO-only mode
+
+`OIDC_DISABLE_LOCAL_LOGIN=true` makes the identity provider the only way in:
+
+- the login page hides the password form (and the sign-up link) and only shows the single sign-on buttons;
+- password logins are refused with 403 on `POST /api/auth/login`, `POST /api/users/login` and the Local API;
+- sign-ups are disabled (`allowSignup` is ignored) and `POST /api/users/forgot-password` and
+  `POST /api/users/reset-password` answer 403;
+- `GET /api/auth/providers` reports `"local": false`.
+
+**Break-glass.** With `OIDC_BREAK_GLASS=true` a **superadmin** can still sign in with their password at
+`/login?local=1` (the form posts to `/api/auth/login?local=1`; `POST /api/users/login?local=1` works too). Every
+such login is written to the audit log as `auth.break_glass` (scope `instance`). The Payload admin panel's own
+login form does not send `local=1`; sign in at `/login?local=1` first and then open `/admin`. The same page links to
+`/forgot-password?local=1`, which accepts any email but only mails superadmins (the answer is the same for everyone, so
+it does not reveal who is one), and the reset link only works for superadmins. Without `OIDC_BREAK_GLASS`, nobody can
+use a password; recover with SSO or by setting the variable and restarting.
+
+To bootstrap a new instance in SSO-only mode, map an IdP group to `{"role": "superadmin"}` so the first administrator
+gets the role on their first login, or create the superadmin with a password before turning the mode on and keep
+break-glass enabled.
+
+| Variable                   | Default | Description                                                                                                   |
+| -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| `OIDC_DISABLE_LOCAL_LOGIN` | `false` | Turn off password logins, sign-ups and password resets for the whole instance.                                |
+| `OIDC_BREAK_GLASS`         | `false` | With `OIDC_DISABLE_LOCAL_LOGIN`, let superadmins sign in with their password from `/login?local=1` (audited). |
+
+Organizations can additionally require single sign-on for their own verified domains (see _Enforcement_ below); both
+apply, and an organization's owners keep their own break-glass path there.
+
 ## Sign in with GitHub and Google
 
 Each pair of variables enables a button on the login page; both can be combined with the OIDC client.
@@ -74,6 +165,15 @@ default) unless they are a member already. An existing Marmot user whose email t
 linked to it when the provider marks the email verified (OIDC `email_verified`, SAML always) **or** when
 the organization has verified that email's domain.
 
+**Groups.** A connection can use the identity provider's groups too (_Groups_ in the connection dialog, or the
+`groupClaim`, `allowedGroups` and `groupRoles` fields of the API): the claim (OIDC) or attribute (SAML, for example
+`memberOf` or `http://schemas.microsoft.com/ws/2008/06/identity/claims/groups`) that lists the groups, default
+`groups`; a comma-separated allow-list (users outside it are refused with `group_not_allowed`, users without the
+claim with `groups_missing`); and a role per group for the connection's organization. The mapping works like the
+instance-wide one: applied on every login, the highest matching role wins, the last owner is never demoted and every
+change is audited. A user in none of the mapped groups joins with the default role and keeps their role afterwards.
+Connections never remove members and never grant superadmin.
+
 **Verified domains.** Add `example.com` under _Verified domains_, create the DNS TXT record the page
 shows (`_marmot-verification.example.com` → `marmot-verification=<token>`) and press **Verify**. A verified
 domain belongs to one organization only. People who enter an email on that domain on the **Sign in with
@@ -86,7 +186,10 @@ single sign-on**: password logins (`POST /api/users/login` and the Marmot login 
 every member whose email is on one of the organization's verified domains, with a message that points
 at the SSO page. Owners of the organization keep a **break-glass** password login so a broken identity
 provider never locks everyone out; each such login is written to the audit log as `auth.break_glass`.
-Logins through a connection are unaffected, and turning enforcement off restores password login at once.
+Password resets follow the same rule: reset mails are only sent to people who could use the new
+password (owners, superadmins and users outside the verified domains; everybody gets the same answer), and a
+reset link of anyone else is refused with 403. Logins through a connection are unaffected, and turning enforcement off
+restores password login at once.
 
 Connections, domains and enforcement are also available over the API (`/api/orgs/:orgId/sso/connections`,
 `/api/orgs/:orgId/sso/domains`, `POST /api/orgs/:orgId/sso/domains/:id/verify`,
@@ -234,6 +337,12 @@ there with `post_logout_redirect_uri=${NEXT_PUBLIC_SERVER_URL}/login` so the pro
 - `/login?error=signup_disabled` — `DISABLE_SIGNUP=true` and no pending invitation exists for the
   user's email. Invite them first.
 - `/login?error=provisioning_disabled` — `OIDC_AUTO_PROVISION=false` and no account exists yet.
+- `/login?error=group_not_allowed` — the user is in none of the allowed groups (`OIDC_ALLOWED_GROUPS` or the
+  connection's allow-list). The `auth.sso_group_denied` audit event lists the groups the provider sent.
+- `/login?error=groups_missing` — an allow-list is set but the provider sent no group claim. Check `OIDC_GROUP_CLAIM`
+  and that the client may see the groups (provider notes under _Groups_).
+- `Password sign-in is turned off on this server` — `OIDC_DISABLE_LOCAL_LOGIN=true`. Superadmins use `/login?local=1`
+  when `OIDC_BREAK_GLASS=true`.
 
 ## Under the hood
 

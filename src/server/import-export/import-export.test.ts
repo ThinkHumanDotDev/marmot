@@ -406,7 +406,10 @@ describe('Marmot export parser', () => {
         interval: 60,
         retryInterval: 60,
         maxRetries: 0,
-        resendInterval: 0,
+        resendInterval: 5,
+        successThreshold: 3,
+        reminderBackoff: 'exponential',
+        maxReminders: 4,
         timeout: 48,
       },
     ],
@@ -461,6 +464,17 @@ describe('Marmot export parser', () => {
     expect(site.notificationKeys).toEqual(['5'])
     expect(plan.monitors.find((m) => m.data.name === 'Orphan')!.parentKey).toBeNull()
     expect(plan.monitors.find((m) => m.data.name === 'Job')!.pushToken).toBe('tok')
+    // Recovery threshold and reminder backoff (#147) round-trip; older files get the defaults.
+    expect(plan.monitors.find((m) => m.data.name === 'Job')!.data).toMatchObject({
+      successThreshold: 3,
+      reminderBackoff: 'exponential',
+      maxReminders: 4,
+    })
+    expect(site.data).toMatchObject({
+      successThreshold: 1,
+      reminderBackoff: 'none',
+      maxReminders: 0,
+    })
 
     expect(plan.statusPages).toHaveLength(1)
     const page = plan.statusPages[0]
@@ -542,6 +556,50 @@ describe('Marmot export parser', () => {
     ])
     expect(plan.warnings).toEqual([
       expect.stringContaining('"Tagged": tags and proxy not imported'),
+    ])
+  })
+
+  it('keeps push schedules and defaults older exports to the interval schedule', () => {
+    const base = { interval: 60, retryInterval: 60, maxRetries: 0, resendInterval: 0, timeout: 48 }
+    const plan = parseMarmotExport({
+      ...file,
+      notifications: [],
+      statusPages: [],
+      monitors: [
+        {
+          ...base,
+          id: 'c1',
+          name: 'Nightly',
+          type: 'push',
+          pushToken: 'cron-token',
+          pushSchedule: 'cron',
+          pushCron: '0 2 * * *',
+          pushTimezone: 'Europe/Berlin',
+          pushGrace: 1800,
+          pushMaxDuration: 3600,
+        },
+        { ...base, id: 'c2', name: 'Legacy', type: 'push', pushToken: 'old' },
+        { ...base, id: 'c3', name: 'Broken', type: 'push', pushSchedule: 'cron', pushCron: 'x' },
+      ],
+    })
+    expect(plan.monitors.map((m) => m.data.name)).toEqual(['Nightly', 'Legacy'])
+    expect(plan.monitors[0].data).toMatchObject({
+      pushSchedule: 'cron',
+      pushCron: '0 2 * * *',
+      pushTimezone: 'Europe/Berlin',
+      pushGrace: 1800,
+      pushMaxDuration: 3600,
+    })
+    expect(plan.monitors[0].pushToken).toBe('cron-token')
+    expect(plan.monitors[1].data).toMatchObject({
+      pushSchedule: 'interval',
+      pushCron: null,
+      pushTimezone: 'SAME_AS_SERVER',
+      pushGrace: null,
+      pushMaxDuration: null,
+    })
+    expect(plan.skipped.monitors).toEqual([
+      { name: 'Broken', reason: expect.stringContaining('cron') },
     ])
   })
 })

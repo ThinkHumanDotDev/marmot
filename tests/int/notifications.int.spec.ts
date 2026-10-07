@@ -532,9 +532,15 @@ describe('notification endpoints', () => {
     stubFetch()
     const ok = await testRoute(await build(admin), withParams())
     expect(ok.status).toBe(200)
-    expect(await ok.json()).toEqual({ ok: true, result: 'Sent Successfully.' })
+    // One sample per default event (#126).
+    expect(await ok.json()).toEqual({
+      ok: true,
+      result: 'Sent Successfully.',
+      events: ['down', 'up', 'reminder', 'certificate', 'acknowledged', 'resolved'],
+    })
+    expect(fetchCalls).toHaveLength(6)
     expect(fetchCalls[0].url).toBe('https://discord.com/api/webhooks/1/t')
-    expect((fetchCalls[0].body as { content: string }).content).toContain('[⚠️ Test]')
+    expect((fetchCalls[0].body as { content: string }).content).toContain('[⚠️ Test] Down:')
 
     stubFetch(401)
     const failed = await testRoute(await build(admin), withParams())
@@ -575,6 +581,42 @@ describe('notification endpoints', () => {
     )
     expect(res.status).toBe(200)
     expect(fetchCalls[0].url).toBe('https://discord.com/api/webhooks/9/saved')
+
+    // The samples follow the saved selection, or the unsaved one the edit form sends.
+    const downOnly = await createChannel({
+      name: 'saved-down-only',
+      events: ['degraded', 'down'],
+      config: { webhookUrl: 'https://discord.com/api/webhooks/9/down' },
+    })
+    stubFetch()
+    const saved2 = await testRoute(
+      new Request(`http://localhost/api/orgs/${org.id}/notifications/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders(admin)) },
+        body: JSON.stringify({ notificationId: downOnly.id }),
+      }),
+      withParams(),
+    )
+    expect((await saved2.json()).events).toEqual(['down', 'degraded'])
+    expect(fetchCalls.map((c) => (c.body as { content: string }).content)).toEqual([
+      '[Marmot] [⚠️ Test] Down: "saved-down-only" is configured correctly.',
+      '[Marmot] [⚠️ Test] Degraded: "saved-down-only" is configured correctly.',
+    ])
+    stubFetch()
+    const edited = await testRoute(
+      new Request(`http://localhost/api/orgs/${org.id}/notifications/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders(admin)) },
+        body: JSON.stringify({
+          notificationId: downOnly.id,
+          config: { webhookUrl: 'https://discord.com/api/webhooks/9/down' },
+          events: ['maintenance'],
+        }),
+      }),
+      withParams(),
+    )
+    expect((await edited.json()).events).toEqual(['maintenance'])
+    expect(fetchCalls).toHaveLength(1)
 
     // A channel of another organization is not reachable through this org's URL.
     const foreign = (await payload.create({
@@ -641,6 +683,27 @@ describe('notification endpoints', () => {
       String(typeof doc.organization === 'object' ? doc.organization.id : doc.organization),
     ).toBe(String(org.id))
     expect(doc.config).toMatchObject({ richMessage: true })
+    // Without a selection a channel gets the events every channel received before #126.
+    expect(doc.events).toEqual([
+      'down',
+      'up',
+      'reminder',
+      'certificate',
+      'acknowledged',
+      'resolved',
+    ])
+
+    const filtered = await createRoute(
+      await orgRoute(admin, {
+        name: 'created-down-only',
+        type: 'slack',
+        config: { webhookUrl: 'https://hooks.slack.com/services/y' },
+        events: ['down', 'nonsense'],
+      }),
+      withParams(),
+    )
+    expect(filtered.status).toBe(201)
+    expect(((await filtered.json()).doc as Notification).events).toEqual(['down'])
 
     const invalid = await createRoute(
       await orgRoute(admin, { name: 'broken', type: 'slack', config: { webhookUrl: 'nope' } }),

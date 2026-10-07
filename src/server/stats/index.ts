@@ -27,6 +27,8 @@ export type HeartbeatContext = {
     time: Date | string
     important?: boolean | null
   }
+  /** Held while the worker was offline (#148): not recorded, so it is neither up nor down. */
+  checkerOffline?: boolean
   /** Monitors are org-scoped, but the engine types the id as optional; beats without one are skipped. */
   organizationId?: string | number | null
 }
@@ -37,6 +39,7 @@ type HeartbeatListener = (ctx: HeartbeatContext) => Promise<void> | void
 export const createStatsListener =
   (payload: Payload): HeartbeatListener =>
   async (ctx) => {
+    if (ctx.checkerOffline) return
     if (ctx.organizationId === null || ctx.organizationId === undefined) {
       log.warn(
         { monitorId: ctx.monitor.id },
