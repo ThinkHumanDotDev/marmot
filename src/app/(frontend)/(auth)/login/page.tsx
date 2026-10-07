@@ -13,6 +13,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { safeNextPath } from '@/lib/utils'
 import { isSignupAllowed } from '@/server/settings'
 import { hasAnyEnabledConnection } from '@/server/sso/connections'
+import { isBreakGlassEnabled, isLocalLoginDisabled } from '@/server/sso/local-login'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('auth.login')
@@ -23,9 +24,9 @@ export const dynamic = 'force-dynamic'
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string; two_factor?: string }>
+  searchParams: Promise<{ next?: string; error?: string; two_factor?: string; local?: string }>
 }) {
-  const { next, error, two_factor } = await searchParams
+  const { next, error, two_factor, local } = await searchParams
   const user = await getCurrentUser()
   if (user) redirect(safeNextPath(next))
   const payload = await getPayload({ config })
@@ -39,6 +40,11 @@ export default async function LoginPage({
   const providers = getAuthProviders()
   const tSsoErrors = await getTranslations('auth.ssoErrors')
   const ssoError = isSsoErrorCode(error) ? tSsoErrors(error) : undefined
+  // SSO-only mode hides the password form; `?local=1` shows it to break-glass superadmins. The
+  // code step after a single sign-on with two-factor authentication always renders.
+  const localDisabled = isLocalLoginDisabled()
+  const breakGlass = localDisabled && isBreakGlassEnabled() && local === '1'
+  const showPasswordForm = !localDisabled || breakGlass || two_factor === '1'
 
   return (
     <AuthCard
@@ -69,7 +75,16 @@ export default async function LoginPage({
           </p>
         )}
         <SsoButtons providers={providers.providers} next={next} />
-        <LoginForm next={next} twoFactor={two_factor === '1'} />
+        {breakGlass && (
+          <p className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
+            {t('breakGlass')}
+          </p>
+        )}
+        {showPasswordForm ? (
+          <LoginForm next={next} twoFactor={two_factor === '1'} local={breakGlass} />
+        ) : (
+          <p className="text-center text-sm text-muted-foreground">{t('localDisabled')}</p>
+        )}
         {orgSso && (
           <p className="text-center text-sm text-muted-foreground">
             <Link

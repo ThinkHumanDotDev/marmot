@@ -16,6 +16,7 @@ import { loginLimiter } from '@/server/security/auth-hooks'
 import { createRateLimiter, tooManyRequests, type RateLimiter } from '@/server/security/rate-limit'
 import { recordRequestAuditEvent, recordUserAuditEvent } from '@/server/security/audit'
 import { requestMeta } from '@/server/security/request'
+import { LOCAL_LOGIN_CONTEXT, wantsLocalLogin } from '@/server/sso/local-login'
 import { errorMessageFor, errorText } from '@/server/request-locale'
 import type { User } from '@/payload-types'
 
@@ -126,7 +127,11 @@ export async function handlePasswordLogin(request: Request): Promise<Response> {
       collection: 'users',
       data: { email: email.trim().toLowerCase(), password },
       depth: 0,
-      context: { [TWO_FACTOR_GATE_CONTEXT]: true },
+      // `?local=1`: the break-glass login of the SSO-only mode (`src/server/sso/local-login.ts`).
+      context: {
+        [TWO_FACTOR_GATE_CONTEXT]: true,
+        [LOCAL_LOGIN_CONTEXT]: wantsLocalLogin(request.url),
+      },
       // The client's headers, so login hooks (break-glass audit) see its IP address and user agent.
       req: { headers: request.headers },
     })

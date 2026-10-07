@@ -982,7 +982,9 @@
         "passwordAgain": "Enter your password again.",
         "invalidCode": "That code is not valid."
       },
-      "organizationSso": "Sign in with your organization's SSO"
+      "organizationSso": "Sign in with your organization's SSO",
+      "localDisabled": "Password sign-in is turned off on this server. Use single sign-on to continue.",
+      "breakGlass": "Break-glass sign-in for instance administrators. Every sign-in here is recorded in the audit log."
     },
     "sso": {
       "continueWith": "Continue with {provider}",
@@ -1005,7 +1007,9 @@
       "backToSignIn": "Back to sign in",
       "submit": "Send reset link",
       "submitting": "Sending…",
-      "sent": "If an account exists for <email></email>, a reset link is on its way. It expires in one hour."
+      "sent": "If an account exists for <email></email>, a reset link is on its way. It expires in one hour.",
+      "disabledTitle": "Password reset is turned off",
+      "disabledDescription": "This server only allows sign-in with single sign-on, so there is no password to reset. Sign in with your identity provider instead."
     },
     "resetPassword": {
       "pageTitle": "Choose a new password",
@@ -1018,7 +1022,9 @@
       "submit": "Set new password",
       "submitting": "Updating…",
       "updated": "Password updated",
-      "failed": "This reset link is invalid or has expired. Request a new one."
+      "failed": "This reset link is invalid or has expired. Request a new one.",
+      "disabledTitle": "Password reset is turned off",
+      "disabledDescription": "This server only allows sign-in with single sign-on, so there is no password to reset. Sign in with your identity provider instead."
     },
     "setup": {
       "pageTitle": "Set up Marmot",
@@ -1052,7 +1058,9 @@
       "oidc_disabled": "Single sign-on is not configured on this server.",
       "oidc_state": "Your sign-in session expired or was tampered with. Please try again.",
       "oidc_denied": "The identity provider refused the sign-in request.",
-      "oidc_failed": "Single sign-on failed. Please try again or contact your administrator."
+      "oidc_failed": "Single sign-on failed. Please try again or contact your administrator.",
+      "group_not_allowed": "Your account is not in a group that may sign in to Marmot. Ask your administrator for access.",
+      "groups_missing": "Your identity provider did not send your group memberships, so Marmot cannot check your access. Ask your administrator."
     },
     "ssoLookup": {
       "pageTitle": "Sign in with SSO",
@@ -1419,7 +1427,11 @@
         "completed": "completed",
         "acknowledged": "acknowledged",
         "resolved": "resolved",
-        "published": "published"
+        "published": "published",
+        "added": "added",
+        "sync_skipped": "change skipped",
+        "superadmin_granted": "granted superadmin",
+        "superadmin_revoked": "superadmin revoked"
       },
       "authActions": {
         "login": "Signed in",
@@ -1433,7 +1445,8 @@
         "two_factor_disabled": "Two-factor authentication disabled",
         "backup_codes_regenerated": "Backup codes regenerated",
         "sso_login": "Signed in with single sign-on",
-        "sso_login_failed": "Failed single sign-on"
+        "sso_login_failed": "Failed single sign-on",
+        "sso_group_denied": "Single sign-on refused: not in an allowed group"
       }
     },
     "billing": {
@@ -1838,6 +1851,7 @@
         "saml": "SAML 2.0"
       },
       "roles": {
+        "owner": "owner",
         "admin": "admin",
         "member": "member",
         "viewer": "viewer"
@@ -1937,6 +1951,20 @@
         "allowIdpInitiated": "Allow IdP-initiated login",
         "autoProvision": "Create accounts on first login",
         "autoProvisionHint": "Off: only existing Marmot users can sign in through this connection.",
+        "groups": {
+          "title": "Groups",
+          "hint": "Use the groups your identity provider sends to decide who may sign in and with which role. Applied on every login.",
+          "claim": "Group claim or attribute",
+          "allowed": "Allowed groups",
+          "allowedPlaceholder": "marmot-users, sre (empty: everyone)",
+          "roles": "Group roles",
+          "group": "Group",
+          "groupPlaceholder": "Group name",
+          "role": "Role",
+          "addRule": "Add group role",
+          "removeRule": "Remove group role",
+          "rolesHint": "Members of these groups get the role in this organization on every login (the highest one wins); users in none of them join with the default role. The last owner is never demoted."
+        },
         "cancel": "Cancel",
         "save": "Save",
         "create": "Create",
@@ -5050,6 +5078,7 @@
     "twoFactorCodeInvalid": "That code is not valid. Try the next one.",
     "twoFactorUseLoginPage": "This account uses two-factor authentication. Sign in through the Marmot login page.",
     "ssoEnforced": "Your organization requires single sign-on. Use “Sign in with your organization's SSO” on the login page.",
+    "localLoginDisabled": "Password sign-in is turned off on this server. Sign in with single sign-on instead.",
     "organizationNotFound": "Organization not found",
     "monitorNotFound": "Monitor not found",
     "monitorPausedNoCheck": "The monitor is paused. Resume it to run a check.",

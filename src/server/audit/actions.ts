@@ -59,6 +59,7 @@ export const AUTH_ACTIONS = [
   'auth.backup_codes_regenerated',
   'auth.sso_login',
   'auth.sso_login_failed',
+  'auth.sso_group_denied',
 ] as const
 
 /** Verbs beyond create/update/delete, named after what the user did. */
@@ -83,6 +84,11 @@ export const SPECIAL_ACTIONS = [
   'member.role_changed',
   'member.removed',
   'member.ownership_transferred',
+  'member.added',
+  'member.sync_skipped',
+  'user.superadmin_granted',
+  'user.superadmin_revoked',
+  'user.sync_skipped',
   'instance_settings.updated',
   'import.completed',
 ] as const

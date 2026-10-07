@@ -45,6 +45,12 @@ export const connectionSchema = z.object({
   allowIdpInitiated: z.boolean().optional(),
   autoProvision: z.boolean().optional(),
   defaultRole: z.enum(ROLES.filter((role) => role !== 'owner') as [string, ...string[]]).optional(),
+  groupClaim: z.string().trim().max(200).optional(),
+  allowedGroups: optionalText,
+  groupRoles: z
+    .array(z.object({ group: z.string().trim().min(1).max(200), role: z.enum(ROLES) }))
+    .max(100)
+    .optional(),
 })
 
 /** GET /api/orgs/:orgId/sso/connections — the organization's connections (`sso:read`). */

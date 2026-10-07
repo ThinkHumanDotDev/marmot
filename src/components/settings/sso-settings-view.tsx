@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, Copy, Globe, KeyRound, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { Check, Copy, Globe, KeyRound, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -104,6 +104,9 @@ const emptyForm = (slugPrefix: string): SsoConnectionInput => ({
   allowIdpInitiated: false,
   autoProvision: true,
   defaultRole: 'member',
+  groupClaim: '',
+  allowedGroups: '',
+  groupRoles: [],
 })
 
 const toForm = (row: SsoConnectionRow): SsoConnectionInput => ({
@@ -122,6 +125,9 @@ const toForm = (row: SsoConnectionRow): SsoConnectionInput => ({
   allowIdpInitiated: row.allowIdpInitiated,
   autoProvision: row.autoProvision,
   defaultRole: row.defaultRole === 'owner' ? 'member' : row.defaultRole,
+  groupClaim: row.groupClaim ?? '',
+  allowedGroups: row.allowedGroups ?? '',
+  groupRoles: row.groupRoles,
 })
 
 /**
@@ -162,7 +168,12 @@ export function SsoSettingsView({
   const [busy, setBusy] = React.useState<string | null>(null)
   const [newDomain, setNewDomain] = React.useState('')
   const [metadataUrl, setMetadataUrl] = React.useState('')
-  const ids = { domain: React.useId(), metadata: React.useId() }
+  const ids = {
+    domain: React.useId(),
+    metadata: React.useId(),
+    groupClaim: React.useId(),
+    allowedGroups: React.useId(),
+  }
 
   const upsert = (row: SsoConnectionRow) =>
     setConnections((current) =>
@@ -187,7 +198,10 @@ export function SsoSettingsView({
       'save',
       async () => {
         if (!editing) return
-        const data = { ...editing.form }
+        const data = {
+          ...editing.form,
+          groupRoles: (editing.form.groupRoles ?? []).filter((rule) => rule.group.trim()),
+        }
         if (!data.clientSecret) delete data.clientSecret
         const { doc } = editing.row
           ? await ssoApi.connections.update(orgId, editing.row.id, data)
@@ -685,6 +699,100 @@ export function SsoSettingsView({
                   checked={form.autoProvision !== false}
                   onCheckedChange={(v) => setForm({ autoProvision: v })}
                 />
+              </div>
+
+              <div className="flex flex-col gap-4 rounded-md border p-3">
+                <div>
+                  <Label>{t('form.groups.title')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('form.groups.hint')}</p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor={ids.groupClaim}>{t('form.groups.claim')}</Label>
+                    <Input
+                      id={ids.groupClaim}
+                      value={form.groupClaim ?? ''}
+                      onChange={(e) => setForm({ groupClaim: e.target.value })}
+                      placeholder="groups"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor={ids.allowedGroups}>{t('form.groups.allowed')}</Label>
+                    <Input
+                      id={ids.allowedGroups}
+                      value={form.allowedGroups ?? ''}
+                      onChange={(e) => setForm({ allowedGroups: e.target.value })}
+                      placeholder={t('form.groups.allowedPlaceholder')}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>{t('form.groups.roles')}</Label>
+                  {(form.groupRoles ?? []).map((rule, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Input
+                        aria-label={t('form.groups.group')}
+                        value={rule.group}
+                        placeholder={t('form.groups.groupPlaceholder')}
+                        onChange={(e) =>
+                          setForm({
+                            groupRoles: (form.groupRoles ?? []).map((r, i) =>
+                              i === index ? { ...r, group: e.target.value } : r,
+                            ),
+                          })
+                        }
+                      />
+                      <Select
+                        value={rule.role}
+                        onValueChange={(role) =>
+                          setForm({
+                            groupRoles: (form.groupRoles ?? []).map((r, i) =>
+                              i === index ? { ...r, role: role as typeof rule.role } : r,
+                            ),
+                          })
+                        }
+                      >
+                        <SelectTrigger className="w-36" aria-label={t('form.groups.role')}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="owner">{t('roles.owner')}</SelectItem>
+                          <SelectItem value="admin">{t('roles.admin')}</SelectItem>
+                          <SelectItem value="member">{t('roles.member')}</SelectItem>
+                          <SelectItem value="viewer">{t('roles.viewer')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t('form.groups.removeRule')}
+                        onClick={() =>
+                          setForm({
+                            groupRoles: (form.groupRoles ?? []).filter((_, i) => i !== index),
+                          })
+                        }
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setForm({
+                          groupRoles: [...(form.groupRoles ?? []), { group: '', role: 'member' }],
+                        })
+                      }
+                    >
+                      <Plus /> {t('form.groups.addRule')}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{t('form.groups.rolesHint')}</p>
+                </div>
               </div>
 
               <DialogFooter>
