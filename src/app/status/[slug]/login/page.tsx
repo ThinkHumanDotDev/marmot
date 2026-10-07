@@ -7,6 +7,7 @@ import { getTranslations } from 'next-intl/server'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getStatusPageLocale } from '@/i18n/server'
+import { isEventsReturnPath } from '@/lib/status-page-events'
 import { isProtectedPage } from '@/server/status-pages/access'
 import { statusPageBasePath } from '@/server/status-pages/urls'
 
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic'
 
 type PageProps = {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; next?: string }>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -33,16 +34,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 /**
  * `/status/:slug/login` (and `/login` on the page's custom domains): the password form of a
  * protected page. A plain HTML form posting to `POST /api/status-pages/:slug/access`, so it works
- * without JavaScript; the route sets the access cookie and redirects back to the page.
+ * without JavaScript; the route sets the access cookie and redirects back to the page, or to the
+ * history page or permalink named by `?next=` (#107).
  */
 export default async function StatusPageLogin({ params, searchParams }: PageProps) {
   const { slug } = await params
-  const { error } = await searchParams
+  const { error, next: requested } = await searchParams
+  // Where to go after signing in: the history or a permalink, else the page itself.
+  const next = isEventsReturnPath(requested) ? requested : null
   const page = await loadPublishedPage(slug)
   if (!page) notFound()
 
   const base = statusPageBasePath(page, await headers())
-  if (!isProtectedPage(page) || (await loadPageAccess(slug))?.allowed) redirect(base || '/')
+  if (!isProtectedPage(page) || (await loadPageAccess(slug))?.allowed) {
+    redirect(next ? `${base}${next}` : base || '/')
+  }
 
   const locale = await getStatusPageLocale(page)
   const t = await getTranslations({ locale, namespace: 'statusPages.access' })
@@ -78,6 +84,7 @@ export default async function StatusPageLogin({ params, searchParams }: PageProp
         action={`/api/status-pages/${encodeURIComponent(page.slug)}/access`}
         className="flex flex-col gap-3"
       >
+        {next && <input type="hidden" name="next" value={next} />}
         {message && (
           <p
             role="alert"

@@ -99,6 +99,7 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'showValues',
   'autoRefreshInterval',
   'maintenanceVisibilityHours',
+  'pastIncidentsDays',
   'footerText',
   'customCSS',
   'googleAnalyticsId',

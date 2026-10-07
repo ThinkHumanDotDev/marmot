@@ -13,7 +13,7 @@ const protectedSlug = `e2e-protected-${run}`
 const protectedPassword = 'e2e page password'
 
 const created: { collection: string; id: DocId }[] = []
-const seeded: { org?: DocId; page?: DocId; component?: string } = {}
+const seeded: { org?: DocId; page?: DocId; component?: string; protectedPage?: DocId } = {}
 
 test.use({ storageState: ANONYMOUS })
 
@@ -97,7 +97,7 @@ test.describe('Status pages', () => {
       }),
     )
 
-    track(
+    const internal = track(
       'status-pages',
       await adminApi.create('status-pages', {
         organization: org.id,
@@ -110,6 +110,7 @@ test.describe('Status pages', () => {
         groups: [{ name: 'Internal services', monitors: [{ monitor: monitor.id }] }],
       }),
     )
+    seeded.protectedPage = internal.id
   })
 
   test.afterAll(async ({ adminApi }) => {
@@ -185,6 +186,34 @@ test.describe('Status pages', () => {
     await expect(page.locator('[data-monitor-impact]')).toHaveCount(0)
   })
 
+  test('lists past incidents, the history and incident permalinks (#107)', async ({ page }) => {
+    await page.goto(`/status/${publishedSlug}`)
+    await expect(page.getByRole('heading', { level: 2, name: 'Past incidents' })).toBeVisible()
+    await page.getByRole('link', { name: 'View history' }).click()
+    await expect(page).toHaveURL(new RegExp(`/status/${publishedSlug}/events$`))
+    await expect(page.getByRole('heading', { level: 1, name: 'History' })).toBeVisible()
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+
+    await page.getByRole('link', { name: 'E2E planned maintenance' }).click()
+    await expect(page).toHaveURL(
+      new RegExp(`/status/${publishedSlug}/events/incident/[0-9a-z]{8}$`),
+    )
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'E2E planned maintenance' }),
+    ).toBeVisible()
+    await expect(page.locator('strong', { hasText: 'upgrading' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Copy link' })).toBeVisible()
+    await expect(page).toHaveTitle('E2E planned maintenance · E2E Acme Status')
+    await expect(page.locator('meta[property="og:type"]')).toHaveAttribute('content', 'article')
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+
+    // No maintenance windows on this page; unknown permalinks are 404s.
+    await page.goto(`/status/${publishedSlug}/events?type=maintenance`)
+    await expect(page.locator('[data-history-empty]')).toBeVisible()
+    const missing = await page.goto(`/status/${publishedSlug}/events/incident/zzzzzzzz`)
+    expect(missing?.status()).toBe(404)
+  })
+
   test('serves the public API, RSS feed and manifest', async ({ request }) => {
     const api = await request.get(`/api/status-pages/${publishedSlug}/public`)
     expect(api.ok()).toBeTruthy()
@@ -242,5 +271,35 @@ test.describe('Status pages', () => {
     expect(api.status()).toBe(200)
     expect(api.headers()['cache-control']).toBe('private, no-store')
     expect((await page.request.get(`/status/${protectedSlug}/rss`)).status()).toBe(200)
+  })
+
+  test('password-protected permalink: back to the incident after signing in', async ({
+    page,
+    request,
+    adminApi,
+  }) => {
+    const incident = await adminApi.create<{ id: DocId; publicId: string }>('incidents', {
+      statusPage: seeded.protectedPage,
+      organization: seeded.org,
+      title: 'E2E private incident',
+      updates: [{ status: 'investigating', message: 'Only the team sees this.' }],
+    })
+    created.unshift({ collection: 'incidents', id: incident.id })
+    const path = `/status/${protectedSlug}/events/incident/${incident.publicId}`
+
+    expect(
+      (
+        await request.get(`/api/status-pages/${protectedSlug}/events/incident/${incident.publicId}`)
+      ).status(),
+    ).toBe(401)
+    await page.goto(path)
+    await expect(page).toHaveURL(new RegExp(`/status/${protectedSlug}/login\\?next=`))
+    await expect(page.getByText('E2E private incident')).toHaveCount(0)
+    await page.getByLabel('Password').fill(protectedPassword)
+    await page.getByRole('button', { name: 'View status page' }).click()
+    await expect(page).toHaveURL(new RegExp(`${path}$`))
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'E2E private incident' }),
+    ).toBeVisible()
   })
 })

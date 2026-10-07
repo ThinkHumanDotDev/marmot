@@ -129,6 +129,8 @@ export const adminTranslations = {
       },
       incidents: {
         organizationDescription: 'Derived from the status page.',
+        publicIdDescription:
+          'Short id of the public permalink (/events/incident/<id>). Assigned automatically.',
         contentDescription: 'Markdown: paragraphs, **bold**, _italics_, `code` and links.',
         pinnedDescription: 'Pinned incidents are shown above the monitor groups.',
         activeDescription:
@@ -176,6 +178,8 @@ export const adminTranslations = {
         description:
           'Concrete windows of maintenances with their state and public update timeline. Managed by the server.',
         startDescription: 'Planned start of this window.',
+        publicIdDescription:
+          'Short id of the public permalink (/events/maintenance/<id>). Assigned automatically.',
         endDescription: 'Planned end; empty for manual maintenances.',
         remindersSentDescription: 'Reminder offsets (minutes) already sent or skipped.',
         updatesDescription: 'Public timeline: one entry per state change or posted update.',
@@ -322,6 +326,8 @@ export const adminTranslations = {
         customUrlDescription: 'Link visitors to this URL instead.',
         maintenanceVisibilityHoursDescription:
           'Hours a completed or cancelled maintenance window stays on the page.',
+        pastIncidentsDaysDescription:
+          'Days of past incidents listed on the page, grouped by day (0 hides the list). Older ones are on the history page.',
         homepageUrlDescription: 'Where the logo and title link to (http or https).',
         contactUrlDescription:
           'Contact link in the page header: an http(s) URL or mailto: address.',
