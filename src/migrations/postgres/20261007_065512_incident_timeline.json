@@ -4878,6 +4878,13 @@
           "notNull": false,
           "default": 300
         },
+        "maintenance_visibility_hours": {
+          "name": "maintenance_visibility_hours",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 24
+        },
         "footer_text": {
           "name": "footer_text",
           "type": "varchar",
@@ -5806,6 +5813,89 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.maintenance_reminders": {
+      "name": "maintenance_reminders",
+      "schema": "",
+      "columns": {
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "enum_maintenance_reminders",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "maintenance_reminders_order_idx": {
+          "name": "maintenance_reminders_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "maintenance_reminders_parent_idx": {
+          "name": "maintenance_reminders_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "maintenance_reminders_parent_fk": {
+          "name": "maintenance_reminders_parent_fk",
+          "tableFrom": "maintenance_reminders",
+          "tableTo": "maintenance",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.maintenance": {
       "name": "maintenance",
       "schema": "",
@@ -5910,6 +6000,20 @@
           "primaryKey": false,
           "notNull": false,
           "default": 60
+        },
+        "auto_start": {
+          "name": "auto_start",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "auto_complete": {
+          "name": "auto_complete",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
         },
         "updated_at": {
           "name": "updated_at",
@@ -6210,8 +6314,91 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.templates_components": {
-      "name": "templates_components",
+    "public.maintenance_occurrences_reminders_sent": {
+      "name": "maintenance_occurrences_reminders_sent",
+      "schema": "",
+      "columns": {
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "enum_maintenance_occurrences_reminders_sent",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "maintenance_occurrences_reminders_sent_order_idx": {
+          "name": "maintenance_occurrences_reminders_sent_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "maintenance_occurrences_reminders_sent_parent_idx": {
+          "name": "maintenance_occurrences_reminders_sent_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "maintenance_occurrences_reminders_sent_parent_fk": {
+          "name": "maintenance_occurrences_reminders_sent_parent_fk",
+          "tableFrom": "maintenance_occurrences_reminders_sent",
+          "tableTo": "maintenance_occurrences",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.maintenance_occurrences_updates": {
+      "name": "maintenance_occurrences_updates",
       "schema": "",
       "columns": {
         "_order": {
@@ -6232,24 +6419,29 @@
           "primaryKey": true,
           "notNull": true
         },
-        "component": {
-          "name": "component",
+        "status": {
+          "name": "status",
+          "type": "enum_maintenance_occurrences_updates_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "posted_at": {
+          "name": "posted_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
-        },
-        "impact": {
-          "name": "impact",
-          "type": "enum_templates_components_impact",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'major_outage'"
         }
       },
       "indexes": {
-        "templates_components_order_idx": {
-          "name": "templates_components_order_idx",
+        "maintenance_occurrences_updates_order_idx": {
+          "name": "maintenance_occurrences_updates_order_idx",
           "columns": [
             {
               "expression": "_order",
@@ -6263,8 +6455,8 @@
           "method": "btree",
           "with": {}
         },
-        "templates_components_parent_id_idx": {
-          "name": "templates_components_parent_id_idx",
+        "maintenance_occurrences_updates_parent_id_idx": {
+          "name": "maintenance_occurrences_updates_parent_id_idx",
           "columns": [
             {
               "expression": "_parent_id",
@@ -6280,10 +6472,10 @@
         }
       },
       "foreignKeys": {
-        "templates_components_parent_id_fk": {
-          "name": "templates_components_parent_id_fk",
-          "tableFrom": "templates_components",
-          "tableTo": "templates",
+        "maintenance_occurrences_updates_parent_id_fk": {
+          "name": "maintenance_occurrences_updates_parent_id_fk",
+          "tableFrom": "maintenance_occurrences_updates",
+          "tableTo": "maintenance_occurrences",
           "columnsFrom": [
             "_parent_id"
           ],
@@ -6300,8 +6492,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.templates": {
-      "name": "templates",
+    "public.maintenance_occurrences": {
+      "name": "maintenance_occurrences",
       "schema": "",
       "columns": {
         "id": {
@@ -6316,55 +6508,47 @@
           "primaryKey": false,
           "notNull": true
         },
-        "name": {
-          "name": "name",
-          "type": "varchar",
+        "maintenance_id": {
+          "name": "maintenance_id",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "kind": {
-          "name": "kind",
-          "type": "enum_templates_kind",
+        "start": {
+          "name": "start",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end": {
+          "name": "end",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "enum_maintenance_occurrences_state",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'incident'"
+          "default": "'scheduled'"
         },
-        "title": {
-          "name": "title",
-          "type": "varchar",
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp(3) with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "body": {
-          "name": "body",
-          "type": "varchar",
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp(3) with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "status": {
-          "name": "status",
-          "type": "enum_templates_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "impact": {
-          "name": "impact",
-          "type": "enum_templates_impact",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "duration": {
-          "name": "duration",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status_page_id": {
-          "name": "status_page_id",
-          "type": "integer",
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp(3) with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -6384,8 +6568,8 @@
         }
       },
       "indexes": {
-        "templates_organization_idx": {
-          "name": "templates_organization_idx",
+        "maintenance_occurrences_organization_idx": {
+          "name": "maintenance_occurrences_organization_idx",
           "columns": [
             {
               "expression": "organization_id",
@@ -6399,11 +6583,11 @@
           "method": "btree",
           "with": {}
         },
-        "templates_status_page_idx": {
-          "name": "templates_status_page_idx",
+        "maintenance_occurrences_maintenance_idx": {
+          "name": "maintenance_occurrences_maintenance_idx",
           "columns": [
             {
-              "expression": "status_page_id",
+              "expression": "maintenance_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -6414,8 +6598,38 @@
           "method": "btree",
           "with": {}
         },
-        "templates_updated_at_idx": {
-          "name": "templates_updated_at_idx",
+        "maintenance_occurrences_start_idx": {
+          "name": "maintenance_occurrences_start_idx",
+          "columns": [
+            {
+              "expression": "start",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "maintenance_occurrences_state_idx": {
+          "name": "maintenance_occurrences_state_idx",
+          "columns": [
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "maintenance_occurrences_updated_at_idx": {
+          "name": "maintenance_occurrences_updated_at_idx",
           "columns": [
             {
               "expression": "updated_at",
@@ -6429,8 +6643,8 @@
           "method": "btree",
           "with": {}
         },
-        "templates_created_at_idx": {
-          "name": "templates_created_at_idx",
+        "maintenance_occurrences_created_at_idx": {
+          "name": "maintenance_occurrences_created_at_idx",
           "columns": [
             {
               "expression": "created_at",
@@ -6444,32 +6658,53 @@
           "method": "btree",
           "with": {}
         },
-        "organization_name_1_idx": {
-          "name": "organization_name_1_idx",
+        "maintenance_start_idx": {
+          "name": "maintenance_start_idx",
           "columns": [
             {
-              "expression": "organization_id",
+              "expression": "maintenance_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "name",
+              "expression": "start",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": true,
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "maintenance_state_idx": {
+          "name": "maintenance_state_idx",
+          "columns": [
+            {
+              "expression": "maintenance_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "templates_organization_id_organizations_id_fk": {
-          "name": "templates_organization_id_organizations_id_fk",
-          "tableFrom": "templates",
+        "maintenance_occurrences_organization_id_organizations_id_fk": {
+          "name": "maintenance_occurrences_organization_id_organizations_id_fk",
+          "tableFrom": "maintenance_occurrences",
           "tableTo": "organizations",
           "columnsFrom": [
             "organization_id"
@@ -6480,12 +6715,12 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
-        "templates_status_page_id_status_pages_id_fk": {
-          "name": "templates_status_page_id_status_pages_id_fk",
-          "tableFrom": "templates",
-          "tableTo": "status_pages",
+        "maintenance_occurrences_maintenance_id_maintenance_id_fk": {
+          "name": "maintenance_occurrences_maintenance_id_maintenance_id_fk",
+          "tableFrom": "maintenance_occurrences",
+          "tableTo": "maintenance",
           "columnsFrom": [
-            "status_page_id"
+            "maintenance_id"
           ],
           "columnsTo": [
             "id"
@@ -7194,8 +7429,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "templates_id": {
-          "name": "templates_id",
+        "maintenance_occurrences_id": {
+          "name": "maintenance_occurrences_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -7559,11 +7794,11 @@
           "method": "btree",
           "with": {}
         },
-        "payload_locked_documents_rels_templates_id_idx": {
-          "name": "payload_locked_documents_rels_templates_id_idx",
+        "payload_locked_documents_rels_maintenance_occurrences_id_idx": {
+          "name": "payload_locked_documents_rels_maintenance_occurrences_id_idx",
           "columns": [
             {
-              "expression": "templates_id",
+              "expression": "maintenance_occurrences_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7879,12 +8114,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "payload_locked_documents_rels_templates_fk": {
-          "name": "payload_locked_documents_rels_templates_fk",
+        "payload_locked_documents_rels_maintenance_occurrences_fk": {
+          "name": "payload_locked_documents_rels_maintenance_occurrences_fk",
           "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "templates",
+          "tableTo": "maintenance_occurrences",
           "columnsFrom": [
-            "templates_id"
+            "maintenance_occurrences_id"
           ],
           "columnsTo": [
             "id"
@@ -8844,6 +9079,21 @@
         "lastDay4"
       ]
     },
+    "public.enum_maintenance_reminders": {
+      "name": "enum_maintenance_reminders",
+      "schema": "public",
+      "values": [
+        "15",
+        "30",
+        "60",
+        "120",
+        "360",
+        "720",
+        "1440",
+        "2880",
+        "10080"
+      ]
+    },
     "public.enum_maintenance_strategy": {
       "name": "enum_maintenance_strategy",
       "schema": "public",
@@ -8867,43 +9117,41 @@
         "unknown"
       ]
     },
-    "public.enum_templates_components_impact": {
-      "name": "enum_templates_components_impact",
+    "public.enum_maintenance_occurrences_reminders_sent": {
+      "name": "enum_maintenance_occurrences_reminders_sent",
       "schema": "public",
       "values": [
-        "operational",
-        "degraded_performance",
-        "partial_outage",
-        "major_outage"
+        "15",
+        "30",
+        "60",
+        "120",
+        "360",
+        "720",
+        "1440",
+        "2880",
+        "10080"
       ]
     },
-    "public.enum_templates_kind": {
-      "name": "enum_templates_kind",
+    "public.enum_maintenance_occurrences_updates_status": {
+      "name": "enum_maintenance_occurrences_updates_status",
       "schema": "public",
       "values": [
-        "incident",
-        "incident-update",
-        "maintenance"
+        "scheduled",
+        "in-progress",
+        "verifying",
+        "completed",
+        "cancelled"
       ]
     },
-    "public.enum_templates_status": {
-      "name": "enum_templates_status",
+    "public.enum_maintenance_occurrences_state": {
+      "name": "enum_maintenance_occurrences_state",
       "schema": "public",
       "values": [
-        "investigating",
-        "identified",
-        "monitoring",
-        "resolved"
-      ]
-    },
-    "public.enum_templates_impact": {
-      "name": "enum_templates_impact",
-      "schema": "public",
-      "values": [
-        "operational",
-        "degraded_performance",
-        "partial_outage",
-        "major_outage"
+        "scheduled",
+        "in-progress",
+        "verifying",
+        "completed",
+        "cancelled"
       ]
     },
     "public.enum_instance_settings_entry_page": {
@@ -8925,6 +9173,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "0d6efd4c-0fbc-4e63-a75f-e67e785e178f",
+  "id": "653ee493-0859-4ff2-a015-51209548bdea",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

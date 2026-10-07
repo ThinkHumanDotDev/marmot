@@ -87,7 +87,7 @@ export interface Config {
     'status-pages': StatusPage;
     incidents: Incident;
     maintenance: Maintenance;
-    templates: Template;
+    'maintenance-occurrences': MaintenanceOccurrence;
     'api-keys': ApiKey;
     'audit-logs': AuditLog;
     'payload-kv': PayloadKv;
@@ -117,7 +117,7 @@ export interface Config {
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
     maintenance: MaintenanceSelect<false> | MaintenanceSelect<true>;
-    templates: TemplatesSelect<false> | TemplatesSelect<true>;
+    'maintenance-occurrences': MaintenanceOccurrencesSelect<false> | MaintenanceOccurrencesSelect<true>;
     'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -758,6 +758,7 @@ export interface StatusPage {
   showPoweredBy?: boolean | null;
   showValues?: boolean | null;
   autoRefreshInterval?: number | null;
+  maintenanceVisibilityHours?: number | null;
   footerText?: string | null;
   customCSS?: string | null;
   googleAnalyticsId?: string | null;
@@ -895,6 +896,9 @@ export interface Maintenance {
     | null;
   cron?: string | null;
   duration?: number | null;
+  autoStart?: boolean | null;
+  autoComplete?: boolean | null;
+  reminders?: ('15' | '30' | '60' | '120' | '360' | '720' | '1440' | '2880' | '10080')[] | null;
   monitors?: (number | Monitor)[] | null;
   statusPages?: (number | StatusPage)[] | null;
   updatedAt: string;
@@ -902,23 +906,24 @@ export interface Maintenance {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "templates".
+ * via the `definition` "maintenance-occurrences".
  */
-export interface Template {
+export interface MaintenanceOccurrence {
   id: number;
   organization: number | Organization;
-  name: string;
-  kind: 'incident' | 'incident-update' | 'maintenance';
-  title?: string | null;
-  body?: string | null;
-  status?: ('investigating' | 'identified' | 'monitoring' | 'resolved') | null;
-  impact?: ('operational' | 'degraded_performance' | 'partial_outage' | 'major_outage') | null;
-  duration?: number | null;
-  statusPage?: (number | null) | StatusPage;
-  components?:
+  maintenance: number | Maintenance;
+  start: string;
+  end?: string | null;
+  state: 'scheduled' | 'in-progress' | 'verifying' | 'completed' | 'cancelled';
+  startedAt?: string | null;
+  completedAt?: string | null;
+  cancelledAt?: string | null;
+  remindersSent?: ('15' | '30' | '60' | '120' | '360' | '720' | '1440' | '2880' | '10080')[] | null;
+  updates?:
     | {
-        component: string;
-        impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
+        status: 'scheduled' | 'in-progress' | 'verifying' | 'completed' | 'cancelled';
+        postedAt: string;
+        message?: string | null;
         id?: string | null;
       }[]
     | null;
@@ -1071,8 +1076,8 @@ export interface PayloadLockedDocument {
         value: number | Maintenance;
       } | null)
     | ({
-        relationTo: 'templates';
-        value: number | Template;
+        relationTo: 'maintenance-occurrences';
+        value: number | MaintenanceOccurrence;
       } | null)
     | ({
         relationTo: 'api-keys';
@@ -1561,6 +1566,7 @@ export interface StatusPagesSelect<T extends boolean = true> {
   showPoweredBy?: T;
   showValues?: T;
   autoRefreshInterval?: T;
+  maintenanceVisibilityHours?: T;
   footerText?: T;
   customCSS?: T;
   googleAnalyticsId?: T;
@@ -1662,6 +1668,9 @@ export interface MaintenanceSelect<T extends boolean = true> {
   daysOfMonth?: T;
   cron?: T;
   duration?: T;
+  autoStart?: T;
+  autoComplete?: T;
+  reminders?: T;
   monitors?: T;
   statusPages?: T;
   updatedAt?: T;
@@ -1669,23 +1678,24 @@ export interface MaintenanceSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "templates_select".
+ * via the `definition` "maintenance-occurrences_select".
  */
-export interface TemplatesSelect<T extends boolean = true> {
+export interface MaintenanceOccurrencesSelect<T extends boolean = true> {
   organization?: T;
-  name?: T;
-  kind?: T;
-  title?: T;
-  body?: T;
-  status?: T;
-  impact?: T;
-  duration?: T;
-  statusPage?: T;
-  components?:
+  maintenance?: T;
+  start?: T;
+  end?: T;
+  state?: T;
+  startedAt?: T;
+  completedAt?: T;
+  cancelledAt?: T;
+  remindersSent?: T;
+  updates?:
     | T
     | {
-        component?: T;
-        impact?: T;
+        status?: T;
+        postedAt?: T;
+        message?: T;
         id?: T;
       };
   updatedAt?: T;

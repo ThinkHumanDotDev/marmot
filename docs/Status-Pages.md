@@ -33,6 +33,7 @@ Two org-scoped collections (`src/collections/StatusPages.ts`, `src/collections/I
 | `showTags`, `showCertificateExpiry`, `showPoweredBy` | Display toggles.                                                               |
 | `showValues`                                         | Default `true`. Off hides uptime % and response times page-wide (HTML + JSON). |
 | `autoRefreshInterval`                                | Seconds between client refreshes of the public API; `0` disables.              |
+| `maintenanceVisibilityHours`                         | Hours a completed or cancelled maintenance window stays on the page (24).      |
 | `customCSS`                                          | Injected into the public page as a `<style>` tag.                              |
 | `googleAnalyticsId`                                  | `G-…` measurement id; the gtag snippet is only emitted when set.               |
 | `domains[].hostname`                                 | Custom hostnames (see below). Unique across all pages.                         |
@@ -182,6 +183,7 @@ pages they also need the page's access cookie or `?pw=` (see below), and answer 
 | `GET /api/status-pages/:slug/public`         | JSON (below); `Cache-Control: public, max-age=30`.                   |
 | `GET /status/:slug/rss`                      | RSS 2.0: one item per incident update and monitors currently down.   |
 | `GET /status/:slug/manifest.json`            | Web app manifest.                                                    |
+| `GET /status/:slug/badge.svg`                | Overall status badge ([below](#status-badge)).                       |
 | `GET /api/status-pages/resolve-domain?host=` | `{ slug }` for a custom hostname (used by the proxy).                |
 | `GET /status/:slug/login`                    | Password form of a protected page.                                   |
 | `POST /api/status-pages/:slug/access`        | Checks the page password and sets the access cookie.                 |
@@ -284,16 +286,32 @@ pages they also need the page's access cookie or `?pw=` (see below), and answer 
     },
   ],
   "maintenance": [
-    // running windows first, then windows starting within 7 days (maintenance.md)
+    // one entry per occurrence: running first, then the next window of each maintenance starting
+    // within 7 days, then windows finished within maintenanceVisibilityHours (Maintenance.md)
     {
-      "id": "7",
+      "id": "41", // occurrence id
+      "maintenanceId": "7",
       "title": "Database upgrade",
       "description": "Expect a few minutes of read-only mode.",
       "strategy": "single", // manual | single | recurring-interval | recurring-weekday | recurring-day-of-month | cron
-      "status": "scheduled", // under-maintenance | scheduled
-      "start": "2026-10-06T02:00:00.000Z", // null for manual windows
-      "end": "2026-10-06T03:00:00.000Z", // null when open-ended
+      "status": "under-maintenance", // under-maintenance | scheduled | completed | cancelled
+      "state": "verifying", // scheduled | in-progress | verifying | completed | cancelled
+      "start": "2026-10-06T02:00:00.000Z", // planned window
+      "end": "2026-10-06T03:00:00.000Z", // null when open-ended (manual)
+      "startedAt": "2026-10-06T02:00:00.000Z",
+      "completedAt": null,
+      "cancelledAt": null,
       "timezone": "Europe/Berlin",
+      "updates": [
+        // newest first; an empty message means an automatic or button transition
+        {
+          "id": "…",
+          "status": "verifying",
+          "message": "Migration done, checking replicas.",
+          "postedAt": "…",
+        },
+        { "id": "…", "status": "in-progress", "message": "", "postedAt": "…" },
+      ],
     },
   ],
   "generatedAt": "2026-10-05T03:00:30.000Z",
@@ -308,14 +326,15 @@ realtime socket is not used on public pages).
 ## Builder
 
 `/{orgSlug}/status-pages` lists the organization's pages; `/{orgSlug}/status-pages/{id}` edits one with
-six tabs: **Settings** (title, slug, description, language once Marmot ships more than one, refresh,
+seven tabs: **Settings** (title, slug, description, language once Marmot ships more than one, refresh,
 custom CSS, analytics id, header links, display toggles, delete), **Theme** (colour mode, preset, colour
 overrides, banner headline, logos and favicon, with a live preview; see [Themes](#themes)), **Groups &
 monitors** (drag-and-drop groups and components with
 `dnd-kit`, static components, per-component public name, description, values toggle, "show URL" / custom
 link, per-group "expanded by default"), **Incidents** (post, edit, pin, resolve, reopen, delete, affected
 components and their impact, [templates](#templates)),
-**Domains** and **Access** (public or password, see below). The header switch publishes/unpublishes.
+**Domains**, **Access** (public or password, see below) and **Share** (the
+[status badge](#status-badge) with Markdown and HTML snippets). The header switch publishes/unpublishes.
 
 Mutations go through route handlers under `/api/orgs/:orgId/status-pages/**`
 (`src/app/api/orgs/[orgId]/status-pages`), which authenticate the Payload session and call the Local API
@@ -341,6 +360,48 @@ still send `{ title, content, style, affectedComponents }`. Posting an update: `
 or impacts, components that are not on the page and future `postedAt` values are refused with `400`;
 viewers get `403`. The Payload REST API (`/api/incidents`) applies the same hooks.
 
+## Status badge
+
+`GET /status/:slug/badge.svg` is one SVG badge with the overall state of the page, for a README or a
+website footer (per-monitor badges are in [Integrations](Integrations.md#badges)). The **Share** tab of the
+editor builds the URL and copies Markdown or HTML snippets that link the badge to the page. On a custom
+domain the same badge is served at `https://status.example.com/badge.svg`.
+
+| State                   | Colour    | When                                                                                       |
+| ----------------------- | --------- | ------------------------------------------------------------------------------------------ |
+| All systems operational | `#66c20a` | Every checked monitor is up.                                                               |
+| Degraded performance    | `#eed202` | An active incident marks a component as degraded performance.                              |
+| Partial outage          | `#f8a306` | Some monitors are down, or an incident marks a component as a partial outage.              |
+| Major outage            | `#c2290a` | All monitors are down, or an incident marks a component as a major outage.                 |
+| Under maintenance       | `#1747f5` | A monitor is in maintenance, or a maintenance window attached to the page is running.      |
+| Unknown                 | `#999`    | No monitor has been checked yet, the page is not published, or the visitor may not see it. |
+
+The state is computed from the same data as the page (the components' statuses, the incident impacts and
+the running maintenance, see `badgeInput()` / `statusPageBadgeState()` in
+`src/server/status-pages/badge.ts`); an active incident that names no component counts with its declared
+impact. When several apply, the most severe wins
+(major > partial > degraded > maintenance > operational > unknown). A static component with an impact
+also changes its own status (amber or red), which counts towards `overall` exactly as on the page. Only the state is rendered: never
+monitor names, uptime or response times, whatever the page's display settings.
+
+| Parameter | Values                                                      | Default                                                          |
+| --------- | ----------------------------------------------------------- | ---------------------------------------------------------------- |
+| `theme`   | `light`, `dark`                                             | `light`                                                          |
+| `size`    | `sm`, `md`, `lg`, `xl`                                      | `md`                                                             |
+| `variant` | `default` (filled), `outline` (status-coloured border)      | `default`                                                        |
+| `style`   | `flat`, `flat-square`, `plastic`, `for-the-badge`, `social` | none: Marmot's pill (dot + text)                                 |
+| `label`   | any text (≤ 64 characters)                                  | none for the pill; `Status` with `style` (as the monitor badges) |
+
+`theme`, `size` and `variant` apply to the pill; with `style` the shields.io renderer of the monitor
+badges draws a `label | state` badge in the colours above. Unknown parameter values fall back to the
+defaults. Responses are `image/svg+xml` with `Access-Control-Allow-Origin: *` and
+`Cache-Control: public, max-age=<autoRefreshInterval>` (at least 30 s; 300 s when auto-refresh is off).
+Unknown or unpublished slugs answer `404` with an `Unknown` badge and `no-store`. Every request goes
+through one access check (`statusPageBadgeAccess` → `checkStatusPageAccess`): a
+[password-protected](#password-protection) page renders `Unknown` (`200`, `private, no-store`) unless the
+request carries the page's access cookie or `?pw=`, and granted responses of protected pages are
+`private, no-store` too.
+
 ## Password protection
 
 A page's **Access** tab switches it between **Public** (default) and **Password**. Protection applies to
@@ -362,7 +423,8 @@ published pages; signed-in members still preview their pages from the builder.
 - Every public surface checks access through `checkStatusPageAccess`
   (`src/server/status-pages/access.ts`): the HTML page (cookie only), `/api/status-pages/:slug/public`,
   `/rss`, `manifest.json` (linked with `crossorigin="use-credentials"`), badges of monitors that only
-  appear on protected pages, and all of these on custom domains. Without access the machine endpoints
+  appear on protected pages, the page's own `badge.svg` (an `Unknown` badge without access), and all of
+  these on custom domains. Without access the machine endpoints
   answer `401` with `{ "error", "code": "login-required" | "invalid-password" }`.
 - Responses of protected pages carry `Cache-Control: private, no-store` and `X-Robots-Tag: noindex`;
   protected pages are always `noindex`, whatever `searchEngineIndex` says. Without access, the page's
@@ -448,13 +510,13 @@ real state.
 ## Custom domains
 
 A page can be served at the root of its own hostnames (`domains[].hostname`). `src/proxy.ts` (the
-Next.js 16 proxy, formerly middleware) runs for `/`, `/rss`, `/manifest.json` and `/login` only:
+Next.js 16 proxy, formerly middleware) runs for `/`, `/rss`, `/manifest.json`, `/login` and `/badge.svg` only:
 
 1. It reads the visitor's host (`X-Forwarded-Host`, then `Host`) and ignores requests for Marmot's own
    hostname (`NEXT_PUBLIC_SERVER_URL`) or `localhost`.
 2. It asks `GET /api/status-pages/resolve-domain?host=<host>` on the same origin (the response is cached
    for 60 s) and, when a published page lists that host, rewrites the request to
-   `/status/<slug>[/rss|/manifest.json|/login]`.
+   `/status/<slug>[/rss|/manifest.json|/login|/badge.svg]`.
 3. Any failure (lookup error, invalid host, no match) falls through to normal routing, so the proxy can
    never take the main site down.
 
@@ -524,6 +586,10 @@ With another proxy (nginx, Traefik, Cloudflare), terminate TLS there, forward th
   favicon uploads (SVG sanitising, size and format caps, no orphaned media), public payload and manifest.
 - `src/lib/status-page-themes/themes.test.ts` — the colour grammar, CSS generation and preset contrast;
   `src/server/status-pages/svg.test.ts` — the SVG sanitiser.
+- `tests/int/status-page-badge.int.spec.ts` — badge route: each state from monitor statuses and running
+  maintenance, headers, shields style and pill options, no figures in the SVG, 404s.
+  `src/server/status-pages/badge.test.ts` (state precedence, incident impact), `src/server/badges/status-page.test.ts`
+  (renderers) and `src/lib/status-page-badge.test.ts` (embed snippets) are the unit tests.
 - `src/lib/markdown.test.ts` — the Markdown subset and its HTML escaping.
 - `tests/e2e/status-pages.e2e.spec.ts` — seeds an organization, monitor and published page through the
   Local API, visits `/status/<slug>` anonymously, checks title, group, monitor link, incident (including a
