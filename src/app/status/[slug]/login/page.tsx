@@ -30,8 +30,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: page ? t('metaTitle', { title: page.title }) : t('pageTitle'),
     robots: { index: false, follow: false },
-    // The sign-in token in the URL must not leak to other origins through `Referer`.
-    referrer: 'no-referrer',
+    // The sign-in token in the URL must not leak to other origins through `Referer`. Not
+    // `no-referrer`: browsers then send `Origin: null` with the form post, which the access route
+    // refuses as cross-site.
+    referrer: 'same-origin',
   }
 }
 
