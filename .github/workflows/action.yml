@@ -1,0 +1,123 @@
+name: GitHub Action
+
+# The Marmot GitHub Action (action/action.yml, docs/GitHub-Action.md): checks that the committed bundle
+# (action/dist/index.mjs) matches its sources, and runs the action as a workflow would, against a mocked
+# management API (tests/action/mock-api.mjs). The logic itself is unit-tested in src/action/*.test.ts.
+
+on:
+  pull_request:
+    paths:
+      - action/**
+      - src/action/**
+      - src/cli/**
+      - src/lib/**
+      - src/i18n/messages/en.json
+      - scripts/build-action.mjs
+      - tests/action/**
+      - package.json
+      - pnpm-lock.yaml
+      - .github/workflows/action.yml
+  push:
+    branches: [main]
+    paths:
+      - action/**
+      - src/action/**
+      - src/cli/**
+      - src/lib/**
+      - src/i18n/messages/en.json
+      - scripts/build-action.mjs
+      - tests/action/**
+      - package.json
+      - pnpm-lock.yaml
+      - .github/workflows/action.yml
+  workflow_dispatch:
+
+concurrency:
+  group: action-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    name: Bundle is up to date
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:action
+      - name: Compare with the committed bundle
+        run: |
+          if ! git diff --quiet -- action/dist; then
+            git diff --stat -- action/dist
+            echo "::error file=action/dist/index.mjs::The committed action bundle is stale: run pnpm build:action and commit action/dist."
+            exit 1
+          fi
+
+  run:
+    name: Action against a mocked API
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      MARMOT_URL: http://localhost:4010
+      MARMOT_ORG: '1'
+      MARMOT_API_KEY: mk_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Start the mocked API
+        run: |
+          node tests/action/mock-api.mjs 4010 &
+          for i in $(seq 1 20); do curl -fsS http://localhost:4010/health && exit 0; sleep 0.5; done
+          exit 1
+
+      - name: Passing checks
+        id: pass
+        uses: ./action
+        with:
+          monitors: |
+            api
+            website
+      - name: Degraded fails with fail-on-degraded
+        id: degraded
+        continue-on-error: true
+        uses: ./action
+        with:
+          monitors: website
+          fail-on-degraded: 'true'
+      - name: A down monitor with a failed assertion fails
+        id: down
+        continue-on-error: true
+        uses: ./action
+        with:
+          monitors: api, checkout, search
+      - name: Plan without applying
+        id: plan
+        uses: ./action
+        with:
+          mode: apply
+          config: tests/action/marmot.yaml
+          dry-run: 'true'
+
+      - name: Check outcomes and outputs
+        env:
+          PASS: ${{ steps.pass.outcome }} ${{ steps.pass.outputs.result }} ${{ steps.pass.outputs.passed }}
+          DEGRADED: ${{ steps.degraded.outcome }} ${{ steps.degraded.outputs.failed }}
+          DOWN: ${{ steps.down.outcome }} ${{ steps.down.outputs.passed }} ${{ steps.down.outputs.failed }} ${{ steps.down.outputs.skipped }}
+          PLAN: ${{ steps.plan.outcome }} ${{ steps.plan.outputs.changes }} ${{ steps.plan.outputs.dry-run }}
+          PLAN_TEXT: ${{ steps.plan.outputs.plan }}
+        run: |
+          set -e
+          test "$PASS" = "success passed 2" || { echo "::error::pass: $PASS"; exit 1; }
+          test "$DEGRADED" = "failure 1" || { echo "::error::degraded: $DEGRADED"; exit 1; }
+          test "$DOWN" = "failure 1 1 1" || { echo "::error::down: $DOWN"; exit 1; }
+          test "$PLAN" = "success 2 true" || { echo "::error::plan: $PLAN"; exit 1; }
+          grep -q '+ create  status-page' <<< "$PLAN_TEXT" || { echo "::error::plan text: $PLAN_TEXT"; exit 1; }

@@ -204,8 +204,9 @@ file can be committed.
 
 ### GitOps example
 
-Keep `marmot.yaml` in the repository, plan on pull requests with a read key and apply on the main branch
-with a write key:
+On GitHub, the [GitHub Action](GitHub-Action.md) does this in one step (`mode: apply`, a dry run on pull
+requests with the diff in the job summary). With the CLI itself, keep `marmot.yaml` in the repository,
+plan on pull requests with a read key and apply on the main branch with a write key:
 
 ```yaml
 # .github/workflows/monitors.yml
@@ -268,6 +269,6 @@ The CLI added three things to the management API, documented in `/api/openapi.js
 | `src/cli/core/export.ts` | Server state → file.                                                                                   |
 | `src/cli/run.ts`         | Argument parsing and dispatch; `src/cli/commands/*` the commands, `src/cli/marmot.ts` the entry point. |
 
-`src/cli/core` has no Node-specific dependencies besides `fetch`, so the GitHub Action can reuse
-`planMonitors` / `applyPlan` directly. The CLI's messages are in the `cli` namespace of
-`src/i18n/messages/en.json`.
+`src/cli/core` has no Node-specific dependencies besides `fetch`, so the [GitHub Action](GitHub-Action.md)
+(`src/action/`) reuses `planMonitors` / `applyPlan` directly. The CLI's messages are in the `cli` namespace
+of `src/i18n/messages/en.json`.
