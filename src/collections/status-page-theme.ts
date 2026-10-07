@@ -14,6 +14,7 @@ import {
   THEME_COLOR_TOKENS,
   THEME_PRESET_IDS,
 } from '@/lib/status-page-themes'
+import { userErrorText } from '@/server/request-locale'
 
 export const BANNER_TEXT_MAX_LENGTH = 140
 
@@ -37,10 +38,10 @@ export const statusPageThemeFields: Field[] = [
     type: 'text',
     defaultValue: DEFAULT_THEME_PRESET,
     // Plain text (not a select) so contributors can add presets without a migration.
-    validate: (value: unknown) =>
+    validate: (value: unknown, { req }: { req: { user?: unknown } }) =>
       value == null || value === '' || isThemePresetId(value)
         ? true
-        : `Unknown theme preset. Use one of: ${THEME_PRESET_IDS.join(', ')}.`,
+        : userErrorText(req, 'themePresetUnknown', { presets: THEME_PRESET_IDS.join(', ') }),
     admin: { description: adminT('marmot:statusPages:themePresetDescription') },
   },
   {

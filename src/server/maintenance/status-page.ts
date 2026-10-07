@@ -75,6 +75,9 @@ export async function getActiveMaintenanceForStatusPage(
 
   return items.sort((a, b) => {
     if (a.status !== b.status) return a.status === 'under-maintenance' ? -1 : 1
-    return (a.start ?? '').localeCompare(b.start ?? '')
+    // ISO timestamps: code-unit order is chronological and the same on every server.
+    const aStart = a.start ?? ''
+    const bStart = b.start ?? ''
+    return aStart < bStart ? -1 : aStart > bStart ? 1 : 0
   })
 }

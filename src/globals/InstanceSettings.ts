@@ -4,6 +4,8 @@ import { authenticated, superadminOnly } from '@/access/org-scoped'
 import { isSuperadmin } from '@/access/permissions'
 import { env } from '@/env'
 import { DEFAULT_EXPIRY_NOTIFY_DAYS, resetInstanceSettingsCache } from '@/server/settings'
+import { adminGroup } from '@/i18n/admin'
+import { adminT } from '@/i18n/admin'
 
 const superadminField: FieldAccess = ({ req }) => isSuperadmin(req.user)
 
@@ -20,9 +22,9 @@ export type EntryPage = (typeof ENTRY_PAGES)[number]
  */
 export const InstanceSettings: GlobalConfig = {
   slug: INSTANCE_SETTINGS_SLUG,
-  label: 'Instance settings',
+  label: adminT('marmot:labels:instanceSettings'),
   admin: {
-    group: 'System',
+    group: adminGroup('system'),
   },
   access: {
     read: authenticated,
@@ -60,8 +62,8 @@ export const InstanceSettings: GlobalConfig = {
       type: 'select',
       defaultValue: 'dashboard',
       options: [
-        { label: 'Dashboard', value: 'dashboard' },
-        { label: 'Status page', value: 'status-page' },
+        { label: adminT('marmot:labels:dashboard'), value: 'dashboard' },
+        { label: adminT('marmot:labels:statusPage'), value: 'status-page' },
       ],
       admin: { description: 'What visitors of the root URL see.' },
     },
@@ -107,7 +109,7 @@ export const InstanceSettings: GlobalConfig = {
     },
     {
       type: 'collapsible',
-      label: 'Third-party API keys',
+      label: adminT('marmot:labels:thirdPartyApiKeys'),
       fields: [
         {
           name: 'steamApiKey',

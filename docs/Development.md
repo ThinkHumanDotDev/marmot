@@ -160,7 +160,28 @@ key fails `pnpm typecheck`, and `tests/int/i18n.int.spec.ts` checks that every c
    is not bundled into the browser), so API responses stay stable.
 7. The maintenance schema takes a message map instead of a resolver
    (`createMaintenanceFormSchema(messages)`): the handlers use the English defaults, the form passes
-   `t(…)` values built in a `useMemo`.
+   `t(…)` values built in a `useMemo`. Validators shared with the server take a message function the
+   same way (`validateOrganizationSlug(value, message)` with `errors.slug*`).
+8. ICU syntax characters in a message are quoted with apostrophes: `'{{' monitor.name '}}'` prints
+   `{{ monitor.name }}`, `'<'token'>'` prints `<token>` (a bare `<…>` is read as a rich-text tag).
+
+### Literal text lint rule
+
+`pnpm lint` runs `marmot/no-literal-jsx-text` (`eslint-rules/no-literal-jsx-text.mjs`) on
+`src/app/**/*.tsx` and `src/components/**/*.tsx` (not `components/ui`, not the Payload admin). It reports
+JSX text with letters, string literals rendered as children (`{busy ? 'Saving…' : t('save')}`) and
+literal `placeholder`, `title`, `alt`, `aria-label`, `label` and `description` props. It lets through
+text without letters, text inside `<code>`, `<pre>`, `<kbd>` and `<samp>`, technical values (URLs,
+hostnames, paths, identifiers such as `my-node`, JSON and markup) and the names in its `allow` option
+(`Marmot`, the `Aa` font specimen). An example value that still trips it gets a disable comment that says why:
+
+```tsx
+// eslint-disable-next-line marmot/no-literal-jsx-text -- example value, not prose
+placeholder = 'read write'
+```
+
+It does not see strings built outside JSX (a `const label = 'Save'` passed down later); those are caught
+in review.
 
 ### Server-side strings
 
@@ -182,13 +203,38 @@ Marmot user. `src/server/i18n.ts` has the helpers:
   Payload REST, logs and tests see the same thing; `withErrors` re-renders it in the request locale
   (user `language` → cookie → `Accept-Language`). Return-style helpers: `unauthorized(request)`,
   `forbidden(request)`, `localizedError(request, key, status)`. The key is the stable identifier.
+- Route helpers with their own response shape (`jsonError` in `src/server/monitors/http.ts`,
+  `notifications/api.ts`, `status-pages/http.ts`, `billing/http.ts`) keep their shape and take the
+  text from `errorText(request, 'statusPageNotFound')` (`src/server/request-locale.ts`). Their
+  `authenticate` helpers call `rememberRequestUser`, so the user's `language` wins over the headers;
+  `payloadError(error, request)`, `errorResponse(error, request)` and `errorMessage(error, request)`
+  re-render `apiError`s thrown further down.
+- Collection hooks throw `ValidationError`s with `userErrorText(req, key)`: route handlers run the
+  Local API as the request user, so the field message reaches the client in that user's language.
+  Field `validate` functions do the same with `userLocale(req.user)`.
+- Notification payloads: words a provider adds (embed titles, field names, card headings) come from
+  `providerText(locale)('serviceName')` (`notifications.messages.providers.*`); `timeLine(heartbeat,
+locale)` renders `Time: …`. The provider form (labels, descriptions, option labels) comes from
+  `notifications.providers.<name>`; `describeNotificationProviders(locale)` applies it, and
+  `descriptors-i18n.test.ts` checks that the English catalogue matches every provider's `fieldMeta`.
+- Import reports: the planners take an `ImportText` (`importText(locale)`, `importExport.messages.*`)
+  and `applyImportPlan` a `locale`; the default is English.
+
+Stays English on purpose: zod messages of the API schemas (`monitorFormSchema` and friends; the forms
+build translated schemas), the outbound guard's `Blocked: … (MONITOR_…)` diagnostics (matched by
+`findBlockedMessage`), delivery errors and heartbeat messages (stored data), the push endpoint's Kuma
+responses, badge SVG text, RSS dates (RFC 822) and machine endpoints with shared caches
+(`/api/status-pages/resolve-domain`).
 
 The English catalogue reproduces the previous hard-coded text byte for byte; keep it that way when
 moving more strings (provider payload tests and `tests/int/i18n-server.int.spec.ts` check it).
 
 Payload admin labels and descriptions use `adminT('marmot:<collection>:<field>Description')` with the
 text in `src/i18n/admin.ts` (Payload's own `{{var}}` placeholders, not ICU). Function descriptions are
-not emitted into `src/payload-types.ts`, so the generated types carry no field JSDoc.
+not emitted into `src/payload-types.ts`, so the generated types carry no field JSDoc. Select options
+that are words use `adminT('marmot:labels:…')` (product names such as `PostgreSQL` stay literal), and
+sidebar groups use `admin.group: adminGroup('monitoring')`, which builds Payload's per-language map from
+the same catalogue.
 
 ### Locale resolution
 
@@ -204,7 +250,8 @@ it) → `Accept-Language` matched by base language → `defaultLocale`. Public s
    `src/i18n/locales.ts`. The language picker in **Settings → Account** and the status page builder
    appear automatically once more than one locale exists.
 3. For the Payload admin, add the matching pack from `@payloadcms/translations/languages/<locale>` and
-   translate the `marmot:` keys in `src/i18n/admin.ts`.
+   translate the `marmot:` keys in `src/i18n/admin.ts` (including `groups`, `labels` and the
+   maintenance option maps).
 4. Run `pnpm check`: the typecheck and the catalogue test fail on missing keys.
 
 ## Migrations

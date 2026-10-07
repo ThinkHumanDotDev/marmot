@@ -777,7 +777,8 @@
         "back": "Back",
         "passwordAgain": "Enter your password again.",
         "invalidCode": "That code is not valid."
-      }
+      },
+      "organizationSso": "Sign in with your organization's SSO"
     },
     "sso": {
       "continueWith": "Continue with {provider}",
@@ -832,6 +833,41 @@
       "ready": "Marmot is ready",
       "alreadyDone": "Setup has already been completed. Please sign in.",
       "failed": "Could not complete setup."
+    },
+    "ssoErrors": {
+      "provider_unknown": "This sign-in method is not configured on this server.",
+      "state_mismatch": "Your sign-in session expired or was tampered with. Please try again.",
+      "access_denied": "The identity provider refused the sign-in request.",
+      "exchange_failed": "Single sign-on failed. Please try again or contact your administrator.",
+      "email_missing": "Your identity provider did not share an email address, which is required.",
+      "email_unverified": "An account with your email already exists but your identity provider has not verified it.",
+      "provisioning_disabled": "No account exists for your identity and automatic signup is disabled.",
+      "account_in_use": "This identity is already linked to another account.",
+      "not_signed_in": "Sign in first to link another account.",
+      "signup_disabled": "Signup is disabled on this server. Ask an administrator for an invitation.",
+      "oidc_disabled": "Single sign-on is not configured on this server.",
+      "oidc_state": "Your sign-in session expired or was tampered with. Please try again.",
+      "oidc_denied": "The identity provider refused the sign-in request.",
+      "oidc_failed": "Single sign-on failed. Please try again or contact your administrator."
+    },
+    "ssoLookup": {
+      "pageTitle": "Sign in with SSO",
+      "title": "Sign in with your organization",
+      "description": "Use the identity provider your organization set up for Marmot.",
+      "backToSignIn": "Back to sign in",
+      "several": "{organization} offers several ways to sign in:",
+      "continueWith": "Continue with {connection}",
+      "workEmail": "Work email",
+      "organization": "Organization",
+      "emailPlaceholder": "you@company.com",
+      "organizationPlaceholder": "organization-slug",
+      "submit": "Continue",
+      "submitting": "Looking up…",
+      "useOrganization": "Use the organization name instead",
+      "useEmail": "Use your work email instead",
+      "noSsoForEmail": "No single sign-on is set up for that email domain. Sign in with your password, or ask your administrator.",
+      "noSsoForOrganization": "No single sign-on is set up for that organization.",
+      "failed": "Could not look that up."
     }
   },
   "settings": {
@@ -1780,11 +1816,947 @@
       "testNotification": "Test notification",
       "testConfigured": "\"{channel}\" is configured correctly.",
       "testing": "Testing",
+      "sentSuccessfully": "Sent Successfully.",
       "monitorNameUnavailable": "Monitor Name not available",
       "timeLine": "Time: {time}",
       "certificateExpiry": "[{name}][{address}] {certType} certificate {commonName} will expire in {count, plural, other {{days} days}}",
       "noCommonName": "(no CN)",
-      "domainExpiry": "[{name}][{address}] Domain name {domain} will expire in {count, plural, other {{days} days}}"
+      "domainExpiry": "[{name}][{address}] Domain name {domain} will expire in {count, plural, other {{days} days}}",
+      "providers": {
+        "alert": "Marmot Alert",
+        "alertFor": "Marmot Alert: {text}",
+        "message": "Marmot Message",
+        "monitorUp": "Marmot Monitor Up",
+        "monitorDown": "Marmot Monitor Down",
+        "monitorUpNamed": "Marmot Monitor Up {name}",
+        "monitorDownNamed": "Marmot Monitor Down {name}",
+        "monitorUpIcon": "Marmot Monitor ✅ Up",
+        "monitorDownIcon": "Marmot Monitor 🔴 Down",
+        "statusTitle": "Marmot Alert: [{status, select, down {Down} other {UP}}] {name}",
+        "namedUp": "Marmot: {name} up",
+        "namedDown": "Marmot: {name} down",
+        "fromMarmot": "Notification from Marmot",
+        "test": "Test",
+        "notification": "Notification",
+        "generalNotification": "General notification",
+        "isDown": "{name} is down",
+        "isUp": "{name} is up",
+        "isDownLoud": "{name} is DOWN",
+        "isUpLoud": "{name} is UP",
+        "isDownSentence": "{name} is down.",
+        "isUpSentence": "{name} is up.",
+        "wentDown": "{name} went down",
+        "backOnline": "{name} is back online",
+        "yourServiceDown": "Your service {name} went down.",
+        "yourServiceUp": "Your service {name} is up!",
+        "serviceTypeDown": "Service {type} is down.",
+        "serviceTypeUp": "Service {type} is up.",
+        "serviceWentFallback": "Your {name} service went {status, select, down {down.} up {up!} other {unknown}}",
+        "serviceWentTitle": "{name} service went {status, select, down {down.} up {up!} other {unknown}}",
+        "statusWord": "{status, select, down {Down} up {Up} other {unknown}}",
+        "openMonitor": "Open {name}",
+        "visitSite": "Visit site",
+        "visitMonitorUrl": "Visit Monitor URL",
+        "serviceName": "Service Name",
+        "serviceUrl": "Service URL",
+        "serviceType": "Service Type",
+        "wentOffline": "Went Offline",
+        "downtimeDuration": "Downtime Duration",
+        "error": "Error",
+        "time": "Time",
+        "ping": "Ping",
+        "messageField": "Message",
+        "address": "Address",
+        "name": "Name",
+        "description": "Description",
+        "monitor": "Monitor"
+      }
+    },
+    "providers": {
+      "alerta": {
+        "label": "Alerta",
+        "fields": {
+          "apiEndpoint": {
+            "label": "API endpoint"
+          },
+          "apiKey": {
+            "label": "API key"
+          },
+          "environment": {
+            "label": "Environment",
+            "placeholder": "Production"
+          },
+          "alertState": {
+            "label": "Severity when DOWN"
+          },
+          "recoverState": {
+            "label": "Severity when UP"
+          }
+        }
+      },
+      "apprise": {
+        "label": "Apprise",
+        "fields": {
+          "appriseUrl": {
+            "label": "Apprise URL",
+            "description": "One or more Apprise service URLs. The `apprise` binary must be installed on the worker host."
+          },
+          "title": {
+            "label": "Title"
+          }
+        }
+      },
+      "bark": {
+        "label": "Bark",
+        "fields": {
+          "endpoint": {
+            "label": "Bark endpoint",
+            "description": "Server URL including your device key."
+          },
+          "apiVersion": {
+            "label": "API version",
+            "options": {
+              "v1": "v1 (GET)",
+              "v2": "v2 (POST)"
+            }
+          },
+          "group": {
+            "label": "Group"
+          },
+          "sound": {
+            "label": "Sound"
+          }
+        }
+      },
+      "bitrix24": {
+        "label": "Bitrix24",
+        "fields": {
+          "webhookUrl": {
+            "label": "Inbound webhook URL",
+            "description": "Developer resources → Other → Inbound webhook, with the `im` scope."
+          },
+          "userId": {
+            "label": "User ID",
+            "description": "Numeric id of the user to notify."
+          }
+        }
+      },
+      "clicksend": {
+        "label": "ClickSend SMS",
+        "fields": {
+          "login": {
+            "label": "API username"
+          },
+          "password": {
+            "label": "API key"
+          },
+          "toNumber": {
+            "label": "Recipient number"
+          },
+          "senderName": {
+            "label": "Sender name / number",
+            "description": "Optional dedicated number or approved alphanumeric sender id."
+          }
+        }
+      },
+      "dingding": {
+        "label": "DingTalk",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          },
+          "secretKey": {
+            "label": "Signing secret",
+            "description": "Robot security → Sign."
+          },
+          "mentioning": {
+            "label": "Mention",
+            "options": {
+              "nobody": "Don't mention people",
+              "everyone": "Mention @everyone",
+              "specify-mobiles": "Mention mobile numbers",
+              "specify-users": "Mention user IDs"
+            }
+          },
+          "mobileList": {
+            "label": "Mobile numbers",
+            "description": "Comma-separated."
+          },
+          "userList": {
+            "label": "User IDs",
+            "description": "Comma-separated."
+          }
+        }
+      },
+      "discord": {
+        "label": "Discord",
+        "fields": {
+          "webhookUrl": {
+            "label": "Discord webhook URL",
+            "description": "Channel settings → Integrations → Webhooks."
+          },
+          "username": {
+            "label": "Bot display name"
+          },
+          "prefixMessage": {
+            "label": "Prefix custom message",
+            "description": "Sent as plain content above the embed (use it to mention roles).",
+            "placeholder": "Hello @everyone …"
+          },
+          "messageFormat": {
+            "label": "Message format",
+            "options": {
+              "normal": "Embed",
+              "minimalist": "Minimalist",
+              "custom": "Custom template"
+            }
+          },
+          "messageTemplate": {
+            "label": "Message template",
+            "description": "Used when format is \"Custom template\". Supports '{{' monitor.name '}}' placeholders."
+          },
+          "channelType": {
+            "label": "Message type",
+            "options": {
+              "channel": "Send to channel",
+              "createNewForumPost": "Create new forum post",
+              "postToThread": "Post to existing thread"
+            }
+          },
+          "threadId": {
+            "label": "Thread ID",
+            "description": "For \"Post to existing thread\"."
+          },
+          "postName": {
+            "label": "Forum post name",
+            "description": "For \"Create new forum post\"."
+          },
+          "suppressNotifications": {
+            "label": "Suppress push notifications"
+          },
+          "disableUrl": {
+            "label": "Hide the monitor URL in messages"
+          }
+        }
+      },
+      "feishu": {
+        "label": "Feishu / Lark",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          }
+        }
+      },
+      "google-chat": {
+        "label": "Google Chat",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          },
+          "maxRetries": {
+            "label": "Max attempts on rate limit (1–10)",
+            "description": "Retries with a 1–3 minute delay when Google Chat answers HTTP 429."
+          },
+          "useTemplate": {
+            "label": "Use a custom message template"
+          },
+          "template": {
+            "label": "Message template",
+            "description": "Supports '{{' monitor.name '}}', '{{' heartbeat.msg '}}', '{{' status '}}'."
+          }
+        }
+      },
+      "gotify": {
+        "label": "Gotify",
+        "fields": {
+          "serverUrl": {
+            "label": "Server URL"
+          },
+          "appToken": {
+            "label": "Application token"
+          },
+          "priority": {
+            "label": "Priority (0–10)"
+          }
+        }
+      },
+      "grafana-oncall": {
+        "label": "Grafana OnCall",
+        "fields": {
+          "webhookUrl": {
+            "label": "Formatted webhook URL"
+          }
+        }
+      },
+      "heii-oncall": {
+        "label": "Heii On-Call",
+        "fields": {
+          "apiKey": {
+            "label": "API key"
+          },
+          "triggerId": {
+            "label": "Trigger ID",
+            "description": "From the manual trigger URL `https://heiioncall.com/triggers/'<'id'>'/`."
+          }
+        }
+      },
+      "home-assistant": {
+        "label": "Home Assistant",
+        "fields": {
+          "url": {
+            "label": "Home Assistant URL"
+          },
+          "longLivedAccessToken": {
+            "label": "Long-lived access token",
+            "description": "Profile → Security → Long-lived access tokens."
+          },
+          "notificationService": {
+            "label": "Notification service",
+            "description": "The part after `notify.`, e.g. `mobile_app_phone`; `notify` reaches all devices."
+          }
+        }
+      },
+      "line-messaging": {
+        "label": "LINE Messaging API",
+        "fields": {
+          "channelAccessToken": {
+            "label": "Channel access token",
+            "description": "LINE Developers console → Messaging API → Channel access token (long-lived)."
+          },
+          "userId": {
+            "label": "User / group ID",
+            "description": "Recipient user, group or room id (not the display name)."
+          }
+        }
+      },
+      "matrix": {
+        "label": "Matrix",
+        "fields": {
+          "homeserverUrl": {
+            "label": "Homeserver URL"
+          },
+          "internalRoomId": {
+            "label": "Internal room ID",
+            "description": "Room settings → Advanced → Internal room ID."
+          },
+          "accessToken": {
+            "label": "Access token",
+            "description": "Log in with a dedicated bot user and copy its access token."
+          },
+          "useTemplate": {
+            "label": "Use a custom message template"
+          },
+          "template": {
+            "label": "Message template"
+          }
+        }
+      },
+      "mattermost": {
+        "label": "Mattermost",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          },
+          "username": {
+            "label": "Username"
+          },
+          "channel": {
+            "label": "Channel name",
+            "description": "Overrides the webhook default channel."
+          },
+          "iconUrl": {
+            "label": "Icon URL"
+          },
+          "iconEmoji": {
+            "label": "Icon emoji",
+            "description": "One emoji, or two separated by a space: the first for UP, the second for DOWN."
+          }
+        }
+      },
+      "nextcloud-talk": {
+        "label": "Nextcloud Talk",
+        "fields": {
+          "host": {
+            "label": "Nextcloud URL"
+          },
+          "conversationToken": {
+            "label": "Conversation token",
+            "description": "The token in the conversation URL: /call/'<'token'>'."
+          },
+          "botSecret": {
+            "label": "Bot secret",
+            "description": "Shared secret given to `occ talk:bot:install`."
+          },
+          "sendSilentUp": {
+            "label": "Send UP messages silently"
+          },
+          "sendSilentDown": {
+            "label": "Send DOWN messages silently"
+          }
+        }
+      },
+      "ntfy": {
+        "label": "ntfy",
+        "fields": {
+          "serverUrl": {
+            "label": "Server URL"
+          },
+          "topic": {
+            "label": "Topic"
+          },
+          "priority": {
+            "label": "Priority (1–5)",
+            "description": "5 is urgent; DOWN alerts default to priority + 1."
+          },
+          "priorityDown": {
+            "label": "Priority for DOWN alerts (1–5)"
+          },
+          "authMethod": {
+            "label": "Authentication",
+            "options": {
+              "none": "None",
+              "usernamePassword": "Username & password",
+              "accessToken": "Access token"
+            }
+          },
+          "username": {
+            "label": "Username"
+          },
+          "password": {
+            "label": "Password"
+          },
+          "accessToken": {
+            "label": "Access token"
+          },
+          "icon": {
+            "label": "Icon URL"
+          }
+        }
+      },
+      "onebot": {
+        "label": "OneBot",
+        "fields": {
+          "httpAddr": {
+            "label": "HTTP API address",
+            "description": "OneBot HTTP endpoint; `http://` is assumed when no scheme is given."
+          },
+          "accessToken": {
+            "label": "Access token"
+          },
+          "msgType": {
+            "label": "Message type",
+            "options": {
+              "group": "Group",
+              "private": "Private"
+            }
+          },
+          "receiverId": {
+            "label": "Group ID / QQ number"
+          }
+        }
+      },
+      "opsgenie": {
+        "label": "Opsgenie",
+        "fields": {
+          "region": {
+            "label": "Region",
+            "options": {
+              "us": "US (default)",
+              "eu": "EU"
+            }
+          },
+          "apiKey": {
+            "label": "API key",
+            "description": "Teams → Integrations → API."
+          },
+          "priority": {
+            "label": "Priority (1–5)",
+            "description": "P1 is critical, P5 informational."
+          }
+        }
+      },
+      "pagerduty": {
+        "label": "PagerDuty",
+        "fields": {
+          "integrationKey": {
+            "label": "Integration key",
+            "description": "Service → Integrations → Events API v2 routing key."
+          },
+          "integrationUrl": {
+            "label": "Integration URL"
+          },
+          "priority": {
+            "label": "Severity",
+            "options": {
+              "info": "Info",
+              "warning": "Warning",
+              "error": "Error",
+              "critical": "Critical"
+            }
+          },
+          "autoResolve": {
+            "label": "When the monitor comes back up",
+            "options": {
+              "none": "Do nothing",
+              "acknowledge": "Acknowledge the incident",
+              "resolve": "Resolve the incident"
+            }
+          }
+        }
+      },
+      "pumble": {
+        "label": "Pumble",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          }
+        }
+      },
+      "pushbullet": {
+        "label": "Pushbullet",
+        "fields": {
+          "accessToken": {
+            "label": "Access token",
+            "description": "Settings → Account → Create Access Token."
+          }
+        }
+      },
+      "pushdeer": {
+        "label": "PushDeer",
+        "fields": {
+          "serverUrl": {
+            "label": "Server URL"
+          },
+          "pushKey": {
+            "label": "Push key"
+          }
+        }
+      },
+      "pushover": {
+        "label": "Pushover",
+        "fields": {
+          "userKey": {
+            "label": "User key"
+          },
+          "appToken": {
+            "label": "Application token"
+          },
+          "device": {
+            "label": "Device",
+            "description": "Optional: deliver to one device only."
+          },
+          "title": {
+            "label": "Message title"
+          },
+          "priority": {
+            "label": "Priority",
+            "options": {
+              "0": "Normal",
+              "1": "High",
+              "2": "Emergency (retry every 30s for 1h)",
+              "-2": "Lowest",
+              "-1": "Low"
+            }
+          },
+          "sound": {
+            "label": "Notification sound"
+          },
+          "soundUp": {
+            "label": "Sound for UP alerts",
+            "description": "Defaults to the sound above."
+          },
+          "ttl": {
+            "label": "Message TTL (seconds)",
+            "description": "0 or empty = never expire."
+          }
+        }
+      },
+      "pushy": {
+        "label": "Pushy",
+        "fields": {
+          "apiKey": {
+            "label": "Secret API key"
+          },
+          "deviceToken": {
+            "label": "Device token",
+            "description": "Target device token (or topic)."
+          }
+        }
+      },
+      "resend": {
+        "label": "Resend",
+        "fields": {
+          "apiKey": {
+            "label": "API key"
+          },
+          "fromEmail": {
+            "label": "From email"
+          },
+          "fromName": {
+            "label": "From name"
+          },
+          "toEmail": {
+            "label": "To email"
+          },
+          "subject": {
+            "label": "Subject",
+            "placeholder": "Notification from Marmot"
+          }
+        }
+      },
+      "rocket-chat": {
+        "label": "Rocket.Chat",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          },
+          "channel": {
+            "label": "Channel name"
+          },
+          "username": {
+            "label": "Username"
+          },
+          "iconEmoji": {
+            "label": "Icon emoji"
+          }
+        }
+      },
+      "sendgrid": {
+        "label": "SendGrid",
+        "fields": {
+          "apiKey": {
+            "label": "API key"
+          },
+          "fromEmail": {
+            "label": "From email"
+          },
+          "toEmail": {
+            "label": "To email"
+          },
+          "ccEmail": {
+            "label": "CC",
+            "description": "Comma-separated."
+          },
+          "bccEmail": {
+            "label": "BCC",
+            "description": "Comma-separated."
+          },
+          "subject": {
+            "label": "Subject",
+            "placeholder": "Notification from Marmot"
+          }
+        }
+      },
+      "serverchan": {
+        "label": "ServerChan",
+        "fields": {
+          "sendKey": {
+            "label": "SendKey",
+            "description": "ServerChan 3 keys (sctp…) are sent through ft07.com automatically."
+          }
+        }
+      },
+      "signal": {
+        "label": "Signal",
+        "fields": {
+          "apiUrl": {
+            "label": "signal-cli REST API URL",
+            "description": "Full send endpoint of a signal-cli-rest-api instance."
+          },
+          "number": {
+            "label": "Sender number"
+          },
+          "recipients": {
+            "label": "Recipients",
+            "description": "Comma-separated numbers or group ids."
+          },
+          "useTemplate": {
+            "label": "Use a custom message template"
+          },
+          "template": {
+            "label": "Message template"
+          }
+        }
+      },
+      "slack": {
+        "label": "Slack",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          },
+          "channel": {
+            "label": "Channel name"
+          },
+          "username": {
+            "label": "Username"
+          },
+          "iconEmoji": {
+            "label": "Icon emoji"
+          },
+          "richMessage": {
+            "label": "Rich message (blocks)"
+          },
+          "channelNotify": {
+            "label": "Notify channel (@channel)"
+          },
+          "useTemplate": {
+            "label": "Use a custom message template"
+          },
+          "template": {
+            "label": "Message template",
+            "description": "Supports '{{' monitor.name '}}', '{{' heartbeat.msg '}}', '{{' status '}}'."
+          }
+        }
+      },
+      "smtp": {
+        "label": "Email (SMTP)",
+        "fields": {
+          "useServerSmtp": {
+            "label": "Use the server SMTP settings",
+            "description": "Send through the SMTP_* configuration of this Marmot instance (at most 10 recipients per message)."
+          },
+          "host": {
+            "label": "SMTP host"
+          },
+          "port": {
+            "label": "Port"
+          },
+          "secure": {
+            "label": "Implicit TLS (SMTPS, port 465)"
+          },
+          "ignoreTlsErrors": {
+            "label": "Ignore TLS certificate errors"
+          },
+          "user": {
+            "label": "Username"
+          },
+          "pass": {
+            "label": "Password"
+          },
+          "from": {
+            "label": "From"
+          },
+          "to": {
+            "label": "To",
+            "description": "Comma-separated recipients."
+          },
+          "cc": {
+            "label": "CC"
+          },
+          "bcc": {
+            "label": "BCC"
+          },
+          "subject": {
+            "label": "Subject template",
+            "description": "Defaults to the notification message."
+          },
+          "body": {
+            "label": "Body template",
+            "description": "Defaults to the message and time."
+          },
+          "htmlBody": {
+            "label": "Send the body as HTML"
+          }
+        }
+      },
+      "splunk": {
+        "label": "Splunk On-Call",
+        "fields": {
+          "restUrl": {
+            "label": "REST endpoint URL"
+          },
+          "severity": {
+            "label": "Severity",
+            "options": {
+              "INFO": "Info",
+              "WARNING": "Warning",
+              "CRITICAL": "Critical"
+            }
+          },
+          "autoResolve": {
+            "label": "When the monitor comes back up",
+            "options": {
+              "none": "Do nothing",
+              "ACKNOWLEDGEMENT": "Acknowledge the incident",
+              "RECOVERY": "Resolve the incident"
+            }
+          }
+        }
+      },
+      "squadcast": {
+        "label": "Squadcast",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          }
+        }
+      },
+      "teams": {
+        "label": "Microsoft Teams",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL",
+            "description": "Power Automate \"When a Teams webhook request is received\" URL, or a legacy incoming webhook."
+          }
+        }
+      },
+      "techulus-push": {
+        "label": "Push by Techulus",
+        "fields": {
+          "apiKey": {
+            "label": "API key"
+          },
+          "title": {
+            "label": "Title"
+          },
+          "channel": {
+            "label": "Channel",
+            "description": "Optional channel name."
+          },
+          "sound": {
+            "label": "Sound"
+          },
+          "timeSensitive": {
+            "label": "Time-sensitive notification"
+          }
+        }
+      },
+      "telegram": {
+        "label": "Telegram",
+        "fields": {
+          "botToken": {
+            "label": "Bot token",
+            "description": "From @BotFather."
+          },
+          "chatId": {
+            "label": "Chat ID",
+            "description": "Send a message to the bot, then open https://api.telegram.org/bot'<'token'>'/getUpdates."
+          },
+          "messageThreadId": {
+            "label": "Message thread ID",
+            "description": "Optional: topic id inside a forum supergroup."
+          },
+          "serverUrl": {
+            "label": "API server URL",
+            "description": "Change only for a local Bot API server."
+          },
+          "sendSilently": {
+            "label": "Send silently",
+            "description": "Users receive a notification with no sound."
+          },
+          "protectContent": {
+            "label": "Protect content",
+            "description": "Prevent forwarding and saving."
+          },
+          "useTemplate": {
+            "label": "Use a custom message template"
+          },
+          "template": {
+            "label": "Message template"
+          },
+          "templateParseMode": {
+            "label": "Template parse mode",
+            "options": {
+              "plain": "Plain text",
+              "HTML": "HTML",
+              "MarkdownV2": "MarkdownV2"
+            }
+          }
+        }
+      },
+      "twilio": {
+        "label": "Twilio SMS",
+        "fields": {
+          "accountSid": {
+            "label": "Account SID"
+          },
+          "apiKey": {
+            "label": "API key SID",
+            "description": "Optional: authenticate with an API key instead of the account SID."
+          },
+          "authToken": {
+            "label": "Auth token (or API key secret)"
+          },
+          "fromNumber": {
+            "label": "From number"
+          },
+          "toNumber": {
+            "label": "To number"
+          },
+          "messagingServiceSid": {
+            "label": "Messaging service SID"
+          }
+        }
+      },
+      "webhook": {
+        "label": "Webhook",
+        "fields": {
+          "url": {
+            "label": "Post URL"
+          },
+          "method": {
+            "label": "HTTP method"
+          },
+          "contentType": {
+            "label": "Request body",
+            "options": {
+              "json": "application/json",
+              "form-data": "multipart/form-data",
+              "custom": "Custom body (template)"
+            }
+          },
+          "customBody": {
+            "label": "Custom body",
+            "description": "Sent verbatim after '{{' '}}' substitution, e.g. '{'\"text\": \"'{{' msg '}}'\"'}'. Set Content-Type in the headers below."
+          },
+          "additionalHeaders": {
+            "label": "Additional headers (JSON)"
+          }
+        }
+      },
+      "webpush": {
+        "label": "Web Push",
+        "fields": {
+          "subscription": {
+            "label": "Push subscription (JSON)",
+            "description": "The PushSubscription object returned by `pushManager.subscribe()` in the browser."
+          },
+          "vapidPublicKey": {
+            "label": "VAPID public key"
+          },
+          "vapidPrivateKey": {
+            "label": "VAPID private key"
+          },
+          "vapidSubject": {
+            "label": "VAPID subject",
+            "description": "A mailto: address or https URL identifying the sender."
+          },
+          "title": {
+            "label": "Notification title"
+          }
+        }
+      },
+      "wecom": {
+        "label": "WeCom",
+        "fields": {
+          "botKey": {
+            "label": "Bot key",
+            "description": "The `key=` parameter of the group bot webhook URL."
+          },
+          "mentionedMobileList": {
+            "label": "Mention mobile numbers",
+            "description": "Comma-separated; `@all` mentions everyone."
+          }
+        }
+      },
+      "zoho-cliq": {
+        "label": "Zoho Cliq",
+        "fields": {
+          "webhookUrl": {
+            "label": "Webhook URL"
+          }
+        }
+      }
     }
   },
   "consent": {
@@ -2505,6 +3477,48 @@
         "statusPages": "Status pages",
         "tags": "Tags"
       }
+    },
+    "messages": {
+      "unrecognisedFile": "Unrecognised file: expected an Uptime Kuma backup (monitorList/notificationList) or a Marmot export (format \"marmot\").",
+      "notKumaBackup": "Not an Uptime Kuma backup: expected a JSON object with \"monitorList\" and \"notificationList\".",
+      "notMarmotExport": "Not a Marmot export (format \"{format}\" version {version}): {issues}",
+      "kumaVersion": "Uptime Kuma backup version {version}",
+      "unnamed": "{kind, select, monitor {monitor} notification {notification} statusPage {status page} other {tag}} #{id}",
+      "notificationConfigNotJson": "Notification config is not valid JSON",
+      "notificationNoType": "Notification has no provider type",
+      "notificationProviderUnsupported": "Notification provider \"{type}\" is not supported by Marmot",
+      "notificationSettingsInvalid": "Invalid {type} settings",
+      "notificationSettingsInvalidDetails": "Invalid {type} settings: {issues}",
+      "duplicateNotification": "Another notification in the file has the same name",
+      "invalidNotification": "Invalid notification: {issues}",
+      "unknownNotificationType": "Unknown notification type \"{type}\"",
+      "invalidMonitor": "Invalid monitor: {issues}",
+      "notAnObject": "not an object",
+      "invalidStatusPage": "Invalid status page: {issues}",
+      "monitorTypeUnsupported": "Monitor type \"{type}\" is not supported by Marmot yet",
+      "dockerNeedsHost": "Monitor type \"Docker Container\" needs a Docker host in Marmot; add one and recreate the monitor",
+      "realBrowserNeedsUrl": "Monitor type \"HTTP(s) - Browser Engine\" needs a remote browser URL, which Uptime Kuma backups do not contain",
+      "dockerMonitorSkipped": "Docker monitors reference a Docker host of the exporting organization; recreate it",
+      "intervalRaised": "\"{name}\": {field} raised from {value}s to the minimum of {min}s",
+      "invalidStatusCodes": "\"{name}\": ignored invalid accepted status codes {codes}",
+      "authMethodUnsupported": "\"{name}\": authentication method \"{method}\" is not supported; set to none",
+      "snmpVersionUnsupported": "\"{name}\": SNMP version \"{version}\" is not supported; set to {fallback}",
+      "parentNotImported": "\"{name}\": parent group #{parent} was not imported; the monitor is placed at the top level",
+      "linksDropped": "{count} monitor → notification {count, plural, one {link} other {links}} dropped because the notification was not imported",
+      "resourcesDropped": "\"{name}\": {resources, select, tags {tags} proxy {proxy} other {tags and proxy}} not imported; assign them again after the import",
+      "rowsDropped": "\"{title}\": {count} monitor {count, plural, one {row} other {rows}} dropped because the monitor was not imported",
+      "tagsUnsupported": "Tags are not supported yet",
+      "tagsUnsupportedCount": "Tags are not supported yet ({count} monitor {count, plural, one {assignment} other {assignments}} skipped)",
+      "tagsSkipped": "Skipped {count} {count, plural, one {tag} other {tags}}: tags are not supported yet",
+      "noMonitorPermission": "You may not create monitors in this organization",
+      "notificationsSkippedRole": "Notification channels were skipped: creating channels requires the admin role. Monitors are imported without their channel links.",
+      "noNotificationPermission": "You may not create notification channels in this organization",
+      "statusPagesSkipped": "Status pages were skipped: you may not create status pages in this organization.",
+      "noStatusPagePermission": "You may not create status pages in this organization",
+      "channelExists": "A channel with this name already exists; monitors are linked to it",
+      "invalidSlug": "Invalid slug \"{slug}\": {reason}",
+      "slugInUse": "\"{title}\": slug \"{slug}\" is already in use; imported as \"{imported}\"",
+      "domainInUse": "\"{title}\": custom domain {hostname} is already used by another status page and was dropped"
     }
   },
   "landing": {
@@ -2579,7 +3593,7 @@
   "email": {
     "invitation": {
       "subject": "You have been invited to {organization} on Marmot",
-      "intro": "You have been invited to join <strong>{organization}</strong> as <strong>{role}</strong>.",
+      "intro": "You have been invited to join <strong>{organization}</strong> as <strong>{role, select, owner {owner} admin {admin} member {member} viewer {viewer} other {{role}}}</strong>.",
       "accept": "Accept the invitation",
       "acceptLink": "Accept the invitation: {url}",
       "expiresOn": "This link expires on {date}.",
@@ -2631,6 +3645,121 @@
     "invitationNotPending": "This invitation is {status, select, accepted {accepted} revoked {revoked} expired {expired} other {no longer pending}}.",
     "inviteLinkInvalid": "This invite link is not valid.",
     "cannotManageInviteLinks": "You cannot manage invite links in this organization.",
-    "cannotGrantHigherRole": "You cannot grant a role above your own."
+    "cannotGrantHigherRole": "You cannot grant a role above your own.",
+    "unauthenticated": "Unauthorized",
+    "unexpected": "Unexpected error",
+    "invalidJsonBody": "Invalid JSON body",
+    "expectedJsonBody": "Expected a JSON body",
+    "validationFailed": "Validation failed",
+    "tooManyRequests": "Too many requests. Please try again later.",
+    "tooManyAttempts": "Too many attempts. Please try again later.",
+    "enterEmailAndPassword": "Enter your email address and password.",
+    "invalidCredentials": "Incorrect email or password.",
+    "signInFailed": "Could not sign in.",
+    "signInExpired": "Your sign-in attempt expired. Enter your password again.",
+    "tooManyCodes": "Too many incorrect codes. Enter your password again.",
+    "twoFactorAlreadyEnabled": "Two-factor authentication is already enabled.",
+    "twoFactorSetupExpired": "Start the setup again to get a new QR code.",
+    "twoFactorCodeInvalid": "That code is not valid. Try the next one.",
+    "twoFactorUseLoginPage": "This account uses two-factor authentication. Sign in through the Marmot login page.",
+    "ssoEnforced": "Your organization requires single sign-on. Use “Sign in with your organization's SSO” on the login page.",
+    "organizationNotFound": "Organization not found",
+    "monitorNotFound": "Monitor not found",
+    "monitorForeignReference": "Must belong to the same organization as the monitor.",
+    "tagDuplicate": "Each tag may only be added once.",
+    "unknownMonitors": "{count, plural, one {Unknown monitor} other {Unknown monitors}}: {ids}",
+    "monitorIdsExpected": "Expected '{' monitors: [id, …] '}'",
+    "maintenanceNotFound": "Maintenance not found",
+    "maintenanceStartRequired": "Start is required for a single window.",
+    "maintenanceEndRequired": "End is required for a single window.",
+    "maintenanceStartInvalid": "Invalid start date.",
+    "maintenanceEndInvalid": "Invalid end date.",
+    "maintenanceEndBeforeStart": "End must be after the start.",
+    "maintenanceWeekdayRequired": "Pick at least one weekday.",
+    "maintenanceDayRequired": "Pick at least one day.",
+    "maintenanceScheduleIncomplete": "The schedule is incomplete.",
+    "maintenanceCronInvalid": "Invalid cron expression: {error}",
+    "maintenanceTimezoneUnknown": "Unknown time zone \"{timezone}\".",
+    "maintenanceForeignReference": "Every {kind, select, statusPage {status page} other {monitor}} must belong to the same organization.",
+    "statusPageNotFound": "Status page not found",
+    "statusPageForeignMonitors": "Every monitor on a status page must belong to the same organization.",
+    "hostnameDuplicate": "Each hostname may only be listed once.",
+    "hostnameTaken": "One of these hostnames is already used by another status page.",
+    "incidentNotFound": "Incident not found",
+    "incidentStatusPageRequired": "An incident belongs to a status page.",
+    "logoFileRequired": "Expected a multipart \"file\" field",
+    "logoNotImage": "Logo must be an image",
+    "logoTooLarge": "Logo must be 2 MB or smaller",
+    "notificationChannelNotFound": "Notification channel not found",
+    "notificationTypeUnknown": "Unknown notification type \"{type}\".",
+    "notificationTestTargetRequired": "Provide notificationId or type + config",
+    "nameRequired": "name is required",
+    "typeRequired": "type is required",
+    "serverSmtpOff": "Sending through the server SMTP settings is turned off on this instance. Enter SMTP settings for this channel instead.",
+    "serverSmtpSuperadminOnly": "Only an instance superadmin can set up a channel that sends through the server SMTP settings. Enter SMTP settings for this channel instead.",
+    "serverSmtpTooManyRecipients": "Messages sent through the server SMTP settings can have at most {max} recipients (to, cc and bcc combined).",
+    "apiKeyNotFound": "API key not found",
+    "expiresAtInPast": "expiresAt must be in the future",
+    "activeRequired": "active (boolean) is required",
+    "dockerHostNotFound": "Docker host not found",
+    "socketPathAbsolute": "Enter an absolute socket path.",
+    "dockerTestTargetRequired": "Provide dockerHostId or connectionType + socketPath/url",
+    "dockerSocketDisabled": "Socket connections are disabled on this instance (DOCKER_SOCKET_ENABLED).",
+    "dockerUrlInvalid": "Enter the daemon URL, e.g. tcp://docker.example.com:2375.",
+    "proxyUsernameRequired": "A username is required when authentication is on.",
+    "cannotInviteHigherRole": "You cannot invite a role above your own.",
+    "samlMetadataRequired": "Provide a metadata URL or the metadata XML",
+    "samlMetadataHttps": "Metadata URL must use https",
+    "samlMetadataStatus": "Metadata URL responded with {status}",
+    "samlMetadataTooLarge": "Metadata document is too large",
+    "samlMetadataFetchFailed": "Could not fetch the metadata: {error}",
+    "samlMetadataInvalid": "Invalid metadata",
+    "enforceSsoRequired": "enforceSso (boolean) is required",
+    "ssoEnforcementPrerequisites": "Verify a domain and enable a connection before enforcing single sign-on.",
+    "domainRequired": "domain is required",
+    "domainClaimed": "This domain is already claimed by an organization.",
+    "domainNotFound": "Domain not found",
+    "connectionNotFound": "Connection not found",
+    "importFileTooLarge": "File is larger than 10 MB",
+    "importNotJson": "The uploaded file is not valid JSON",
+    "badgeUnknown": "Unknown badge",
+    "badgeDurationInvalid": "Invalid duration; expected 24h, 30d or 1y",
+    "billingDisabled": "billing disabled",
+    "planInvalid": "plan must be one of: {plans}",
+    "planNotPurchasable": "The {plan} plan cannot be purchased online.",
+    "planLimit": "Your plan allows {limit, plural, one {{limit} {resource, select, monitors {monitor} members {member} other {status page}}} other {{limit} {resource, select, monitors {monitors} members {members} other {status pages}}}}. Upgrade your plan to add more.",
+    "stripeNotConfigured": "Stripe is not configured.",
+    "stripePriceMissing": "No active Stripe price is tagged with metadata plan={plan}.",
+    "stripeNoCheckoutUrl": "Stripe did not return a checkout URL.",
+    "slugRequired": "Slug is required.",
+    "slugTooShort": "Slug must be at least 2 characters.",
+    "slugPattern": "Slug may only contain lowercase letters, numbers and hyphens, and cannot start or end with a hyphen.",
+    "slugReserved": "\"{slug}\" is reserved. Please choose another slug.",
+    "slugTaken": "This slug is already taken.",
+    "slugInvalid": "Invalid slug.",
+    "setupCompleted": "Setup has already been completed.",
+    "invalidInput": "Invalid input.",
+    "setupFailed": "Setup failed.",
+    "permissionOverridesObject": "Permission overrides must be an object of permission → role.",
+    "permissionUnknown": "Unknown permission \"{permission}\".",
+    "permissionLocked": "\"{permission}\" cannot be overridden.",
+    "permissionRoleInvalid": "Invalid role for \"{permission}\".",
+    "statsRangeInvalid": "Invalid range; expected one of {ranges}",
+    "serverSmtpRestrictedOff": "Sending through the server SMTP settings is turned off on this instance.",
+    "serverSmtpRestrictedSuperadmin": "Only an instance superadmin can turn on the server SMTP settings for a channel.",
+    "incidentComponentsInvalid": "Each affected component must be listed once and belong to the status page.",
+    "httpUrlRequired": "Enter an http(s) URL.",
+    "contactUrlInvalid": "Enter an http(s) URL or a mailto: address.",
+    "componentMonitorRequired": "Pick a monitor for this component.",
+    "assetTooLarge": "{kind, select, logoDark {Dark logo} favicon {Favicon} other {Logo}} must be {size} or smaller",
+    "assetType": "{kind, select, logoDark {Dark logo} favicon {Favicon} other {Logo}} must be one of: {types}",
+    "svgRejected": "SVG rejected: {reason}",
+    "themePresetUnknown": "Unknown theme preset. Use one of: {presets}.",
+    "crossSiteRefused": "Cross-site request refused",
+    "statusPageProtected": "This status page is password protected.",
+    "statusPagePasswordIncorrect": "The password is not correct.",
+    "statusPagePasswordTooShort": "The password must be at least {min} characters.",
+    "statusPagePasswordTooLong": "The password must be at most {max} characters.",
+    "statusPagePasswordRequired": "Set a password to protect this page."
   }
 }

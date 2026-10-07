@@ -189,7 +189,10 @@ export const instanceApi = {
     api.post<{ sent: true; to: string }>('/api/instance/smtp-test', to ? { to } : {}),
 }
 
-/** Uploads an image to the `media` collection. */
+/**
+ * Uploads an image to the `media` collection. A failure without a server message throws an
+ * `Error` with an empty message; the caller shows its own (translated) fallback.
+ */
 export async function uploadMedia(file: File, alt: string): Promise<MediaDoc> {
   const form = new FormData()
   form.append('file', file)
@@ -200,7 +203,7 @@ export async function uploadMedia(file: File, alt: string): Promise<MediaDoc> {
     errors?: { message?: string }[]
   } | null
   if (!res.ok || !body?.doc) {
-    throw new Error(body?.errors?.[0]?.message ?? 'Upload failed.')
+    throw new Error(body?.errors?.[0]?.message ?? '')
   }
   return body.doc
 }

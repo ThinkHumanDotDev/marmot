@@ -7,6 +7,7 @@
 import { APIError, getPayload, type Payload, type TypedUser } from 'payload'
 
 import config from '@payload-config'
+import { errorMessageFor, errorText, rememberRequestUser } from '@/server/request-locale'
 
 import type { StatusPage } from '@/payload-types'
 
@@ -20,7 +21,8 @@ export async function authenticate(
 ): Promise<{ ok: true; ctx: Authenticated } | { ok: false; response: Response }> {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: request.headers })
-  if (!user) return { ok: false, response: jsonError('Unauthorized', 401) }
+  if (!user) return { ok: false, response: jsonError(errorText(request, 'unauthenticated'), 401) }
+  rememberRequestUser(request, user)
   return { ok: true, ctx: { payload, user } }
 }
 
@@ -38,14 +40,16 @@ export async function readJson<T = Record<string, unknown>>(request: Request): P
   }
 }
 
-/** Maps Payload errors (validation, forbidden, not found) to JSON responses. */
-export function errorResponse(error: unknown): Response {
+/**
+ * Maps Payload errors (validation, forbidden, not found) to JSON responses, with `apiError(…)`
+ * messages in the request locale.
+ */
+export function errorResponse(error: unknown, request: Request): Response {
   if (error instanceof APIError) {
     const data = (error as APIError & { data?: unknown }).data
-    return jsonError(error.message, error.status ?? 500, data)
+    return jsonError(errorMessageFor(request, error, 'unexpected'), error.status ?? 500, data)
   }
-  const message = error instanceof Error ? error.message : 'Unexpected error'
-  return jsonError(message, 500)
+  return jsonError(errorMessageFor(request, error, 'unexpected'), 500)
 }
 
 /** Loads a status page with the user's access and checks it belongs to `orgId`. */

@@ -13,6 +13,7 @@ import {
   resolveOrgRequest,
   type OrgRequestContext,
 } from '@/server/notifications/api'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,7 +79,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const channel = await loadChannel(ctx, id)
-  if (!channel) return jsonError(404, 'Notification channel not found')
+  if (!channel) return jsonError(404, errorText(request, 'notificationChannelNotFound'))
 
   return Response.json({ monitors: toRows(await loadOrgMonitors(ctx), channel.id) })
 }
@@ -97,14 +98,14 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const ctx = await resolveOrgRequest(request, orgId, 'notification:update')
   if (ctx instanceof Response) return ctx
   if (!(await canInOrg(ctx.payload, ctx.user, ctx.orgId, 'monitor:update'))) {
-    return jsonError(403, 'Forbidden')
+    return jsonError(403, errorText(request, 'forbidden'))
   }
 
   const channel = await loadChannel(ctx, id)
-  if (!channel) return jsonError(404, 'Notification channel not found')
+  if (!channel) return jsonError(404, errorText(request, 'notificationChannelNotFound'))
 
   const parsed = putSchema.safeParse(await readJson(request))
-  if (!parsed.success) return jsonError(400, 'Expected { monitors: [id, …] }')
+  if (!parsed.success) return jsonError(400, errorText(request, 'monitorIdsExpected'))
 
   const monitors = await loadOrgMonitors(ctx)
   const wanted = new Set(parsed.data.monitors.map(String))
@@ -113,7 +114,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   if (unknown.length > 0) {
     return jsonError(
       400,
-      `Unknown monitor${unknown.length === 1 ? '' : 's'}: ${unknown.join(', ')}`,
+      errorText(request, 'unknownMonitors', { count: unknown.length, ids: unknown.join(', ') }),
     )
   }
 
@@ -139,7 +140,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
       monitor.notifications = updated.notifications
     }
   } catch (error) {
-    return jsonError(errorStatus(error), errorMessage(error))
+    return jsonError(errorStatus(error), errorMessage(error, request))
   }
 
   return Response.json({ monitors: toRows(monitors, channel.id) })

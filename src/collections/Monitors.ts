@@ -18,7 +18,8 @@ import { outboundGuardActive } from '@/server/security/outbound-guard'
 
 import { HEARTBEAT_STATUSES } from './Heartbeats'
 import { relId } from './shared'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
+import { userErrorText } from '@/server/request-locale'
 
 const log = childLogger('monitors')
 
@@ -28,28 +29,28 @@ const log = childLogger('monitors')
  */
 export const MONITOR_TYPES = [
   { label: 'HTTP(s)', value: 'http' },
-  { label: 'HTTP(s) - Keyword', value: 'keyword' },
-  { label: 'HTTP(s) - Json Query', value: 'json-query' },
-  { label: 'TCP Port', value: 'port' },
+  { label: adminT('marmot:labels:httpKeyword'), value: 'keyword' },
+  { label: adminT('marmot:labels:httpJsonQuery'), value: 'json-query' },
+  { label: adminT('marmot:labels:tcpPort'), value: 'port' },
   { label: 'Ping', value: 'ping' },
   { label: 'DNS', value: 'dns' },
-  { label: 'Push', value: 'push' },
-  { label: 'Group', value: 'group' },
-  { label: 'Manual', value: 'manual' },
-  { label: 'Docker Container', value: 'docker' },
+  { label: adminT('marmot:labels:push'), value: 'push' },
+  { label: adminT('marmot:labels:group'), value: 'group' },
+  { label: adminT('marmot:labels:manual'), value: 'manual' },
+  { label: adminT('marmot:labels:dockerContainer'), value: 'docker' },
   // Protocols
-  { label: 'gRPC(s) - Keyword', value: 'grpc-keyword' },
-  { label: 'WebSocket Upgrade', value: 'websocket-upgrade' },
+  { label: adminT('marmot:labels:grpcKeyword'), value: 'grpc-keyword' },
+  { label: adminT('marmot:labels:websocketUpgrade'), value: 'websocket-upgrade' },
   { label: 'MQTT', value: 'mqtt' },
-  { label: 'Kafka Producer', value: 'kafka-producer' },
+  { label: adminT('marmot:labels:kafkaProducerType'), value: 'kafka-producer' },
   { label: 'RabbitMQ', value: 'rabbitmq' },
   { label: 'SMTP', value: 'smtp' },
   { label: 'SNMP', value: 'snmp' },
   { label: 'NTP', value: 'ntp' },
   { label: 'SFTP', value: 'sftp' },
   { label: 'Radius', value: 'radius' },
-  { label: 'Tailscale Ping', value: 'tailscale-ping' },
-  { label: 'HTTP(s) - Browser Engine (Chrome/Chromium)', value: 'real-browser' },
+  { label: adminT('marmot:labels:tailscalePing'), value: 'tailscale-ping' },
+  { label: adminT('marmot:labels:realBrowser'), value: 'real-browser' },
   // Databases
   { label: 'MySQL/MariaDB', value: 'mysql' },
   { label: 'PostgreSQL', value: 'postgres' },
@@ -57,7 +58,7 @@ export const MONITOR_TYPES = [
   { label: 'MongoDB', value: 'mongodb' },
   { label: 'Redis', value: 'redis' },
   // Game servers
-  { label: 'Steam Game Server', value: 'steam' },
+  { label: adminT('marmot:labels:steam'), value: 'steam' },
   { label: 'GameDig', value: 'gamedig' },
 ] as const
 
@@ -153,7 +154,7 @@ const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
     if (unique.length !== ids.length) {
       throw new ValidationError({
         collection: 'monitors',
-        errors: [{ message: 'Each tag may only be added once.', path: 'tags' }],
+        errors: [{ message: userErrorText(req, 'tagDuplicate'), path: 'tags' }],
       })
     }
     if (ids.length > 0) checks.push({ collection: 'tags', ids, path: 'tags' })
@@ -184,7 +185,7 @@ const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
         collection: 'monitors',
         errors: [
           {
-            message: 'Must belong to the same organization as the monitor.',
+            message: userErrorText(req, 'monitorForeignReference'),
             path: 'notifications',
           },
         ],
@@ -220,9 +221,7 @@ const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
     if (!ok) {
       throw new ValidationError({
         collection: 'monitors',
-        errors: [
-          { message: 'Must belong to the same organization as the monitor.', path: check.path },
-        ],
+        errors: [{ message: userErrorText(req, 'monitorForeignReference'), path: check.path }],
       })
     }
   }
@@ -263,7 +262,7 @@ export const Monitors: CollectionConfig = {
   slug: 'monitors',
   admin: {
     useAsTitle: 'name',
-    group: 'Monitoring',
+    group: adminGroup('monitoring'),
     defaultColumns: ['name', 'type', 'active', 'status.lastStatus', 'interval'],
   },
   // Org-scoped RBAC: viewers read, members write (see `src/access/permissions.ts`).
@@ -549,7 +548,7 @@ export const Monitors: CollectionConfig = {
     // ---- HTTP -----------------------------------------------------------------------------------
     {
       type: 'collapsible',
-      label: 'HTTP options',
+      label: adminT('marmot:labels:httpOptions'),
       admin: { condition: typeIn(URL_TYPES), initCollapsed: true },
       fields: [
         {
@@ -567,7 +566,7 @@ export const Monitors: CollectionConfig = {
               defaultValue: 'json',
               options: [
                 { label: 'JSON', value: 'json' },
-                { label: 'Form (x-www-form-urlencoded)', value: 'form' },
+                { label: adminT('marmot:labels:formBody'), value: 'form' },
                 { label: 'XML', value: 'xml' },
               ],
             },
@@ -635,7 +634,7 @@ export const Monitors: CollectionConfig = {
     },
     {
       type: 'collapsible',
-      label: 'Keyword',
+      label: adminT('marmot:labels:keyword'),
       admin: { condition: typeIn(KEYWORD_TYPES), initCollapsed: false },
       fields: [
         { name: 'keyword', type: 'text' },
@@ -649,7 +648,7 @@ export const Monitors: CollectionConfig = {
     },
     {
       type: 'collapsible',
-      label: 'JSON query',
+      label: adminT('marmot:labels:jsonQuery'),
       admin: { condition: typeIn(JSON_QUERY_TYPES), initCollapsed: false },
       fields: [
         {
@@ -675,7 +674,7 @@ export const Monitors: CollectionConfig = {
     // ---- Authentication -------------------------------------------------------------------------
     {
       type: 'collapsible',
-      label: 'Authentication',
+      label: adminT('marmot:labels:authentication'),
       admin: { condition: typeIn(URL_TYPES), initCollapsed: true },
       fields: [
         {
@@ -683,10 +682,10 @@ export const Monitors: CollectionConfig = {
           type: 'select',
           defaultValue: 'none',
           options: [
-            { label: 'None', value: 'none' },
+            { label: adminT('marmot:labels:none'), value: 'none' },
             { label: 'HTTP Basic', value: 'basic' },
-            { label: 'Bearer token', value: 'bearer' },
-            { label: 'OAuth2 client credentials', value: 'oauth2-cc' },
+            { label: adminT('marmot:labels:bearerToken'), value: 'bearer' },
+            { label: adminT('marmot:labels:oauth2ClientCredentials'), value: 'oauth2-cc' },
             { label: 'NTLM', value: 'ntlm' },
             { label: 'mTLS', value: 'mtls' },
           ],
@@ -783,9 +782,9 @@ export const Monitors: CollectionConfig = {
       name: 'manualStatus',
       type: 'select',
       options: [
-        { label: 'Up', value: 'up' },
-        { label: 'Down', value: 'down' },
-        { label: 'Pending', value: 'pending' },
+        { label: adminT('marmot:labels:up'), value: 'up' },
+        { label: adminT('marmot:labels:down'), value: 'down' },
+        { label: adminT('marmot:labels:pending'), value: 'pending' },
       ],
       admin: { condition: (data) => data?.type === 'manual' },
     },
@@ -793,7 +792,7 @@ export const Monitors: CollectionConfig = {
     // ---- Databases (mysql, postgres, sqlserver, mongodb, redis) ---------------------------------
     {
       type: 'collapsible',
-      label: 'Database',
+      label: adminT('marmot:labels:database'),
       admin: { condition: typeIn(DATABASE_TYPES), initCollapsed: false },
       fields: [
         {
@@ -833,8 +832,8 @@ export const Monitors: CollectionConfig = {
           type: 'select',
           defaultValue: 'keyword',
           options: [
-            { label: 'Keyword', value: 'keyword' },
-            { label: 'JSON query', value: 'json-query' },
+            { label: adminT('marmot:labels:keyword'), value: 'keyword' },
+            { label: adminT('marmot:labels:jsonQuery'), value: 'json-query' },
           ],
         },
         {
@@ -848,7 +847,7 @@ export const Monitors: CollectionConfig = {
     // ---- Kafka producer -------------------------------------------------------------------------
     {
       type: 'collapsible',
-      label: 'Kafka producer',
+      label: adminT('marmot:labels:kafkaProducer'),
       admin: { condition: (data) => data?.type === 'kafka-producer', initCollapsed: false },
       fields: [
         {
@@ -968,10 +967,10 @@ export const Monitors: CollectionConfig = {
       type: 'select',
       defaultValue: 'opportunistic',
       options: [
-        { label: 'STARTTLS if offered', value: 'opportunistic' },
-        { label: 'Require STARTTLS', value: 'starttls' },
-        { label: 'SMTPS (implicit TLS)', value: 'secure' },
-        { label: 'Ignore STARTTLS', value: 'nostarttls' },
+        { label: adminT('marmot:labels:starttlsOpportunistic'), value: 'opportunistic' },
+        { label: adminT('marmot:labels:starttlsRequired'), value: 'starttls' },
+        { label: adminT('marmot:labels:smtps'), value: 'secure' },
+        { label: adminT('marmot:labels:starttlsIgnore'), value: 'nostarttls' },
       ],
       admin: { condition: (data) => data?.type === 'smtp' },
     },
@@ -991,8 +990,8 @@ export const Monitors: CollectionConfig = {
               type: 'select',
               defaultValue: 'password',
               options: [
-                { label: 'Password', value: 'password' },
-                { label: 'Private key', value: 'privateKey' },
+                { label: adminT('marmot:labels:password'), value: 'password' },
+                { label: adminT('marmot:labels:privateKey'), value: 'privateKey' },
               ],
             },
           ],

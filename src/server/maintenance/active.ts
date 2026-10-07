@@ -5,6 +5,7 @@ import type { Maintenance } from '@/payload-types'
 import { authenticate, authorize, jsonError, parseId, payloadError } from '@/server/monitors/http'
 import { loadOrgMaintenance } from './http'
 import { summarizeMaintenance } from './serialize'
+import { errorText } from '@/server/request-locale'
 
 type RouteContext = { params: Promise<{ orgId: string; id: string }> }
 
@@ -22,7 +23,7 @@ export function setMaintenanceActiveHandler(active: boolean) {
     if (forbidden) return forbidden
 
     const existing = await loadOrgMaintenance(payload, auth.user, orgId, id)
-    if (!existing) return jsonError(404, 'Maintenance not found')
+    if (!existing) return jsonError(404, errorText(request, 'maintenanceNotFound'))
 
     try {
       const doc = (await payload.update({
@@ -35,7 +36,7 @@ export function setMaintenanceActiveHandler(active: boolean) {
       })) as Maintenance
       return Response.json(await summarizeMaintenance(payload, doc))
     } catch (error) {
-      return payloadError(error)
+      return payloadError(error, request)
     }
   }
 }

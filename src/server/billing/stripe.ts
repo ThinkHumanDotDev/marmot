@@ -4,13 +4,14 @@
  * `STRIPE_SECRET_KEY` does not pull Stripe into the module graph of the web process.
  */
 import type Stripe from 'stripe'
-import { APIError, type Payload, type PayloadRequest } from 'payload'
+import type { Payload, PayloadRequest } from 'payload'
 
 import { env } from '@/env'
 import { PLAN_LABELS, PURCHASABLE_PLANS, type Plan } from '@/lib/entitlements'
 import { childLogger } from '@/lib/logger'
 
 import type { Organization } from '@/payload-types'
+import { apiError } from '@/server/errors'
 
 const log = childLogger('billing')
 
@@ -21,7 +22,7 @@ let client: Promise<Stripe> | undefined
 /** One Stripe client per process, created on first use. Throws 503 when no key is configured. */
 export async function getStripeClient(): Promise<Stripe> {
   const key = env.STRIPE_SECRET_KEY
-  if (!key) throw new APIError('Stripe is not configured.', 503, undefined, true)
+  if (!key) throw apiError('stripeNotConfigured', 503, undefined, { isPublic: true })
   client ??= import('stripe').then(
     ({ default: StripeSdk }) =>
       new StripeSdk(key, {
@@ -158,22 +159,12 @@ export async function createCheckoutSession({
   req,
 }: CheckoutArgs): Promise<{ url: string; sessionId: string }> {
   if (!PURCHASABLE_PLANS.includes(plan)) {
-    throw new APIError(
-      `The ${PLAN_LABELS[plan]} plan cannot be purchased online.`,
-      400,
-      undefined,
-      true,
-    )
+    throw apiError('planNotPurchasable', 400, { plan: PLAN_LABELS[plan] }, { isPublic: true })
   }
   const stripe = await getStripeClient()
   const price = await findPriceForPlan(stripe, plan, interval)
   if (!price) {
-    throw new APIError(
-      `No active Stripe price is tagged with metadata plan=${plan}.`,
-      503,
-      undefined,
-      true,
-    )
+    throw apiError('stripePriceMissing', 503, { plan }, { isPublic: true })
   }
   const customer = await ensureStripeCustomer(payload, org, { req, fallbackEmail: requesterEmail })
   const session = await stripe.checkout.sessions.create({
@@ -187,7 +178,7 @@ export async function createCheckoutSession({
     subscription_data: { metadata: { organizationId: String(org.id), plan } },
     metadata: { organizationId: String(org.id), plan },
   })
-  if (!session.url) throw new APIError('Stripe did not return a checkout URL.', 502)
+  if (!session.url) throw apiError('stripeNoCheckoutUrl', 502)
   return { url: session.url, sessionId: session.id }
 }
 

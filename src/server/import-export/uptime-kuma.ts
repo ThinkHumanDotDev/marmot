@@ -52,17 +52,16 @@ import {
   type PlannedMonitor,
   type PlannedNotification,
 } from './types'
+import { importText, type ImportMessageKey, type ImportText } from './text'
 
 /**
  * Kuma monitor types that cannot be imported even though Marmot has a type of the same name, with
  * the reason. Kuma's browser engine points at a `remote_browser` row that backups do not contain.
  */
-const UNIMPORTABLE_TYPES: Record<string, string> = {
+const UNIMPORTABLE_TYPES: Record<string, ImportMessageKey> = {
   // Marmot docker monitors point at a Docker host resource that the Kuma backup does not map to.
-  docker:
-    'Monitor type "Docker Container" needs a Docker host in Marmot; add one and recreate the monitor',
-  'real-browser':
-    'Monitor type "HTTP(s) - Browser Engine" needs a remote browser URL, which Uptime Kuma backups do not contain',
+  docker: 'dockerNeedsHost',
+  'real-browser': 'realBrowserNeedsUrl',
 }
 
 /** Monitor types that have the same name and semantics in Marmot. */
@@ -121,13 +120,14 @@ function mapAuthMethod(value: unknown): (typeof AUTH_METHODS)[number] | undefine
 function mapKumaMonitor(
   raw: Record<string, unknown>,
   warnings: string[],
+  t: ImportText,
 ): { input: MonitorFormInput; type: MonitorTypeName } | { skip: string } {
-  const name = asText(raw.name) ?? `monitor #${asKey(raw.id) ?? '?'}`
+  const name = asText(raw.name) ?? t('unnamed', { kind: 'monitor', id: asKey(raw.id) ?? '?' })
   const kumaType = asText(raw.type) ?? 'http'
-  if (kumaType in UNIMPORTABLE_TYPES) return { skip: UNIMPORTABLE_TYPES[kumaType] }
+  if (kumaType in UNIMPORTABLE_TYPES) return { skip: t(UNIMPORTABLE_TYPES[kumaType]) }
   if (!SUPPORTED_TYPES.has(kumaType)) {
     const label = UNSUPPORTED_TYPE_LABELS[kumaType] ?? kumaType
-    return { skip: `Monitor type "${label}" is not supported by Marmot yet` }
+    return { skip: t('monitorTypeUnsupported', { type: label }) }
   }
   const type = kumaType as MonitorTypeName
   const defaults = defaultMonitorValues(type)
@@ -136,9 +136,7 @@ function mapKumaMonitor(
   const retryInterval = asInt(raw.retryInterval) ?? defaults.retryInterval
   const clamp = (field: 'interval' | 'retryInterval', value: number): number => {
     if (value >= MIN_INTERVAL_SECONDS) return value
-    warnings.push(
-      `"${name}": ${field} raised from ${value}s to the minimum of ${MIN_INTERVAL_SECONDS}s`,
-    )
+    warnings.push(t('intervalRaised', { name, field, value, min: MIN_INTERVAL_SECONDS }))
     return MIN_INTERVAL_SECONDS
   }
 
@@ -148,22 +146,24 @@ function mapKumaMonitor(
   let acceptedStatusCodes = acceptedRaw ?? defaults.acceptedStatusCodes
   const invalidCodes = acceptedStatusCodes.filter((code) => !isValidStatusCodeRange(code))
   if (invalidCodes.length > 0) {
-    warnings.push(`"${name}": ignored invalid accepted status codes ${invalidCodes.join(', ')}`)
+    warnings.push(t('invalidStatusCodes', { name, codes: invalidCodes.join(', ') }))
     acceptedStatusCodes = acceptedStatusCodes.filter(isValidStatusCodeRange)
     if (acceptedStatusCodes.length === 0) acceptedStatusCodes = defaults.acceptedStatusCodes
   }
 
   const authMethod = mapAuthMethod(raw.authMethod)
   if (authMethod === undefined) {
-    warnings.push(
-      `"${name}": authentication method "${String(raw.authMethod)}" is not supported; set to none`,
-    )
+    warnings.push(t('authMethodUnsupported', { name, method: String(raw.authMethod) }))
   }
 
   const snmpVersion = oneOf(SNMP_VERSIONS, raw.snmpVersion)
   if (type === 'snmp' && raw.snmpVersion != null && snmpVersion === undefined) {
     warnings.push(
-      `"${name}": SNMP version "${String(raw.snmpVersion)}" is not supported; set to ${defaults.snmpVersion}`,
+      t('snmpVersionUnsupported', {
+        name,
+        version: String(raw.snmpVersion),
+        fallback: String(defaults.snmpVersion),
+      }),
     )
   }
 
@@ -293,18 +293,16 @@ function parseNotificationConfig(value: unknown): Record<string, unknown> | null
  * Parses an Uptime Kuma backup into an import plan. Pure: no database access. Throws
  * `ImportFormatError` when the JSON is not a backup at all.
  */
-export function parseUptimeKumaBackup(json: unknown): ImportPlan {
+export function parseUptimeKumaBackup(json: unknown, t: ImportText = importText()): ImportPlan {
   if (
     !isRecord(json) ||
     (!Array.isArray(json.monitorList) && !Array.isArray(json.notificationList))
   ) {
-    throw new ImportFormatError(
-      'Not an Uptime Kuma backup: expected a JSON object with "monitorList" and "notificationList".',
-    )
+    throw new ImportFormatError(t('notKumaBackup'))
   }
   const plan = emptyPlan('uptime-kuma')
   const version = asText(json.version)
-  if (version) plan.warnings.push(`Uptime Kuma backup version ${version}`)
+  if (version) plan.warnings.push(t('kumaVersion', { version }))
 
   // ---- Notifications -------------------------------------------------------------------------
   const notificationList = Array.isArray(json.notificationList) ? json.notificationList : []
@@ -313,21 +311,23 @@ export function parseUptimeKumaBackup(json: unknown): ImportPlan {
     if (!isRecord(entry)) return
     const config = parseNotificationConfig(entry.config)
     const name =
-      asText(entry.name) ?? (config ? asText(config.name) : null) ?? `notification #${index + 1}`
+      asText(entry.name) ??
+      (config ? asText(config.name) : null) ??
+      t('unnamed', { kind: 'notification', id: index + 1 })
     if (!config) {
-      plan.skipped.notifications.push({ name, reason: 'Notification config is not valid JSON' })
+      plan.skipped.notifications.push({ name, reason: t('notificationConfigNotJson') })
       return
     }
     const kumaType = asText(config.type)
     if (!kumaType) {
-      plan.skipped.notifications.push({ name, reason: 'Notification has no provider type' })
+      plan.skipped.notifications.push({ name, reason: t('notificationNoType') })
       return
     }
     const mapped = mapKumaNotificationConfig(kumaType, config)
     if (!mapped) {
       plan.skipped.notifications.push({
         name,
-        reason: `Notification provider "${kumaType}" is not supported by Marmot`,
+        reason: t('notificationProviderUnsupported', { type: kumaType }),
       })
       return
     }
@@ -336,17 +336,20 @@ export function parseUptimeKumaBackup(json: unknown): ImportPlan {
     } catch (error) {
       const reason =
         error instanceof NotificationConfigError && error.issues.length
-          ? `Invalid ${mapped.type} settings: ${error.issues
-              .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
-              .join('; ')}`
-          : `Invalid ${mapped.type} settings`
+          ? t('notificationSettingsInvalidDetails', {
+              type: mapped.type,
+              issues: error.issues
+                .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
+                .join('; '),
+            })
+          : t('notificationSettingsInvalid', { type: mapped.type })
       plan.skipped.notifications.push({ name, reason })
       return
     }
     if (seenNotificationNames.has(name)) {
       plan.skipped.notifications.push({
         name,
-        reason: 'Another notification in the file has the same name',
+        reason: t('duplicateNotification'),
       })
       return
     }
@@ -372,7 +375,7 @@ export function parseUptimeKumaBackup(json: unknown): ImportPlan {
   monitorList.forEach((entry: unknown, index: number) => {
     if (!isRecord(entry)) return
     const key = asKey(entry.id) ?? `m${index + 1}`
-    const mapped = mapKumaMonitor(entry, plan.warnings)
+    const mapped = mapKumaMonitor(entry, plan.warnings, t)
     const displayName = asText(entry.name) ?? key
     if ('skip' in mapped) {
       plan.skipped.monitors.push({ name: displayName, reason: mapped.skip })
@@ -382,14 +385,16 @@ export function parseUptimeKumaBackup(json: unknown): ImportPlan {
     if (!parsed.success) {
       plan.skipped.monitors.push({
         name: displayName,
-        reason: `Invalid monitor: ${issueList(parsed.error.issues)}`,
+        reason: t('invalidMonitor', { issues: issueList(parsed.error.issues) }),
       })
       return
     }
     if (Array.isArray(entry.tags)) {
       for (const tag of entry.tags) {
         if (!isRecord(tag)) continue
-        const tagName = asText(tag.name) ?? `tag #${asKey(tag.tag_id) ?? asKey(tag.id) ?? '?'}`
+        const tagName =
+          asText(tag.name) ??
+          t('unnamed', { kind: 'tag', id: asKey(tag.tag_id) ?? asKey(tag.id) ?? '?' })
         tagNames.set(tagName, (tagNames.get(tagName) ?? 0) + 1)
       }
     }
@@ -410,7 +415,7 @@ export function parseUptimeKumaBackup(json: unknown): ImportPlan {
   for (const monitor of plan.monitors) {
     if (monitor.parentKey !== null && !groupKeys.has(monitor.parentKey)) {
       plan.warnings.push(
-        `"${monitor.data.name}": parent group #${monitor.parentKey} was not imported; the monitor is placed at the top level`,
+        t('parentNotImported', { name: monitor.data.name, parent: monitor.parentKey }),
       )
       monitor.parentKey = null
     }
@@ -424,9 +429,7 @@ export function parseUptimeKumaBackup(json: unknown): ImportPlan {
     monitor.notificationKeys = kept
   }
   if (droppedLinks > 0) {
-    plan.warnings.push(
-      `${droppedLinks} monitor → notification link${droppedLinks === 1 ? '' : 's'} dropped because the notification was not imported`,
-    )
+    plan.warnings.push(t('linksDropped', { count: droppedLinks }))
   }
 
   // ---- Tags: not supported until the tags collection exists (#21) ----------------------------
@@ -440,16 +443,11 @@ export function parseUptimeKumaBackup(json: unknown): ImportPlan {
   for (const [tagName, count] of tagNames) {
     plan.skipped.tags.push({
       name: tagName,
-      reason:
-        count > 0
-          ? `Tags are not supported yet (${count} monitor assignment${count === 1 ? '' : 's'} skipped)`
-          : 'Tags are not supported yet',
+      reason: count > 0 ? t('tagsUnsupportedCount', { count }) : t('tagsUnsupported'),
     })
   }
   if (tagNames.size > 0) {
-    plan.warnings.push(
-      `Skipped ${tagNames.size} tag${tagNames.size === 1 ? '' : 's'}: tags are not supported yet`,
-    )
+    plan.warnings.push(t('tagsSkipped', { count: tagNames.size }))
   }
 
   return plan

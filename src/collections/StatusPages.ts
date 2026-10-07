@@ -9,7 +9,7 @@ import {
 
 import { orgScoped } from '@/access/org-scoped'
 import { getOrgIdsWithPermission, isSuperadmin, type UserLike } from '@/access/permissions'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import { defaultLocale, localeNames, locales } from '@/i18n/locales'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { STATUS_PAGE_ACCESS_MODES } from '@/lib/status-page-access'
@@ -20,6 +20,8 @@ import { applyAccessPassword } from '@/server/status-pages/access-password'
 import { statusPageThemeFields } from './status-page-theme'
 
 import type { StatusPage } from '@/payload-types'
+import type { ErrorKey } from '@/server/errors'
+import { userErrorText } from '@/server/request-locale'
 
 export const STATUS_PAGE_THEMES = ['auto', 'light', 'dark'] as const
 export type StatusPageTheme = (typeof STATUS_PAGE_THEMES)[number]
@@ -71,11 +73,11 @@ export const readStatusPages: Access = ({ req }) => {
 }
 
 const optionalUrl =
-  (check: (value: string) => boolean, message: string) =>
-  (value: unknown): true | string =>
+  (check: (value: string) => boolean, message: ErrorKey) =>
+  (value: unknown, { req }: { req: { user?: unknown } }): true | string =>
     value == null || value === '' || (typeof value === 'string' && check(value.trim()))
       ? true
-      : message
+      : userErrorText(req, message)
 
 /**
  * Lowercase the slug and hostnames so lookups by `Host` header and URL are exact matches; static
@@ -149,7 +151,7 @@ const validateReferences: CollectionBeforeChangeHook<StatusPage> = async ({
         collection: 'status-pages',
         errors: [
           {
-            message: 'Every monitor on a status page must belong to the same organization.',
+            message: userErrorText(req, 'statusPageForeignMonitors'),
             path: 'groups',
           },
         ],
@@ -162,7 +164,7 @@ const validateReferences: CollectionBeforeChangeHook<StatusPage> = async ({
     if (new Set(hostnames).size !== hostnames.length) {
       throw new ValidationError({
         collection: 'status-pages',
-        errors: [{ message: 'Each hostname may only be listed once.', path: 'domains' }],
+        errors: [{ message: userErrorText(req, 'hostnameDuplicate'), path: 'domains' }],
       })
     }
     const where: Where[] = [{ 'domains.hostname': { in: hostnames } }]
@@ -180,7 +182,7 @@ const validateReferences: CollectionBeforeChangeHook<StatusPage> = async ({
         collection: 'status-pages',
         errors: [
           {
-            message: 'One of these hostnames is already used by another status page.',
+            message: userErrorText(req, 'hostnameTaken'),
             path: 'domains',
           },
         ],
@@ -195,7 +197,7 @@ export const StatusPages: CollectionConfig = {
   slug: 'status-pages',
   admin: {
     useAsTitle: 'title',
-    group: 'Status pages',
+    group: adminGroup('statusPages'),
     defaultColumns: ['title', 'slug', 'published', 'organization', 'updatedAt'],
   },
   access: {
@@ -253,13 +255,13 @@ export const StatusPages: CollectionConfig = {
         {
           name: 'homepageUrl',
           type: 'text',
-          validate: optionalUrl(isHttpUrl, 'Enter an http(s) URL.'),
+          validate: optionalUrl(isHttpUrl, 'httpUrlRequired'),
           admin: { description: adminT('marmot:statusPages:homepageUrlDescription') },
         },
         {
           name: 'contactUrl',
           type: 'text',
-          validate: optionalUrl(isContactUrl, 'Enter an http(s) URL or a mailto: address.'),
+          validate: optionalUrl(isContactUrl, 'contactUrlInvalid'),
           admin: { description: adminT('marmot:statusPages:contactUrlDescription') },
         },
       ],
@@ -404,11 +406,14 @@ export const StatusPages: CollectionConfig = {
               name: 'monitor',
               type: 'relationship',
               relationTo: 'monitors',
-              validate: (value: unknown, { siblingData }: { siblingData: unknown }) =>
+              validate: (
+                value: unknown,
+                { req, siblingData }: { req: { user?: unknown }; siblingData: unknown },
+              ) =>
                 (siblingData as { type?: string } | undefined)?.type === 'static' ||
                 (value !== null && value !== undefined && value !== '')
                   ? true
-                  : 'Pick a monitor for this component.',
+                  : userErrorText(req, 'componentMonitorRequired'),
               filterOptions: ({ data }): Where | true => {
                 const organization = relId((data as { organization?: unknown })?.organization)
                 return organization === null ? true : { organization: { equals: organization } }

@@ -5,7 +5,7 @@
  */
 import { z } from 'zod'
 
-import { formatHeartbeatTime, statusLabel } from '@/server/notifications/message'
+import { providerText, statusLabel, timeLine } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -41,11 +41,12 @@ registerNotificationProvider({
   fieldMeta: lineMessagingFieldMeta,
   async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = lineMessagingConfigSchema.parse(raw)
+    const p = providerText(locale)
     const headers = { Authorization: `Bearer ${config.channelAccessToken}` }
 
     let text = message
     if (heartbeat && monitor) {
-      text = `Marmot Alert: [${statusLabel(heartbeat.status, locale)}]\nName: ${monitor.name} \n${heartbeat.msg ?? ''}\nTime: ${formatHeartbeatTime(heartbeat)}`
+      text = `${p('alertFor', { text: `[${statusLabel(heartbeat.status, locale)}]` })}\n${p('name')}: ${monitor.name} \n${heartbeat.msg ?? ''}\n${timeLine(heartbeat, locale)}`
     }
 
     await postJson(

@@ -22,6 +22,84 @@ export const adminTranslations = {
       statusPageLanguageDescription:
         'Language visitors see the page in. "Follow the visitor" uses the browser language.',
       followVisitor: 'Follow the visitor',
+      // Select options and field group labels that are words, not product names.
+      labels: {
+        tcpPort: 'TCP Port',
+        push: 'Push',
+        group: 'Group',
+        manual: 'Manual',
+        dockerContainer: 'Docker Container',
+        httpKeyword: 'HTTP(s) - Keyword',
+        httpJsonQuery: 'HTTP(s) - Json Query',
+        grpcKeyword: 'gRPC(s) - Keyword',
+        websocketUpgrade: 'WebSocket Upgrade',
+        kafkaProducerType: 'Kafka Producer',
+        tailscalePing: 'Tailscale Ping',
+        realBrowser: 'HTTP(s) - Browser Engine (Chrome/Chromium)',
+        steam: 'Steam Game Server',
+        httpOptions: 'HTTP options',
+        keyword: 'Keyword',
+        jsonQuery: 'JSON query',
+        authentication: 'Authentication',
+        none: 'None',
+        bearerToken: 'Bearer token',
+        oauth2ClientCredentials: 'OAuth2 client credentials',
+        up: 'Up',
+        down: 'Down',
+        pending: 'Pending',
+        database: 'Database',
+        kafkaProducer: 'Kafka producer',
+        starttlsOpportunistic: 'STARTTLS if offered',
+        starttlsRequired: 'Require STARTTLS',
+        smtps: 'SMTPS (implicit TLS)',
+        starttlsIgnore: 'Ignore STARTTLS',
+        password: 'Password',
+        privateKey: 'Private key',
+        formBody: 'Form (x-www-form-urlencoded)',
+        instanceSettings: 'Instance settings',
+        dashboard: 'Dashboard',
+        statusPage: 'Status page',
+        thirdPartyApiKeys: 'Third-party API keys',
+      },
+      maintenanceStrategies: {
+        manual: 'Manual (active until you pause it)',
+        single: 'Single maintenance window',
+        'recurring-interval': 'Recurring – every N days',
+        'recurring-weekday': 'Recurring – days of the week',
+        'recurring-day-of-month': 'Recurring – days of the month',
+        cron: 'Cron expression',
+      },
+      maintenanceStatuses: {
+        inactive: 'Paused',
+        scheduled: 'Scheduled',
+        'under-maintenance': 'Under maintenance',
+        ended: 'Ended',
+        unknown: 'Unknown',
+      },
+      weekdays: {
+        '0': 'Sun',
+        '1': 'Mon',
+        '2': 'Tue',
+        '3': 'Wed',
+        '4': 'Thu',
+        '5': 'Fri',
+        '6': 'Sat',
+      },
+      lastDays: {
+        lastDay1: 'Last day of the month',
+        lastDay2: '2nd last day of the month',
+        lastDay3: '3rd last day of the month',
+        lastDay4: '4th last day of the month',
+      },
+      // Admin sidebar groups (`admin.group: adminGroup('monitoring')`).
+      groups: {
+        access: 'Access',
+        content: 'Content',
+        monitoring: 'Monitoring',
+        statistics: 'Statistics',
+        statusPages: 'Status pages',
+        system: 'System',
+      },
       // Field and collection descriptions, by collection: `marmot:<collection>:<field>Description`.
       apiKeys: {
         keyHashDescription: 'SHA-256 of the plaintext key.',
@@ -277,6 +355,17 @@ export const adminT =
  * (`LabelFunction`), field descriptions and collection descriptions (`EntityDescriptionFunction`).
  */
 export type AdminTextFunction = (args: { t: unknown }) => string
+
+/**
+ * `admin.group` label in every admin language. Payload takes a static `{ [language]: label }`
+ * map here rather than a function, so it is built from the catalogue above.
+ */
+export const adminGroup = (
+  group: keyof AdminTranslationsObject['marmot']['groups'],
+): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(adminTranslations).map(([language, t]) => [language, t.marmot.groups[group]]),
+  )
 
 export const adminI18n: Config['i18n'] = {
   supportedLanguages: { en },

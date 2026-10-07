@@ -8,8 +8,9 @@ import {
 import { orgScoped } from '@/access/org-scoped'
 
 import type { Incident, StatusPage } from '@/payload-types'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import { COMPONENT_IMPACTS } from '@/lib/status-page-components'
+import { userErrorText } from '@/server/request-locale'
 
 export const INCIDENT_STYLES = ['info', 'warning', 'danger', 'primary'] as const
 export type IncidentStyle = (typeof INCIDENT_STYLES)[number]
@@ -36,7 +37,7 @@ const deriveFromStatusPage: CollectionBeforeChangeHook<Incident> = async ({
   if (statusPageId === null) {
     throw new ValidationError({
       collection: 'incidents',
-      errors: [{ message: 'An incident belongs to a status page.', path: 'statusPage' }],
+      errors: [{ message: userErrorText(req, 'incidentStatusPageRequired'), path: 'statusPage' }],
     })
   }
 
@@ -67,7 +68,7 @@ const deriveFromStatusPage: CollectionBeforeChangeHook<Incident> = async ({
         collection: 'incidents',
         errors: [
           {
-            message: 'Each affected component must be listed once and belong to the status page.',
+            message: userErrorText(req, 'incidentComponentsInvalid'),
             path: 'affectedComponents',
           },
         ],
@@ -96,7 +97,7 @@ export const Incidents: CollectionConfig = {
   slug: 'incidents',
   admin: {
     useAsTitle: 'title',
-    group: 'Status pages',
+    group: adminGroup('statusPages'),
     defaultColumns: ['title', 'statusPage', 'style', 'pinned', 'active', 'createdAt'],
   },
   access: {

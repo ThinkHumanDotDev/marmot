@@ -1,8 +1,6 @@
 import { APIError, getPayload, type Payload } from 'payload'
 
 import config from '@payload-config'
-import type { Locale } from '@/i18n/locales'
-import { resolveRequestLocale } from '@/i18n/resolve'
 import type { User } from '@/payload-types'
 import {
   apiError,
@@ -11,6 +9,9 @@ import {
   type ErrorKey,
   type ErrorValues,
 } from '@/server/errors'
+import { rememberRequestUser, requestLocale } from '@/server/request-locale'
+
+export { errorText, requestLocale } from '@/server/request-locale'
 
 /**
  * Helpers for Marmot's own Next.js route handlers (`src/app/api/**`). They authenticate the
@@ -21,24 +22,13 @@ import {
 
 export type RequestUser = User & { collection: 'users' }
 
-/** Users authenticated by `getRequestContext`, so error responses can use their `language`. */
-const requestUsers = new WeakMap<Request, Pick<User, 'language'>>()
-
 export async function getRequestContext(
   request: Request,
 ): Promise<{ payload: Payload; user: RequestUser | null }> {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: request.headers })
-  if (user) requestUsers.set(request, user as User)
+  rememberRequestUser(request, user as User | null)
   return { payload, user: (user as RequestUser | null) ?? null }
-}
-
-/**
- * Locale for a response to `request`: the signed-in user's `language` (once `getRequestContext`
- * has authenticated the request), then the `marmot-locale` cookie, then `Accept-Language`.
- */
-export function requestLocale(request: Request): Locale {
-  return resolveRequestLocale({ headers: request.headers, user: requestUsers.get(request) })
 }
 
 /** Postgres/SQLite use numeric ids, MongoDB uses strings. */

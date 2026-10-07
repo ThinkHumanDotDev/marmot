@@ -5,7 +5,7 @@
  */
 import { z } from 'zod'
 
-import { renderMessageTemplate } from '@/server/notifications/message'
+import { providerText, renderMessageTemplate } from '@/server/notifications/message'
 import { extractAddress, OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -94,6 +94,7 @@ registerNotificationProvider({
   fieldMeta: discordFieldMeta,
   async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = discordConfigSchema.parse(raw)
+    const p = providerText(locale)
     const username = config.username || 'Marmot'
     const url = new URL(config.webhookUrl)
     if (config.channelType === 'postToThread' && config.threadId) {
@@ -113,7 +114,9 @@ registerNotificationProvider({
       let content = message
       if (heartbeat && monitor && config.messageFormat === 'minimalist') {
         content =
-          heartbeat.status === 'down' ? `🔴 ${monitor.name} is down.` : `🟢 ${monitor.name} is up.`
+          heartbeat.status === 'down'
+            ? `🔴 ${p('isDownSentence', { name: monitor.name })}`
+            : `🟢 ${p('isUpSentence', { name: monitor.name })}`
       } else if (config.messageFormat === 'custom' && config.messageTemplate?.trim()) {
         content = renderMessageTemplate(
           config.messageTemplate.trim(),
@@ -142,7 +145,7 @@ registerNotificationProvider({
     const address = extractAddress(monitor)
     const addressField =
       !config.disableUrl && address
-        ? [{ name: monitor.type === 'push' ? 'Service Type' : 'Service URL', value: address }]
+        ? [{ name: monitor.type === 'push' ? p('serviceType') : p('serviceUrl'), value: address }]
         : []
 
     let payload: DiscordPayload
@@ -151,14 +154,14 @@ registerNotificationProvider({
         username,
         embeds: [
           {
-            title: `❌ Your service ${monitor.name} went down. ❌`,
+            title: `❌ ${p('yourServiceDown', { name: monitor.name })} ❌`,
             color: 16711680,
             timestamp: heartbeat.time,
             fields: [
-              { name: 'Service Name', value: monitor.name },
+              { name: p('serviceName'), value: monitor.name },
               ...addressField,
-              { name: 'Went Offline', value: `<t:${unixSeconds(heartbeat.time)}:F>` },
-              { name: 'Error', value: heartbeat.msg || 'N/A' },
+              { name: p('wentOffline'), value: `<t:${unixSeconds(heartbeat.time)}:F>` },
+              { name: p('error'), value: heartbeat.msg || 'N/A' },
             ],
           },
         ],
@@ -170,17 +173,19 @@ registerNotificationProvider({
         username,
         embeds: [
           {
-            title: `✅ Your service ${monitor.name} is up! ✅`,
+            title: `✅ ${p('yourServiceUp', { name: monitor.name })} ✅`,
             color: 65280,
             timestamp: heartbeat.time,
             fields: [
-              { name: 'Service Name', value: monitor.name },
+              { name: p('serviceName'), value: monitor.name },
               ...addressField,
               ...(downtimeSeconds
-                ? [{ name: 'Downtime Duration', value: formatDuration(downtimeSeconds) }]
+                ? [{ name: p('downtimeDuration'), value: formatDuration(downtimeSeconds) }]
                 : []),
-              { name: 'Time', value: `<t:${unixSeconds(heartbeat.time)}:F>` },
-              ...(heartbeat.ping != null ? [{ name: 'Ping', value: `${heartbeat.ping} ms` }] : []),
+              { name: p('time'), value: `<t:${unixSeconds(heartbeat.time)}:F>` },
+              ...(heartbeat.ping != null
+                ? [{ name: p('ping'), value: `${heartbeat.ping} ms` }]
+                : []),
             ],
           },
         ],

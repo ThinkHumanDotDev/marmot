@@ -25,12 +25,19 @@ export function translateError(locale: Locale, key: ErrorKey, values?: ErrorValu
   return t(`errors.${key}`, values)
 }
 
+export interface ApiErrorOptions {
+  /** Structured details (`APIError.data`), e.g. `{ code, limit }` for clients. */
+  data?: Record<string, unknown>
+  /** Show the message to users in production (Payload hides non-public 5xx messages). */
+  isPublic?: boolean
+}
+
 export class LocalizedAPIError extends APIError {
   readonly key: ErrorKey
   readonly values?: ErrorValues
 
-  constructor(key: ErrorKey, status: number, values?: ErrorValues) {
-    super(translateError(defaultLocale, key, values), status)
+  constructor(key: ErrorKey, status: number, values?: ErrorValues, options: ApiErrorOptions = {}) {
+    super(translateError(defaultLocale, key, values), status, options.data, options.isPublic)
     this.key = key
     this.values = values
   }
@@ -42,5 +49,9 @@ export class LocalizedAPIError extends APIError {
 }
 
 /** `throw apiError('invalidRole', 400)`: an `APIError` with a translatable message. */
-export const apiError = (key: ErrorKey, status: number, values?: ErrorValues) =>
-  new LocalizedAPIError(key, status, values)
+export const apiError = (
+  key: ErrorKey,
+  status: number,
+  values?: ErrorValues,
+  options?: ApiErrorOptions,
+) => new LocalizedAPIError(key, status, values, options)
