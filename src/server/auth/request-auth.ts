@@ -63,6 +63,8 @@ export const API_KEY_FORBIDDEN_SECTIONS: readonly string[] = [
   'billing',
   'invitations',
   'invite-link',
+  // Probe location tokens are credentials, like API keys (#91).
+  'locations',
   'members',
   'permissions',
   'sso',

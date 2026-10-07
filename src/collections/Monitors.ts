@@ -34,6 +34,12 @@ import { relId } from './shared'
 import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 import { adminGroup, adminT } from '@/i18n/admin'
+import {
+  isRemoteMonitor,
+  MAX_MONITOR_LOCATIONS,
+  monitorLocationIds,
+  probeSupportsType,
+} from '@/lib/probe-locations'
 import { getTranslator } from '@/i18n/translator'
 import { userErrorText, userLocale } from '@/server/request-locale'
 
@@ -242,6 +248,10 @@ const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
   if (dockerHost !== null) {
     checks.push({ collection: 'docker-hosts', ids: [dockerHost], path: 'dockerHost' })
   }
+  if (Array.isArray(data.locations)) {
+    const ids = monitorLocationIds(data)
+    if (ids.length > 0) checks.push({ collection: 'locations', ids, path: 'locations' })
+  }
 
   for (const check of checks) {
     const { docs } = await req.payload.find({
@@ -303,6 +313,35 @@ const validateUniqueKey: CollectionBeforeChangeHook<Monitor> = async ({
 }
 
 /**
+ * Probe locations (#91): at most `MAX_MONITOR_LOCATIONS` per monitor (until quorum, #92), no
+ * duplicates, and only types a probe can run (`PROBE_UNSUPPORTED_TYPES`).
+ */
+const validateLocations: CollectionBeforeChangeHook<Monitor> = ({ data, originalDoc, req }) => {
+  if (Array.isArray(data.locations)) {
+    const ids = monitorLocationIds(data)
+    const unique = [...new Map(ids.map((id) => [String(id), id] as const)).values()]
+    data.locations = unique as Monitor['locations']
+  }
+  const locations = data.locations !== undefined ? data.locations : originalDoc?.locations
+  const ids = monitorLocationIds({ locations })
+  if (ids.length === 0) return data
+  const fail = (key: 'monitorTooManyLocations' | 'monitorTypeNotOnProbe') => {
+    throw new ValidationError({
+      collection: 'monitors',
+      errors: [
+        {
+          message: userErrorText(req, key, { max: MAX_MONITOR_LOCATIONS }),
+          path: 'locations',
+        },
+      ],
+    })
+  }
+  if (ids.length > MAX_MONITOR_LOCATIONS) fail('monitorTooManyLocations')
+  if (!probeSupportsType(data.type ?? originalDoc?.type)) fail('monitorTypeNotOnProbe')
+  return data
+}
+
+/**
  * Outbound address guard (`MONITOR_DENY_PRIVATE_ADDRESSES` & co.): refuse host-local types and
  * literally denied targets on save. Fast feedback only — names are vetted when the check connects.
  * Runs on create and when a target field changes, so status updates never trip over it.
@@ -314,6 +353,9 @@ const enforceOutboundPolicy: CollectionBeforeChangeHook<Monitor> = async ({
   req,
 }) => {
   if (!outboundGuardActive()) return data
+  // Probe-checked monitors connect from the probe's network, which its own MONITOR_DENY_* settings
+  // govern; the workers still vet the targets at connect time if the location is removed.
+  if (isRemoteMonitor({ locations: data.locations ?? originalDoc?.locations })) return data
   const touched =
     operation === 'create' ||
     MONITOR_TARGET_FIELDS.some(
@@ -360,6 +402,7 @@ export const Monitors: CollectionConfig = {
       attachDefaultNotifications,
       validateOrgReferences,
       validateUniqueKey,
+      validateLocations,
       enforceOutboundPolicy,
       // Plan limits (no-op unless BILLING_ENABLED).
       enforceEntitlementOnCreate('monitors'),
@@ -506,6 +549,18 @@ export const Monitors: CollectionConfig = {
       admin: {
         position: 'sidebar',
         description: adminT('marmot:monitors:notificationsDescription'),
+      },
+    },
+    {
+      // Probe locations that check this monitor (#91). Empty: the local worker pool.
+      name: 'locations',
+      type: 'relationship',
+      relationTo: 'locations',
+      hasMany: true,
+      filterOptions: sameOrganization,
+      admin: {
+        position: 'sidebar',
+        description: adminT('marmot:monitors:locationsDescription'),
       },
     },
     {

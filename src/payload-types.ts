@@ -79,6 +79,7 @@ export interface Config {
     tags: Tag;
     proxies: MonitorProxy;
     'docker-hosts': DockerHost;
+    locations: Location;
     'notification-sent-history': NotificationSentHistory;
     heartbeats: Heartbeat;
     'monitor-incidents': MonitorIncident;
@@ -118,6 +119,7 @@ export interface Config {
     tags: TagsSelect<false> | TagsSelect<true>;
     proxies: ProxiesSelect<false> | ProxiesSelect<true>;
     'docker-hosts': DockerHostsSelect<false> | DockerHostsSelect<true>;
+    locations: LocationsSelect<false> | LocationsSelect<true>;
     'notification-sent-history': NotificationSentHistorySelect<false> | NotificationSentHistorySelect<true>;
     heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
     'monitor-incidents': MonitorIncidentsSelect<false> | MonitorIncidentsSelect<true>;
@@ -426,6 +428,7 @@ export interface Monitor {
       }[]
     | null;
   notifications?: (number | Notification)[] | null;
+  locations?: (number | Location)[] | null;
   weight?: number | null;
   url?: string | null;
   proxy?: (number | null) | MonitorProxy;
@@ -628,6 +631,37 @@ export interface Notification {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "locations".
+ */
+export interface Location {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  slug: string;
+  labels?:
+    | {
+        key: string;
+        value?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  tokenHash: string;
+  tokenPrefix: string;
+  tokenRotatedAt?: string | null;
+  status: 'unknown' | 'online' | 'offline';
+  statusChangedAt?: string | null;
+  lastSeenAt?: string | null;
+  agent?: {
+    version?: string | null;
+    hostname?: string | null;
+    platform?: string | null;
+  };
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "proxies".
  */
 export interface MonitorProxy {
@@ -679,6 +713,7 @@ export interface Heartbeat {
   id: number;
   monitor: number | Monitor;
   organization?: (number | null) | Organization;
+  location?: (number | null) | Location;
   status: 'up' | 'down' | 'pending' | 'maintenance' | 'degraded';
   msg?: string | null;
   ping?: number | null;
@@ -1458,6 +1493,10 @@ export interface PayloadLockedDocument {
         value: number | DockerHost;
       } | null)
     | ({
+        relationTo: 'locations';
+        value: number | Location;
+      } | null)
+    | ({
         relationTo: 'notification-sent-history';
         value: number | NotificationSentHistory;
       } | null)
@@ -1762,6 +1801,7 @@ export interface MonitorsSelect<T extends boolean = true> {
         id?: T;
       };
   notifications?: T;
+  locations?: T;
   weight?: T;
   url?: T;
   proxy?: T;
@@ -1949,6 +1989,38 @@ export interface DockerHostsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "locations_select".
+ */
+export interface LocationsSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  slug?: T;
+  labels?:
+    | T
+    | {
+        key?: T;
+        value?: T;
+        id?: T;
+      };
+  tokenHash?: T;
+  tokenPrefix?: T;
+  tokenRotatedAt?: T;
+  status?: T;
+  statusChangedAt?: T;
+  lastSeenAt?: T;
+  agent?:
+    | T
+    | {
+        version?: T;
+        hostname?: T;
+        platform?: T;
+      };
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "notification-sent-history_select".
  */
 export interface NotificationSentHistorySelect<T extends boolean = true> {
@@ -1966,6 +2038,7 @@ export interface NotificationSentHistorySelect<T extends boolean = true> {
 export interface HeartbeatsSelect<T extends boolean = true> {
   monitor?: T;
   organization?: T;
+  location?: T;
   status?: T;
   msg?: T;
   ping?: T;

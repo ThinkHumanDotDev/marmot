@@ -22,7 +22,7 @@ The `marmot` command-line tool is a client, not one of these processes: its vari
 | `PAYLOAD_SECRET`         | — (required)            | all     | Signs session tokens and encrypts secrets at rest. At least 16 characters; use `openssl rand -hex 32`. Changing it signs everyone out.                                                                                                       |
 | `NEXT_PUBLIC_SERVER_URL` | `http://localhost:3000` | all     | The URL users open Marmot at. Used for CORS/CSRF, invitation and password-reset emails, the OIDC redirect URI, status-page links, custom-domain detection and the realtime CORS origin. Must match the public `https://` URL behind a proxy. |
 | `ADDITIONAL_ORIGINS`     | _(empty)_               | web     | Extra CORS/CSRF origins, comma-separated (e.g. a second hostname behind the same proxy).                                                                                                                                                     |
-| `MARMOT_ROLE`            | `all`                   | all     | Which process this container runs: `web`, `worker`, `realtime` or `all`. The compose file sets it per service.                                                                                                                               |
+| `MARMOT_ROLE`            | `all`                   | all     | Which process this container runs: `web`, `worker`, `realtime`, `all`, or `probe` (a [probe agent](Probe-Locations.md)). The compose file sets it per service.                                                                               |
 | `NODE_ENV`               | `development`           | all     | `development`, `test` or `production`. The Docker image sets `production`, which enables HSTS, refuses plain-`http://` OIDC issuers and makes the database adapters require migrations instead of pushing the schema.                        |
 | `LOG_LEVEL`              | `info`                  | all     | pino level: `fatal`, `error`, `warn`, `info`, `debug`, `trace`. Logs are JSON lines on stdout.                                                                                                                                               |
 
@@ -188,6 +188,20 @@ connects only to the address it checked. A refused check is a DOWN heartbeat suc
 - Instance-wide settings (`SMTP_HOST`, `DATABASE_URL`, `REDIS_URL`) are not affected.
 
 Malformed CIDRs stop the process at startup with a readable error.
+
+## Probe locations
+
+[Probe locations](Probe-Locations.md) run checks from other networks. The first two variables configure the
+server; the last two are all a probe agent (`MARMOT_ROLE=probe`) needs. An agent reads no database, Redis
+or `PAYLOAD_SECRET`; besides these it honours `WORKER_CONCURRENCY`, `LOG_LEVEL`, `DOCKER_SOCKET_ENABLED`,
+the `MONITOR_*` address guard and the `CONNECTIVITY_CHECK_*` variables ([its own uplink check](#self-connectivity-check)).
+
+| Variable              | Default | Read by     | Description                                                                                                                                                                       |
+| --------------------- | ------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PROBE_OFFLINE_AFTER` | `180`   | web, worker | Seconds without contact after which a location is marked offline and its admins are emailed (30–86400). Agents refresh their configuration every third of it, at most every 60 s. |
+| `PROBE_RATE_LIMIT`    | `600`   | web         | Requests per minute per location token to `/api/probe/v1/*`; `0` turns the limit off.                                                                                             |
+| `MARMOT_URL`          | —       | probe       | Agent only, required: the Marmot server, e.g. `https://marmot.example.com`. The agent only makes outbound HTTPS requests to it.                                                   |
+| `MARMOT_PROBE_TOKEN`  | —       | probe       | Agent only, required: the location's token (`mp_…`), shown once when the location is created or its token is rotated.                                                             |
 
 ## Hosted instance
 

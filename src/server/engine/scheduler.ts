@@ -3,6 +3,7 @@ import type { Payload, PayloadRequest } from 'payload'
 import { afterCommit } from '@/db/after-commit'
 import { PUSH_CRON_CHECK_SECONDS } from '@/lib/push-schedule'
 import { env } from '@/env'
+import { isRemoteMonitor } from '@/lib/probe-locations'
 import { childLogger } from '@/lib/logger'
 import type { Monitor } from '@/payload-types'
 import { emitMonitorDeleted, emitMonitorUpdated } from '@/server/realtime/emitter'
@@ -18,7 +19,7 @@ const HOOK_REDIS_TIMEOUT_MS = 5_000
 
 /** Monitor fields the scheduler needs; accepts a full document or the status-cache subset. */
 export type SchedulableMonitor = Pick<Monitor, 'id' | 'interval' | 'retryInterval'> &
-  Partial<Pick<Monitor, 'type' | 'pushSchedule'>> & {
+  Partial<Pick<Monitor, 'type' | 'pushSchedule' | 'locations'>> & {
     status?: Pick<NonNullable<Monitor['status']>, 'lastStatus'> | null
   }
 
@@ -61,12 +62,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<
 
 /**
  * Create or update the job scheduler of a monitor. Idempotent: BullMQ keeps one scheduler per id
- * and re-plans the next job when `every` changes.
+ * and re-plans the next job when `every` changes. Monitors checked by a probe location (#91) have
+ * no scheduler on the workers: their agents schedule the checks, so any existing one is removed.
  */
 export async function syncMonitor(
   monitor: SchedulableMonitor,
   queue: ChecksQueue = getChecksQueue(),
 ): Promise<void> {
+  if (isRemoteMonitor(monitor)) {
+    await removeMonitorSchedule(monitor.id, queue)
+    return
+  }
   const every = effectiveIntervalMs(monitor)
   const id = String(monitor.id)
   await withTimeout(
@@ -160,10 +166,19 @@ export async function resyncAll(
     limit: 0,
     pagination: false,
     overrideAccess: true,
-    select: { interval: true, retryInterval: true, status: true, type: true, pushSchedule: true },
+    select: {
+      interval: true,
+      retryInterval: true,
+      status: true,
+      type: true,
+      pushSchedule: true,
+      locations: true,
+    },
   })
 
-  const wanted = new Map(docs.map((m) => [monitorSchedulerId(String(m.id)), m]))
+  // Probe-checked monitors (#91) are scheduled by their agents, not by the workers.
+  const local = docs.filter((m) => !isRemoteMonitor(m))
+  const wanted = new Map(local.map((m) => [monitorSchedulerId(String(m.id)), m]))
 
   let removed = 0
   const existing = await queue.getJobSchedulers(0, -1, true)

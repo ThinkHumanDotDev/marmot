@@ -8,6 +8,8 @@
  *   statuses that changed and publishes the organization's list to its socket room. It catches
  *   wake-ups lost with Redis and plans the first occurrences of documents saved without hooks.
  * - `retention` (`src/server/jobs/retention.ts`) shares the queue so a single worker serves it.
+ * - `probe-health` (every 15 s, `src/server/probes/health.ts`): marks probe locations offline and
+ *   online again (#91); the single consumer makes it the only writer of `locations.status`.
  */
 import type { Job, Queue, Worker } from 'bullmq'
 import type { Payload } from 'payload'
@@ -17,6 +19,11 @@ import type { Maintenance } from '@/payload-types'
 import { QUEUE_NAMES } from '@/server/engine/names'
 import { createWorker, type QueueFactoryOptions } from '@/server/engine/queues'
 import { processRetentionJob, RETENTION_JOB_NAME } from '@/server/jobs/retention'
+import {
+  PROBE_HEALTH_INTERVAL_MS,
+  PROBE_HEALTH_JOB_NAME,
+  refreshLocationStatuses,
+} from '@/server/probes/health'
 import { syncMaintenance, syncMaintenanceById, type SyncOptions } from './occurrences'
 import {
   closeMaintenanceQueue,
@@ -141,9 +148,19 @@ export const processMaintenanceJob =
       return processMaintenanceWakeup(payload, job.data as MaintenanceWakeupData)
     }
     if (job.name === RETENTION_JOB_NAME) return processRetentionJob(payload)(job)
+    if (job.name === PROBE_HEALTH_JOB_NAME) return refreshLocationStatuses(payload)
     log.warn({ jobId: job.id, name: job.name }, 'unknown job on the maintenance queue; ignored')
     return undefined
   }
+
+/** Upsert the every-15-seconds `probe-health` scheduler (#91). Idempotent. */
+export async function scheduleProbeHealthJob(queue: Queue): Promise<void> {
+  await queue.upsertJobScheduler(
+    PROBE_HEALTH_JOB_NAME,
+    { every: PROBE_HEALTH_INTERVAL_MS },
+    { name: PROBE_HEALTH_JOB_NAME, opts: { removeOnComplete: 10, removeOnFail: 50 } },
+  )
+}
 
 /**
  * Worker entrypoint helper: upsert the scheduler and start the worker on the maintenance queue.
@@ -154,6 +171,7 @@ export async function startMaintenanceWorker(
   options: QueueFactoryOptions = {},
 ): Promise<Worker> {
   await scheduleMaintenanceStatusJob(getMaintenanceQueue(options))
+  await scheduleProbeHealthJob(getMaintenanceQueue(options))
   // Re-plan every wake-up once per boot (they may have been lost with Redis).
   try {
     await refreshMaintenanceStatuses(payload, new Date(), { scheduleJobs: 'all' })
