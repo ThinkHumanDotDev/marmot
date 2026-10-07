@@ -140,7 +140,11 @@
       "signOut": "Sign out",
       "resumed": "Resumed “{name}”",
       "pausedToast": "Paused “{name}”",
-      "updateFailed": "Could not update the monitor"
+      "updateFailed": "Could not update the monitor",
+      "checkNow": "Check “{name}” now",
+      "checkingMonitor": "Checking “{name}”…",
+      "checkResult": "“{name}” is {status, select, up {up} down {down} pending {pending} maintenance {under maintenance} degraded {degraded} other {unknown}}: {msg}",
+      "checkFailed": "Could not run the check"
     }
   },
   "dashboard": {
@@ -250,6 +254,32 @@
       "deleteDescription": "This removes the monitor together with its heartbeats and statistics. Child monitors of a group are kept and detached. This cannot be undone.",
       "cancel": "Cancel",
       "confirmDelete": "Delete monitor"
+    },
+    "check": {
+      "checkNow": "Check now",
+      "checking": "Checking… {seconds}s",
+      "failed": "Could not run the check",
+      "resultTitle": "Check result: {name}",
+      "resultDescription": "The worker ran the check just now. The heartbeat also appears in the list.",
+      "test": "Test",
+      "testing": "Testing… {seconds}s",
+      "testTitle": "Test result",
+      "testDescription": "The worker ran this configuration once. Nothing was saved.",
+      "testRunning": "Running the check on the worker… {seconds}s",
+      "httpStatus": "HTTP {code}",
+      "message": "Message",
+      "noMessage": "No message",
+      "responseTime": "Response time",
+      "took": "Took",
+      "milliseconds": "{ms} ms",
+      "checkedAt": "Checked at",
+      "certificate": "Certificate",
+      "certificateValid": "Trusted, expires in {days, plural, one {# day} other {# days}}",
+      "certificateInvalid": "Not trusted",
+      "blocked": "The outbound address guard refused this target (private or denied address).",
+      "maintenance": "The monitor is in a maintenance window, so the check did not run.",
+      "recorded": "Stored as a heartbeat (trigger: manual).",
+      "notRecorded": "Nothing was stored."
     },
     "stats": {
       "response": "Response",
@@ -4494,6 +4524,11 @@
     "ssoEnforced": "Your organization requires single sign-on. Use “Sign in with your organization's SSO” on the login page.",
     "organizationNotFound": "Organization not found",
     "monitorNotFound": "Monitor not found",
+    "monitorPausedNoCheck": "The monitor is paused. Resume it to run a check.",
+    "checkNotApplicable": "Push monitors are not checked by Marmot: they wait for the monitored system to call the push URL.",
+    "adhocTypeNotSupported": "This monitor type cannot be tested before it is saved.",
+    "checkTimedOut": "No result arrived in time. Check that the worker is running.",
+    "checkFailed": "The check could not be run.",
     "monitorForeignReference": "Must belong to the same organization as the monitor.",
     "tagDuplicate": "Each tag may only be added once.",
     "unknownMonitors": "{count, plural, one {Unknown monitor} other {Unknown monitors}}: {ids}",

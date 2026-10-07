@@ -439,6 +439,8 @@ export async function performHttpCheck(
     await cleanup()
   }
   ctx.heartbeat.ping = response.ping
+  // Reported by on-demand checks ("Check now", "Test"); not stored on heartbeats.
+  ctx.heartbeat.statusCode = response.statusCode
 
   const statusMsg = `${response.statusCode} - ${response.statusText}`
   const assertions = supportsAssertions(ctx.monitor.type)

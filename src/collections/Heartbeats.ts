@@ -8,6 +8,9 @@ import { adminGroup, adminT } from '@/i18n/admin'
  */
 export const HEARTBEAT_STATUSES = ['up', 'down', 'pending', 'maintenance', 'degraded'] as const
 
+/** What started a check. Unset means the monitor's schedule (or a push). */
+export const HEARTBEAT_TRIGGERS = ['manual'] as const
+
 export const Heartbeats: CollectionConfig = {
   slug: 'heartbeats',
   admin: {
@@ -61,6 +64,12 @@ export const Heartbeats: CollectionConfig = {
       defaultValue: false,
       index: true,
       admin: { description: adminT('marmot:heartbeats:importantDescription') },
+    },
+    {
+      name: 'trigger',
+      type: 'select',
+      options: HEARTBEAT_TRIGGERS.map((value) => ({ label: value, value })),
+      admin: { description: adminT('marmot:heartbeats:triggerDescription') },
     },
     {
       name: 'assertions',

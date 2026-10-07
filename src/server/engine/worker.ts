@@ -1,14 +1,12 @@
-import type { Job, Worker } from 'bullmq'
+import type { Job } from 'bullmq'
 import type { Payload } from 'payload'
 
-import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import type { Heartbeat, Monitor } from '@/payload-types'
 import { getMonitorType, type MonitorCheckContext } from '@/server/monitor-types'
 import { computeNextBeat, type CheckResult, type NextState, type PrevState } from './beat'
 import { emitHeartbeat, isUnderMaintenance } from './hooks'
-import { QUEUE_NAMES } from './names'
-import { createWorker, type CheckJobData, type QueueFactoryOptions } from './queues'
+import type { CheckJobData, QueueFactoryOptions } from './queues'
 import { effectiveIntervalMs, removeMonitorSchedule, syncMonitor } from './scheduler'
 import { certificateChanged } from './tls'
 import { findBlockedMessage } from '@/server/security/outbound-guard'
@@ -31,6 +29,17 @@ export function checkTimeoutMs(monitor: Pick<Monitor, 'timeout' | 'interval'>): 
   const seconds =
     monitor.timeout && monitor.timeout > 0 ? monitor.timeout : Math.max(1, monitor.interval) * 0.8
   return Math.round(seconds * 1000)
+}
+
+const HEARTBEAT_CORE_FIELDS = new Set(['status', 'msg', 'ping', 'duration'])
+
+/** Type-specific fields a check put on `ctx.heartbeat` (e.g. `statusCode`). */
+function heartbeatDetails(heartbeat: MonitorCheckContext['heartbeat']): Record<string, unknown> {
+  const details: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(heartbeat)) {
+    if (!HEARTBEAT_CORE_FIELDS.has(key) && value !== undefined) details[key] = value
+  }
+  return details
 }
 
 const isTimeoutError = (err: unknown) =>
@@ -88,6 +97,7 @@ export async function runCheck(
       ping: ctx.heartbeat.ping ?? null,
       duration: typeof ctx.heartbeat.duration === 'number' ? ctx.heartbeat.duration : null,
       tlsInfo: ctx.tlsInfo ?? null,
+      details: heartbeatDetails(ctx.heartbeat),
       assertions: ctx.assertions ?? null,
     }
   }
@@ -107,6 +117,7 @@ export async function runCheck(
     ping: ctx.heartbeat.ping ?? Date.now() - startedAt,
     duration: typeof ctx.heartbeat.duration === 'number' ? ctx.heartbeat.duration : null,
     tlsInfo: ctx.tlsInfo ?? null,
+    details: heartbeatDetails(ctx.heartbeat),
     assertions: ctx.assertions ?? null,
   }
 }
@@ -161,6 +172,8 @@ export interface RecordBeatOptions {
   statusPatch?: Partial<NonNullable<Monitor['status']>>
   /** Beat time; defaults to now. */
   now?: Date
+  /** What started the check; stored on the heartbeat. Scheduled checks leave it unset. */
+  trigger?: Heartbeat['trigger']
 }
 
 export interface RecordBeatResult {
@@ -216,6 +229,7 @@ export async function recordBeat(
       retries: next.retries,
       downCount: next.downCount,
       time: now.toISOString(),
+      ...(options.trigger ? { trigger: options.trigger } : {}),
       // Per-assertion results for the monitor page (and run-on-demand results); omitted when the
       // type has none, so plain beats stay small.
       ...(result.assertions?.length
@@ -318,35 +332,4 @@ export async function recordExternalBeat(
     now,
     statusPatch: { lastPushAt: now.toISOString() },
   })
-}
-
-export interface StartCheckWorkerOptions extends QueueFactoryOptions {
-  concurrency?: number
-}
-
-/** Start the BullMQ worker consuming the checks queue. */
-export function startCheckWorker(
-  payload: Payload,
-  options: StartCheckWorkerOptions = {},
-): Worker<CheckJobData, void, 'check'> {
-  const concurrency = options.concurrency ?? env.WORKER_CONCURRENCY
-  const worker = createWorker<CheckJobData, void, 'check'>(
-    QUEUE_NAMES.checks,
-    async (job) => {
-      await processCheckJob(payload, job)
-    },
-    { connection: options.connection, prefix: options.prefix, concurrency },
-  )
-
-  worker.on('failed', (job, err) => {
-    log.error({ err, jobId: job?.id, monitorId: job?.data.monitorId }, 'check job failed')
-  })
-  worker.on('error', (err) => {
-    log.error({ err }, 'check worker error')
-  })
-  worker.on('ready', () => {
-    log.info({ queue: QUEUE_NAMES.checks, concurrency }, 'check worker ready')
-  })
-
-  return worker
 }

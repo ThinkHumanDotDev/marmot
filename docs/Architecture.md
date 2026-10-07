@@ -37,6 +37,15 @@ notifying beat carries a `notificationEvent` (`down`, `up`, `degraded`, `reminde
 filters channels on. `status.settledStatus` remembers the last non-PENDING status so that leaving a retry
 streak (DEGRADED → PENDING → UP) is still recognised as a transition.
 
+On-demand checks (`src/server/engine/on-demand.ts`, worker side in `on-demand-jobs.ts`) use the same queue:
+`POST /api/orgs/:orgId/monitors/:id/check` adds a `manual-check` job (LIFO, deduplicated per monitor while
+one is pending) and `POST /api/orgs/:orgId/checks` an `adhoc-check` job carrying unsaved form values. The
+web process waits for the job's return value through BullMQ `QueueEvents`, so it never connects to a
+target itself; the worker runs `runCheck()` (timeout, proxy, outbound guard) and either records the beat
+through the state machine with `heartbeats.trigger = 'manual'` or, for dry runs and ad-hoc checks, only
+returns the result. Jobs carry a deadline and are dropped when the worker picks them up after nobody waits
+any more. A per-organization limiter (`ON_DEMAND_CHECKS_PER_MINUTE`) bounds both routes.
+
 After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
 `lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`) and calls every listener registered with
 `registerHeartbeatListener()` (`src/server/engine/hooks.ts`); stats, realtime and notifications plug in there.
