@@ -1111,6 +1111,44 @@
         "addHere": "Add the hostname here, save, and make sure the page is published.",
         "certificate": "Your reverse proxy must obtain a certificate for the hostname (Caddy on-demand TLS is documented in <code>docs/Status-Pages.md</code>)."
       }
+    },
+    "access": {
+      "pageTitle": "Password required",
+      "metaTitle": "{title}: password required",
+      "description": "This status page is password protected. Enter the password to view it.",
+      "password": "Password",
+      "submit": "View status page",
+      "invalid": "That password is not correct.",
+      "rateLimited": "Too many attempts. Wait a few minutes and try again.",
+      "editor": {
+        "tab": "Access",
+        "title": "Who can view this page",
+        "description": "Applies once the page is published. Signed-in members can always preview it from here.",
+        "modes": {
+          "public": {
+            "label": "Public",
+            "hint": "Anyone with the link can view the page, its feed and badges."
+          },
+          "password": {
+            "label": "Password",
+            "hint": "Visitors enter a password first. The page is never indexed by search engines."
+          }
+        },
+        "password": "Password",
+        "newPassword": "New password",
+        "passwordHint": "At least {min} characters. Share it with the people who should see the page.",
+        "passwordSet": "A password is set. Enter a new one (at least {min} characters) to change it; everyone will have to enter the new password.",
+        "reset": "Reset",
+        "save": "Save access",
+        "saving": "Saving…",
+        "saved": "Access settings saved",
+        "saveFailed": "Could not save the access settings",
+        "machine": {
+          "title": "Feed readers and scripts",
+          "body": "Append <code>?pw=…</code> to the RSS feed, the JSON endpoint or a badge URL to pass the password without signing in.",
+          "warning": "This puts the password in URLs, browser history and server logs. Prefer it only for clients that cannot keep a cookie."
+        }
+      }
     }
   },
   "maintenance": {

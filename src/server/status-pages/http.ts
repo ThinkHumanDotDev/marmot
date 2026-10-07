@@ -80,6 +80,9 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'theme',
   'language',
   'published',
+  'access',
+  // Write-only; hashed by the collection hook (`applyAccessPassword`).
+  'password',
   'searchEngineIndex',
   'showTags',
   'showCertificateExpiry',

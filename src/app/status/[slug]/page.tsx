@@ -1,13 +1,15 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
+import { notFound, redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 
 import { StatusPageView } from '@/components/status-pages/public/status-page-view'
 import { getStatusPageLocale } from '@/i18n/server'
 import { markdownToText } from '@/lib/markdown'
-import { statusPagePath, statusPageUrl } from '@/server/status-pages/urls'
+import { isProtectedPage } from '@/server/status-pages/access'
+import { statusPageBasePath, statusPagePath, statusPageUrl } from '@/server/status-pages/urls'
 
-import { loadPublicData, loadPublishedPage } from './data'
+import { loadPageAccess, loadPublicData, loadPublishedPage } from './data'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +24,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: t('pageTitle'), robots: { index: false, follow: false } }
   }
 
+  // Protected pages are never indexed; without access, only the title is revealed.
+  const restricted = isProtectedPage(page)
+  if (restricted && !(await loadPageAccess(slug))?.allowed) {
+    return { title: page.title, robots: { index: false, follow: false } }
+  }
+
   const description = page.description ? markdownToText(page.description) : undefined
   const logo = page.logo && typeof page.logo === 'object' ? page.logo.url : null
   const url = statusPageUrl(page.slug)
@@ -30,10 +38,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: page.title,
     description,
     applicationName: page.title,
-    robots: page.searchEngineIndex
-      ? { index: true, follow: true }
-      : { index: false, follow: false },
-    manifest: `${statusPagePath(page.slug)}/manifest.json`,
+    robots:
+      page.searchEngineIndex && !restricted
+        ? { index: true, follow: true }
+        : { index: false, follow: false },
+    // Protected pages link the manifest themselves, with credentials (see the page below).
+    ...(restricted ? {} : { manifest: `${statusPagePath(page.slug)}/manifest.json` }),
     alternates: {
       canonical: url,
       types: { 'application/rss+xml': `${statusPagePath(page.slug)}/rss` },
@@ -53,6 +63,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PublicStatusPage({ params }: PageProps) {
   const { slug } = await params
+  const page = await loadPublishedPage(slug)
+  if (!page) notFound()
+
+  const restricted = isProtectedPage(page)
+  if (restricted && !(await loadPageAccess(slug))?.allowed) {
+    redirect(`${statusPageBasePath(page, await headers())}/login`)
+  }
+
   const data = await loadPublicData(slug)
   if (!data) notFound()
 
@@ -63,6 +81,14 @@ export default async function PublicStatusPage({ params }: PageProps) {
 
   return (
     <>
+      {restricted && (
+        // Browsers fetch manifests without cookies unless asked to; the manifest needs the cookie.
+        <link
+          rel="manifest"
+          href={`${statusPagePath(config.slug)}/manifest.json`}
+          crossOrigin="use-credentials"
+        />
+      )}
       {config.customCSS && (
         // Operators own their status page; custom CSS is a documented feature (as in Uptime Kuma).
         <style data-custom-css dangerouslySetInnerHTML={{ __html: config.customCSS }} />

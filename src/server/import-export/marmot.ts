@@ -118,7 +118,9 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
   slug: doc.slug,
   description: doc.description ?? null,
   theme: doc.theme ?? 'auto',
-  published: doc.published ?? false,
+  // The password never leaves the instance, so a protected page is exported as a draft: importing
+  // it must not publish it without protection.
+  published: doc.access === 'password' ? false : (doc.published ?? false),
   searchEngineIndex: doc.searchEngineIndex ?? false,
   showTags: doc.showTags ?? false,
   showCertificateExpiry: doc.showCertificateExpiry ?? false,
