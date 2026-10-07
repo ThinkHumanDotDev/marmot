@@ -18,6 +18,8 @@ export interface MockIssuerUser {
   given_name?: string
   family_name?: string
   preferred_username?: string
+  /** Any further claim (`groups`, `realm_access` …), released in the ID token and UserInfo. */
+  [claim: string]: unknown
 }
 
 export interface MockIssuer {

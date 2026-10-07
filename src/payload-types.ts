@@ -326,6 +326,15 @@ export interface SsoConnection {
   allowIdpInitiated?: boolean | null;
   autoProvision?: boolean | null;
   defaultRole?: ('admin' | 'member' | 'viewer') | null;
+  groupClaim?: string | null;
+  allowedGroups?: string | null;
+  groupRoles?:
+    | {
+        group: string;
+        role: 'owner' | 'admin' | 'member' | 'viewer';
+        id?: string | null;
+      }[]
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1464,6 +1473,15 @@ export interface SsoConnectionsSelect<T extends boolean = true> {
   allowIdpInitiated?: T;
   autoProvision?: T;
   defaultRole?: T;
+  groupClaim?: T;
+  allowedGroups?: T;
+  groupRoles?:
+    | T
+    | {
+        group?: T;
+        role?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }

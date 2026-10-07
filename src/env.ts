@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { cidrListError } from '@/lib/cidr-syntax'
+import { roleMappingSchema } from '@/lib/sso-groups'
 
 /**
  * Central, validated view of process.env. Import `env` everywhere instead of reading
@@ -70,6 +71,14 @@ const schema = z.object({
   OIDC_DISPLAY_NAME: z.string().default('Single sign-on'),
   OIDC_AUTO_PROVISION: booleanish.default(true),
   OIDC_SCOPES: z.string().default('openid email profile'),
+  // Groups (docs/Single-Sign-On.md → Groups): claim to read, allow-list, group → role mapping.
+  OIDC_GROUP_CLAIM: z.string().trim().min(1).default('groups'),
+  OIDC_ALLOWED_GROUPS: z.string().default(''),
+  OIDC_ROLE_MAPPING: roleMappingSchema,
+  OIDC_ROLE_MAPPING_REMOVE: booleanish.default(false),
+  // SSO-only mode: no password logins, sign-ups or resets (break-glass superadmins aside).
+  OIDC_DISABLE_LOCAL_LOGIN: booleanish.default(false),
+  OIDC_BREAK_GLASS: booleanish.default(false),
   // Social sign-in presets; each pair enables its button.
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
