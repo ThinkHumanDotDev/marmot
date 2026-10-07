@@ -163,11 +163,18 @@ describe('server-side i18n', () => {
       )
       expect(captured[0]).toMatchObject({ locale: 'en', message: '[Site] [🔴 Down] timeout' })
 
+      // One sample per event the channel accepts (the defaults here, #126).
       await sendTestNotification(payload, channel(org.id))
-      expect(captured[1]).toMatchObject({
-        locale: 'en',
-        message: '[Marmot] [⚠️ Test] "Ops" is configured correctly.',
-      })
+      expect(captured.slice(1).map((ctx) => [ctx.locale, ctx.event, ctx.message])).toEqual([
+        ['en', 'down', '[Marmot] [⚠️ Test] Down: "Ops" is configured correctly.'],
+        ['en', 'up', '[Marmot] [⚠️ Test] Recovery: "Ops" is configured correctly.'],
+        ['en', 'reminder', '[Marmot] [⚠️ Test] Reminders: "Ops" is configured correctly.'],
+        [
+          'en',
+          'certificate',
+          '[Marmot] [⚠️ Test] Certificate and domain expiry: "Ops" is configured correctly.',
+        ],
+      ])
 
       // A caller that already knows the language (the queue worker) skips the lookup.
       findByID.mockClear()

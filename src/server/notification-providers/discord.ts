@@ -92,7 +92,7 @@ registerNotificationProvider({
   docsUrl: 'https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks',
   configSchema: discordConfigSchema,
   fieldMeta: discordFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat, locale }) {
+  async send({ config: raw, message, monitor, heartbeat, locale, event, downtimeSeconds }) {
     const config = discordConfigSchema.parse(raw)
     const p = providerText(locale)
     const username = config.username || 'Marmot'
@@ -124,6 +124,7 @@ registerNotificationProvider({
           monitor,
           heartbeat,
           locale,
+          { event, downtimeSeconds },
         )
       }
       await postJson(url.toString(), decorate({ username, content }))
@@ -137,6 +138,7 @@ registerNotificationProvider({
         monitor,
         heartbeat,
         locale,
+        { event, downtimeSeconds },
       )
       await postJson(url.toString(), decorate({ username, content }))
       return OK_MESSAGE
@@ -167,8 +169,13 @@ registerNotificationProvider({
         ],
       }
     } else {
-      const downtimeSeconds =
-        typeof heartbeat.duration === 'number' && heartbeat.duration > 0 ? heartbeat.duration : null
+      // The measured outage (#126) when the dispatcher knows it, else Kuma's beat duration.
+      const downtime =
+        downtimeSeconds != null && downtimeSeconds > 0
+          ? Math.round(downtimeSeconds)
+          : typeof heartbeat.duration === 'number' && heartbeat.duration > 0
+            ? heartbeat.duration
+            : null
       payload = {
         username,
         embeds: [
@@ -179,8 +186,8 @@ registerNotificationProvider({
             fields: [
               { name: p('serviceName'), value: monitor.name },
               ...addressField,
-              ...(downtimeSeconds
-                ? [{ name: p('downtimeDuration'), value: formatDuration(downtimeSeconds) }]
+              ...(downtime
+                ? [{ name: p('downtimeDuration'), value: formatDuration(downtime) }]
                 : []),
               { name: p('time'), value: `<t:${unixSeconds(heartbeat.time)}:F>` },
               ...(heartbeat.ping != null

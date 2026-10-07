@@ -2,6 +2,7 @@ import type { Payload } from 'payload'
 
 import type { Locale } from '@/i18n/locales'
 import { childLogger } from '@/lib/logger'
+import { normalizeChannelEvents, type ChannelEvent } from '@/lib/notification-events'
 import type { Heartbeat, Monitor, Notification } from '@/payload-types'
 import { getOrganizationI18n } from '@/server/i18n'
 import { getNotificationProvider } from '@/server/notification-providers'
@@ -14,6 +15,8 @@ const log = childLogger('notifications:send')
 export type NotificationChannelLike = Pick<Notification, 'type' | 'config'> & {
   id?: Notification['id']
   name?: string | null
+  /** Event selection (`normalizeChannelEvents`); test samples are sent for each. */
+  events?: Notification['events']
   /** Owning organization (id or populated doc); unsaved test channels pass the URL's organization. */
   organization?: Notification['organization'] | null
 }
@@ -23,6 +26,10 @@ export interface SendNotificationOptions {
   message?: string
   monitor: Monitor | null
   heartbeat: Heartbeat | null
+  /** Why the channel is told; handed to the provider (`{{ event }}` in templates). */
+  event?: ChannelEvent | null
+  /** Downtime of a recovery (`up`) in seconds, when known. */
+  downtimeSeconds?: number | null
   /**
    * Language of the message; defaults to the channel organization's `settings.language`. Callers
    * that already know it (the queue worker, expiry fan-out) pass it to skip the lookup.
@@ -95,7 +102,14 @@ export function normalizeNotificationConfig(
 export async function sendNotification(
   payload: Payload,
   notification: NotificationChannelLike,
-  { message, monitor, heartbeat, locale: knownLocale }: SendNotificationOptions,
+  {
+    message,
+    monitor,
+    heartbeat,
+    event = null,
+    downtimeSeconds = null,
+    locale: knownLocale,
+  }: SendNotificationOptions,
 ): Promise<string> {
   const provider = getNotificationProvider(notification.type)
   if (!provider) {
@@ -110,25 +124,50 @@ export async function sendNotification(
     })
   }
   const locale = knownLocale ?? (await getChannelLocale(payload, notification))
-  const text = message ?? buildDefaultMessage(monitor, heartbeat, locale)
+  const text =
+    message ?? buildDefaultMessage(monitor, heartbeat, locale, { event, downtimeSeconds })
 
   log.debug(
-    { type: notification.type, notificationId: notification.id, monitorId: monitor?.id },
+    { type: notification.type, notificationId: notification.id, monitorId: monitor?.id, event },
     'sending notification',
   )
-  return provider.send({ config, message: text, monitor, heartbeat, locale })
+  return provider.send({
+    config,
+    message: text,
+    monitor,
+    heartbeat,
+    locale,
+    event,
+    downtimeSeconds,
+  })
 }
 
-/** Send the "Test" message for a saved or unsaved channel. */
+export interface TestNotificationResult {
+  /** The provider's success string of the last sample. */
+  result: string
+  /** Events a sample was sent for, in order. */
+  events: ChannelEvent[]
+}
+
+/**
+ * Send the "Test" messages for a saved or unsaved channel: one sample per event the channel
+ * accepts (`events`, or the defaults), in `CHANNEL_EVENTS` order. Stops at the first failure.
+ */
 export async function sendTestNotification(
   payload: Payload,
   notification: NotificationChannelLike,
-): Promise<string> {
+): Promise<TestNotificationResult> {
   const locale = await getChannelLocale(payload, notification)
-  return sendNotification(payload, notification, {
-    message: buildTestMessage(notification.name ?? undefined, locale),
-    monitor: null,
-    heartbeat: null,
-    locale,
-  })
+  const events = normalizeChannelEvents(notification.events)
+  let result = ''
+  for (const event of events) {
+    result = await sendNotification(payload, notification, {
+      message: buildTestMessage(notification.name ?? undefined, locale, event),
+      monitor: null,
+      heartbeat: null,
+      event,
+      locale,
+    })
+  }
+  return { result, events }
 }

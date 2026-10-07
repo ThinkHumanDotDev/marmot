@@ -30,6 +30,11 @@ import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { track } from '@/lib/analytics'
 import { ApiError } from '@/lib/api'
+import {
+  CHANNEL_EVENTS,
+  DEFAULT_CHANNEL_EVENTS,
+  type ChannelEvent,
+} from '@/lib/notification-events'
 
 import { ProviderField } from './provider-field'
 import {
@@ -38,6 +43,7 @@ import {
   type NotificationInput,
   type NotificationProviderDescriptor,
   type NotificationRow,
+  type TestResult,
 } from './types'
 
 interface FormValues {
@@ -47,6 +53,7 @@ interface FormValues {
   applyExisting: boolean
   active: boolean
   config: Record<string, unknown>
+  events: ChannelEvent[]
 }
 
 interface ChannelDialogProps {
@@ -112,6 +119,7 @@ export function ChannelDialog({
       applyExisting: false,
       active: true,
       config: defaultConfig(providers[0]),
+      events: [...DEFAULT_CHANNEL_EVENTS],
     },
   })
 
@@ -120,6 +128,7 @@ export function ChannelDialog({
   const isDefault = useWatch({ control: form.control, name: 'isDefault' })
   const applyExisting = useWatch({ control: form.control, name: 'applyExisting' })
   const active = useWatch({ control: form.control, name: 'active' })
+  const events = useWatch({ control: form.control, name: 'events' })
   const provider = React.useMemo(() => providers.find((p) => p.name === type), [providers, type])
 
   // Reset the form whenever the dialog opens for a different channel.
@@ -133,8 +142,26 @@ export function ChannelDialog({
       applyExisting: false,
       active: channel?.active ?? true,
       config: { ...defaultConfig(initialProvider), ...(channel?.config ?? {}) },
+      events: channel?.events ?? [...DEFAULT_CHANNEL_EVENTS],
     })
   }, [open, channel, providers, form])
+
+  // The selection is never empty (an empty one would silently mean the defaults on the server).
+  React.useEffect(() => {
+    form.register('events', {
+      validate: (value) => value.length > 0 || t('dialog.eventsRequired'),
+    })
+  }, [form, t])
+
+  function toggleEvent(event: ChannelEvent, checked: boolean) {
+    const current = form.getValues('events')
+    const next = checked ? [...current, event] : current.filter((e) => e !== event)
+    form.setValue(
+      'events',
+      CHANNEL_EVENTS.filter((e) => next.includes(e)),
+      { shouldDirty: true, shouldValidate: true },
+    )
+  }
 
   function changeProvider(next: string) {
     const nextProvider = providers.find((p) => p.name === next)
@@ -158,6 +185,7 @@ export function ChannelDialog({
       name: values.name.trim(),
       type: values.type,
       config: cleanConfig(provider, values.config),
+      events: values.events,
       isDefault: values.isDefault,
       applyExisting: values.applyExisting,
       active: values.active,
@@ -188,8 +216,9 @@ export function ChannelDialog({
         ...(channel ? { notificationId: channel.id } : { type: values.type }),
         config: cleanConfig(provider, values.config),
         name: values.name.trim() || undefined,
+        events: values.events,
       })
-      toast.success(t('test.sent'), { description: result.result })
+      toast.success(t('test.sent'), { description: describeTest(result) })
     } catch (error) {
       const details = error instanceof ApiError ? (error.details as { error?: string }) : null
       const message = details?.error ?? (error instanceof Error ? error.message : t('test.failed'))
@@ -200,7 +229,17 @@ export function ChannelDialog({
     }
   }
 
+  function describeTest(result: TestResult) {
+    const sent = result.events ?? []
+    if (sent.length === 0) return result.result
+    return t('test.sentSamples', {
+      count: sent.length,
+      events: sent.map((event) => t(`events.${event}.label`)).join(', '),
+    })
+  }
+
   const rootError = form.formState.errors.root?.message
+  const eventsError = form.formState.errors.events?.message
   const nameError = form.formState.errors.name?.message
   const grouped = PROVIDER_GROUP_ORDER.map((group) => ({
     group,
@@ -302,6 +341,41 @@ export function ChannelDialog({
           ) : (
             <p className="text-sm text-muted-foreground">{t('dialog.noProviders')}</p>
           )}
+
+          <Separator />
+
+          <div
+            role="group"
+            aria-labelledby="channel-events-label"
+            aria-describedby="channel-events-hint"
+            className="grid gap-3"
+          >
+            <div className="space-y-0.5">
+              <p id="channel-events-label" className="text-sm leading-none font-medium">
+                {t('dialog.events')}
+              </p>
+              <p id="channel-events-hint" className="text-xs text-muted-foreground">
+                {t('dialog.eventsHint')}
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {CHANNEL_EVENTS.map((event) => (
+                <ToggleRow
+                  key={event}
+                  id={`channel-event-${event}`}
+                  label={t(`events.${event}.label`)}
+                  description={t(`events.${event}.description`)}
+                  checked={events.includes(event)}
+                  onCheckedChange={(v) => toggleEvent(event, v)}
+                />
+              ))}
+            </div>
+            {eventsError && (
+              <p role="alert" className="text-sm text-destructive">
+                {eventsError}
+              </p>
+            )}
+          </div>
 
           <Separator />
 

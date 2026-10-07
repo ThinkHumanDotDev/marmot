@@ -2939,6 +2939,89 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.notifications_events": {
+      "name": "notifications_events",
+      "schema": "",
+      "columns": {
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "enum_notifications_events",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "notifications_events_order_idx": {
+          "name": "notifications_events_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notifications_events_parent_idx": {
+          "name": "notifications_events_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "notifications_events_parent_fk": {
+          "name": "notifications_events_parent_fk",
+          "tableFrom": "notifications_events",
+          "tableTo": "notifications",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.notifications": {
       "name": "notifications",
       "schema": "",
@@ -11412,6 +11495,18 @@
         "degraded"
       ]
     },
+    "public.enum_notifications_events": {
+      "name": "enum_notifications_events",
+      "schema": "public",
+      "values": [
+        "down",
+        "up",
+        "degraded",
+        "reminder",
+        "certificate",
+        "maintenance"
+      ]
+    },
     "public.enum_proxies_protocol": {
       "name": "enum_proxies_protocol",
       "schema": "public",
@@ -11844,6 +11939,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "176ab1ab-f1a0-4150-a069-e0c21d6cd5b2",
+  "id": "4fc54a5b-ac92-4b89-b26f-e999aece7967",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

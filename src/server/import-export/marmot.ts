@@ -2,7 +2,7 @@
  * Marmot's own export format and its importer.
  *
  *   { format: 'marmot', version: 1, exportedAt, organization: { name, slug },
- *     notifications: [{ id, name, type, config, isDefault, active }],
+ *     notifications: [{ id, name, type, config, events, isDefault, active }],
  *     monitors:      [{ id, ...MonitorFormValues, parent: id | null, notifications: [id], pushToken }],
  *     statusPages:   [{ id, ...fields, domains: [hostname], groups: [{ name, monitors: [{ monitor: id, sendUrl, customUrl }] }],
  *                      incidents: [{ title, content, style, pinned, active, resolvedAt, createdAt }] }],
@@ -42,6 +42,7 @@ import {
   type MonitorFormValues,
 } from '@/lib/validation/monitor'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
+import { normalizeChannelEvents, type ChannelEvent } from '@/lib/notification-events'
 import type {
   Incident,
   Monitor,
@@ -80,6 +81,8 @@ export interface ExportedNotification {
   name: string
   type: string
   config: Record<string, unknown>
+  /** Event filter (#126); older files have none (the defaults). */
+  events: ChannelEvent[]
   isDefault: boolean
   active: boolean
 }
@@ -336,6 +339,7 @@ export async function buildMarmotExport(
       name: doc.name,
       type: doc.type,
       config: isRecord(doc.config) ? doc.config : {},
+      events: normalizeChannelEvents(doc.events),
       isDefault: doc.isDefault ?? false,
       active: doc.active ?? true,
     })),
@@ -368,6 +372,8 @@ const notificationSchema = z.object({
   name: z.string().trim().min(1).max(150),
   type: z.string().min(1),
   config: z.record(z.string(), z.unknown()).default({}),
+  // Unknown event names (a newer Marmot) are dropped rather than failing the channel.
+  events: z.array(z.string()).optional(),
   isDefault: z.boolean().default(false),
   active: z.boolean().default(true),
 })
@@ -538,6 +544,7 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
       name: parsed.data.name,
       type: parsed.data.type,
       config,
+      ...(parsed.data.events ? { events: normalizeChannelEvents(parsed.data.events) } : {}),
       isDefault: parsed.data.isDefault,
       active: parsed.data.active,
     })

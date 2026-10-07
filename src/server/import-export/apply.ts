@@ -292,6 +292,7 @@ export async function applyImportPlan(
           name: planned.name,
           type: planned.type,
           config: planned.config,
+          ...(planned.events ? { events: planned.events } : {}),
           isDefault: planned.isDefault,
           active: planned.active,
           organization: orgId as Notification['organization'],

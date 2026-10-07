@@ -14,6 +14,8 @@ import { registerHeartbeatListener } from '@/server/engine/hooks'
 import { enqueueNotificationsForHeartbeat, type EnqueueOptions } from './dispatch'
 
 export * from './dispatch'
+export * from './downtime'
+export * from './maintenance'
 export * from './message'
 export * from './send'
 export * from './worker'

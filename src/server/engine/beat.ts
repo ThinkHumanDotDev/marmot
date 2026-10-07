@@ -24,9 +24,9 @@ export const MAINTENANCE: BeatStatus = 'maintenance'
 export const DEGRADED: BeatStatus = 'degraded'
 
 /**
- * Why notification channels are told about a beat. Channels filter on it (#126); the default set
- * (`DEFAULT_NOTIFICATION_EVENTS` in `src/server/notifications/dispatch.ts`) keeps the behaviour from
- * before the degraded state, so `degraded` is opt-in.
+ * Why notification channels are told about a beat. Channels filter on it with their `events`
+ * selection (#126, `src/lib/notification-events.ts`, which adds the non-heartbeat events); the
+ * default selection keeps the behaviour from before the degraded state, so `degraded` is opt-in.
  * - `down`: the monitor went DOWN (first beat included);
  * - `up`: it recovered from DOWN (to UP or DEGRADED);
  * - `degraded`: it entered DEGRADED or went back from DEGRADED to UP (not involving DOWN);

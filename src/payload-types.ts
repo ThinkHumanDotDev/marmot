@@ -579,6 +579,7 @@ export interface Notification {
     | number
     | boolean
     | null;
+  events?: ('down' | 'up' | 'degraded' | 'reminder' | 'certificate' | 'maintenance')[] | null;
   isDefault?: boolean | null;
   applyExisting?: boolean | null;
   active?: boolean | null;
@@ -1653,6 +1654,7 @@ export interface NotificationsSelect<T extends boolean = true> {
   name?: T;
   type?: T;
   config?: T;
+  events?: T;
   isDefault?: T;
   applyExisting?: T;
   active?: T;
