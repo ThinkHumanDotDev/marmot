@@ -32,6 +32,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const description = page.description ? markdownToText(page.description) : undefined
   const logo = page.logo && typeof page.logo === 'object' ? page.logo.url : null
+  const favicon = page.favicon && typeof page.favicon === 'object' ? page.favicon : null
+  // Favicon first, then the logo. Media URLs point at Marmot's own host, so they load on custom domains too.
+  const icon = favicon?.url
+    ? { url: favicon.url, ...(favicon.mimeType ? { type: favicon.mimeType } : {}) }
+    : logo
+      ? { url: logo }
+      : null
   const url = statusPageUrl(page.slug)
 
   return {
@@ -57,7 +64,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       ...(logo ? { images: [{ url: logo }] } : {}),
     },
     twitter: { card: logo ? 'summary' : 'summary_large_image', title: page.title, description },
-    ...(logo ? { icons: { icon: logo } } : {}),
+    ...(icon ? { icons: { icon: [icon] } } : {}),
   }
 }
 

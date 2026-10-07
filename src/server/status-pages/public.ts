@@ -12,6 +12,7 @@ import type { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
 import type { IncidentStyle } from '@/collections/Incidents'
 import type { StatusPageLanguage, StatusPageTheme } from '@/collections/StatusPages'
 import { defaultLocale } from '@/i18n/locales'
+import { getThemePreset } from '@/lib/status-page-themes'
 import {
   componentDisplayName,
   staticComponentStatus,
@@ -100,12 +101,21 @@ export interface PublicConfig {
   slug: string
   title: string
   description: string | null
+  /** Logo for light mode (and dark mode when `logoDark` is null). */
   logo: string | null
+  /** Logo for dark mode. */
+  logoDark: string | null
+  /** Favicon URL; the page falls back to `logo`. */
+  favicon: string | null
   /** Where the logo and title link to. */
   homepageUrl: string | null
   /** Header contact link (http(s) or mailto:). */
   contactUrl: string | null
   theme: StatusPageTheme
+  /** Theme preset id (`src/lib/status-page-themes/presets`). */
+  themePreset: string
+  /** Custom headline that replaces the automatic overall-status text. */
+  bannerText: string | null
   /** Fixed locale, or `auto` to follow the visitor's browser. */
   language: StatusPageLanguage
   published: boolean
@@ -141,8 +151,8 @@ const relId = (value: unknown): string | number | null => {
   return null
 }
 
-const mediaUrl = (logo: StatusPage['logo']): string | null =>
-  logo && typeof logo === 'object' ? ((logo as Media).url ?? null) : null
+const mediaUrl = (media: StatusPage['logo']): string | null =>
+  media && typeof media === 'object' ? ((media as Media).url ?? null) : null
 
 /** The published status page with `slug`, or null. */
 export async function findPublishedStatusPage(
@@ -167,9 +177,13 @@ export function toPublicConfig(page: StatusPage): PublicConfig {
     title: page.title,
     description: page.description ?? null,
     logo: mediaUrl(page.logo),
+    logoDark: mediaUrl(page.logoDark),
+    favicon: mediaUrl(page.favicon),
     homepageUrl: page.homepageUrl ?? null,
     contactUrl: page.contactUrl ?? null,
     theme: page.theme ?? 'auto',
+    themePreset: getThemePreset(page.themePreset).id,
+    bannerText: page.bannerText?.trim() || null,
     language: page.language ?? defaultLocale,
     published: Boolean(page.published),
     showTags: Boolean(page.showTags),

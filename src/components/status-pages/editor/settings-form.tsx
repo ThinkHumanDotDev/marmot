@@ -1,6 +1,6 @@
 'use client'
 
-import { ImageIcon, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import * as React from 'react'
@@ -32,7 +32,6 @@ type Values = Required<
     | 'description'
     | 'homepageUrl'
     | 'contactUrl'
-    | 'theme'
     | 'language'
     | 'searchEngineIndex'
     | 'showTags'
@@ -52,7 +51,6 @@ const fromPage = (page: StatusPage): Values => ({
   description: page.description ?? '',
   homepageUrl: page.homepageUrl ?? '',
   contactUrl: page.contactUrl ?? '',
-  theme: page.theme ?? 'auto',
   language: page.language ?? defaultLocale,
   searchEngineIndex: Boolean(page.searchEngineIndex),
   showTags: Boolean(page.showTags),
@@ -111,14 +109,11 @@ export function SettingsForm({
   const router = useRouter()
   const [values, setValues] = React.useState<Values>(() => fromPage(page))
   const [saving, setSaving] = React.useState(false)
-  const [uploading, setUploading] = React.useState(false)
-  const fileInput = React.useRef<HTMLInputElement>(null)
 
   const set = <K extends keyof Values>(key: K, value: Values[K]) =>
     setValues((v) => ({ ...v, [key]: value }))
 
   const dirty = JSON.stringify(values) !== JSON.stringify(fromPage(page))
-  const logoUrl = page.logo && typeof page.logo === 'object' ? page.logo.url : null
 
   async function save(event: React.FormEvent) {
     event.preventDefault()
@@ -140,32 +135,6 @@ export function SettingsForm({
       toast.error(error instanceof Error ? error.message : ts('saveFailed'))
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function uploadLogo(file: File | undefined) {
-    if (!file) return
-    setUploading(true)
-    try {
-      onSaved(await statusPagesApi.uploadLogo(orgId, page.id, file))
-      toast.success(ts('logo.updated'))
-    } catch (error) {
-      toast.error(error instanceof Error && error.message ? error.message : ts('logo.uploadFailed'))
-    } finally {
-      setUploading(false)
-      if (fileInput.current) fileInput.current.value = ''
-    }
-  }
-
-  async function removeLogo() {
-    setUploading(true)
-    try {
-      const { doc } = await statusPagesApi.removeLogo(orgId, page.id)
-      onSaved(doc)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : ts('logo.removeFailed'))
-    } finally {
-      setUploading(false)
     }
   }
 
@@ -277,23 +246,6 @@ export function SettingsForm({
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="theme">{ts('theme')}</Label>
-                <Select
-                  value={values.theme ?? 'auto'}
-                  disabled={!canEdit}
-                  onValueChange={(v) => set('theme', v as Values['theme'])}
-                >
-                  <SelectTrigger id="theme">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">{ts('themes.auto')}</SelectItem>
-                    <SelectItem value="light">{ts('themes.light')}</SelectItem>
-                    <SelectItem value="dark">{ts('themes.dark')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
               {hasMultipleLocales() && (
                 <div className="grid gap-2">
                   <Label htmlFor="language">{t('language')}</Label>
@@ -357,63 +309,6 @@ export function SettingsForm({
       </div>
 
       <div className="flex flex-col gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>{ts('logo.title')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center gap-4">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- arbitrary upload size
-              <img
-                src={logoUrl}
-                alt=""
-                className="size-14 rounded-lg border object-contain"
-                width={56}
-                height={56}
-              />
-            ) : (
-              <span className="flex size-14 items-center justify-center rounded-lg border border-dashed text-muted-foreground">
-                <ImageIcon className="size-5" aria-hidden />
-              </span>
-            )}
-            <div className="flex flex-col gap-2">
-              <input
-                ref={fileInput}
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                id="logo-file"
-                disabled={!canEdit || uploading}
-                onChange={(e) => void uploadLogo(e.target.files?.[0])}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!canEdit || uploading}
-                onClick={() => fileInput.current?.click()}
-              >
-                {uploading
-                  ? ts('logo.uploading')
-                  : logoUrl
-                    ? ts('logo.replace')
-                    : ts('logo.upload')}
-              </Button>
-              {logoUrl && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={!canEdit || uploading}
-                  onClick={removeLogo}
-                >
-                  {ts('logo.remove')}
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle>{ts('visibility.title')}</CardTitle>
