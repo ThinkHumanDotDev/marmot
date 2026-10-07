@@ -1,6 +1,7 @@
 import type { z } from 'zod'
 
 import type { Locale } from '@/i18n/locales'
+import type { ChannelEvent } from '@/lib/notification-events'
 import type { Heartbeat, Monitor } from '@/payload-types'
 
 /**
@@ -46,6 +47,14 @@ export interface NotificationSendContext {
    * Optional so a context without it (tests, older callers) renders English.
    */
   locale?: Locale
+  /**
+   * Why the channel is told (#126): `down`, `up`, `degraded`, `reminder`, `certificate`,
+   * `maintenance`; null/absent when unknown. Pass `{ event, downtimeSeconds }` to
+   * `renderMessageTemplate` so templates can use `{{ event }}` and `{{ downtime }}`.
+   */
+  event?: ChannelEvent | null
+  /** How long the monitor was DOWN, on `up` (recovery) notifications; null when unknown. */
+  downtimeSeconds?: number | null
 }
 
 export interface NotificationProvider {

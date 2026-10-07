@@ -9,9 +9,13 @@ monitor form (default channels start selected on new monitors) or from the chann
 When a monitor changes state (UP → DOWN, DOWN → UP, PENDING → DOWN) the worker sends one message per
 attached channel; with a `resendInterval` on the monitor it repeats the DOWN message every N beats while
 the outage lasts. Nothing is sent for PENDING (retrying) beats or for beats inside a maintenance window.
+Each channel chooses which **events** it hears about (down, recovery, degraded performance, reminders,
+certificate and domain expiry, maintenance windows), so you can page PagerDuty only on DOWN and send
+recoveries and slow responses to Slack.
 
 Setting up a channel is a form: pick a **provider**, fill in the fields the provider needs (the form is
-generated from the provider's schema, so required fields and secrets are marked), press **Send test**, save.
+generated from the provider's schema, so required fields and secrets are marked), pick the events, press
+**Send test** (one sample per selected event), save.
 Tick **Default** to preselect the channel on every new monitor and **Apply to all existing monitors** to
 attach it to the monitors you already have. Marmot ships 48 providers ported from Uptime Kuma (table below),
 grouped as Chat, Push, Email and Generic (webhooks, incident management, SMS).
@@ -32,7 +36,7 @@ channels (`notification:read`, secrets masked); admins and owners create, edit, 
 
 ```
 check worker ─▶ heartbeat (notify=true, notificationEvent) ─▶ enqueueNotificationsForHeartbeat()
-   ─▶ channelAcceptsEvent(channel, event) filters the active attached channels
+   ─▶ channelAcceptsEvent(channel, event) keeps the active attached channels that selected the event
    ─▶ BullMQ queue `marmot:notifications`, one job per remaining channel
       job id `notif:<notificationId>:<heartbeatId>` (dedupes repeated events), 3 attempts, exponential backoff 5s
    ─▶ startNotificationWorker() ─▶ processNotificationJob() ─▶ sendNotification() ─▶ provider.send()
@@ -53,10 +57,42 @@ job data; `notificationEventFor()` in `src/server/engine/beat.ts`):
 | `degraded` | it became DEGRADED (from UP, after retries or after maintenance) or went back to UP     |
 | `reminder` | the `resendInterval` repeat while still DOWN                                            |
 
-Channels receive `down`, `up` and `reminder` (`DEFAULT_NOTIFICATION_EVENTS`, the behaviour from before the
-degraded state); `degraded` is opt-in. `channelAcceptsEvent()` in `src/server/notifications/dispatch.ts` is
-the single filter point; until per-channel event selection lands (#126) no channel opts in, so degraded
-transitions are recorded and shown but not sent.
+### Event filters
+
+Every channel has an `events` selection (`src/lib/notification-events.ts`); a channel is only told about
+the events it selected:
+
+| Event         | Sent when                                                                             | Default |
+| ------------- | ------------------------------------------------------------------------------------- | :-----: |
+| `down`        | a monitor went DOWN                                                                   |   on    |
+| `up`          | it recovered from DOWN (the message carries the downtime)                             |   on    |
+| `degraded`    | it became DEGRADED or went back from DEGRADED to UP                                   |   off   |
+| `reminder`    | the `resendInterval` repeat while still DOWN                                          |   on    |
+| `certificate` | a TLS certificate or domain expiry warning (monitors with the expiry options on)      |   on    |
+| `maintenance` | a maintenance window covering the monitor starts or ends (once per channel and event) |   off   |
+
+The defaults are exactly what every channel received before the filters existed, and a channel without a
+selection (one created before the field existed, or saved with an empty list) gets the defaults, so
+existing channels behave as before after the upgrade without a data migration. The names are stable
+identifiers (stored on channels, exported, sent to templates as `{{ event }}`); new events are added,
+never renamed.
+
+`channelAcceptsEvent()` in `src/server/notifications/dispatch.ts` is the single filter point: the
+dispatcher applies it before enqueuing, the worker again before sending (a job queued before the channel
+dropped the event is skipped as `event-filtered`), the expiry warnings and maintenance messages before
+sending, and the Test button sends one sample per selected event. Location-specific rules for
+multi-location monitoring (#92) belong in the same function.
+
+**Recovery messages** (`up`) end with the downtime: `[API] [✅ Up] 200 - OK (down for 7 minutes 3 seconds)`.
+It is measured from the important DOWN beat right before the recovery; when that beat is gone (retention)
+the suffix is left out rather than guessed. Discord's "Downtime Duration" field uses the same value.
+
+**Maintenance messages** come from the maintenance events (`src/server/maintenance/events.ts`): when an
+occurrence starts or completes, every active channel that selected `maintenance` and is attached to one of
+the window's monitors (children of listed groups included) gets one `notify-maintenance` job (job id
+`notif-maint:<channel>:<occurrence>:<started|completed>`) and one message,
+`[Marmot] [🔧 Maintenance] Maintenance "DB upgrade" started for API and Web.` Announcements, reminders,
+notes and cancellations stay with status page subscribers.
 
 The default message is `[monitor name] [✅ Up|🔴 Down|⚠️ Pending|🔧 Maintenance|🐢 Degraded] <heartbeat message>`.
 The status labels, the test message and the certificate/domain expiry warnings are written in the
@@ -70,8 +106,11 @@ the user's language.
 
 `POST /api/orgs/:orgId/notifications/test` with `{ "notificationId": … }` (saved channel),
 `{ "notificationId": …, "config": { … } }` (unsaved edits of a saved channel) or
-`{ "type": "slack", "config": { … } }` (unsaved) sends a test message and answers `{ ok: true, result }` or
-`400 { ok: false, error }`. Requires `notification:update`. The UI's **Send test** button uses it. Unsaved
+`{ "type": "slack", "config": { … } }` (unsaved) sends one sample per selected event
+(`[Marmot] [⚠️ Test] Down: "Ops" is configured correctly.`, in event order, stopping at the first failure)
+and answers `{ ok: true, result, events }` or `400 { ok: false, error }`. `events` in the body tests an
+unsaved selection; otherwise the saved channel's (or the defaults) apply. Requires `notification:update`.
+The UI's **Send test** button uses it; each sample counts against the server SMTP budget. Unsaved
 settings follow the same rules as saving them (`403` when the caller may not use the server SMTP settings);
 `429` means the organization used up its hourly budget for the server SMTP settings.
 
@@ -86,8 +125,8 @@ settings follow the same rules as saving them (`403` when the caller may not use
 | POST   | `/api/orgs/:orgId/notifications/test`      | `notification:update` |
 | GET    | `/api/orgs/:orgId/notifications/providers` | `notification:read`   |
 
-Body fields for POST/PATCH: `name`, `type`, `config`, `isDefault`, `applyExisting` (virtual, one-shot),
-`active`. `config` is validated against the provider's schema; errors come back as `config.<key>: message`.
+Body fields for POST/PATCH: `name`, `type`, `config`, `events` (array of event names; unknown names are
+dropped, an empty list means the defaults), `isDefault`, `applyExisting` (virtual, one-shot), `active`. `config` is validated against the provider's schema; errors come back as `config.<key>: message`.
 
 ## Templates
 
@@ -98,6 +137,8 @@ dotted paths from the list below — no expressions, filters or code.
 | ----------------------------------------------------------------- | -------------------------------- |
 | `{{ msg }}`                                                       | `[API] [🔴 Down] HTTP 503`       |
 | `{{ status }}`                                                    | `🔴 Down`                        |
+| `{{ event }}`                                                     | `down`, `up`, `maintenance`, …   |
+| `{{ downtime }}` / `{{ downtimeSeconds }}` (recoveries)           | `7 minutes 3 seconds` / `423`    |
 | `{{ name }}`                                                      | `API`                            |
 | `{{ hostnameOrURL }}`                                             | `https://api.example.com/health` |
 | `{{ monitor.id/name/type/url/hostname/port/description }}`        |                                  |

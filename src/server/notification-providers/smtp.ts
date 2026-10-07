@@ -118,7 +118,7 @@ registerNotificationProvider({
   group: 'email',
   configSchema: smtpConfigSchema,
   fieldMeta: smtpFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat, locale }) {
+  async send({ config: raw, message, monitor, heartbeat, locale, event, downtimeSeconds }) {
     const config = smtpConfigSchema.parse(raw)
     const options = buildSmtpTransportOptions(config)
     if (!config.useServerSmtp && typeof options.host === 'string') {
@@ -143,10 +143,16 @@ registerNotificationProvider({
     const customSubject = config.subject?.trim() ?? ''
     const customBody = config.body?.trim() ?? ''
     if (customSubject)
-      subject = renderMessageTemplate(customSubject, message, monitor, heartbeat, locale)
+      subject = renderMessageTemplate(customSubject, message, monitor, heartbeat, locale, {
+        event,
+        downtimeSeconds,
+      })
     if (customBody) {
       useHtml = config.htmlBody
-      body = renderMessageTemplate(customBody, message, monitor, heartbeat, locale)
+      body = renderMessageTemplate(customBody, message, monitor, heartbeat, locale, {
+        event,
+        downtimeSeconds,
+      })
     }
 
     const from = config.from?.trim() || (config.useServerSmtp ? env.EMAIL_FROM : undefined)

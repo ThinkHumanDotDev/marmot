@@ -12,6 +12,11 @@ import {
 import { orgScoped } from '@/access/org-scoped'
 import type { OrgId, UserLike } from '@/access/permissions'
 import { childLogger } from '@/lib/logger'
+import {
+  CHANNEL_EVENTS,
+  DEFAULT_CHANNEL_EVENTS,
+  normalizeChannelEvents,
+} from '@/lib/notification-events'
 import type { Monitor, Notification } from '@/payload-types'
 import { getNotificationProvider } from '@/server/notification-providers'
 import {
@@ -106,6 +111,13 @@ const enforceServerSmtpPolicy: FieldHook<Notification> = ({
     errors: [{ message: userErrorText(req, refusal.key, refusal.values), path: refusal.path }],
   })
 }
+
+/**
+ * Store the event selection as a clean list (known events, canonical order). An empty selection
+ * means the defaults (`normalizeChannelEvents`), so it is stored as such.
+ */
+const normalizeEvents: FieldHook<Notification> = ({ value }) =>
+  value === undefined || value === null ? value : normalizeChannelEvents(value)
 
 /** Reset the delivery error whenever a user edits the channel (not on worker outcome writes). */
 const clearLastErrorOnEdit: CollectionBeforeChangeHook<Notification> = ({
@@ -289,6 +301,16 @@ export const Notifications: CollectionConfig = {
       defaultValue: {},
       hooks: { beforeValidate: [enforceServerSmtpPolicy] },
       admin: { description: adminT('marmot:notifications:configDescription') },
+    },
+    {
+      // Per-channel event filter (#126); read through `normalizeChannelEvents`, never directly.
+      name: 'events',
+      type: 'select',
+      hasMany: true,
+      options: [...CHANNEL_EVENTS],
+      defaultValue: [...DEFAULT_CHANNEL_EVENTS],
+      hooks: { beforeValidate: [normalizeEvents] },
+      admin: { description: adminT('marmot:notifications:eventsDescription') },
     },
     {
       name: 'isDefault',

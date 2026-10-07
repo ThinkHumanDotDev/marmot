@@ -1788,7 +1788,8 @@
         "provider": "Provider",
         "lastSent": "Last sent",
         "active": "Active",
-        "actions": "Actions"
+        "actions": "Actions",
+        "events": "Events"
       },
       "default": "Default",
       "error": "Error",
@@ -1805,11 +1806,13 @@
       "confirmDeleteTitle": "Delete “{name}”?",
       "confirmDeleteDescription": "Monitors using this channel stop alerting through it. This cannot be undone.",
       "confirmDelete": "Delete channel",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "eventsLabel": "Events sent to {name}"
     },
     "test": {
       "sent": "Test message sent",
-      "failed": "Test failed"
+      "failed": "Test failed",
+      "sentSamples": "{count, plural, one {Sent a sample of 1 event} other {Sent a sample of each of the # events}}: {events}"
     },
     "dialog": {
       "newTitle": "New notification channel",
@@ -1836,7 +1839,10 @@
       "create": "Create channel",
       "updated": "Channel updated",
       "created": "Channel created",
-      "failed": "Something went wrong."
+      "failed": "Something went wrong.",
+      "events": "Events",
+      "eventsHint": "What this channel is told about. Send test sends a sample of each selected event.",
+      "eventsRequired": "Choose at least one event."
     },
     "field": {
       "required": "{label} is required",
@@ -1861,6 +1867,32 @@
       "loadFailed": "Could not load the monitors",
       "saveFailed": "Could not update the monitors"
     },
+    "events": {
+      "down": {
+        "label": "Down",
+        "description": "A monitor stops responding."
+      },
+      "up": {
+        "label": "Recovery",
+        "description": "A monitor is back up; the message includes how long it was down."
+      },
+      "degraded": {
+        "label": "Degraded",
+        "description": "A monitor gets slower than its degraded threshold, or fast again."
+      },
+      "reminder": {
+        "label": "Reminders",
+        "description": "Repeats while a monitor stays down (the monitor's resend interval)."
+      },
+      "certificate": {
+        "label": "Certificate and domain expiry",
+        "description": "TLS certificate and domain name expiry warnings."
+      },
+      "maintenance": {
+        "label": "Maintenance",
+        "description": "A maintenance window of a monitor starts or ends."
+      }
+    },
     "messages": {
       "status": {
         "up": "✅ Up",
@@ -1877,6 +1909,9 @@
       "sentSuccessfully": "Sent Successfully.",
       "monitorNameUnavailable": "Monitor Name not available",
       "timeLine": "Time: {time}",
+      "downtimeSuffix": " (down for {duration})",
+      "maintenanceStarted": "Maintenance \"{title}\" started for {monitors}.",
+      "maintenanceCompleted": "Maintenance \"{title}\" ended for {monitors}.",
       "certificateExpiry": "[{name}][{address}] {certType} certificate {commonName} will expire in {count, plural, other {{days} days}}",
       "noCommonName": "(no CN)",
       "domainExpiry": "[{name}][{address}] Domain name {domain} will expire in {count, plural, other {{days} days}}",

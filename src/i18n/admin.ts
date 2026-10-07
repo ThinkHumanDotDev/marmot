@@ -257,6 +257,8 @@ export const adminTranslations = {
         activeDescription: 'Inactive channels are never sent to.',
         lastSentAtDescription: 'Maintained by the worker.',
         lastErrorDescription: 'Last delivery error; cleared on the next success.',
+        eventsDescription:
+          'Events this channel is told about. Leave empty for the defaults (down, recovery, reminders, certificate and domain expiry).',
       },
       organizations: {
         slugDescription: 'Lowercase letters, numbers and hyphens. Used in URLs.',
