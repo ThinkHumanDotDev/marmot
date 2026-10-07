@@ -10,7 +10,12 @@ import { isSuperadmin, type UserLike } from '@/access/permissions'
 import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
 import { adminGroup, adminT } from '@/i18n/admin'
 import { defaultLocale, localeNames, locales } from '@/i18n/locales'
-import { auditAuthFailure, auditLogin, rateLimitAuthOperations } from '@/server/security/auth-hooks'
+import {
+  auditAuthFailure,
+  auditLogin,
+  rateLimitAuthOperations,
+  TWO_FACTOR_GATE_CONTEXT,
+} from '@/server/security/auth-hooks'
 import { enforceSsoOnPasswordLogin } from '@/server/sso/enforcement'
 import { isSignupAllowed } from '@/server/settings'
 import { apiError } from '@/server/errors'
@@ -41,7 +46,7 @@ export const THEMES = ['system', 'light', 'dark'] as const
 export type Theme = (typeof THEMES)[number]
 
 /** `req.context` flag with which Marmot's own login flow (`src/auth/two-factor`) calls `payload.login`. */
-export const TWO_FACTOR_GATE_CONTEXT = 'twoFactorGate'
+export { TWO_FACTOR_GATE_CONTEXT }
 
 /**
  * Payload's own login (`POST /api/users/login`, `payload.login`) issues a session as soon as the

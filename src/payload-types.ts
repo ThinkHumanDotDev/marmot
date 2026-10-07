@@ -1240,9 +1240,42 @@ export interface ApiKey {
 export interface AuditLog {
   id: number;
   action: string;
+  actorType?: ('user' | 'apiKey' | 'mcp' | 'system') | null;
   actor?: (number | null) | User;
+  actorRef?: string | null;
+  actorLabel?: string | null;
   organization?: (number | null) | Organization;
   target?: string | null;
+  entityType?: string | null;
+  entityId?: string | null;
+  entityLabel?: string | null;
+  changedFields?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  before?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  after?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   ip?: string | null;
   userAgent?: string | null;
   metadata?:
@@ -2272,9 +2305,18 @@ export interface ApiKeysSelect<T extends boolean = true> {
  */
 export interface AuditLogsSelect<T extends boolean = true> {
   action?: T;
+  actorType?: T;
   actor?: T;
+  actorRef?: T;
+  actorLabel?: T;
   organization?: T;
   target?: T;
+  entityType?: T;
+  entityId?: T;
+  entityLabel?: T;
+  changedFields?: T;
+  before?: T;
+  after?: T;
   ip?: T;
   userAgent?: T;
   metadata?: T;

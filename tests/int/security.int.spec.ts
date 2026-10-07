@@ -215,8 +215,12 @@ describe('security hardening', () => {
         userAgent: `vitest/${run}`,
         metadata: { role: 'viewer' },
       })
-      expect(rows.find((r) => r.action === 'organization.updated')?.metadata).toEqual({
-        changed: ['name'],
+      expect(rows.find((r) => r.action === 'organization.updated')).toMatchObject({
+        changedFields: ['name'],
+        before: { name: expect.any(String) },
+        after: { name: 'Sec renamed' },
+        actorType: 'user',
+        actorLabel: owner.email,
       })
 
       await payload.delete({ collection: 'users', id: invitee.id })

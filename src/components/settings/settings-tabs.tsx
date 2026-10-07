@@ -10,6 +10,7 @@ import {
   KeyRound,
   LockKeyhole,
   Network,
+  ScrollText,
   Server,
   ShieldCheck,
   Tags,
@@ -50,6 +51,7 @@ export function SettingsTabs({
     { href: `/${orgSlug}/settings/proxies`, label: t('proxies'), icon: Network },
     { href: `/${orgSlug}/settings/docker-hosts`, label: t('dockerHosts'), icon: Container },
     { href: `/${orgSlug}/settings/api-keys`, label: t('apiKeys'), icon: KeyRound },
+    { href: `/${orgSlug}/settings/audit-log`, label: t('auditLog'), icon: ScrollText },
     { href: `/${orgSlug}/settings/import-export`, label: t('importExport'), icon: ArrowDownUp },
     ...(showBilling
       ? [{ href: `/${orgSlug}/settings/billing`, label: t('billing'), icon: CreditCard }]

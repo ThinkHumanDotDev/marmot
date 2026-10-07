@@ -29,6 +29,7 @@ import {
 } from '@/server/i18n'
 import { childLogger } from '@/lib/logger'
 import { apiError } from '@/server/errors'
+import { AUDIT_SKIP_CONTEXT } from '@/server/audit/context'
 import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 
@@ -165,29 +166,11 @@ const sendInvitationEmail: CollectionAfterChangeHook<Invitation> = async ({
   return doc
 }
 
-/** Audit row for every new invitation (who invited which address with which role). */
-const auditInvitationCreated: CollectionAfterChangeHook<Invitation> = async ({
-  doc,
-  operation,
-  req,
-}) => {
-  if (operation !== 'create') return doc
-  await recordRequestAuditEvent(req.payload, req, {
-    action: 'invitation.created',
-    actor: req.user?.collection === 'users' ? req.user.id : null,
-    organization: extractId(doc.organization),
-    target: auditTarget('invitations', doc.id),
-    metadata: { email: doc.email, role: doc.role },
-    req,
-  })
-  return doc
-}
-
 type AcceptInvitationArgs = {
   payload: Payload
   token: string
   /** The authenticated user accepting the invitation. */
-  user: { id: OrgId }
+  user: { id: OrgId; email?: string | null }
   /** Pass the current request so the writes join its transaction. */
   req?: PayloadRequest
 }
@@ -222,7 +205,12 @@ export async function acceptInvitation({
   const invitation = docs[0]
   if (!invitation) throw apiError('invitationNotFound', 404)
 
-  const context = { ...(req?.context ?? {}), skipInvitationEmail: true }
+  // The status flips are bookkeeping; acceptance is audited once below as `invitation.accepted`.
+  const context = {
+    ...(req?.context ?? {}),
+    skipInvitationEmail: true,
+    [AUDIT_SKIP_CONTEXT]: true,
+  }
 
   const expiresAt = invitation.expiresAt ? new Date(invitation.expiresAt).getTime() : 0
   if (invitation.status === 'pending' && expiresAt < Date.now()) {
@@ -264,8 +252,12 @@ export async function acceptInvitation({
   await recordRequestAuditEvent(payload, req ?? { headers: new Headers() }, {
     action: 'invitation.accepted',
     actor: user.id,
+    actorLabel: user.email ?? null,
     organization: orgId,
     target: auditTarget('invitations', invitation.id),
+    entityType: 'invitation',
+    entityId: invitation.id,
+    entityLabel: invitation.email,
     metadata: { email: invitation.email, role },
     req,
   })
@@ -294,7 +286,7 @@ export const Invitations: CollectionConfig = {
   hooks: {
     // Seats: members + pending invitations must fit the plan (no-op unless BILLING_ENABLED).
     beforeChange: [prepareInvitation, enforceEntitlementOnCreate('members')],
-    afterChange: [sendInvitationEmail, auditInvitationCreated],
+    afterChange: [sendInvitationEmail],
   },
   endpoints: [
     {

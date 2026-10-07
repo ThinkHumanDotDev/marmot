@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { ApiKeys } from './ApiKeys'
+import { withAuditHooks } from './audit'
 import { AuthAccounts } from './AuthAccounts'
 import { DockerHosts } from './DockerHosts'
 import { AuditLogs } from './AuditLogs'
@@ -32,8 +33,8 @@ import { Templates } from './Templates'
 import { Users } from './Users'
 
 /**
- * Registry of every Payload collection. Add new collections here (one import + one entry).
- * Keep the order stable: it drives the admin sidebar.
+ * Registry of every Payload collection. Add new collections here (one import + one entry) and
+ * decide whether it is audited (`./audit.ts`). Keep the order stable: it drives the admin sidebar.
  */
 export const collections: CollectionConfig[] = [
   Users,
@@ -66,4 +67,4 @@ export const collections: CollectionConfig[] = [
   Templates,
   ApiKeys,
   AuditLogs,
-]
+].map(withAuditHooks)

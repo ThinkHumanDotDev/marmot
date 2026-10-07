@@ -2,6 +2,7 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { resolve } from '@/server/incidents/actions'
+import { auditIncidentAction } from '@/server/incidents/audit'
 import { actionSource, readNote } from '@/server/incidents/http'
 import { loadOrgIncident } from '@/server/incidents/store'
 import {
@@ -36,10 +37,14 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (!incident) return jsonError(404, errorText(request, 'incidentNotFound'))
 
   try {
+    const via = actionSource(request)
     const summary = await resolve(payload, incident, {
       userId: auth.user.id,
-      via: actionSource(request),
+      via,
       note: readNote(await readJson(request)),
+    })
+    await auditIncidentAction(payload, request, summary, 'monitor_incident.resolved', auth.user, {
+      via,
     })
     return Response.json(summary)
   } catch (error) {

@@ -84,6 +84,8 @@ export async function POST(request: Request, { params }: RouteContext) {
         createdBy: ctx.user.id as ApiKey['createdBy'],
       },
       depth: 0,
+      // `user` names the actor in the audit log; access is still bypassed (see above).
+      user: ctx.user,
       overrideAccess: true,
     })) as ApiKey
     return Response.json({ doc: toApiKeyRow(doc), key: generated.key }, { status: 201 })

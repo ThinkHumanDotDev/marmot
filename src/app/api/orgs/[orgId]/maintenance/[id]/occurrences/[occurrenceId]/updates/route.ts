@@ -1,6 +1,8 @@
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
+import { userActor } from '@/server/audit/context'
+import { actorFields, recordRequestAuditEvent } from '@/server/security/audit'
 import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
 import { unfilledPlaceholders } from '@/lib/templates'
 import type { MaintenanceOccurrence } from '@/payload-types'
@@ -70,6 +72,18 @@ export async function POST(request: Request, { params }: RouteContext): Promise<
 
   try {
     const result = await postOccurrenceUpdate(payload, maintenance, occurrence, parsed.data)
+    await recordRequestAuditEvent(payload, request, {
+      ...actorFields(userActor(auth.user)),
+      action: 'maintenance_occurrence.updated',
+      organization: orgId,
+      entityType: 'maintenance_occurrence',
+      entityId: occurrence.id,
+      entityLabel: maintenance.title,
+      before: { state: occurrence.state },
+      after: { state: result.occurrence.state },
+      changedFields: occurrence.state === result.occurrence.state ? [] : ['state'],
+      metadata: { maintenanceId: String(maintenance.id), message: parsed.data.message ?? null },
+    })
     return Response.json(
       {
         occurrence: result.occurrence,

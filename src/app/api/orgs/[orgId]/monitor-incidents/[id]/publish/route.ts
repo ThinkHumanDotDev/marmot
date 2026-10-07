@@ -2,6 +2,7 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { isComponentImpact, isIncidentStatus } from '@/lib/incident-timeline'
+import { auditIncidentAction } from '@/server/incidents/audit'
 import { publishToStatusPage } from '@/server/incidents/publish'
 import { loadOrgIncident } from '@/server/incidents/store'
 import {
@@ -63,6 +64,17 @@ export async function POST(request: Request, { params }: RouteContext) {
       status: isIncidentStatus(body?.status) ? body.status : undefined,
       impact: isComponentImpact(body?.impact) ? body.impact : undefined,
     })
+    await auditIncidentAction(
+      payload,
+      request,
+      result.incident,
+      'monitor_incident.published',
+      auth.user,
+      {
+        statusPageId: String(statusPageId),
+        statusPageIncidentId: String(result.statusPageIncident.id),
+      },
+    )
     return Response.json(result, { status: 201 })
   } catch (error) {
     return payloadError(error, request)
