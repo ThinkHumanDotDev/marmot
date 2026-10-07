@@ -3260,13 +3260,27 @@
       }
     },
     "access": {
-      "pageTitle": "Password required",
-      "metaTitle": "{title}: password required",
+      "pageTitle": "Access required",
+      "metaTitle": "{title}: access required",
       "description": "This status page is password protected. Enter the password to view it.",
       "password": "Password",
       "submit": "View status page",
       "invalid": "That password is not correct.",
       "rateLimited": "Too many attempts. Wait a few minutes and try again.",
+      "emailDomain": {
+        "description": "This status page is restricted to approved email domains. Enter your email address to receive a sign-in link.",
+        "email": "Email address",
+        "submit": "Email me a sign-in link",
+        "sent": "If this address may view the page, a sign-in link is on its way. It works once and expires in {minutes} minutes.",
+        "useAnother": "Use another address",
+        "invalidEmail": "Enter a valid email address.",
+        "linkInvalid": "This sign-in link is invalid, has expired or was already used. Request a new one.",
+        "confirmDescription": "Continue to sign in to this status page on this device.",
+        "confirm": "Continue to the status page"
+      },
+      "ipAllowlist": {
+        "description": "This status page is only available from approved networks. Connect to your organization’s network or VPN and reload the page."
+      },
       "editor": {
         "tab": "Access",
         "title": "Who can view this page",
@@ -3279,12 +3293,34 @@
           "password": {
             "label": "Password",
             "hint": "Visitors enter a password first. The page is never indexed by search engines."
+          },
+          "email-domain": {
+            "label": "Email domain",
+            "hint": "Visitors enter their email and get a one-time sign-in link if its domain is allowed."
+          },
+          "ip-allowlist": {
+            "label": "IP allow-list",
+            "hint": "Only visitors from the listed IPv4 and IPv6 ranges can view the page."
           }
         },
         "password": "Password",
         "newPassword": "New password",
         "passwordHint": "At least {min} characters. Share it with the people who should see the page.",
         "passwordSet": "A password is set. Enter a new one (at least {min} characters) to change it; everyone will have to enter the new password.",
+        "domains": {
+          "label": "Allowed email domains",
+          "hint": "One domain per line, such as example.com. Subdomains must be listed separately.",
+          "required": "Add at least one domain.",
+          "placeholder": "example.com"
+        },
+        "ranges": {
+          "label": "Allowed IP ranges",
+          "hint": "One address or CIDR range per line, optionally followed by a label: 203.0.113.0/24 Office, 2001:db8::/32 VPN.",
+          "required": "Add at least one range.",
+          "trustProxyOff": "The instance setting “Trust proxy headers” is off, so Marmot cannot see client addresses and nobody will be admitted. Turn it on when Marmot runs behind a reverse proxy.",
+          "trustProxyOn": "Client addresses come from the X-Forwarded-For header set by your reverse proxy.",
+          "placeholder": "203.0.113.0/24 Office\n2001:db8::/32 VPN"
+        },
         "reset": "Reset",
         "save": "Save access",
         "saving": "Saving…",
@@ -3294,6 +3330,22 @@
           "title": "Feed readers and scripts",
           "body": "Append <code>?pw=…</code> to the RSS feed, the JSON endpoint or a badge URL to pass the password without signing in.",
           "warning": "This puts the password in URLs, browser history and server logs. Prefer it only for clients that cannot keep a cookie."
+        },
+        "viewers": {
+          "title": "Signed-in visitors",
+          "description": "People who signed in with an email link. Revoking signs them out and blocks new links to that address; removing only forgets them.",
+          "empty": "Nobody has signed in yet.",
+          "email": "Email",
+          "lastSeen": "Last seen",
+          "never": "Never",
+          "status": "Status",
+          "active": "Active",
+          "revoked": "Revoked",
+          "revoke": "Revoke",
+          "restore": "Restore",
+          "remove": "Remove",
+          "loadFailed": "Could not load the visitors",
+          "updateFailed": "Could not update the visitor"
         }
       }
     },
@@ -3817,6 +3869,14 @@
     "smtpTest": {
       "subject": "Marmot test email",
       "text": "This is a test message from Marmot ({url}). If you can read this, SMTP works."
+    },
+    "statusPageMagicLink": {
+      "subject": "Your sign-in link for {page}",
+      "intro": "Use this link to view the status page <strong>{page}</strong>.",
+      "button": "View the status page",
+      "link": "Sign in: {url}",
+      "expires": "The link works once and expires in {minutes} minutes.",
+      "ignore": "If you did not ask for it, you can ignore this email."
     }
   },
   "errors": {
@@ -3980,11 +4040,22 @@
     "svgRejected": "SVG rejected: {reason}",
     "themePresetUnknown": "Unknown theme preset. Use one of: {presets}.",
     "crossSiteRefused": "Cross-site request refused",
-    "statusPageProtected": "This status page is password protected.",
+    "statusPageProtected": "This status page is restricted. Sign in to view it.",
     "statusPagePasswordIncorrect": "The password is not correct.",
     "statusPagePasswordTooShort": "The password must be at least {min} characters.",
     "statusPagePasswordTooLong": "The password must be at most {max} characters.",
     "statusPagePasswordRequired": "Set a password to protect this page.",
-    "statusPageEventNotFound": "Incident or maintenance window not found"
+    "statusPageEventNotFound": "Incident or maintenance window not found",
+    "statusPageIpNotAllowed": "This status page is not available from your network.",
+    "statusPageLinkInvalid": "This sign-in link is invalid, expired or already used.",
+    "invalidEmailAddress": "Enter a valid email address.",
+    "statusPageEmailDomainInvalid": "\"{domain}\" is not a domain name such as example.com.",
+    "statusPageEmailDomainsRequired": "Add at least one email domain to restrict this page.",
+    "statusPageEmailDomainsTooMany": "List at most {max} email domains.",
+    "statusPageIpRangeInvalid": "\"{entry}\" is not an IP address or CIDR range such as 203.0.113.0/24.",
+    "statusPageIpRangesRequired": "Add at least one IP range to restrict this page.",
+    "statusPageIpRangesTooMany": "List at most {max} IP ranges.",
+    "statusPageViewerNotFound": "Visitor not found.",
+    "statusPageViewerStatusInvalid": "The status must be \"active\" or \"revoked\"."
   }
 }

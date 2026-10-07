@@ -149,6 +149,9 @@ export const adminTranslations = {
       invitations: {
         tokenDescription: 'Generated on create.',
       },
+      statusPageViewers: {
+        statusDescription: 'revoked: the visitor is signed out and cannot request new links.',
+      },
       maintenance: {
         descriptionDescription: 'Shown on status pages.',
         activeDescription: 'Paused maintenances never run.',
@@ -313,9 +316,14 @@ export const adminTranslations = {
       statusPages: {
         slugDescription: 'Public URL: /status/<slug>. Lowercase letters, numbers, hyphens.',
         publishedDescription: 'Unpublished pages return 404 to visitors.',
-        accessDescription: 'password: visitors must enter the page password first.',
+        accessDescription:
+          'password: visitors enter the page password. email-domain: visitors get a one-time link at an allowed email domain. ip-allowlist: only requests from the listed IP ranges.',
         passwordDescription:
           'Set or change the page password. Changing it signs every visitor out.',
+        allowedEmailDomainsDescription:
+          'Domains such as example.com; addresses at these domains can request a sign-in link.',
+        allowedIpRangesDescription:
+          'IPv4 or IPv6 addresses and CIDR ranges. Needs the trustProxy instance setting behind a reverse proxy.',
         autoRefreshIntervalDescription:
           'Seconds between client refreshes; 0 disables auto refresh.',
         customCSSDescription: 'Injected into the public page as a <style> tag.',
