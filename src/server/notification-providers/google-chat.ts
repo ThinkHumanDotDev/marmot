@@ -35,6 +35,7 @@ export const googleChatFieldMeta: Record<keyof GoogleChatConfig, NotificationFie
   },
   useTemplate: { label: 'Use a custom message template' },
   template: {
+    template: 'text',
     label: 'Message template',
     multiline: true,
     description: 'Supports {{ monitor.name }}, {{ heartbeat.msg }}, {{ status }}.',
@@ -71,7 +72,8 @@ registerNotificationProvider({
   docsUrl: 'https://developers.google.com/workspace/chat/quickstart/webhooks',
   configSchema: googleChatConfigSchema,
   fieldMeta: googleChatFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat, locale, event, downtimeSeconds }) {
+  async send(ctx) {
+    const { config: raw, message, monitor, heartbeat, locale } = ctx
     const config = googleChatConfigSchema.parse(raw)
 
     if (config.useTemplate && config.template?.trim()) {
@@ -81,7 +83,7 @@ registerNotificationProvider({
         monitor,
         heartbeat,
         locale,
-        { event, downtimeSeconds },
+        ctx,
       )
       await postWithRetry(config.webhookUrl, { text }, config.maxRetries)
       return OK_MESSAGE

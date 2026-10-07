@@ -42,6 +42,7 @@ export const slackFieldMeta: Record<keyof SlackConfig, NotificationFieldMeta> = 
   channelNotify: { label: 'Notify channel (@channel)' },
   useTemplate: { label: 'Use a custom message template' },
   template: {
+    template: 'text',
     label: 'Message template',
     multiline: true,
     description: 'Supports {{ monitor.name }}, {{ heartbeat.msg }}, {{ status }}.',
@@ -98,7 +99,8 @@ registerNotificationProvider({
   docsUrl: 'https://api.slack.com/messaging/webhooks',
   configSchema: slackConfigSchema,
   fieldMeta: slackFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat, locale, event, downtimeSeconds }) {
+  async send(ctx) {
+    const { config: raw, message, monitor, heartbeat, locale } = ctx
     const config = slackConfigSchema.parse(raw)
     let msg = message
     if (config.channelNotify) msg += ' <!channel>'
@@ -115,10 +117,14 @@ registerNotificationProvider({
     }
 
     if (config.useTemplate && config.template?.trim()) {
-      const text = renderMessageTemplate(config.template.trim(), msg, monitor, heartbeat, locale, {
-        event,
-        downtimeSeconds,
-      })
+      const text = renderMessageTemplate(
+        config.template.trim(),
+        msg,
+        monitor,
+        heartbeat,
+        locale,
+        ctx,
+      )
       await postJson(config.webhookUrl, { ...base, text })
       return OK_MESSAGE
     }

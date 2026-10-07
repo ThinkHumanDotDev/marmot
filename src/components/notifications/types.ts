@@ -78,6 +78,22 @@ export interface TestResult {
   error?: string
 }
 
+/** One template of the preview (`POST …/notifications/preview`). */
+export interface TemplatePreviewField {
+  name: string
+  mode: 'text' | 'html'
+  output: string | null
+  error: string | null
+}
+
+/** Rendered sample of a channel: default message, templates and (email providers) the email. */
+export interface NotificationPreview {
+  event: ChannelEvent
+  message: string
+  fields: TemplatePreviewField[]
+  email: { subject: string; html: string | null; text: string } | null
+}
+
 const base = (orgId: string) => `/api/orgs/${encodeURIComponent(orgId)}/notifications`
 
 export const notificationsApi = {
@@ -118,4 +134,15 @@ export const notificationsApi = {
       events?: ChannelEvent[]
     },
   ) => api.post<TestResult>(`${base(orgId)}/test`, body),
+  /** Render the (unsaved) templates of a channel for a sample of `event`; sends nothing. */
+  preview: (
+    orgId: string,
+    body: {
+      notificationId?: string
+      type?: string
+      config?: Record<string, unknown>
+      event: ChannelEvent
+    },
+    init?: { signal?: AbortSignal },
+  ) => api.post<NotificationPreview>(`${base(orgId)}/preview`, body, init),
 }

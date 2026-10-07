@@ -176,12 +176,13 @@ describe('server-side i18n', () => {
         ],
       ])
 
-      // A caller that already knows the language (the queue worker) skips the lookup.
+      // A caller that already loaded the organization (the queue worker) skips the lookup.
       findByID.mockClear()
       await sendNotification(payload, channel(org.id), {
         monitor,
         heartbeat: down,
         locale: 'en',
+        channelOrganization: { locale: 'en', timeZone: 'UTC', organization: null },
       })
       expect(findByID).not.toHaveBeenCalledWith(
         expect.objectContaining({ collection: 'organizations' }),
