@@ -13,7 +13,7 @@ import {
   readJson,
   validationError,
 } from '@/server/monitors/http'
-import { errorText } from '@/server/request-locale'
+import { errorText, requestLocale } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +36,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     const docs = await listOrgMaintenance(payload, orgId, {
       user: auth.user,
       overrideAccess: false,
+      locale: requestLocale(request),
     })
     return Response.json({ docs })
   } catch (error) {
