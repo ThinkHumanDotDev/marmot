@@ -4,7 +4,8 @@ Marmot is released by pushing a `vX.Y.Z` tag. The tag triggers [`release.yml`](.
 which:
 
 1. checks that the tag matches `version` in `package.json`;
-2. builds `docker/Dockerfile` for `linux/amd64` and `linux/arm64` and pushes it to GHCR with OCI labels and
+2. builds `docker/Dockerfile` for `linux/amd64` and `linux/arm64`, each on a native runner
+   (`ubuntu-24.04` / `ubuntu-24.04-arm`), and pushes the multi-arch image to GHCR with OCI labels and
    annotations (docker/metadata-action):
    - final release `v0.1.0` → `ghcr.io/thinkhumandotdev/marmot:0.1.0`, `:0.1` and `:latest`;
    - prerelease `v0.2.0-rc.1` → only `:0.2.0-rc.1` (no `:0.2`, no `:latest`);
@@ -86,9 +87,12 @@ Nothing is tagged or pushed automatically from a developer machine; the steps be
   git push origin v0.1.0
   ```
 
-- [ ] Watch the **Release** workflow (Actions tab): `image` → `smoke` → `release`. If `smoke` fails, the
-      image is already on GHCR but no GitHub Release is created; fix forward with a patch version rather than
-      moving the tag.
+- [ ] Watch the **Release** workflow (Actions tab): `prepare` → `build` (one job per platform) → `image` →
+      `smoke` → `release`. If `smoke` fails, the image is already on GHCR but no GitHub Release is created;
+      fix forward with a patch version rather than moving the tag.
+- [ ] If the run failed because of the workflow itself (not the code being released), fix the workflow on
+      `main` and re-run the release without moving the tag: **Actions → Release → Run workflow** on `main`
+      with the tag (`v0.1.0`). It builds and releases the tagged commit with `main`'s workflow.
 
 ## 4. Verify the published image
 
