@@ -888,6 +888,7 @@
       "organization": "Organization",
       "members": "Members",
       "tags": "Tags",
+      "templates": "Templates",
       "proxies": "Proxies",
       "dockerHosts": "Docker hosts",
       "apiKeys": "API keys",
@@ -902,6 +903,7 @@
       "account": "Account settings",
       "organization": "Organization settings",
       "tags": "Tags",
+      "templates": "Templates",
       "proxies": "Proxies",
       "dockerHosts": "Docker hosts",
       "apiKeys": "API keys",
@@ -1328,6 +1330,7 @@
         "notification": "Notifications",
         "statusPage": "Status pages",
         "maintenance": "Maintenance",
+        "template": "Templates",
         "tag": "Tags",
         "proxy": "Proxies",
         "dockerHost": "Docker hosts",
@@ -1446,6 +1449,52 @@
         "saved": "Tag saved",
         "created": "Tag created",
         "failed": "Could not save the tag"
+      }
+    },
+    "templates": {
+      "title": "Incident and maintenance templates",
+      "description": "Pre-approved wording for common incidents, updates and maintenance windows. Pick one with <strong>Use template</strong> in the incident dialog, the update composer or the maintenance form.",
+      "new": "New template",
+      "emptyTitle": "No templates yet",
+      "emptyDescription": "Create a template such as “Database failover” to open incidents with the right wording in one click.",
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "confirmDeleteTitle": "Delete template “{name}”?",
+      "confirmDeleteDescription": "Incidents and maintenance created from it are not affected. This cannot be undone.",
+      "confirmDelete": "Delete template",
+      "deleted": "Template deleted",
+      "deleteFailed": "Could not delete the template",
+      "allPages": "All status pages",
+      "componentCount": "{count, plural, one {# component} other {# components}}",
+      "form": {
+        "newTitle": "New template",
+        "editTitle": "Edit template",
+        "description": "Names are unique within the organization.",
+        "name": "Name",
+        "namePlaceholder": "Database failover",
+        "kind": "Used for",
+        "title": "Title",
+        "body": "Message",
+        "bodyHint": "Markdown. Placeholders in double braces are filled in when the template is used; any other placeholder (such as an ETA) must be replaced before publishing.",
+        "variables": "Filled in automatically:",
+        "status": "Status",
+        "statusNone": "Default",
+        "statusHint": "New incidents start as investigating and updates suggest the next step unless the template sets a status.",
+        "impact": "Overall impact",
+        "impactHint": "Used when the template names no component.",
+        "impactNone": "Keep the current impact",
+        "statusPage": "Status page",
+        "statusPageHint": "Default components belong to one status page. Templates for all pages are offered everywhere but carry no components.",
+        "components": "Default affected components",
+        "duration": "Default duration",
+        "durationHint": "Sets the end of a single window from its start, or the duration of a cron window.",
+        "minutesUnit": "minutes",
+        "cancel": "Cancel",
+        "save": "Save",
+        "create": "Create template",
+        "saved": "Template saved",
+        "created": "Template created",
+        "failed": "Could not save the template"
       }
     },
     "sso": {
@@ -3967,6 +4016,38 @@
       "hoursUnit": "h"
     }
   },
+  "templates": {
+    "kinds": {
+      "incident": "New incident",
+      "incidentUpdate": "Incident update",
+      "maintenance": "Maintenance",
+      "maintenanceUpdate": "Maintenance update"
+    },
+    "variables": {
+      "organization": "the organization's name",
+      "page": "the status page's title",
+      "components": "the affected components",
+      "component": "same as components",
+      "incident": "the incident's title",
+      "maintenance": "the maintenance's title",
+      "date": "today's date",
+      "start": "the window's start",
+      "end": "the window's end",
+      "duration": "the window's length"
+    },
+    "picker": {
+      "label": "Use template",
+      "placeholder": "Use a template…",
+      "applied": "Template “{name}” applied"
+    },
+    "placeholders": {
+      "title": "Replace the placeholders before publishing",
+      "description": "Fill in a value here or edit the text directly.",
+      "valueLabel": "Value for {name}",
+      "fill": "Fill in"
+    },
+    "duration": "{minutes, plural, one {# minute} other {# minutes}}"
+  },
   "importExport": {
     "formats": {
       "uptime-kuma": "Uptime Kuma backup",
@@ -3978,6 +4059,7 @@
       "forbidden": "Importing requires the member role or higher in this organization.",
       "skipNotifications": "Notification channels in the file will be skipped (admin role required). ",
       "skipStatusPages": "Status pages in the file will be skipped.",
+      "skipTemplates": "Templates in the file will be skipped.",
       "choose": "Choose a JSON file…",
       "checking": "Checking {fileName}…",
       "imported": "Imported",
@@ -3995,7 +4077,7 @@
     },
     "export": {
       "title": "Export",
-      "description": "Download this organization's monitors, notification channels and status pages as a Marmot export file. It can be imported into another organization or instance.",
+      "description": "Download this organization's monitors, notification channels, status pages and templates as a Marmot export file. It can be imported into another organization or instance.",
       "secrets": "<strong>The file contains secrets.</strong> Notification channel settings (webhook URLs, tokens, SMTP passwords) and monitor credentials are exported exactly as stored. Treat it like a password file.",
       "download": "Download export",
       "forbidden": "Exporting requires the admin role in this organization."
@@ -4010,6 +4092,7 @@
         "monitors": "Monitors",
         "notifications": "Notification channels",
         "statusPages": "Status pages",
+        "templates": "Templates",
         "tags": "Tags"
       }
     },
@@ -4018,7 +4101,7 @@
       "notKumaBackup": "Not an Uptime Kuma backup: expected a JSON object with \"monitorList\" and \"notificationList\".",
       "notMarmotExport": "Not a Marmot export (format \"{format}\" version {version}): {issues}",
       "kumaVersion": "Uptime Kuma backup version {version}",
-      "unnamed": "{kind, select, monitor {monitor} notification {notification} statusPage {status page} other {tag}} #{id}",
+      "unnamed": "{kind, select, monitor {monitor} notification {notification} statusPage {status page} template {template} other {tag}} #{id}",
       "notificationConfigNotJson": "Notification config is not valid JSON",
       "notificationNoType": "Notification has no provider type",
       "notificationProviderUnsupported": "Notification provider \"{type}\" is not supported by Marmot",
@@ -4030,6 +4113,12 @@
       "invalidMonitor": "Invalid monitor: {issues}",
       "notAnObject": "not an object",
       "invalidStatusPage": "Invalid status page: {issues}",
+      "invalidTemplate": "Invalid template: {issues}",
+      "duplicateTemplate": "Another template in the file has the same name",
+      "templateExists": "A template with this name already exists",
+      "templatesSkipped": "Templates were skipped: you may not create templates in this organization.",
+      "noTemplatePermission": "You may not create templates in this organization",
+      "templateComponentsDropped": "\"{name}\": {count} default {count, plural, one {component} other {components}} dropped because the status page was not imported",
       "monitorTypeUnsupported": "Monitor type \"{type}\" is not supported by Marmot yet",
       "dockerNeedsHost": "Monitor type \"Docker Container\" needs a Docker host in Marmot; add one and recreate the monitor",
       "realBrowserNeedsUrl": "Monitor type \"HTTP(s) - Browser Engine\" needs a remote browser URL, which Uptime Kuma backups do not contain",
@@ -4338,6 +4427,9 @@
     "incidentPostedAtFuture": "Updates cannot be posted in the future.",
     "incidentMessageInvalid": "message must be a string.",
     "incidentUpdateNotFound": "Update not found",
+    "templatePlaceholdersUnfilled": "Replace the template placeholders before publishing: {names}.",
+    "templateStatusPageInvalid": "The status page must belong to the template's organization.",
+    "templateComponentsInvalid": "Each default component must be listed once and belong to the template's status page.",
     "httpUrlRequired": "Enter an http(s) URL.",
     "contactUrlInvalid": "Enter an http(s) URL or a mailto: address.",
     "componentMonitorRequired": "Pick a monitor for this component.",

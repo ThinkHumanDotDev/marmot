@@ -26,6 +26,7 @@ import { SubscriberDeliveries } from './SubscriberDeliveries'
 import { SubscriberNotifications } from './SubscriberNotifications'
 import { StatusPageViewers } from './StatusPageViewers'
 import { Tags } from './Tags'
+import { Templates } from './Templates'
 import { Users } from './Users'
 
 /**
@@ -58,6 +59,7 @@ export const collections: CollectionConfig[] = [
   SubscriberDeliveries,
   Maintenance,
   MaintenanceOccurrences,
+  Templates,
   ApiKeys,
   AuditLogs,
 ]

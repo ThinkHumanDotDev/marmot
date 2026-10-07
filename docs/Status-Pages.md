@@ -91,6 +91,55 @@ components (rows of the page's groups, by component id — see [Components](#com
 - Every new update is announced through `onIncidentUpdatePosted()`
   (`src/server/status-pages/incident-events.ts`), the hook [subscriber notifications](#subscribers) build on.
 
+### Templates
+
+Templates (`templates` collection, Settings → **Templates**, `/{orgSlug}/settings/templates`) hold
+pre-approved wording for common situations ("Database failover", "Degraded API latency", "Planned network
+maintenance"). They belong to the organization; everyone reads them (`template:read`, viewer) and members
+and above write them (`template:create`/`update`/`delete`), so viewers can't edit them. Each template has:
+
+| Field        | Meaning                                                                                                                                                              |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`       | Unique within the organization                                                                                                                                       |
+| `kind`       | `incident` (new incident dialog), `incident-update` (incident update composer), `maintenance` (maintenance form), `maintenance-update` (maintenance update composer) |
+| `title`      | Incident or maintenance title (not used by the update kinds)                                                                                                         |
+| `body`       | Markdown message / maintenance description with `{{ placeholders }}`                                                                                                 |
+| `status`     | Status the incident or update starts with (empty: `investigating` / the suggested next step)                                                                         |
+| `impact`     | Declared impact when the template names no component                                                                                                                 |
+| `statusPage` | Page the default components belong to; empty = offered on every page, without components                                                                             |
+| `components` | Default affected components (`{ component, impact }`, row ids of `statusPage`)                                                                                       |
+| `duration`   | Maintenance: default window length in minutes                                                                                                                        |
+
+**Use template** in the incident dialog, the update composer (Incidents tab of the builder), the new
+maintenance form and the maintenance update composer (a window's message on the maintenance edit page) pre-fills the fields in one click: title, message, status, affected components with their
+impact (components the page no longer has are skipped; the composer merges them into the current impacts),
+the declared impact, and for maintenance the end of a single window (start + duration) or a cron window's
+duration. The page's own templates and the organization-wide ones are offered.
+
+Placeholders are `{{ name }}` with a plain identifier, rendered by the same tiny, safe renderer as
+notification templates (`src/lib/placeholders.ts`: no expressions, no code; the Liquid renderer of #150 will
+replace it). These variables are filled in when the template is applied:
+
+| Variable                   | Kinds                     | Value                                       |
+| -------------------------- | ------------------------- | ------------------------------------------- |
+| `organization`             | all                       | Organization name                           |
+| `page`                     | incident, incident-update | Status page title                           |
+| `components` (`component`) | incident, incident-update | Names of the affected components, as a list |
+| `incident`                 | incident-update           | Title of the incident being updated         |
+| `maintenance`              | maintenance-update        | Title of the maintenance                    |
+| `date`                     | all                       | Today's date                                |
+| `start`, `end`, `duration` | maintenance               | The window, when the form already has it    |
+| `start`, `end`             | maintenance-update        | The occurrence's window                     |
+
+Any other placeholder (`{{ eta }}`, `{{ workaround }}`) or a variable without a value stays in the text. It is
+highlighted, listed with a field to fill it in, and **publishing is blocked** until it is replaced: the
+buttons are disabled, and the incident routes (`POST …/incidents`, `PATCH …/incidents/:incidentId`,
+`POST …/updates`, `PATCH …/updates/:updateId`) and the maintenance routes (`POST`/`PATCH
+/api/orgs/:orgId/maintenance[/:id]`, `POST …/occurrences/:occurrenceId/updates`) answer `400` while a title,
+description or message still contains one.
+Placeholders inside Markdown code (`` `{{ x }}` `` or fenced blocks) are ignored. Templates travel with the
+[Marmot export](Import-and-Export.md).
+
 ### Components
 
 Every row of `groups[].monitors[]` is a **component** (`src/lib/status-page-components.ts`). The array
@@ -442,7 +491,7 @@ overrides, banner headline, logos and favicon, with a live preview; see [Themes]
 monitors** (drag-and-drop groups and components with
 `dnd-kit`, static components, per-component public name, description, values toggle, "show URL" / custom
 link, per-group "expanded by default"), **Incidents** (post, edit, pin, resolve, reopen, delete, affected
-components and their impact), **Subscribers** and **Notifications** (see [Subscribers](#subscribers)),
+components and their impact, [templates](#templates)), **Subscribers** and **Notifications** (see [Subscribers](#subscribers)),
 **Domains**, **Access** (public, password, email domain or IP allow-list, with the list of signed-in
 visitors for email-domain pages; see below) and **Share** (the [status badge](#status-badge) with
 Markdown and HTML snippets). The header switch publishes/unpublishes.

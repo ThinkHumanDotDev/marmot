@@ -2,6 +2,7 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
+import { unfilledPlaceholders } from '@/lib/templates'
 import type { MaintenanceOccurrence } from '@/payload-types'
 import {
   loadOrgMaintenance,
@@ -63,6 +64,9 @@ export async function POST(request: Request, { params }: RouteContext): Promise<
 
   const parsed = occurrenceUpdateSchema.safeParse(await readJson(request))
   if (!parsed.success) return validationError(parsed.error, request)
+  // Template placeholders (`{{ eta }}`) must be replaced before an update is published (#153).
+  const unfilled = unfilledPlaceholders(parsed.data.message)
+  if (unfilled) return jsonError(400, errorText(request, 'templatePlaceholdersUnfilled', unfilled))
 
   try {
     const result = await postOccurrenceUpdate(payload, maintenance, occurrence, parsed.data)

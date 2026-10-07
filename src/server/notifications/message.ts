@@ -9,6 +9,7 @@
  */
 import { defaultLocale, type Locale } from '@/i18n/locales'
 import type { Messages } from '@/i18n/messages'
+import { renderPlaceholders } from '@/lib/placeholders'
 import type { Heartbeat, Monitor } from '@/payload-types'
 import { serverTranslator } from '@/server/i18n'
 import { extractAddress } from '@/server/notification-providers/http'
@@ -143,8 +144,6 @@ export function buildTemplateContext(
   }
 }
 
-const PLACEHOLDER = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\s*\}\}/g
-
 /** Resolve `a.b.c` against a plain-data context; unknown paths resolve to ''. */
 function lookup(context: TemplateContext, path: string): string {
   let current: unknown = context
@@ -158,11 +157,12 @@ function lookup(context: TemplateContext, path: string): string {
 }
 
 /**
- * Replace `{{ monitor.name }}`-style placeholders. Anything that is not a plain dotted path is left
- * untouched, so templates can never execute code or reach outside the context object.
+ * Replace `{{ monitor.name }}`-style placeholders (the shared renderer in `src/lib/placeholders.ts`).
+ * Anything that is not a plain dotted path is left untouched, so templates can never execute code
+ * or reach outside the context object; unknown paths render as ''.
  */
 export function renderTemplate(template: string, context: TemplateContext): string {
-  return template.replace(PLACEHOLDER, (_match, path: string) => lookup(context, path))
+  return renderPlaceholders(template, (path) => lookup(context, path))
 }
 
 /** Convenience: render against monitor/heartbeat/message in one call. */
