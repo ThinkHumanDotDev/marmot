@@ -1,5 +1,7 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
+
 import type { Role } from '@/access/permissions'
 import {
   Select,
@@ -8,8 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-
-import { ROLE_DESCRIPTIONS, ROLE_LABELS } from './role-badge'
 
 interface RoleSelectProps {
   value: Role
@@ -33,10 +33,15 @@ export function RoleSelect({
   withDescriptions = false,
   ...rest
 }: RoleSelectProps) {
+  const t = useTranslations('members.roles')
   const all: Role[] = ['owner', 'admin', 'member', 'viewer']
   return (
     <Select value={value} onValueChange={(v) => onChange(v as Role)} disabled={disabled}>
-      <SelectTrigger size={size} className={className} aria-label={rest['aria-label'] ?? 'Role'}>
+      <SelectTrigger
+        size={size}
+        className={className}
+        aria-label={rest['aria-label'] ?? t('label')}
+      >
         <SelectValue />
       </SelectTrigger>
       <SelectContent position="popper" align="end">
@@ -44,11 +49,11 @@ export function RoleSelect({
           <SelectItem key={role} value={role} disabled={!options.includes(role)}>
             {withDescriptions ? (
               <span className="flex flex-col gap-0.5">
-                <span>{ROLE_LABELS[role]}</span>
-                <span className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[role]}</span>
+                <span>{t(`${role}.label`)}</span>
+                <span className="text-xs text-muted-foreground">{t(`${role}.description`)}</span>
               </span>
             ) : (
-              ROLE_LABELS[role]
+              t(`${role}.label`)
             )}
           </SelectItem>
         ))}

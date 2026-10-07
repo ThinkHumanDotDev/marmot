@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 import { Suspense } from 'react'
 
@@ -11,7 +12,10 @@ import { getOrgBySlug } from '@/lib/org'
 import { isBillingEnabled } from '@/server/billing/entitlements'
 import { getBillingOverview } from '@/server/billing/overview'
 
-export const metadata: Metadata = { title: 'Billing' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pageTitles')
+  return { title: t('billing') }
+}
 export const dynamic = 'force-dynamic'
 
 /**

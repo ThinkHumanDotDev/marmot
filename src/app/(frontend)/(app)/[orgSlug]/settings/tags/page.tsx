@@ -1,10 +1,14 @@
 import type { Metadata } from 'next'
+import { getTranslations } from 'next-intl/server'
 
 import { TagsSettings } from '@/components/settings/tags-settings'
 import { toTagRow } from '@/components/settings/resources-api'
 import { getOrgPageContext } from '@/server/monitors/page-data'
 
-export const metadata: Metadata = { title: 'Tags' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pageTitles')
+  return { title: t('tags') }
+}
 export const dynamic = 'force-dynamic'
 
 export default async function TagsSettingsPage({
