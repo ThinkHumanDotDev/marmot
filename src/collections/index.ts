@@ -16,6 +16,7 @@ import { Notifications } from './Notifications'
 import { NotificationSentHistory } from './NotificationSentHistory'
 import { Organizations } from './Organizations'
 import { Proxies } from './Proxies'
+import { PushEvents } from './PushEvents'
 import { SsoConnections } from './SsoConnections'
 import { SsoDomains } from './SsoDomains'
 import { StatDaily } from './StatDaily'
@@ -27,6 +28,7 @@ import { SubscriberDeliveries } from './SubscriberDeliveries'
 import { SubscriberNotifications } from './SubscriberNotifications'
 import { StatusPageViewers } from './StatusPageViewers'
 import { Tags } from './Tags'
+import { Templates } from './Templates'
 import { Users } from './Users'
 
 /**
@@ -49,6 +51,7 @@ export const collections: CollectionConfig[] = [
   NotificationSentHistory,
   Heartbeats,
   MonitorIncidents,
+  PushEvents,
   StatMinutely,
   StatHourly,
   StatDaily,
@@ -60,6 +63,7 @@ export const collections: CollectionConfig[] = [
   SubscriberDeliveries,
   Maintenance,
   MaintenanceOccurrences,
+  Templates,
   ApiKeys,
   AuditLogs,
 ]

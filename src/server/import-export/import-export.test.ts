@@ -558,4 +558,48 @@ describe('Marmot export parser', () => {
       expect.stringContaining('"Tagged": tags and proxy not imported'),
     ])
   })
+
+  it('keeps push schedules and defaults older exports to the interval schedule', () => {
+    const base = { interval: 60, retryInterval: 60, maxRetries: 0, resendInterval: 0, timeout: 48 }
+    const plan = parseMarmotExport({
+      ...file,
+      notifications: [],
+      statusPages: [],
+      monitors: [
+        {
+          ...base,
+          id: 'c1',
+          name: 'Nightly',
+          type: 'push',
+          pushToken: 'cron-token',
+          pushSchedule: 'cron',
+          pushCron: '0 2 * * *',
+          pushTimezone: 'Europe/Berlin',
+          pushGrace: 1800,
+          pushMaxDuration: 3600,
+        },
+        { ...base, id: 'c2', name: 'Legacy', type: 'push', pushToken: 'old' },
+        { ...base, id: 'c3', name: 'Broken', type: 'push', pushSchedule: 'cron', pushCron: 'x' },
+      ],
+    })
+    expect(plan.monitors.map((m) => m.data.name)).toEqual(['Nightly', 'Legacy'])
+    expect(plan.monitors[0].data).toMatchObject({
+      pushSchedule: 'cron',
+      pushCron: '0 2 * * *',
+      pushTimezone: 'Europe/Berlin',
+      pushGrace: 1800,
+      pushMaxDuration: 3600,
+    })
+    expect(plan.monitors[0].pushToken).toBe('cron-token')
+    expect(plan.monitors[1].data).toMatchObject({
+      pushSchedule: 'interval',
+      pushCron: null,
+      pushTimezone: 'SAME_AS_SERVER',
+      pushGrace: null,
+      pushMaxDuration: null,
+    })
+    expect(plan.skipped.monitors).toEqual([
+      { name: 'Broken', reason: expect.stringContaining('cron') },
+    ])
+  })
 })

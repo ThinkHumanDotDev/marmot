@@ -10,6 +10,7 @@ import { Gauge, Registry } from 'prom-client'
 import type { Payload } from 'payload'
 
 import type { Monitor } from '@/payload-types'
+import { getCheckerSummary, type CheckerSummary } from '@/server/engine/connectivity-state'
 import { getUptime, type StatsRange } from '@/server/stats/uptime-calculator'
 
 export const MONITOR_LABELS = [
@@ -22,13 +23,14 @@ export const MONITOR_LABELS = [
 ] as const
 export type MonitorLabel = (typeof MONITOR_LABELS)[number]
 
-/** Kuma's status numbers: 1 UP, 0 DOWN, 2 PENDING, 3 MAINTENANCE. */
+/** Kuma's status numbers: 1 UP, 0 DOWN, 2 PENDING, 3 MAINTENANCE; Marmot adds 4 DEGRADED (#93). */
 export const STATUS_VALUES: Record<NonNullable<Monitor['status']>['lastStatus'] & string, number> =
   {
     up: 1,
     down: 0,
     pending: 2,
     maintenance: 3,
+    degraded: 4,
   }
 
 export const UPTIME_WINDOWS: readonly StatsRange[] = ['24h', '30d']
@@ -78,6 +80,8 @@ export interface MetricsSource {
   monitors: Monitor[]
   /** Uptime ratio per monitor id and window; missing entries are skipped. */
   uptime: Map<string, Partial<Record<StatsRange, number>>>
+  /** Self connectivity check of the workers (#148); omitted when disabled. */
+  checker?: CheckerSummary
 }
 
 /** Build a registry from already loaded data (pure; tests call this directly). */
@@ -87,7 +91,7 @@ export function buildRegistry(source: MetricsSource): Registry {
 
   const status = new Gauge({
     name: 'monitor_status',
-    help: 'Monitor Status (1 = UP, 0= DOWN, 2= PENDING, 3= MAINTENANCE)',
+    help: 'Monitor Status (1 = UP, 0= DOWN, 2= PENDING, 3= MAINTENANCE, 4= DEGRADED)',
     labelNames,
     registers: [registry],
   })
@@ -115,6 +119,18 @@ export function buildRegistry(source: MetricsSource): Registry {
     labelNames,
     registers: [registry],
   })
+
+  if (source.checker && source.checker.status !== 'disabled') {
+    const checkerOnline = new Gauge({
+      name: 'marmot_checker_online',
+      help: 'Self connectivity check of the worker location (1 = online, 0 = offline: external checks are held)',
+      labelNames: ['location'],
+      registers: [registry],
+    })
+    for (const { location, status } of source.checker.locations) {
+      if (status !== 'unknown') checkerOnline.set({ location }, status === 'online' ? 1 : 0)
+    }
+  }
 
   for (const monitor of source.monitors) {
     const labels = monitorLabelValues(monitor)
@@ -175,5 +191,5 @@ export async function collectOrganizationMetrics(
     }),
   )
 
-  return buildRegistry({ monitors, uptime })
+  return buildRegistry({ monitors, uptime, checker: await getCheckerSummary() })
 }

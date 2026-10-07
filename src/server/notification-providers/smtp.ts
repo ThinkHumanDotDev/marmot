@@ -12,8 +12,7 @@ import nodemailer, { type Transporter } from 'nodemailer'
 import { z } from 'zod'
 
 import { env } from '@/env'
-import { serverTranslator } from '@/server/i18n'
-import { formatHeartbeatTime, renderMessageTemplate } from '@/server/notifications/message'
+import { buildNotificationEmail, emailTemplateConfig } from '@/server/notifications/email'
 import {
   SERVER_SMTP_MAX_RECIPIENTS,
   SERVER_SMTP_OFF_MESSAGE,
@@ -22,7 +21,7 @@ import {
 import { resolveGuardedTarget } from '@/server/security/outbound-guard'
 import { OK_MESSAGE } from './http'
 import { registerNotificationProvider } from './registry'
-import type { NotificationFieldMeta } from './types'
+import type { NotificationEmail, NotificationFieldMeta, NotificationSendContext } from './types'
 
 export const smtpConfigSchema = z.object({
   useServerSmtp: z.boolean().default(false),
@@ -62,11 +61,15 @@ export const smtpFieldMeta: Record<keyof SmtpConfig, NotificationFieldMeta> = {
     label: 'Subject template',
     placeholder: '{{ name }} is {{ status }}',
     description: 'Defaults to the notification message.',
+    template: 'text',
   },
   body: {
     label: 'Body template',
     multiline: true,
-    description: 'Defaults to the message and time.',
+    description:
+      'Defaults to a branded HTML email with a plain-text part. With "Send the body as HTML", values are HTML-escaped and the text part is generated.',
+    template: 'text',
+    templateHtmlWhen: 'htmlBody',
   },
   htmlBody: { label: 'Send the body as HTML' },
 }
@@ -112,14 +115,35 @@ export function setSmtpTransportFactory(
       nodemailer.createTransport(options as Parameters<typeof nodemailer.createTransport>[0]))
 }
 
+/**
+ * The email for `ctx`: subject and body templates when set (the body as HTML with `htmlBody`, the
+ * text part then generated), otherwise the branded HTML email with the message as subject.
+ */
+export function renderSmtpEmail(
+  config: Pick<SmtpConfig, 'subject' | 'body' | 'htmlBody'>,
+  ctx: NotificationSendContext,
+): NotificationEmail {
+  const body = config.body?.trim()
+  return buildNotificationEmail(
+    ctx,
+    {
+      subject: config.subject,
+      ...(body ? (config.htmlBody ? { html: body } : { text: body }) : {}),
+    },
+    ctx.message,
+  )
+}
+
 registerNotificationProvider({
   name: 'smtp',
   label: 'Email (SMTP)',
   group: 'email',
   configSchema: smtpConfigSchema,
   fieldMeta: smtpFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat, locale }) {
-    const config = smtpConfigSchema.parse(raw)
+  // Lenient: the form previews templates before the rest of the settings are filled in.
+  renderEmail: (ctx) => renderSmtpEmail(emailTemplateConfig(ctx.config), ctx),
+  async send(ctx) {
+    const config = smtpConfigSchema.parse(ctx.config)
     const options = buildSmtpTransportOptions(config)
     if (!config.useServerSmtp && typeof options.host === 'string') {
       // A channel's own SMTP host is user input: with the outbound address guard on, connect to the
@@ -133,21 +157,7 @@ registerNotificationProvider({
     }
     const transport = createTransport(options)
 
-    let subject = message
-    const t = serverTranslator(locale)
-    let body = heartbeat
-      ? `${message}\n${t('notifications.messages.timeLine', { time: formatHeartbeatTime(heartbeat) })}`
-      : message
-    let useHtml = false
-
-    const customSubject = config.subject?.trim() ?? ''
-    const customBody = config.body?.trim() ?? ''
-    if (customSubject)
-      subject = renderMessageTemplate(customSubject, message, monitor, heartbeat, locale)
-    if (customBody) {
-      useHtml = config.htmlBody
-      body = renderMessageTemplate(customBody, message, monitor, heartbeat, locale)
-    }
+    const email = renderSmtpEmail(config, ctx)
 
     const from = config.from?.trim() || (config.useServerSmtp ? env.EMAIL_FROM : undefined)
     if (!from) throw new Error('A From address is required')
@@ -157,8 +167,9 @@ registerNotificationProvider({
       to: config.to,
       cc: config.cc || undefined,
       bcc: config.bcc || undefined,
-      subject,
-      [useHtml ? 'html' : 'text']: body,
+      subject: email.subject,
+      text: email.text,
+      ...(email.html !== null ? { html: email.html } : {}),
     })
     return OK_MESSAGE
   },

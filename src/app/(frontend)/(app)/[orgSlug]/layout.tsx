@@ -4,6 +4,7 @@ import React from 'react'
 
 import config from '@payload-config'
 import { AnalyticsIdentity } from '@/components/consent/analytics-identity'
+import { CheckerStatusBanner } from '@/components/realtime/checker-status-banner'
 import { SocketProvider } from '@/components/realtime/socket-provider'
 import { AppShell } from '@/components/shell/app-shell'
 import { OrgTimeZoneProvider } from '@/components/shell/org-time-zone-provider'
@@ -18,6 +19,7 @@ import {
 } from '@/lib/auth'
 import type { Organization } from '@/payload-types'
 import { hashAnalyticsId, isServerAnalyticsEnabled } from '@/server/analytics'
+import { getCheckerSummary } from '@/server/engine/connectivity-state'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,6 +71,9 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
     }
   }
 
+  // Self connectivity check of the workers (#148): the banner shows while it reports offline.
+  const checker = await getCheckerSummary()
+
   return (
     <AppShell
       user={{
@@ -89,7 +94,10 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
       <ThemeSync theme={user.theme} />
       {/* Dates on the organization's pages render in its time zone (UTC unless configured). */}
       <OrgTimeZoneProvider timeZone={timeZoneOrDefault(timeZone)}>
-        <SocketProvider organizationId={currentOrg.id}>{children}</SocketProvider>
+        <SocketProvider organizationId={currentOrg.id}>
+          <CheckerStatusBanner initial={{ status: checker.status, since: checker.since }} />
+          {children}
+        </SocketProvider>
       </OrgTimeZoneProvider>
       {isServerAnalyticsEnabled() && (
         // Only a keyed hash of the id reaches the browser/PostHog, never email or name.

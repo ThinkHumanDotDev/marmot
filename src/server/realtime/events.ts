@@ -23,6 +23,7 @@ export const RealtimeEvents = {
   notificationList: 'notificationList',
   monitorIncident: 'monitorIncident',
   info: 'info',
+  checkerStatus: 'checkerStatus',
 } as const
 
 export type RealtimeEvent = (typeof RealtimeEvents)[keyof typeof RealtimeEvents]
@@ -41,7 +42,7 @@ export const orgRoom = (organizationId: string | number) => `org:${organizationI
 /** Ids travel as strings: Postgres uses numbers, MongoDB strings; the client never cares. */
 export type RealtimeId = string
 
-export type RealtimeHeartbeatStatus = 'up' | 'down' | 'pending' | 'maintenance'
+export type RealtimeHeartbeatStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded'
 
 export type RealtimeRange = '24h' | '30d' | '1y'
 
@@ -119,6 +120,11 @@ export interface RealtimePayloads {
   monitorIncident: { organizationId: RealtimeId; incident: MonitorIncidentSummary }
   /** Server information, sent once per connection. */
   info: { version: string; serverTime: string }
+  /**
+   * Instance-wide status of the worker's self connectivity check (#148), broadcast to every socket
+   * when it changes. `since` is the start of the current outage while `offline`.
+   */
+  checkerStatus: { status: 'online' | 'offline' | 'unknown' | 'disabled'; since: string | null }
 }
 
 /** Typed server → client event map for `socket.io` / `socket.io-client`. */

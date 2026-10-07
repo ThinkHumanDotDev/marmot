@@ -10,6 +10,7 @@ import { MaintenanceCard } from '@/components/status-pages/public/maintenance-ca
 import { StatusDot } from '@/components/status-dot'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { renderMarkdown } from '@/lib/markdown'
+import { effectiveImpact } from '@/lib/status-page-components'
 import { EVENTS_PATH, eventPath, type EventKind } from '@/lib/status-page-events'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +29,10 @@ import type {
 
 const overallStyles: Record<OverallStatus, { dot: string; banner: string }> = {
   up: { dot: 'bg-status-up', banner: 'border-status-up/40 bg-status-up/10' },
+  degraded: {
+    dot: 'bg-status-degraded',
+    banner: 'border-status-degraded/50 bg-status-degraded/10',
+  },
   partial: { dot: 'bg-status-pending', banner: 'border-status-pending/50 bg-status-pending/10' },
   down: { dot: 'bg-status-down', banner: 'border-status-down/40 bg-status-down/10' },
   maintenance: {
@@ -181,7 +186,9 @@ function MonitorRow({ monitor }: { monitor: PublicMonitor }) {
     <span className="font-medium">{monitor.name}</span>
   )
   const isStatic = monitor.type === 'static'
-  const impact = monitor.impact && monitor.impact !== 'operational' ? monitor.impact : null
+  // A degraded monitor reads as "Degraded performance" like an incident with that impact.
+  const shown = effectiveImpact(monitor.status, monitor.impact)
+  const impact = shown && shown !== 'operational' ? shown : null
   const showValues =
     monitor.showValues && monitor.uptime24h !== undefined && monitor.uptime30d !== undefined
 

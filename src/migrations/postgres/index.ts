@@ -29,8 +29,14 @@ import * as migration_20261007_065512_incident_timeline from './20261007_065512_
 import * as migration_20261007_075026_status_page_restricted_access from './20261007_075026_status_page_restricted_access';
 import * as migration_20261007_082448_status_page_history from './20261007_082448_status_page_history';
 import * as migration_20261007_085940_status_page_subscribers from './20261007_085940_status_page_subscribers';
-import * as migration_20261007_102848_monitor_incidents from './20261007_102848_monitor_incidents';
-import * as migration_20261007_110034_engine_recovery from './20261007_110034_engine_recovery';
+import * as migration_20261007_094147_templates from './20261007_094147_templates';
+import * as migration_20261007_103631_monitor_degraded_state from './20261007_103631_monitor_degraded_state';
+import * as migration_20261007_110911_notification_event_filters from './20261007_110911_notification_event_filters';
+import * as migration_20261007_140856_monitor_assertions from './20261007_140856_monitor_assertions';
+import * as migration_20261007_145743_heartbeat_trigger from './20261007_145743_heartbeat_trigger';
+import * as migration_20261007_160552_push_monitor_cron from './20261007_160552_push_monitor_cron';
+import * as migration_20261007_163630_monitor_incidents from './20261007_163630_monitor_incidents';
+import * as migration_20261007_173835_engine_recovery from './20261007_173835_engine_recovery';
 
 export const migrations = [
   {
@@ -189,13 +195,43 @@ export const migrations = [
     name: '20261007_085940_status_page_subscribers',
   },
   {
-    up: migration_20261007_102848_monitor_incidents.up,
-    down: migration_20261007_102848_monitor_incidents.down,
-    name: '20261007_102848_monitor_incidents',
+    up: migration_20261007_094147_templates.up,
+    down: migration_20261007_094147_templates.down,
+    name: '20261007_094147_templates',
   },
   {
-    up: migration_20261007_110034_engine_recovery.up,
-    down: migration_20261007_110034_engine_recovery.down,
-    name: '20261007_110034_engine_recovery'
+    up: migration_20261007_103631_monitor_degraded_state.up,
+    down: migration_20261007_103631_monitor_degraded_state.down,
+    name: '20261007_103631_monitor_degraded_state',
+  },
+  {
+    up: migration_20261007_110911_notification_event_filters.up,
+    down: migration_20261007_110911_notification_event_filters.down,
+    name: '20261007_110911_notification_event_filters',
+  },
+  {
+    up: migration_20261007_140856_monitor_assertions.up,
+    down: migration_20261007_140856_monitor_assertions.down,
+    name: '20261007_140856_monitor_assertions',
+  },
+  {
+    up: migration_20261007_145743_heartbeat_trigger.up,
+    down: migration_20261007_145743_heartbeat_trigger.down,
+    name: '20261007_145743_heartbeat_trigger',
+  },
+  {
+    up: migration_20261007_160552_push_monitor_cron.up,
+    down: migration_20261007_160552_push_monitor_cron.down,
+    name: '20261007_160552_push_monitor_cron',
+  },
+  {
+    up: migration_20261007_163630_monitor_incidents.up,
+    down: migration_20261007_163630_monitor_incidents.down,
+    name: '20261007_163630_monitor_incidents',
+  },
+  {
+    up: migration_20261007_173835_engine_recovery.up,
+    down: migration_20261007_173835_engine_recovery.down,
+    name: '20261007_173835_engine_recovery'
   },
 ];

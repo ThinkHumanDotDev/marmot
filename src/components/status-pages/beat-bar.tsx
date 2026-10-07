@@ -3,7 +3,7 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 
 export interface BeatBarBeat {
-  status: 'up' | 'down' | 'pending' | 'maintenance'
+  status: 'up' | 'down' | 'pending' | 'maintenance' | 'degraded'
   /** ISO timestamp. */
   time: string
   ping?: number | null
@@ -14,9 +14,10 @@ const colour: Record<BeatBarBeat['status'], string> = {
   down: 'bg-status-down',
   pending: 'bg-status-pending',
   maintenance: 'bg-status-maintenance',
+  degraded: 'bg-status-degraded',
 }
 
-const STATUS_ORDER = ['up', 'down', 'pending', 'maintenance'] as const
+const STATUS_ORDER = ['up', 'degraded', 'down', 'pending', 'maintenance'] as const
 
 /**
  * Row of up to `size` heartbeat bars, oldest left, newest right. Missing beats render as empty

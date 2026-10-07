@@ -2,7 +2,7 @@ import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
 import type { Heartbeat, Monitor } from '@/payload-types'
-import type { BeatStatus } from './beat'
+import type { BeatStatus, NotificationEvent } from './beat'
 import type { TlsInfo } from './tls'
 
 const log = childLogger('engine:hooks')
@@ -22,12 +22,22 @@ export interface HeartbeatEvent {
   isFirstBeat: boolean
   /** The state machine decided notification providers should fire for this beat. */
   notify: boolean
+  /**
+   * Why notifications fire (`down`, `up`, `degraded`, `reminder`); `null` exactly when `notify` is
+   * false. Channels filter on it (`channelAcceptsEvent`, #126).
+   */
+  notificationEvent?: NotificationEvent | null
   /** Organization id of the monitor, if any (handy for `org:<id>` rooms). */
   organizationId?: string | number | null
   /** TLS certificate captured by this check (already stored in `monitor.certInfo`), if any. */
   tlsInfo?: TlsInfo | null
   /** The leaf certificate differs from the one seen before (first capture included). */
   certChanged?: boolean
+  /**
+   * The check was held because the worker itself was offline (#148): a PENDING "checker offline"
+   * beat that must not count as downtime.
+   */
+  checkerOffline?: boolean
 }
 
 export type HeartbeatListener = (event: HeartbeatEvent) => void | Promise<void>

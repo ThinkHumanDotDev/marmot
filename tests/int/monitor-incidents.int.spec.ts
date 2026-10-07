@@ -270,6 +270,34 @@ describe('engine lifecycle', () => {
     expect(incident).toMatchObject({ status: 'resolved', autoResolved: false })
   })
 
+  it('ignores beats held while the checker itself was offline', async () => {
+    const offline = (monitor: Monitor) =>
+      recordBeat(
+        payload,
+        monitor,
+        { ok: false, msg: 'Checker offline', checkerOffline: true },
+        { queue },
+      ).then((r) => r.monitor)
+
+    // An UP monitor: a held beat opens nothing.
+    let up = await createMonitor('Held up')
+    up = await beat(up, true, 'OK')
+    up = await offline(up)
+    expect(await incidentsOf(up)).toHaveLength(0)
+
+    // A DOWN monitor: the incident stays open through held beats and resolves on a real recovery.
+    let down = await createMonitor('Held down')
+    down = await beat(down, false, 'refused')
+    down = await offline(down)
+    down = await offline(down)
+    let incidents = await incidentsOf(down)
+    expect(incidents.map((i) => i.status)).toEqual(['open'])
+    expect(incidents[0].timeline?.map((row) => row.type)).toEqual(['opened'])
+    down = await beat(down, true, 'OK')
+    incidents = await incidentsOf(down)
+    expect(incidents.map((i) => i.status)).toEqual(['resolved'])
+  })
+
   it('holds reminders back once the incident is acknowledged (pluggable policy)', async () => {
     let monitor = await createMonitor('Billing', { resendInterval: 1 })
     enqueued.length = 0

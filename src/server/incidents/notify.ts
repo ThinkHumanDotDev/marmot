@@ -6,8 +6,8 @@
  *     ─▶ BullMQ `marmot:notifications`, job `incident-notify` (id `inc-<channel>-<incident>-<event>`)
  *     ─▶ notification worker ─▶ `processIncidentNotificationJob` ─▶ `sendNotification`
  *
- * Event names are stable (`INCIDENT_NOTIFICATION_EVENTS`: `acknowledged`, `resolved`) so per-channel
- * event filters (#126) can select them; `channelAcceptsIncidentEvent` is the single filter point.
+ * The events are channel events (`acknowledged`, `resolved` in `CHANNEL_EVENTS`), filtered by the
+ * dispatcher's single filter point `channelAcceptsEvent` like every other notification.
  * An automatic resolution sends nothing extra: the recovery (UP) notification already announces it.
  */
 import type { JobsOptions, Queue } from 'bullmq'
@@ -24,6 +24,7 @@ import { humanDuration } from '@/lib/validation/monitor'
 import type { Monitor, MonitorIncident, Notification } from '@/payload-types'
 import { serverTranslator } from '@/server/i18n'
 import {
+  channelAcceptsEvent,
   getMonitorNotifications,
   getNotificationsQueue,
   NOTIFICATION_JOB_OPTIONS,
@@ -51,17 +52,6 @@ export const incidentJobId = (
   incidentId: string | number,
   event: IncidentNotificationEvent,
 ) => `inc-${notificationId}-${incidentId}-${event}`
-
-/**
- * Does `channel` want `event`? Every channel does until per-channel event filters land (#126),
- * which replace this with the channel's own selection.
- */
-export function channelAcceptsIncidentEvent(
-  _channel: Pick<Notification, 'id'>,
-  _event: IncidentNotificationEvent,
-): boolean {
-  return true
-}
 
 export interface IncidentJob {
   name: typeof INCIDENT_NOTIFICATION_JOB
@@ -104,7 +94,7 @@ export async function enqueueIncidentNotifications(
       overrideAccess: true,
     })) as Monitor
     const channels = (await getMonitorNotifications(payload, monitor)).filter((channel) =>
-      channelAcceptsIncidentEvent(channel, event),
+      channelAcceptsEvent(channel, event),
     )
     if (channels.length === 0) return 0
     const organizationId = relId(incident.organization)
@@ -181,6 +171,10 @@ export async function processIncidentNotificationJob(
     .catch(() => null)) as Notification | null
   if (!notification) return { outcome: 'skipped', reason: 'notification-not-found' }
   if (!notification.active) return { outcome: 'skipped', reason: 'inactive' }
+  // The selection may have changed since the job was enqueued.
+  if (!channelAcceptsEvent(notification, event)) {
+    return { outcome: 'skipped', reason: 'event-filtered' }
+  }
   const incident = await getIncident(payload, incidentId)
   if (!incident) return { outcome: 'skipped', reason: 'incident-not-found' }
   const monitorId = relId(incident.monitor)
@@ -195,7 +189,13 @@ export async function processIncidentNotificationJob(
   const summary = await serializeIncident(payload, incident)
   const locale = await getChannelLocale(payload, notification)
   const message = buildIncidentMessage(monitor.name, summary, event, locale)
-  await sendNotification(payload, notification, { message, monitor, heartbeat: null, locale })
+  await sendNotification(payload, notification, {
+    message,
+    monitor,
+    heartbeat: null,
+    event,
+    locale,
+  })
   log.info({ notificationId, incidentId, event }, 'incident notification sent')
   return { outcome: 'sent' }
 }

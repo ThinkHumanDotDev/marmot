@@ -44,6 +44,8 @@ export async function handleIncidentBeat(
   event: HeartbeatEvent,
 ): Promise<IncidentBeatResult | null> {
   const { payload, monitor, heartbeat } = event
+  // A beat held while the worker itself was offline (#148) says nothing about the monitor.
+  if (event.checkerOffline) return null
   const action = incidentActionForBeat({ status: heartbeat.status, important: heartbeat.important })
   if (!action) return null
   const at = beatTime(event)
@@ -80,7 +82,7 @@ export async function handleIncidentBeat(
  * on the incident. Every other beat passes untouched.
  */
 export async function incidentReminderGate(event: HeartbeatEvent): Promise<boolean> {
-  if (!isReminderBeat(event)) return true
+  if (event.checkerOffline || !isReminderBeat(event)) return true
   const incident = await findOpenIncident(event.payload, event.monitor.id)
   // The beat's own time, so the backoff measures the same clock as the beats it spaces.
   const now = beatTime(event)

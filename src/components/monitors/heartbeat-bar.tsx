@@ -17,6 +17,7 @@ const fill: Record<MonitorStatus, string> = {
   down: 'bg-status-down',
   pending: 'bg-status-pending',
   maintenance: 'bg-status-maintenance',
+  degraded: 'bg-status-degraded',
 }
 
 /**

@@ -16,7 +16,7 @@ Shared infrastructure: the Payload database (Postgres by default, MongoDB suppor
 Payload does not poll anything by itself. On `monitors` `afterChange`/`afterDelete` hooks the web process
 calls `syncMonitor(monitor)` / `removeMonitorSchedule(id)` (`src/server/engine/scheduler.ts`), which upserts
 or removes a BullMQ **job scheduler** named `monitor:<id>` with `every = interval * 1000` (`retryInterval`
-while the monitor is PENDING). Both run, together with the `updateMonitorIntoList` / `deleteMonitorFromList` realtime emits,
+while the monitor is PENDING; every 60 s for push monitors on a cron schedule). Both run, together with the `updateMonitorIntoList` / `deleteMonitorFromList` realtime emits,
 only **after the operation's transaction commits** (`afterCommit()` in `src/db/after-commit.ts`, which hooks
 the adapter's `commitTransaction` / `rollbackTransaction`; without a transaction they run at once). Otherwise an
 idle worker could run the new scheduler's first job before the monitor row is visible, take the "monitor not
@@ -27,16 +27,42 @@ state machine (`src/server/engine/beat.ts`, ported from Uptime Kuma's `Monitor.b
 
 ```
 maintenance?  → MAINTENANCE
-check ok      → UP
+check ok      → ping > degradedAfter ? DEGRADED : UP
 check failed  → retries < maxretries ? PENDING (scheduler switched to retryInterval) : DOWN
-upsideDown    → flip UP/DOWN
+upsideDown    → flip UP/DOWN (the degraded threshold does not apply)
 was DOWN, ok  → successThreshold reached ? UP : PENDING "Recovering n/N" (applyRecoveryThreshold)
 ```
 
-Important beats (status transitions) trigger notifications; `resendInterval` re-notifies while down, spaced by
-the reminder policy (`reminderBackoff`, `maxReminders`). The recovery threshold (#147) is the one Marmot step
-in the ported state machine: during a recovery streak the previous status counts as DOWN, so its PENDING beats
-are silent, a failure returns to DOWN without notifying, and the beat that completes it is DOWN → UP.
+Important beats (status transitions) trigger notifications; `resendInterval` re-notifies while down. Each
+notifying beat carries a `notificationEvent` (`down`, `up`, `degraded`, `reminder`) that the dispatcher
+filters channels on. `status.settledStatus` remembers the last non-PENDING status so that leaving a retry
+streak (DEGRADED → PENDING → UP) is still recognised as a transition.
+
+Reminders are spaced by the reminder policy (`reminderBackoff`, `maxReminders`). The recovery threshold
+(#147) is applied after the ported rules: during a recovery streak the previous status counts as DOWN, so its
+PENDING beats are silent, a failure returns to DOWN without notifying, and the beat that completes it is DOWN → UP.
+
+On-demand checks (`src/server/engine/on-demand.ts`, worker side in `on-demand-jobs.ts`) use the same queue:
+`POST /api/orgs/:orgId/monitors/:id/check` adds a `manual-check` job (LIFO, deduplicated per monitor while
+one is pending) and `POST /api/orgs/:orgId/checks` an `adhoc-check` job carrying unsaved form values. The
+web process waits for the job's return value through BullMQ `QueueEvents`, so it never connects to a
+target itself; the worker runs `runCheck()` (timeout, proxy, outbound guard) and either records the beat
+through the state machine with `heartbeats.trigger = 'manual'` or, for dry runs and ad-hoc checks, only
+returns the result. Jobs carry a deadline and are dropped when the worker picks them up after nobody waits
+any more. A per-organization limiter (`ON_DEMAND_CHECKS_PER_MINUTE`) bounds both routes.
+
+**Self connectivity check** (`src/server/engine/connectivity.ts`, opt-in with `CONNECTIVITY_CHECK_ENABLED`).
+The worker keeps a cached verdict per location (`ConnectivityMonitor`, probed every
+`CONNECTIVITY_CHECK_INTERVAL` seconds by a timer and again when a check fails on a verdict older than 10 s).
+`processCheckJob` runs the check through `guardAgainstOfflineChecker`: while offline, monitors that need the
+internet (`monitorNeedsInternet`) get a `checkerOffline` result, which the state machine turns into a silent
+PENDING `checker offline` beat (`holdBeatWhileCheckerOffline` in `beat.ts`); `recordBeat` keeps the cached
+`lastStatus`, and listeners see `event.checkerOffline` (the stats listener skips it). The worker wiring
+(`connectivity-runtime.ts`) publishes each verdict to Redis (`marmot:connectivity:status:<location>:<worker>`,
+read by `/api/health`, `/api/metrics` and the UI banner through `connectivity-state.ts`), broadcasts the
+`checkerStatus` realtime event, sends one offline / back-online notice per outage (claimed in Redis so one
+replica sends it) and re-enqueues the held monitors when connectivity returns. `connectivityLocationOf()` is
+the hook for multi-location checks (#92): every location will run its own monitor.
 
 After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
 `lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`, `recoveries`) and calls every listener registered with
@@ -55,7 +81,8 @@ second of the bucket start (minute / hour / UTC day), guarded by a unique compou
 | `stat-daily`    | 1 day  | `KEEP_DATA_PERIOD_DAYS` | `1y`   |
 
 Each row stores `up`, `down`, `ping` (average of UP beats), `pingMin`, `pingMax` and an `extras` JSON with
-`maintenance` (beats during maintenance, also counted as `up`) and `pingCount` (weight of `ping`). `pending`
+`maintenance` (beats during maintenance, also counted as `up`), `degraded` (slow successful checks, also
+counted as `up`, their ping included) and `pingCount` (weight of `ping`). `pending`
 beats count as `down`. The maths is a port of Uptime Kuma's `UptimeCalculator`
 (`src/server/stats/uptime-calculator.ts`): the worker's heartbeat listener calls
 `recordHeartbeat(payload, { monitorId, organizationId, status, ping, time })`, which reads the three current
@@ -72,9 +99,9 @@ non-important heartbeats older than 24 h.
 ## Notifications
 
 `notifications` documents (org-scoped: `name`, `type` = provider slug, `config` validated against the
-provider's zod schema, `isDefault`, `active`, `lastSentAt`, `lastError`) are attached to monitors through
+provider's zod schema, `events` filter, `isDefault`, `active`, `lastSentAt`, `lastError`) are attached to monitors through
 `monitors.notifications`. When a beat has `notify = true` the worker's heartbeat listener enqueues one BullMQ
-job per active attached channel on `marmot:notifications` (job id `notif:<channel>:<heartbeat>` dedupes, 3
+job per active attached channel that selected the beat's event on `marmot:notifications` (job id `notif:<channel>:<heartbeat>` dedupes, 3
 attempts with exponential backoff); the notification worker renders `[name] [🔴 Down] msg`, calls the
 provider's `send()` and records the outcome on the channel. Providers self-register in
 `src/server/notification-providers/`; see [Notifications](Notifications.md).
@@ -231,8 +258,8 @@ Retention deletes delivery rows after 90 days and unconfirmed self sign-ups afte
 
 The public payload (`buildPublicStatusPageData`) maps each monitor to the worst impact of the active
 incidents naming it and computes `overall` from both: a `major_outage` component counts as down, a
-degraded or partial one as not fully up, and incidents without components raise the page to `partial` or
-`down`. See [Status pages](Status-Pages.md) for the routes and payload.
+partial one as not fully up, a degraded one (incident impact or degraded monitor, `effectiveImpact()`) as
+degraded, and incidents without components raise the page to `degraded`, `partial` or `down`. See [Status pages](Status-Pages.md) for the routes and payload.
 
 ## Realtime
 
@@ -372,6 +399,8 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `subscriber:send`                                                   |        |        |   ✓   |   ✓   |
 | `maintenance:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
 | `maintenance:create`, `maintenance:update`, `maintenance:delete`    |        |   ✓    |   ✓   |   ✓   |
+| `template:read`                                                     |   ✓    |   ✓    |   ✓   |   ✓   |
+| `template:create`, `template:update`, `template:delete`             |        |   ✓    |   ✓   |   ✓   |
 | `tag:read`                                                          |   ✓    |   ✓    |   ✓   |   ✓   |
 | `tag:create`, `tag:update`, `tag:delete`                            |        |   ✓    |   ✓   |   ✓   |
 | `proxy:read` (password only with `proxy:update`)                    |        |   ✓    |   ✓   |   ✓   |

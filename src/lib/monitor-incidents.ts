@@ -30,8 +30,8 @@ export const INCIDENT_ACTION_SOURCES = ['dashboard', 'api', 'link'] as const
 export type IncidentActionSource = (typeof INCIDENT_ACTION_SOURCES)[number]
 
 /**
- * Stable names of the notifications an incident sends besides the heartbeat ones (`down`, `up`,
- * `reminder`). Per-channel event filters (#126) select on these names.
+ * Notifications an incident sends besides the heartbeat ones (`down`, `up`, `reminder`). They are
+ * channel events (`CHANNEL_EVENTS` in `src/lib/notification-events.ts`), so channels select them.
  */
 export const INCIDENT_NOTIFICATION_EVENTS = ['acknowledged', 'resolved'] as const
 export type IncidentNotificationEvent = (typeof INCIDENT_NOTIFICATION_EVENTS)[number]

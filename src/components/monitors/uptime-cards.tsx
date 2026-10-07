@@ -14,6 +14,8 @@ export interface UptimeSummary {
   avgPing24h: number | null
   /** Latest ping in ms. */
   lastPing: number | null
+  /** Degraded checks over 24h (slower than the monitor's threshold, counted as up). */
+  degraded24h?: number | null
 }
 
 function tier(fraction: number | null): string {
@@ -73,7 +75,11 @@ export function UptimeCards({ summary }: { summary: UptimeSummary }) {
       />
       <StatTile
         label={t('uptime')}
-        hint={t('last24Hours')}
+        hint={
+          summary.degraded24h
+            ? t('last24HoursDegraded', { count: summary.degraded24h })
+            : t('last24Hours')
+        }
         value={format.uptime(summary.uptime24h)}
         valueClassName={tier(summary.uptime24h)}
         testId="stat-uptime-24h"

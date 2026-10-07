@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest'
 import {
   applyRecoveryThreshold,
   computeNextBeat,
+  degradedMessage,
   flipStatus,
+  isDegradedTransition,
   isImportantBeat,
   isImportantForNotification,
   nextIntervalSeconds,
+  notificationEventFor,
   type BeatStatus,
   type CheckResult,
   type MonitorSettings,
@@ -274,6 +277,216 @@ describe('computeNextBeat', () => {
   })
 })
 
+describe('degraded state (#93)', () => {
+  const slow = (ping = 900, msg = '200 - OK'): CheckResult => ({
+    ok: true,
+    status: 'up',
+    msg,
+    ping,
+  })
+  const degradedSettings = (over: Partial<MonitorSettings> = {}) =>
+    settings({ type: 'http', degradedAfter: 500, ...over })
+
+  it('a successful check slower than degradedAfter is DEGRADED, faster or equal is UP', () => {
+    const prev = { status: 'up' as const, settledStatus: 'up' as const }
+    const degraded = computeNextBeat(prev, slow(900), degradedSettings())
+    expect(degraded).toMatchObject({
+      status: 'degraded',
+      ping: 900,
+      retries: 0,
+      important: true,
+      notify: true,
+      notificationEvent: 'degraded',
+      settledStatus: 'degraded',
+    })
+    expect(degraded.msg).toBe(
+      '200 - OK (response time 900 ms exceeds the degraded threshold of 500 ms)',
+    )
+    expect(computeNextBeat(prev, slow(500), degradedSettings()).status).toBe('up')
+    expect(computeNextBeat(prev, slow(100), degradedSettings()).status).toBe('up')
+  })
+
+  it('is off without a threshold, with 0, for unsupported types and without a ping', () => {
+    const prev = { status: 'up' as const }
+    expect(computeNextBeat(prev, slow(), settings()).status).toBe('up')
+    expect(computeNextBeat(prev, slow(), degradedSettings({ degradedAfter: 0 })).status).toBe('up')
+    expect(computeNextBeat(prev, slow(), degradedSettings({ type: 'push' })).status).toBe('up')
+    expect(computeNextBeat(prev, slow(), degradedSettings({ type: 'mysql' })).status).toBe('up')
+    expect(
+      computeNextBeat(prev, { ok: true, status: 'up', msg: 'OK', ping: null }, degradedSettings())
+        .status,
+    ).toBe('up')
+  })
+
+  it('DEGRADED -> DEGRADED is quiet, DEGRADED -> UP announces the end of the degradation', () => {
+    const prev = { status: 'degraded' as const, settledStatus: 'degraded' as const }
+    expect(computeNextBeat(prev, slow(), degradedSettings())).toMatchObject({
+      status: 'degraded',
+      important: false,
+      notify: false,
+      notificationEvent: null,
+    })
+    expect(computeNextBeat(prev, slow(100), degradedSettings())).toMatchObject({
+      status: 'up',
+      important: true,
+      notificationEvent: 'degraded',
+    })
+  })
+
+  it('DEGRADED -> DOWN is a down event, DOWN -> DEGRADED a recovery', () => {
+    const down = computeNextBeat({ status: 'degraded' }, fail(), degradedSettings())
+    expect(down).toMatchObject({ status: 'down', important: true, notificationEvent: 'down' })
+    const back = computeNextBeat({ status: 'down', retries: 1 }, slow(), degradedSettings())
+    expect(back).toMatchObject({
+      status: 'degraded',
+      retries: 0,
+      important: true,
+      notificationEvent: 'up',
+    })
+  })
+
+  it('retries: a failure while DEGRADED goes PENDING first, then DOWN', () => {
+    const s = degradedSettings({ maxRetries: 1 })
+    const pending = computeNextBeat({ status: 'degraded', settledStatus: 'degraded' }, fail(), s)
+    expect(pending).toMatchObject({
+      status: 'pending',
+      retries: 1,
+      important: false,
+      notify: false,
+      settledStatus: 'degraded',
+      nextIntervalSeconds: 20,
+    })
+    const down = computeNextBeat(pending, fail(), s)
+    expect(down).toMatchObject({ status: 'down', important: true, notificationEvent: 'down' })
+  })
+
+  it('retries: leaving PENDING compares with the status before the retry streak', () => {
+    const s = degradedSettings({ maxRetries: 2 })
+    // DEGRADED -> PENDING -> UP: the degradation ended during the retries.
+    expect(
+      computeNextBeat({ status: 'pending', retries: 1, settledStatus: 'degraded' }, slow(100), s),
+    ).toMatchObject({ status: 'up', important: true, notificationEvent: 'degraded', retries: 0 })
+    // DEGRADED -> PENDING -> DEGRADED: nothing changed.
+    expect(
+      computeNextBeat({ status: 'pending', retries: 1, settledStatus: 'degraded' }, slow(), s),
+    ).toMatchObject({ status: 'degraded', important: false, notify: false })
+    // UP -> PENDING -> DEGRADED: the monitor became slow.
+    expect(
+      computeNextBeat({ status: 'pending', retries: 1, settledStatus: 'up' }, slow(), s),
+    ).toMatchObject({ status: 'degraded', important: true, notificationEvent: 'degraded' })
+    // UP -> PENDING -> UP stays silent (Uptime Kuma).
+    expect(
+      computeNextBeat({ status: 'pending', retries: 1, settledStatus: 'up' }, slow(100), s),
+    ).toMatchObject({ status: 'up', important: false, notify: false })
+  })
+
+  it('remembers the settled status through a retry streak, and falls back for older monitors', () => {
+    const s = degradedSettings({ maxRetries: 3 })
+    const first = computeNextBeat({ status: 'degraded' }, fail(), s)
+    expect(first.settledStatus).toBe('degraded')
+    const second = computeNextBeat(first, fail(), s)
+    expect(second).toMatchObject({ status: 'pending', settledStatus: 'degraded' })
+    // A monitor stored before the field existed, already PENDING: no transition is invented.
+    expect(computeNextBeat({ status: 'pending', retries: 1 }, slow(), s)).toMatchObject({
+      status: 'degraded',
+      important: false,
+    })
+  })
+
+  it('maintenance overrides DEGRADED; leaving maintenance slow is a degraded event', () => {
+    const into = computeNextBeat(
+      { status: 'degraded' },
+      { ok: false, msg: '', underMaintenance: true },
+      degradedSettings(),
+    )
+    expect(into).toMatchObject({ status: 'maintenance', important: true, notify: false })
+    const out = computeNextBeat({ status: 'maintenance' }, slow(), degradedSettings())
+    expect(out).toMatchObject({
+      status: 'degraded',
+      important: true,
+      notificationEvent: 'degraded',
+    })
+  })
+
+  it('upside down ignores the threshold', () => {
+    const s = degradedSettings({ upsideDown: true })
+    expect(computeNextBeat({ status: 'down' }, fail('timeout'), s).status).toBe('up')
+    expect(computeNextBeat({ status: 'up' }, slow(), s).status).toBe('down')
+  })
+
+  it('the first beat is never announced when DEGRADED', () => {
+    expect(computeNextBeat(null, slow(), degradedSettings())).toMatchObject({
+      status: 'degraded',
+      isFirstBeat: true,
+      important: true,
+      notify: false,
+    })
+  })
+
+  it('custom statuses from the check (groups) pass through', () => {
+    const next = computeNextBeat(
+      { status: 'up' },
+      { ok: true, status: 'degraded', msg: 'Degraded child monitors: api' },
+      settings({ type: 'group' }),
+    )
+    expect(next).toMatchObject({ status: 'degraded', msg: 'Degraded child monitors: api' })
+  })
+
+  it.each<[BeatStatus | undefined, BeatStatus, BeatStatus | null, boolean]>([
+    ['up', 'degraded', null, true],
+    ['degraded', 'up', null, true],
+    ['degraded', 'down', null, true],
+    ['down', 'degraded', null, true],
+    ['maintenance', 'degraded', null, true],
+    ['degraded', 'maintenance', null, true],
+    ['degraded', 'pending', null, false],
+    ['degraded', 'degraded', null, false],
+    ['up', 'down', null, false],
+    ['pending', 'degraded', 'up', true],
+    ['pending', 'up', 'degraded', true],
+    ['pending', 'degraded', 'degraded', false],
+    ['pending', 'degraded', null, false],
+    [undefined, 'degraded', null, false],
+  ])('isDegradedTransition %s -> %s (settled %s) = %s', (prev, curr, settled, expected) => {
+    expect(isDegradedTransition(prev, curr, settled)).toBe(expected)
+  })
+
+  it.each<[BeatStatus, BeatStatus, ReturnType<typeof notificationEventFor>]>([
+    ['up', 'down', 'down'],
+    ['down', 'up', 'up'],
+    ['pending', 'down', 'down'],
+    ['maintenance', 'down', 'down'],
+    ['maintenance', 'up', null],
+    ['up', 'maintenance', null],
+    ['up', 'degraded', 'degraded'],
+    ['degraded', 'up', 'degraded'],
+    ['degraded', 'down', 'down'],
+    ['down', 'degraded', 'up'],
+    ['degraded', 'maintenance', null],
+    ['maintenance', 'degraded', 'degraded'],
+  ])('notificationEventFor %s -> %s = %s', (prev, curr, expected) => {
+    expect(notificationEventFor(false, prev, curr)).toBe(expected)
+  })
+
+  it('degradedMessage reads well with and without a check message', () => {
+    expect(degradedMessage('', 812.4, 500)).toBe(
+      'Response time 812 ms exceeds the degraded threshold of 500 ms',
+    )
+  })
+})
+
+describe('notification events of the existing transitions', () => {
+  it('first DOWN beat is down, DOWN -> UP is up, resends are reminders', () => {
+    expect(computeNextBeat(null, fail(), settings()).notificationEvent).toBe('down')
+    expect(computeNextBeat({ status: 'down' }, ok(), settings()).notificationEvent).toBe('up')
+    const s = settings({ resendInterval: 1 })
+    expect(computeNextBeat({ status: 'down', downCount: 0 }, fail(), s)).toMatchObject({
+      notify: true,
+      notificationEvent: 'reminder',
+    })
+  })
+})
+
 describe('recovery threshold (#147)', () => {
   const s = settings({ successThreshold: 3, maxRetries: 2 })
   const down: NextState = computeNextBeat({ status: 'pending', retries: 2 }, fail(), s)
@@ -376,5 +589,39 @@ describe('recovery threshold (#147)', () => {
     expect(state).toMatchObject({ status: 'pending', downCount: 1 })
     state = computeNextBeat(state, fail(), r)
     expect(state).toMatchObject({ status: 'down', downCount: 0, notify: true })
+  })
+
+  it('a slow success (DEGRADED) counts towards recovery and completes it as an up event', () => {
+    const d = settings({ successThreshold: 2, type: 'http', degradedAfter: 100 })
+    const r1 = computeNextBeat(
+      { status: 'down', retries: 1, settledStatus: 'down' },
+      ok('OK', 500),
+      d,
+    )
+    expect(r1).toMatchObject({ status: 'pending', recoveries: 1, notify: false })
+    expect(r1.msg).toMatch(/^Recovering 1\/2: OK \(response time 500 ms/)
+    expect(computeNextBeat(r1, ok('OK', 500), d)).toMatchObject({
+      status: 'degraded',
+      important: true,
+      notificationEvent: 'up',
+    })
+    expect(computeNextBeat(r1, ok('OK', 20), d)).toMatchObject({
+      status: 'up',
+      notificationEvent: 'up',
+      settledStatus: 'up',
+    })
+  })
+
+  it('a checker-offline beat keeps the streak', () => {
+    const r1 = computeNextBeat(down, ok(), s)
+    const held = computeNextBeat(r1, { ok: false, msg: 'checker offline', checkerOffline: true }, s)
+    expect(held).toMatchObject({ status: 'pending', recoveries: 1, notify: false })
+  })
+
+  it('emits the up event, not degraded, when recovering from DOWN', () => {
+    const r1 = computeNextBeat(down, ok(), s)
+    expect(r1.settledStatus).toBe('down')
+    const r2 = computeNextBeat(r1, ok(), s)
+    expect(computeNextBeat(r2, ok(), s)).toMatchObject({ notificationEvent: 'up' })
   })
 })

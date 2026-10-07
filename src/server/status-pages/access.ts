@@ -395,14 +395,14 @@ export const protectedHeaders = (): Record<string, string> => ({
   'X-Robots-Tag': 'noindex, nofollow',
 })
 
-const DENIAL_MESSAGES: Record<AccessDenial, ErrorKey> = {
+export const DENIAL_MESSAGES: Record<AccessDenial, ErrorKey> = {
   'login-required': 'statusPageProtected',
   'invalid-password': 'statusPagePasswordIncorrect',
   'rate-limited': 'tooManyAttempts',
   'ip-not-allowed': 'statusPageIpNotAllowed',
 }
 
-const DENIAL_STATUS: Record<AccessDenial, number> = {
+export const DENIAL_STATUS: Record<AccessDenial, number> = {
   'login-required': 401,
   'invalid-password': 401,
   'rate-limited': 429,

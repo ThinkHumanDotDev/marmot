@@ -16,6 +16,8 @@ import { passesNotificationGates } from './gates'
 
 export * from './dispatch'
 export * from './gates'
+export * from './downtime'
+export * from './maintenance'
 export * from './message'
 export * from './send'
 export * from './worker'

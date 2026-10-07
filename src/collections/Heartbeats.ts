@@ -6,7 +6,10 @@ import { adminGroup, adminT } from '@/i18n/admin'
  * Raw rows are pruned after 24h by the retention job; `important` rows (status transitions) are kept
  * for `KEEP_DATA_PERIOD_DAYS`.
  */
-export const HEARTBEAT_STATUSES = ['up', 'down', 'pending', 'maintenance'] as const
+export const HEARTBEAT_STATUSES = ['up', 'down', 'pending', 'maintenance', 'degraded'] as const
+
+/** What started a check. Unset means the monitor's schedule (or a push). */
+export const HEARTBEAT_TRIGGERS = ['manual'] as const
 
 export const Heartbeats: CollectionConfig = {
   slug: 'heartbeats',
@@ -61,6 +64,17 @@ export const Heartbeats: CollectionConfig = {
       defaultValue: false,
       index: true,
       admin: { description: adminT('marmot:heartbeats:importantDescription') },
+    },
+    {
+      name: 'trigger',
+      type: 'select',
+      options: HEARTBEAT_TRIGGERS.map((value) => ({ label: value, value })),
+      admin: { description: adminT('marmot:heartbeats:triggerDescription') },
+    },
+    {
+      name: 'assertions',
+      type: 'json',
+      admin: { readOnly: true, description: adminT('marmot:heartbeats:assertionsDescription') },
     },
     { name: 'retries', type: 'number', defaultValue: 0 },
     { name: 'downCount', type: 'number', defaultValue: 0 },

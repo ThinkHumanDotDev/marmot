@@ -92,7 +92,9 @@ maintenance and nothing else is down.
 occurrence. With no windows yet, the empty state offers **Schedule maintenance** to members who may create
 one; the same action is in the page header and in the command palette (⌘K / Ctrl+K). The form covers title,
 description, strategy, date and time range, interval/weekdays/days of month or cron and duration, timezone,
-and pickers for the affected monitors and status pages. A window can be paused (`inactive`) and resumed,
+and pickers for the affected monitors and status pages. **Use template** pre-fills the title, description
+and duration from a maintenance [template](Status-Pages.md#templates), and the update composer of each
+window offers `maintenance-update` templates. A window can be paused (`inactive`) and resumed,
 edited while it runs, or deleted, after which affected monitors resume normal checks on their next run.
 
 Times in the list are shown in the zone each window is evaluated in (with the zone name), and the cron

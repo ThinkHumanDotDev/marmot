@@ -6,7 +6,10 @@ import {
   pick,
   readJson,
 } from '@/server/status-pages/http'
-import { loadOrgIncident as loadIncident } from '@/server/status-pages/incident-updates'
+import {
+  loadOrgIncident as loadIncident,
+  unfilledPlaceholders,
+} from '@/server/status-pages/incident-updates'
 
 import type { Incident } from '@/payload-types'
 import { errorText } from '@/server/request-locale'
@@ -40,6 +43,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
   const body = await readJson(request)
   if (!body) return jsonError(errorText(request, 'invalidJsonBody'), 400)
+  const unfilled = unfilledPlaceholders(body.title, body.content)
+  if (unfilled) return jsonError(errorText(request, 'templatePlaceholdersUnfilled', unfilled), 400)
 
   try {
     const incident = await loadIncident(auth.ctx, orgId, id, incidentId)
