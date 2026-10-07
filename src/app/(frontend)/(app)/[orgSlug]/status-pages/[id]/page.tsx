@@ -6,6 +6,7 @@ import { StatusPageEditor } from '@/components/status-pages/editor/status-page-e
 import type { MonitorOption } from '@/components/status-pages/api'
 import { toTemplateRow } from '@/lib/templates'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
+import { getInstanceSettings } from '@/server/settings'
 
 import { resolveOrg } from '../resolve-org'
 
@@ -25,42 +26,44 @@ export default async function StatusPageEditorPage({
   const { payload, user, org, can } = await resolveOrg(orgSlug)
   const pageId = payload.db.defaultIDType === 'number' && /^\d+$/.test(id) ? Number(id) : id
 
-  const [{ docs: pages }, { docs: monitors }, timeZone, { docs: templates }] = await Promise.all([
-    payload.find({
-      collection: 'status-pages',
-      where: { and: [{ id: { equals: pageId } }, { organization: { equals: org.id } }] },
-      limit: 1,
-      depth: 1,
-      user,
-      overrideAccess: false,
-    }),
-    payload.find({
-      collection: 'monitors',
-      where: { organization: { equals: org.id } },
-      sort: 'name',
-      limit: 500,
-      pagination: false,
-      depth: 0,
-      user,
-      overrideAccess: false,
-    }),
-    getOrganizationTimezone(payload, org.id),
-    payload.find({
-      collection: 'templates',
-      where: {
-        and: [
-          { organization: { equals: org.id } },
-          { kind: { in: ['incident', 'incident-update'] } },
-        ],
-      },
-      sort: 'name',
-      limit: 500,
-      pagination: false,
-      depth: 0,
-      user,
-      overrideAccess: false,
-    }),
-  ])
+  const [{ docs: pages }, { docs: monitors }, timeZone, { docs: templates }, settings] =
+    await Promise.all([
+      payload.find({
+        collection: 'status-pages',
+        where: { and: [{ id: { equals: pageId } }, { organization: { equals: org.id } }] },
+        limit: 1,
+        depth: 1,
+        user,
+        overrideAccess: false,
+      }),
+      payload.find({
+        collection: 'monitors',
+        where: { organization: { equals: org.id } },
+        sort: 'name',
+        limit: 500,
+        pagination: false,
+        depth: 0,
+        user,
+        overrideAccess: false,
+      }),
+      getOrganizationTimezone(payload, org.id),
+      payload.find({
+        collection: 'templates',
+        where: {
+          and: [
+            { organization: { equals: org.id } },
+            { kind: { in: ['incident', 'incident-update'] } },
+          ],
+        },
+        sort: 'name',
+        limit: 500,
+        pagination: false,
+        depth: 0,
+        user,
+        overrideAccess: false,
+      }),
+      getInstanceSettings(payload),
+    ])
 
   const page = pages[0]
   if (!page) notFound()
@@ -98,6 +101,7 @@ export default async function StatusPageEditorPage({
       timeZone={timeZone}
       orgName={org.name}
       templates={templates.map(toTemplateRow)}
+      trustProxy={settings.trustProxy}
     />
   )
 }
