@@ -7,7 +7,11 @@ import {
   pick,
   readJson,
 } from '@/server/status-pages/http'
-import { parseUpdateInput, toUpdateRow } from '@/server/status-pages/incident-updates'
+import {
+  parseUpdateInput,
+  toUpdateRow,
+  unfilledPlaceholders,
+} from '@/server/status-pages/incident-updates'
 
 import type { Incident } from '@/payload-types'
 import { errorText } from '@/server/request-locale'
@@ -62,11 +66,15 @@ export async function POST(request: Request, { params }: RouteContext) {
     const page = await loadOrgStatusPage(auth.ctx, orgId, id, 0)
     if (!page) return jsonError(errorText(request, 'statusPageNotFound'), 404)
 
+    const unfilled = unfilledPlaceholders(body.title, body.content)
+    if (unfilled)
+      return jsonError(errorText(request, 'templatePlaceholdersUnfilled', unfilled), 400)
+
     const timeline = ['status', 'message', 'components'].some((key) => key in body)
     let updates: Incident['updates'] | undefined
     if (timeline) {
       const parsed = parseUpdateInput(body, { status: 'investigating' })
-      if (!parsed.ok) return jsonError(errorText(request, parsed.error), 400)
+      if (!parsed.ok) return jsonError(errorText(request, parsed.error, parsed.values), 400)
       updates = [toUpdateRow(parsed.input)]
     }
 

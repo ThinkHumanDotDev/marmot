@@ -10,6 +10,9 @@ import {
   type ComponentImpact,
   type IncidentStatus,
 } from '@/lib/incident-timeline'
+import { unfilledPlaceholders } from '@/lib/templates'
+
+export { unfilledPlaceholders }
 import type { Incident } from '@/payload-types'
 import type { ErrorKey } from '@/server/errors'
 
@@ -31,7 +34,9 @@ export interface IncidentUpdateInput {
 export function parseUpdateInput(
   body: Record<string, unknown>,
   defaults: { status?: IncidentStatus } = {},
-): { ok: true; input: IncidentUpdateInput } | { ok: false; error: ErrorKey } {
+):
+  | { ok: true; input: IncidentUpdateInput }
+  | { ok: false; error: ErrorKey; values?: Record<string, string> } {
   const status = body.status ?? defaults.status
   if (!isIncidentStatus(status)) {
     return { ok: false, error: 'incidentUpdateStatusInvalid' }
@@ -57,6 +62,8 @@ export function parseUpdateInput(
   if (body.impact !== undefined && !isComponentImpact(body.impact)) {
     return { ok: false, error: 'incidentImpactInvalid' }
   }
+  const unfilled = unfilledPlaceholders(body.message)
+  if (unfilled) return { ok: false, error: 'templatePlaceholdersUnfilled', values: unfilled }
   return {
     ok: true,
     input: {

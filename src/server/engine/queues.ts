@@ -1,15 +1,39 @@
 import { Queue, Worker, type Processor, type WorkerOptions } from 'bullmq'
 import type { Redis } from 'ioredis'
 
+import type { OnDemandCheckResult } from '@/lib/on-demand-check'
+import type { Monitor } from '@/payload-types'
 import { createRedis } from '@/server/redis'
-import { QUEUE_NAMES, QUEUE_PREFIX } from './names'
+import { QUEUE_NAMES, QUEUE_PREFIX, type CheckJobName } from './names'
 
 /** Payload of a `check` job on the checks queue. */
 export interface CheckJobData {
   monitorId: string
 }
 
-export type ChecksQueue = Queue<CheckJobData, void, 'check'>
+/** Payload of a `manual-check` job: run a saved monitor now. */
+export interface ManualCheckJobData {
+  monitorId: string
+  /** Store the result as a heartbeat (`trigger: manual`) and feed the state machine. */
+  record: boolean
+  /** Epoch ms after which a job that has not started yet is dropped (nobody waits for it any more). */
+  deadline: number
+}
+
+/** Payload of an `adhoc-check` job: run an unsaved monitor configuration, store nothing. */
+export interface AdhocCheckJobData {
+  organizationId: string
+  /** Validated monitor form values (`monitorFormSchema`). */
+  monitor: Partial<Monitor>
+  deadline: number
+}
+
+export type ChecksQueueJobData = CheckJobData | ManualCheckJobData | AdhocCheckJobData
+
+/** Scheduled checks return nothing; on-demand checks return their result to the waiting request. */
+export type ChecksQueueResult = OnDemandCheckResult | void
+
+export type ChecksQueue = Queue<ChecksQueueJobData, ChecksQueueResult, CheckJobName>
 
 /**
  * Queue/Worker factories over `createRedis()`. BullMQ wants a dedicated blocking connection per
@@ -53,7 +77,9 @@ let checksQueue: ChecksQueue | undefined
 
 /** Process-wide checks queue (lazy; shares one Redis connection). */
 export function getChecksQueue(): ChecksQueue {
-  checksQueue ??= createQueue<CheckJobData, void, 'check'>(QUEUE_NAMES.checks)
+  checksQueue ??= createQueue<ChecksQueueJobData, ChecksQueueResult, CheckJobName>(
+    QUEUE_NAMES.checks,
+  )
   return checksQueue
 }
 

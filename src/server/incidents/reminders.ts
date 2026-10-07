@@ -20,9 +20,13 @@ export interface ReminderContext {
 /** `true` to send the reminder, `false` to hold it back. */
 export type ReminderPolicy = (context: ReminderContext) => boolean | Promise<boolean>
 
-/** A beat that notifies without a status change: a resend-interval reminder. */
-export const isReminderBeat = (event: Pick<HeartbeatEvent, 'notify' | 'heartbeat'>): boolean =>
-  event.notify && !event.heartbeat.important && event.heartbeat.status === 'down'
+/** A resend-interval reminder (the engine's `reminder` notification event). */
+export const isReminderBeat = (
+  event: Pick<HeartbeatEvent, 'notify' | 'heartbeat' | 'notificationEvent'>,
+): boolean =>
+  event.notificationEvent !== undefined
+    ? event.notificationEvent === 'reminder'
+    : event.notify && !event.heartbeat.important && event.heartbeat.status === 'down'
 
 /** Default: no reminders while someone has acknowledged the incident. */
 export const suppressWhenAcknowledged: ReminderPolicy = ({ incident }) =>

@@ -1,9 +1,10 @@
 /**
- * Client calls and row shapes for the org-scoped monitor resources (tags, proxies, Docker hosts).
+ * Client calls and row shapes for the org-scoped resources (tags, proxies, Docker hosts, templates).
  * Payload REST is used directly: `orgScoped` access already expresses who may read and write them.
  */
 import { api } from '@/lib/api'
 import type { DockerConnectionType, ProxyProtocol } from '@/lib/monitor-resources'
+import { toTemplateRow } from '@/lib/templates'
 
 type Id = string | number
 
@@ -83,6 +84,7 @@ function collectionApi<Row>(slug: string, toRow: (doc: Doc) => Row) {
 }
 
 export const tagsApi = collectionApi('tags', toTagRow)
+export const templatesApi = collectionApi('templates', toTemplateRow)
 export const proxiesApi = collectionApi('proxies', toProxyRow)
 export const dockerHostsApi = {
   ...collectionApi('docker-hosts', toDockerHostRow),

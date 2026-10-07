@@ -6,6 +6,8 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE TYPE "public"."enum_monitor_incidents_timeline_via" AS ENUM('dashboard', 'api', 'link');
   CREATE TYPE "public"."enum_monitor_incidents_status" AS ENUM('open', 'acknowledged', 'resolved');
   CREATE TYPE "public"."enum_monitor_incidents_acknowledged_via" AS ENUM('dashboard', 'api', 'link');
+  ALTER TYPE "public"."enum_notifications_events" ADD VALUE 'acknowledged';
+  ALTER TYPE "public"."enum_notifications_events" ADD VALUE 'resolved';
   CREATE TABLE "monitor_incidents_timeline" (
   	"_order" integer NOT NULL,
   	"_parent_id" integer NOT NULL,
@@ -73,6 +75,10 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   DROP TABLE "monitor_incidents" CASCADE;
   ALTER TABLE "payload_locked_documents_rels" DROP CONSTRAINT "payload_locked_documents_rels_monitor_incidents_fk";
   
+  ALTER TABLE "notifications_events" ALTER COLUMN "value" SET DATA TYPE text;
+  DROP TYPE "public"."enum_notifications_events";
+  CREATE TYPE "public"."enum_notifications_events" AS ENUM('down', 'up', 'degraded', 'reminder', 'certificate', 'maintenance');
+  ALTER TABLE "notifications_events" ALTER COLUMN "value" SET DATA TYPE "public"."enum_notifications_events" USING "value"::"public"."enum_notifications_events";
   DROP INDEX "payload_locked_documents_rels_monitor_incidents_id_idx";
   ALTER TABLE "payload_locked_documents_rels" DROP COLUMN "monitor_incidents_id";
   DROP TYPE "public"."enum_monitor_incidents_timeline_type";

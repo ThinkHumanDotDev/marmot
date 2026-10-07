@@ -244,7 +244,8 @@ describe('incident timeline', () => {
     expect(monitoring.status).toBe(201)
     data = await publicData()
     expect(monitorRow(data, api)?.impact).toBe('degraded_performance')
-    expect(data.overall).toBe('partial')
+    // Degraded performance reads as "Degraded performance" overall (#93), not as a partial outage.
+    expect(data.overall).toBe('degraded')
 
     // Resolved: everything back to operational, unpinned, gone from the active list.
     const resolved = await call(postUpdateRoute, 'POST', params, ownerToken, {

@@ -60,3 +60,51 @@ describe('humanDuration', () => {
     ).toBe('1 day 2 hours')
   })
 })
+
+describe('monitor assertions in the form schema', () => {
+  const base = { ...defaultMonitorValues('http'), name: 'api', url: 'https://example.com' }
+
+  it('accepts assertions of the HTTP kinds and keeps values verbatim', () => {
+    const result = monitorFormSchema.safeParse({
+      ...base,
+      assertions: [
+        { kind: 'status', comparator: 'eq', value: '200' },
+        { kind: 'header', target: ' content-type ', comparator: 'contains', value: ' json' },
+        { kind: 'textBody', comparator: 'empty', value: '' },
+      ],
+    })
+    expect(result.success).toBe(true)
+    expect(result.data?.assertions).toEqual([
+      { kind: 'status', target: null, comparator: 'eq', value: '200' },
+      { kind: 'header', target: 'content-type', comparator: 'contains', value: ' json' },
+      { kind: 'textBody', target: null, comparator: 'empty', value: null },
+    ])
+  })
+
+  it('reports problems on the row field', () => {
+    const result = monitorFormSchema.safeParse({
+      ...base,
+      assertions: [
+        { kind: 'status', comparator: 'eq', value: '2000' },
+        { kind: 'dnsRecord', comparator: 'eq', value: '1.2.3.4' },
+        { kind: 'jsonBody', comparator: 'gt', value: '1' },
+      ],
+    })
+    expect(issuesOf(result)).toMatchObject({
+      'assertions.0.value': 'Enter a status code between 100 and 599',
+      'assertions.1.kind': 'This kind of assertion does not apply to this monitor type',
+      'assertions.2.target': 'Enter the header name or expression to check',
+    })
+  })
+
+  it('does not validate assertions of types that have none', () => {
+    const result = monitorFormSchema.safeParse({
+      ...defaultMonitorValues('port'),
+      name: 'ssh',
+      hostname: 'example.com',
+      port: 22,
+      assertions: [{ kind: 'header', comparator: 'eq', value: 'x' }],
+    })
+    expect(result.success).toBe(true)
+  })
+})

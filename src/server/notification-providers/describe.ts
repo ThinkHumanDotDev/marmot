@@ -89,6 +89,8 @@ export function describeField(
     ...(meta?.secret ? { secret: true } : {}),
     ...(meta?.multiline ? { multiline: true } : {}),
     ...(meta?.options ? { options: meta.options } : {}),
+    ...(meta?.template ? { template: meta.template } : {}),
+    ...(meta?.templateHtmlWhen ? { templateHtmlWhen: meta.templateHtmlWhen } : {}),
     ...(defaultValue !== undefined
       ? { defaultValue: defaultValue as string | number | boolean }
       : {}),

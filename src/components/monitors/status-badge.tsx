@@ -9,6 +9,7 @@ const tone: Record<ReturnType<typeof statusKey>, string> = {
   down: 'border-status-down/40 bg-status-down/10 text-foreground',
   pending: 'border-status-pending/40 bg-status-pending/10 text-foreground',
   maintenance: 'border-status-maintenance/40 bg-status-maintenance/10 text-foreground',
+  degraded: 'border-status-degraded/40 bg-status-degraded/10 text-foreground',
   unknown: 'text-muted-foreground',
 }
 

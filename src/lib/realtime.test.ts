@@ -14,6 +14,7 @@ describe('realtime status mapping', () => {
     expect(parseHeartbeatStatus('down')).toBe(HeartbeatStatus.DOWN)
     expect(parseHeartbeatStatus('pending')).toBe(HeartbeatStatus.PENDING)
     expect(parseHeartbeatStatus('maintenance')).toBe(HeartbeatStatus.MAINTENANCE)
+    expect(parseHeartbeatStatus('degraded')).toBe(HeartbeatStatus.DEGRADED)
     expect(parseHeartbeatStatus('UP')).toBe(HeartbeatStatus.UP)
   })
 

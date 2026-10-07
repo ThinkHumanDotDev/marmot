@@ -1,6 +1,7 @@
 import type { Payload, PayloadRequest } from 'payload'
 
 import { afterCommit } from '@/db/after-commit'
+import { PUSH_CRON_CHECK_SECONDS } from '@/lib/push-schedule'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import type { Monitor } from '@/payload-types'
@@ -16,9 +17,10 @@ const log = childLogger('engine:scheduler')
 const HOOK_REDIS_TIMEOUT_MS = 5_000
 
 /** Monitor fields the scheduler needs; accepts a full document or the status-cache subset. */
-export type SchedulableMonitor = Pick<Monitor, 'id' | 'interval' | 'retryInterval'> & {
-  status?: Pick<NonNullable<Monitor['status']>, 'lastStatus'> | null
-}
+export type SchedulableMonitor = Pick<Monitor, 'id' | 'interval' | 'retryInterval'> &
+  Partial<Pick<Monitor, 'type' | 'pushSchedule'>> & {
+    status?: Pick<NonNullable<Monitor['status']>, 'lastStatus'> | null
+  }
 
 /** `false` when `MARMOT_DISABLE_ENGINE_HOOKS` is set (int tests without Redis). */
 export function engineHooksEnabled(): boolean {
@@ -30,6 +32,10 @@ export function engineHooksEnabled(): boolean {
  * `interval` otherwise (Uptime Kuma switches `beatInterval` the same way).
  */
 export function effectiveIntervalMs(monitor: SchedulableMonitor): number {
+  // Cron push monitors are due at wall-clock times, not every `interval`: check every minute.
+  if (monitor.type === 'push' && monitor.pushSchedule === 'cron') {
+    return PUSH_CRON_CHECK_SECONDS * 1000
+  }
   const settings: MonitorSettings = {
     interval: monitor.interval,
     retryInterval: monitor.retryInterval,
@@ -154,7 +160,7 @@ export async function resyncAll(
     limit: 0,
     pagination: false,
     overrideAccess: true,
-    select: { interval: true, retryInterval: true, status: true },
+    select: { interval: true, retryInterval: true, status: true, type: true, pushSchedule: true },
   })
 
   const wanted = new Map(docs.map((m) => [monitorSchedulerId(String(m.id)), m]))

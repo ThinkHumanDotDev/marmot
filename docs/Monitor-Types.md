@@ -10,18 +10,19 @@ imported lazily inside `check()`, so the worker starts without them; a monitor w
 goes DOWN with the message `The "<pkg>" package is not installed. Install <pkg> to use the <type> monitor`.
 The Docker image installs all of them. Shared fields (`interval`, `retryInterval`, `maxRetries`,
 `resendInterval`, `timeout`, `upsideDown`, `active`, `parent`, `description`) apply to every type and are
-not repeated below.
+not repeated below. `degradedAfter` (ms, [Monitors → Degraded](Monitors.md#degraded)) applies to HTTP(s),
+keyword, JSON query, TCP port, ping, DNS and gRPC monitors.
 
 | Type                | Label                                      | Fields                                                                                                                                                                                                   | Driver / requirement                 |
 | ------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `http`              | HTTP(s)                                    | `url`, `method`, `httpBodyEncoding`, `body`, `headers`, `acceptedStatusCodes`, `maxRedirects`, `ignoreTls`, `expiryNotification`, `authMethod` + credentials                                             | — (undici)                           |
+| `http`              | HTTP(s)                                    | `url`, `method`, `httpBodyEncoding`, `body`, `headers`, `acceptedStatusCodes`, `maxRedirects`, `ignoreTls`, `expiryNotification`, `authMethod` + credentials, `assertions`                               | — (undici)                           |
 | `keyword`           | HTTP(s) - Keyword                          | HTTP fields + `keyword`, `invertKeyword`                                                                                                                                                                 | —                                    |
 | `json-query`        | HTTP(s) - Json Query                       | HTTP fields + `jsonPath`, `jsonPathOperator`, `expectedValue`                                                                                                                                            | — (jsonata)                          |
 | `real-browser`      | HTTP(s) - Browser Engine (Chrome/Chromium) | `url`, `remoteBrowser` (ws:// URL of a Playwright-compatible browser server), `ignoreTls`                                                                                                                | `playwright-core` + a remote browser |
 | `port`              | TCP Port                                   | `hostname`, `port`                                                                                                                                                                                       | —                                    |
 | `ping`              | Ping                                       | `hostname`                                                                                                                                                                                               | system `ping` binary                 |
-| `dns`               | DNS                                        | `hostname`, `port` (53), `dnsResolveServer`, `dnsResolveType`                                                                                                                                            | —                                    |
-| `push`              | Push                                       | `pushToken` (generated); the client calls `/api/push/<token>`                                                                                                                                            | —                                    |
+| `dns`               | DNS                                        | `hostname`, `port` (53), `dnsResolveServer`, `dnsResolveType`, `assertions` (dnsRecord)                                                                                                                  | —                                    |
+| `push`              | Push                                       | `pushToken` (generated), `pushSchedule` interval \| cron, `pushCron`, `pushTimezone`, `pushGrace`, `pushMaxDuration`; the client calls `/api/push/<token>[/start\|/fail\|/log\|/<code>]` (see below)     | —                                    |
 | `manual`            | Manual                                     | `manualStatus`                                                                                                                                                                                           | —                                    |
 | `group`             | Group                                      | children via `parent`                                                                                                                                                                                    | —                                    |
 | `grpc-keyword`      | gRPC(s) - Keyword                          | `grpcUrl`, `grpcProtobuf`, `grpcServiceName`, `grpcMethod`, `grpcEnableTls`, `grpcBody`, `grpcMetadata`, `keyword`, `invertKeyword`                                                                      | `@grpc/grpc-js`, `protobufjs`        |
@@ -42,6 +43,58 @@ not repeated below.
 | `redis`             | Redis                                      | `databaseConnectionString` (`redis://…` or `rediss://…`), `ignoreTls`                                                                                                                                    | — (ioredis)                          |
 | `steam`             | Steam Game Server                          | `hostname`, `port`; `steamApiKey` instance setting                                                                                                                                                       | Steam Web API key                    |
 | `gamedig`           | GameDig                                    | `hostname`, `port`, `game` (GameDig id), `gamedigGivenPortOnly`                                                                                                                                          | `gamedig`                            |
+
+## Assertions
+
+HTTP-family monitors (`http`, `keyword`, `json-query`) and `dns` monitors take a list of **assertions**
+(`monitors.assertions`, at most 10 per kind). The worker evaluates them after the request or lookup; the
+check is UP only when **all** pass. Each row is `{ kind, target, comparator, value }`:
+
+| Kind        | Target                                                                     | Comparators                                                                                |
+| ----------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `status`    | —                                                                          | `eq`, `not_eq`, `gt`, `gte`, `lt`, `lte`                                                   |
+| `header`    | header name (case-insensitive)                                             | `eq`, `not_eq`, `contains`, `not_contains`, `empty`, `not_empty`, `matches`, `not_matches` |
+| `textBody`  | — (the raw body)                                                           | same as `header`                                                                           |
+| `jsonBody`  | JSONata expression (`data.count`, `$.status`)                              | same as `header`, plus `gt`, `gte`, `lt`, `lte`                                            |
+| `dnsRecord` | record type (`A`, `MX`, `TXT`, …; default: the monitor's `dnsResolveType`) | `eq`, `not_eq`, `contains`, `not_contains`, `matches`, `not_matches`                       |
+
+- **Comparisons** are on strings and case-sensitive; `gt`/`gte`/`lt`/`lte` compare numbers and fail when
+  either side is not a number. `status` and `jsonBody` `eq` also accept numerically equal values
+  (`3.0` = `3`). A missing header or an expression that matches nothing is _absent_: `empty`, `not_eq`,
+  `not_contains` and `not_matches` pass, everything else fails. Repeated headers are joined with `, `.
+- **JSON**: the body is parsed as JSON (a non-JSON body is queried as a string, like `json-query`), the
+  expression is evaluated with [JSONata](https://jsonata.org) — JSONPath-style paths such as `$.data[0].id`
+  work as they are — and objects/arrays are compared as their JSON text (`[]` and `{}` count as empty).
+- **DNS**: records are compared as text: A/AAAA/NS/PTR/CNAME as returned, TXT chunks joined, MX → the
+  exchange host, SRV → `priority weight port target`, CAA → `tag value`, SOA → its seven fields. Names
+  compare case-insensitively without the trailing dot. `eq`, `contains` and `matches` pass when **any**
+  record matches; `not_eq`, `not_contains` and `not_matches` pass when **none** does. Record types other
+  than `dnsResolveType` are looked up with the same resolvers; "no such record" is an empty set.
+- **Regular expressions** (`matches`) are `pattern` or `/pattern/flags` (flags `i`, `m`, `s`, `u`), at
+  most 500 characters. Each match runs in a `node:vm` context with a 50 ms timeout, so a pattern with
+  catastrophic backtracking fails the assertion instead of stalling the worker. Regexes inside JSONata
+  expressions use the same guard, and every JSONata evaluation has a 1 s and 500-level depth budget. Nothing
+  evaluates JavaScript.
+- **Existing fields keep working and are shown as equivalent assertions.** Monitors are not migrated:
+  `acceptedStatusCodes` is the `status` check unless the monitor has `status` assertions, which then
+  replace it (so `status eq 404` works without editing the ranges). The keyword (`keyword`,
+  `invertKeyword`) and JSON query (`jsonPath`, `jsonPathOperator`, `expectedValue`) conditions run as
+  before, with their messages unchanged, and are reported as `textBody` / `jsonBody` results marked
+  _monitor setting_.
+- **Messages**: a failing check is DOWN with the first failing assertion, e.g.
+  `header content-type: expected contains "json", got "text/html"` (status and type checks come first,
+  then the assertions in order). A passing check appends `, N assertions passed` to the usual message.
+  A failing assertion is always DOWN (with retries); a check whose assertions all pass but that answers
+  slower than `degradedAfter` is DEGRADED like any other slow success.
+- **Results**: every assertion is evaluated on every check. The results are stored on the heartbeat
+  (`heartbeats.assertions`: `kind`, `target`, `comparator`, `expected`, `actual` (≤ 500 characters),
+  `passed`, `error`, `legacy`) and the monitor page shows those of the last check. `runCheck()` returns
+  them as `CheckResult.assertions`.
+- **Import/export**: Marmot exports carry `assertions`; Uptime Kuma imports have none (Kuma's condition
+  builder is not mapped).
+
+The evaluator is `src/server/monitor-types/assertions.ts` (pure, table-driven tests next to it); the rules
+shared by the form, the API and the collection are in `src/lib/validation/assertions.ts`.
 
 ## Notes
 
@@ -79,3 +132,31 @@ check })`. Load heavy clients with `loadOptionalDriver(() => import('<pkg>'), '<
    optional drivers, the missing-driver message) and add the row above.
 6. When porting from Uptime Kuma, keep the attribution header and list the file in
    `THIRD_PARTY_NOTICES.md`.
+
+## Push schedules and signals
+
+A push monitor is passive: the job it watches calls `/api/push/<token>` (see
+[Integrations](Integrations.md#push-monitors) for the full endpoint reference). The worker's periodic
+check (`src/server/monitor-types/push.ts`, rules in `evaluatePush()` in `src/lib/push-schedule.ts`) only
+decides whether the next ping is overdue.
+
+| Field             | Meaning                                                                                                                                                                                                        |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pushSchedule`    | `interval` (default): a ping is due `interval` seconds after the previous one. `cron`: due at the next occurrence of `pushCron` after the previous ping.                                                       |
+| `pushCron`        | Five-field cron expression (`0 2 * * *`), evaluated with [croner](https://github.com/Hexagon/croner). DST-aware: a skipped wall-clock time runs at the first valid instant after it, a repeated one runs once. |
+| `pushTimezone`    | IANA zone of the cron expression; `SAME_AS_SERVER` (default) uses the organization's time zone (`settings.timezone`).                                                                                          |
+| `pushGrace`       | Seconds a ping may be late, and a started run may take, before the monitor goes DOWN. Empty: 10 % of the interval (at least 1 s), as before; 60 s for cron schedules.                                          |
+| `pushMaxDuration` | Optional. A run (from `/start` to its success) that takes longer is reported DOWN, as soon as it is exceeded.                                                                                                  |
+
+Cron monitors are checked every minute whatever `interval` says (`PUSH_CRON_CHECK_SECONDS`); until the
+first ping they are PENDING, and DOWN once the first occurrence after the monitor's creation plus grace has
+passed. Interval monitors without any ping are DOWN on their first check, as before.
+
+The check decides, in this order: an open run past its grace period or `pushMaxDuration` → DOWN; the last
+signal was a failure → DOWN until the next success; a run in progress → UP ("Running for …"); the next
+expected ping plus grace has passed → DOWN ("No heartbeat in the time window"); otherwise UP.
+
+Every signal is kept in the `push-events` collection (the monitor page's **Ping log**): kind, message, the
+first 10 000 bytes of the request body, run id, exit code and run duration. The newest 100 entries per
+monitor are kept; they are deleted with the monitor. Signals are applied by `ingestPushSignal()`
+(`src/server/push/signals.ts`), which any transport (HTTP today, e-mail later) calls.
