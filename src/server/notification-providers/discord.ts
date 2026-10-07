@@ -92,7 +92,7 @@ registerNotificationProvider({
   docsUrl: 'https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks',
   configSchema: discordConfigSchema,
   fieldMeta: discordFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = discordConfigSchema.parse(raw)
     const username = config.username || 'Marmot'
     const url = new URL(config.webhookUrl)
@@ -115,7 +115,13 @@ registerNotificationProvider({
         content =
           heartbeat.status === 'down' ? `🔴 ${monitor.name} is down.` : `🟢 ${monitor.name} is up.`
       } else if (config.messageFormat === 'custom' && config.messageTemplate?.trim()) {
-        content = renderMessageTemplate(config.messageTemplate.trim(), message, monitor, heartbeat)
+        content = renderMessageTemplate(
+          config.messageTemplate.trim(),
+          message,
+          monitor,
+          heartbeat,
+          locale,
+        )
       }
       await postJson(url.toString(), decorate({ username, content }))
       return OK_MESSAGE
@@ -127,6 +133,7 @@ registerNotificationProvider({
         message,
         monitor,
         heartbeat,
+        locale,
       )
       await postJson(url.toString(), decorate({ username, content }))
       return OK_MESSAGE

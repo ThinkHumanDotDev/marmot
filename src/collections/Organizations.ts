@@ -298,7 +298,7 @@ export const Organizations: CollectionConfig = {
       index: true,
       validate: (value: unknown) => validateOrganizationSlug(value),
       admin: {
-        description: 'Lowercase letters, numbers and hyphens. Used in URLs.',
+        description: adminT('marmot:organizations:slugDescription'),
       },
     },
     {
@@ -312,7 +312,7 @@ export const Organizations: CollectionConfig = {
       defaultValue: 'free',
       options: PLANS.map((plan) => ({ label: plan, value: plan })),
       admin: {
-        description: 'Self-hosted installs are unlimited regardless of plan.',
+        description: adminT('marmot:organizations:planDescription'),
       },
       access: { create: superadminWrite, update: superadminWrite },
     },
@@ -323,7 +323,7 @@ export const Organizations: CollectionConfig = {
       options: SUBSCRIPTION_STATUSES.map((status) => ({ label: status, value: status })),
       admin: {
         position: 'sidebar',
-        description: 'Maintained by Stripe webhooks when billing is enabled.',
+        description: adminT('marmot:organizations:subscriptionStatusDescription'),
       },
       access: { create: superadminWrite, update: superadminWrite },
     },
@@ -347,7 +347,7 @@ export const Organizations: CollectionConfig = {
       index: true,
       admin: {
         readOnly: true,
-        description: 'Secret of the shareable invite link. Regenerate from the members page.',
+        description: adminT('marmot:organizations:inviteLinkTokenDescription'),
       },
       access: {
         read: inviteLinkRead,
@@ -360,7 +360,7 @@ export const Organizations: CollectionConfig = {
       type: 'select',
       defaultValue: 'member',
       options: ROLES.map((role) => ({ label: role, value: role })),
-      admin: { description: 'Role granted to people who join through the invite link.' },
+      admin: { description: adminT('marmot:organizations:inviteLinkRoleDescription') },
       access: {
         create: () => false,
         update: () => false,
@@ -374,8 +374,7 @@ export const Organizations: CollectionConfig = {
         update: ownerField,
       },
       admin: {
-        description:
-          'Per-organization minimum roles, e.g. { "monitor:create": "admin" }. Unset permissions use the defaults in src/access/permissions.ts.',
+        description: adminT('marmot:organizations:permissionOverridesDescription'),
       },
     },
     {
@@ -385,8 +384,7 @@ export const Organizations: CollectionConfig = {
       access: { update: ownerField },
       admin: {
         position: 'sidebar',
-        description:
-          "Require single sign-on: password logins are refused for users on this organization's verified domains. Owners keep a break-glass password login (audited).",
+        description: adminT('marmot:organizations:enforceSsoDescription'),
       },
     },
     {
@@ -397,15 +395,15 @@ export const Organizations: CollectionConfig = {
           name: 'timezone',
           type: 'text',
           defaultValue: 'UTC',
-          admin: { description: 'IANA time zone, e.g. Europe/London.' },
+          admin: { description: adminT('marmot:organizations:timezoneDescription') },
         },
         {
           name: 'weekStart',
           type: 'select',
           defaultValue: 'monday',
           options: [
-            { label: 'Monday', value: 'monday' },
-            { label: 'Sunday', value: 'sunday' },
+            { label: adminT('marmot:organizations:weekStartMonday'), value: 'monday' },
+            { label: adminT('marmot:organizations:weekStartSunday'), value: 'sunday' },
           ],
         },
         // Language of emails and notifications sent for this organization (src/i18n).

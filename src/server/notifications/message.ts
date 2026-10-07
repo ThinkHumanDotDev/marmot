@@ -4,36 +4,52 @@
  * The default text mirrors Uptime Kuma 2.5.5 `Monitor.sendNotification`
  * (`server/model/monitor.js`, MIT, Louis Lam): `[monitor.name] [✅ Up] msg`. Templates support
  * `{{ path }}` placeholders resolved against an allow-listed context — no expressions, no eval.
+ * The words in it (status labels, fallbacks) come from `notifications.messages.*` in the
+ * organization's language; the English catalogue reproduces Kuma's text byte for byte.
  */
-import { extractAddress } from '@/server/notification-providers/http'
+import { defaultLocale, type Locale } from '@/i18n/locales'
 import type { Heartbeat, Monitor } from '@/payload-types'
+import { serverTranslator } from '@/server/i18n'
+import { extractAddress } from '@/server/notification-providers/http'
 
 export type NotificationStatus = Heartbeat['status']
 
-export const STATUS_LABELS: Record<NotificationStatus, string> = {
-  up: '✅ Up',
-  down: '🔴 Down',
-  pending: '⚠️ Pending',
-  maintenance: '🔧 Maintenance',
-}
-
-export const TEST_STATUS_LABEL = '⚠️ Test'
-
-export function statusLabel(status: NotificationStatus | null | undefined): string {
-  return status ? STATUS_LABELS[status] : TEST_STATUS_LABEL
+/**
+ * Status label in a message (`✅ Up`), in `locale` (`notifications.messages.status.*`). Without a
+ * status (test notifications) the label is `⚠️ Test`. The surrounding `[name] [label] msg` shape
+ * is Kuma's wire format and stays as is in every language.
+ */
+export function statusLabel(
+  status: NotificationStatus | null | undefined,
+  locale: Locale = defaultLocale,
+): string {
+  return serverTranslator(locale)(`notifications.messages.status.${status ?? 'test'}`)
 }
 
 /** `[name] [🔴 Down] msg` — what every provider sends unless it formats richer content. */
-export function buildDefaultMessage(monitor: Monitor | null, heartbeat: Heartbeat | null): string {
+export function buildDefaultMessage(
+  monitor: Monitor | null,
+  heartbeat: Heartbeat | null,
+  locale: Locale = defaultLocale,
+): string {
+  const t = serverTranslator(locale)
   const name = monitor?.name ?? 'Marmot'
-  const label = statusLabel(heartbeat?.status)
-  const msg = heartbeat?.msg?.trim() || (heartbeat ? 'N/A' : 'Test notification')
+  const label = statusLabel(heartbeat?.status, locale)
+  const msg =
+    heartbeat?.msg?.trim() ||
+    (heartbeat
+      ? t('notifications.messages.noMessage')
+      : t('notifications.messages.testNotification'))
   return `[${name}] [${label}] ${msg}`
 }
 
 /** Message used by the "Test" button. */
-export function buildTestMessage(channelName?: string): string {
-  return `[Marmot] [${TEST_STATUS_LABEL}] ${channelName ? `"${channelName}" is configured correctly.` : 'Testing'}`
+export function buildTestMessage(channelName?: string, locale: Locale = defaultLocale): string {
+  const t = serverTranslator(locale)
+  const text = channelName
+    ? t('notifications.messages.testConfigured', { channel: channelName })
+    : t('notifications.messages.testing')
+  return `[Marmot] [${statusLabel(null, locale)}] ${text}`
 }
 
 /** Variables available to `{{ }}` templates. Keep this list in `docs/Notifications.md`. */
@@ -69,11 +85,13 @@ export function buildTemplateContext(
   message: string,
   monitor: Monitor | null,
   heartbeat: Heartbeat | null,
+  locale: Locale = defaultLocale,
 ): TemplateContext {
   return {
     msg: message,
-    status: statusLabel(heartbeat?.status),
-    name: monitor?.name ?? 'Monitor Name not available',
+    status: statusLabel(heartbeat?.status, locale),
+    name:
+      monitor?.name ?? serverTranslator(locale)('notifications.messages.monitorNameUnavailable'),
     hostnameOrURL: monitor ? extractAddress(monitor) : 'testing.hostname',
     monitor: monitor
       ? {
@@ -128,11 +146,15 @@ export function renderMessageTemplate(
   message: string,
   monitor: Monitor | null,
   heartbeat: Heartbeat | null,
+  locale: Locale = defaultLocale,
 ): string {
-  return renderTemplate(template, buildTemplateContext(message, monitor, heartbeat))
+  return renderTemplate(template, buildTemplateContext(message, monitor, heartbeat, locale))
 }
 
-/** `2026-03-10 10:30:00 (UTC)` style timestamp for messages. */
+/**
+ * `2026-03-10 10:30:00 (UTC)` style timestamp for messages. Deliberately ISO-like and locale-neutral
+ * (Kuma's format, parsed by some receivers), so it is not routed through the locale formatter.
+ */
 export function formatHeartbeatTime(heartbeat: Heartbeat | null): string {
   if (!heartbeat?.time) return ''
   const date = new Date(heartbeat.time)

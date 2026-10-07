@@ -13,7 +13,7 @@ type Context = { params: Promise<{ accountId: string }> }
  */
 export const DELETE = withErrors(async (request: Request, { params }: Context) => {
   const { payload, user } = await getRequestContext(request)
-  if (!user) return unauthorized()
+  if (!user) return unauthorized(request)
   const { accountId } = await params
   await unlinkConnectedAccount(payload, user, parseId(payload, accountId))
   return Response.json({ unlinked: true })

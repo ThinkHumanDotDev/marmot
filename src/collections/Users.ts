@@ -135,8 +135,7 @@ export const Users: CollectionConfig = {
         update: superadminField,
       },
       admin: {
-        description:
-          'Instance administrator: can access the Payload admin panel and every organization.',
+        description: adminT('marmot:users:superadminDescription'),
       },
     },
     // Single sign-on (src/auth/sso). Set server-side with `overrideAccess`; clients can never write
@@ -152,8 +151,7 @@ export const Users: CollectionConfig = {
       },
       admin: {
         position: 'sidebar',
-        description:
-          'How the account was created: password signup, the OIDC client, a social OAuth provider or SAML.',
+        description: adminT('marmot:users:authProviderDescription'),
       },
     },
     // Legacy OIDC identity, from before linked identities moved to the `auth-accounts` collection.
@@ -169,7 +167,7 @@ export const Users: CollectionConfig = {
       admin: {
         position: 'sidebar',
         readOnly: true,
-        description: 'Legacy: identities now live in Auth accounts.',
+        description: adminT('marmot:users:oidcIssuerDescription'),
       },
     },
     {
@@ -184,7 +182,7 @@ export const Users: CollectionConfig = {
       admin: {
         position: 'sidebar',
         readOnly: true,
-        description: 'Legacy `sub` claim; identities now live in Auth accounts.',
+        description: adminT('marmot:users:oidcSubjectDescription'),
       },
     },
     {
@@ -194,7 +192,7 @@ export const Users: CollectionConfig = {
       options: THEMES.map((theme) => ({ label: theme, value: theme })),
       admin: {
         position: 'sidebar',
-        description: 'Colour scheme preference, applied on every device after sign-in.',
+        description: adminT('marmot:users:themeDescription'),
       },
     },
     // Marmot UI locale (src/i18n). Resolved before the `marmot-locale` cookie and `Accept-Language`.
@@ -223,7 +221,7 @@ export const Users: CollectionConfig = {
       admin: {
         position: 'sidebar',
         readOnly: true,
-        description: 'Managed from Settings → Account → Two-factor authentication.',
+        description: adminT('marmot:users:twoFactorEnabledDescription'),
       },
     },
     {

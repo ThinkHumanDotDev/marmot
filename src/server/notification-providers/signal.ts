@@ -43,11 +43,11 @@ registerNotificationProvider({
   docsUrl: 'https://github.com/bbernhard/signal-cli-rest-api',
   configSchema: signalConfigSchema,
   fieldMeta: signalFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = signalConfigSchema.parse(raw)
     const text =
       config.useTemplate && config.template?.trim()
-        ? renderMessageTemplate(config.template.trim(), message, monitor, heartbeat)
+        ? renderMessageTemplate(config.template.trim(), message, monitor, heartbeat, locale)
         : message
 
     await postJson(config.apiUrl, {

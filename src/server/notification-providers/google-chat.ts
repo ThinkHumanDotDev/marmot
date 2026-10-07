@@ -67,11 +67,17 @@ registerNotificationProvider({
   docsUrl: 'https://developers.google.com/workspace/chat/quickstart/webhooks',
   configSchema: googleChatConfigSchema,
   fieldMeta: googleChatFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = googleChatConfigSchema.parse(raw)
 
     if (config.useTemplate && config.template?.trim()) {
-      const text = renderMessageTemplate(config.template.trim(), message, monitor, heartbeat)
+      const text = renderMessageTemplate(
+        config.template.trim(),
+        message,
+        monitor,
+        heartbeat,
+        locale,
+      )
       await postWithRetry(config.webhookUrl, { text }, config.maxRetries)
       return OK_MESSAGE
     }

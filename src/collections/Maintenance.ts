@@ -32,6 +32,7 @@ import {
 import type { Maintenance as MaintenanceDoc } from '@/payload-types'
 import { buildCron, getMaintenanceStatus, validateCron } from '@/server/maintenance/status'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
+import { adminT } from '@/i18n/admin'
 
 const log = childLogger('maintenance')
 
@@ -224,7 +225,11 @@ export const Maintenance: CollectionConfig = {
       admin: { position: 'sidebar' },
     },
     { name: 'title', type: 'text', required: true },
-    { name: 'description', type: 'textarea', admin: { description: 'Shown on status pages.' } },
+    {
+      name: 'description',
+      type: 'textarea',
+      admin: { description: adminT('marmot:maintenance:descriptionDescription') },
+    },
     {
       type: 'row',
       fields: [
@@ -243,7 +248,9 @@ export const Maintenance: CollectionConfig = {
           type: 'text',
           defaultValue: SAME_AS_SERVER,
           admin: {
-            description: `IANA time zone the schedule is written in, or ${SAME_AS_SERVER} for the organization's zone.`,
+            description: adminT('marmot:maintenance:timezoneDescription', {
+              sameAsServer: SAME_AS_SERVER,
+            }),
           },
         },
       ],
@@ -253,7 +260,7 @@ export const Maintenance: CollectionConfig = {
       type: 'checkbox',
       defaultValue: true,
       index: true,
-      admin: { position: 'sidebar', description: 'Paused maintenances never run.' },
+      admin: { position: 'sidebar', description: adminT('marmot:maintenance:activeDescription') },
     },
     {
       name: 'status',
@@ -267,7 +274,7 @@ export const Maintenance: CollectionConfig = {
       admin: {
         position: 'sidebar',
         readOnly: true,
-        description: 'Maintained by the server; recomputed every minute.',
+        description: adminT('marmot:maintenance:statusDescription'),
       },
     },
 
@@ -277,8 +284,7 @@ export const Maintenance: CollectionConfig = {
       type: 'group',
       admin: {
         condition: (data) => data?.strategy !== 'manual',
-        description:
-          'Single window: when it runs. Recurring/cron: optional effective range. Wall-clock in the time zone above (YYYY-MM-DDTHH:mm).',
+        description: adminT('marmot:maintenance:dateRangeDescription'),
       },
       fields: [
         {
@@ -295,7 +301,7 @@ export const Maintenance: CollectionConfig = {
       type: 'group',
       admin: {
         condition: onlyWhen(['recurring-interval', 'recurring-weekday', 'recurring-day-of-month']),
-        description: 'Daily window (HH:mm); an end before the start runs past midnight.',
+        description: adminT('marmot:maintenance:timeRangeDescription'),
       },
       fields: [
         {
@@ -315,7 +321,7 @@ export const Maintenance: CollectionConfig = {
       max: MAX_INTERVAL_DAYS,
       admin: {
         condition: onlyWhen(['recurring-interval']),
-        description: 'Run every N days, counted from the start date.',
+        description: adminT('marmot:maintenance:intervalDayDescription'),
       },
     },
     {
@@ -332,8 +338,7 @@ export const Maintenance: CollectionConfig = {
       options: DAY_OF_MONTH_VALUES.map((value) => ({ value, label: dayOfMonthLabel(value) })),
       admin: {
         condition: onlyWhen(['recurring-day-of-month']),
-        description:
-          'Only "Last day of the month" has a cron equivalent; 2nd–4th last are ignored.',
+        description: adminT('marmot:maintenance:daysOfMonthDescription'),
       },
     },
     {
@@ -344,7 +349,7 @@ export const Maintenance: CollectionConfig = {
           name: 'cron',
           type: 'text',
           defaultValue: '30 3 * * *',
-          admin: { description: 'Five-field cron expression, evaluated in the time zone.' },
+          admin: { description: adminT('marmot:maintenance:cronDescription') },
         },
         {
           name: 'duration',
@@ -352,7 +357,7 @@ export const Maintenance: CollectionConfig = {
           defaultValue: 60,
           min: 1,
           max: MAX_DURATION_MINUTES,
-          admin: { description: 'Minutes each occurrence lasts.' },
+          admin: { description: adminT('marmot:maintenance:durationDescription') },
         },
       ],
     },
@@ -366,7 +371,7 @@ export const Maintenance: CollectionConfig = {
       filterOptions: ({ data }): Where | boolean =>
         data?.organization ? { organization: { equals: data.organization } } : true,
       admin: {
-        description: 'Affected monitors: checks are skipped and MAINTENANCE heartbeats written.',
+        description: adminT('marmot:maintenance:monitorsDescription'),
       },
     },
     {
@@ -376,7 +381,7 @@ export const Maintenance: CollectionConfig = {
       hasMany: true,
       filterOptions: ({ data }): Where | boolean =>
         data?.organization ? { organization: { equals: data.organization } } : true,
-      admin: { description: 'Status pages that announce this maintenance.' },
+      admin: { description: adminT('marmot:maintenance:statusPagesDescription') },
     },
   ],
   timestamps: true,

@@ -1,7 +1,6 @@
-import { APIError } from 'payload'
-
 import { INVITATION_TTL_MS } from '@/collections/Invitations'
 import { getRequestContext, parseId, unauthorized, withErrors } from '@/server/http'
+import { apiError } from '@/server/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +15,7 @@ type RouteContext = { params: Promise<{ orgId: string; invitationId: string }> }
  */
 export const POST = withErrors(async (request: Request, { params }: RouteContext) => {
   const { payload, user } = await getRequestContext(request)
-  if (!user) return unauthorized()
+  if (!user) return unauthorized(request)
   const { orgId, invitationId } = await params
 
   const invitation = await payload.findByID({
@@ -31,10 +30,10 @@ export const POST = withErrors(async (request: Request, { params }: RouteContext
       ? invitation.organization.id
       : invitation.organization
   if (String(invitationOrg) !== String(parseId(payload, orgId))) {
-    throw new APIError('Invitation not found.', 404)
+    throw apiError('invitationNotFound', 404)
   }
   if (invitation.status !== 'pending') {
-    throw new APIError(`This invitation is ${invitation.status ?? 'no longer pending'}.`, 409)
+    throw apiError('invitationNotPending', 409, { status: invitation.status ?? 'unknown' })
   }
 
   const updated = await payload.update({

@@ -8,7 +8,7 @@ import { QUEUE_NAMES } from '@/server/engine/names'
 import { createWorker, type QueueFactoryOptions } from '@/server/engine/queues'
 import { NOTIFICATION_JOB_NAME, type NotificationJobData } from './dispatch'
 import { buildDefaultMessage } from './message'
-import { sendNotification } from './send'
+import { getChannelLocale, sendNotification } from './send'
 import { ServerSmtpSendError } from './server-smtp'
 
 const log = childLogger('notifications:worker')
@@ -86,9 +86,15 @@ export async function processNotificationJob(
   )) as Heartbeat | null
   if (!heartbeat) return { outcome: 'skipped', reason: 'heartbeat-not-found' }
 
-  const message = buildDefaultMessage(monitor, heartbeat)
+  const locale = await getChannelLocale(payload, notification)
+  const message = buildDefaultMessage(monitor, heartbeat, locale)
   try {
-    const result = await sendNotification(payload, notification, { message, monitor, heartbeat })
+    const result = await sendNotification(payload, notification, {
+      message,
+      monitor,
+      heartbeat,
+      locale,
+    })
     await recordOutcome(payload, notification, { ok: true })
     log.info(
       { notificationId, type: notification.type, monitorId, heartbeatId, status: heartbeat.status },

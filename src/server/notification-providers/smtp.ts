@@ -12,6 +12,7 @@ import nodemailer, { type Transporter } from 'nodemailer'
 import { z } from 'zod'
 
 import { env } from '@/env'
+import { serverTranslator } from '@/server/i18n'
 import { formatHeartbeatTime, renderMessageTemplate } from '@/server/notifications/message'
 import {
   SERVER_SMTP_MAX_RECIPIENTS,
@@ -117,7 +118,7 @@ registerNotificationProvider({
   group: 'email',
   configSchema: smtpConfigSchema,
   fieldMeta: smtpFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = smtpConfigSchema.parse(raw)
     const options = buildSmtpTransportOptions(config)
     if (!config.useServerSmtp && typeof options.host === 'string') {
@@ -133,15 +134,19 @@ registerNotificationProvider({
     const transport = createTransport(options)
 
     let subject = message
-    let body = heartbeat ? `${message}\nTime: ${formatHeartbeatTime(heartbeat)}` : message
+    const t = serverTranslator(locale)
+    let body = heartbeat
+      ? `${message}\n${t('notifications.messages.timeLine', { time: formatHeartbeatTime(heartbeat) })}`
+      : message
     let useHtml = false
 
     const customSubject = config.subject?.trim() ?? ''
     const customBody = config.body?.trim() ?? ''
-    if (customSubject) subject = renderMessageTemplate(customSubject, message, monitor, heartbeat)
+    if (customSubject)
+      subject = renderMessageTemplate(customSubject, message, monitor, heartbeat, locale)
     if (customBody) {
       useHtml = config.htmlBody
-      body = renderMessageTemplate(customBody, message, monitor, heartbeat)
+      body = renderMessageTemplate(customBody, message, monitor, heartbeat, locale)
     }
 
     const from = config.from?.trim() || (config.useServerSmtp ? env.EMAIL_FROM : undefined)

@@ -1,7 +1,6 @@
-import { APIError } from 'payload'
-
 import { soleOwnerships } from '@/server/members'
 import { getRequestContext, readJson, unauthorized, withErrors } from '@/server/http'
+import { apiError } from '@/server/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,18 +13,17 @@ export const dynamic = 'force-dynamic'
  */
 export const DELETE = withErrors(async (request: Request) => {
   const { payload, user } = await getRequestContext(request)
-  if (!user) return unauthorized()
+  if (!user) return unauthorized(request)
   const { confirm } = await readJson<{ confirm?: unknown }>(request)
   if (typeof confirm !== 'string' || confirm.trim().toLowerCase() !== user.email.toLowerCase()) {
-    throw new APIError('Type your email address to confirm.', 400)
+    throw apiError('confirmEmail', 400)
   }
 
   const blocking = await soleOwnerships(payload, user)
   if (blocking.length > 0) {
-    throw new APIError(
-      `You are the only owner of ${blocking.map((o) => o.name).join(', ')}. Transfer ownership or delete the organization first.`,
-      409,
-    )
+    throw apiError('soleOwner', 409, {
+      organizations: blocking.map((o) => o.name).join(', '),
+    })
   }
 
   await payload.delete({ collection: 'users', id: user.id, depth: 0, overrideAccess: true })

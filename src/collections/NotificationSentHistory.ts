@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
+import { adminT } from '@/i18n/admin'
 
 /**
  * Which expiry warnings were already delivered: one row per `(type, monitor, days)` threshold.
@@ -17,8 +18,7 @@ export const NotificationSentHistory: CollectionConfig = {
   admin: {
     group: 'Monitoring',
     defaultColumns: ['monitor', 'type', 'days', 'createdAt'],
-    description:
-      'Expiry warnings already sent per monitor and threshold. Maintained by the worker.',
+    description: adminT('marmot:notificationSentHistory:description'),
   },
   access: {
     read: orgScoped('monitor:read'),
@@ -33,7 +33,7 @@ export const NotificationSentHistory: CollectionConfig = {
       type: 'relationship',
       relationTo: 'organizations',
       index: true,
-      admin: { description: 'Denormalised from the monitor for org-scoped queries.' },
+      admin: { description: adminT('marmot:notificationSentHistory:organizationDescription') },
     },
     {
       name: 'monitor',
@@ -53,7 +53,7 @@ export const NotificationSentHistory: CollectionConfig = {
       type: 'number',
       required: true,
       min: 0,
-      admin: { description: 'Threshold (days before expiry) the warning was sent for.' },
+      admin: { description: adminT('marmot:notificationSentHistory:daysDescription') },
     },
   ],
   timestamps: true,

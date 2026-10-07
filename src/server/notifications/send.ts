@@ -1,7 +1,9 @@
 import type { Payload } from 'payload'
 
+import type { Locale } from '@/i18n/locales'
 import { childLogger } from '@/lib/logger'
 import type { Heartbeat, Monitor, Notification } from '@/payload-types'
+import { getOrganizationI18n } from '@/server/i18n'
 import { getNotificationProvider } from '@/server/notification-providers'
 import { buildDefaultMessage, buildTestMessage } from './message'
 import { assertServerSmtpSendAllowed, usesServerSmtp } from './server-smtp'
@@ -21,6 +23,19 @@ export interface SendNotificationOptions {
   message?: string
   monitor: Monitor | null
   heartbeat: Heartbeat | null
+  /**
+   * Language of the message; defaults to the channel organization's `settings.language`. Callers
+   * that already know it (the queue worker, expiry fan-out) pass it to skip the lookup.
+   */
+  locale?: Locale
+}
+
+/** Language a channel's messages are written in: its organization's, or the default. */
+export async function getChannelLocale(
+  payload: Payload,
+  notification: Pick<NotificationChannelLike, 'organization'>,
+): Promise<Locale> {
+  return (await getOrganizationI18n(payload, notification.organization)).locale
 }
 
 export class NotificationConfigError extends Error {
@@ -78,9 +93,9 @@ export function normalizeNotificationConfig(
  * test endpoint. Resolves with the provider's success string; throws on failure.
  */
 export async function sendNotification(
-  _payload: Payload,
+  payload: Payload,
   notification: NotificationChannelLike,
-  { message, monitor, heartbeat }: SendNotificationOptions,
+  { message, monitor, heartbeat, locale: knownLocale }: SendNotificationOptions,
 ): Promise<string> {
   const provider = getNotificationProvider(notification.type)
   if (!provider) {
@@ -94,13 +109,14 @@ export async function sendNotification(
       config,
     })
   }
-  const text = message ?? buildDefaultMessage(monitor, heartbeat)
+  const locale = knownLocale ?? (await getChannelLocale(payload, notification))
+  const text = message ?? buildDefaultMessage(monitor, heartbeat, locale)
 
   log.debug(
     { type: notification.type, notificationId: notification.id, monitorId: monitor?.id },
     'sending notification',
   )
-  return provider.send({ config, message: text, monitor, heartbeat })
+  return provider.send({ config, message: text, monitor, heartbeat, locale })
 }
 
 /** Send the "Test" message for a saved or unsaved channel. */
@@ -108,9 +124,11 @@ export async function sendTestNotification(
   payload: Payload,
   notification: NotificationChannelLike,
 ): Promise<string> {
+  const locale = await getChannelLocale(payload, notification)
   return sendNotification(payload, notification, {
-    message: buildTestMessage(notification.name ?? undefined),
+    message: buildTestMessage(notification.name ?? undefined, locale),
     monitor: null,
     heartbeat: null,
+    locale,
   })
 }
