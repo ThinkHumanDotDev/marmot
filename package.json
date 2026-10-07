@@ -1,6 +1,6 @@
 {
   "name": "marmot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Self-hosted status monitor with Uptime Kuma's monitoring and kan.bn's team workspaces, built on Payload CMS.",
   "license": "AGPL-3.0-only",
   "private": true,
