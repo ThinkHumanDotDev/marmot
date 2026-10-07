@@ -21,6 +21,7 @@
 - [Integrations](Integrations.md)
 - [Import and export](Import-and-Export.md)
 - [CLI and monitors as code](CLI.md)
+- [GitHub Action](GitHub-Action.md)
 
 **Change it**
 
