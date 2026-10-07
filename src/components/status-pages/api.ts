@@ -41,6 +41,7 @@ export type StatusPagePatch = Partial<
     | 'showPoweredBy'
     | 'showValues'
     | 'autoRefreshInterval'
+    | 'maintenanceVisibilityHours'
     | 'footerText'
     | 'customCSS'
     | 'googleAnalyticsId'

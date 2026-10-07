@@ -8,6 +8,12 @@
 import { Cron } from 'croner'
 import { z } from 'zod'
 
+import {
+  DEFAULT_REMINDERS,
+  REMINDER_OFFSETS,
+  type ReminderOffset,
+} from '@/lib/maintenance-announcements'
+
 export const MAINTENANCE_STRATEGIES = [
   'manual',
   'single',
@@ -167,6 +173,12 @@ export const createMaintenanceFormSchema = (
         .refine(isValidTimezone, messages.timezone),
       monitors: z.array(relationIdSchema).default([]),
       statusPages: z.array(relationIdSchema).default([]),
+      autoStart: z.boolean().default(true),
+      autoComplete: z.boolean().default(true),
+      reminders: z
+        .array(z.enum(REMINDER_OFFSETS))
+        .default([...DEFAULT_REMINDERS])
+        .transform((values) => [...new Set(values)]),
     })
     .superRefine((values, ctx) => {
       const { strategy, dateRange } = values
@@ -247,6 +259,9 @@ export function defaultMaintenanceValues(now: Date = new Date()): MaintenanceFor
     timezone: SAME_AS_SERVER,
     monitors: [],
     statusPages: [],
+    autoStart: true,
+    autoComplete: true,
+    reminders: [...DEFAULT_REMINDERS],
   }
 }
 
@@ -266,6 +281,9 @@ export interface MaintenanceDocLike {
   timezone?: string | null
   monitors?: unknown[] | null
   statusPages?: unknown[] | null
+  autoStart?: boolean | null
+  autoComplete?: boolean | null
+  reminders?: (string | number)[] | null
 }
 
 const idOf = (value: unknown): string | null => {
@@ -311,5 +329,10 @@ export function maintenanceToFormValues(doc: MaintenanceDocLike): MaintenanceFor
     timezone: doc.timezone || SAME_AS_SERVER,
     monitors: idList(doc.monitors),
     statusPages: idList(doc.statusPages),
+    autoStart: doc.autoStart !== false,
+    autoComplete: doc.autoComplete !== false,
+    reminders: (doc.reminders ?? defaults.reminders)
+      .map(String)
+      .filter((v): v is ReminderOffset => (REMINDER_OFFSETS as readonly string[]).includes(v)),
   }
 }
