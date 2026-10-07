@@ -386,6 +386,12 @@ export const Monitors: CollectionConfig = {
       },
       admin: { position: 'sidebar', description: adminT('marmot:monitors:parentDescription') },
     },
+    {
+      name: 'publicName',
+      type: 'text',
+      maxLength: 150,
+      admin: { description: adminT('marmot:monitors:publicNameDescription') },
+    },
     { name: 'description', type: 'textarea' },
     {
       name: 'tags',

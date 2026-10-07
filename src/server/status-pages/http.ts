@@ -81,6 +81,8 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'slug',
   'description',
   'logo',
+  'homepageUrl',
+  'contactUrl',
   'theme',
   'language',
   'published',
@@ -88,6 +90,7 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'showTags',
   'showCertificateExpiry',
   'showPoweredBy',
+  'showValues',
   'autoRefreshInterval',
   'footerText',
   'customCSS',
@@ -96,7 +99,14 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'groups',
 ] as const
 
-export const INCIDENT_WRITABLE_FIELDS = ['title', 'content', 'style', 'pinned', 'active'] as const
+export const INCIDENT_WRITABLE_FIELDS = [
+  'title',
+  'content',
+  'style',
+  'pinned',
+  'active',
+  'affectedComponents',
+] as const
 
 /** Keeps only `allowed` keys so clients cannot move documents between organizations. */
 export function pick<T extends Record<string, unknown>>(

@@ -14,7 +14,7 @@ describe('status page, maintenance and import messages (en)', () => {
   it('keeps the English plurals the components used to build by hand', () => {
     expect(t('statusPages.list.monitorCount', { monitors: 3, groups: 1 })).toBe('3 in 1 group')
     expect(t('statusPages.list.monitorCount', { monitors: 0, groups: 2 })).toBe('0 in 2 groups')
-    expect(t('statusPages.groups.monitorCount', { count: 1 })).toBe('1 monitor')
+    expect(t('statusPages.groups.componentCount', { count: 1 })).toBe('1 component')
     expect(t('maintenance.list.monitorCount', { count: 2 })).toBe(' · 2 monitors')
     expect(t('maintenance.list.statusPageCount', { count: 1 })).toBe(' · 1 status page')
     expect(t('importExport.import.submit', { count: 1 })).toBe('Import 1 item')

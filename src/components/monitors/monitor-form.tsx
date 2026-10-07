@@ -1108,6 +1108,14 @@ export function MonitorForm({
               )}
             />
 
+            <TextField
+              control={control}
+              name="publicName"
+              label={t('general.publicName')}
+              description={t('general.publicNameDescription')}
+              autoComplete="off"
+            />
+
             <TextareaField
               control={control}
               name="description"

@@ -13,6 +13,7 @@ export type StatusPageDomain = NonNullable<StatusPage['domains']>[number]
 
 /** The subset of a monitor the builder needs for pickers and labels. */
 export type MonitorOption = Pick<Monitor, 'id' | 'name' | 'type' | 'active'> & {
+  publicName?: string | null
   url?: string | null
   hostname?: string | null
   lastStatus?: 'up' | 'down' | 'pending' | 'maintenance' | null
@@ -25,6 +26,8 @@ export type StatusPagePatch = Partial<
     | 'slug'
     | 'description'
     | 'logo'
+    | 'homepageUrl'
+    | 'contactUrl'
     | 'theme'
     | 'language'
     | 'published'
@@ -32,6 +35,7 @@ export type StatusPagePatch = Partial<
     | 'showTags'
     | 'showCertificateExpiry'
     | 'showPoweredBy'
+    | 'showValues'
     | 'autoRefreshInterval'
     | 'footerText'
     | 'customCSS'
@@ -42,7 +46,7 @@ export type StatusPagePatch = Partial<
 >
 
 export type IncidentPatch = Partial<
-  Pick<Incident, 'title' | 'content' | 'style' | 'pinned' | 'active'>
+  Pick<Incident, 'title' | 'content' | 'style' | 'pinned' | 'active' | 'affectedComponents'>
 >
 
 const base = (orgId: OrgId) => `/api/orgs/${encodeURIComponent(String(orgId))}/status-pages`

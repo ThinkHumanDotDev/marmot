@@ -100,6 +100,12 @@ The endpoint accepts `GET` or any other method, `status=up|down`, a free-text `m
 in ms; every call records a heartbeat and stamps `lastPushAt`. See [Integrations](Integrations.md) for
 the full reference, badges and API keys.
 
+## Public name
+
+The optional **Public name** (`publicName`) is what status pages show instead of the monitor's friendly
+name, so `prod-api-eu-west-1 /healthz` can appear as "API". A status page component can override it again
+with its own name (see [Status pages → Components](Status-Pages.md#components)).
+
 ## Pause, resume, clone, delete
 
 - **Pause** sets `active: false`: the scheduler is removed, no checks run, the monitor keeps its history and
