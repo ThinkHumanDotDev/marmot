@@ -7,9 +7,10 @@
  */
 import type { CollectionSlug, Payload } from 'payload'
 
-import type { Monitor, StatusPage } from '@/payload-types'
+import type { Monitor } from '@/payload-types'
 import { authenticateApiKey } from '@/server/api-keys'
 import {
+  type AccessPage,
   accessRequestFrom,
   checkStatusPageAccess,
   isProtectedPage,
@@ -34,7 +35,7 @@ const MAX_PROTECTED_PAGES = 5
 async function publishedPagesWithMonitor(
   payload: Payload,
   monitorId: string | number,
-): Promise<Pick<StatusPage, 'id' | 'access' | 'passwordHash'>[]> {
+): Promise<AccessPage[]> {
   if (!hasStatusPages(payload)) return []
   const { docs } = await payload.find({
     collection: STATUS_PAGES_SLUG as CollectionSlug,
@@ -47,7 +48,7 @@ async function publishedPagesWithMonitor(
     overrideAccess: true,
     select: { access: true, passwordHash: true },
   })
-  return docs as unknown as Pick<StatusPage, 'id' | 'access' | 'passwordHash'>[]
+  return docs as unknown as AccessPage[]
 }
 
 /** `true` when a published, public (not password-protected) status page lists the monitor. */

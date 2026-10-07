@@ -29,7 +29,7 @@ import { requestMeta } from '@/server/security/request'
 import type { StatusPage } from '@/payload-types'
 
 /** The fields of a page the access check reads (load the page with `overrideAccess: true`). */
-export type AccessPage = Pick<StatusPage, 'id' | 'access' | 'passwordHash'>
+export type AccessPage = Pick<StatusPage, 'access' | 'passwordHash'> & { id: string | number }
 
 /** What the check looks at: headers (cookies, client address) and, optionally, the query string. */
 export interface AccessRequest {
