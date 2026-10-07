@@ -3,6 +3,7 @@
 import { MoreHorizontal, Pause, Pencil, Play, Plus, Trash2, Wrench } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -16,12 +17,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { timeZoneOrDefault } from '@/i18n/formats'
 import { getSocket } from '@/lib/socket'
-import { MAINTENANCE_STRATEGY_LABELS } from '@/lib/validation/maintenance'
+import { WEEKDAY_VALUES, type WeekdayValue } from '@/lib/validation/maintenance'
 import { RealtimeEvents, type RealtimePayloads } from '@/server/realtime/events'
 
 import { MaintenanceStatusBadge } from './maintenance-status-badge'
-import { formatWindow, maintenanceApi, type MaintenanceSummary } from './types'
+import { maintenanceApi, type MaintenanceSummary } from './types'
 
 interface MaintenanceListProps {
   orgId: string | number
@@ -36,42 +38,71 @@ interface MaintenanceListProps {
 const message = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
 
-/** One-line schedule description for the row. */
-function scheduleText(item: MaintenanceSummary): string {
-  switch (item.strategy) {
-    case 'manual':
-      return 'Manual — active until paused'
-    case 'single':
-      return item.current
-        ? `Until ${new Date(item.current.end).toLocaleString()}`
-        : item.next
-          ? formatWindow(item.next)
-          : 'Single window'
-    case 'cron':
-      return `Cron ${item.cron ?? ''} · ${item.duration} min`
-    default: {
-      const time = `${item.timeRange.start ?? ''}–${item.timeRange.end ?? ''}`
-      if (item.strategy === 'recurring-interval') {
-        return item.intervalDay === 1
-          ? `Every day ${time}`
-          : `Every ${item.intervalDay} days ${time}`
+/** One-line schedule and window descriptions for the rows, in each window's own time zone. */
+function useScheduleText() {
+  const t = useTranslations('maintenance.schedule')
+  const tw = useTranslations('maintenance.weekdays')
+  const format = useFormatter()
+
+  const instant = (iso: string, timeZone: string) =>
+    format.dateTime(new Date(iso), 'zoned', { timeZone })
+  const range = (window: { start: string; end: string }, timeZone: string) =>
+    format.dateTimeRange(new Date(window.start), new Date(window.end), 'zoned', { timeZone })
+
+  function schedule(item: MaintenanceSummary): string {
+    const zone = timeZoneOrDefault(item.resolvedTimezone)
+    switch (item.strategy) {
+      case 'manual':
+        return t('manual')
+      case 'single':
+        return item.current
+          ? t('until', { time: instant(item.current.end, zone) })
+          : item.next
+            ? range(item.next, zone)
+            : t('single')
+      case 'cron':
+        return t('cron', { cron: item.cron ?? '', duration: item.duration })
+      default: {
+        const time = `${item.timeRange.start ?? ''}–${item.timeRange.end ?? ''}`
+        if (item.strategy === 'recurring-interval') {
+          return item.intervalDay === 1
+            ? t('everyDay', { time })
+            : t('everyNDays', { days: item.intervalDay, time })
+        }
+        if (item.strategy === 'recurring-weekday') {
+          const days = format.list(
+            item.weekdays.map((d) => (isWeekday(d) ? tw(d) : d)),
+            { type: 'unit', style: 'short' },
+          )
+          return t('weekdays', { days, time })
+        }
+        const days = format.list(
+          item.daysOfMonth.map((d) =>
+            d.startsWith('lastDay') ? t('lastDay', { n: d.slice('lastDay'.length) }) : d,
+          ),
+          { type: 'unit', style: 'short' },
+        )
+        return t('daysOfMonth', { days, time })
       }
-      if (item.strategy === 'recurring-weekday') {
-        const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-        return `${item.weekdays.map((d) => names[Number(d)] ?? d).join(', ')} ${time}`
-      }
-      return `Days ${item.daysOfMonth.map((d) => d.replace('lastDay', 'last-')).join(', ')} ${time}`
     }
   }
+
+  function windowOf(item: MaintenanceSummary): string | null {
+    const zone = timeZoneOrDefault(item.resolvedTimezone)
+    if (item.status === 'under-maintenance' && item.current) {
+      return t('ends', { time: instant(item.current.end, zone) })
+    }
+    if (item.status === 'scheduled' && item.next) {
+      return t('next', { window: range(item.next, zone) })
+    }
+    return null
+  }
+
+  return { schedule, windowOf }
 }
 
-function windowText(item: MaintenanceSummary): string | null {
-  if (item.status === 'under-maintenance' && item.current) {
-    return `Ends ${new Date(item.current.end).toLocaleString()}`
-  }
-  if (item.status === 'scheduled' && item.next) return `Next ${formatWindow(item.next)}`
-  return null
-}
+const isWeekday = (value: string): value is WeekdayValue =>
+  (WEEKDAY_VALUES as readonly string[]).includes(value)
 
 /**
  * Maintenance windows of the organization. Server-rendered with `initial`; the socket's
@@ -85,6 +116,9 @@ export function MaintenanceList({
   canEdit,
   canDelete,
 }: MaintenanceListProps) {
+  const t = useTranslations('maintenance.list')
+  const ts = useTranslations('maintenance.strategies')
+  const text = useScheduleText()
   const router = useRouter()
   const [rows, setRows] = React.useState(initial)
   const [seed, setSeed] = React.useState(initial)
@@ -120,9 +154,9 @@ export function MaintenanceList({
         ? await maintenanceApi.pause(orgId, item.id)
         : await maintenanceApi.resume(orgId, item.id)
       replace(updated)
-      toast.success(item.active ? 'Maintenance paused' : 'Maintenance resumed')
+      toast.success(item.active ? t('paused') : t('resumed'))
     } catch (error) {
-      toast.error(message(error, 'Could not update the maintenance'))
+      toast.error(message(error, t('updateFailed')))
     } finally {
       setBusyId(null)
     }
@@ -133,11 +167,11 @@ export function MaintenanceList({
     try {
       await maintenanceApi.remove(orgId, deleting.id)
       setRows((current) => current.filter((row) => row.id !== deleting.id))
-      toast.success(`Deleted “${deleting.title}”`)
+      toast.success(t('deleted', { title: deleting.title }))
       setDeleting(null)
       router.refresh()
     } catch (error) {
-      toast.error(message(error, 'Could not delete the maintenance'))
+      toast.error(message(error, t('deleteFailed')))
     }
   }
 
@@ -145,13 +179,13 @@ export function MaintenanceList({
     return (
       <EmptyState
         icon={Wrench}
-        title="No maintenance scheduled"
-        description="Schedule a window to silence alerts and inform your users ahead of time."
+        title={t('emptyTitle')}
+        description={t('emptyDescription')}
         action={
           canEdit ? (
             <Button asChild>
               <Link href={`/${orgSlug}/maintenance/new`}>
-                <Plus /> Schedule maintenance
+                <Plus /> {t('schedule')}
               </Link>
             </Button>
           ) : undefined
@@ -164,14 +198,14 @@ export function MaintenanceList({
     <>
       <div className="overflow-hidden rounded-xl border bg-card">
         <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,16rem)_10rem_auto] items-center gap-x-3 border-b px-4 py-2 text-xs font-medium text-muted-foreground md:grid">
-          <span>Maintenance</span>
-          <span>Schedule</span>
-          <span>Status</span>
+          <span>{t('columns.maintenance')}</span>
+          <span>{t('columns.schedule')}</span>
+          <span>{t('columns.status')}</span>
           <span className="w-9" aria-hidden />
         </div>
         <ul className="divide-y" data-testid="maintenance-list">
           {rows.map((item) => {
-            const when = windowText(item)
+            const when = text.windowOf(item)
             return (
               <li
                 key={item.id}
@@ -186,16 +220,15 @@ export function MaintenanceList({
                     {item.title}
                   </Link>
                   <p className="truncate text-xs text-muted-foreground">
-                    {MAINTENANCE_STRATEGY_LABELS[item.strategy]}
-                    {item.monitors.length > 0 &&
-                      ` · ${item.monitors.length} monitor${item.monitors.length === 1 ? '' : 's'}`}
+                    {ts(item.strategy)}
+                    {item.monitors.length > 0 && t('monitorCount', { count: item.monitors.length })}
                     {item.statusPages.length > 0 &&
-                      ` · ${item.statusPages.length} status page${item.statusPages.length === 1 ? '' : 's'}`}
+                      t('statusPageCount', { count: item.statusPages.length })}
                   </p>
                 </div>
                 <div className="col-span-2 min-w-0 text-xs text-muted-foreground md:col-span-1 md:text-sm">
                   <p className="truncate" suppressHydrationWarning>
-                    {scheduleText(item)}
+                    {text.schedule(item)}
                   </p>
                   {when && (
                     <p className="truncate text-xs" suppressHydrationWarning>
@@ -212,7 +245,7 @@ export function MaintenanceList({
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label={`Actions for ${item.title}`}
+                        aria-label={t('actionsFor', { title: item.title })}
                         disabled={busyId === item.id}
                         className="col-start-2 row-start-1 md:col-start-auto md:row-start-auto"
                       >
@@ -223,7 +256,7 @@ export function MaintenanceList({
                       {canEdit && (
                         <DropdownMenuItem asChild>
                           <Link href={`/${orgSlug}/maintenance/${item.id}/edit`}>
-                            <Pencil /> Edit
+                            <Pencil /> {t('edit')}
                           </Link>
                         </DropdownMenuItem>
                       )}
@@ -231,11 +264,11 @@ export function MaintenanceList({
                         <DropdownMenuItem onSelect={() => void toggleActive(item)}>
                           {item.active ? (
                             <>
-                              <Pause /> Pause
+                              <Pause /> {t('pause')}
                             </>
                           ) : (
                             <>
-                              <Play /> Resume
+                              <Play /> {t('resume')}
                             </>
                           )}
                         </DropdownMenuItem>
@@ -247,7 +280,7 @@ export function MaintenanceList({
                             variant="destructive"
                             onSelect={() => setDeleting(item)}
                           >
-                            <Trash2 /> Delete
+                            <Trash2 /> {t('delete')}
                           </DropdownMenuItem>
                         </>
                       )}
@@ -265,9 +298,9 @@ export function MaintenanceList({
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
-        title={`Delete “${deleting?.title ?? ''}”?`}
-        description="Affected monitors resume normal checks on their next run and status pages stop announcing it."
-        confirmLabel="Delete"
+        title={t('confirmDeleteTitle', { title: deleting?.title ?? '' })}
+        description={t('confirmDeleteDescription')}
+        confirmLabel={t('confirmDelete')}
         destructive
         onConfirm={confirmDelete}
       />

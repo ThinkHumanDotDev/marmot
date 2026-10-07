@@ -1,5 +1,6 @@
 import { ExternalLink, Globe } from 'lucide-react'
 import Link from 'next/link'
+import { useFormatter, useTranslations } from 'next-intl'
 import type * as React from 'react'
 
 import { EmptyState } from '@/components/empty-state'
@@ -20,18 +21,24 @@ export function StatusPageList({
   pages,
   orgSlug,
   emptyAction,
+  timeZone,
 }: {
   pages: StatusPage[]
   orgSlug: string
+  /** Organization time zone the "Updated" dates render in. */
+  timeZone: string
   /** Primary call to action for the empty state (the create dialog, for members who may create). */
   emptyAction?: React.ReactNode
 }) {
+  const t = useTranslations('statusPages.list')
+  const format = useFormatter()
+
   if (pages.length === 0) {
     return (
       <EmptyState
         icon={Globe}
-        title="No status pages yet"
-        description="Publish a status page to share uptime, incidents and maintenance with the people who rely on you."
+        title={t('emptyTitle')}
+        description={t('emptyDescription')}
         action={emptyAction}
       />
     )
@@ -42,11 +49,13 @@ export function StatusPageList({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Title</TableHead>
-            <TableHead className="hidden md:table-cell">Public URL</TableHead>
-            <TableHead className="hidden sm:table-cell">Monitors</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="hidden text-right lg:table-cell">Updated</TableHead>
+            <TableHead>{t('columns.title')}</TableHead>
+            <TableHead className="hidden md:table-cell">{t('columns.publicUrl')}</TableHead>
+            <TableHead className="hidden sm:table-cell">{t('columns.monitors')}</TableHead>
+            <TableHead>{t('columns.status')}</TableHead>
+            <TableHead className="hidden text-right lg:table-cell">
+              {t('columns.updated')}
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -81,25 +90,27 @@ export function StatusPageList({
                     >
                       {href}
                       <ExternalLink className="size-3" aria-hidden />
-                      <span className="sr-only">(opens in a new tab)</span>
+                      <span className="sr-only">{t('opensInNewTab')}</span>
                     </a>
                   ) : (
                     <span className="font-mono text-xs text-muted-foreground">{href}</span>
                   )}
                 </TableCell>
                 <TableCell className="hidden text-sm text-muted-foreground tabular-nums sm:table-cell">
-                  {monitorCount} in {page.groups?.length ?? 0} group
-                  {(page.groups?.length ?? 0) === 1 ? '' : 's'}
+                  {t('monitorCount', {
+                    monitors: monitorCount,
+                    groups: page.groups?.length ?? 0,
+                  })}
                 </TableCell>
                 <TableCell>
                   {page.published ? (
-                    <Badge className="bg-status-up/15 text-foreground">Published</Badge>
+                    <Badge className="bg-status-up/15 text-foreground">{t('published')}</Badge>
                   ) : (
-                    <Badge variant="secondary">Draft</Badge>
+                    <Badge variant="secondary">{t('draft')}</Badge>
                   )}
                 </TableCell>
                 <TableCell className="hidden text-right text-xs text-muted-foreground lg:table-cell">
-                  {new Date(page.updatedAt).toLocaleDateString()}
+                  {format.dateTime(new Date(page.updatedAt), 'date', { timeZone })}
                 </TableCell>
               </TableRow>
             )

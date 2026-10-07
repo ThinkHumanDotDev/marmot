@@ -65,7 +65,7 @@ export const statusPagesApi = {
       credentials: 'include',
     })
     const json = (await res.json()) as { doc?: StatusPage; error?: string }
-    if (!res.ok || !json.doc) throw new Error(json.error ?? 'Upload failed')
+    if (!res.ok || !json.doc) throw new Error(json.error ?? '')
     return json.doc
   },
   removeLogo: (orgId: OrgId, id: OrgId) =>
