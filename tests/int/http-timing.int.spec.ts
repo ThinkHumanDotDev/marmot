@@ -14,6 +14,7 @@ import type { Heartbeat, Monitor } from '@/payload-types'
 import {
   clearHeartbeatListeners,
   processCheckJob,
+  recordBeat,
   registerHeartbeatListener,
   type ChecksQueue,
 } from '@/server/engine'
@@ -297,6 +298,29 @@ describe('HTTP request timing phases', () => {
 })
 
 describe('per-phase averages in the stat buckets', () => {
+  it('stores and rolls up no timing for a deferred beat', async () => {
+    registerHeartbeatListener(createStatsListener(payload))
+    const monitor = await createMonitor({
+      name: 'deferred-timing',
+      type: 'http',
+      url: `http://127.0.0.1:${httpPort}/`,
+    })
+    const { heartbeat } = await recordBeat(
+      payload,
+      monitor,
+      {
+        ok: false,
+        msg: 'rate limited',
+        deferred: true,
+        timing: { dns: 1, connect: 2, tls: null, ttfb: 3, transfer: 4 },
+      },
+      { queue },
+    )
+    expect(await storedTiming(heartbeat)).toBeNull()
+    const buckets = await getBuckets(payload, monitor.id, '24h')
+    expect(buckets.every((b) => b.extras.timing === undefined)).toBe(true)
+  })
+
   it('rolls up the phase averages and keeps the ping statistics unchanged', async () => {
     registerHeartbeatListener(createStatsListener(payload))
     const monitor = await createMonitor({

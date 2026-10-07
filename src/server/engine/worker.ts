@@ -3,7 +3,11 @@ import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
 import type { Heartbeat, Monitor } from '@/payload-types'
-import { getMonitorType, type MonitorCheckContext } from '@/server/monitor-types'
+import {
+  getMonitorType,
+  isCheckDeferredError,
+  type MonitorCheckContext,
+} from '@/server/monitor-types'
 import { computeNextBeat, type CheckResult, type NextState, type PrevState } from './beat'
 import { emitHeartbeat, isUnderMaintenance } from './hooks'
 import type { CheckJobData, QueueFactoryOptions } from './queues'
@@ -82,6 +86,16 @@ export async function runCheck(
   try {
     await Promise.race([type.check(ctx), timeout])
   } catch (err) {
+    // The check could not judge the target (rate limit): the beat is held, never DOWN (#142).
+    if (isCheckDeferredError(err)) {
+      return {
+        ok: false,
+        msg: err.message,
+        deferred: true,
+        details: heartbeatDetails(ctx.heartbeat),
+        probes: ctx.probes ?? null,
+      }
+    }
     // A target refused by the outbound address guard reads the same for every type and driver.
     const blocked = findBlockedMessage(err)
     const msg = blocked
@@ -101,6 +115,7 @@ export async function runCheck(
       details: heartbeatDetails(ctx.heartbeat),
       assertions: ctx.assertions ?? null,
       timing: ctx.timing ?? null,
+      probes: ctx.probes ?? null,
     }
   }
 
@@ -122,6 +137,7 @@ export async function runCheck(
     details: heartbeatDetails(ctx.heartbeat),
     assertions: ctx.assertions ?? null,
     timing: ctx.timing ?? null,
+    probes: ctx.probes ?? null,
   }
 }
 
@@ -208,8 +224,9 @@ export async function recordBeat(
     recoveries: monitor.status?.recoveries,
   }
   const next = computeNextBeat(prev, result, monitor)
-  // A beat held while the worker was offline leaves the cached status as it was (#148).
-  const held = result.checkerOffline === true
+  // A beat held while the worker was offline (#148) or deferred by the check (#142) leaves the
+  // cached status as it was.
+  const held = result.checkerOffline === true || result.deferred === true
 
   const now = options.now ?? new Date()
   const lastCheckAt = monitor.status?.lastCheckAt ? new Date(monitor.status.lastCheckAt) : null
@@ -243,8 +260,11 @@ export async function recordBeat(
       ...(result.assertions?.length
         ? { assertions: result.assertions as unknown as Heartbeat['assertions'] }
         : {}),
-      // Request timing phases (#94); omitted for types that do not measure them.
-      ...(result.timing ? { timing: result.timing } : {}),
+      // Request timing phases (#94); omitted for types that do not measure them and for held
+      // (deferred / checker offline) beats, which measured nothing.
+      ...(result.timing && !held ? { timing: result.timing } : {}),
+      // Per-probe results of multi-location checks (Globalping, #142).
+      ...(result.probes?.length ? { probes: result.probes as unknown as Heartbeat['probes'] } : {}),
     },
   })) as Heartbeat
 
@@ -309,7 +329,8 @@ export async function recordBeat(
     organizationId,
     tlsInfo,
     certChanged,
-    checkerOffline: held,
+    checkerOffline: result.checkerOffline === true,
+    deferred: result.deferred === true,
   })
 
   return { heartbeat, monitor: updated, next }

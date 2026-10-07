@@ -150,6 +150,8 @@ export const adminTranslations = {
         assertionsDescription: 'Per-assertion results of this check (HTTP and DNS monitors).',
         timingDescription:
           'Request phases in ms: DNS, connect, TLS, time to first byte and transfer (HTTP and TCP monitors).',
+        probesDescription:
+          'Per-probe results of a multi-location check (Globalping monitors): location, outcome and latency.',
       },
       pushEvents: {
         description:
@@ -313,6 +315,12 @@ export const adminTranslations = {
         gameDescription: 'GameDig game id, e.g. minecraft.',
         gamedigGivenPortOnlyDescription: 'Do not probe the other ports a game commonly uses.',
         remoteBrowserDescription: 'Playwright-compatible remote browser websocket URL.',
+        globalpingProtocolDescription:
+          'Ping: ICMP or TCP; HTTP: HTTP, HTTPS or HTTP2; DNS: UDP or TCP; traceroute: ICMP, TCP or UDP. Empty uses the default.',
+        globalpingLocationsDescription:
+          'Comma-separated Globalping locations, e.g. Europe, US+AWS, AS13335. Empty means anywhere.',
+        globalpingSuccessRuleDescription:
+          'all: every probe must succeed; any: one is enough; atLeast: the minimum below.',
       },
       notificationSentHistory: {
         description:
