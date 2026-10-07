@@ -350,6 +350,12 @@ export const adminTranslations = {
         autoProvisionDescription:
           'Create a Marmot account on first login and add it to the organization.',
         defaultRoleDescription: 'Role given to users who join through SSO.',
+        groupClaimDescription:
+          'OIDC claim or SAML attribute that lists the groups (default `groups`; dotted paths such as `realm_access.roles` work).',
+        allowedGroupsDescription:
+          'Comma-separated, case-insensitive. When set, only members of these groups can sign in through this connection.',
+        groupRolesDescription:
+          'Organization role per group, applied on every login; the highest matching role wins. The last owner is never demoted.',
       },
       ssoDomains: {
         verificationTokenDescription: 'Value of the DNS TXT record that proves ownership.',

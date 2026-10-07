@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import config from '@payload-config'
 import { addOrgMembership } from '@/access/memberships'
+import { POST as restPost } from '@/app/(payload)/api/[...slug]/route'
 import { PATCH as enforcementRoute } from '@/app/api/orgs/[orgId]/sso/enforcement/route'
 import { handlePasswordLogin } from '@/auth/two-factor/handlers'
 import { SSO_CONNECTIONS_SLUG } from '@/collections/SsoConnections'
@@ -10,6 +11,7 @@ import { SSO_DOMAINS_SLUG } from '@/collections/SsoDomains'
 import { env } from '@/env'
 import type { Organization, SsoDomain, User } from '@/payload-types'
 import { enforcingOrganizationFor, SSO_ENFORCED_MESSAGE } from '@/server/sso/enforcement'
+import { refusePasswordReset } from '@/server/sso/local-login'
 
 let payload: Payload
 
@@ -158,6 +160,37 @@ describe('single sign-on enforcement', () => {
       overrideAccess: true,
     })
     expect(after.totalDocs).toBe(before.totalDocs + 1)
+  })
+
+  it('only resets passwords that could be used afterwards', async () => {
+    const forgot = (address: string) =>
+      refusePasswordReset({
+        args: { data: { email: address } },
+        operation: 'forgotPassword',
+        req: { payload, payloadAPI: 'REST', searchParams: new URLSearchParams() },
+        context: {},
+      } as never) as Promise<{ disableEmail?: boolean }>
+    // Same answer for everyone; only the owner (break-glass) gets the mail.
+    expect((await forgot(member.email)).disableEmail).toBe(true)
+    expect((await forgot(owner.email)).disableEmail).toBeUndefined()
+    expect((await forgot(outsider.email)).disableEmail).toBeUndefined()
+
+    const token = await payload.forgotPassword({
+      collection: 'users',
+      data: { email: member.email },
+      disableEmail: true,
+    })
+    const reset = await restPost(
+      new Request(`${ORIGIN}/api/users/reset-password`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: ORIGIN },
+        body: JSON.stringify({ token, password: 'another-password-1' }),
+      }),
+      { params: Promise.resolve({ slug: ['users', 'reset-password'] }) },
+    )
+    expect(reset.status).toBe(403)
+    // The refused reset changed nothing.
+    expect((await handlePasswordLogin(loginRequest(owner.email))).status).toBe(200)
   })
 
   it('restores password login as soon as enforcement is turned off', async () => {

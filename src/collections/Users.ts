@@ -16,7 +16,7 @@ import {
   rateLimitAuthOperations,
   TWO_FACTOR_GATE_CONTEXT,
 } from '@/server/security/auth-hooks'
-import { enforceSsoOnPasswordLogin } from '@/server/sso/enforcement'
+import { refusePasswordLogin, refusePasswordReset } from '@/server/sso/local-login'
 import { isSignupAllowed } from '@/server/settings'
 import { apiError } from '@/server/errors'
 
@@ -110,8 +110,9 @@ export const Users: CollectionConfig = {
   },
   hooks: {
     // Rate limits `login` / `forgot-password` (REST only) and records the attempts in `audit-logs`.
-    beforeOperation: [rateLimitAuthOperations],
-    beforeLogin: [enforceSsoOnPasswordLogin, requireTwoFactorGate],
+    // Then the password policy (SSO-only mode, organization enforcement) refuses resets.
+    beforeOperation: [rateLimitAuthOperations, refusePasswordReset],
+    beforeLogin: [refusePasswordLogin, requireTwoFactorGate],
     beforeDelete: [removeAuthAccounts],
     afterLogin: [auditLogin],
     afterError: [auditAuthFailure],

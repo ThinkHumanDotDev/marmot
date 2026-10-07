@@ -38,6 +38,7 @@ import * as migration_20261007_160552_push_monitor_cron from './20261007_160552_
 import * as migration_20261007_163630_monitor_incidents from './20261007_163630_monitor_incidents';
 import * as migration_20261007_173835_engine_recovery from './20261007_173835_engine_recovery';
 import * as migration_20261007_181153_audit_log_coverage from './20261007_181153_audit_log_coverage';
+import * as migration_20261007_192808_sso_group_mapping from './20261007_192808_sso_group_mapping';
 
 export const migrations = [
   {
@@ -238,6 +239,11 @@ export const migrations = [
   {
     up: migration_20261007_181153_audit_log_coverage.up,
     down: migration_20261007_181153_audit_log_coverage.down,
-    name: '20261007_181153_audit_log_coverage'
+    name: '20261007_181153_audit_log_coverage',
+  },
+  {
+    up: migration_20261007_192808_sso_group_mapping.up,
+    down: migration_20261007_192808_sso_group_mapping.down,
+    name: '20261007_192808_sso_group_mapping'
   },
 ];
