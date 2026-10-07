@@ -5,10 +5,11 @@
  */
 import { z } from 'zod'
 
-import { formatHeartbeatTime } from '@/server/notifications/message'
+import { formatHeartbeatTime, providerText } from '@/server/notifications/message'
 import { extractAddress, OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
+import type { Locale } from '@/i18n/locales'
 import type { Heartbeat, Monitor } from '@/payload-types'
 
 export const teamsConfigSchema = z.object({
@@ -28,10 +29,17 @@ export const teamsFieldMeta: Record<keyof TeamsConfig, NotificationFieldMeta> = 
 
 type Status = Heartbeat['status'] | undefined
 
-const statusMessage = (status: Status, monitorName: string | undefined, withSymbol: boolean) => {
-  if (status === 'down') return `${withSymbol ? '🔴 ' : ''}[${monitorName}] went down`
-  if (status === 'up') return `${withSymbol ? '✅ ' : ''}[${monitorName}] is back online`
-  return 'Notification'
+const statusMessage = (
+  status: Status,
+  monitorName: string | undefined,
+  withSymbol: boolean,
+  p: ReturnType<typeof providerText>,
+) => {
+  if (status === 'down')
+    return `${withSymbol ? '🔴 ' : ''}${p('wentDown', { name: `[${monitorName}]` })}`
+  if (status === 'up')
+    return `${withSymbol ? '✅ ' : ''}${p('backOnline', { name: `[${monitorName}]` })}`
+  return p('notification')
 }
 
 const styleFor = (status: Status) =>
@@ -41,11 +49,15 @@ export function buildTeamsPayload({
   monitor,
   heartbeat,
   message,
+  locale,
 }: {
   monitor: Monitor | null
   heartbeat: Heartbeat | null
   message: string
+  /** Language of the card's headings (`notifications.messages.providers.*`); English by default. */
+  locale?: Locale
 }) {
+  const p = providerText(locale)
   const monitorUrl = extractAddress(monitor)
   const monitorName = monitor?.name
   const status = heartbeat?.status
@@ -53,14 +65,14 @@ export function buildTeamsPayload({
   const actions: unknown[] = []
 
   const description = heartbeat ? heartbeat.msg || message : message
-  if (description) facts.push({ title: 'Description', value: description })
-  if (monitorName) facts.push({ title: 'Monitor', value: monitorName })
+  if (description) facts.push({ title: p('description'), value: description })
+  if (monitorName) facts.push({ title: p('monitor'), value: monitorName })
   if (monitorUrl && monitorUrl !== 'https://') {
     facts.push({ title: 'URL', value: `[${monitorUrl}](${monitorUrl})` })
-    actions.push({ type: 'Action.OpenUrl', title: 'Visit Monitor URL', url: monitorUrl })
+    actions.push({ type: 'Action.OpenUrl', title: p('visitMonitorUrl'), url: monitorUrl })
   }
   const time = formatHeartbeatTime(heartbeat)
-  if (time) facts.push({ title: 'Time', value: time })
+  if (time) facts.push({ title: p('time'), value: time })
 
   const body: unknown[] = [
     {
@@ -79,13 +91,13 @@ export function buildTeamsPayload({
                   type: 'TextBlock',
                   size: 'Medium',
                   weight: 'Bolder',
-                  text: `**${statusMessage(status, monitorName, false)}**`,
+                  text: `**${statusMessage(status, monitorName, false, p)}**`,
                 },
                 {
                   type: 'TextBlock',
                   size: 'Small',
                   weight: 'Default',
-                  text: 'Marmot Alert',
+                  text: p('alert'),
                   isSubtle: true,
                   spacing: 'None',
                 },
@@ -101,7 +113,7 @@ export function buildTeamsPayload({
 
   return {
     type: 'message',
-    summary: statusMessage(status, monitorName, true),
+    summary: statusMessage(status, monitorName, true, p),
     attachments: [
       {
         contentType: 'application/vnd.microsoft.card.adaptive',
@@ -125,9 +137,9 @@ registerNotificationProvider({
     'https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook',
   configSchema: teamsConfigSchema,
   fieldMeta: teamsFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = teamsConfigSchema.parse(raw)
-    await postJson(config.webhookUrl, buildTeamsPayload({ monitor, heartbeat, message }))
+    await postJson(config.webhookUrl, buildTeamsPayload({ monitor, heartbeat, message, locale }))
     return OK_MESSAGE
   },
 })

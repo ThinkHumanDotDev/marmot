@@ -6,7 +6,7 @@
 import { createHmac } from 'node:crypto'
 import { z } from 'zod'
 
-import { formatHeartbeatTime } from '@/server/notifications/message'
+import { formatHeartbeatTime, timeLine } from '@/server/notifications/message'
 import { httpRequest, OK_MESSAGE } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -64,7 +64,7 @@ registerNotificationProvider({
   docsUrl: 'https://open.dingtalk.com/document/robots/custom-robot-access',
   configSchema: dingdingConfigSchema,
   fieldMeta: dingdingFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = dingdingConfigSchema.parse(raw)
     const mentionAll = config.mentioning === 'everyone'
     const mobileList = config.mentioning === 'specify-mobiles' ? splitList(config.mobileList) : []
@@ -81,7 +81,7 @@ registerNotificationProvider({
         msgtype: 'markdown',
         markdown: {
           title: `[${status}] ${monitor.name}`,
-          text: `## [${status}] ${monitor.name} \n> ${heartbeat.msg ?? ''}\n> Time: ${formatHeartbeatTime(heartbeat)}${mentionStr}`,
+          text: `## [${status}] ${monitor.name} \n> ${heartbeat.msg ?? ''}\n> ${timeLine(heartbeat, locale)}${mentionStr}`,
         },
         at,
       }

@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson, trimSlash } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -42,11 +43,12 @@ registerNotificationProvider({
   docsUrl: 'https://github.com/botuniverse/onebot-11',
   configSchema: onebotConfigSchema,
   fieldMeta: onebotFieldMeta,
-  async send({ config: raw, message }) {
+  async send({ config: raw, message, locale }) {
     const config = onebotConfigSchema.parse(raw)
+    const p = providerText(locale)
     const data: Record<string, unknown> = {
       auto_escape: true,
-      message: `Marmot Alert: ${message}`,
+      message: p('alertFor', { text: message }),
       message_type: config.msgType,
     }
     if (config.msgType === 'group') data.group_id = config.receiverId

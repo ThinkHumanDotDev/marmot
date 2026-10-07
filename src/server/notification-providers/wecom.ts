@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -36,11 +37,12 @@ registerNotificationProvider({
   docsUrl: 'https://developer.work.weixin.qq.com/document/path/91770',
   configSchema: wecomConfigSchema,
   fieldMeta: wecomFieldMeta,
-  async send({ config: raw, message, heartbeat }) {
+  async send({ config: raw, message, heartbeat, locale }) {
     const config = wecomConfigSchema.parse(raw)
-    let title = 'Marmot Message'
-    if (heartbeat?.status === 'up') title = 'Marmot Monitor Up'
-    else if (heartbeat?.status === 'down') title = 'Marmot Monitor Down'
+    const p = providerText(locale)
+    let title = p('message')
+    if (heartbeat?.status === 'up') title = p('monitorUp')
+    else if (heartbeat?.status === 'down') title = p('monitorDown')
 
     const text: Record<string, unknown> = { content: `${title}\n${message}` }
     const mobiles = (config.mentionedMobileList ?? '')

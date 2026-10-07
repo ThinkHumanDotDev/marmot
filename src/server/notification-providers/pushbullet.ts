@@ -5,7 +5,12 @@
  */
 import { z } from 'zod'
 
-import { formatHeartbeatTime, statusLabel } from '@/server/notifications/message'
+import {
+  formatHeartbeatTime,
+  providerText,
+  statusLabel,
+  timeLine,
+} from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -35,12 +40,13 @@ registerNotificationProvider({
   fieldMeta: pushbulletFieldMeta,
   async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = pushbulletConfigSchema.parse(raw)
+    const p = providerText(locale)
     const headers = { 'Access-Token': config.accessToken }
 
     if (!heartbeat || !monitor) {
       await postJson(
         PUSHBULLET_API_URL,
-        { type: 'note', title: 'Marmot Alert', body: message },
+        { type: 'note', title: p('alert'), body: message },
         headers,
       )
       return OK_MESSAGE
@@ -50,8 +56,8 @@ registerNotificationProvider({
       PUSHBULLET_API_URL,
       {
         type: 'note',
-        title: `Marmot Alert: ${monitor.name}`,
-        body: `[${statusLabel(heartbeat.status, locale)}] ${heartbeat.msg ?? ''}\nTime: ${formatHeartbeatTime(heartbeat)}`,
+        title: p('alertFor', { text: monitor.name }),
+        body: `[${statusLabel(heartbeat.status, locale)}] ${heartbeat.msg ?? ''}\n${timeLine(heartbeat, locale)}`,
       },
       headers,
     )
