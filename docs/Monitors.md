@@ -187,7 +187,7 @@ acknowledge. Anyone holding the message can use it: a signed-in member is record
 
 A monitor is checked by the workers of the Marmot server unless you pick a
 [probe location](Probe-Locations.md) under **Check location**: then a probe agent in that network runs
-it, and its heartbeats record the location. Group, manual, push and Steam monitors always run on the
+it, and its heartbeats record the location. Group, manual, push, Steam and Globalping monitors always run on the
 server.
 
 ## Groups

@@ -80,7 +80,7 @@ After each beat the worker writes a `heartbeats` row, refreshes the monitor's `s
 `lastSeenAt`, `agent { version, hostname, platform }`) are self-hosted check locations. Monitors reference
 them through `monitors.locations` (at most one until quorum, #92; none = the implicit `local` worker pool);
 `src/lib/probe-locations.ts` holds the shared rules (`isRemoteMonitor`, `PROBE_UNSUPPORTED_TYPES`: group,
-manual, push, steam).
+manual, push, steam, globalping).
 
 - **Token**: `mp_<prefix>_<secret>` (`src/server/probes/tokens.ts`), modelled on API keys: only the SHA-256
   is stored, the plaintext is returned once by `POST /api/orgs/:orgId/locations` and

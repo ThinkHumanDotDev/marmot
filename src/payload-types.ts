@@ -392,6 +392,7 @@ export interface Monitor {
     | 'port'
     | 'ping'
     | 'dns'
+    | 'globalping'
     | 'push'
     | 'group'
     | 'manual'
@@ -515,6 +516,14 @@ export interface Monitor {
   tlsCa?: string | null;
   dnsResolveServer?: string | null;
   dnsResolveType?: ('A' | 'AAAA' | 'CAA' | 'CNAME' | 'MX' | 'NS' | 'PTR' | 'SOA' | 'SRV' | 'TXT') | null;
+  globalpingMeasurement?: ('ping' | 'http' | 'dns' | 'traceroute') | null;
+  globalpingProtocol?: ('ICMP' | 'TCP' | 'UDP' | 'HTTP' | 'HTTPS' | 'HTTP2') | null;
+  globalpingIpVersion?: ('4' | '6') | null;
+  globalpingLocations?: string | null;
+  globalpingProbes?: number | null;
+  globalpingSuccessRule?: ('all' | 'any' | 'atLeast') | null;
+  globalpingMinSuccess?: number | null;
+  globalpingPackets?: number | null;
   pushToken?: string | null;
   pushSchedule?: ('interval' | 'cron') | null;
   pushCron?: string | null;
@@ -721,6 +730,15 @@ export interface Heartbeat {
   important?: boolean | null;
   trigger?: 'manual' | null;
   assertions?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  probes?:
     | {
         [k: string]: unknown;
       }
@@ -1860,6 +1878,14 @@ export interface MonitorsSelect<T extends boolean = true> {
   tlsCa?: T;
   dnsResolveServer?: T;
   dnsResolveType?: T;
+  globalpingMeasurement?: T;
+  globalpingProtocol?: T;
+  globalpingIpVersion?: T;
+  globalpingLocations?: T;
+  globalpingProbes?: T;
+  globalpingSuccessRule?: T;
+  globalpingMinSuccess?: T;
+  globalpingPackets?: T;
   pushToken?: T;
   pushSchedule?: T;
   pushCron?: T;
@@ -2046,6 +2072,7 @@ export interface HeartbeatsSelect<T extends boolean = true> {
   important?: T;
   trigger?: T;
   assertions?: T;
+  probes?: T;
   retries?: T;
   downCount?: T;
   time?: T;

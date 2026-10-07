@@ -117,8 +117,9 @@ export async function recordBeat(
     recoveries: monitor.status?.recoveries,
   }
   const next = computeNextBeat(prev, result, monitor)
-  // A beat held while the worker was offline leaves the cached status as it was (#148).
-  const held = result.checkerOffline === true
+  // A beat held while the worker was offline (#148) or deferred by the check (#142) leaves the
+  // cached status as it was.
+  const held = result.checkerOffline === true || result.deferred === true
 
   const now = options.now ?? new Date()
   const lastCheckAt = monitor.status?.lastCheckAt ? new Date(monitor.status.lastCheckAt) : null
@@ -155,6 +156,8 @@ export async function recordBeat(
       ...(result.assertions?.length
         ? { assertions: result.assertions as unknown as Heartbeat['assertions'] }
         : {}),
+      // Per-probe results of multi-location checks (Globalping, #142).
+      ...(result.probes?.length ? { probes: result.probes as unknown as Heartbeat['probes'] } : {}),
     },
   })) as Heartbeat
 
@@ -220,7 +223,8 @@ export async function recordBeat(
     organizationId,
     tlsInfo,
     certChanged,
-    checkerOffline: held,
+    checkerOffline: result.checkerOffline === true,
+    deferred: result.deferred === true,
   })
 
   return { heartbeat, monitor: updated, next }

@@ -41,6 +41,7 @@ export function toCheckResult(result: ParsedResult): CheckResult {
     assertions: (result.assertions as AssertionResult[] | null | undefined) ?? null,
     ...(result.blocked ? { blocked: true } : {}),
     ...(result.checkerOffline ? { checkerOffline: true } : {}),
+    ...(result.deferred ? { deferred: true } : {}),
   }
 }
 

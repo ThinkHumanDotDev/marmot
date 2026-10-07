@@ -371,6 +371,7 @@ export class ProbeAgent {
       assertions: (result.assertions as Record<string, unknown>[] | null | undefined) ?? null,
       ...(result.blocked ? { blocked: true } : {}),
       ...(result.checkerOffline ? { checkerOffline: true } : {}),
+      ...(result.deferred ? { deferred: true } : {}),
     })
     await this.flush()
   }

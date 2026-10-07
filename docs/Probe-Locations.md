@@ -64,8 +64,8 @@ Without Docker, run it from a checkout: `pnpm install && pnpm build:server`, the
   schedule for it.
 - One location per monitor for now. Checking one monitor from several locations with a quorum is planned
   (#92); heartbeats already record the location that produced them.
-- Group, manual, push and Steam monitors run on the server only (they are computed by the server, wait for
-  requests that reach it, or need the instance's Steam key).
+- Group, manual, push, Steam and Globalping monitors run on the server only (they are computed by the server, wait for
+  requests that reach it, or need the instance's Steam key or Globalping token).
 - Proxies and Docker hosts a monitor uses are sent to the agent with the monitor. A Docker host of type
   `socket` means the Docker daemon of the **probe's** host; mount `/var/run/docker.sock` into the agent.
 - The server's private-address guard (`MONITOR_DENY_PRIVATE_ADDRESSES`) does not apply to monitors of a

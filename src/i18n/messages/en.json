@@ -391,6 +391,10 @@
         "label": "DNS",
         "description": "UP when the resolver returns a record."
       },
+      "globalping": {
+        "label": "Globalping",
+        "description": "Ping, HTTP, DNS or traceroute from Globalping community probes in the chosen locations."
+      },
       "docker": {
         "label": "Docker Container",
         "description": "UP when the container is running (and healthy, if it has a health check)."
@@ -548,8 +552,15 @@
       "assertionNumber": "Enter a number",
       "assertionRegex": "Enter a valid regular expression of at most {max} characters",
       "assertionTooLong": "At most {max} characters",
+      "globalpingIntervalMin": "Globalping monitors run at most once a minute: at least {min} seconds",
+      "globalpingMethod": "Globalping supports the methods {methods}",
+      "globalpingRecordType": "Globalping does not support this record type",
+      "globalpingProtocol": "This protocol is not available for the selected measurement",
+      "globalpingLocationsMax": "At most {max} locations",
+      "globalpingMinSuccessRequired": "Enter how many probes must succeed",
+      "globalpingMinSuccessMax": "Cannot be more than the number of probes",
       "locationsTooMany": "Pick one location",
-      "locationsTypeUnsupported": "Group, manual, push and Steam monitors run on this server only"
+      "locationsTypeUnsupported": "Group, manual, push, Steam and Globalping monitors run on this server only"
     },
     "form": {
       "assertions": {
@@ -786,6 +797,40 @@
         "steam": "The server is looked up through the Steam Web API. A superadmin must set the Steam API key in the instance settings first.",
         "remoteBrowser": "Remote browser URL",
         "remoteBrowserDescription": "Playwright-compatible browser server (e.g. browserless or `npx playwright run-server`). Marmot does not launch Chromium itself."
+      },
+      "globalping": {
+        "title": "Globalping",
+        "description": "The check runs on Globalping community probes. Each probe uses one credit: anonymous checks get 250 per hour; an API token in the instance settings raises the limit.",
+        "measurement": "Measurement",
+        "measurementOption": {
+          "ping": "Ping",
+          "http": "HTTP(s)",
+          "dns": "DNS",
+          "traceroute": "Traceroute"
+        },
+        "locations": "Locations",
+        "locationsPlaceholder": "Europe, US+AWS",
+        "locationsDescription": "Comma-separated, in Globalping's location syntax, e.g. <code>Europe</code>, <code>US+AWS</code>, <code>AS13335</code>. Leave empty for probes anywhere.",
+        "probes": "Probes",
+        "probesDescription": "Probes per check, 1–{max}.",
+        "successRule": "Up when",
+        "successRuleOption": {
+          "all": "All probes succeed",
+          "any": "Any probe succeeds",
+          "atLeast": "At least N probes succeed"
+        },
+        "minSuccess": "Probes that must succeed",
+        "protocol": "Protocol",
+        "protocolDefault": "Default",
+        "ipVersion": "IP version",
+        "ipVersionAny": "Any",
+        "ipVersionOption": "IPv{version}",
+        "packets": "Packets",
+        "port": "Port (optional)",
+        "method": "Method",
+        "resolver": "Resolver (optional)",
+        "resolverDescription": "Leave empty to use each probe's own resolver.",
+        "rateLimit": "Rate limits never mark the monitor down: it stays pending until the limit resets."
       },
       "http": {
         "title": "HTTP options",
@@ -5356,7 +5401,7 @@
     "locationSlugTaken": "Another location of this organization already uses this slug.",
     "locationLabelDuplicate": "Each label key may only be used once.",
     "monitorTooManyLocations": "A monitor can be checked from at most {max, plural, one {# location} other {# locations}} for now.",
-    "monitorTypeNotOnProbe": "Group, manual, push and Steam monitors cannot run on a probe location.",
+    "monitorTypeNotOnProbe": "Group, manual, push, Steam and Globalping monitors cannot run on a probe location.",
     "checkOnProbe": "This monitor is checked by a probe location, so “Check now” cannot record a result from this server. Run a dry run (record=false) to test the target from here."
   },
   "subscriberMessages": {

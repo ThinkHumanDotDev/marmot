@@ -14,6 +14,23 @@ import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
 import {
+  GLOBALPING_DEFAULT_PACKETS,
+  GLOBALPING_DEFAULT_PROBES,
+  GLOBALPING_DNS_RECORD_TYPES,
+  GLOBALPING_HTTP_METHODS,
+  GLOBALPING_IP_VERSIONS,
+  GLOBALPING_MAX_LOCATIONS,
+  GLOBALPING_MAX_PACKETS,
+  GLOBALPING_MAX_PROBES,
+  GLOBALPING_MEASUREMENTS,
+  GLOBALPING_MIN_INTERVAL_SECONDS,
+  GLOBALPING_PROTOCOL_VALUES,
+  GLOBALPING_SUCCESS_RULES,
+  globalpingProtocolAllowed,
+  parseGlobalpingLocations,
+} from './globalping'
+
+import {
   ASSERTION_COMPARATORS,
   ASSERTION_KINDS,
   assertionProblems,
@@ -47,6 +64,7 @@ export const MONITOR_TYPE_NAMES = [
   'ping',
   'dns',
   'real-browser',
+  'globalping',
   // Passive
   'push',
   'manual',
@@ -189,6 +207,12 @@ export const MONITOR_TYPE_GROUPS: Record<
       { name: 'port', label: 'TCP Port', description: 'UP when a TCP connection succeeds.' },
       { name: 'ping', label: 'Ping', description: 'UP when the host answers ICMP echo requests.' },
       { name: 'dns', label: 'DNS', description: 'UP when the resolver returns a record.' },
+      {
+        name: 'globalping',
+        label: 'Globalping',
+        description:
+          'Ping, HTTP, DNS or traceroute from Globalping community probes in the chosen locations.',
+      },
       {
         name: 'docker',
         label: 'Docker Container',
@@ -645,6 +669,38 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
 
       // Real browser
       remoteBrowser: optionalText(2048),
+
+      // Globalping (#142); the target is `url` (HTTP) or `hostname`, the DNS options are shared
+      globalpingMeasurement: z.enum(GLOBALPING_MEASUREMENTS).default('http'),
+      globalpingLocations: optionalText(2000),
+      globalpingProbes: z
+        .number()
+        .int()
+        .min(1)
+        .max(GLOBALPING_MAX_PROBES)
+        .default(GLOBALPING_DEFAULT_PROBES),
+      globalpingSuccessRule: z.enum(GLOBALPING_SUCCESS_RULES).default('all'),
+      globalpingMinSuccess: z
+        .number()
+        .int()
+        .min(1)
+        .max(GLOBALPING_MAX_PROBES)
+        .nullish()
+        .transform((value) => value ?? null),
+      globalpingProtocol: z
+        .enum(GLOBALPING_PROTOCOL_VALUES)
+        .nullish()
+        .transform((value) => value ?? null),
+      globalpingPackets: z
+        .number()
+        .int()
+        .min(1)
+        .max(GLOBALPING_MAX_PACKETS)
+        .default(GLOBALPING_DEFAULT_PACKETS),
+      globalpingIpVersion: z
+        .enum(GLOBALPING_IP_VERSIONS)
+        .nullish()
+        .transform((value) => value ?? null),
     })
     .superRefine((values, ctx) => {
       const issue = (path: string, message: string) =>
@@ -845,6 +901,58 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       }
 
       if (type === 'gamedig' && !values.game) issue('game', message('gameRequired'))
+
+      if (type === 'globalping') {
+        const measurement = values.globalpingMeasurement
+        for (const field of ['interval', 'retryInterval'] as const) {
+          if (values[field] < GLOBALPING_MIN_INTERVAL_SECONDS) {
+            issue(field, message('globalpingIntervalMin', { min: GLOBALPING_MIN_INTERVAL_SECONDS }))
+          }
+        }
+        if (measurement === 'http') {
+          if (!values.url) issue('url', message('urlRequired'))
+          else if (!/^https?:\/\/\S+$/i.test(values.url)) issue('url', message('httpUrl'))
+          checkHeaders()
+          if (!(GLOBALPING_HTTP_METHODS as readonly string[]).includes(values.method)) {
+            issue(
+              'method',
+              message('globalpingMethod', { methods: GLOBALPING_HTTP_METHODS.join(', ') }),
+            )
+          }
+          if (values.acceptedStatusCodes.length === 0) {
+            issue('acceptedStatusCodes', message('statusCodeRequired'))
+          }
+        } else if (!values.hostname) {
+          issue('hostname', message('hostnameRequired'))
+        }
+        if (
+          measurement === 'dns' &&
+          !(GLOBALPING_DNS_RECORD_TYPES as readonly string[]).includes(values.dnsResolveType)
+        ) {
+          issue('dnsResolveType', message('globalpingRecordType'))
+        }
+        if (
+          values.globalpingProtocol !== null &&
+          !globalpingProtocolAllowed(measurement, values.globalpingProtocol)
+        ) {
+          issue('globalpingProtocol', message('globalpingProtocol'))
+        }
+        if (
+          parseGlobalpingLocations(values.globalpingLocations).length > GLOBALPING_MAX_LOCATIONS
+        ) {
+          issue(
+            'globalpingLocations',
+            message('globalpingLocationsMax', { max: GLOBALPING_MAX_LOCATIONS }),
+          )
+        }
+        if (values.globalpingSuccessRule === 'atLeast') {
+          if (values.globalpingMinSuccess === null) {
+            issue('globalpingMinSuccess', message('globalpingMinSuccessRequired'))
+          } else if (values.globalpingMinSuccess > values.globalpingProbes) {
+            issue('globalpingMinSuccess', message('globalpingMinSuccessMax'))
+          }
+        }
+      }
     })
 }
 
@@ -979,6 +1087,14 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     game: null,
     gamedigGivenPortOnly: true,
     remoteBrowser: null,
+    globalpingMeasurement: 'http',
+    globalpingLocations: null,
+    globalpingProbes: GLOBALPING_DEFAULT_PROBES,
+    globalpingSuccessRule: 'all',
+    globalpingMinSuccess: null,
+    globalpingProtocol: null,
+    globalpingPackets: GLOBALPING_DEFAULT_PACKETS,
+    globalpingIpVersion: null,
   }
 }
 

@@ -6,7 +6,7 @@
 
 /**
  * Monitor types whose `ping` is a response time worth a threshold: HTTP(S) (plain, keyword, JSON
- * query), TCP port, ping, DNS and gRPC. The engine ignores `degradedAfter` on every other type, so a
+ * query), TCP port, ping, DNS, gRPC and Globalping (average latency of the successful probes). The engine ignores `degradedAfter` on every other type, so a
  * value left behind after a type change has no effect.
  */
 export const DEGRADED_TYPES = [
@@ -17,6 +17,7 @@ export const DEGRADED_TYPES = [
   'ping',
   'dns',
   'grpc-keyword',
+  'globalping',
 ] as const
 
 export const supportsDegradedThreshold = (type: string | null | undefined): boolean =>
