@@ -94,6 +94,7 @@ describe('status page badge', () => {
   afterAll(async () => {
     if (!org) return
     await payload.delete({ collection: 'maintenance', where: { organization: { equals: org.id } } })
+    await payload.delete({ collection: 'incidents', where: { organization: { equals: org.id } } })
     await payload.delete({
       collection: 'status-pages',
       where: { organization: { equals: org.id } },
@@ -147,6 +148,43 @@ describe('status page badge', () => {
     expect((await badge(page.slug)).state).toBe('operational')
   })
 
+  it.each([
+    ['degraded_performance', 'degraded', 'Degraded performance'],
+    ['partial_outage', 'partial', 'Partial outage'],
+    ['major_outage', 'major', 'Major outage'],
+  ] as const)(
+    'follows the impact of an active incident (%s → %s)',
+    async (impact, expected, message) => {
+      await setStatus(api, 'up')
+      await setStatus(web, 'up')
+      const component = String(page.groups?.[0]?.monitors?.[0]?.id)
+      const incident = await payload.create({
+        collection: 'incidents',
+        data: {
+          statusPage: page.id,
+          organization: org.id,
+          title: 'Trouble',
+          affectedComponents: [{ component, impact }],
+        },
+        overrideAccess: true,
+      })
+      try {
+        const { svg, state } = await badge(page.slug)
+        expect(state).toBe(expected)
+        expect(svg).toContain(`>${message}</text>`)
+        await payload.update({
+          collection: 'incidents',
+          id: incident.id,
+          data: { active: false },
+          overrideAccess: true,
+        })
+        expect((await badge(page.slug)).state).toBe('operational')
+      } finally {
+        await payload.delete({ collection: 'incidents', id: incident.id, overrideAccess: true })
+      }
+    },
+  )
+
   it('answers an embeddable SVG cached for the auto-refresh interval', async () => {
     const { res } = await badge(page.slug)
     expect(res.headers.get('content-type')).toBe('image/svg+xml; charset=utf-8')
@@ -179,6 +217,29 @@ describe('status page badge', () => {
     expect(svg).not.toContain('API')
     expect(svg).not.toContain('Web')
     expect(svg).not.toMatch(/\d+(\.\d+)?%|\d+ ?ms/)
+  })
+
+  it('works on pages that hide uptime and response times', async () => {
+    await payload.update({
+      collection: 'status-pages',
+      id: page.id,
+      data: { showValues: false },
+      overrideAccess: true,
+    })
+    try {
+      await setStatus(api, 'up')
+      await setStatus(web, 'down')
+      const { svg, state } = await badge(page.slug)
+      expect(state).toBe('partial')
+      expect(svg).not.toMatch(/\d+(\.\d+)?%|\d+ ?ms/)
+    } finally {
+      await payload.update({
+        collection: 'status-pages',
+        id: page.id,
+        data: { showValues: true },
+        overrideAccess: true,
+      })
+    }
   })
 
   it('404s with an Unknown badge for drafts and unknown slugs, without caching', async () => {

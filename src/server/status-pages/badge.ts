@@ -11,6 +11,7 @@
  */
 import type { Payload } from 'payload'
 
+import { worstImpact, type ComponentImpact } from '@/lib/status-page-components'
 import {
   renderStatusPageBadge,
   statusPageBadgeOptions,
@@ -29,7 +30,7 @@ import type { StatusPage } from '@/payload-types'
 export interface BadgeStateInput {
   overall: OverallStatus
   /** Components; `impact` is the worst impact of the active incidents affecting the component. */
-  groups: readonly { monitors: readonly { status: string; impact?: string | null }[] }[]
+  groups: readonly { monitors: readonly { impact: ComponentImpact | null }[] }[]
   maintenance: readonly { status: string }[]
 }
 
@@ -41,7 +42,8 @@ const FROM_OVERALL: Record<OverallStatus, StatusPageBadgeState> = {
   unknown: 'unknown',
 }
 
-const FROM_IMPACT: Record<string, StatusPageBadgeState | undefined> = {
+const FROM_IMPACT: Record<ComponentImpact, StatusPageBadgeState | undefined> = {
+  operational: undefined,
   degraded_performance: 'degraded',
   partial_outage: 'partial',
   major_outage: 'major',
@@ -63,11 +65,8 @@ export function statusPageBadgeState(data: BadgeStateInput): StatusPageBadgeStat
   const raise = (next: StatusPageBadgeState | undefined) => {
     if (next && severity(next) > severity(state)) state = next
   }
-  for (const group of data.groups) {
-    for (const component of group.monitors) {
-      if (component.impact) raise(FROM_IMPACT[component.impact])
-    }
-  }
+  const impact = worstImpact(data.groups.flatMap((g) => g.monitors.map((m) => m.impact)))
+  if (impact) raise(FROM_IMPACT[impact])
   if (data.maintenance.some((m) => m.status === 'under-maintenance')) raise('maintenance')
   return state
 }

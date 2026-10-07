@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import type { ComponentImpact } from '@/lib/status-page-components'
+
 import { badgeMaxAge, statusPageBadgeState, type BadgeStateInput } from './badge'
 
 const input = (overrides: Partial<BadgeStateInput> = {}): BadgeStateInput => ({
@@ -9,8 +11,8 @@ const input = (overrides: Partial<BadgeStateInput> = {}): BadgeStateInput => ({
   ...overrides,
 })
 
-const withImpacts = (...impacts: (string | null)[]): BadgeStateInput['groups'] => [
-  { monitors: impacts.map((impact) => ({ status: 'up', impact })) },
+const withImpacts = (...impacts: (ComponentImpact | null)[]): BadgeStateInput['groups'] => [
+  { monitors: impacts.map((impact) => ({ impact })) },
 ]
 
 describe('statusPageBadgeState', () => {
@@ -34,13 +36,10 @@ describe('statusPageBadgeState', () => {
   })
 
   it('takes the worst impact over all components and groups', () => {
-    const groups = [
-      { monitors: [{ status: 'up', impact: 'degraded_performance' }] },
+    const groups: BadgeStateInput['groups'] = [
+      { monitors: [{ impact: 'degraded_performance' }] },
       {
-        monitors: [
-          { status: 'up', impact: 'major_outage' },
-          { status: 'up', impact: 'partial_outage' },
-        ],
+        monitors: [{ impact: 'major_outage' }, { impact: 'partial_outage' }],
       },
     ]
     expect(statusPageBadgeState(input({ groups }))).toBe('major')
