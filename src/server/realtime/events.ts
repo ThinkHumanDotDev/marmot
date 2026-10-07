@@ -6,6 +6,7 @@
  *
  * This module must stay free of Node-only imports: it is bundled into client components.
  */
+import type { MonitorIncidentSummary } from '@/lib/monitor-incidents'
 
 /** Server → client events. */
 export const RealtimeEvents = {
@@ -20,7 +21,9 @@ export const RealtimeEvents = {
   certInfo: 'certInfo',
   maintenanceList: 'maintenanceList',
   notificationList: 'notificationList',
+  monitorIncident: 'monitorIncident',
   info: 'info',
+  checkerStatus: 'checkerStatus',
 } as const
 
 export type RealtimeEvent = (typeof RealtimeEvents)[keyof typeof RealtimeEvents]
@@ -113,8 +116,15 @@ export interface RealtimePayloads {
   maintenanceList: { organizationId: RealtimeId; items: unknown[] }
   /** Notification providers of an organization (shape owned by the notifications issue). */
   notificationList: { organizationId: RealtimeId; items: unknown[] }
+  /** A monitor incident was opened, acknowledged, resolved or published (#100). */
+  monitorIncident: { organizationId: RealtimeId; incident: MonitorIncidentSummary }
   /** Server information, sent once per connection. */
   info: { version: string; serverTime: string }
+  /**
+   * Instance-wide status of the worker's self connectivity check (#148), broadcast to every socket
+   * when it changes. `since` is the start of the current outage while `offline`.
+   */
+  checkerStatus: { status: 'online' | 'offline' | 'unknown' | 'disabled'; since: string | null }
 }
 
 /** Typed server → client event map for `socket.io` / `socket.io-client`. */

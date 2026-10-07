@@ -13,7 +13,7 @@ Marmot ships a GitHub Action that runs from your workflows against your Marmot i
 - uses: thinkhumandotdev/marmot/action@v0.5.0
   with:
     url: https://status.example.com
-    api-key: ${{ secrets.MARMOT_API_KEY }}
+    api-key: ${{ secrets.MARMOT_WRITE_KEY }} # a write key: checks are writes
     org: '1'
     monitors: api, website
 ```
@@ -26,7 +26,7 @@ installed in your job, and it talks to Marmot only through the
 ## Setup
 
 1. Create an organization API key under **Settings → API keys** and store it as a repository or environment
-   secret (`MARMOT_API_KEY` below). `run` and `apply` need a **write** key: checks and changes are writes.
+   secret (`MARMOT_WRITE_KEY` below). `run` and `apply` need a **write** key: checks and changes are writes.
    A **read** key is enough for plans (`mode: apply` with a dry run); a read key cannot list notification
    channels, so its plans leave channel changes out (see [Plan and apply](CLI.md#plan-and-apply)).
 2. Note the organization id (shown on the API keys page) and the URL of your instance. The runner must be
@@ -100,7 +100,7 @@ jobs:
         uses: thinkhumandotdev/marmot/action@v0.5.0
         with:
           url: https://status.example.com
-          api-key: ${{ secrets.MARMOT_API_KEY }}
+          api-key: ${{ secrets.MARMOT_WRITE_KEY }} # a write key: checks are writes
           org: '1'
           monitors: |
             api
@@ -154,7 +154,7 @@ jobs:
           config: marmot.yaml
           url: https://status.example.com
           org: '1'
-          api-key: ${{ secrets.MARMOT_API_KEY }}
+          api-key: ${{ secrets.MARMOT_WRITE_KEY }}
           prune: 'true'
 ```
 

@@ -33,6 +33,11 @@ export const PERMISSIONS = {
   'monitor:update': 'member',
   'monitor:delete': 'member',
 
+  // Monitor incidents (#100): everyone sees outages; members acknowledge and resolve them.
+  'monitor-incident:read': 'viewer',
+  'monitor-incident:acknowledge': 'member',
+  'monitor-incident:resolve': 'member',
+
   'notification:read': 'member',
   'notification:create': 'admin',
   'notification:update': 'admin',
@@ -80,6 +85,10 @@ export const PERMISSIONS = {
   'api-key:delete': 'admin',
 
   'audit-log:read': 'admin',
+
+  // Outbound event webhooks (#157): endpoints, their delivery log, test events and redeliveries.
+  'webhook:read': 'admin',
+  'webhook:manage': 'admin',
 
   // Single sign-on connections and verified domains (Settings → Security).
   'sso:read': 'admin',

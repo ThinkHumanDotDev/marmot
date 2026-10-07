@@ -21,7 +21,8 @@ import { authApi } from '@/lib/api'
 
 type Values = { email: string }
 
-export function ForgotPasswordForm() {
+/** `local`: the break-glass reset of the SSO-only mode (`/forgot-password?local=1`). */
+export function ForgotPasswordForm({ local = false }: { local?: boolean }) {
   const t = useTranslations('auth.forgotPassword')
   const tf = useTranslations('auth.fields')
   const tv = useTranslations('auth.validation')
@@ -33,7 +34,7 @@ export function ForgotPasswordForm() {
   async function onSubmit(values: Values) {
     setPending(true)
     try {
-      await authApi.forgotPassword(values)
+      await authApi.forgotPassword(values, { local })
     } catch {
       // Payload answers 200 for unknown addresses; a transport error still shouldn't leak
       // whether the account exists, so we show the same confirmation.

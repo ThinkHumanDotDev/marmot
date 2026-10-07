@@ -2,6 +2,7 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { monitorToFormValues } from '@/lib/validation/monitor'
+import { AUDIT_METADATA_CONTEXT, AUDIT_VERB_CONTEXT } from '@/server/audit/context'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
 import {
   authenticate,
@@ -52,7 +53,11 @@ export async function POST(request: Request, { params }: RouteContext) {
       overrideAccess: false,
       depth: 0,
       // The copy keeps exactly the source's channels (no default channels added).
-      context: { explicitNotifications: true },
+      context: {
+        explicitNotifications: true,
+        [AUDIT_VERB_CONTEXT]: { monitor: 'monitor.cloned' },
+        [AUDIT_METADATA_CONTEXT]: { sourceId: String(source.id), sourceName: source.name },
+      },
     })
     return Response.json(doc, { status: 201 })
   } catch (error) {

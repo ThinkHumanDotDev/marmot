@@ -1734,6 +1734,108 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.monitors_assertions": {
+      "name": "monitors_assertions",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "enum_monitors_assertions_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target": {
+          "name": "target",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comparator": {
+          "name": "comparator",
+          "type": "enum_monitors_assertions_comparator",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "value": {
+          "name": "value",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "monitors_assertions_order_idx": {
+          "name": "monitors_assertions_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitors_assertions_parent_id_idx": {
+          "name": "monitors_assertions_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "monitors_assertions_parent_id_fk": {
+          "name": "monitors_assertions_parent_id_fk",
+          "tableFrom": "monitors_assertions",
+          "tableTo": "monitors",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.monitors": {
       "name": "monitors",
       "schema": "",
@@ -1774,12 +1876,6 @@
         "parent_id": {
           "name": "parent_id",
           "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "key": {
-          "name": "key",
-          "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
@@ -1878,6 +1974,28 @@
           "type": "numeric",
           "primaryKey": false,
           "notNull": false
+        },
+        "success_threshold": {
+          "name": "success_threshold",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 1
+        },
+        "reminder_backoff": {
+          "name": "reminder_backoff",
+          "type": "enum_monitors_reminder_backoff",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'none'"
+        },
+        "max_reminders": {
+          "name": "max_reminders",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
         },
         "upside_down": {
           "name": "upside_down",
@@ -2093,6 +2211,39 @@
         "push_token": {
           "name": "push_token",
           "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_schedule": {
+          "name": "push_schedule",
+          "type": "enum_monitors_push_schedule",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'interval'"
+        },
+        "push_cron": {
+          "name": "push_cron",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_timezone": {
+          "name": "push_timezone",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'SAME_AS_SERVER'"
+        },
+        "push_grace": {
+          "name": "push_grace",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_max_duration": {
+          "name": "push_max_duration",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -2409,9 +2560,29 @@
           "primaryKey": false,
           "notNull": false
         },
+        "status_recoveries": {
+          "name": "status_recoveries",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
         "status_last_push_at": {
           "name": "status_last_push_at",
           "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_last_push_status": {
+          "name": "status_last_push_status",
+          "type": "enum_monitors_status_last_push_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_push_runs": {
+          "name": "status_push_runs",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
@@ -2562,27 +2733,6 @@
             },
             {
               "expression": "active",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "organization_key_idx": {
-          "name": "organization_key_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "key",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2850,6 +3000,89 @@
           "tableTo": "notifications",
           "columnsFrom": [
             "notifications_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.notifications_events": {
+      "name": "notifications_events",
+      "schema": "",
+      "columns": {
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "enum_notifications_events",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "notifications_events_order_idx": {
+          "name": "notifications_events_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notifications_events_parent_idx": {
+          "name": "notifications_events_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "notifications_events_parent_fk": {
+          "name": "notifications_events_parent_fk",
+          "tableFrom": "notifications_events",
+          "tableTo": "notifications",
+          "columnsFrom": [
+            "parent_id"
           ],
           "columnsTo": [
             "id"
@@ -3748,6 +3981,19 @@
           "notNull": false,
           "default": false
         },
+        "trigger": {
+          "name": "trigger",
+          "type": "enum_heartbeats_trigger",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assertions": {
+          "name": "assertions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "retries": {
           "name": "retries",
           "type": "numeric",
@@ -3896,6 +4142,718 @@
         "heartbeats_organization_id_organizations_id_fk": {
           "name": "heartbeats_organization_id_organizations_id_fk",
           "tableFrom": "heartbeats",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.monitor_incidents_timeline": {
+      "name": "monitor_incidents_timeline",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "enum_monitor_incidents_timeline_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "at": {
+          "name": "at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "by_id": {
+          "name": "by_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "via": {
+          "name": "via",
+          "type": "enum_monitor_incidents_timeline_via",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "message": {
+          "name": "message",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "monitor_incidents_timeline_order_idx": {
+          "name": "monitor_incidents_timeline_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_incidents_timeline_parent_id_idx": {
+          "name": "monitor_incidents_timeline_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_incidents_timeline_by_idx": {
+          "name": "monitor_incidents_timeline_by_idx",
+          "columns": [
+            {
+              "expression": "by_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "monitor_incidents_timeline_by_id_users_id_fk": {
+          "name": "monitor_incidents_timeline_by_id_users_id_fk",
+          "tableFrom": "monitor_incidents_timeline",
+          "tableTo": "users",
+          "columnsFrom": [
+            "by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitor_incidents_timeline_parent_id_fk": {
+          "name": "monitor_incidents_timeline_parent_id_fk",
+          "tableFrom": "monitor_incidents_timeline",
+          "tableTo": "monitor_incidents",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.monitor_incidents": {
+      "name": "monitor_incidents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monitor_id": {
+          "name": "monitor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "enum_monitor_incidents_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "open_key": {
+          "name": "open_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cause": {
+          "name": "cause",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "acknowledged_at": {
+          "name": "acknowledged_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "acknowledged_by_id": {
+          "name": "acknowledged_by_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "acknowledged_via": {
+          "name": "acknowledged_via",
+          "type": "enum_monitor_incidents_acknowledged_via",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolved_by_id": {
+          "name": "resolved_by_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "auto_resolved": {
+          "name": "auto_resolved",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "reminders_sent": {
+          "name": "reminders_sent",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "last_reminder_at": {
+          "name": "last_reminder_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_page_incident_id": {
+          "name": "status_page_incident_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "monitor_incidents_organization_idx": {
+          "name": "monitor_incidents_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_incidents_monitor_idx": {
+          "name": "monitor_incidents_monitor_idx",
+          "columns": [
+            {
+              "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_incidents_status_idx": {
+          "name": "monitor_incidents_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_incidents_open_key_idx": {
+          "name": "monitor_incidents_open_key_idx",
+          "columns": [
+            {
+              "expression": "open_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_incidents_started_at_idx": {
+          "name": "monitor_incidents_started_at_idx",
+          "columns": [
+            {
+              "expression": "started_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_incidents_acknowledged_by_idx": {
+          "name": "monitor_incidents_acknowledged_by_idx",
+          "columns": [
+            {
+              "expression": "acknowledged_by_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_incidents_resolved_by_idx": {
+          "name": "monitor_incidents_resolved_by_idx",
+          "columns": [
+            {
+              "expression": "resolved_by_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_incidents_status_page_incident_idx": {
+          "name": "monitor_incidents_status_page_incident_idx",
+          "columns": [
+            {
+              "expression": "status_page_incident_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_incidents_updated_at_idx": {
+          "name": "monitor_incidents_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_incidents_created_at_idx": {
+          "name": "monitor_incidents_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organization_startedAt_idx": {
+          "name": "organization_startedAt_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "started_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_startedAt_idx": {
+          "name": "monitor_startedAt_idx",
+          "columns": [
+            {
+              "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "started_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "monitor_incidents_organization_id_organizations_id_fk": {
+          "name": "monitor_incidents_organization_id_organizations_id_fk",
+          "tableFrom": "monitor_incidents",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitor_incidents_monitor_id_monitors_id_fk": {
+          "name": "monitor_incidents_monitor_id_monitors_id_fk",
+          "tableFrom": "monitor_incidents",
+          "tableTo": "monitors",
+          "columnsFrom": [
+            "monitor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitor_incidents_acknowledged_by_id_users_id_fk": {
+          "name": "monitor_incidents_acknowledged_by_id_users_id_fk",
+          "tableFrom": "monitor_incidents",
+          "tableTo": "users",
+          "columnsFrom": [
+            "acknowledged_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitor_incidents_resolved_by_id_users_id_fk": {
+          "name": "monitor_incidents_resolved_by_id_users_id_fk",
+          "tableFrom": "monitor_incidents",
+          "tableTo": "users",
+          "columnsFrom": [
+            "resolved_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitor_incidents_status_page_incident_id_incidents_id_fk": {
+          "name": "monitor_incidents_status_page_incident_id_incidents_id_fk",
+          "tableFrom": "monitor_incidents",
+          "tableTo": "incidents",
+          "columnsFrom": [
+            "status_page_incident_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.push_events": {
+      "name": "push_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "monitor_id": {
+          "name": "monitor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "enum_push_events_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "enum_push_events_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'http'"
+        },
+        "msg": {
+          "name": "msg",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "body": {
+          "name": "body",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "body_truncated": {
+          "name": "body_truncated",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "rid": {
+          "name": "rid",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exit_code": {
+          "name": "exit_code",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration": {
+          "name": "duration",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "method": {
+          "name": "method",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time": {
+          "name": "time",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "push_events_monitor_idx": {
+          "name": "push_events_monitor_idx",
+          "columns": [
+            {
+              "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "push_events_organization_idx": {
+          "name": "push_events_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "push_events_time_idx": {
+          "name": "push_events_time_idx",
+          "columns": [
+            {
+              "expression": "time",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_time_1_idx": {
+          "name": "monitor_time_1_idx",
+          "columns": [
+            {
+              "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "time",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "push_events_monitor_id_monitors_id_fk": {
+          "name": "push_events_monitor_id_monitors_id_fk",
+          "tableFrom": "push_events",
+          "tableTo": "monitors",
+          "columnsFrom": [
+            "monitor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "push_events_organization_id_organizations_id_fk": {
+          "name": "push_events_organization_id_organizations_id_fk",
+          "tableFrom": "push_events",
           "tableTo": "organizations",
           "columnsFrom": [
             "organization_id"
@@ -8995,14 +9953,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "scope": {
-          "name": "scope",
-          "type": "enum_api_keys_scope",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'read'"
-        },
         "active": {
           "name": "active",
           "type": "boolean",
@@ -9079,21 +10029,6 @@
           "columns": [
             {
               "expression": "prefix",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "api_keys_scope_idx": {
-          "name": "api_keys_scope_idx",
-          "columns": [
-            {
-              "expression": "scope",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -9642,6 +10577,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "monitor_incidents_id": {
+          "name": "monitor_incidents_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_events_id": {
+          "name": "push_events_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "stat_minutely_id": {
           "name": "stat_minutely_id",
           "type": "integer",
@@ -9973,6 +10920,36 @@
           "columns": [
             {
               "expression": "heartbeats_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_monitor_incidents_id_idx": {
+          "name": "payload_locked_documents_rels_monitor_incidents_id_idx",
+          "columns": [
+            {
+              "expression": "monitor_incidents_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_push_events_id_idx": {
+          "name": "payload_locked_documents_rels_push_events_id_idx",
+          "columns": [
+            {
+              "expression": "push_events_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -10383,6 +11360,32 @@
           "tableTo": "heartbeats",
           "columnsFrom": [
             "heartbeats_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_monitor_incidents_fk": {
+          "name": "payload_locked_documents_rels_monitor_incidents_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "monitor_incidents",
+          "columnsFrom": [
+            "monitor_incidents_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_push_events_fk": {
+          "name": "payload_locked_documents_rels_push_events_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "push_events",
+          "columnsFrom": [
+            "push_events_id"
           ],
           "columnsTo": [
             "id"
@@ -11154,6 +12157,35 @@
         "expired"
       ]
     },
+    "public.enum_monitors_assertions_kind": {
+      "name": "enum_monitors_assertions_kind",
+      "schema": "public",
+      "values": [
+        "status",
+        "header",
+        "textBody",
+        "jsonBody",
+        "dnsRecord"
+      ]
+    },
+    "public.enum_monitors_assertions_comparator": {
+      "name": "enum_monitors_assertions_comparator",
+      "schema": "public",
+      "values": [
+        "eq",
+        "not_eq",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "contains",
+        "not_contains",
+        "empty",
+        "not_empty",
+        "matches",
+        "not_matches"
+      ]
+    },
     "public.enum_monitors_type": {
       "name": "enum_monitors_type",
       "schema": "public",
@@ -11187,6 +12219,15 @@
         "redis",
         "steam",
         "gamedig"
+      ]
+    },
+    "public.enum_monitors_reminder_backoff": {
+      "name": "enum_monitors_reminder_backoff",
+      "schema": "public",
+      "values": [
+        "none",
+        "linear",
+        "exponential"
       ]
     },
     "public.enum_monitors_method": {
@@ -11260,6 +12301,14 @@
         "TXT"
       ]
     },
+    "public.enum_monitors_push_schedule": {
+      "name": "enum_monitors_push_schedule",
+      "schema": "public",
+      "values": [
+        "interval",
+        "cron"
+      ]
+    },
     "public.enum_monitors_manual_status": {
       "name": "enum_monitors_manual_status",
       "schema": "public",
@@ -11325,6 +12374,28 @@
         "degraded"
       ]
     },
+    "public.enum_monitors_status_last_push_status": {
+      "name": "enum_monitors_status_last_push_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down"
+      ]
+    },
+    "public.enum_notifications_events": {
+      "name": "enum_notifications_events",
+      "schema": "public",
+      "values": [
+        "down",
+        "up",
+        "degraded",
+        "reminder",
+        "certificate",
+        "maintenance",
+        "acknowledged",
+        "resolved"
+      ]
+    },
     "public.enum_proxies_protocol": {
       "name": "enum_proxies_protocol",
       "schema": "public",
@@ -11362,6 +12433,69 @@
         "pending",
         "maintenance",
         "degraded"
+      ]
+    },
+    "public.enum_heartbeats_trigger": {
+      "name": "enum_heartbeats_trigger",
+      "schema": "public",
+      "values": [
+        "manual"
+      ]
+    },
+    "public.enum_monitor_incidents_timeline_type": {
+      "name": "enum_monitor_incidents_timeline_type",
+      "schema": "public",
+      "values": [
+        "opened",
+        "maintenance",
+        "acknowledged",
+        "resolved",
+        "published"
+      ]
+    },
+    "public.enum_monitor_incidents_timeline_via": {
+      "name": "enum_monitor_incidents_timeline_via",
+      "schema": "public",
+      "values": [
+        "dashboard",
+        "api",
+        "link"
+      ]
+    },
+    "public.enum_monitor_incidents_status": {
+      "name": "enum_monitor_incidents_status",
+      "schema": "public",
+      "values": [
+        "open",
+        "acknowledged",
+        "resolved"
+      ]
+    },
+    "public.enum_monitor_incidents_acknowledged_via": {
+      "name": "enum_monitor_incidents_acknowledged_via",
+      "schema": "public",
+      "values": [
+        "dashboard",
+        "api",
+        "link"
+      ]
+    },
+    "public.enum_push_events_kind": {
+      "name": "enum_push_events_kind",
+      "schema": "public",
+      "values": [
+        "success",
+        "fail",
+        "start",
+        "log"
+      ]
+    },
+    "public.enum_push_events_source": {
+      "name": "enum_push_events_source",
+      "schema": "public",
+      "values": [
+        "http",
+        "email"
       ]
     },
     "public.enum_status_pages_subscriptions_channels": {
@@ -11738,14 +12872,6 @@
         "major_outage"
       ]
     },
-    "public.enum_api_keys_scope": {
-      "name": "enum_api_keys_scope",
-      "schema": "public",
-      "values": [
-        "read",
-        "write"
-      ]
-    },
     "public.enum_instance_settings_entry_page": {
       "name": "enum_instance_settings_entry_page",
       "schema": "public",
@@ -11765,6 +12891,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "1b60f034-4191-4bbc-a0dd-380803743708",
+  "id": "e669c9da-3897-4b96-a52b-6d82df20bb78",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

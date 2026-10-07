@@ -68,6 +68,8 @@ export const PUT = withErrors(async (request: Request, { params }: RouteContext)
     id: orgId,
     data: { permissionOverrides: overrides },
     depth: 0,
+    // Owner-only was checked above; the user is passed so the audit row names them.
+    user,
     overrideAccess: true,
   })
   return Response.json({

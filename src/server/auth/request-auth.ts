@@ -17,11 +17,13 @@
  * Keys are further limited here, before any handler code runs:
  * - the key must belong to the organization in the URL;
  * - `read` keys may only send `GET`/`HEAD`/`OPTIONS`;
- * - member, invitation, key, SSO, billing, permission and ownership routes are refused outright
+ * - member, invitation, key, audit log, SSO, billing, permission and ownership routes are refused
  *   (`API_KEY_FORBIDDEN_SECTIONS`), and `API_KEY_DENIED_PERMISSIONS` keeps collection access in line;
  * - requests are rate limited per key (`API_KEY_RATE_LIMIT`, `API_KEY_WRITE_RATE_LIMIT`), `429` with
  *   `Retry-After`;
- * - write requests are recorded in the audit log (`api_key.write_request`, `actorType: apiKey`).
+ * - the principal carries the key as `apiKey`, so the collection audit hooks record every change it
+ *   makes with `actorType: 'apiKey'` and the key as actor (`actorFromRequest` in
+ *   `src/server/audit/context.ts`); `rememberRequestUser` binds the client's IP and user agent.
  */
 import type { Payload } from 'payload'
 
@@ -30,7 +32,6 @@ import { API_KEY_SCOPE_ROLES, type ApiKeyScope } from '@/lib/api-key-scopes'
 import type { User } from '@/payload-types'
 import { authenticateApiKeyValue, extractApiKey, type ApiKeyAuth } from '@/server/api-keys'
 import { errorText, rememberRequestUser } from '@/server/request-locale'
-import { auditActorFields, recordRequestAuditEvent } from '@/server/security/audit'
 import { apiKeyLimiter, apiKeyWriteLimiter } from '@/server/security/limiters'
 import { tooManyRequests, type RateLimiter } from '@/server/security/rate-limit'
 
@@ -47,7 +48,8 @@ export interface ApiKeyPrincipalInfo {
 
 /**
  * The synthetic user an API key authenticates as. Its `id` (`api-key:<keyId>`) is not a user row:
- * code that stores "who did it" must use `auditActorFields` / `apiKeyOf` instead of `user.id`.
+ * code that stores "who did it" must use `apiKeyOf` / `principalUserId` (or `actorFromRequest`)
+ * instead of `user.id`.
  */
 export type ApiKeyPrincipal = RequestUser & { apiKey: ApiKeyPrincipalInfo }
 
@@ -57,6 +59,7 @@ export type RequestAuth =
 /** Sections below `/api/orgs/:orgId/` that API keys may never call, whatever their scope. */
 export const API_KEY_FORBIDDEN_SECTIONS: readonly string[] = [
   'api-keys',
+  'audit-logs',
   'billing',
   'invitations',
   'invite-link',
@@ -174,21 +177,6 @@ async function authenticateWithApiKey(
   }
   if (write && auth.scope !== 'write') {
     return { response: keyError(request, 403, 'apiKeyReadOnly') }
-  }
-
-  if (write) {
-    const who = auditActorFields(principal)
-    await recordRequestAuditEvent(payload, request, {
-      action: 'api_key.write_request',
-      organization: auth.organizationId,
-      actor: who.actor,
-      target: `api-keys:${principal.apiKey.id}`,
-      metadata: {
-        ...who.metadata,
-        method: request.method.toUpperCase(),
-        path: new URL(request.url).pathname,
-      },
-    })
   }
 
   return { user: principal }
