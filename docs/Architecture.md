@@ -16,7 +16,7 @@ Shared infrastructure: the Payload database (Postgres by default, MongoDB suppor
 Payload does not poll anything by itself. On `monitors` `afterChange`/`afterDelete` hooks the web process
 calls `syncMonitor(monitor)` / `removeMonitorSchedule(id)` (`src/server/engine/scheduler.ts`), which upserts
 or removes a BullMQ **job scheduler** named `monitor:<id>` with `every = interval * 1000` (`retryInterval`
-while the monitor is PENDING). Both run, together with the `updateMonitorIntoList` / `deleteMonitorFromList` realtime emits,
+while the monitor is PENDING; every 60 s for push monitors on a cron schedule). Both run, together with the `updateMonitorIntoList` / `deleteMonitorFromList` realtime emits,
 only **after the operation's transaction commits** (`afterCommit()` in `src/db/after-commit.ts`, which hooks
 the adapter's `commitTransaction` / `rollbackTransaction`; without a transaction they run at once). Otherwise an
 idle worker could run the new scheduler's first job before the monitor row is visible, take the "monitor not

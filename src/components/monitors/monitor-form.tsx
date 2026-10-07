@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { FlaskConical, Loader2, Plus, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useFormatter, useTimeZone, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { useForm, useWatch, type Control, type FieldPath } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -70,10 +70,15 @@ import {
 import { supportsAssertions } from '@/lib/validation/assertions'
 import type { MonitorFormResources } from '@/server/monitors/page-data'
 
+import { TimezoneSelect } from '@/components/settings/timezone-select'
+import { isValidCronPattern, nextCronRuns } from '@/lib/push-schedule'
+import { SAME_AS_SERVER } from '@/lib/validation/maintenance'
+
 import { AssertionsField } from './assertions-field'
 import { useElapsedSeconds } from './check-now'
 import { CheckResultView } from './check-result'
 import { NotificationPicker } from './notification-picker'
+import { pushScheduleZone, usePushScheduleText } from './push-schedule'
 import { TagChip } from './tag-chip'
 
 export interface MonitorTypeInfo {
@@ -772,6 +777,9 @@ export function MonitorForm({
     httpBodyEncoding,
     mqttCheckType,
     sshAuthMethod,
+    pushSchedule,
+    pushCron,
+    pushTimezone,
     dnsResolveType,
   ] = useWatch({
     control,
@@ -785,9 +793,24 @@ export function MonitorForm({
       'httpBodyEncoding',
       'mqttCheckType',
       'sshAuthMethod',
+      'pushSchedule',
+      'pushCron',
+      'pushTimezone',
       'dnsResolveType',
     ],
   })
+  const orgTimeZone = useTimeZone() ?? 'UTC'
+  const format = useFormatter()
+  const scheduleText = usePushScheduleText()
+  const isPushCron = type === 'push' && pushSchedule === 'cron'
+  const cronZone = pushScheduleZone({ pushTimezone }, orgTimeZone)
+  const cronPreview = React.useMemo(
+    () =>
+      isPushCron && pushCron && isValidCronPattern(pushCron)
+        ? nextCronRuns(pushCron, cronZone, 3, new Date())
+        : null,
+    [isPushCron, pushCron, cronZone],
+  )
 
   const isHttp = isHttpMonitorType(type)
   const isUrl = isUrlMonitorType(type)
@@ -1171,6 +1194,96 @@ export function MonitorForm({
           </CardContent>
         </Card>
 
+        {/* Push schedule ------------------------------------------------------------------- */}
+        {type === 'push' && (
+          <Card data-testid="push-schedule-card">
+            <CardHeader>
+              <CardTitle>{t('push.title')}</CardTitle>
+              <CardDescription>{t('push.description')}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-5">
+              <SelectField
+                control={control}
+                name="pushSchedule"
+                label={t('push.schedule')}
+                options={[
+                  { value: 'interval', label: t('push.scheduleInterval') },
+                  { value: 'cron', label: t('push.scheduleCron') },
+                ]}
+              />
+              {pushSchedule === 'cron' && (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <TextField
+                    control={control}
+                    name="pushCron"
+                    label={t('push.cron')}
+                    placeholder="0 2 * * *"
+                    autoComplete="off"
+                    description={
+                      cronPreview ? (
+                        <span suppressHydrationWarning data-testid="push-cron-preview">
+                          {t('push.cronPreview', {
+                            schedule: scheduleText(
+                              { pushSchedule, pushCron, pushTimezone },
+                              orgTimeZone,
+                            ),
+                            runs: cronPreview
+                              .map((d) => format.dateTime(d, 'zoned', { timeZone: cronZone }))
+                              .join(' · '),
+                          })}
+                        </span>
+                      ) : (
+                        t('push.cronHint')
+                      )
+                    }
+                  />
+                  <FormField
+                    control={control}
+                    name="pushTimezone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('push.timezone')}</FormLabel>
+                        <FormControl>
+                          <TimezoneSelect
+                            value={(field.value as string | null | undefined) ?? SAME_AS_SERVER}
+                            onChange={field.onChange}
+                            extraOptions={[
+                              {
+                                value: SAME_AS_SERVER,
+                                label: t('push.timezoneDefault', { zone: orgTimeZone }),
+                              },
+                            ]}
+                          />
+                        </FormControl>
+                        <FormDescription>{t('push.cronChecked')}</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+              <div className="grid gap-5 sm:grid-cols-2">
+                <NumberField
+                  control={control}
+                  name="pushGrace"
+                  label={t('push.grace')}
+                  unit={t('timing.seconds')}
+                  min={0}
+                  description={t('push.graceDescription')}
+                />
+                <NumberField
+                  control={control}
+                  name="pushMaxDuration"
+                  label={t('push.maxDuration')}
+                  unit={t('timing.seconds')}
+                  min={1}
+                  description={t('push.maxDurationDescription')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Timing -------------------------------------------------------------------------- */}
         {type !== 'group' && type !== 'manual' && (
           <Card>
@@ -1179,18 +1292,20 @@ export function MonitorForm({
               <CardDescription>{t('timing.description')}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5 sm:grid-cols-2">
-              <NumberField
-                control={control}
-                name="interval"
-                label={t('timing.interval')}
-                unit={t('timing.seconds')}
-                min={20}
-                description={
-                  timingHint(interval)
-                    ? t('timing.intervalHint', { duration: timingHint(interval) ?? '' })
-                    : undefined
-                }
-              />
+              {!isPushCron && (
+                <NumberField
+                  control={control}
+                  name="interval"
+                  label={t('timing.interval')}
+                  unit={t('timing.seconds')}
+                  min={20}
+                  description={
+                    timingHint(interval)
+                      ? t('timing.intervalHint', { duration: timingHint(interval) ?? '' })
+                      : undefined
+                  }
+                />
+              )}
               <NumberField
                 control={control}
                 name="maxRetries"
@@ -1198,18 +1313,22 @@ export function MonitorForm({
                 min={0}
                 description={t('timing.retriesDescription')}
               />
-              <NumberField
-                control={control}
-                name="retryInterval"
-                label={t('timing.retryInterval')}
-                unit={t('timing.seconds')}
-                min={20}
-                description={
-                  timingHint(retryInterval)
-                    ? t('timing.retryIntervalHint', { duration: timingHint(retryInterval) ?? '' })
-                    : undefined
-                }
-              />
+              {!isPushCron && (
+                <NumberField
+                  control={control}
+                  name="retryInterval"
+                  label={t('timing.retryInterval')}
+                  unit={t('timing.seconds')}
+                  min={20}
+                  description={
+                    timingHint(retryInterval)
+                      ? t('timing.retryIntervalHint', {
+                          duration: timingHint(retryInterval) ?? '',
+                        })
+                      : undefined
+                  }
+                />
+              )}
               <NumberField
                 control={control}
                 name="resendInterval"

@@ -15,6 +15,7 @@ import { Notifications } from './Notifications'
 import { NotificationSentHistory } from './NotificationSentHistory'
 import { Organizations } from './Organizations'
 import { Proxies } from './Proxies'
+import { PushEvents } from './PushEvents'
 import { SsoConnections } from './SsoConnections'
 import { SsoDomains } from './SsoDomains'
 import { StatDaily } from './StatDaily'
@@ -48,6 +49,7 @@ export const collections: CollectionConfig[] = [
   DockerHosts,
   NotificationSentHistory,
   Heartbeats,
+  PushEvents,
   StatMinutely,
   StatHourly,
   StatDaily,

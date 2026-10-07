@@ -26,6 +26,8 @@ import {
 
 import { HEARTBEAT_STATUSES } from './Heartbeats'
 import { relId } from './shared'
+import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
+import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 import { adminGroup, adminT } from '@/i18n/admin'
 import { getTranslator } from '@/i18n/translator'
 import { userErrorText, userLocale } from '@/server/request-locale'
@@ -141,6 +143,20 @@ const statusGroup: Field = {
         date: { pickerAppearance: 'dayAndTime' },
         description: adminT('marmot:monitors:lastPushAtDescription'),
       },
+    },
+    {
+      name: 'lastPushStatus',
+      type: 'select',
+      options: [
+        { label: 'up', value: 'up' },
+        { label: 'down', value: 'down' },
+      ],
+      admin: { description: adminT('marmot:monitors:lastPushStatusDescription') },
+    },
+    {
+      name: 'pushRuns',
+      type: 'json',
+      admin: { description: adminT('marmot:monitors:pushRunsDescription') },
     },
   ],
 }
@@ -335,6 +351,7 @@ export const Monitors: CollectionConfig = {
           'stat-hourly',
           'stat-daily',
           'notification-sent-history',
+          'push-events',
         ] as const) {
           await req.payload.delete({ collection, where: { monitor: { equals: id } }, ...common })
         }
@@ -851,6 +868,77 @@ export const Monitors: CollectionConfig = {
         condition: (data) => data?.type === 'push',
         description: adminT('marmot:monitors:pushTokenDescription'),
       },
+    },
+    {
+      type: 'collapsible',
+      label: adminT('marmot:labels:pushSchedule'),
+      admin: { condition: (data) => data?.type === 'push', initCollapsed: false },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'pushSchedule',
+              type: 'select',
+              defaultValue: 'interval',
+              options: [
+                { label: adminT('marmot:labels:pushScheduleInterval'), value: 'interval' },
+                { label: adminT('marmot:labels:pushScheduleCron'), value: 'cron' },
+              ] satisfies { label: unknown; value: (typeof PUSH_SCHEDULE_TYPES)[number] }[],
+              admin: { description: adminT('marmot:monitors:pushScheduleDescription') },
+            },
+            {
+              name: 'pushCron',
+              type: 'text',
+              maxLength: 200,
+              validate: (
+                value: string | null | undefined,
+                { siblingData }: { siblingData: Partial<Monitor> },
+              ) =>
+                siblingData?.type !== 'push' ||
+                siblingData?.pushSchedule !== 'cron' ||
+                isValidCronPattern(value) ||
+                'Invalid cron expression',
+              admin: {
+                condition: (data) => data?.pushSchedule === 'cron',
+                placeholder: '0 2 * * *',
+                description: adminT('marmot:monitors:pushCronDescription'),
+              },
+            },
+            {
+              name: 'pushTimezone',
+              type: 'text',
+              defaultValue: SAME_AS_SERVER,
+              maxLength: 100,
+              validate: (value: string | null | undefined) =>
+                !value || isValidTimezone(value) || 'Unknown time zone',
+              admin: {
+                condition: (data) => data?.pushSchedule === 'cron',
+                description: adminT('marmot:monitors:pushTimezoneDescription'),
+              },
+            },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'pushGrace',
+              type: 'number',
+              min: 0,
+              max: MAX_PUSH_SECONDS,
+              admin: { description: adminT('marmot:monitors:pushGraceDescription') },
+            },
+            {
+              name: 'pushMaxDuration',
+              type: 'number',
+              min: 1,
+              max: MAX_PUSH_SECONDS,
+              admin: { description: adminT('marmot:monitors:pushMaxDurationDescription') },
+            },
+          ],
+        },
+      ],
     },
 
     // ---- Manual ---------------------------------------------------------------------------------
