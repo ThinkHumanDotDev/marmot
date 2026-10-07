@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 
 import { MaintenanceForm } from '@/components/maintenance/maintenance-form'
+import { OccurrencesPanel } from '@/components/maintenance/occurrences-panel'
 import { PageHeader } from '@/components/page-header'
 import { maintenanceToFormValues } from '@/lib/validation/maintenance'
 import {
@@ -11,6 +12,8 @@ import {
   getOrgMonitorOptions,
   getOrgStatusPageOptions,
 } from '@/server/maintenance/page-data'
+import { listMaintenanceOccurrences } from '@/server/maintenance/occurrences'
+import { resolveTimezone } from '@/server/maintenance/status'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 import { getOrgPageContext } from '@/server/monitors/page-data'
 
@@ -35,10 +38,11 @@ export default async function EditMaintenancePage({ params }: EditMaintenancePag
   if (!ctx.allowed('maintenance:update')) redirect(`/${orgSlug}/maintenance`)
 
   const t = await getTranslations('maintenance.editPage')
-  const [monitors, statusPages, orgTimezone] = await Promise.all([
+  const [monitors, statusPages, orgTimezone, occurrences] = await Promise.all([
     getOrgMonitorOptions(ctx),
     getOrgStatusPageOptions(ctx),
     getOrganizationTimezone(ctx.payload, ctx.org.id),
+    listMaintenanceOccurrences(ctx.payload, doc.id, { user: ctx.requestUser }),
   ])
 
   return (
@@ -52,7 +56,14 @@ export default async function EditMaintenancePage({ params }: EditMaintenancePag
         title={t('title')}
         description={t('description')}
       />
-      <section className="p-4 sm:p-6 md:p-8">
+      <section className="flex flex-col gap-6 p-4 sm:p-6 md:p-8">
+        <OccurrencesPanel
+          orgId={ctx.org.id}
+          maintenanceId={String(doc.id)}
+          initial={occurrences}
+          timeZone={resolveTimezone(doc.timezone, orgTimezone)}
+          canEdit
+        />
         <MaintenanceForm
           mode="edit"
           orgId={ctx.org.id}
