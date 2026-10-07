@@ -1,6 +1,7 @@
 import { LockKeyhole } from 'lucide-react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
@@ -15,7 +16,10 @@ import type { SsoConnection, SsoDomain } from '@/payload-types'
 import { toConnectionRow } from '@/server/sso/connections'
 import { toDomainRow } from '@/server/sso/domain-rows'
 
-export const metadata: Metadata = { title: 'Security settings' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pageTitles')
+  return { title: t('security') }
+}
 export const dynamic = 'force-dynamic'
 
 export default async function SecuritySettingsPage({
@@ -29,11 +33,12 @@ export default async function SecuritySettingsPage({
   if (!org) notFound()
 
   if (!canWithOverrides(user, org, 'sso:read')) {
+    const t = await getTranslations('settings.sso')
     return (
       <EmptyState
         icon={LockKeyhole}
-        title="Admins only"
-        description="Single sign-on is managed by owners of this organization; admins can view it."
+        title={t('adminsOnlyTitle')}
+        description={t('adminsOnlyDescription')}
       />
     )
   }

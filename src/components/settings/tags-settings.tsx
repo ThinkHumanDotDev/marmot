@@ -1,6 +1,7 @@
 'use client'
 
 import { Check, Loader2, Pencil, Plus, Tag as TagIcon, Trash2 } from 'lucide-react'
+import { useLocale, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -31,10 +32,12 @@ interface TagsSettingsProps {
   canManage: boolean
 }
 
-const byName = (a: TagRow, b: TagRow) => a.name.localeCompare(b.name)
+const byName = (locale: string) => (a: TagRow, b: TagRow) => a.name.localeCompare(b.name, locale)
 
 export function TagsSettings({ orgId, initial, canManage }: TagsSettingsProps) {
-  const [rows, setRows] = React.useState<TagRow[]>(() => [...initial].sort(byName))
+  const t = useTranslations('settings.tags')
+  const locale = useLocale()
+  const [rows, setRows] = React.useState<TagRow[]>(() => [...initial].sort(byName(locale)))
   const [editing, setEditing] = React.useState<TagRow | 'new' | null>(null)
   const [deleting, setDeleting] = React.useState<TagRow | null>(null)
 
@@ -43,32 +46,27 @@ export function TagsSettings({ orgId, initial, canManage }: TagsSettingsProps) {
       (current.some((r) => r.id === row.id)
         ? current.map((r) => (r.id === row.id ? row : r))
         : [...current, row]
-      ).sort(byName),
+      ).sort(byName(locale)),
     )
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div className="space-y-1.5">
-          <CardTitle>Tags</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
           <CardDescription>
-            Label monitors (optionally with a value such as <code>env: prod</code>). Tags show up in
-            the monitor list and, when enabled, on status pages.
+            {t.rich('description', { code: (chunks) => <code>{chunks}</code> })}
           </CardDescription>
         </div>
         {canManage && (
           <Button size="sm" onClick={() => setEditing('new')} data-testid="tag-new">
-            <Plus /> New tag
+            <Plus /> {t('new')}
           </Button>
         )}
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <EmptyState
-            icon={TagIcon}
-            title="No tags yet"
-            description="Create tags here, then add them to monitors in the monitor form."
-          />
+          <EmptyState icon={TagIcon} title={t('emptyTitle')} description={t('emptyDescription')} />
         ) : (
           <ul className="divide-y rounded-lg border">
             {rows.map((row) => (
@@ -80,7 +78,7 @@ export function TagsSettings({ orgId, initial, canManage }: TagsSettingsProps) {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Edit ${row.name}`}
+                      aria-label={t('editLabel', { name: row.name })}
                       onClick={() => setEditing(row)}
                     >
                       <Pencil />
@@ -88,7 +86,7 @@ export function TagsSettings({ orgId, initial, canManage }: TagsSettingsProps) {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Delete ${row.name}`}
+                      aria-label={t('deleteLabel', { name: row.name })}
                       onClick={() => setDeleting(row)}
                     >
                       <Trash2 />
@@ -117,19 +115,19 @@ export function TagsSettings({ orgId, initial, canManage }: TagsSettingsProps) {
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
-        title={`Delete tag “${deleting?.name ?? ''}”?`}
-        description="The tag is removed from every monitor that carries it. This cannot be undone."
-        confirmLabel="Delete tag"
+        title={t('confirmDeleteTitle', { name: deleting?.name ?? '' })}
+        description={t('confirmDeleteDescription')}
+        confirmLabel={t('confirmDelete')}
         destructive
         onConfirm={async () => {
           if (!deleting) return
           try {
             await tagsApi.remove(deleting.id)
             setRows((current) => current.filter((r) => r.id !== deleting.id))
-            toast.success('Tag deleted')
+            toast.success(t('deleted'))
             setDeleting(null)
           } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Could not delete the tag')
+            toast.error(error instanceof Error ? error.message : t('deleteFailed'))
           }
         }}
       />
@@ -159,6 +157,8 @@ function TagForm({
   onOpenChange: (open: boolean) => void
   onSaved: (row: TagRow) => void
 }) {
+  const t = useTranslations('settings.tags.form')
+  const tc = useTranslations('settings.tags.colors')
   const [name, setName] = React.useState(tag?.name ?? '')
   const [color, setColor] = React.useState<string>(tag?.color ?? TAG_COLORS[0].value)
   const [saving, setSaving] = React.useState(false)
@@ -173,10 +173,10 @@ function TagForm({
     try {
       const data = { name: name.trim(), color }
       const row = tag ? await tagsApi.update(tag.id, data) : await tagsApi.create(orgId, data)
-      toast.success(tag ? 'Tag saved' : 'Tag created')
+      toast.success(tag ? t('saved') : t('created'))
       onSaved(row)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not save the tag')
+      toast.error(error instanceof Error ? error.message : t('failed'))
     } finally {
       setSaving(false)
     }
@@ -186,11 +186,11 @@ function TagForm({
     <>
       <form onSubmit={save} className="grid gap-5">
         <DialogHeader>
-          <DialogTitle>{tag ? 'Edit tag' : 'New tag'}</DialogTitle>
-          <DialogDescription>Names are unique within the organization.</DialogDescription>
+          <DialogTitle>{tag ? t('editTitle') : t('newTitle')}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">
-          <Label htmlFor="tag-name">Name</Label>
+          <Label htmlFor="tag-name">{t('name')}</Label>
           <Input
             id="tag-name"
             value={name}
@@ -200,16 +200,16 @@ function TagForm({
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="tag-color">Colour</Label>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Colour">
+          <Label htmlFor="tag-color">{t('colour')}</Label>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('colour')}>
             {TAG_COLORS.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 role="radio"
                 aria-checked={color.toLowerCase() === option.value.toLowerCase()}
-                aria-label={option.label}
-                title={option.label}
+                aria-label={tc(option.key)}
+                title={tc(option.key)}
                 onClick={() => setColor(option.value)}
                 className="grid size-7 place-items-center rounded-full ring-offset-2 ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 style={{ backgroundColor: option.value }}
@@ -227,15 +227,15 @@ function TagForm({
             className={cn('font-mono', !colorValid && 'border-destructive')}
             aria-invalid={!colorValid}
           />
-          <TagChip tag={{ name: name.trim() || 'Preview', color: colorValid ? color : null }} />
+          <TagChip tag={{ name: name.trim() || t('preview'), color: colorValid ? color : null }} />
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button type="submit" disabled={!canSave}>
             {saving && <Loader2 className="animate-spin" />}
-            {tag ? 'Save' : 'Create tag'}
+            {tag ? t('save') : t('create')}
           </Button>
         </DialogFooter>
       </form>

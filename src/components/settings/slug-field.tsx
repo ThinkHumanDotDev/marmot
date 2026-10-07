@@ -1,6 +1,7 @@
 'use client'
 
 import { Check, Loader2, X } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import { Input } from '@/components/ui/input'
@@ -19,6 +20,7 @@ export type SlugStatus =
  * slugs are rejected locally first so the server is only asked about plausible candidates.
  */
 export function useSlugAvailability(slug: string, current?: string): SlugStatus {
+  const t = useTranslations('settings.slug')
   const value = slug.trim().toLowerCase()
 
   // Everything that can be decided without the server is derived synchronously.
@@ -40,7 +42,7 @@ export function useSlugAvailability(slug: string, current?: string): SlugStatus 
         const result = await orgApi.slugAvailable(value)
         status = result.available
           ? { state: 'available' }
-          : { state: 'unavailable', reason: result.reason ?? 'This slug is not available.' }
+          : { state: 'unavailable', reason: result.reason ?? t('notAvailable') }
       } catch {
         // Leave idle so the user can retry by editing.
       }
@@ -50,7 +52,7 @@ export function useSlugAvailability(slug: string, current?: string): SlugStatus 
       cancelled = true
       clearTimeout(timer)
     }
-  }, [value, local])
+  }, [value, local, t])
 
   if (local) return local
   return remote && remote.slug === value ? remote.status : { state: 'checking' }
@@ -63,6 +65,7 @@ interface SlugFieldProps extends Omit<React.ComponentProps<typeof Input>, 'value
 }
 
 export function SlugField({ value, onChange, status, className, ...props }: SlugFieldProps) {
+  const t = useTranslations('settings.slug')
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center overflow-hidden rounded-md border border-input shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
@@ -81,13 +84,13 @@ export function SlugField({ value, onChange, status, className, ...props }: Slug
         />
         <span className="flex w-9 shrink-0 items-center justify-center text-muted-foreground">
           {status.state === 'checking' && (
-            <Loader2 className="size-4 animate-spin" aria-label="Checking" />
+            <Loader2 className="size-4 animate-spin" aria-label={t('checking')} />
           )}
           {status.state === 'available' && (
-            <Check className="size-4 text-status-up" aria-label="Available" />
+            <Check className="size-4 text-status-up" aria-label={t('available')} />
           )}
           {status.state === 'unavailable' && (
-            <X className="size-4 text-destructive" aria-label="Unavailable" />
+            <X className="size-4 text-destructive" aria-label={t('unavailable')} />
           )}
         </span>
       </div>
@@ -95,8 +98,8 @@ export function SlugField({ value, onChange, status, className, ...props }: Slug
         {status.state === 'unavailable'
           ? status.reason
           : status.state === 'available'
-            ? 'This slug is available.'
-            : 'Lowercase letters, numbers and hyphens. Used in URLs.'}
+            ? t('availableHint')
+            : t('hint')}
       </p>
     </div>
   )

@@ -1,26 +1,31 @@
 import { Building2, Clock, LinkIcon, MailX } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { getUserRole } from '@/access/permissions'
 import { AcceptInvite } from '@/components/invite/accept-invite'
 import { Logo } from '@/components/logo'
-import { ROLE_DESCRIPTIONS, ROLE_LABELS } from '@/components/members/role-badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '@/components/ui/card'
 import { env } from '@/env'
 import { getCurrentUser } from '@/lib/auth'
 import { resolveInviteCode } from '@/server/invites'
 
-export const metadata: Metadata = { title: 'Invitation' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('invite')
+  return { title: t('pageTitle') }
+}
+
 export const dynamic = 'force-dynamic'
 
-function Frame({ children }: { children: React.ReactNode }) {
+async function Frame({ children }: { children: React.ReactNode }) {
+  const tc = await getTranslations('common')
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-sidebar px-4 py-10">
-      <Link href="/" aria-label="Marmot">
+      <Link href="/" aria-label={tc('appName')}>
         <Logo />
       </Link>
       <Card className="w-full max-w-md">{children}</Card>
@@ -28,7 +33,7 @@ function Frame({ children }: { children: React.ReactNode }) {
   )
 }
 
-function Problem({
+async function Problem({
   icon: Icon,
   title,
   description,
@@ -37,6 +42,7 @@ function Problem({
   title: string
   description: string
 }) {
+  const t = await getTranslations('invite')
   return (
     <>
       <CardHeader className="items-center text-center">
@@ -50,7 +56,7 @@ function Problem({
       </CardHeader>
       <CardFooter className="justify-center">
         <Button asChild variant="outline">
-          <Link href="/">Go to Marmot</Link>
+          <Link href="/">{t('goHome')}</Link>
         </Button>
       </CardFooter>
     </>
@@ -66,34 +72,22 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
   const { code } = await params
   const payload = await getPayload({ config })
   const invite = await resolveInviteCode(payload, code)
+  const t = await getTranslations('invite')
+  const tr = await getTranslations('members.roles')
 
   if (!invite) {
     return (
       <Frame>
-        <Problem
-          icon={MailX}
-          title="This invite link is not valid"
-          description="It may have been revoked or mistyped. Ask the person who invited you for a new link."
-        />
+        <Problem icon={MailX} title={t('invalid.title')} description={t('invalid.description')} />
       </Frame>
     )
   }
 
   if (invite.kind === 'invitation' && invite.status !== 'pending') {
     const copy = {
-      accepted: {
-        title: 'Invitation already used',
-        description: 'This invitation has already been accepted. Sign in to continue.',
-      },
-      revoked: {
-        title: 'Invitation revoked',
-        description: 'This invitation was withdrawn. Ask an admin to invite you again.',
-      },
-      expired: {
-        title: 'Invitation expired',
-        description: 'Invitations are valid for seven days. Ask an admin to resend it.',
-      },
-    }[invite.status]
+      title: t(`${invite.status}.title`),
+      description: t(`${invite.status}.description`),
+    }
     return (
       <Frame>
         <Problem icon={Clock} {...copy} />
@@ -113,27 +107,27 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
             <Building2 className="size-5" aria-hidden />
           </span>
           <h1 data-slot="card-title" className="text-xl leading-none font-semibold">
-            Join {org.name}
+            {t('signedOut.title', { organization: org.name })}
           </h1>
           <CardDescription>
             {invite.kind === 'invitation'
-              ? `You have been invited to join ${org.name} as ${ROLE_LABELS[invite.role].toLowerCase()}.`
-              : `You have been given a link to join ${org.name} as ${ROLE_LABELS[invite.role].toLowerCase()}.`}{' '}
-            {ROLE_DESCRIPTIONS[invite.role]}
+              ? t('signedOut.invited', { organization: org.name, role: invite.role })
+              : t('signedOut.link', { organization: org.name, role: invite.role })}{' '}
+            {tr(`${invite.role}.description`)}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           <Button asChild className="w-full">
-            <Link href={`/login?next=${encodeURIComponent(next)}`}>Sign in to accept</Link>
+            <Link href={`/login?next=${encodeURIComponent(next)}`}>{t('signedOut.signIn')}</Link>
           </Button>
           {!env.DISABLE_SIGNUP && (
             <Button asChild variant="outline" className="w-full">
-              <Link href={`/signup?next=${encodeURIComponent(next)}`}>Create an account</Link>
+              <Link href={`/signup?next=${encodeURIComponent(next)}`}>{t('signedOut.signUp')}</Link>
             </Button>
           )}
         </CardContent>
         <CardFooter className="justify-center text-xs text-muted-foreground">
-          <LinkIcon className="mr-1 size-3" aria-hidden /> Sent through Marmot
+          <LinkIcon className="mr-1 size-3" aria-hidden /> {t('signedOut.footer')}
         </CardFooter>
       </Frame>
     )

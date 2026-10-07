@@ -1,6 +1,7 @@
 import { KeyRound } from 'lucide-react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
@@ -12,7 +13,10 @@ import { getOrgBySlug } from '@/lib/org'
 import type { ApiKey } from '@/payload-types'
 import { toApiKeyRow } from '@/server/api-keys'
 
-export const metadata: Metadata = { title: 'API keys' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pageTitles')
+  return { title: t('apiKeys') }
+}
 export const dynamic = 'force-dynamic'
 
 export default async function ApiKeysSettingsPage({
@@ -27,11 +31,12 @@ export default async function ApiKeysSettingsPage({
 
   const canRead = isSuperadmin(user) || can(user, org.id, 'api-key:read')
   if (!canRead) {
+    const t = await getTranslations('settings.apiKeys')
     return (
       <EmptyState
         icon={KeyRound}
-        title="Admins only"
-        description="API keys are managed by admins and owners of this organization."
+        title={t('adminsOnlyTitle')}
+        description={t('adminsOnlyDescription')}
       />
     )
   }

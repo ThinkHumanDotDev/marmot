@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
@@ -12,7 +13,10 @@ import { getOrgBySlug } from '@/lib/org'
 import type { Notification } from '@/payload-types'
 import { toClientNotification } from '@/server/notifications/api'
 
-export const metadata: Metadata = { title: 'Notification settings' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pageTitles')
+  return { title: t('notifications') }
+}
 export const dynamic = 'force-dynamic'
 
 export default async function NotificationSettingsPage({
@@ -26,13 +30,12 @@ export default async function NotificationSettingsPage({
   if (!org) notFound()
 
   if (!canWithOverrides(user, org, 'notification:read')) {
+    const t = await getTranslations('settings.defaultChannels')
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Default notification channels</CardTitle>
-          <CardDescription>
-            Notification channels are visible to members and managed by admins of this organization.
-          </CardDescription>
+          <CardTitle>{t('title')}</CardTitle>
+          <CardDescription>{t('readOnly')}</CardDescription>
         </CardHeader>
       </Card>
     )

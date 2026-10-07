@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 import { cn } from '@/lib/utils'
 
@@ -37,29 +38,30 @@ export function SettingsTabs({
   showBilling = false,
   superadmin = false,
 }: SettingsTabsProps) {
+  const t = useTranslations('settings.tabs')
   const pathname = usePathname()
   const tabs = [
-    { href: `/${orgSlug}/settings/account`, label: 'Account', icon: UserRound },
-    { href: `/${orgSlug}/settings/organization`, label: 'Organization', icon: Building2 },
-    { href: `/${orgSlug}/members`, label: 'Members', icon: Users },
-    { href: `/${orgSlug}/settings/tags`, label: 'Tags', icon: Tags },
-    { href: `/${orgSlug}/settings/proxies`, label: 'Proxies', icon: Network },
-    { href: `/${orgSlug}/settings/docker-hosts`, label: 'Docker hosts', icon: Container },
-    { href: `/${orgSlug}/settings/api-keys`, label: 'API keys', icon: KeyRound },
-    { href: `/${orgSlug}/settings/import-export`, label: 'Import / Export', icon: ArrowDownUp },
+    { href: `/${orgSlug}/settings/account`, label: t('account'), icon: UserRound },
+    { href: `/${orgSlug}/settings/organization`, label: t('organization'), icon: Building2 },
+    { href: `/${orgSlug}/members`, label: t('members'), icon: Users },
+    { href: `/${orgSlug}/settings/tags`, label: t('tags'), icon: Tags },
+    { href: `/${orgSlug}/settings/proxies`, label: t('proxies'), icon: Network },
+    { href: `/${orgSlug}/settings/docker-hosts`, label: t('dockerHosts'), icon: Container },
+    { href: `/${orgSlug}/settings/api-keys`, label: t('apiKeys'), icon: KeyRound },
+    { href: `/${orgSlug}/settings/import-export`, label: t('importExport'), icon: ArrowDownUp },
     ...(showBilling
-      ? [{ href: `/${orgSlug}/settings/billing`, label: 'Billing', icon: CreditCard }]
+      ? [{ href: `/${orgSlug}/settings/billing`, label: t('billing'), icon: CreditCard }]
       : []),
-    { href: `/${orgSlug}/settings/permissions`, label: 'Permissions', icon: ShieldCheck },
-    { href: `/${orgSlug}/settings/security`, label: 'Security', icon: LockKeyhole },
-    { href: `/${orgSlug}/settings/notifications`, label: 'Notifications', icon: Bell },
+    { href: `/${orgSlug}/settings/permissions`, label: t('permissions'), icon: ShieldCheck },
+    { href: `/${orgSlug}/settings/security`, label: t('security'), icon: LockKeyhole },
+    { href: `/${orgSlug}/settings/notifications`, label: t('notifications'), icon: Bell },
     ...(superadmin
-      ? [{ href: `/${orgSlug}/settings/instance`, label: 'Instance', icon: Server }]
+      ? [{ href: `/${orgSlug}/settings/instance`, label: t('instance'), icon: Server }]
       : []),
   ]
 
   return (
-    <nav aria-label="Settings sections" className="-mb-px flex gap-1 overflow-x-auto">
+    <nav aria-label={t('label')} className="-mb-px flex gap-1 overflow-x-auto">
       {tabs.map((tab) => {
         const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`)
         return (

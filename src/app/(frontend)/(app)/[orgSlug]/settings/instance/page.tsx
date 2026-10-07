@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
@@ -11,7 +12,10 @@ import { env } from '@/env'
 import { requireUser } from '@/lib/auth'
 import { resolveInstanceSettings } from '@/server/settings'
 
-export const metadata: Metadata = { title: 'Instance settings' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pageTitles')
+  return { title: t('instance') }
+}
 export const dynamic = 'force-dynamic'
 
 /** Superadmin-only: the `instance-settings` global and an SMTP check. Others get a 404. */
@@ -36,21 +40,16 @@ export default async function InstanceSettingsPage({
   // Open sign-up lets anyone create monitors; without the guard they can point them at the
   // worker's private network (metadata endpoints, the bundled database, the tailnet).
   const warnPrivateAddresses = settings.allowSignup && !env.MONITOR_DENY_PRIVATE_ADDRESSES
+  const t = await getTranslations('settings.instance.privateAddressWarning')
 
   return (
     <>
       {warnPrivateAddresses ? (
         <Card role="alert" className="border-destructive/50" data-testid="private-address-warning">
           <CardHeader>
-            <CardTitle className="text-destructive">
-              Open sign-up without the private-address guard
-            </CardTitle>
+            <CardTitle className="text-destructive">{t('title')}</CardTitle>
             <CardDescription>
-              Anyone can create an account, and every member can create monitors and notification
-              channels. Those connect from the worker, which can reach private, loopback and
-              container-network addresses. Set <code>MONITOR_DENY_PRIVATE_ADDRESSES=true</code>{' '}
-              (with <code>MONITOR_ALLOW_CIDRS</code> for subnets you do want to monitor) or turn
-              sign-up off. See the hardening checklist in docs/Security.md.
+              {t.rich('description', { code: (chunks) => <code>{chunks}</code> })}
             </CardDescription>
           </CardHeader>
         </Card>
