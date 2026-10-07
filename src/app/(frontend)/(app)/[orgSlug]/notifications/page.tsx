@@ -1,7 +1,7 @@
 import { Bell } from 'lucide-react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
@@ -76,15 +76,16 @@ export default async function NotificationsPage({ params }: PageProps) {
     overrideAccess: false,
   })
 
+  const locale = await getLocale()
   return (
     <NotificationsView
       orgId={String(orgId)}
       initial={(docs as Notification[]).map((doc) =>
         toNotificationRow(toClientNotification(doc, requestUser, orgId)),
       )}
-      providers={getProviderDescriptors()}
+      providers={getProviderDescriptors(locale)}
       canManage={canManage}
-      serverSmtpRestriction={serverSmtpRestriction(user)}
+      serverSmtpRestriction={serverSmtpRestriction(user, undefined, locale)}
     />
   )
 }

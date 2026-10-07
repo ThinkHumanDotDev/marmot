@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { listMaintenanceOccurrences, loadOrgMaintenance } from '@/server/maintenance'
 import { authenticate, authorize, jsonError, parseId } from '@/server/monitors/http'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,7 @@ export async function GET(request: Request, { params }: RouteContext): Promise<R
   if (forbidden) return forbidden
 
   const doc = await loadOrgMaintenance(payload, auth.user, orgId, id)
-  if (!doc) return jsonError(404, 'Maintenance not found')
+  if (!doc) return jsonError(404, errorText(request, 'maintenanceNotFound'))
 
   const requested = Number(new URL(request.url).searchParams.get('limit') ?? 20)
   const limit = Number.isFinite(requested) ? Math.min(100, Math.max(1, Math.floor(requested))) : 20

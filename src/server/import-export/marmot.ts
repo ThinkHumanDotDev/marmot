@@ -16,7 +16,13 @@ import type { Payload } from 'payload'
 import { z } from 'zod'
 
 import type { OrgId } from '@/access/permissions'
+import { BANNER_TEXT_MAX_LENGTH } from '@/collections/status-page-theme'
 import { MARMOT_EXPORT_FORMAT, MARMOT_EXPORT_VERSION } from '@/lib/import-export'
+import {
+  DEFAULT_THEME_PRESET,
+  isThemePresetId,
+  parseThemeOverrides,
+} from '@/lib/status-page-themes'
 import {
   defaultMonitorValues,
   monitorToFormValues,
@@ -38,6 +44,7 @@ import {
   type PlannedIncident,
   type PlannedStatusPage,
 } from './types'
+import { importText, type ImportText } from './text'
 
 // ---- Export --------------------------------------------------------------------------------------
 
@@ -71,12 +78,18 @@ export interface ExportedStatusPage {
   title: string
   slug: string
   description: string | null
+  homepageUrl?: string | null
+  contactUrl?: string | null
   theme: StatusPage['theme']
+  themePreset: string | null
+  themeOverrides: StatusPage['themeOverrides']
+  bannerText: string | null
   published: boolean
   searchEngineIndex: boolean
   showTags: boolean
   showCertificateExpiry: boolean
   showPoweredBy: boolean
+  showValues?: boolean
   autoRefreshInterval: number | null
   footerText: string | null
   customCSS: string | null
@@ -84,9 +97,21 @@ export interface ExportedStatusPage {
   domains: string[]
   groups: {
     name: string
-    monitors: { monitor: OrgId; sendUrl: boolean; customUrl: string | null }[]
+    defaultOpen?: boolean
+    /** Components; `monitor` is null for static ones. */
+    monitors: ExportedComponent[]
   }[]
   incidents: ExportedIncident[]
+}
+
+export interface ExportedComponent {
+  type?: 'monitor' | 'static'
+  monitor: OrgId | null
+  name?: string | null
+  description?: string | null
+  showValues?: boolean
+  sendUrl: boolean
+  customUrl: string | null
 }
 
 export interface MarmotExport {
@@ -117,12 +142,20 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
   title: doc.title,
   slug: doc.slug,
   description: doc.description ?? null,
+  homepageUrl: doc.homepageUrl ?? null,
+  contactUrl: doc.contactUrl ?? null,
   theme: doc.theme ?? 'auto',
-  published: doc.published ?? false,
+  themePreset: doc.themePreset ?? null,
+  themeOverrides: doc.themeOverrides ?? null,
+  bannerText: doc.bannerText ?? null,
+  // The password never leaves the instance, so a protected page is exported as a draft: importing
+  // it must not publish it without protection.
+  published: doc.access === 'password' ? false : (doc.published ?? false),
   searchEngineIndex: doc.searchEngineIndex ?? false,
   showTags: doc.showTags ?? false,
   showCertificateExpiry: doc.showCertificateExpiry ?? false,
   showPoweredBy: doc.showPoweredBy ?? true,
+  showValues: doc.showValues ?? true,
   autoRefreshInterval: doc.autoRefreshInterval ?? null,
   footerText: doc.footerText ?? null,
   customCSS: doc.customCSS ?? null,
@@ -130,16 +163,18 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
   domains: (doc.domains ?? []).map((row) => row.hostname),
   groups: (doc.groups ?? []).map((group) => ({
     name: group.name,
+    defaultOpen: group.defaultOpen ?? true,
     monitors: (group.monitors ?? [])
-      .map((row) => ({
-        monitor: relationId(row.monitor),
+      .map((row): ExportedComponent => ({
+        type: row.type === 'static' ? 'static' : 'monitor',
+        monitor: row.type === 'static' ? null : relationId(row.monitor),
+        name: row.name ?? null,
+        description: row.description ?? null,
+        showValues: row.showValues ?? true,
         sendUrl: row.sendUrl ?? false,
         customUrl: row.customUrl ?? null,
       }))
-      .filter(
-        (row): row is { monitor: OrgId; sendUrl: boolean; customUrl: string | null } =>
-          row.monitor !== null,
-      ),
+      .filter((row) => row.type === 'static' || row.monitor !== null),
   })),
   incidents: incidents.map((incident) => ({
     title: incident.title,
@@ -256,17 +291,28 @@ const monitorEnvelopeSchema = z.object({
   parent: idSchema.nullish(),
 })
 
+const importedThemeOverrides = (value: unknown): StatusPage['themeOverrides'] => {
+  const parsed = parseThemeOverrides(value)
+  return parsed.ok ? (parsed.value as StatusPage['themeOverrides']) : null
+}
+
 const statusPageSchema = z.object({
   id: idSchema,
   title: z.string().trim().min(1).max(200),
   slug: z.string().trim().min(1).max(100),
   description: z.string().nullish(),
+  homepageUrl: z.string().nullish(),
+  contactUrl: z.string().nullish(),
   theme: z.enum(['auto', 'light', 'dark']).nullish(),
+  themePreset: z.string().nullish(),
+  themeOverrides: z.unknown().optional(),
+  bannerText: z.string().nullish(),
   published: z.boolean().nullish(),
   searchEngineIndex: z.boolean().nullish(),
   showTags: z.boolean().nullish(),
   showCertificateExpiry: z.boolean().nullish(),
   showPoweredBy: z.boolean().nullish(),
+  showValues: z.boolean().nullish(),
   autoRefreshInterval: z.number().int().min(0).nullish(),
   footerText: z.string().nullish(),
   customCSS: z.string().nullish(),
@@ -276,13 +322,29 @@ const statusPageSchema = z.object({
     .array(
       z.object({
         name: z.string().trim().min(1),
+        defaultOpen: z.boolean().nullish(),
         monitors: z
           .array(
-            z.object({
-              monitor: idSchema,
-              sendUrl: z.boolean().nullish(),
-              customUrl: z.string().nullish(),
-            }),
+            z.union([
+              z.object({
+                type: z.literal('static'),
+                monitor: z.null().optional(),
+                name: z.string().trim().min(1),
+                description: z.string().nullish(),
+                showValues: z.boolean().nullish(),
+                sendUrl: z.boolean().nullish(),
+                customUrl: z.string().nullish(),
+              }),
+              z.object({
+                type: z.literal('monitor').optional(),
+                monitor: idSchema,
+                name: z.string().nullish(),
+                description: z.string().nullish(),
+                showValues: z.boolean().nullish(),
+                sendUrl: z.boolean().nullish(),
+                customUrl: z.string().nullish(),
+              }),
+            ]),
           )
           .default([]),
       }),
@@ -310,11 +372,15 @@ const issueList = (issues: { path: PropertyKey[]; message: string }[]): string =
     .join('; ')
 
 /** Parses a Marmot export into an import plan. Pure: no database access. */
-export function parseMarmotExport(json: unknown): ImportPlan {
+export function parseMarmotExport(json: unknown, t: ImportText = importText()): ImportPlan {
   const envelope = envelopeSchema.safeParse(json)
   if (!envelope.success) {
     throw new ImportFormatError(
-      `Not a Marmot export (format "${MARMOT_EXPORT_FORMAT}" version ${MARMOT_EXPORT_VERSION}): ${issueList(envelope.error.issues)}`,
+      t('notMarmotExport', {
+        format: MARMOT_EXPORT_FORMAT,
+        version: MARMOT_EXPORT_VERSION,
+        issues: issueList(envelope.error.issues),
+      }),
     )
   }
   const plan = emptyPlan('marmot')
@@ -323,13 +389,12 @@ export function parseMarmotExport(json: unknown): ImportPlan {
   const seenNames = new Set<string>()
   file.notifications.forEach((entry, index) => {
     const parsed = notificationSchema.safeParse(entry)
-    const name = isRecord(entry)
-      ? (asText(entry.name) ?? `notification #${index + 1}`)
-      : `notification #${index + 1}`
+    const fallback = t('unnamed', { kind: 'notification', id: index + 1 })
+    const name = isRecord(entry) ? (asText(entry.name) ?? fallback) : fallback
     if (!parsed.success) {
       plan.skipped.notifications.push({
         name,
-        reason: `Invalid notification: ${issueList(parsed.error.issues)}`,
+        reason: t('invalidNotification', { issues: issueList(parsed.error.issues) }),
       })
       return
     }
@@ -342,14 +407,14 @@ export function parseMarmotExport(json: unknown): ImportPlan {
         reason:
           error instanceof NotificationConfigError
             ? error.message
-            : `Unknown notification type "${parsed.data.type}"`,
+            : t('unknownNotificationType', { type: parsed.data.type }),
       })
       return
     }
     if (seenNames.has(parsed.data.name)) {
       plan.skipped.notifications.push({
         name,
-        reason: 'Another notification in the file has the same name',
+        reason: t('duplicateNotification'),
       })
       return
     }
@@ -365,14 +430,15 @@ export function parseMarmotExport(json: unknown): ImportPlan {
   })
 
   file.monitors.forEach((entry, index) => {
-    const name = isRecord(entry)
-      ? (asText(entry.name) ?? `monitor #${index + 1}`)
-      : `monitor #${index + 1}`
+    const fallback = t('unnamed', { kind: 'monitor', id: index + 1 })
+    const name = isRecord(entry) ? (asText(entry.name) ?? fallback) : fallback
     const envelope = monitorEnvelopeSchema.safeParse(entry)
     if (!envelope.success || !isRecord(entry)) {
       plan.skipped.monitors.push({
         name,
-        reason: `Invalid monitor: ${envelope.success ? 'not an object' : issueList(envelope.error.issues)}`,
+        reason: t('invalidMonitor', {
+          issues: envelope.success ? t('notAnObject') : issueList(envelope.error.issues),
+        }),
       })
       return
     }
@@ -382,16 +448,15 @@ export function parseMarmotExport(json: unknown): ImportPlan {
     if (fields.type === 'docker') {
       plan.skipped.monitors.push({
         name,
-        reason:
-          'Docker monitors reference a Docker host of the exporting organization; recreate it',
+        reason: t('dockerMonitorSkipped'),
       })
       return
     }
     const hasTags = Array.isArray(fields.tags) && fields.tags.length > 0
     const hasProxy = fields.proxy !== null && fields.proxy !== undefined
     if (hasTags || hasProxy) {
-      const dropped = [hasTags && 'tags', hasProxy && 'proxy'].filter(Boolean).join(' and ')
-      plan.warnings.push(`"${name}": ${dropped} not imported; assign them again after the import`)
+      const resources = hasTags && hasProxy ? 'both' : hasTags ? 'tags' : 'proxy'
+      plan.warnings.push(t('resourcesDropped', { name, resources }))
     }
     const parsed = monitorFormSchema.safeParse({
       ...fields,
@@ -403,7 +468,7 @@ export function parseMarmotExport(json: unknown): ImportPlan {
     if (!parsed.success) {
       plan.skipped.monitors.push({
         name,
-        reason: `Invalid monitor: ${issueList(parsed.error.issues)}`,
+        reason: t('invalidMonitor', { issues: issueList(parsed.error.issues) }),
       })
       return
     }
@@ -423,7 +488,7 @@ export function parseMarmotExport(json: unknown): ImportPlan {
   for (const monitor of plan.monitors) {
     if (monitor.parentKey !== null && !groupKeys.has(monitor.parentKey)) {
       plan.warnings.push(
-        `"${monitor.data.name}": parent group #${monitor.parentKey} was not imported; the monitor is placed at the top level`,
+        t('parentNotImported', { name: monitor.data.name, parent: monitor.parentKey }),
       )
       monitor.parentKey = null
     }
@@ -436,21 +501,18 @@ export function parseMarmotExport(json: unknown): ImportPlan {
     monitor.notificationKeys = kept
   }
   if (droppedLinks > 0) {
-    plan.warnings.push(
-      `${droppedLinks} monitor → notification link${droppedLinks === 1 ? '' : 's'} dropped because the notification was not imported`,
-    )
+    plan.warnings.push(t('linksDropped', { count: droppedLinks }))
   }
 
   const monitorKeys = new Set(plan.monitors.map((m) => m.key))
   file.statusPages.forEach((entry, index) => {
-    const name = isRecord(entry)
-      ? (asText(entry.title) ?? `status page #${index + 1}`)
-      : `status page #${index + 1}`
+    const fallback = t('unnamed', { kind: 'statusPage', id: index + 1 })
+    const name = isRecord(entry) ? (asText(entry.title) ?? fallback) : fallback
     const parsed = statusPageSchema.safeParse(entry)
     if (!parsed.success) {
       plan.skipped.statusPages.push({
         name,
-        reason: `Invalid status page: ${issueList(parsed.error.issues)}`,
+        reason: t('invalidStatusPage', { issues: issueList(parsed.error.issues) }),
       })
       return
     }
@@ -462,12 +524,19 @@ export function parseMarmotExport(json: unknown): ImportPlan {
         title: page.title,
         slug: page.slug.toLowerCase(),
         description: page.description ?? null,
+        homepageUrl: page.homepageUrl ?? null,
+        contactUrl: page.contactUrl ?? null,
         theme: page.theme ?? 'auto',
+        // Unknown presets and invalid overrides fall back to the defaults instead of failing the page.
+        themePreset: isThemePresetId(page.themePreset) ? page.themePreset : DEFAULT_THEME_PRESET,
+        themeOverrides: importedThemeOverrides(page.themeOverrides),
+        bannerText: page.bannerText?.trim().slice(0, BANNER_TEXT_MAX_LENGTH) || null,
         published: page.published ?? false,
         searchEngineIndex: page.searchEngineIndex ?? false,
         showTags: page.showTags ?? false,
         showCertificateExpiry: page.showCertificateExpiry ?? false,
         showPoweredBy: page.showPoweredBy ?? true,
+        showValues: page.showValues ?? true,
         autoRefreshInterval: page.autoRefreshInterval ?? 300,
         footerText: page.footerText ?? null,
         customCSS: page.customCSS ?? null,
@@ -476,14 +545,20 @@ export function parseMarmotExport(json: unknown): ImportPlan {
       domains: page.domains.map((d) => d.trim().toLowerCase()).filter(Boolean),
       groups: page.groups.map((group) => ({
         name: group.name,
+        defaultOpen: group.defaultOpen ?? true,
         monitors: group.monitors
           .filter((row) => {
+            if (row.type === 'static') return true
             const keep = monitorKeys.has(String(row.monitor))
             if (!keep) droppedRows += 1
             return keep
           })
           .map((row) => ({
-            monitorKey: String(row.monitor),
+            monitorKey: row.type === 'static' ? null : String(row.monitor),
+            type: row.type === 'static' ? ('static' as const) : ('monitor' as const),
+            name: asText(row.name),
+            description: asText(row.description),
+            showValues: asBool(row.showValues) ?? true,
             sendUrl: asBool(row.sendUrl) ?? false,
             customUrl: asText(row.customUrl),
           })),
@@ -498,9 +573,7 @@ export function parseMarmotExport(json: unknown): ImportPlan {
       })),
     }
     if (droppedRows > 0) {
-      plan.warnings.push(
-        `"${page.title}": ${droppedRows} monitor row${droppedRows === 1 ? '' : 's'} dropped because the monitor was not imported`,
-      )
+      plan.warnings.push(t('rowsDropped', { title: page.title, count: droppedRows }))
     }
     plan.statusPages.push(planned)
   })

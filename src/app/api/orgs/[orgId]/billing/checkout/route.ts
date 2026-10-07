@@ -1,3 +1,4 @@
+import { errorText } from '@/server/request-locale'
 import { isPlan, PURCHASABLE_PLANS } from '@/lib/entitlements'
 import { billingContext, errorResponse, jsonError, readJson } from '@/server/billing/http'
 import { createCheckoutSession, type BillingInterval } from '@/server/billing/stripe'
@@ -19,7 +20,10 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const body = await readJson<{ plan?: unknown; interval?: unknown }>(request)
   if (!isPlan(body.plan) || !PURCHASABLE_PLANS.includes(body.plan)) {
-    return jsonError(`plan must be one of: ${PURCHASABLE_PLANS.join(', ')}`, 400)
+    return jsonError(
+      errorText(request, 'planInvalid', { plans: PURCHASABLE_PLANS.join(', ') }),
+      400,
+    )
   }
   const interval: BillingInterval | undefined =
     body.interval === 'month' || body.interval === 'year' ? body.interval : undefined
@@ -34,6 +38,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     })
     return Response.json(session)
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }

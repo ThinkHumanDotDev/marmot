@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { authenticateApiKey } from '@/server/api-keys'
 import { collectOrganizationMetrics } from '@/server/metrics/prometheus'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
   const auth = await authenticateApiKey(payload, request)
   if (!auth) {
     return Response.json(
-      { error: 'Unauthorized' },
+      { error: errorText(request, 'unauthenticated') },
       {
         status: 401,
         headers: {

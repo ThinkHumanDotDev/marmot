@@ -5,7 +5,6 @@ import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
 import type { MaintenanceOccurrence } from '@/payload-types'
 import {
   loadOrgMaintenance,
-  OccurrenceTransitionError,
   postOccurrenceUpdate,
   relationId,
   summarizeMaintenance,
@@ -19,6 +18,7 @@ import {
   readJson,
   validationError,
 } from '@/server/monitors/http'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,7 +43,7 @@ export async function POST(request: Request, { params }: RouteContext): Promise<
   if (forbidden) return forbidden
 
   const maintenance = await loadOrgMaintenance(payload, auth.user, orgId, id)
-  if (!maintenance) return jsonError(404, 'Maintenance not found')
+  if (!maintenance) return jsonError(404, errorText(request, 'maintenanceNotFound'))
 
   let occurrence: MaintenanceOccurrence | null = null
   try {
@@ -58,11 +58,11 @@ export async function POST(request: Request, { params }: RouteContext): Promise<
     occurrence = null
   }
   if (!occurrence || String(relationId(occurrence.maintenance)) !== String(maintenance.id)) {
-    return jsonError(404, 'Occurrence not found')
+    return jsonError(404, errorText(request, 'maintenanceOccurrenceNotFound'))
   }
 
   const parsed = occurrenceUpdateSchema.safeParse(await readJson(request))
-  if (!parsed.success) return validationError(parsed.error)
+  if (!parsed.success) return validationError(parsed.error, request)
 
   try {
     const result = await postOccurrenceUpdate(payload, maintenance, occurrence, parsed.data)
@@ -74,9 +74,7 @@ export async function POST(request: Request, { params }: RouteContext): Promise<
       { status: 201 },
     )
   } catch (error) {
-    if (error instanceof OccurrenceTransitionError) {
-      return jsonError(409, error.message, { from: error.from, to: error.to })
-    }
-    return payloadError(error)
+    // `OccurrenceTransitionError` is a localised 409 with `{ from, to }` as data.
+    return payloadError(error, request)
   }
 }

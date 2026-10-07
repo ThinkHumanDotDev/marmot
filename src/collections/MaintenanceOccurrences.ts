@@ -1,13 +1,14 @@
 import { ValidationError, type CollectionBeforeChangeHook, type CollectionConfig } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 import {
   OCCURRENCE_STATE_LABELS,
   OCCURRENCE_STATES,
   REMINDER_OFFSETS,
 } from '@/lib/maintenance-announcements'
 import type { MaintenanceOccurrence } from '@/payload-types'
+import { userErrorText } from '@/server/request-locale'
 
 const relId = (value: unknown): string | number | null => {
   if (typeof value === 'string' || typeof value === 'number') return value
@@ -28,7 +29,9 @@ const deriveOrganization: CollectionBeforeChangeHook<MaintenanceOccurrence> = as
   if (maintenanceId === null) {
     throw new ValidationError({
       collection: 'maintenance-occurrences',
-      errors: [{ message: 'An occurrence belongs to a maintenance.', path: 'maintenance' }],
+      errors: [
+        { message: userErrorText(req, 'maintenanceOccurrenceRequired'), path: 'maintenance' },
+      ],
     })
   }
   if (data.maintenance !== undefined || data.organization === undefined) {
@@ -55,7 +58,7 @@ const deriveOrganization: CollectionBeforeChangeHook<MaintenanceOccurrence> = as
 export const MaintenanceOccurrences: CollectionConfig = {
   slug: 'maintenance-occurrences',
   admin: {
-    group: 'Monitoring',
+    group: adminGroup('monitoring'),
     defaultColumns: ['maintenance', 'start', 'end', 'state', 'organization'],
     description: adminT('marmot:maintenanceOccurrences:description'),
   },

@@ -24,15 +24,6 @@ export const MAINTENANCE_STRATEGIES = [
 ] as const
 export type MaintenanceStrategy = (typeof MAINTENANCE_STRATEGIES)[number]
 
-export const MAINTENANCE_STRATEGY_LABELS: Record<MaintenanceStrategy, string> = {
-  manual: 'Manual (active until you pause it)',
-  single: 'Single maintenance window',
-  'recurring-interval': 'Recurring – every N days',
-  'recurring-weekday': 'Recurring – days of the week',
-  'recurring-day-of-month': 'Recurring – days of the month',
-  cron: 'Cron expression',
-}
-
 export const RECURRING_STRATEGIES: readonly MaintenanceStrategy[] = [
   'recurring-interval',
   'recurring-weekday',
@@ -55,36 +46,14 @@ export const MAINTENANCE_STATUSES = [
 ] as const
 export type MaintenanceStatus = (typeof MAINTENANCE_STATUSES)[number]
 
-export const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {
-  inactive: 'Paused',
-  scheduled: 'Scheduled',
-  'under-maintenance': 'Under maintenance',
-  ended: 'Ended',
-  unknown: 'Unknown',
-}
-
 /** Sunday is 0, like cron and JavaScript. Stored as strings (Payload `select` values). */
 export const WEEKDAY_VALUES = ['0', '1', '2', '3', '4', '5', '6'] as const
 export type WeekdayValue = (typeof WEEKDAY_VALUES)[number]
-export const WEEKDAY_OPTIONS: { value: WeekdayValue; label: string }[] = [
-  { value: '1', label: 'Mon' },
-  { value: '2', label: 'Tue' },
-  { value: '3', label: 'Wed' },
-  { value: '4', label: 'Thu' },
-  { value: '5', label: 'Fri' },
-  { value: '6', label: 'Sat' },
-  { value: '0', label: 'Sun' },
-]
+/** Display order of the weekdays (Monday first); labels are messages (`maintenance.weekdays`). */
+export const WEEKDAY_ORDER: readonly WeekdayValue[] = ['1', '2', '3', '4', '5', '6', '0']
 
 export const LAST_DAY_VALUES = ['lastDay1', 'lastDay2', 'lastDay3', 'lastDay4'] as const
 export type LastDayValue = (typeof LAST_DAY_VALUES)[number]
-export const LAST_DAY_LABELS: Record<LastDayValue, string> = {
-  lastDay1: 'Last day of the month',
-  lastDay2: '2nd last day of the month',
-  lastDay3: '3rd last day of the month',
-  lastDay4: '4th last day of the month',
-}
-
 export const DAY_OF_MONTH_VALUES = [
   ...Array.from({ length: 31 }, (_, i) => String(i + 1)),
   ...LAST_DAY_VALUES,

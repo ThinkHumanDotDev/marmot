@@ -5,7 +5,7 @@
  */
 import { z } from 'zod'
 
-import { formatHeartbeatTime } from '@/server/notifications/message'
+import { formatHeartbeatTime, providerText } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -43,8 +43,9 @@ registerNotificationProvider({
   docsUrl: 'https://developers.mattermost.com/integrate/webhooks/incoming/',
   configSchema: mattermostConfigSchema,
   fieldMeta: mattermostFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = mattermostConfigSchema.parse(raw)
+    const p = providerText(locale)
     const username = config.username || 'Marmot'
 
     if (!heartbeat || !monitor) {
@@ -56,17 +57,17 @@ registerNotificationProvider({
     const [emojiUp, emojiDown] = emojis.length >= 2 ? emojis : [undefined, undefined]
 
     let iconEmoji = config.iconEmoji || undefined
-    let statusField = { short: false, title: 'Error', value: heartbeat.msg ?? '' }
+    let statusField = { short: false, title: p('error'), value: heartbeat.msg ?? '' }
     let statusText = 'unknown'
     let color = '#000000'
     if (heartbeat.status === 'down') {
       iconEmoji = emojiDown || iconEmoji
-      statusText = 'down.'
+      statusText = 'down'
       color = '#FF0000'
     } else if (heartbeat.status === 'up') {
       iconEmoji = emojiUp || iconEmoji
-      statusField = { short: false, title: 'Ping', value: `${heartbeat.ping ?? 'N/A'}ms` }
-      statusText = 'up!'
+      statusField = { short: false, title: p('ping'), value: `${heartbeat.ping ?? 'N/A'}ms` }
+      statusText = 'up'
       color = '#32CD32'
     }
 
@@ -77,13 +78,13 @@ registerNotificationProvider({
       icon_url: config.iconUrl || undefined,
       attachments: [
         {
-          fallback: `Your ${monitor.name} service went ${statusText}`,
+          fallback: p('serviceWentFallback', { name: monitor.name, status: statusText }),
           color,
-          title: `${monitor.name} service went ${statusText}`,
+          title: p('serviceWentTitle', { name: monitor.name, status: statusText }),
           title_link: monitor.url || undefined,
           fields: [
             statusField,
-            { short: true, title: 'Time', value: formatHeartbeatTime(heartbeat) },
+            { short: true, title: p('time'), value: formatHeartbeatTime(heartbeat) },
           ],
         },
       ],

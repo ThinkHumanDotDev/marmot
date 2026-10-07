@@ -9,6 +9,7 @@ import {
 } from '@/server/status-pages/http'
 
 import type { StatusPage } from '@/payload-types'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,10 +23,10 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   try {
     const doc = await loadOrgStatusPage(auth.ctx, orgId, id)
-    if (!doc) return jsonError('Status page not found', 404)
+    if (!doc) return jsonError(errorText(request, 'statusPageNotFound'), 404)
     return Response.json({ doc })
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }
 
@@ -37,11 +38,11 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   const { orgId, id } = await params
 
   const body = await readJson(request)
-  if (!body) return jsonError('Invalid JSON body', 400)
+  if (!body) return jsonError(errorText(request, 'invalidJsonBody'), 400)
 
   try {
     const existing = await loadOrgStatusPage(auth.ctx, orgId, id, 0)
-    if (!existing) return jsonError('Status page not found', 404)
+    if (!existing) return jsonError(errorText(request, 'statusPageNotFound'), 404)
 
     const doc = await payload.update({
       collection: 'status-pages',
@@ -53,7 +54,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     })
     return Response.json({ doc })
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }
 
@@ -66,7 +67,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 
   try {
     const existing = await loadOrgStatusPage(auth.ctx, orgId, id, 0)
-    if (!existing) return jsonError('Status page not found', 404)
+    if (!existing) return jsonError(errorText(request, 'statusPageNotFound'), 404)
 
     await payload.delete({
       collection: 'incidents',
@@ -82,6 +83,6 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     })
     return Response.json({ ok: true })
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }

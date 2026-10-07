@@ -1,5 +1,3 @@
-import { APIError } from 'payload'
-
 import { loadOrgPermissionOverrides } from '@/access/overrides'
 import {
   effectivePermissions,
@@ -9,7 +7,7 @@ import {
   normalizePermissionOverrides,
   PERMISSIONS,
 } from '@/access/permissions'
-import { validatePermissionOverrides } from '@/collections/Organizations'
+import { permissionOverridesProblem } from '@/collections/Organizations'
 import {
   forbidden,
   getRequestContext,
@@ -19,6 +17,7 @@ import {
   unauthorized,
   withErrors,
 } from '@/server/http'
+import { apiError } from '@/server/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,8 +57,8 @@ export const PUT = withErrors(async (request: Request, { params }: RouteContext)
   }
 
   const body = await readJson<{ overrides?: unknown }>(request)
-  const valid = validatePermissionOverrides(body.overrides ?? {})
-  if (valid !== true) throw new APIError(valid, 400)
+  const problem = permissionOverridesProblem(body.overrides ?? {})
+  if (problem) throw apiError(problem.key, 400, problem.values)
   const overrides = normalizePermissionOverrides(body.overrides)
 
   await payload.update({

@@ -27,6 +27,7 @@
 import type { Payload, PayloadRequest } from 'payload'
 
 import { afterCommit } from '@/db/after-commit'
+import { LocalizedAPIError } from '@/server/errors'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import {
@@ -685,12 +686,13 @@ export async function deleteMaintenanceOccurrences(
 
 // ---- Admin updates -------------------------------------------------------------------------------
 
-export class OccurrenceTransitionError extends Error {
+/** 409: the status cannot be posted on an occurrence in its current state. */
+export class OccurrenceTransitionError extends LocalizedAPIError {
   constructor(
     readonly from: OccurrenceState,
     readonly to: OccurrenceState,
   ) {
-    super(`Cannot post "${to}" on an occurrence that is ${from}.`)
+    super('maintenanceTransitionInvalid', 409, { from, to }, { data: { from, to } })
     this.name = 'OccurrenceTransitionError'
   }
 }

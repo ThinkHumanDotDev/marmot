@@ -415,6 +415,37 @@ describe('maintenance announcements', () => {
       expect(eventsOf(doc, 'started')).toHaveLength(0)
     })
 
+    it('never exposes announcements of a password-protected page without access', async () => {
+      const page = await createPage('locked', {
+        access: 'password',
+        password: 'correct horse battery',
+      } as Partial<StatusPage>)
+      await createDoc({
+        title: 'secret window',
+        statusPages: [page.id],
+        dateRange: { start: iso(-5 * MINUTE), end: iso(HOUR) },
+      })
+      const { GET: publicJson } = await import('@/app/api/status-pages/[slug]/public/route')
+      const denied = await publicJson(
+        new Request(`http://localhost/api/status-pages/${page.slug}/public`),
+        { params: Promise.resolve({ slug: page.slug }) },
+      )
+      expect(denied.status).toBe(401)
+      expect(await denied.text()).not.toContain('secret window')
+
+      const allowed = await publicJson(
+        new Request(
+          `http://localhost/api/status-pages/${page.slug}/public?pw=${encodeURIComponent('correct horse battery')}`,
+        ),
+        { params: Promise.resolve({ slug: page.slug }) },
+      )
+      expect(allowed.status).toBe(200)
+      const body = (await allowed.json()) as { maintenance: { title: string; state: string }[] }
+      expect(body.maintenance.map((m) => [m.title, m.state])).toEqual([
+        ['secret window', 'in-progress'],
+      ])
+    })
+
     it('keeps finished windows on the page for the configured number of hours', async () => {
       const page = await createPage('visibility', { maintenanceVisibilityHours: 2 })
       const now = Date.now()

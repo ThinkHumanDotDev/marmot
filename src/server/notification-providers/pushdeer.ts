@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { httpRequest, OK_MESSAGE, trimSlash } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -33,13 +34,16 @@ registerNotificationProvider({
   docsUrl: 'https://github.com/easychen/pushdeer',
   configSchema: pushdeerConfigSchema,
   fieldMeta: pushdeerFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = pushdeerConfigSchema.parse(raw)
+    const p = providerText(locale)
     const url = `${trimSlash(config.serverUrl.trim())}/message/push`
 
-    let title = '## Marmot Message'
-    if (monitor && heartbeat?.status === 'up') title = `## Marmot: ${monitor.name} up`
-    else if (monitor && heartbeat?.status === 'down') title = `## Marmot: ${monitor.name} down`
+    let title = `## ${p('message')}`
+    if (monitor && heartbeat?.status === 'up') title = `## ${p('namedUp', { name: monitor.name })}`
+    else if (monitor && heartbeat?.status === 'down') {
+      title = `## ${p('namedDown', { name: monitor.name })}`
+    }
 
     const response = await httpRequest(url, {
       method: 'POST',

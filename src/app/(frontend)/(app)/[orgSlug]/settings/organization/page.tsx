@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
@@ -28,7 +28,11 @@ export default async function OrganizationSettingsPage({
   if (!org) notFound()
 
   const payload = await getPayload({ config })
-  const members = await listOrgMembers(payload, org.id, { user, overrideAccess: false })
+  const members = await listOrgMembers(payload, org.id, {
+    user,
+    overrideAccess: false,
+    locale: await getLocale(),
+  })
   const role = effectiveRole(user, org.id)
 
   return (

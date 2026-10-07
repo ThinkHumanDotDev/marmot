@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -31,12 +32,13 @@ registerNotificationProvider({
   docsUrl: 'https://grafana.com/docs/oncall/latest/integrations/webhook/',
   configSchema: grafanaOncallConfigSchema,
   fieldMeta: grafanaOncallFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = grafanaOncallConfigSchema.parse(raw)
+    const p = providerText(locale)
 
     if (!heartbeat || !monitor) {
       await postJson(config.webhookUrl, {
-        title: 'General notification',
+        title: p('generalNotification'),
         message,
         state: 'alerting',
       })
@@ -45,13 +47,13 @@ registerNotificationProvider({
 
     if (heartbeat.status === 'down') {
       await postJson(config.webhookUrl, {
-        title: `${monitor.name} is down`,
+        title: p('isDown', { name: monitor.name }),
         message: heartbeat.msg ?? '',
         state: 'alerting',
       })
     } else if (heartbeat.status === 'up') {
       await postJson(config.webhookUrl, {
-        title: `${monitor.name} is up`,
+        title: p('isUp', { name: monitor.name }),
         message: heartbeat.msg ?? '',
         state: 'ok',
       })

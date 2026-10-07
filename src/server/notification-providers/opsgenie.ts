@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -35,8 +36,9 @@ registerNotificationProvider({
   docsUrl: 'https://docs.opsgenie.com/docs/alert-api',
   configSchema: opsgenieConfigSchema,
   fieldMeta: opsgenieFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = opsgenieConfigSchema.parse(raw)
+    const p = providerText(locale)
     const alertsUrl = OPSGENIE_ALERTS_URL[config.region]
     const headers = { Authorization: `GenieKey ${config.apiKey}` }
 
@@ -53,7 +55,7 @@ registerNotificationProvider({
       await postJson(
         alertsUrl,
         {
-          message: `Marmot Alert: ${monitor.name}`,
+          message: p('alertFor', { text: monitor.name }),
           alias: monitor.name,
           description: message,
           source: 'Marmot',

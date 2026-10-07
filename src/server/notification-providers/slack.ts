@@ -5,10 +5,15 @@
  */
 import { z } from 'zod'
 
-import { formatHeartbeatTime, renderMessageTemplate } from '@/server/notifications/message'
+import {
+  formatHeartbeatTime,
+  providerText,
+  renderMessageTemplate,
+} from '@/server/notifications/message'
 import { extractAddress, OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
+import type { Locale } from '@/i18n/locales'
 import type { Heartbeat, Monitor } from '@/payload-types'
 
 export const slackConfigSchema = z.object({
@@ -45,14 +50,14 @@ export const slackFieldMeta: Record<keyof SlackConfig, NotificationFieldMeta> = 
 
 const isHttpUrl = (value: string) => /^https?:\/\//i.test(value)
 
-function buildActions(monitor: Monitor) {
+function buildActions(monitor: Monitor, p: ReturnType<typeof providerText>) {
   const actions: unknown[] = []
   const address = extractAddress(monitor)
   if (isHttpUrl(address)) {
     try {
       actions.push({
         type: 'button',
-        text: { type: 'plain_text', text: 'Visit site' },
+        text: { type: 'plain_text', text: p('visitSite') },
         value: 'Site',
         url: new URL(address).toString(),
       })
@@ -68,18 +73,20 @@ export function buildSlackBlocks(
   heartbeat: Heartbeat,
   title: string,
   msg: string,
+  locale?: Locale,
 ): unknown[] {
+  const p = providerText(locale)
   const blocks: unknown[] = [
     { type: 'header', text: { type: 'plain_text', text: title } },
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Message*\n${msg}` },
-        { type: 'mrkdwn', text: `*Time*\n${formatHeartbeatTime(heartbeat)}` },
+        { type: 'mrkdwn', text: `*${p('messageField')}*\n${msg}` },
+        { type: 'mrkdwn', text: `*${p('time')}*\n${formatHeartbeatTime(heartbeat)}` },
       ],
     },
   ]
-  const actions = buildActions(monitor)
+  const actions = buildActions(monitor, p)
   if (actions.length > 0) blocks.push({ type: 'actions', elements: actions })
   return blocks
 }
@@ -113,14 +120,14 @@ registerNotificationProvider({
       return OK_MESSAGE
     }
 
-    const title = monitor.name || 'Marmot Alert'
+    const title = monitor.name || providerText(locale)('alert')
     const data: Record<string, unknown> = { ...base, text: msg, attachments: [] }
 
     if (config.richMessage) {
       data.attachments = [
         {
           color: heartbeat.status === 'up' ? '#2eb886' : '#e01e5a',
-          blocks: buildSlackBlocks(monitor, heartbeat, title, msg),
+          blocks: buildSlackBlocks(monitor, heartbeat, title, msg, locale),
         },
       ]
     } else {

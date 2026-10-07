@@ -20,12 +20,15 @@ import {
   LOCKED_PERMISSIONS,
   ROLES,
 } from '@/access/permissions'
-import { adminT } from '@/i18n/admin'
-import { defaultLocale, localeNames, locales } from '@/i18n/locales'
+import { adminGroup, adminT } from '@/i18n/admin'
+import { defaultLocale, localeNames, locales, type Locale } from '@/i18n/locales'
 import { PLANS, SUBSCRIPTION_STATUSES } from '@/lib/entitlements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 import { captureServerEvent, hashAnalyticsId } from '@/server/analytics'
+
+import { translateError, type ErrorKey, type ErrorValues } from '@/server/errors'
+import { slugMessageIn, userLocale } from '@/server/request-locale'
 
 import type { Organization, User } from '@/payload-types'
 
@@ -57,20 +60,34 @@ const ownerField: FieldAccess = ({ req, doc }) => {
   return id !== undefined && getUserRole(req.user, id) === 'owner'
 }
 
-/** `{ [permission]: minRole }` with known permissions and roles only; locked permissions refused. */
-export function validatePermissionOverrides(value: unknown): true | string {
-  if (value === undefined || value === null) return true
+/**
+ * `{ [permission]: minRole }` with known permissions and roles only; locked permissions refused.
+ * Returns the `errors.*` message describing the first problem, or `null`.
+ */
+export function permissionOverridesProblem(
+  value: unknown,
+): { key: ErrorKey; values?: ErrorValues } | null {
+  if (value === undefined || value === null) return null
   if (typeof value !== 'object' || Array.isArray(value)) {
-    return 'Permission overrides must be an object of permission → role.'
+    return { key: 'permissionOverridesObject' }
   }
   for (const [permission, role] of Object.entries(value as Record<string, unknown>)) {
-    if (!isPermission(permission)) return `Unknown permission "${permission}".`
+    if (!isPermission(permission)) return { key: 'permissionUnknown', values: { permission } }
     if (LOCKED_PERMISSIONS.includes(permission)) {
-      return `"${permission}" cannot be overridden.`
+      return { key: 'permissionLocked', values: { permission } }
     }
-    if (!isRole(role)) return `Invalid role for "${permission}".`
+    if (!isRole(role)) return { key: 'permissionRoleInvalid', values: { permission } }
   }
-  return true
+  return null
+}
+
+/** `permissionOverridesProblem` in Payload `validate` shape, with the message in `locale`. */
+export function validatePermissionOverrides(
+  value: unknown,
+  locale: Locale = defaultLocale,
+): true | string {
+  const problem = permissionOverridesProblem(value)
+  return problem ? translateError(locale, problem.key, problem.values) : true
 }
 
 /** Lowercase and trim the slug before validation so `My-Org ` becomes `my-org`. */
@@ -264,7 +281,7 @@ export const Organizations: CollectionConfig = {
   slug: 'organizations',
   admin: {
     useAsTitle: 'name',
-    group: 'Access',
+    group: adminGroup('access'),
     defaultColumns: ['name', 'slug', 'plan', 'createdAt'],
   },
   access: {
@@ -296,7 +313,8 @@ export const Organizations: CollectionConfig = {
       required: true,
       unique: true,
       index: true,
-      validate: (value: unknown) => validateOrganizationSlug(value),
+      validate: (value: unknown, { req }: { req: { user?: unknown } }) =>
+        validateOrganizationSlug(value, slugMessageIn(userLocale(req.user))),
       admin: {
         description: adminT('marmot:organizations:slugDescription'),
       },
@@ -369,7 +387,8 @@ export const Organizations: CollectionConfig = {
     {
       name: 'permissionOverrides',
       type: 'json',
-      validate: (value: unknown) => validatePermissionOverrides(value),
+      validate: (value: unknown, { req }: { req: { user?: unknown } }) =>
+        validatePermissionOverrides(value, userLocale(req.user)),
       access: {
         update: ownerField,
       },

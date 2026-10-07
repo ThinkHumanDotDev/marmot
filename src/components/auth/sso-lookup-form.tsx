@@ -1,6 +1,7 @@
 'use client'
 
 import { Building2, KeyRound } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -32,6 +33,7 @@ export function SsoLookupForm({ next, initialOptions, initialOrganization }: Sso
   const [pending, setPending] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const id = React.useId()
+  const t = useTranslations('auth.ssoLookup')
 
   async function lookup(event: React.FormEvent) {
     event.preventDefault()
@@ -47,14 +49,10 @@ export function SsoLookupForm({ next, initialOptions, initialOrganization }: Sso
         return
       }
       if (options.length === 0) {
-        setError(
-          mode === 'email'
-            ? 'No single sign-on is set up for that email domain. Sign in with your password, or ask your administrator.'
-            : 'No single sign-on is set up for that organization.',
-        )
+        setError(mode === 'email' ? t('noSsoForEmail') : t('noSsoForOrganization'))
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not look that up.')
+      setError(err instanceof Error ? err.message : t('failed'))
     } finally {
       setPending(false)
     }
@@ -65,12 +63,12 @@ export function SsoLookupForm({ next, initialOptions, initialOrganization }: Sso
       {options && options.length > 1 && (
         <div className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground">
-            {options[0].organization.name} offers several ways to sign in:
+            {t('several', { organization: options[0].organization.name })}
           </p>
           {options.map((option) => (
             <Button key={option.id} asChild variant="outline" className="w-full">
               <a href={withNext(option.loginPath, next)} rel="nofollow">
-                <KeyRound aria-hidden /> Continue with {option.name}
+                <KeyRound aria-hidden /> {t('continueWith', { connection: option.name })}
               </a>
             </Button>
           ))}
@@ -78,12 +76,12 @@ export function SsoLookupForm({ next, initialOptions, initialOrganization }: Sso
       )}
       <form onSubmit={lookup} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-2">
-          <Label htmlFor={id}>{mode === 'email' ? 'Work email' : 'Organization'}</Label>
+          <Label htmlFor={id}>{mode === 'email' ? t('workEmail') : t('organization')}</Label>
           <Input
             id={id}
             type={mode === 'email' ? 'email' : 'text'}
             autoComplete={mode === 'email' ? 'email' : 'organization'}
-            placeholder={mode === 'email' ? 'you@company.com' : 'organization-slug'}
+            placeholder={mode === 'email' ? t('emailPlaceholder') : t('organizationPlaceholder')}
             value={value}
             onChange={(event) => setValue(event.target.value)}
             autoFocus
@@ -96,7 +94,7 @@ export function SsoLookupForm({ next, initialOptions, initialOrganization }: Sso
           </p>
         )}
         <Button type="submit" className="w-full" disabled={pending || !value.trim()}>
-          <Building2 aria-hidden /> {pending ? 'Looking up…' : 'Continue'}
+          <Building2 aria-hidden /> {pending ? t('submitting') : t('submit')}
         </Button>
         <button
           type="button"
@@ -107,7 +105,7 @@ export function SsoLookupForm({ next, initialOptions, initialOrganization }: Sso
             setError(null)
           }}
         >
-          {mode === 'email' ? 'Use the organization name instead' : 'Use your work email instead'}
+          {mode === 'email' ? t('useOrganization') : t('useEmail')}
         </button>
       </form>
     </div>

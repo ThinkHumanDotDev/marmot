@@ -22,6 +22,84 @@ export const adminTranslations = {
       statusPageLanguageDescription:
         'Language visitors see the page in. "Follow the visitor" uses the browser language.',
       followVisitor: 'Follow the visitor',
+      // Select options and field group labels that are words, not product names.
+      labels: {
+        tcpPort: 'TCP Port',
+        push: 'Push',
+        group: 'Group',
+        manual: 'Manual',
+        dockerContainer: 'Docker Container',
+        httpKeyword: 'HTTP(s) - Keyword',
+        httpJsonQuery: 'HTTP(s) - Json Query',
+        grpcKeyword: 'gRPC(s) - Keyword',
+        websocketUpgrade: 'WebSocket Upgrade',
+        kafkaProducerType: 'Kafka Producer',
+        tailscalePing: 'Tailscale Ping',
+        realBrowser: 'HTTP(s) - Browser Engine (Chrome/Chromium)',
+        steam: 'Steam Game Server',
+        httpOptions: 'HTTP options',
+        keyword: 'Keyword',
+        jsonQuery: 'JSON query',
+        authentication: 'Authentication',
+        none: 'None',
+        bearerToken: 'Bearer token',
+        oauth2ClientCredentials: 'OAuth2 client credentials',
+        up: 'Up',
+        down: 'Down',
+        pending: 'Pending',
+        database: 'Database',
+        kafkaProducer: 'Kafka producer',
+        starttlsOpportunistic: 'STARTTLS if offered',
+        starttlsRequired: 'Require STARTTLS',
+        smtps: 'SMTPS (implicit TLS)',
+        starttlsIgnore: 'Ignore STARTTLS',
+        password: 'Password',
+        privateKey: 'Private key',
+        formBody: 'Form (x-www-form-urlencoded)',
+        instanceSettings: 'Instance settings',
+        dashboard: 'Dashboard',
+        statusPage: 'Status page',
+        thirdPartyApiKeys: 'Third-party API keys',
+      },
+      maintenanceStrategies: {
+        manual: 'Manual (active until you pause it)',
+        single: 'Single maintenance window',
+        'recurring-interval': 'Recurring – every N days',
+        'recurring-weekday': 'Recurring – days of the week',
+        'recurring-day-of-month': 'Recurring – days of the month',
+        cron: 'Cron expression',
+      },
+      maintenanceStatuses: {
+        inactive: 'Paused',
+        scheduled: 'Scheduled',
+        'under-maintenance': 'Under maintenance',
+        ended: 'Ended',
+        unknown: 'Unknown',
+      },
+      weekdays: {
+        '0': 'Sun',
+        '1': 'Mon',
+        '2': 'Tue',
+        '3': 'Wed',
+        '4': 'Thu',
+        '5': 'Fri',
+        '6': 'Sat',
+      },
+      lastDays: {
+        lastDay1: 'Last day of the month',
+        lastDay2: '2nd last day of the month',
+        lastDay3: '3rd last day of the month',
+        lastDay4: '4th last day of the month',
+      },
+      // Admin sidebar groups (`admin.group: adminGroup('monitoring')`).
+      groups: {
+        access: 'Access',
+        content: 'Content',
+        monitoring: 'Monitoring',
+        statistics: 'Statistics',
+        statusPages: 'Status pages',
+        system: 'System',
+      },
       // Field and collection descriptions, by collection: `marmot:<collection>:<field>Description`.
       apiKeys: {
         keyHashDescription: 'SHA-256 of the plaintext key.',
@@ -54,6 +132,9 @@ export const adminTranslations = {
         contentDescription: 'Markdown: paragraphs, **bold**, _italics_, `code` and links.',
         pinnedDescription: 'Pinned incidents are shown above the monitor groups.',
         activeDescription: 'Uncheck to resolve the incident.',
+        affectedComponentsDescription:
+          'Status page components this incident affects while it is active, with their impact.',
+        componentDescription: 'Id of a component (group row) of the status page.',
       },
       invitations: {
         tokenDescription: 'Generated on create.',
@@ -96,6 +177,7 @@ export const adminTranslations = {
         lastPushAtDescription: 'Push monitors: time of the last call to the push endpoint.',
         activeDescription: 'Paused monitors are not checked.',
         parentDescription: 'Group this monitor belongs to.',
+        publicNameDescription: 'Name shown on status pages instead of the monitor name.',
         tagsDescription: 'Tags (optionally with a value, e.g. env: prod) shown as chips.',
         notificationsDescription: 'Channels alerted when this monitor changes status.',
         weightDescription: 'Sort order on status pages.',
@@ -219,6 +301,9 @@ export const adminTranslations = {
       statusPages: {
         slugDescription: 'Public URL: /status/<slug>. Lowercase letters, numbers, hyphens.',
         publishedDescription: 'Unpublished pages return 404 to visitors.',
+        accessDescription: 'password: visitors must enter the page password first.',
+        passwordDescription:
+          'Set or change the page password. Changing it signs every visitor out.',
         autoRefreshIntervalDescription:
           'Seconds between client refreshes; 0 disables auto refresh.',
         customCSSDescription: 'Injected into the public page as a <style> tag.',
@@ -229,6 +314,29 @@ export const adminTranslations = {
         customUrlDescription: 'Link visitors to this URL instead.',
         maintenanceVisibilityHoursDescription:
           'Hours a completed or cancelled maintenance window stays on the page.',
+        homepageUrlDescription: 'Where the logo and title link to (http or https).',
+        contactUrlDescription:
+          'Contact link in the page header: an http(s) URL or mailto: address.',
+        showValuesDescription: 'Show uptime percentages and response times to visitors.',
+        defaultOpenDescription: 'Expanded when the page loads; visitors can still collapse it.',
+        componentsDescription:
+          'Components of the group: monitors, or static entries set by incidents.',
+        componentTypeDescription:
+          'monitor mirrors a monitor; static has no monitor and follows incidents and maintenance.',
+        componentNameDescription:
+          "Public name. Defaults to the monitor's public name, then its name. Required for static.",
+        componentDescriptionDescription: 'Shown to visitors as a tooltip.',
+        componentShowValuesDescription:
+          'Show uptime and response time for this component (the page setting must be on too).',
+        logoDescription: 'Shown in light mode, and in dark mode when there is no dark logo.',
+        themeDescription:
+          'auto lets visitors pick (system, light or dark); light and dark force that mode.',
+        themePresetDescription: 'Built-in palette id, e.g. default, high-contrast, ocean.',
+        themeOverridesDescription:
+          'Colour overrides per mode: { "light": { "primary": "#0b5cad" }, "dark": { … }, "radius": "0.5rem" }. Hex, rgb(), hsl() or oklch() only.',
+        bannerTextDescription: 'Replaces the automatic overall-status headline when set.',
+        logoDarkDescription: 'Shown instead of the logo in dark mode.',
+        faviconDescription: 'PNG, ICO or SVG; falls back to the logo.',
       },
       tags: {
         colorDescription: 'Hex colour of the chip, e.g. #2563EB.',
@@ -264,6 +372,17 @@ export const adminT =
  * (`LabelFunction`), field descriptions and collection descriptions (`EntityDescriptionFunction`).
  */
 export type AdminTextFunction = (args: { t: unknown }) => string
+
+/**
+ * `admin.group` label in every admin language. Payload takes a static `{ [language]: label }`
+ * map here rather than a function, so it is built from the catalogue above.
+ */
+export const adminGroup = (
+  group: keyof AdminTranslationsObject['marmot']['groups'],
+): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(adminTranslations).map(([language, t]) => [language, t.marmot.groups[group]]),
+  )
 
 export const adminI18n: Config['i18n'] = {
   supportedLanguages: { en },

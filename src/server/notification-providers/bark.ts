@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { httpRequest, OK_MESSAGE, postJson, trimSlash } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -72,13 +73,14 @@ registerNotificationProvider({
   docsUrl: 'https://github.com/Finb/Bark',
   configSchema: barkConfigSchema,
   fieldMeta: barkFieldMeta,
-  async send({ config: raw, message, heartbeat }) {
+  async send({ config: raw, message, heartbeat, locale }) {
     const config = barkConfigSchema.parse(raw)
+    const p = providerText(locale)
     const endpoint = trimSlash(config.endpoint)
 
-    let title = 'Marmot Message'
-    if (heartbeat?.status === 'up') title = 'Marmot Monitor Up'
-    else if (heartbeat?.status === 'down') title = 'Marmot Monitor Down'
+    let title = p('message')
+    if (heartbeat?.status === 'up') title = p('monitorUp')
+    else if (heartbeat?.status === 'down') title = p('monitorDown')
 
     if (config.apiVersion === 'v1') {
       const params = new URLSearchParams({ group: config.group, sound: config.sound })

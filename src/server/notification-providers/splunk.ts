@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { extractAddress, OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -45,20 +46,21 @@ registerNotificationProvider({
   docsUrl: 'https://help.victorops.com/knowledge-base/rest-endpoint-integration-guide/',
   configSchema: splunkConfigSchema,
   fieldMeta: splunkFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = splunkConfigSchema.parse(raw)
+    const p = providerText(locale)
 
-    let title = 'Marmot Alert'
+    let title = p('alert')
     let body = message
     let messageType: string = config.severity
     if (heartbeat && monitor) {
       body = heartbeat.msg || message
       if (heartbeat.status === 'up') {
         if (config.autoResolve === 'none') return 'No action required'
-        title = 'Marmot Monitor ✅ Up'
+        title = p('monitorUpIcon')
         messageType = config.autoResolve
       } else if (heartbeat.status === 'down') {
-        title = 'Marmot Monitor 🔴 Down'
+        title = p('monitorDownIcon')
       } else {
         return 'No action required'
       }
@@ -68,7 +70,7 @@ registerNotificationProvider({
     await postJson(config.restUrl, {
       message_type: messageType,
       state_message: `[${title}] [${address}] ${body}`,
-      entity_display_name: `Marmot Alert: ${monitor?.name ?? 'Test'}`,
+      entity_display_name: p('alertFor', { text: monitor?.name ?? p('test') }),
       entity_id: monitor ? `Marmot/${monitor.id}` : 'Marmot/test',
     })
     return OK_MESSAGE

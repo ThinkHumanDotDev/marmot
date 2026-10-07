@@ -1,7 +1,7 @@
 import type { CollectionConfig, FieldAccess } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 
 /**
  * Organization API keys (`api-key:*` permissions, admin and owner only). A key authenticates
@@ -22,7 +22,7 @@ export const ApiKeys: CollectionConfig = {
   slug: 'api-keys',
   admin: {
     useAsTitle: 'name',
-    group: 'Access',
+    group: adminGroup('access'),
     defaultColumns: ['name', 'prefix', 'organization', 'active', 'expiresAt', 'lastUsedAt'],
   },
   access: {

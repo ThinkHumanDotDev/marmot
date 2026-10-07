@@ -10,6 +10,7 @@ import {
   resolveOrgRequest,
 } from '@/server/notifications/api'
 import { toDomainRow } from '@/server/sso/domain-rows'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,7 +44,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const body = await readJson(request)
   const parsed = createSchema.safeParse(body)
-  if (!parsed.success) return jsonError(400, 'domain is required')
+  if (!parsed.success) return jsonError(400, errorText(request, 'domainRequired'))
 
   try {
     const doc = (await ctx.payload.create({
@@ -56,12 +57,10 @@ export async function POST(request: Request, { params }: RouteContext) {
     })) as SsoDomain
     return Response.json({ doc: toDomainRow(doc) }, { status: 201 })
   } catch (error) {
-    const message = errorMessage(error)
+    const message = errorMessage(error, request)
     return jsonError(
       errorStatus(error),
-      /unique|duplicate|already/i.test(message)
-        ? 'This domain is already claimed by an organization.'
-        : message,
+      /unique|duplicate|already/i.test(message) ? errorText(request, 'domainClaimed') : message,
     )
   }
 }

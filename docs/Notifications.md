@@ -45,8 +45,10 @@ it is DOWN. Everything runs in the worker process (`src/worker.ts`).
 The default message is `[monitor name] [✅ Up|🔴 Down|⚠️ Pending|🔧 Maintenance] <heartbeat message>`.
 The status labels, the test message and the certificate/domain expiry warnings are written in the
 organization's language (`organizations.settings.language`, English by default); the bracketed layout
-and the `{{ status }}` template variable follow it. Provider-specific titles (Discord embeds, Slack
-blocks and the like) are still English.
+and the `{{ status }}` template variable follow it, and so do provider-specific titles and field names
+(Discord embeds, Slack blocks, Teams cards and the like). Product names, payload keys and identifiers
+(`source`, `alias`, dedup keys) stay as they are. The channel form shows provider and field labels in
+the user's language.
 
 ### Testing a channel
 

@@ -46,7 +46,7 @@ import {
   MAX_INTERVAL_DAYS,
   SAME_AS_SERVER,
   toDateTimeLocal,
-  WEEKDAY_OPTIONS,
+  WEEKDAY_ORDER,
   type DayOfMonthValue,
   type MaintenanceFormInput,
   type MaintenanceFormValues,
@@ -443,7 +443,7 @@ export function MaintenanceForm({
     [tAnnounce],
   )
   const weekdayOptions = React.useMemo<{ value: WeekdayValue; label: string }[]>(
-    () => WEEKDAY_OPTIONS.map(({ value }) => ({ value, label: tWeekday(value) })),
+    () => WEEKDAY_ORDER.map((value) => ({ value, label: tWeekday(value) })),
     [tWeekday],
   )
 

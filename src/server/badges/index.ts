@@ -7,6 +7,7 @@ import type { Payload } from 'payload'
 import type { Monitor } from '@/payload-types'
 import { getAvgPing, getUptime } from '@/server/stats/uptime-calculator'
 import { readCertInfo } from '@/server/metrics/prometheus'
+import { errorText } from '@/server/request-locale'
 import { badgeAccess } from './access'
 import {
   badgeParamsFromSearch,
@@ -45,14 +46,16 @@ export async function serveBadge(
   segments: string[],
 ): Promise<Response> {
   const [typeSegment, durationSegment, ...rest] = segments
-  if (!isBadgeType(typeSegment) || rest.length > 0) return jsonError(404, 'Unknown badge')
+  if (!isBadgeType(typeSegment) || rest.length > 0)
+    return jsonError(404, errorText(request, 'badgeUnknown'))
   const type: BadgeType = typeSegment
   const wantsDuration = type === 'uptime' || type === 'ping' || type === 'avg-response'
-  if (!wantsDuration && durationSegment !== undefined) return jsonError(404, 'Unknown badge')
+  if (!wantsDuration && durationSegment !== undefined)
+    return jsonError(404, errorText(request, 'badgeUnknown'))
 
   const range = wantsDuration ? parseBadgeDuration(durationSegment) : null
   if (wantsDuration && !range) {
-    return jsonError(400, 'Invalid duration; expected 24h, 30d or 1y')
+    return jsonError(400, errorText(request, 'badgeDurationInvalid'))
   }
 
   const monitor = (await payload
@@ -64,9 +67,10 @@ export async function serveBadge(
       disableErrors: true,
     })
     .catch(() => null)) as Monitor | null
-  if (!monitor) return jsonError(404, 'Monitor not found')
+  if (!monitor) return jsonError(404, errorText(request, 'monitorNotFound'))
 
-  if (!(await badgeAccess(payload, monitor, request))) return jsonError(404, 'Monitor not found')
+  const access = await badgeAccess(payload, monitor, request)
+  if (!access) return jsonError(404, errorText(request, 'monitorNotFound'))
 
   const data: BadgeData = { range: range ?? undefined }
   switch (type) {
@@ -90,5 +94,10 @@ export async function serveBadge(
 
   const params = badgeParamsFromSearch(new URL(request.url).searchParams)
   const svg = renderBadge(buildBadge(type, data, params))
-  return new Response(svg, { status: 200, headers: BADGE_HEADERS })
+  // Badges served through a password-protected status page must not land in shared caches.
+  const headers =
+    access === 'status-page'
+      ? { ...BADGE_HEADERS, 'Cache-Control': 'private, no-store' }
+      : BADGE_HEADERS
+  return new Response(svg, { status: 200, headers })
 }
