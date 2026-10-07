@@ -80,6 +80,8 @@ const schema = z.object({
   KEEP_DATA_PERIOD_DAYS: z.coerce.number().int().default(365),
   // Polling engine (worker): parallel checks per worker process.
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(10),
+  // On-demand checks ("Check now" and ad-hoc tests) allowed per organization and minute.
+  ON_DEMAND_CHECKS_PER_MINUTE: z.coerce.number().int().positive().default(30),
   // Docker monitors: allow Docker hosts that connect through a local unix socket (the worker's own
   // daemon). Turn off on shared instances where organizations must not reach the host's Docker.
   DOCKER_SOCKET_ENABLED: booleanish.default(true),

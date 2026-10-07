@@ -614,6 +614,7 @@ export interface Heartbeat {
   ping?: number | null;
   duration?: number | null;
   important?: boolean | null;
+  trigger?: 'manual' | null;
   retries?: number | null;
   downCount?: number | null;
   time: string;
@@ -1521,6 +1522,7 @@ export interface HeartbeatsSelect<T extends boolean = true> {
   ping?: T;
   duration?: T;
   important?: T;
+  trigger?: T;
   retries?: T;
   downCount?: T;
   time?: T;

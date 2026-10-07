@@ -46,6 +46,11 @@ export interface CheckResult {
    * flipping (the verdict does not depend on the target's state).
    */
   blocked?: boolean
+  /**
+   * Extra fields the type set on `ctx.heartbeat` besides status/msg/ping/duration (e.g.
+   * `statusCode`). Not persisted; returned by on-demand checks.
+   */
+  details?: Record<string, unknown>
 }
 
 /** Subset of the monitor document the state machine needs. */

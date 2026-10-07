@@ -6,7 +6,8 @@ import { getTranslations } from 'next-intl/server'
 
 import { CertificatePanel } from '@/components/monitors/certificate-panel'
 import { monitorTarget, useMonitorFormat } from '@/components/monitors/format'
-import { HeartbeatBar, type BeatLike } from '@/components/monitors/heartbeat-bar'
+import { type BeatLike } from '@/components/monitors/heartbeat-bar'
+import { LiveHeartbeatBar } from '@/components/monitors/live-heartbeat-bar'
 import { ImportantEventsTable } from '@/components/monitors/important-events-table'
 import { MonitorActions } from '@/components/monitors/monitor-actions'
 import { MonitorChannelsCard } from '@/components/monitors/monitor-channels-card'
@@ -163,7 +164,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
           <MonitorActions
             orgId={ctx.org.id}
             orgSlug={orgSlug}
-            monitor={{ id: monitor.id, name: monitor.name, active }}
+            monitor={{ id: monitor.id, name: monitor.name, active, type: monitor.type }}
             canEdit={ctx.allowed('monitor:update')}
             canDelete={ctx.allowed('monitor:delete')}
           />
@@ -184,7 +185,11 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4">
-            <HeartbeatBar beats={latest.docs.map(toBeat)} timeZone={timeZone} />
+            <LiveHeartbeatBar
+              monitorId={String(monitor.id)}
+              beats={latest.docs.map(toBeat)}
+              timeZone={timeZone}
+            />
           </CardContent>
         </Card>
 

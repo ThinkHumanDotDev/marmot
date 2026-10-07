@@ -126,6 +126,8 @@ export const adminTranslations = {
         pingDescription: 'Response time in milliseconds (null when not measured).',
         durationDescription: 'Seconds since the previous heartbeat of this monitor.',
         importantDescription: 'True when the status changed compared to the previous heartbeat.',
+        triggerDescription:
+          'What started the check: "manual" for Check now; empty for scheduled checks and pushes.',
       },
       incidents: {
         organizationDescription: 'Derived from the status page.',

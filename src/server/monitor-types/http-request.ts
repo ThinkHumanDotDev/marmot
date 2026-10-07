@@ -400,6 +400,8 @@ export async function performHttpCheck(ctx: MonitorCheckContext): Promise<HttpCh
       ping,
     }
     ctx.heartbeat.ping = ping
+    // Reported by on-demand checks ("Check now", "Test"); not stored on heartbeats.
+    ctx.heartbeat.statusCode = res.statusCode
     if (!checkStatusCode(res.statusCode, ctx.monitor.acceptedStatusCodes ?? ['200-299'])) {
       throw new Error(`${res.statusCode} - ${statusText}`)
     }

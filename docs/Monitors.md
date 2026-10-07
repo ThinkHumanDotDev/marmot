@@ -71,10 +71,27 @@ uptime; it updates over the WebSocket connection without reloading. The detail p
 - the certificate panel for HTTPS targets (issuer, expiry; filled by the certificate job landing in the
   current release);
 - the notification channels the monitor alerts through;
-- actions: **Pause/Resume**, **Edit**, **Clone**, **Delete**.
+- actions: **Check now**, **Pause/Resume**, **Edit**, **Clone**, **Delete**.
 
 Statistics are kept as minutely (24 h), hourly (30 d) and daily (`KEEP_DATA_PERIOD_DAYS`, default one
 year) buckets, so a monitor's history survives the pruning of raw heartbeats after 24 hours.
+
+## Check now and Test
+
+- **Check now** (detail page, or the command palette on a monitor's page) runs the monitor's check
+  immediately instead of waiting for the next interval. The heartbeat is stored with `trigger: manual` and
+  counts like any other beat: it feeds retries, status, statistics and notifications, and the heartbeat
+  bar updates live. A dialog shows the result: status, message, response time, HTTP status code,
+  certificate and any check-specific details (such as assertion results).
+- **Test** in the monitor form runs the configuration you are editing once, before saving, and shows the
+  same result under the form. Nothing is stored.
+
+Both run on the worker, never in the web process, with the monitor's timeout, its proxy and the
+[outbound address guard](Security.md) exactly like scheduled checks; with `MONITOR_DENY_PRIVATE_ADDRESSES`
+on, private and link-local targets are refused. They need `monitor:update` (Test: `monitor:create` or
+`monitor:update`), so viewers cannot trigger checks, and share a budget of `ON_DEMAND_CHECKS_PER_MINUTE`
+(default 30) per organization. Push monitors are fed by your system and cannot be checked on demand;
+paused monitors must be resumed first. Group and manual monitors cannot be tested before saving.
 
 ## Groups
 
@@ -149,9 +166,51 @@ same permissions as the UI (`monitor:read` for viewers, `monitor:create|update|d
 | `POST /api/orgs/:orgId/monitors/:id/pause`       | Pause                                             |
 | `POST /api/orgs/:orgId/monitors/:id/resume`      | Resume                                            |
 | `POST /api/orgs/:orgId/monitors/:id/clone`       | Clone (returns the new, paused monitor)           |
+| `POST /api/orgs/:orgId/monitors/:id/check`       | Check now (see below)                             |
+| `POST /api/orgs/:orgId/checks`                   | Test an unsaved configuration (see below)         |
 | `GET /api/monitors/:id/stats?range=24h\|30d\|1y` | Uptime, average ping and buckets for a range      |
 | `GET /api/monitors` (Payload REST)               | List with Payload's `where`/`limit`/`sort` syntax |
 
 Requests from outside the browser must send the `payload-token` cookie or a `JWT` `Authorization` header
 (`POST /api/users/login` returns one) and an `Origin` matching `NEXT_PUBLIC_SERVER_URL`. Organization API
 keys give machine access to badges and metrics ([Integrations](Integrations.md)).
+
+### On-demand checks
+
+`POST /api/orgs/:orgId/monitors/:id/check` enqueues a check of the monitor on the worker (concurrent
+requests for the same monitor share one job) and waits up to the monitor's timeout for the result:
+
+```json
+{
+  "status": "down",
+  "ok": false,
+  "msg": "500 - Internal Server Error",
+  "ping": 41,
+  "statusCode": 500,
+  "startedAt": "2026-10-07T09:00:00.000Z",
+  "elapsedMs": 45,
+  "blocked": false,
+  "maintenance": false,
+  "tls": null,
+  "details": {},
+  "recorded": true,
+  "heartbeat": {
+    "id": "123",
+    "status": "down",
+    "time": "2026-10-07T09:00:00.045Z",
+    "important": true
+  }
+}
+```
+
+`status` is the beat's status after `upsideDown` and retries (a failing check with retries left is
+`pending`); `details` carries check-specific fields such as assertion results. Query parameters:
+`wait=false` answers `202 { "jobId", "monitorId", "status": "queued" }` at once (the heartbeat arrives over
+realtime), `record=false` runs the check without storing a heartbeat or changing the monitor's state.
+
+`POST /api/orgs/:orgId/checks` takes the same body as creating a monitor and returns the same result
+shape with `recorded: false`; nothing is stored. Errors: `400` invalid body, untestable type (push, group,
+manual) or a target the address guard refuses; `403` without the permission; `404` unknown monitor; `409`
+paused or push monitor; `429` organization budget used up (`Retry-After`); `504` no result in time (is the
+worker running?). Organization API keys will be accepted here once API keys can call the management API
+(#115); until then use a session as described above.
