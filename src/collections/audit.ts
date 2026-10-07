@@ -70,6 +70,20 @@ export const AUDITED: Partial<Record<CollectionSlug, AuditCollectionOptions>> = 
     toggle: { field: 'active', on: 'api_key.enabled', off: 'api_key.disabled' },
     deleteAction: 'api_key.revoked',
   },
+  'webhook-endpoints': {
+    entityType: 'webhook_endpoint',
+    label: (doc) => (typeof doc.url === 'string' ? doc.url : null),
+    // Delivery bookkeeping of the worker; disabling is recorded through the `active` toggle.
+    ignore: [
+      'consecutiveFailures',
+      'lastDeliveryAt',
+      'lastDeliveryState',
+      'disabledReason',
+      'disabledAt',
+      'previousSecretExpiresAt',
+    ],
+    toggle: { field: 'active', on: 'webhook_endpoint.enabled', off: 'webhook_endpoint.disabled' },
+  },
   'sso-connections': { entityType: 'sso_connection' },
   'sso-domains': { entityType: 'sso_domain' },
   invitations: { entityType: 'invitation' },
@@ -94,6 +108,7 @@ export const NOT_AUDITED: Partial<Record<CollectionSlug, string>> = {
   'stat-daily': 'high-volume rollups',
   'notification-sent-history': 'delivery log',
   'subscriber-deliveries': 'delivery log',
+  'webhook-deliveries': 'delivery log',
   'maintenance-occurrences':
     'generated from the maintenance schedule; posted updates are audited as maintenance_occurrence.updated',
   'audit-logs': 'the audit log itself',

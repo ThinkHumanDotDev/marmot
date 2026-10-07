@@ -107,6 +107,17 @@ export const adminTranslations = {
         activeDescription: 'Disabled keys are rejected.',
         expiresAtDescription: 'Leave empty for a key that never expires.',
       },
+      webhookEndpoints: {
+        description:
+          'Outbound event webhooks of an organization. Manage them under Settings → Webhooks; the signing secret is shown once.',
+        eventsDescription: 'Event types, group wildcards (incident.*) or * for every event.',
+        consecutiveFailuresDescription:
+          'Deliveries in a row that failed for good; the endpoint is disabled at WEBHOOK_DISABLE_AFTER_FAILURES.',
+      },
+      webhookDeliveries: {
+        description:
+          'Delivery log of outbound webhooks, pruned after WEBHOOK_DELIVERY_RETENTION_DAYS.',
+      },
       auditLogs: {
         description:
           'Security events and changes to organization resources. Rows are written by the server and cannot be edited.',

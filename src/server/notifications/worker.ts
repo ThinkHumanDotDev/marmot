@@ -15,6 +15,8 @@ import {
   type SubscriberJobData,
 } from '@/server/status-pages/subscribers/queue'
 import { processSubscriberJob } from '@/server/status-pages/subscribers/worker'
+import { processWebhookDeliveryJob } from '@/server/webhooks/deliver'
+import { isWebhookJobName, type WebhookDeliveryJobData } from '@/server/webhooks/queue'
 
 const log = childLogger('notifications:worker')
 
@@ -123,8 +125,9 @@ export interface StartNotificationWorkerOptions extends QueueFactoryOptions {
 }
 
 /**
- * Start the BullMQ worker consuming the notifications queue: monitor alerts (`notify`) and status
- * page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`).
+ * Start the BullMQ worker consuming the notifications queue: monitor alerts (`notify`), status
+ * page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`) and outbound webhook deliveries
+ * (`webhook-delivery`).
  */
 export function startNotificationWorker(
   payload: Payload,
@@ -137,6 +140,10 @@ export function startNotificationWorker(
       // Subscriber jobs share the queue; their data has another shape.
       if (isSubscriberJobName(job.name)) {
         await processSubscriberJob(payload, job as unknown as Job<SubscriberJobData>)
+        return
+      }
+      if (isWebhookJobName(job.name)) {
+        await processWebhookDeliveryJob(payload, job as unknown as Job<WebhookDeliveryJobData>)
         return
       }
       await processNotificationJob(payload, job)

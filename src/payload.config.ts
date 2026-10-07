@@ -13,6 +13,7 @@ import { getPlugins } from './plugins'
 import { getEmailAdapter } from './server/email/adapter'
 import { allowedOrigins } from './server/security/origins'
 import { registerSubscriberListeners } from './server/status-pages/subscribers/events'
+import { registerWebhookListeners } from './server/webhooks/events'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -55,8 +56,10 @@ export default buildConfig({
   plugins: getPlugins(),
   // Incident updates and maintenance events become status page subscriber notifications (#104),
   // in every process: incidents are posted by the web process, maintenance moves in both.
+  // Outbound webhooks (#157) listen to the same events plus the audit bus and heartbeats.
   onInit: () => {
     registerSubscriberListeners()
+    registerWebhookListeners()
   },
   telemetry: false,
 })

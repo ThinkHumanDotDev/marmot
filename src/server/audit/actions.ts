@@ -26,6 +26,7 @@ export const AUDIT_RESOURCE_TYPES = [
   'sso_domain',
   'invitation',
   'organization',
+  'webhook_endpoint',
 ] as const
 export type AuditResourceType = (typeof AUDIT_RESOURCE_TYPES)[number]
 
@@ -72,6 +73,8 @@ export const SPECIAL_ACTIONS = [
   'api_key.enabled',
   'api_key.disabled',
   'api_key.revoked',
+  'webhook_endpoint.enabled',
+  'webhook_endpoint.disabled',
   'invitation.accepted',
   'member.role_changed',
   'member.removed',

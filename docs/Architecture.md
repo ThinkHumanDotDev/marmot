@@ -212,6 +212,21 @@ incidents naming it and computes `overall` from both: a `major_outage` component
 partial one as not fully up, a degraded one (incident impact or degraded monitor, `effectiveImpact()`) as
 degraded, and incidents without components raise the page to `degraded`, `partial` or `down`. See [Status pages](Status-Pages.md) for the routes and payload.
 
+### Outbound webhooks
+
+`registerWebhookListeners()` (`src/server/webhooks/events.ts`) also runs from `onInit` and turns four
+sources into organization events: the audit bus (`onAuditEvent`, published after the audited write
+committed, so resource events reuse the audit log's redacted before/after values), notifying heartbeats
+(`monitor.down|up|degraded`), posted incident updates (deferred with `afterCommit`) and maintenance events.
+`emitWebhookEvent()` writes one `webhook-deliveries` row per active `webhook-endpoints` document of the
+organization whose `events` match (exact type, `<group>.*` or `*`) and enqueues a `webhook-delivery` job
+(`whd-<delivery>`) on `marmot:notifications`; the notification worker routes it to
+`processWebhookDeliveryJob()` (`deliver.ts`): a signed POST through `guardedFetch`, twelve attempts with
+exponential backoff from 40 s, the outcome recorded on the row, and the endpoint disabled (admins emailed)
+after `WEBHOOK_DISABLE_AFTER_FAILURES` deliveries in a row failed for good. Test events and redeliveries are
+sent synchronously from the web process (`deliverNow`). Retention prunes the log after
+`WEBHOOK_DELIVERY_RETENTION_DAYS`. See [Integrations](Integrations.md#outbound-webhooks).
+
 ## Realtime
 
 The realtime process (`src/realtime.ts` → `createRealtimeServer()` in `src/server/realtime/server.ts`) is

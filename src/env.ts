@@ -80,6 +80,10 @@ const schema = z.object({
   KEEP_DATA_PERIOD_DAYS: z.coerce.number().int().default(365),
   // Audit log rows are pruned after this many days by the retention job; 0 keeps them forever.
   AUDIT_LOG_RETENTION_DAYS: z.coerce.number().int().min(0).default(365),
+  // Outbound webhooks (#157): days the delivery log keeps a delivery, and how many deliveries in a
+  // row must fail (after their retries) before an endpoint is disabled (0 never disables).
+  WEBHOOK_DELIVERY_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(14),
+  WEBHOOK_DISABLE_AFTER_FAILURES: z.coerce.number().int().min(0).default(5),
   // Polling engine (worker): parallel checks per worker process.
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(10),
   // Docker monitors: allow Docker hosts that connect through a local unix socket (the worker's own

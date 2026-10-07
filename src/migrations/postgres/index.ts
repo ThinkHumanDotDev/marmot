@@ -32,6 +32,7 @@ import * as migration_20261007_085940_status_page_subscribers from './20261007_0
 import * as migration_20261007_094147_templates from './20261007_094147_templates';
 import * as migration_20261007_103631_monitor_degraded_state from './20261007_103631_monitor_degraded_state';
 import * as migration_20261007_135854_audit_log_coverage from './20261007_135854_audit_log_coverage';
+import * as migration_20261007_145757_outbound_webhooks from './20261007_145757_outbound_webhooks';
 
 export const migrations = [
   {
@@ -202,6 +203,11 @@ export const migrations = [
   {
     up: migration_20261007_135854_audit_log_coverage.up,
     down: migration_20261007_135854_audit_log_coverage.down,
-    name: '20261007_135854_audit_log_coverage'
+    name: '20261007_135854_audit_log_coverage',
+  },
+  {
+    up: migration_20261007_145757_outbound_webhooks.up,
+    down: migration_20261007_145757_outbound_webhooks.down,
+    name: '20261007_145757_outbound_webhooks'
   },
 ];
