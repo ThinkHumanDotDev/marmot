@@ -9,6 +9,8 @@
  */
 import { defaultLocale, type Locale } from '@/i18n/locales'
 import type { Messages } from '@/i18n/messages'
+import type { ChannelEvent } from '@/lib/notification-events'
+import { humanDuration } from '@/lib/validation/monitor'
 import type { Heartbeat, Monitor } from '@/payload-types'
 import { serverTranslator } from '@/server/i18n'
 import { extractAddress } from '@/server/notification-providers/http'
@@ -51,11 +53,29 @@ export function timeLine(heartbeat: Heartbeat | null, locale: Locale = defaultLo
   })
 }
 
-/** `[name] [🔴 Down] msg` — what every provider sends unless it formats richer content. */
+/** What a message is about, beyond the monitor and heartbeat (#126). */
+export interface MessageExtras {
+  /** Why the channel is told (`down`, `up`, …); null for test messages without an event. */
+  event?: ChannelEvent | null
+  /** How long the monitor was DOWN, on `up` (recovery) messages; null when unknown. */
+  downtimeSeconds?: number | null
+}
+
+/** `1 hour 5 minutes` in `locale` (`common.duration.*`). */
+export function formatDowntime(seconds: number, locale: Locale = defaultLocale): string {
+  const t = serverTranslator(locale)
+  return humanDuration(seconds, (unit, count) => t(`common.duration.${unit}`, { count }))
+}
+
+/**
+ * `[name] [🔴 Down] msg` — what every provider sends unless it formats richer content. Recovery
+ * messages with a known downtime end with ` (down for 5 minutes 3 seconds)`.
+ */
 export function buildDefaultMessage(
   monitor: Monitor | null,
   heartbeat: Heartbeat | null,
   locale: Locale = defaultLocale,
+  extras: MessageExtras = {},
 ): string {
   const t = serverTranslator(locale)
   const name = monitor?.name ?? 'Marmot'
@@ -65,22 +85,47 @@ export function buildDefaultMessage(
     (heartbeat
       ? t('notifications.messages.noMessage')
       : t('notifications.messages.testNotification'))
-  return `[${name}] [${label}] ${msg}`
+  const downtime =
+    extras.event === 'up' && extras.downtimeSeconds != null && extras.downtimeSeconds > 0
+      ? t('notifications.messages.downtimeSuffix', {
+          duration: formatDowntime(extras.downtimeSeconds, locale),
+        })
+      : ''
+  return `[${name}] [${label}] ${msg}${downtime}`
 }
 
-/** Message used by the "Test" button. */
-export function buildTestMessage(channelName?: string, locale: Locale = defaultLocale): string {
+/** Display name of a channel event in `locale` (`notifications.events.*`). */
+export function channelEventLabel(event: ChannelEvent, locale: Locale = defaultLocale): string {
+  return serverTranslator(locale)(`notifications.events.${event}.label`)
+}
+
+/**
+ * Message used by the "Test" button. With `event` it is the sample of that event
+ * (`[Marmot] [⚠️ Test] Down: "Ops" is configured correctly.`).
+ */
+export function buildTestMessage(
+  channelName?: string,
+  locale: Locale = defaultLocale,
+  event?: ChannelEvent | null,
+): string {
   const t = serverTranslator(locale)
   const text = channelName
     ? t('notifications.messages.testConfigured', { channel: channelName })
     : t('notifications.messages.testing')
-  return `[Marmot] [${statusLabel(null, locale)}] ${text}`
+  const prefix = event ? `${channelEventLabel(event, locale)}: ` : ''
+  return `[Marmot] [${statusLabel(null, locale)}] ${prefix}${text}`
 }
 
 /** Variables available to `{{ }}` templates. Keep this list in `docs/Notifications.md`. */
 export interface TemplateContext {
   msg: string
   status: string
+  /** Channel event (`down`, `up`, `degraded`, `reminder`, `certificate`, `maintenance`) or ''. */
+  event: string
+  /** Downtime of a recovery (`5 minutes 3 seconds`) or ''. */
+  downtime: string
+  /** Downtime of a recovery in seconds, or ''. */
+  downtimeSeconds: string
   name: string
   hostnameOrURL: string
   monitor: {
@@ -111,10 +156,18 @@ export function buildTemplateContext(
   monitor: Monitor | null,
   heartbeat: Heartbeat | null,
   locale: Locale = defaultLocale,
+  extras: MessageExtras = {},
 ): TemplateContext {
+  const downtimeSeconds =
+    extras.downtimeSeconds != null && extras.downtimeSeconds > 0
+      ? Math.round(extras.downtimeSeconds)
+      : null
   return {
     msg: message,
     status: statusLabel(heartbeat?.status, locale),
+    event: extras.event ?? '',
+    downtime: downtimeSeconds !== null ? formatDowntime(downtimeSeconds, locale) : '',
+    downtimeSeconds: downtimeSeconds !== null ? String(downtimeSeconds) : '',
     name:
       monitor?.name ?? serverTranslator(locale)('notifications.messages.monitorNameUnavailable'),
     hostnameOrURL: monitor ? extractAddress(monitor) : 'testing.hostname',
@@ -165,15 +218,19 @@ export function renderTemplate(template: string, context: TemplateContext): stri
   return template.replace(PLACEHOLDER, (_match, path: string) => lookup(context, path))
 }
 
-/** Convenience: render against monitor/heartbeat/message in one call. */
+/**
+ * Convenience: render against monitor/heartbeat/message in one call. Providers pass the send
+ * context's `event` and `downtimeSeconds` as `extras` so `{{ event }}` and `{{ downtime }}` work.
+ */
 export function renderMessageTemplate(
   template: string,
   message: string,
   monitor: Monitor | null,
   heartbeat: Heartbeat | null,
   locale: Locale = defaultLocale,
+  extras: MessageExtras = {},
 ): string {
-  return renderTemplate(template, buildTemplateContext(message, monitor, heartbeat, locale))
+  return renderTemplate(template, buildTemplateContext(message, monitor, heartbeat, locale, extras))
 }
 
 /**

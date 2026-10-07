@@ -103,7 +103,9 @@ assignments are listed in the report as skipped.
 **Notification channels** — the Kuma provider names below map to Marmot providers; their config keys are
 translated one by one (`src/server/import-export/kuma-notifications.ts`) and validated against the Marmot
 provider's schema. Channels of unsupported providers, or with settings the schema rejects, are skipped with
-the reason.
+the reason. Uptime Kuma has no per-channel event filters, so imported channels get Marmot's defaults (down,
+recovery, reminders, certificate and domain expiry; see [Notifications](Notifications.md#event-filters)).
+Marmot exports carry each channel's `events`; files without them import with the defaults.
 
 `discord`, `slack`, `telegram`, `teams`, `ntfy`, `gotify`, `pushover`, `matrix`, `webhook`, `smtp`,
 `mattermost`, `rocket.chat`, `GoogleChat`, `PagerDuty`, `Opsgenie`, `apprise`, `signal`, `HomeAssistant`,
@@ -130,6 +132,7 @@ not contain. The "default enabled" flag is kept; "apply to all existing monitors
       "name": "Ops Slack",
       "type": "slack",
       "config": { "webhookUrl": "..." },
+      "events": ["down", "up", "reminder", "certificate"],
       "isDefault": true,
       "active": true
     }

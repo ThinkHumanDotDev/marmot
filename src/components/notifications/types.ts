@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { normalizeChannelEvents, type ChannelEvent } from '@/lib/notification-events'
 import type { Notification } from '@/payload-types'
 import type {
   NotificationFieldDescriptor,
@@ -14,6 +15,8 @@ export interface NotificationRow {
   name: string
   type: string
   config: Record<string, unknown>
+  /** Events the channel is told about (never empty: the defaults when none were chosen). */
+  events: ChannelEvent[]
   isDefault: boolean
   active: boolean
   lastSentAt: string | null
@@ -38,6 +41,7 @@ export function toNotificationRow(doc: Notification): NotificationRow {
       doc.config && typeof doc.config === 'object' && !Array.isArray(doc.config)
         ? (doc.config as Record<string, unknown>)
         : {},
+    events: normalizeChannelEvents(doc.events),
     isDefault: Boolean(doc.isDefault),
     active: doc.active !== false,
     lastSentAt: doc.lastSentAt ?? null,
@@ -50,6 +54,7 @@ export type NotificationInput = {
   name: string
   type: string
   config: Record<string, unknown>
+  events: ChannelEvent[]
   isDefault: boolean
   applyExisting: boolean
   active: boolean
@@ -68,6 +73,8 @@ export interface ChannelMonitorRow {
 export interface TestResult {
   ok: boolean
   result?: string
+  /** Events a sample was sent for. */
+  events?: ChannelEvent[]
   error?: string
 }
 
@@ -108,6 +115,7 @@ export const notificationsApi = {
       type?: string
       config?: Record<string, unknown>
       name?: string
+      events?: ChannelEvent[]
     },
   ) => api.post<TestResult>(`${base(orgId)}/test`, body),
 }

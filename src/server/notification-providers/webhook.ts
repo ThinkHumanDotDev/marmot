@@ -50,7 +50,7 @@ registerNotificationProvider({
   group: 'generic',
   configSchema: webhookConfigSchema,
   fieldMeta: webhookFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat, locale }) {
+  async send({ config: raw, message, monitor, heartbeat, locale, event, downtimeSeconds }) {
     const config = webhookConfigSchema.parse(raw)
     const headers = parseHeadersJson(config.additionalHeaders)
     const data = { heartbeat, monitor, msg: message }
@@ -78,6 +78,7 @@ registerNotificationProvider({
         monitor,
         heartbeat,
         locale,
+        { event, downtimeSeconds },
       )
       await httpRequest(config.url, {
         method: config.method,

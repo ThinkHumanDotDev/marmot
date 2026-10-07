@@ -72,9 +72,9 @@ non-important heartbeats older than 24 h.
 ## Notifications
 
 `notifications` documents (org-scoped: `name`, `type` = provider slug, `config` validated against the
-provider's zod schema, `isDefault`, `active`, `lastSentAt`, `lastError`) are attached to monitors through
+provider's zod schema, `events` filter, `isDefault`, `active`, `lastSentAt`, `lastError`) are attached to monitors through
 `monitors.notifications`. When a beat has `notify = true` the worker's heartbeat listener enqueues one BullMQ
-job per active attached channel on `marmot:notifications` (job id `notif:<channel>:<heartbeat>` dedupes, 3
+job per active attached channel that selected the beat's event on `marmot:notifications` (job id `notif:<channel>:<heartbeat>` dedupes, 3
 attempts with exponential backoff); the notification worker renders `[name] [🔴 Down] msg`, calls the
 provider's `send()` and records the outcome on the channel. Providers self-register in
 `src/server/notification-providers/`; see [Notifications](Notifications.md).

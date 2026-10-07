@@ -10,6 +10,7 @@ import type {
  * writes it (or only reports, on a dry run).
  */
 import type { ImportFormat, SkippedItem } from '@/lib/import-export'
+import type { ChannelEvent } from '@/lib/notification-events'
 import type { MonitorFormValues } from '@/lib/validation/monitor'
 import type { Incident, StatusPage } from '@/payload-types'
 
@@ -20,6 +21,8 @@ export interface PlannedNotification {
   /** Marmot provider slug (`src/server/notification-providers`). */
   type: string
   config: Record<string, unknown>
+  /** Event filter (#126); absent (Uptime Kuma, older Marmot exports) means the defaults. */
+  events?: ChannelEvent[]
   isDefault: boolean
   active: boolean
 }
