@@ -18,6 +18,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Plus, Trash2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -67,10 +68,14 @@ function fromPage(page: StatusPage): DraftGroup[] {
   }))
 }
 
-function toPatch(groups: DraftGroup[], monitors: MonitorOption[]): StatusPage['groups'] {
+function toPatch(
+  groups: DraftGroup[],
+  monitors: MonitorOption[],
+  untitled: string,
+): StatusPage['groups'] {
   const byId = new Map(monitors.map((m) => [String(m.id), m.id]))
   return groups.map((group) => ({
-    name: group.name.trim() || 'Untitled group',
+    name: group.name.trim() || untitled,
     monitors: group.monitors.flatMap((row) => {
       const id = byId.get(row.monitorId)
       return id === undefined
@@ -109,6 +114,7 @@ function SortableMonitorRow({
   onChange: (next: DraftMonitor) => void
   onRemove: () => void
 }) {
+  const t = useTranslations('statusPages.groups')
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: row.key,
     disabled,
@@ -127,13 +133,15 @@ function SortableMonitorRow({
       <DragHandle
         attributes={attributes}
         listeners={listeners}
-        label={`Reorder ${monitor?.name ?? 'monitor'}`}
+        label={t('reorderMonitor', { name: monitor?.name ?? t('monitorFallback') })}
       />
       <span className="flex min-w-0 items-center gap-2 text-sm">
         <StatusDot status={monitor?.lastStatus ?? 'unknown'} pulse={false} />
-        <span className="truncate font-medium">{monitor?.name ?? `Monitor #${row.monitorId}`}</span>
+        <span className="truncate font-medium">
+          {monitor?.name ?? t('unknownMonitor', { id: row.monitorId })}
+        </span>
         {monitor && monitor.active === false && (
-          <span className="text-xs text-muted-foreground">(paused, hidden publicly)</span>
+          <span className="text-xs text-muted-foreground">{t('pausedHidden')}</span>
         )}
       </span>
       <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -143,11 +151,11 @@ function SortableMonitorRow({
           disabled={disabled}
           onCheckedChange={(v) => onChange({ ...row, sendUrl: v })}
         />
-        Show URL
+        {t('showUrl')}
       </label>
       <Input
         className="col-span-2 h-8 text-xs sm:col-span-1"
-        placeholder="Custom link (optional)"
+        placeholder={t('customUrlPlaceholder')}
         value={row.customUrl}
         disabled={disabled}
         onChange={(e) => onChange({ ...row, customUrl: e.target.value })}
@@ -156,7 +164,7 @@ function SortableMonitorRow({
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label="Remove monitor from group"
+        aria-label={t('removeMonitor')}
         disabled={disabled}
         onClick={onRemove}
       >
@@ -179,6 +187,7 @@ function SortableGroup({
   onChange: (next: DraftGroup) => void
   onRemove: () => void
 }) {
+  const t = useTranslations('statusPages.groups')
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: group.key,
     disabled,
@@ -225,24 +234,24 @@ function SortableGroup({
         <DragHandle
           attributes={attributes}
           listeners={listeners}
-          label={`Reorder group ${group.name}`}
+          label={t('reorderGroup', { name: group.name })}
         />
         <Input
-          aria-label="Group name"
+          aria-label={t('groupName')}
           value={group.name}
           disabled={disabled}
-          placeholder="Group name"
+          placeholder={t('groupName')}
           className="h-8 max-w-xs font-medium"
           onChange={(e) => onChange({ ...group, name: e.target.value })}
         />
         <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-          {group.monitors.length} monitor{group.monitors.length === 1 ? '' : 's'}
+          {t('monitorCount', { count: group.monitors.length })}
         </span>
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label="Remove group"
+          aria-label={t('removeGroup')}
           disabled={disabled}
           onClick={onRemove}
         >
@@ -282,9 +291,9 @@ function SortableGroup({
           onValueChange={addMonitor}
           disabled={disabled || available.length === 0}
         >
-          <SelectTrigger className="h-8 w-full max-w-sm text-xs" aria-label="Add monitor">
+          <SelectTrigger className="h-8 w-full max-w-sm text-xs" aria-label={t('addMonitor')}>
             <SelectValue
-              placeholder={available.length ? 'Add a monitor…' : 'All monitors are in this group'}
+              placeholder={available.length ? t('addMonitorPlaceholder') : t('allMonitorsAdded')}
             />
           </SelectTrigger>
           <SelectContent>
@@ -317,6 +326,8 @@ export function GroupsEditor({
   onSaved: (page: StatusPage) => void
   canEdit: boolean
 }) {
+  const t = useTranslations('statusPages.groups')
+  const untitled = t('untitled')
   const [groups, setGroups] = React.useState<DraftGroup[]>(() => fromPage(page))
   const [saving, setSaving] = React.useState(false)
   const sensors = useSensors(
@@ -325,7 +336,8 @@ export function GroupsEditor({
   )
 
   const dirty =
-    JSON.stringify(toPatch(groups, monitors)) !== JSON.stringify(toPatch(fromPage(page), monitors))
+    JSON.stringify(toPatch(groups, monitors, untitled)) !==
+    JSON.stringify(toPatch(fromPage(page), monitors, untitled))
 
   function onGroupDragEnd(event: DragEndEvent) {
     const { active, over } = event
@@ -340,13 +352,13 @@ export function GroupsEditor({
     setSaving(true)
     try {
       const { doc } = await statusPagesApi.update(orgId, page.id, {
-        groups: toPatch(groups, monitors),
+        groups: toPatch(groups, monitors, untitled),
       })
       onSaved(doc)
       setGroups(fromPage(doc))
-      toast.success('Groups saved')
+      toast.success(t('saved'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not save groups')
+      toast.error(error instanceof Error ? error.message : t('saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -356,10 +368,8 @@ export function GroupsEditor({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <Label className="text-base">Groups &amp; monitors</Label>
-          <p className="text-sm text-muted-foreground">
-            Drag to reorder. Paused monitors stay in the list but are hidden from visitors.
-          </p>
+          <Label className="text-base">{t('title')}</Label>
+          <p className="text-sm text-muted-foreground">{t('description')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -368,26 +378,29 @@ export function GroupsEditor({
             size="sm"
             disabled={!canEdit}
             onClick={() =>
-              setGroups((g) => [...g, { key: uid(), name: `Group ${g.length + 1}`, monitors: [] }])
+              setGroups((g) => [
+                ...g,
+                { key: uid(), name: t('defaultName', { number: g.length + 1 }), monitors: [] },
+              ])
             }
           >
-            <Plus /> Add group
+            <Plus /> {t('addGroup')}
           </Button>
           <Button type="button" size="sm" disabled={!canEdit || !dirty || saving} onClick={save}>
-            {saving ? 'Saving…' : 'Save groups'}
+            {saving ? t('saving') : t('save')}
           </Button>
         </div>
       </div>
 
       {monitors.length === 0 && (
         <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-          This organization has no monitors yet. Create monitors first, then add them here.
+          {t('noMonitors')}
         </p>
       )}
 
       {groups.length === 0 ? (
         <p className="rounded-xl border border-dashed px-5 py-10 text-center text-sm text-muted-foreground">
-          No groups yet. Add a group to start listing monitors.
+          {t('empty')}
         </p>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onGroupDragEnd}>
