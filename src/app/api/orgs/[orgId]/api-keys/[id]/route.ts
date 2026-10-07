@@ -11,6 +11,7 @@ import {
   type OrgRequestContext,
 } from '@/server/notifications/api'
 import { errorText } from '@/server/request-locale'
+import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +56,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       user: ctx.user,
       overrideAccess: false,
     })) as ApiKey
+    await recordRequestAuditEvent(ctx.payload, request, {
+      action: 'api_key.updated',
+      actor: ctx.user.id,
+      organization: ctx.orgId,
+      target: auditTarget('api-keys', doc.id),
+      metadata: { name: doc.name, prefix: doc.prefix, active: parsed.data.active },
+    })
     return Response.json({ doc: toApiKeyRow(doc) })
   } catch (error) {
     return jsonError(errorStatus(error), errorMessage(error, request))
@@ -77,6 +85,13 @@ export async function DELETE(request: Request, { params }: RouteContext) {
       depth: 0,
       user: ctx.user,
       overrideAccess: false,
+    })
+    await recordRequestAuditEvent(ctx.payload, request, {
+      action: 'api_key.revoked',
+      actor: ctx.user.id,
+      organization: ctx.orgId,
+      target: auditTarget('api-keys', existing.id),
+      metadata: { name: existing.name, prefix: existing.prefix },
     })
     return Response.json({ deleted: String(existing.id) })
   } catch (error) {

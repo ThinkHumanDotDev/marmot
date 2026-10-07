@@ -124,29 +124,29 @@ by hand, run `npx @modelcontextprotocol/inspector`, choose _Streamable HTTP_, en
 
 ## Tools
 
-| Tool                           | Scope | What it does                                                                                               |
-| ------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------- |
-| `list_monitors`                | read  | Monitors with status, last check and response time; filter by `type`, `active`; paginated                  |
-| `get_monitor`                  | read  | Full configuration and status cache of one monitor                                                         |
-| `get_monitor_status`           | read  | Current status (up, down, degraded, pending, maintenance, paused), last check, message                     |
-| `get_monitor_stats`            | read  | Uptime (0..1), average response time and degraded checks over `24h`, `30d` or `1y`                         |
-| `list_heartbeats`              | read  | Latest check results, newest first; `status`, `importantOnly` (status changes) and `limit`                 |
-| `list_status_pages`            | read  | Status pages, drafts included                                                                              |
-| `list_components`              | read  | Components of a status page by group, with the `componentId` that incident tools take                      |
-| `list_incidents`               | read  | Status page incidents of one page or of all pages, newest first; `activeOnly`                              |
-| `list_maintenance`             | read  | Maintenance windows with status and upcoming windows                                                       |
-| `list_notification_channels`   | read  | Notification channels (name, type, default, active; never secrets); needs the `member` role                |
-| `list_monitor_incidents`       | read  | Outages detected by monitors (open, acknowledged, resolved) with MTTA/MTTR; `status`, `monitorId`, `range` |
-| `get_monitor_incident`         | read  | One monitor incident with its timeline                                                                     |
-| `check_monitor_now`            | write | Run a check now and return its result (`wait: false` only queues it); paused and push monitors refuse      |
-| `pause_monitor`                | write | Stop checking a monitor                                                                                    |
-| `resume_monitor`               | write | Start checking it again                                                                                    |
-| `create_incident`              | write | Open an incident with a first update (status, message, affected components and their impact)               |
-| `add_incident_update`          | write | Post an update (`investigating`, `identified`, `monitoring`, `resolved`); subscribers are notified         |
-| `resolve_incident`             | write | Post a `resolved` update; affected components return to operational                                        |
-| `acknowledge_monitor_incident` | write | Acknowledge an open monitor incident (optional `note`): reminders stop, channels are told                  |
-| `resolve_monitor_incident`     | write | Resolve a monitor incident by hand (optional `note`)                                                       |
-| `create_maintenance`           | write | Schedule maintenance; takes the same fields as the maintenance form                                        |
+| Tool                           | Scope | What it does                                                                                                |
+| ------------------------------ | ----- | ----------------------------------------------------------------------------------------------------------- |
+| `list_monitors`                | read  | Monitors (with their `key`) and status, last check and response time; filter by `type`, `active`; paginated |
+| `get_monitor`                  | read  | Full configuration and status cache of one monitor                                                          |
+| `get_monitor_status`           | read  | Current status (up, down, degraded, pending, maintenance, paused), last check, message                      |
+| `get_monitor_stats`            | read  | Uptime (0..1), average response time and degraded checks over `24h`, `30d` or `1y`                          |
+| `list_heartbeats`              | read  | Latest check results, newest first; `status`, `importantOnly` (status changes) and `limit`                  |
+| `list_status_pages`            | read  | Status pages, drafts included                                                                               |
+| `list_components`              | read  | Components of a status page by group, with the `componentId` that incident tools take                       |
+| `list_incidents`               | read  | Status page incidents of one page or of all pages, newest first; `activeOnly`                               |
+| `list_maintenance`             | read  | Maintenance windows with status and upcoming windows                                                        |
+| `list_notification_channels`   | read  | Notification channels (name, type, default, active; never secrets); needs the `member` role                 |
+| `list_monitor_incidents`       | read  | Outages detected by monitors (open, acknowledged, resolved) with MTTA/MTTR; `status`, `monitorId`, `range`  |
+| `get_monitor_incident`         | read  | One monitor incident with its timeline                                                                      |
+| `check_monitor_now`            | write | Run a check now and return its result (`wait: false` only queues it); paused and push monitors refuse       |
+| `pause_monitor`                | write | Stop checking a monitor                                                                                     |
+| `resume_monitor`               | write | Start checking it again                                                                                     |
+| `create_incident`              | write | Open an incident with a first update (status, message, affected components and their impact)                |
+| `add_incident_update`          | write | Post an update (`investigating`, `identified`, `monitoring`, `resolved`); subscribers are notified          |
+| `resolve_incident`             | write | Post a `resolved` update; affected components return to operational                                         |
+| `acknowledge_monitor_incident` | write | Acknowledge an open monitor incident (optional `note`): reminders stop, channels are told                   |
+| `resolve_monitor_incident`     | write | Resolve a monitor incident by hand (optional `note`)                                                        |
+| `create_maintenance`           | write | Schedule maintenance; takes the same fields as the maintenance form                                         |
 
 Tool input schemas are the management API's own zod validators (for example `create_maintenance` uses
 `maintenanceFormSchema`), so an agent gets the same validation messages as the REST API. Read-only tools

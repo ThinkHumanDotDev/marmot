@@ -271,6 +271,38 @@ const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
 }
 
 /**
+ * Monitors-as-code keys (#116) are unique per organization. Checked here rather than with a unique
+ * index: most monitors have no key, and MongoDB's unique indexes treat every missing key as the
+ * same `null` value.
+ */
+const validateUniqueKey: CollectionBeforeChangeHook<Monitor> = async ({
+  data,
+  originalDoc,
+  req,
+}) => {
+  const key = typeof data.key === 'string' ? data.key.trim() : data.key
+  if (key === undefined) return data
+  data.key = key || null
+  if (!data.key || data.key === originalDoc?.key) return data
+  const organization = relId(data.organization ?? originalDoc?.organization)
+  const where: Where[] = [{ organization: { equals: organization } }, { key: { equals: data.key } }]
+  if (originalDoc?.id !== undefined) where.push({ id: { not_equals: originalDoc.id } })
+  const { totalDocs } = await req.payload.count({
+    collection: 'monitors',
+    where: { and: where },
+    req,
+    overrideAccess: true,
+  })
+  if (totalDocs > 0) {
+    throw new ValidationError({
+      collection: 'monitors',
+      errors: [{ message: userErrorText(req, 'monitorKeyTaken', { key: data.key }), path: 'key' }],
+    })
+  }
+  return data
+}
+
+/**
  * Outbound address guard (`MONITOR_DENY_PRIVATE_ADDRESSES` & co.): refuse host-local types and
  * literally denied targets on save. Fast feedback only — names are vetted when the check connects.
  * Runs on create and when a target field changes, so status updates never trip over it.
@@ -314,7 +346,7 @@ export const Monitors: CollectionConfig = {
     update: orgScoped('monitor:update'),
     delete: orgScoped('monitor:delete'),
   },
-  indexes: [{ fields: ['organization', 'active'] }],
+  indexes: [{ fields: ['organization', 'active'] }, { fields: ['organization', 'key'] }],
   hooks: {
     beforeChange: [
       ({ data }) => {
@@ -327,6 +359,7 @@ export const Monitors: CollectionConfig = {
       // New monitors without explicit channels get the organization's default channels.
       attachDefaultNotifications,
       validateOrgReferences,
+      validateUniqueKey,
       enforceOutboundPolicy,
       // Plan limits (no-op unless BILLING_ENABLED).
       enforceEntitlementOnCreate('monitors'),
@@ -429,6 +462,12 @@ export const Monitors: CollectionConfig = {
         return { and: where }
       },
       admin: { position: 'sidebar', description: adminT('marmot:monitors:parentDescription') },
+    },
+    {
+      name: 'key',
+      type: 'text',
+      maxLength: 128,
+      admin: { position: 'sidebar', description: adminT('marmot:monitors:keyDescription') },
     },
     {
       name: 'publicName',

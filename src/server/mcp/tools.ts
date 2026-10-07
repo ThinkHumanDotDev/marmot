@@ -119,6 +119,8 @@ const monitorStatus = (m: Monitor) => ({
 
 const monitorSummary = (m: Monitor) => ({
   id: m.id,
+  /** Stable identifier for monitors-as-code (#227), when set. */
+  key: m.key ?? null,
   name: m.name,
   type: m.type,
   active: m.active !== false,

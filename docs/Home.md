@@ -30,6 +30,7 @@ features whose pull requests are merging alongside this documentation.
 | [Integrations](Integrations.md)                           | Status badges, the push endpoint, Prometheus metrics, organization API keys and outbound event webhooks _(landing in the current release)_. |
 | [MCP server for AI agents](MCP.md)                        | Connect Claude, Cursor and other MCP clients with an API key; the tools and how they map onto the management API.                           |
 | [Import and export](Import-and-Export.md)                 | Importing an Uptime Kuma backup or a Marmot export, and exporting an organization.                                                          |
+| [CLI and monitors as code](CLI.md)                        | The `marmot` command line: status from the terminal, monitors in YAML with plan/apply, GitOps _(landing in the current release)_.           |
 
 ## Change it
 

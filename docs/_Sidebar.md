@@ -21,6 +21,7 @@
 - [Integrations](Integrations.md)
 - [MCP server for AI agents](MCP.md)
 - [Import and export](Import-and-Export.md)
+- [CLI and monitors as code](CLI.md)
 
 **Change it**
 
