@@ -1,6 +1,7 @@
 import type { Locale } from '@/i18n/locales'
 import { resolveRequestLocale } from '@/i18n/resolve'
 import { toLocale } from '@/i18n/translator'
+import { SLUG_ERROR_KEYS, type SlugMessage } from '@/lib/reserved-slugs'
 import type { User } from '@/payload-types'
 import { LocalizedAPIError, translateError, type ErrorKey, type ErrorValues } from '@/server/errors'
 
@@ -62,3 +63,9 @@ export const userErrorText = (
   key: ErrorKey,
   values?: ErrorValues,
 ): string => translateError(userLocale(req?.user), key, values)
+
+/** Slug validation messages in `locale` (`validateOrganizationSlug(value, slugMessageIn(locale))`). */
+export const slugMessageIn =
+  (locale: Locale): SlugMessage =>
+  (problem, slug) =>
+    translateError(locale, SLUG_ERROR_KEYS[problem], { slug })

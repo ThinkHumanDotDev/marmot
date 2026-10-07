@@ -775,7 +775,8 @@
         "back": "Back",
         "passwordAgain": "Enter your password again.",
         "invalidCode": "That code is not valid."
-      }
+      },
+      "organizationSso": "Sign in with your organization's SSO"
     },
     "sso": {
       "continueWith": "Continue with {provider}",
@@ -830,6 +831,41 @@
       "ready": "Marmot is ready",
       "alreadyDone": "Setup has already been completed. Please sign in.",
       "failed": "Could not complete setup."
+    },
+    "ssoErrors": {
+      "provider_unknown": "This sign-in method is not configured on this server.",
+      "state_mismatch": "Your sign-in session expired or was tampered with. Please try again.",
+      "access_denied": "The identity provider refused the sign-in request.",
+      "exchange_failed": "Single sign-on failed. Please try again or contact your administrator.",
+      "email_missing": "Your identity provider did not share an email address, which is required.",
+      "email_unverified": "An account with your email already exists but your identity provider has not verified it.",
+      "provisioning_disabled": "No account exists for your identity and automatic signup is disabled.",
+      "account_in_use": "This identity is already linked to another account.",
+      "not_signed_in": "Sign in first to link another account.",
+      "signup_disabled": "Signup is disabled on this server. Ask an administrator for an invitation.",
+      "oidc_disabled": "Single sign-on is not configured on this server.",
+      "oidc_state": "Your sign-in session expired or was tampered with. Please try again.",
+      "oidc_denied": "The identity provider refused the sign-in request.",
+      "oidc_failed": "Single sign-on failed. Please try again or contact your administrator."
+    },
+    "ssoLookup": {
+      "pageTitle": "Sign in with SSO",
+      "title": "Sign in with your organization",
+      "description": "Use the identity provider your organization set up for Marmot.",
+      "backToSignIn": "Back to sign in",
+      "several": "{organization} offers several ways to sign in:",
+      "continueWith": "Continue with {connection}",
+      "workEmail": "Work email",
+      "organization": "Organization",
+      "emailPlaceholder": "you@company.com",
+      "organizationPlaceholder": "organization-slug",
+      "submit": "Continue",
+      "submitting": "Looking up…",
+      "useOrganization": "Use the organization name instead",
+      "useEmail": "Use your work email instead",
+      "noSsoForEmail": "No single sign-on is set up for that email domain. Sign in with your password, or ask your administrator.",
+      "noSsoForOrganization": "No single sign-on is set up for that organization.",
+      "failed": "Could not look that up."
     }
   },
   "settings": {
@@ -2519,6 +2555,21 @@
     "planLimit": "Your plan allows {limit, plural, one {{limit} {resource, select, monitors {monitor} members {member} other {status page}}} other {{limit} {resource, select, monitors {monitors} members {members} other {status pages}}}}. Upgrade your plan to add more.",
     "stripeNotConfigured": "Stripe is not configured.",
     "stripePriceMissing": "No active Stripe price is tagged with metadata plan={plan}.",
-    "stripeNoCheckoutUrl": "Stripe did not return a checkout URL."
+    "stripeNoCheckoutUrl": "Stripe did not return a checkout URL.",
+    "slugRequired": "Slug is required.",
+    "slugTooShort": "Slug must be at least 2 characters.",
+    "slugPattern": "Slug may only contain lowercase letters, numbers and hyphens, and cannot start or end with a hyphen.",
+    "slugReserved": "\"{slug}\" is reserved. Please choose another slug.",
+    "slugTaken": "This slug is already taken.",
+    "slugInvalid": "Invalid slug.",
+    "importSlugInvalid": "Invalid slug \"{slug}\": {reason}",
+    "setupCompleted": "Setup has already been completed.",
+    "invalidInput": "Invalid input.",
+    "setupFailed": "Setup failed.",
+    "permissionOverridesObject": "Permission overrides must be an object of permission → role.",
+    "permissionUnknown": "Unknown permission \"{permission}\".",
+    "permissionLocked": "\"{permission}\" cannot be overridden.",
+    "permissionRoleInvalid": "Invalid role for \"{permission}\".",
+    "statsRangeInvalid": "Invalid range; expected one of {ranges}"
   }
 }

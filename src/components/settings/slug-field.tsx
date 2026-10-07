@@ -6,7 +6,7 @@ import * as React from 'react'
 
 import { Input } from '@/components/ui/input'
 import { orgApi } from '@/lib/org-api'
-import { validateOrganizationSlug } from '@/lib/reserved-slugs'
+import { SLUG_ERROR_KEYS, validateOrganizationSlug } from '@/lib/reserved-slugs'
 
 export type SlugStatus =
   | { state: 'idle' }
@@ -21,15 +21,18 @@ export type SlugStatus =
  */
 export function useSlugAvailability(slug: string, current?: string): SlugStatus {
   const t = useTranslations('settings.slug')
+  const tErrors = useTranslations('errors')
   const value = slug.trim().toLowerCase()
 
   // Everything that can be decided without the server is derived synchronously.
   const local = React.useMemo<SlugStatus | null>(() => {
     if (!value) return { state: 'idle' }
     if (current && value === current) return { state: 'current' }
-    const valid = validateOrganizationSlug(value)
+    const valid = validateOrganizationSlug(value, (problem, slug) =>
+      tErrors(SLUG_ERROR_KEYS[problem], { slug }),
+    )
     return valid === true ? null : { state: 'unavailable', reason: valid }
-  }, [value, current])
+  }, [value, current, tErrors])
 
   const [remote, setRemote] = React.useState<{ slug: string; status: SlugStatus } | null>(null)
 
