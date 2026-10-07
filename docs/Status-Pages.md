@@ -33,6 +33,7 @@ Two org-scoped collections (`src/collections/StatusPages.ts`, `src/collections/I
 | `showTags`, `showCertificateExpiry`, `showPoweredBy` | Display toggles.                                                               |
 | `showValues`                                         | Default `true`. Off hides uptime % and response times page-wide (HTML + JSON). |
 | `autoRefreshInterval`                                | Seconds between client refreshes of the public API; `0` disables.              |
+| `maintenanceVisibilityHours`                         | Hours a completed or cancelled maintenance window stays on the page (24).      |
 | `customCSS`                                          | Injected into the public page as a `<style>` tag.                              |
 | `googleAnalyticsId`                                  | `G-…` measurement id; the gtag snippet is only emitted when set.               |
 | `domains[].hostname`                                 | Custom hostnames (see below). Unique across all pages.                         |
@@ -178,16 +179,32 @@ pages they also need the page's access cookie or `?pw=` (see below), and answer 
     },
   ],
   "maintenance": [
-    // running windows first, then windows starting within 7 days (maintenance.md)
+    // one entry per occurrence: running first, then the next window of each maintenance starting
+    // within 7 days, then windows finished within maintenanceVisibilityHours (Maintenance.md)
     {
-      "id": "7",
+      "id": "41", // occurrence id
+      "maintenanceId": "7",
       "title": "Database upgrade",
       "description": "Expect a few minutes of read-only mode.",
       "strategy": "single", // manual | single | recurring-interval | recurring-weekday | recurring-day-of-month | cron
-      "status": "scheduled", // under-maintenance | scheduled
-      "start": "2026-10-06T02:00:00.000Z", // null for manual windows
-      "end": "2026-10-06T03:00:00.000Z", // null when open-ended
+      "status": "under-maintenance", // under-maintenance | scheduled | completed | cancelled
+      "state": "verifying", // scheduled | in-progress | verifying | completed | cancelled
+      "start": "2026-10-06T02:00:00.000Z", // planned window
+      "end": "2026-10-06T03:00:00.000Z", // null when open-ended (manual)
+      "startedAt": "2026-10-06T02:00:00.000Z",
+      "completedAt": null,
+      "cancelledAt": null,
       "timezone": "Europe/Berlin",
+      "updates": [
+        // newest first; an empty message means an automatic or button transition
+        {
+          "id": "…",
+          "status": "verifying",
+          "message": "Migration done, checking replicas.",
+          "postedAt": "…",
+        },
+        { "id": "…", "status": "in-progress", "message": "", "postedAt": "…" },
+      ],
     },
   ],
   "generatedAt": "2026-10-05T03:00:30.000Z",

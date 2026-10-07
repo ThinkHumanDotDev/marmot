@@ -2804,8 +2804,6 @@
       "ongoingIncidents": "Ongoing incidents"
     },
     "maintenance": {
-      "inProgress": "Maintenance in progress",
-      "scheduled": "Scheduled maintenance",
       "from": "from {start}"
     },
     "monitors": {
@@ -2826,6 +2824,25 @@
         "degraded_performance": "Degraded performance",
         "partial_outage": "Partial outage",
         "major_outage": "Major outage"
+      },
+      "maintenance": {
+        "state": {
+          "scheduled": "Scheduled",
+          "in-progress": "In progress",
+          "verifying": "Verifying",
+          "completed": "Completed",
+          "cancelled": "Cancelled"
+        },
+        "defaultMessage": {
+          "scheduled": "Maintenance scheduled.",
+          "in-progress": "Maintenance started.",
+          "verifying": "Work is done; verifying.",
+          "completed": "Maintenance completed.",
+          "cancelled": "Maintenance cancelled."
+        },
+        "updates": "Updates",
+        "completedAt": "Completed {time}",
+        "cancelledAt": "Cancelled {time}"
       }
     },
     "beats": {
@@ -3475,6 +3492,66 @@
       "deselectAll": "Deselect all",
       "noMatches": "No matches.",
       "selected": "{selected} of {total} selected"
+    },
+    "announcements": {
+      "form": {
+        "title": "Announcements",
+        "description": "How each window runs and what status page visitors are told.",
+        "autoStart": "Start automatically",
+        "autoStartHint": "Each window goes in progress at its planned start. Off: it stays scheduled, and monitors keep alerting, until you start it.",
+        "autoComplete": "Complete automatically",
+        "autoCompleteHint": "Each window completes at its planned end. Off: it stays in progress, and keeps suppressing alerts, until you complete it.",
+        "reminders": "Reminders",
+        "remindersHint": "When to remind status page subscribers before a window starts.",
+        "reminderMinutes": "{value} min",
+        "reminderHours": "{value, plural, one {# hour} other {# hours}}",
+        "reminderDays": "{value, plural, one {# day} other {# days}}",
+        "reminderWeeks": "{value, plural, one {# week} other {# weeks}}"
+      },
+      "panel": {
+        "title": "Windows and updates",
+        "description": "Start, complete or cancel windows by hand and post updates for status page visitors.",
+        "loading": "Loading windows",
+        "empty": "No windows planned. Save a schedule to plan the next one.",
+        "loadFailed": "Could not load the windows",
+        "window": "{period}",
+        "openEnded": "Since {start}",
+        "start": "Start now",
+        "verifying": "Mark as verifying",
+        "resume": "Back in progress",
+        "complete": "Complete",
+        "cancel": "Cancel window",
+        "confirmCancelTitle": "Cancel this window?",
+        "confirmCancelDescription": "The status page shows it as cancelled and subscribers are notified. This cannot be undone.",
+        "confirmCancel": "Cancel window",
+        "keep": "Keep it",
+        "postUpdate": "Post update",
+        "messageLabel": "Update for visitors",
+        "messagePlaceholder": "What is happening? Markdown supported.",
+        "messageRequired": "Write a message to post a note.",
+        "posted": "Update posted",
+        "postFailed": "Could not post the update",
+        "timeline": "Timeline",
+        "noUpdates": "No updates yet.",
+        "remindersSent": "Reminders handled: {list}"
+      },
+      "state": {
+        "scheduled": "Scheduled",
+        "in-progress": "In progress",
+        "verifying": "Verifying",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "defaultMessage": {
+        "scheduled": "Maintenance scheduled.",
+        "in-progress": "Maintenance started.",
+        "verifying": "Work is done; verifying.",
+        "completed": "Maintenance completed.",
+        "cancelled": "Maintenance cancelled."
+      },
+      "pageVisibility": "Finished maintenance visible for",
+      "pageVisibilityHint": "Hours a completed or cancelled maintenance window stays on the page.",
+      "hoursUnit": "h"
     }
   },
   "importExport": {
@@ -3726,6 +3803,9 @@
     "maintenanceCronInvalid": "Invalid cron expression: {error}",
     "maintenanceTimezoneUnknown": "Unknown time zone \"{timezone}\".",
     "maintenanceForeignReference": "Every {kind, select, statusPage {status page} other {monitor}} must belong to the same organization.",
+    "maintenanceOccurrenceNotFound": "Maintenance window not found",
+    "maintenanceOccurrenceRequired": "A maintenance window belongs to a maintenance.",
+    "maintenanceTransitionInvalid": "Cannot post “{to}” on a maintenance window that is {from}.",
     "statusPageNotFound": "Status page not found",
     "statusPageForeignMonitors": "Every monitor on a status page must belong to the same organization.",
     "hostnameDuplicate": "Each hostname may only be listed once.",
