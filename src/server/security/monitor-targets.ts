@@ -79,6 +79,10 @@ export async function monitorTargetProblem(
   }
 
   switch (type) {
+    // The worker only talks to api.globalping.io; the target is measured by remote community
+    // probes (and Globalping refuses private targets itself).
+    case 'globalping':
+      return null
     case 'http':
     case 'keyword':
     case 'json-query':

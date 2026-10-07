@@ -158,6 +158,27 @@ describe('stats: time-series aggregation', () => {
     await clearStatistics(payload, otherMonitorId)
   })
 
+  it('records nothing, histogram included, for deferred or checker-offline beats', async () => {
+    await clearStatistics(payload, otherMonitorId)
+    const listener = createStatsListener(payload)
+    const time = new Date(Date.now() - 60_000).toISOString()
+    // A deferred beat (Globalping 429, #142) is PENDING; a ping on it must still not be sampled.
+    await listener({
+      monitor: { id: otherMonitorId },
+      organizationId,
+      deferred: true,
+      heartbeat: { status: 'pending', ping: 250, time },
+    })
+    await listener({
+      monitor: { id: otherMonitorId },
+      organizationId,
+      checkerOffline: true,
+      heartbeat: { status: 'pending', ping: 250, time },
+    })
+    expect(await countRows('stat-minutely', otherMonitorId)).toBe(0)
+    expect(await countRows('stat-daily', otherMonitorId)).toBe(0)
+  })
+
   it('tolerates concurrent beats for the same bucket without losing any', async () => {
     const time = minutesAgo(5)
     await Promise.all(
