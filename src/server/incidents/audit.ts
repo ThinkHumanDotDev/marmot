@@ -2,14 +2,15 @@ import type { Payload } from 'payload'
 
 import type { MonitorIncidentSummary } from '@/lib/monitor-incidents'
 import type { AuditAction } from '@/server/audit/actions'
-import { SYSTEM_ACTOR, userActor } from '@/server/audit/context'
+import { actorFromRequest } from '@/server/audit/context'
 import { actorFields, recordRequestAuditEvent } from '@/server/security/audit'
 
 /**
  * Audit row for a member's action on a monitor incident (`acknowledge`, `resolve`, `publish`).
  * Incident rows themselves are written by the engine and not audited (`src/collections/audit.ts`);
  * what the audit log keeps is who acted. `user` is `null` for an acknowledgement through the signed
- * link of a notification by someone who is not signed in as a member.
+ * link of a notification by someone who is not signed in as a member; an API key principal is
+ * recorded as the key.
  */
 export async function auditIncidentAction(
   payload: Payload,
@@ -20,7 +21,8 @@ export async function auditIncidentAction(
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
   await recordRequestAuditEvent(payload, request, {
-    ...actorFields(user ? userActor(user) : SYSTEM_ACTOR),
+    // A user, an API key principal (`user.apiKey`), or the system when nobody is signed in.
+    ...actorFields(actorFromRequest({ user })),
     action,
     organization: summary.organizationId,
     entityType: 'monitor_incident',

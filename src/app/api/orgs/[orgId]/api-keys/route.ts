@@ -1,7 +1,6 @@
-import { z } from 'zod'
-
 import type { ApiKey } from '@/payload-types'
 import { generateApiKey, toApiKeyRow } from '@/server/api-keys'
+import { apiKeyCreateSchema } from '@/server/api-keys/schemas'
 import {
   errorMessage,
   errorStatus,
@@ -14,16 +13,6 @@ import { errorText } from '@/server/request-locale'
 export const dynamic = 'force-dynamic'
 
 type RouteContext = { params: Promise<{ orgId: string }> }
-
-const MAX_EXPIRY_DAYS = 3650
-
-const createSchema = z.object({
-  name: z.string().trim().min(1, 'name is required').max(120),
-  /** ISO date, or `null`/omitted for a key that never expires. */
-  expiresAt: z.iso.datetime({ offset: true }).nullable().optional(),
-  /** Convenience for the UI: expire this many days from now. */
-  expiresInDays: z.number().int().positive().max(MAX_EXPIRY_DAYS).nullable().optional(),
-})
 
 /** GET /api/orgs/:orgId/api-keys — the organization's keys, newest first (`api-key:read`). */
 export async function GET(request: Request, { params }: RouteContext) {
@@ -54,7 +43,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const body = await readJson(request)
   if (!body) return jsonError(400, errorText(request, 'invalidJsonBody'))
-  const parsed = createSchema.safeParse(body)
+  const parsed = apiKeyCreateSchema.safeParse(body)
   if (!parsed.success) {
     return jsonError(400, parsed.error.issues[0]?.message ?? errorText(request, 'validationFailed'))
   }
@@ -77,6 +66,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       data: {
         organization: ctx.orgId as ApiKey['organization'],
         name: parsed.data.name,
+        scope: parsed.data.scope,
         keyHash: generated.keyHash,
         prefix: generated.prefix,
         active: true,

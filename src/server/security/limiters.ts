@@ -16,3 +16,18 @@ export const onDemandCheckLimiter: RateLimiter = createRateLimiter('on-demand-ch
   points: env.ON_DEMAND_CHECKS_PER_MINUTE,
   duration: 60,
 })
+
+/**
+ * Management API requests per organization API key (`API_KEY_RATE_LIMIT` per minute), keyed by the
+ * key's id. `null` when the limit is turned off (`0`).
+ */
+export const apiKeyLimiter: RateLimiter | null =
+  env.API_KEY_RATE_LIMIT > 0
+    ? createRateLimiter('api-key', { points: env.API_KEY_RATE_LIMIT, duration: 60 })
+    : null
+
+/** Mutations per API key (`API_KEY_WRITE_RATE_LIMIT` per minute), on top of `apiKeyLimiter`. */
+export const apiKeyWriteLimiter: RateLimiter | null =
+  env.API_KEY_WRITE_RATE_LIMIT > 0
+    ? createRateLimiter('api-key-write', { points: env.API_KEY_WRITE_RATE_LIMIT, duration: 60 })
+    : null

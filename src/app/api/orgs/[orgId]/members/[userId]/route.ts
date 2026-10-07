@@ -8,7 +8,8 @@ type RouteContext = { params: Promise<{ orgId: string; userId: string }> }
 
 /** PATCH /api/orgs/:orgId/members/:userId  `{ role }` — change a member's role. */
 export const PATCH = withErrors(async (request: Request, { params }: RouteContext) => {
-  const { payload, user } = await getRequestContext(request)
+  const { payload, user, response } = await getRequestContext(request)
+  if (response) return response
   if (!user) return unauthorized(request)
   const { orgId, userId } = await params
   const { role } = await readJson<{ role?: unknown }>(request)
@@ -36,7 +37,8 @@ export const PATCH = withErrors(async (request: Request, { params }: RouteContex
 
 /** DELETE /api/orgs/:orgId/members/:userId — remove a member, or leave when it is yourself. */
 export const DELETE = withErrors(async (request: Request, { params }: RouteContext) => {
-  const { payload, user } = await getRequestContext(request)
+  const { payload, user, response } = await getRequestContext(request)
+  if (response) return response
   if (!user) return unauthorized(request)
   const { orgId, userId } = await params
 

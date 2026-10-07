@@ -8,6 +8,7 @@ import type { Payload } from 'payload'
 
 import { canInOrg } from '@/access/overrides'
 import type { Permission } from '@/access/permissions'
+import { apiKeyOf, type ApiKeyPrincipalInfo } from '@/server/auth/request-auth'
 import { translateError } from '@/server/errors'
 import type { OnDemandOutcome } from '@/server/engine/on-demand'
 import { onDemandCheckLimiter } from '@/server/security/limiters'
@@ -17,11 +18,14 @@ import { errorText, userLocale } from '@/server/request-locale'
 import { authenticate, jsonError, type RequestUser, type RouteId } from './http'
 
 /**
- * Who triggered a check. Only signed-in members today; organization API keys join here once they
- * may call the management API (#115): resolve the key with `authenticateApiKey`, require a scope
- * that allows checks, and return `{ kind: 'api-key', … }`.
+ * Who triggered a check: a signed-in member, or an organization API key (#115). `authenticate`
+ * resolves both (`src/server/auth/request-auth.ts`); checks are `POST`s, so a key needs the `write`
+ * scope, and its `member` role holds `monitor:create`/`monitor:update` unless the organization raised
+ * them. In both cases `user` is what Local API calls run as.
  */
-export type CheckActor = { kind: 'user'; user: RequestUser }
+export type CheckActor =
+  | { kind: 'user'; user: RequestUser }
+  | { kind: 'api-key'; user: RequestUser; apiKey: ApiKeyPrincipalInfo }
 
 export type CheckActorResult = { actor: CheckActor; response?: undefined } | { response: Response }
 
@@ -39,7 +43,12 @@ export async function resolveCheckActor(
   if (auth.response) return { response: auth.response }
   for (const permission of permissions) {
     if (await canInOrg(payload, auth.user, orgId, permission)) {
-      return { actor: { kind: 'user', user: auth.user } }
+      const apiKey = apiKeyOf(auth.user)
+      return {
+        actor: apiKey
+          ? { kind: 'api-key', user: auth.user, apiKey }
+          : { kind: 'user', user: auth.user },
+      }
     }
   }
   return { response: jsonError(403, translateError(userLocale(auth.user), 'forbidden')) }

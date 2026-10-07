@@ -1,5 +1,6 @@
 /** Client-side calls for organization API keys (`/api/orgs/:orgId/api-keys`). */
 import { api } from '@/lib/api'
+import type { ApiKeyScope } from '@/lib/api-key-scopes'
 import type { ApiKeyRow } from '@/server/api-keys'
 
 export type { ApiKeyRow }
@@ -8,6 +9,8 @@ type Id = string | number
 
 export interface CreateApiKeyInput {
   name: string
+  /** `read` (default) or `write`; fixed once the key exists. */
+  scope?: ApiKeyScope
   /** Days until expiry; omit or `null` for a key that never expires. */
   expiresInDays?: number | null
 }

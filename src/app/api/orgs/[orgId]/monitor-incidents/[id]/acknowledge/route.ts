@@ -1,6 +1,7 @@
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
+import { principalUserId } from '@/server/auth/request-auth'
 import { acknowledge } from '@/server/incidents/actions'
 import { auditIncidentAction } from '@/server/incidents/audit'
 import { actionSource, readNote } from '@/server/incidents/http'
@@ -39,7 +40,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   try {
     const via = actionSource(request)
     const summary = await acknowledge(payload, incident, {
-      userId: auth.user.id,
+      // API keys are not users: the key is named in the audit row instead.
+      userId: principalUserId(auth.user),
       via,
       note: readNote(await readJson(request)),
     })

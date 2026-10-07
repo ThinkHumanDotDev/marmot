@@ -28,7 +28,8 @@ type RouteContext = { params: Promise<{ orgId: string }> }
  * Any member may read (`organization:read`), only owners and superadmins may change.
  */
 export const GET = withErrors(async (request: Request, { params }: RouteContext) => {
-  const { payload, user } = await getRequestContext(request)
+  const { payload, user, response } = await getRequestContext(request)
+  if (response) return response
   if (!user) return unauthorized(request)
   const orgId = parseId(payload, (await params).orgId)
   const role = getUserRole(user, orgId)
@@ -49,7 +50,8 @@ export const GET = withErrors(async (request: Request, { params }: RouteContext)
  * The body replaces the overrides; `{}` resets every permission to its default.
  */
 export const PUT = withErrors(async (request: Request, { params }: RouteContext) => {
-  const { payload, user } = await getRequestContext(request)
+  const { payload, user, response } = await getRequestContext(request)
+  if (response) return response
   if (!user) return unauthorized(request)
   const orgId = parseId(payload, (await params).orgId)
   if (!isSuperadmin(user) && getUserRole(user, orgId) !== 'owner') {

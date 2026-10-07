@@ -6,7 +6,7 @@ import type { IncidentActionSource } from '@/lib/monitor-incidents'
 
 /** A browser session acts from the dashboard; a request with an API key or JWT header is the API. */
 export const actionSource = (request: Request): IncidentActionSource =>
-  request.headers.get('authorization') ? 'api' : 'dashboard'
+  request.headers.get('authorization') || request.headers.get('x-api-key') ? 'api' : 'dashboard'
 
 /** Optional `note` of an acknowledge/resolve body (trimmed, at most 2000 characters). */
 export function readNote(body: unknown): string | null {

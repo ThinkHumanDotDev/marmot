@@ -110,6 +110,8 @@ export const adminTranslations = {
         prefixDescription: 'Public identifier shown in the UI (mk_<prefix>).',
         activeDescription: 'Disabled keys are rejected.',
         expiresAtDescription: 'Leave empty for a key that never expires.',
+        scopeDescription:
+          'read: GET requests only (acts as a viewer). write: also mutations (acts as a member). Fixed at creation.',
       },
       webhookEndpoints: {
         description:

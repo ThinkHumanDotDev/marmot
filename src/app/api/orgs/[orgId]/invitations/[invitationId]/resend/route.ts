@@ -14,7 +14,8 @@ type RouteContext = { params: Promise<{ orgId: string; invitationId: string }> }
  * `afterChange` hook to mail the link again.
  */
 export const POST = withErrors(async (request: Request, { params }: RouteContext) => {
-  const { payload, user } = await getRequestContext(request)
+  const { payload, user, response } = await getRequestContext(request)
+  if (response) return response
   if (!user) return unauthorized(request)
   const { orgId, invitationId } = await params
 

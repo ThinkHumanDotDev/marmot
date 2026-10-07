@@ -105,6 +105,26 @@ export const ALL_PERMISSIONS = Object.keys(PERMISSIONS) as Permission[]
  */
 export const LOCKED_PERMISSIONS: readonly Permission[] = ['organization:delete']
 
+/**
+ * Permissions an organization API key never holds, whatever role its scope maps to and whatever the
+ * organization's overrides say: keys cannot manage members, keys, single sign-on, the organization
+ * itself, or read the audit log (#115). Route-level guards in `src/server/auth/request-auth.ts`
+ * refuse those routes outright; this list keeps collection access consistent with them.
+ */
+export const API_KEY_DENIED_PERMISSIONS: readonly Permission[] = [
+  'organization:update',
+  'organization:delete',
+  'member:invite',
+  'member:remove',
+  'member:update-role',
+  'api-key:read',
+  'api-key:create',
+  'api-key:delete',
+  'audit-log:read',
+  'sso:read',
+  'sso:manage',
+]
+
 /** Per-organization overrides of the minimum role (`organizations.permissionOverrides`). */
 export type PermissionOverrides = Partial<Record<Permission, Role>>
 
@@ -137,6 +157,17 @@ export const isRole = (value: unknown): value is Role =>
   typeof value === 'string' && (ROLES as readonly string[]).includes(value)
 
 export const isSuperadmin = (user: MaybeUser): boolean => user?.superadmin === true
+
+/**
+ * `true` for the synthetic principal an organization API key authenticates as
+ * (`src/server/auth/request-auth.ts`): it carries an `apiKey` descriptor instead of being a user row.
+ */
+export const isApiKeyPrincipal = (user: unknown): boolean =>
+  Boolean(user && typeof user === 'object' && (user as { apiKey?: unknown }).apiKey)
+
+/** `false` when `user` is an API key principal and `permission` is one keys never hold. */
+export const apiKeyMayHold = (user: unknown, permission: Permission): boolean =>
+  !isApiKeyPrincipal(user) || !API_KEY_DENIED_PERMISSIONS.includes(permission)
 
 /** `true` when `role` ranks at or above `minRole`. */
 export const roleSatisfies = (role: Role, minRole: Role): boolean =>
@@ -217,11 +248,13 @@ export function effectivePermissions(
  * Code paths that only know an organization id and cannot afford a lookup keep the defaults.
  */
 export function can(user: MaybeUser, orgId: OrgId, permission: Permission): boolean {
+  if (!apiKeyMayHold(user, permission)) return false
   return hasOrgRole(user, orgId, PERMISSIONS[permission])
 }
 
 /** `can()` that honours the organization's `permissionOverrides` (superadmins always pass). */
 export function canWithOverrides(user: MaybeUser, org: OrgLike, permission: Permission): boolean {
+  if (!apiKeyMayHold(user, permission)) return false
   const overrides = normalizePermissionOverrides(org.permissionOverrides)
   return hasOrgRole(user, org.id, minRoleFor(permission, overrides))
 }
@@ -239,6 +272,7 @@ export function getOrgIdsWithPermission(
   overridesByOrg?: OverridesByOrg,
 ): OrgId[] {
   if (!user || !Array.isArray(user.organizations)) return []
+  if (!apiKeyMayHold(user, permission)) return []
   const ids: OrgId[] = []
   for (const row of user.organizations) {
     if (row?.organization === null || row?.organization === undefined) continue

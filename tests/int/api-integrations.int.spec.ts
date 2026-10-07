@@ -252,6 +252,7 @@ describe('API keys, push, metrics and badges', () => {
           data: {
             organization: orgA.id,
             name: 'forged',
+            scope: 'write',
             keyHash: forged.keyHash,
             prefix: forged.prefix,
           },

@@ -1,6 +1,7 @@
 import type { Payload, PayloadRequest } from 'payload'
 
 import {
+  apiKeyMayHold,
   getUserOrgIds,
   hasOrgRole,
   isSuperadmin,
@@ -91,6 +92,7 @@ export async function canInOrg(
 ): Promise<boolean> {
   if (!user) return false
   if (isSuperadmin(user)) return true
+  if (!apiKeyMayHold(user, permission)) return false
   const overrides = await loadOrgPermissionOverrides(payload, orgId)
   return hasOrgRole(user, orgId, minRoleFor(permission, overrides))
 }

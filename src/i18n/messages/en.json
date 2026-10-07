@@ -1263,7 +1263,7 @@
       "adminsOnlyTitle": "Admins only",
       "adminsOnlyDescription": "API keys are managed by admins and owners of this organization.",
       "title": "API keys",
-      "description": "Keys authenticate Prometheus scrapes of <code>/api/metrics</code> and badges of monitors that are not on a public status page. Send them as <code>Authorization: Bearer</code> or <code>X-API-Key</code>.",
+      "description": "Keys authenticate automation against the management API (<code>/api/orgs/…</code>, documented at <code>/api/docs</code>), Prometheus scrapes of <code>/api/metrics</code> and badges of monitors that are not on a public status page. Send them as <code>Authorization: Bearer</code> or <code>X-API-Key</code>.",
       "newKey": "New key",
       "emptyTitle": "No API keys yet",
       "emptyDescription": "Create a key to scrape metrics or embed private badges.",
@@ -1271,6 +1271,7 @@
       "columns": {
         "name": "Name",
         "key": "Key",
+        "scope": "Scope",
         "status": "Status",
         "expires": "Expires",
         "lastUsed": "Last used"
@@ -1279,6 +1280,10 @@
         "active": "Active",
         "expired": "Expired",
         "disabled": "Disabled"
+      },
+      "scope": {
+        "read": "Read",
+        "write": "Read & write"
       },
       "lastUsed": {
         "never": "Never",
@@ -1304,6 +1309,12 @@
         "description": "Give the key a name you will recognise in this list, for example the system that will use it.",
         "name": "Name",
         "namePlaceholder": "Prometheus",
+        "scope": "Scope",
+        "scopeOptions": {
+          "read": "Read: GET requests only, like a viewer",
+          "write": "Read & write: also changes monitors, status pages, incidents and maintenance, like a member"
+        },
+        "scopeHint": "The scope cannot be changed later. No key can manage members, keys, single sign-on or billing.",
         "expiry": "Expiry",
         "expiryOptions": {
           "never": "Never expires",
@@ -5020,6 +5031,10 @@
       "action": "Fix the receiver, then re-enable the endpoint under Settings → Webhooks:"
     }
   },
+  "apiDocs": {
+    "title": "Marmot management API",
+    "fallback": "The API reference needs JavaScript. Open the OpenAPI document (JSON) instead."
+  },
   "errors": {
     "unauthorized": "You must be signed in.",
     "forbidden": "Forbidden",
@@ -5125,6 +5140,10 @@
     "apiKeyNotFound": "API key not found",
     "expiresAtInPast": "expiresAt must be in the future",
     "activeRequired": "active (boolean) is required",
+    "apiKeyInvalid": "The API key is unknown, disabled, expired or revoked.",
+    "apiKeyReadOnly": "This API key has the read scope and may only send GET requests. Create a key with the write scope for changes.",
+    "apiKeyRouteForbidden": "API keys cannot manage members, invitations, API keys, single sign-on, billing or ownership. Sign in to do this.",
+    "apiKeyWrongOrganization": "This API key belongs to another organization.",
     "dockerHostNotFound": "Docker host not found",
     "socketPathAbsolute": "Enter an absolute socket path.",
     "dockerTestTargetRequired": "Provide dockerHostId or connectionType + socketPath/url",
