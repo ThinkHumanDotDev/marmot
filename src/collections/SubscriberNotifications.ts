@@ -111,6 +111,11 @@ export const SubscriberNotifications: CollectionConfig = {
     { name: 'incidentUpdateId', type: 'text' },
     { name: 'maintenance', type: 'relationship', relationTo: 'maintenance' },
     { name: 'occurrence', type: 'relationship', relationTo: 'maintenance-occurrences' },
+    {
+      // Public id of the incident or maintenance occurrence: messages link to its permalink (#107).
+      name: 'eventPublicId',
+      type: 'text',
+    },
     { name: 'occurredAt', type: 'date', required: true },
     {
       name: 'channels',

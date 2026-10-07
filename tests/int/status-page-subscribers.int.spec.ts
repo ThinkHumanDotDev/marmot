@@ -578,6 +578,8 @@ describe('status page subscribers', () => {
       data: { incident: { title: 'Webhook test', status: 'investigating' } },
     })
     expect(body.subscription.unsubscribe_url).toContain('/unsubscribe/')
+    expect(body.url).toMatch(new RegExp(`/status/${page.slug}/events/incident/[0-9a-z]{8}$`))
+    expect(body.page.url).toBe(`http://localhost:3000/status/${page.slug}`)
     const [delivery] = (
       await payload.find({
         collection: 'subscriber-deliveries',
@@ -683,8 +685,11 @@ describe('status page subscribers', () => {
       json({ action: 'send' }, auth(ownerToken)),
     )
     await drain()
-    expect(twilioBodies().at(-1)!.get('Body')).toBe(
-      `Sub Status ALERT SMS test (Investigating) http://localhost:3000/status/${page.slug}`,
+    // The URL is the incident's permalink (#107).
+    expect(twilioBodies().at(-1)!.get('Body')).toMatch(
+      new RegExp(
+        `^Sub Status ALERT SMS test \\(Investigating\\) http://localhost:3000/status/${page.slug}/events/incident/[0-9a-z]{8}$`,
+      ),
     )
 
     // STOP through Twilio's inbound webhook ends the subscription.
@@ -777,6 +782,7 @@ describe('status page subscribers', () => {
       occurrence: {
         id: String(occurrence.id),
         maintenanceId: String(maintenance.id),
+        publicId: occurrence.publicId!,
         state: 'scheduled',
         start: '2030-01-01T10:00:00.000Z',
         end: '2030-01-01T11:00:00.000Z',
@@ -804,6 +810,7 @@ describe('status page subscribers', () => {
       title: 'Database upgrade',
       components: [apiC],
       message: 'Short downtime.',
+      eventPublicId: occurrence.publicId,
     })
 
     const list = await call(listNotificationsRoute, pageParams(), { headers: auth(memberToken) })

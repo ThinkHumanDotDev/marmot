@@ -20,6 +20,8 @@ import {
   type IncidentUpdatePostedEvent,
 } from '@/server/status-pages/incident-events'
 
+import { publicIdOf } from '@/server/status-pages/public-ids'
+
 import { createNotificationBatch } from './batches'
 
 const log = childLogger('status-pages:subscribers:events')
@@ -82,6 +84,7 @@ export async function announceIncidentUpdate(event: IncidentUpdatePostedEvent): 
     occurredAt: update.postedAt ?? new Date().toISOString(),
     incident: incident.id,
     incidentUpdateId: update.id ?? null,
+    eventPublicId: publicIdOf('incidents', incident),
   })
 }
 
@@ -131,6 +134,7 @@ export async function announceMaintenanceEvent(
         end: event.occurrence.end,
         reminderMinutes: event.reminderMinutes,
       },
+      eventPublicId: event.occurrence.publicId,
       maintenance: toId(payload, event.maintenance.id),
       occurrence: toId(payload, event.occurrence.id),
     })

@@ -29,6 +29,7 @@ import {
 import type { ErrorKey } from '@/server/errors'
 import { userErrorText } from '@/server/request-locale'
 import { emitIncidentUpdatePosted } from '@/server/status-pages/incident-events'
+import { assignPublicId } from '@/server/status-pages/public-ids'
 
 import type { Incident, StatusPage } from '@/payload-types'
 
@@ -429,6 +430,18 @@ export const Incidents: CollectionConfig = {
       },
     },
     { name: 'title', type: 'text', required: true },
+    {
+      // Short id of the public permalink (#107); assigned by the hook, never by clients.
+      name: 'publicId',
+      type: 'text',
+      index: true,
+      hooks: { beforeChange: [assignPublicId('incidents')] },
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: adminT('marmot:incidents:publicIdDescription'),
+      },
+    },
     {
       type: 'row',
       fields: [

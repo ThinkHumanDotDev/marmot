@@ -80,6 +80,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"incident_update_id" varchar,
   	"maintenance_id" integer,
   	"occurrence_id" integer,
+  	"event_public_id" varchar,
   	"occurred_at" timestamp(3) with time zone NOT NULL,
   	"recipient_count" numeric,
   	"sending_started_at" timestamp(3) with time zone,

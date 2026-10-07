@@ -12,13 +12,28 @@ import { NextResponse, type NextRequest } from 'next/server'
  *   https://status.example.com/manifest.json → /status/<slug>/manifest.json
  *   https://status.example.com/login         → /status/<slug>/login (password-protected pages)
  *   https://status.example.com/badge.svg     → /status/<slug>/badge.svg
+ *   https://status.example.com/events        → /status/<slug>/events (history, #107)
+ *   https://status.example.com/events/incident/<id>    → /status/<slug>/events/incident/<id>
+ *   https://status.example.com/events/maintenance/<id> → /status/<slug>/events/maintenance/<id>
+ *   https://status.example.com/sitemap.xml   → /status/<slug>/sitemap.xml
+ *   https://status.example.com/robots.txt    → /status/<slug>/robots.txt
  *
  * Everything else (the app, API, admin) is untouched, and any failure falls through to the normal
  * routing so a broken lookup can never take the main site down. See docs/Status-Pages.md.
  */
 
 export const config = {
-  matcher: ['/', '/rss', '/manifest.json', '/login', '/badge.svg'],
+  matcher: [
+    '/',
+    '/rss',
+    '/manifest.json',
+    '/login',
+    '/badge.svg',
+    '/events',
+    '/events/:kind/:id',
+    '/sitemap.xml',
+    '/robots.txt',
+  ],
 }
 
 const REWRITES: Record<string, string> = {
@@ -27,6 +42,18 @@ const REWRITES: Record<string, string> = {
   '/manifest.json': '/manifest.json',
   '/login': '/login',
   '/badge.svg': '/badge.svg',
+  '/events': '/events',
+  '/sitemap.xml': '/sitemap.xml',
+  '/robots.txt': '/robots.txt',
+}
+
+/** Permalinks of incidents and maintenance windows (`src/lib/status-page-events.ts`). */
+const EVENT_PERMALINK = /^\/events\/(incident|maintenance)\/[0-9a-z]{8}$/
+
+/** The path below `/status/<slug>` that `pathname` maps to on a custom domain, or undefined. */
+export function customDomainSuffix(pathname: string): string | undefined {
+  if (Object.hasOwn(REWRITES, pathname)) return REWRITES[pathname]
+  return EVENT_PERMALINK.test(pathname) ? pathname : undefined
 }
 
 const HOSTNAME = /^(?=.{1,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(?:\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/
@@ -62,7 +89,7 @@ async function resolveSlug(request: NextRequest, host: string): Promise<string |
 }
 
 export async function proxy(request: NextRequest) {
-  const suffix = REWRITES[request.nextUrl.pathname]
+  const suffix = customDomainSuffix(request.nextUrl.pathname)
   if (suffix === undefined) return NextResponse.next()
 
   const host = requestHostname(request)

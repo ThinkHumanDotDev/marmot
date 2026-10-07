@@ -18,6 +18,7 @@ import {
 } from '@/lib/maintenance-announcements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { STATUS_PAGE_ACCESS_MODES } from '@/lib/status-page-access'
+import { DEFAULT_PAST_INCIDENTS_DAYS, MAX_PAST_INCIDENTS_DAYS } from '@/lib/status-page-events'
 import { COMPONENT_TYPES, isContactUrl, isHttpUrl } from '@/lib/status-page-components'
 import {
   DEFAULT_SMS_MAX_SEGMENTS,
@@ -455,6 +456,14 @@ export const StatusPages: CollectionConfig = {
       admin: {
         description: adminT('marmot:statusPages:maintenanceVisibilityHoursDescription'),
       },
+    },
+    {
+      name: 'pastIncidentsDays',
+      type: 'number',
+      defaultValue: DEFAULT_PAST_INCIDENTS_DAYS,
+      min: 0,
+      max: MAX_PAST_INCIDENTS_DAYS,
+      admin: { description: adminT('marmot:statusPages:pastIncidentsDaysDescription') },
     },
     { name: 'footerText', type: 'textarea' },
     {

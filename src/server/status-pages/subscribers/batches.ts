@@ -104,6 +104,8 @@ export interface BatchInput {
   window?: { start?: string | null; end?: string | null; reminderMinutes?: number | null }
   incident?: Id | null
   incidentUpdateId?: string | null
+  /** Public id of the incident / maintenance occurrence (its permalink, #107). */
+  eventPublicId?: string | null
   maintenance?: Id | null
   occurrence?: Id | null
 }
@@ -157,6 +159,7 @@ export async function createNotificationBatch(
         },
         incident: (input.incident ?? null) as SubscriberNotification['incident'],
         incidentUpdateId: input.incidentUpdateId ?? null,
+        eventPublicId: input.eventPublicId ?? null,
         maintenance: (input.maintenance ?? null) as SubscriberNotification['maintenance'],
         occurrence: (input.occurrence ?? null) as SubscriberNotification['occurrence'],
         recipientCount: recipients.total,

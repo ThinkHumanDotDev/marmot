@@ -7,6 +7,8 @@ import { renderMarkdown } from '@/lib/markdown'
 import { cn } from '@/lib/utils'
 import type { PublicMaintenance } from '@/server/maintenance/status-page'
 
+import { useVisitorTimeZone } from './visitor-time-zone'
+
 const prose =
   'prose-sm max-w-none text-sm leading-relaxed [&_a]:underline [&_code]:rounded [&_code]:bg-background/60 [&_code]:px-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5'
 
@@ -15,18 +17,37 @@ const prose =
  * state, planned window, description and update timeline (#154). Running windows are highlighted,
  * upcoming ones dashed, finished ones muted until they leave the page.
  */
-export function MaintenanceCard({ item }: { item: PublicMaintenance }) {
+export function MaintenanceCard({
+  item,
+  href,
+}: {
+  item: PublicMaintenance
+  /** Permalink; the title links to it. */
+  href?: string
+}) {
   const legacy = useTranslations('statusPages.maintenance')
   const t = useTranslations('statusPages.public.maintenance')
   const format = useFormatter()
+  const visitorZone = useVisitorTimeZone()
   const running = item.status === 'under-maintenance'
   const finished = item.status === 'completed' || item.status === 'cancelled'
+  // Upcoming windows are shown in the visitor's time zone (with its name) once the page is
+  // hydrated; the server renders the organization's zone.
+  const zone = item.status === 'scheduled' ? visitorZone : null
+  const when = (date: string) =>
+    zone
+      ? format.dateTime(new Date(date), 'zoned', { timeZone: zone })
+      : format.dateTime(new Date(date), 'short')
   // `dateTimeRange` collapses the date when both ends fall on the same day.
   const period = !item.start
     ? ''
     : item.end
-      ? format.dateTimeRange(new Date(item.start), new Date(item.end), 'short')
-      : legacy('from', { start: format.dateTime(new Date(item.start), 'short') })
+      ? zone
+        ? format.dateTimeRange(new Date(item.start), new Date(item.end), 'zoned', {
+            timeZone: zone,
+          })
+        : format.dateTimeRange(new Date(item.start), new Date(item.end), 'short')
+      : legacy('from', { start: when(item.start) })
   const finishedAt = item.completedAt ?? item.cancelledAt
   return (
     <article
@@ -47,7 +68,13 @@ export function MaintenanceCard({ item }: { item: PublicMaintenance }) {
             className={cn('size-4', finished ? 'text-muted-foreground' : 'text-status-maintenance')}
             aria-hidden
           />
-          {item.title}
+          {href ? (
+            <a href={href} className="underline-offset-4 hover:underline" data-permalink>
+              {item.title}
+            </a>
+          ) : (
+            item.title
+          )}
         </h3>
         <span className="text-xs font-medium text-muted-foreground">
           {t(`state.${item.state}`)}
@@ -55,8 +82,10 @@ export function MaintenanceCard({ item }: { item: PublicMaintenance }) {
       </header>
       {item.start && (
         <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-          <time dateTime={item.start}>{period}</time>
-          {item.timezone && <span className="ml-1">({item.timezone})</span>}
+          <time dateTime={item.start} data-visitor-time-zone={zone ?? undefined}>
+            {period}
+          </time>
+          {item.timezone && !zone && <span className="ml-1">({item.timezone})</span>}
           {finishedAt && (
             <span className="ml-2">
               ·{' '}
@@ -75,30 +104,37 @@ export function MaintenanceCard({ item }: { item: PublicMaintenance }) {
       )}
       {item.updates.length > 0 && (
         <section aria-label={t('updates')} className="mt-3">
-          <ol className="flex flex-col gap-2 border-l border-status-maintenance/30 pl-3">
-            {item.updates.map((update) => (
-              <li key={update.id} data-update-status={update.status}>
-                <p className="flex flex-wrap items-baseline gap-x-2 text-xs">
-                  <span className="font-medium">{t(`state.${update.status}`)}</span>
-                  <time dateTime={update.postedAt} className="text-muted-foreground tabular-nums">
-                    {format.dateTime(new Date(update.postedAt), 'short')}
-                  </time>
-                </p>
-                {update.message ? (
-                  <div
-                    className={prose}
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(update.message) }}
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {t(`defaultMessage.${update.status}`)}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ol>
+          <MaintenanceUpdates updates={item.updates} />
         </section>
       )}
     </article>
+  )
+}
+
+/** The update timeline of a maintenance window, newest first. */
+export function MaintenanceUpdates({ updates }: { updates: PublicMaintenance['updates'] }) {
+  const t = useTranslations('statusPages.public.maintenance')
+  const format = useFormatter()
+  return (
+    <ol className="flex flex-col gap-2 border-l border-status-maintenance/30 pl-3">
+      {updates.map((update) => (
+        <li key={update.id} data-update-status={update.status}>
+          <p className="flex flex-wrap items-baseline gap-x-2 text-xs">
+            <span className="font-medium">{t(`state.${update.status}`)}</span>
+            <time dateTime={update.postedAt} className="text-muted-foreground tabular-nums">
+              {format.dateTime(new Date(update.postedAt), 'short')}
+            </time>
+          </p>
+          {update.message ? (
+            <div
+              className={prose}
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(update.message) }}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">{t(`defaultMessage.${update.status}`)}</p>
+          )}
+        </li>
+      ))}
+    </ol>
   )
 }

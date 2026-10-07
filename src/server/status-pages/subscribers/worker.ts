@@ -184,7 +184,7 @@ async function send(
   const locale = subscriberLocale(subscriber, ctx)
   const render = { locale, i18n: ctx.i18n }
   const links = subscriptionLinks(ctx.page, subscriber)
-  const pageInfo = { title: ctx.page.title, url: announcement.url }
+  const pageInfo = { title: ctx.page.title, url: announcement.pageUrl }
 
   switch (subscriber.channel) {
     case 'email':

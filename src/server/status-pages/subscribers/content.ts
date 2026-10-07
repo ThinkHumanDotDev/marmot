@@ -22,6 +22,8 @@ import {
 import type { Monitor, StatusPage, SubscriberNotification } from '@/payload-types'
 import { organizationFormatter, serverTranslator, type OrganizationI18n } from '@/server/i18n'
 
+import { statusPageEventUrl } from '@/server/status-pages/urls'
+
 import type { SubscriptionLinks } from './links'
 import { publicPageUrl } from './links'
 
@@ -41,8 +43,10 @@ export interface Announcement {
   status: string | null
   /** Markdown. */
   message: string
-  /** Public page URL. */
+  /** Where messages send readers: the event's permalink (#107), else the page. */
   url: string
+  /** Public page URL. */
+  pageUrl: string
   components: AnnouncementComponent[]
   window: { start: string | null; end: string | null }
   reminderMinutes: number | null
@@ -109,7 +113,14 @@ export function toAnnouncement(
     title: notification.title,
     status: notification.status ?? null,
     message: notification.message ?? '',
-    url: publicPageUrl(page),
+    url: notification.eventPublicId
+      ? statusPageEventUrl(
+          page.slug,
+          isIncidentEvent(notification.event) ? 'incident' : 'maintenance',
+          notification.eventPublicId,
+        )
+      : publicPageUrl(page),
+    pageUrl: publicPageUrl(page),
     components: (notification.components ?? []).flatMap((id) => {
       const name = names.get(String(id))
       return name ? [{ id: String(id), name }] : []
@@ -227,6 +238,8 @@ export interface WebhookBody {
   id: string | null
   created_at: string
   page: { name: string; url: string }
+  /** Permalink of the incident or maintenance window (the page for `test`). */
+  url: string
   data: Record<string, unknown>
   subscription: { manage_url: string; unsubscribe_url: string }
 }
@@ -269,7 +282,8 @@ export function webhookBody(announcement: Announcement, links: SubscriptionLinks
     event: announcement.event,
     id: announcement.id,
     created_at: announcement.occurredAt,
-    page: { name: announcement.siteName, url: announcement.url },
+    page: { name: announcement.siteName, url: announcement.pageUrl },
+    url: announcement.url,
     data,
     subscription: { manage_url: links.manageUrl, unsubscribe_url: links.unsubscribeUrl },
   }
@@ -290,6 +304,7 @@ export function welcomeWebhookBody(
     id: null,
     created_at: new Date().toISOString(),
     page: { name: page.title, url: publicPageUrl(page) },
+    url: publicPageUrl(page),
     data: {
       message: t('subscriberMessages.chat.welcome', { siteName: page.title }),
       ...(signingSecret ? { signing_secret: signingSecret } : {}),
@@ -323,7 +338,7 @@ export function slackMessage(
         .join('\n')
     : t('subscriberMessages.chat.welcome', { siteName: page.title })
   const footer = [
-    slackLink(page.url, t('subscriberMessages.chat.viewPage')),
+    slackLink(announcement?.url ?? page.url, t('subscriberMessages.chat.viewPage')),
     slackLink(links.manageUrl, t('subscriberMessages.chat.manage')),
     slackLink(links.unsubscribeUrl, t('subscriberMessages.chat.unsubscribe')),
   ].join(' · ')
@@ -372,7 +387,7 @@ export function discordMessage(
     embeds: [
       {
         title: title.slice(0, 256),
-        url: page.url,
+        url: announcement?.url ?? page.url,
         description: `${description}\n\n${links_}`.slice(0, 4_000),
         color,
         timestamp: announcement?.occurredAt ?? new Date().toISOString(),
