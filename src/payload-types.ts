@@ -415,6 +415,7 @@ export interface Monitor {
     | 'gamedig';
   active?: boolean | null;
   parent?: (number | null) | Monitor;
+  key?: string | null;
   publicName?: string | null;
   description?: string | null;
   tags?:
@@ -1750,6 +1751,7 @@ export interface MonitorsSelect<T extends boolean = true> {
   type?: T;
   active?: T;
   parent?: T;
+  key?: T;
   publicName?: T;
   description?: T;
   tags?:

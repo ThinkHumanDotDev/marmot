@@ -27,7 +27,8 @@ function intParam(url: URL, name: string, fallback: number, max: number): number
 
 /**
  * GET /api/orgs/:orgId/monitors — the organization's monitors (`monitor:read`), sorted by name.
- * Query: `limit` (1–500, default 100), `page` (default 1), `type`, `active` (`true`/`false`).
+ * Query: `limit` (1–500, default 100), `page` (default 1), `type`, `active` (`true`/`false`),
+ * `key` (the monitors-as-code key).
  * Answers Payload's pagination envelope (`docs`, `totalDocs`, `page`, `totalPages`, …).
  */
 export async function GET(request: Request, { params }: RouteContext) {
@@ -43,6 +44,8 @@ export async function GET(request: Request, { params }: RouteContext) {
   const and: Where[] = [{ organization: { equals: orgId } }]
   const type = url.searchParams.get('type')
   if (type) and.push({ type: { equals: type } })
+  const key = url.searchParams.get('key')
+  if (key) and.push({ key: { equals: key } })
   const active = url.searchParams.get('active')
   if (active === 'true' || active === 'false') and.push({ active: { equals: active === 'true' } })
 

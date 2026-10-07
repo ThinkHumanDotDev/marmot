@@ -9,6 +9,9 @@
     "type": "git",
     "url": "https://github.com/ThinkHumanDotDev/marmot"
   },
+  "bin": {
+    "marmot": "dist/cli/marmot.mjs"
+  },
   "scripts": {
     "dev": "concurrently -n web,worker,realtime -c blue,green,magenta \"pnpm dev:web\" \"pnpm dev:worker\" \"pnpm dev:realtime\"",
     "dev:web": "cross-env NODE_OPTIONS=--no-deprecation next dev",
@@ -17,6 +20,7 @@
     "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "build:server": "node scripts/build-server.mjs",
+    "marmot": "node scripts/run-ts.mjs src/cli/marmot.ts",
     "start:worker": "cross-env NODE_OPTIONS=--no-deprecation node dist/server/worker.mjs",
     "start:realtime": "cross-env NODE_OPTIONS=--no-deprecation node dist/server/realtime.mjs",
     "migrate:prod": "cross-env NODE_OPTIONS=--no-deprecation node dist/server/migrate.mjs",
@@ -154,7 +158,8 @@
     "typescript": "5.7.3",
     "vite-tsconfig-paths": "6.0.5",
     "vitest": "4.1.11",
-    "xml-crypto": "^6.3.3"
+    "xml-crypto": "^6.3.3",
+    "yaml": "^2.9.1"
   },
   "engines": {
     "node": ">=20.9.0",
