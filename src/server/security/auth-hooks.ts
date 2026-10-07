@@ -1,5 +1,4 @@
 import {
-  APIError,
   type CollectionAfterErrorHook,
   type CollectionAfterLoginHook,
   type CollectionBeforeOperationHook,
@@ -8,6 +7,7 @@ import {
 import { recordAuditEvent, recordRequestAuditEvent } from './audit'
 import { createRateLimiter, rateLimitHeaders, type RateLimiter } from './rate-limit'
 import { requestMeta } from './request'
+import { apiError } from '@/server/errors'
 
 /**
  * Brute-force protection and audit trail for Payload's own auth operations on `users`
@@ -63,7 +63,7 @@ export const rateLimitAuthOperations: CollectionBeforeOperationHook = async ({
       ...Object.fromEntries(req.responseHeaders ?? []),
       ...rateLimitHeaders(decision),
     })
-    throw new APIError('Too many attempts. Please try again later.', 429, null, true)
+    throw apiError('tooManyAttempts', 429, undefined, { isPublic: true })
   }
   return args
 }

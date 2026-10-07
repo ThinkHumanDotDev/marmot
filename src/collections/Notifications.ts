@@ -1,5 +1,4 @@
 import {
-  APIError,
   ValidationError,
   type CollectionAfterChangeHook,
   type CollectionBeforeChangeHook,
@@ -22,6 +21,8 @@ import {
 } from '@/server/notifications/send'
 import { checkServerSmtpChange } from '@/server/notifications/server-smtp'
 import { adminT } from '@/i18n/admin'
+import { userErrorText } from '@/server/request-locale'
+import { apiError } from '@/server/errors'
 
 const log = childLogger('notifications')
 
@@ -35,6 +36,7 @@ const extractId = (value: OrgId | { id: OrgId } | null | undefined): OrgId | nul
 const validateProviderConfig: CollectionBeforeValidateHook<Notification> = ({
   data,
   originalDoc,
+  req,
 }) => {
   if (!data) return data
   const type = data.type ?? originalDoc?.type
@@ -42,7 +44,7 @@ const validateProviderConfig: CollectionBeforeValidateHook<Notification> = ({
   if (!getNotificationProvider(type)) {
     throw new ValidationError({
       collection: 'notifications',
-      errors: [{ message: `Unknown notification type "${type}".`, path: 'type' }],
+      errors: [{ message: userErrorText(req, 'notificationTypeUnknown', { type }), path: 'type' }],
     })
   }
   const config = data.config !== undefined ? data.config : originalDoc?.config
@@ -96,10 +98,12 @@ const enforceServerSmtpPolicy: FieldHook<Notification> = ({
     overrideAccess,
   })
   if (!refusal) return value
-  if (refusal.status === 403) throw new APIError(refusal.message, 403, null, true)
+  if (refusal.status === 403) {
+    throw apiError(refusal.key, 403, refusal.values, { isPublic: true })
+  }
   throw new ValidationError({
     collection: 'notifications',
-    errors: [{ message: refusal.message, path: refusal.path }],
+    errors: [{ message: userErrorText(req, refusal.key, refusal.values), path: refusal.path }],
   })
 }
 

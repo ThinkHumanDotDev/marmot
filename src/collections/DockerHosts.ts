@@ -17,12 +17,17 @@ import { looseHost } from '@/server/security/monitor-targets'
 
 import { detachMonitorRelation } from './shared'
 import { adminT } from '@/i18n/admin'
+import { userErrorText } from '@/server/request-locale'
 
 /**
  * A socket host needs a path (and socket hosts must be enabled on the instance), a TCP host a
  * `tcp://` / `http(s)://` URL. The unused field is cleared so the document says what it does.
  */
-const validateConnection: CollectionBeforeValidateHook<DockerHost> = ({ data, originalDoc }) => {
+const validateConnection: CollectionBeforeValidateHook<DockerHost> = ({
+  data,
+  originalDoc,
+  req,
+}) => {
   if (!data) return data
   const connectionType = data.connectionType ?? originalDoc?.connectionType ?? 'socket'
   const fail = (path: string, message: string) => {
@@ -32,22 +37,19 @@ const validateConnection: CollectionBeforeValidateHook<DockerHost> = ({ data, or
 
   if (connectionType === 'socket') {
     if (!env.DOCKER_SOCKET_ENABLED) {
-      fail(
-        'connectionType',
-        'Socket connections are disabled on this instance (DOCKER_SOCKET_ENABLED).',
-      )
+      fail('connectionType', userErrorText(req, 'dockerSocketDisabled'))
     }
     if (hostLocalChecksRefused()) {
       fail('connectionType', blockedLocalError('A Docker socket host').message)
     }
     const socketPath = (data.socketPath ?? originalDoc?.socketPath ?? '').trim()
-    if (!socketPath.startsWith('/')) fail('socketPath', 'Enter an absolute socket path.')
+    if (!socketPath.startsWith('/')) fail('socketPath', userErrorText(req, 'socketPathAbsolute'))
     data.socketPath = socketPath
     data.url = null
   } else {
     const url = (data.url ?? originalDoc?.url ?? '').trim()
     if (!DOCKER_URL_PATTERN.test(url)) {
-      fail('url', 'Enter the daemon URL, e.g. tcp://docker.example.com:2375.')
+      fail('url', userErrorText(req, 'dockerUrlInvalid'))
     }
     const denial = literalTargetDenial(looseHost(url))
     if (denial) fail('url', denial)

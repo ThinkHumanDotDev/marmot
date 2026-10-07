@@ -34,6 +34,7 @@ import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 
 import type { Invitation } from '@/payload-types'
 import { adminT } from '@/i18n/admin'
+import { userErrorText } from '@/server/request-locale'
 
 const log = childLogger('invitations')
 
@@ -71,7 +72,7 @@ const prepareInvitation: CollectionBeforeChangeHook<Invitation> = ({ data, opera
       if (!inviterRole || !canManageRole(inviterRole, data.role)) {
         throw new ValidationError({
           collection: 'invitations',
-          errors: [{ message: 'You cannot invite a role above your own.', path: 'role' }],
+          errors: [{ message: userErrorText(req, 'cannotInviteHigherRole'), path: 'role' }],
         })
       }
     }

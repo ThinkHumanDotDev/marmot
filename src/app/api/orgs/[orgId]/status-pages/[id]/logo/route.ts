@@ -4,6 +4,7 @@ import {
   jsonError,
   loadOrgStatusPage,
 } from '@/server/status-pages/http'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,13 +24,13 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   try {
     const page = await loadOrgStatusPage(auth.ctx, orgId, id, 0)
-    if (!page) return jsonError('Status page not found', 404)
+    if (!page) return jsonError(errorText(request, 'statusPageNotFound'), 404)
 
     const form = await request.formData()
     const file = form.get('file')
-    if (!(file instanceof File)) return jsonError('Expected a multipart "file" field', 400)
-    if (!file.type.startsWith('image/')) return jsonError('Logo must be an image', 400)
-    if (file.size > MAX_LOGO_BYTES) return jsonError('Logo must be 2 MB or smaller', 400)
+    if (!(file instanceof File)) return jsonError(errorText(request, 'logoFileRequired'), 400)
+    if (!file.type.startsWith('image/')) return jsonError(errorText(request, 'logoNotImage'), 400)
+    if (file.size > MAX_LOGO_BYTES) return jsonError(errorText(request, 'logoTooLarge'), 400)
 
     const media = await payload.create({
       collection: 'media',
@@ -54,7 +55,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     })
     return Response.json({ doc })
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }
 
@@ -66,7 +67,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 
   try {
     const page = await loadOrgStatusPage(auth.ctx, orgId, id, 0)
-    if (!page) return jsonError('Status page not found', 404)
+    if (!page) return jsonError(errorText(request, 'statusPageNotFound'), 404)
     const doc = await payload.update({
       collection: 'status-pages',
       id: page.id,
@@ -77,6 +78,6 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     })
     return Response.json({ doc })
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }

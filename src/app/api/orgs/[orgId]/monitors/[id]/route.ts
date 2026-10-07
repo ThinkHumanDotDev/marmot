@@ -14,6 +14,7 @@ import {
   readJson,
   validationError,
 } from '@/server/monitors/http'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,17 +36,17 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (forbidden) return forbidden
 
   const monitor = await loadOrgMonitor(payload, auth.user, orgId, id)
-  if (!monitor) return jsonError(404, 'Monitor not found')
+  if (!monitor) return jsonError(404, errorText(request, 'monitorNotFound'))
 
   const body = await readJson(request)
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    return jsonError(400, 'Expected a JSON body')
+    return jsonError(400, errorText(request, 'expectedJsonBody'))
   }
   const patch = { ...(body as Record<string, unknown>) }
   for (const key of PROTECTED_MONITOR_FIELDS) delete patch[key]
 
   const parsed = monitorFormSchema.safeParse({ ...monitorToFormValues(monitor), ...patch })
-  if (!parsed.success) return validationError(parsed.error)
+  if (!parsed.success) return validationError(parsed.error, request)
 
   try {
     const doc = await payload.update({
@@ -58,7 +59,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     })
     return Response.json(doc)
   } catch (error) {
-    return payloadError(error)
+    return payloadError(error, request)
   }
 }
 
@@ -75,7 +76,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   if (forbidden) return forbidden
 
   const monitor = await loadOrgMonitor(payload, auth.user, orgId, id)
-  if (!monitor) return jsonError(404, 'Monitor not found')
+  if (!monitor) return jsonError(404, errorText(request, 'monitorNotFound'))
 
   try {
     const doc = await payload.delete({
@@ -87,6 +88,6 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     })
     return Response.json(doc)
   } catch (error) {
-    return payloadError(error)
+    return payloadError(error, request)
   }
 }

@@ -1,5 +1,4 @@
 import {
-  APIError,
   type CollectionBeforeDeleteHook,
   type CollectionBeforeLoginHook,
   type CollectionConfig,
@@ -14,6 +13,7 @@ import { defaultLocale, localeNames, locales } from '@/i18n/locales'
 import { auditAuthFailure, auditLogin, rateLimitAuthOperations } from '@/server/security/auth-hooks'
 import { enforceSsoOnPasswordLogin } from '@/server/sso/enforcement'
 import { isSignupAllowed } from '@/server/settings'
+import { apiError } from '@/server/errors'
 
 const superadminField: FieldAccess = ({ req }) => isSuperadmin(req.user)
 /** Server-owned: written with `overrideAccess: true` only, never readable through the API. */
@@ -51,10 +51,7 @@ export const TWO_FACTOR_GATE_CONTEXT = 'twoFactorGate'
  */
 const requireTwoFactorGate: CollectionBeforeLoginHook = ({ user, context }) => {
   if (user?.twoFactorEnabled === true && context?.[TWO_FACTOR_GATE_CONTEXT] !== true) {
-    throw new APIError(
-      'This account uses two-factor authentication. Sign in through the Marmot login page.',
-      401,
-    )
+    throw apiError('twoFactorUseLoginPage', 401)
   }
   return user
 }

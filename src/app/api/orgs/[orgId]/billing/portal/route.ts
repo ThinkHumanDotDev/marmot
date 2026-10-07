@@ -17,6 +17,6 @@ export async function POST(request: Request, { params }: RouteContext) {
   try {
     return Response.json(await createPortalSession(payload, org, { requesterEmail: user.email }))
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }

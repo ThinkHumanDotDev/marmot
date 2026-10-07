@@ -10,6 +10,7 @@ import { authenticate, authorize, jsonError, parseId, payloadError } from '@/ser
 import { applyImportPlan } from './apply'
 import { parseImportFile } from './index'
 import { ImportFormatError } from './types'
+import { errorText } from '@/server/request-locale'
 
 const isDryRun = (url: URL): boolean => {
   const value = url.searchParams.get('dryRun')
@@ -29,15 +30,16 @@ export async function handleImportRequest(
   if (forbidden) return forbidden
 
   const declared = Number(request.headers.get('content-length') ?? 0)
-  if (declared > MAX_IMPORT_BYTES) return jsonError(413, 'File is larger than 10 MB')
+  if (declared > MAX_IMPORT_BYTES) return jsonError(413, errorText(request, 'importFileTooLarge'))
   const text = await request.text()
-  if (text.length > MAX_IMPORT_BYTES) return jsonError(413, 'File is larger than 10 MB')
+  if (text.length > MAX_IMPORT_BYTES)
+    return jsonError(413, errorText(request, 'importFileTooLarge'))
 
   let json: unknown
   try {
     json = JSON.parse(text)
   } catch {
-    return jsonError(400, 'The uploaded file is not valid JSON')
+    return jsonError(400, errorText(request, 'importNotJson'))
   }
 
   try {
@@ -48,6 +50,6 @@ export async function handleImportRequest(
   } catch (error) {
     if (error instanceof ImportFormatError) return jsonError(400, error.message)
     payload.logger.error({ err: error, orgId }, 'import failed')
-    return payloadError(error)
+    return payloadError(error, request)
   }
 }

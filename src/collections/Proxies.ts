@@ -12,9 +12,10 @@ import { literalTargetDenial } from '@/server/security/outbound-guard'
 
 import { detachMonitorRelation, relId, secretReadAccess } from './shared'
 import { adminT } from '@/i18n/admin'
+import { userErrorText } from '@/server/request-locale'
 
 /** Trim the host and drop credentials when authentication is off. */
-const normalize: CollectionBeforeValidateHook<MonitorProxy> = ({ data, originalDoc }) => {
+const normalize: CollectionBeforeValidateHook<MonitorProxy> = ({ data, originalDoc, req }) => {
   if (!data) return data
   if (typeof data.host === 'string') {
     data.host = data.host.trim()
@@ -37,9 +38,7 @@ const normalize: CollectionBeforeValidateHook<MonitorProxy> = ({ data, originalD
     if (!username) {
       throw new ValidationError({
         collection: 'proxies',
-        errors: [
-          { message: 'A username is required when authentication is on.', path: 'username' },
-        ],
+        errors: [{ message: userErrorText(req, 'proxyUsernameRequired'), path: 'username' }],
       })
     }
   }

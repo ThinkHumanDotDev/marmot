@@ -16,6 +16,6 @@ export async function GET(request: Request, { params }: RouteContext) {
   try {
     return Response.json(await getBillingOverview(auth.ctx.payload, auth.ctx.org))
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }

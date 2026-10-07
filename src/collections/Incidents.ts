@@ -9,6 +9,7 @@ import { orgScoped } from '@/access/org-scoped'
 
 import type { Incident } from '@/payload-types'
 import { adminT } from '@/i18n/admin'
+import { userErrorText } from '@/server/request-locale'
 
 export const INCIDENT_STYLES = ['info', 'warning', 'danger', 'primary'] as const
 export type IncidentStyle = (typeof INCIDENT_STYLES)[number]
@@ -35,7 +36,7 @@ const deriveFromStatusPage: CollectionBeforeChangeHook<Incident> = async ({
   if (statusPageId === null) {
     throw new ValidationError({
       collection: 'incidents',
-      errors: [{ message: 'An incident belongs to a status page.', path: 'statusPage' }],
+      errors: [{ message: userErrorText(req, 'incidentStatusPageRequired'), path: 'statusPage' }],
     })
   }
 

@@ -15,6 +15,7 @@ import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 
 import type { StatusPage } from '@/payload-types'
+import { userErrorText } from '@/server/request-locale'
 
 export const STATUS_PAGE_THEMES = ['auto', 'light', 'dark'] as const
 export type StatusPageTheme = (typeof STATUS_PAGE_THEMES)[number]
@@ -117,7 +118,7 @@ const validateReferences: CollectionBeforeChangeHook<StatusPage> = async ({
         collection: 'status-pages',
         errors: [
           {
-            message: 'Every monitor on a status page must belong to the same organization.',
+            message: userErrorText(req, 'statusPageForeignMonitors'),
             path: 'groups',
           },
         ],
@@ -130,7 +131,7 @@ const validateReferences: CollectionBeforeChangeHook<StatusPage> = async ({
     if (new Set(hostnames).size !== hostnames.length) {
       throw new ValidationError({
         collection: 'status-pages',
-        errors: [{ message: 'Each hostname may only be listed once.', path: 'domains' }],
+        errors: [{ message: userErrorText(req, 'hostnameDuplicate'), path: 'domains' }],
       })
     }
     const where: Where[] = [{ 'domains.hostname': { in: hostnames } }]
@@ -148,7 +149,7 @@ const validateReferences: CollectionBeforeChangeHook<StatusPage> = async ({
         collection: 'status-pages',
         errors: [
           {
-            message: 'One of these hostnames is already used by another status page.',
+            message: userErrorText(req, 'hostnameTaken'),
             path: 'domains',
           },
         ],

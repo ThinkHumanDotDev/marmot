@@ -33,6 +33,8 @@ import type { Maintenance as MaintenanceDoc } from '@/payload-types'
 import { buildCron, getMaintenanceStatus, validateCron } from '@/server/maintenance/status'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 import { adminT } from '@/i18n/admin'
+import { userErrorText } from '@/server/request-locale'
+import type { ErrorKey, ErrorValues } from '@/server/errors'
 
 const log = childLogger('maintenance')
 
@@ -53,42 +55,49 @@ const fail = (message: string, path: string): never => {
  * Schedule consistency (Uptime Kuma `Maintenance.jsonToBean` + `validateCron`): a single window
  * needs both dates, recurring strategies need a usable day list, cron patterns must parse.
  */
-const validateSchedule: CollectionBeforeValidateHook<MaintenanceDoc> = ({ data, originalDoc }) => {
+const validateSchedule: CollectionBeforeValidateHook<MaintenanceDoc> = ({
+  data,
+  originalDoc,
+  req,
+}) => {
+  const text = (key: ErrorKey, values?: ErrorValues) => userErrorText(req, key, values)
   if (!data) return data
   const merged = { ...originalDoc, ...data } as Partial<MaintenanceDoc>
   const strategy = merged.strategy
 
   if (strategy === 'single') {
-    if (!merged.dateRange?.start) fail('Start is required for a single window.', 'dateRange.start')
-    if (!merged.dateRange?.end) fail('End is required for a single window.', 'dateRange.end')
+    if (!merged.dateRange?.start) fail(text('maintenanceStartRequired'), 'dateRange.start')
+    if (!merged.dateRange?.end) fail(text('maintenanceEndRequired'), 'dateRange.end')
   }
   if (merged.dateRange?.start && merged.dateRange?.end) {
     const start = new Date(merged.dateRange.start).getTime()
     const end = new Date(merged.dateRange.end).getTime()
-    if (Number.isNaN(start)) fail('Invalid start date.', 'dateRange.start')
-    if (Number.isNaN(end)) fail('Invalid end date.', 'dateRange.end')
-    if (end <= start) fail('End must be after the start.', 'dateRange.end')
+    if (Number.isNaN(start)) fail(text('maintenanceStartInvalid'), 'dateRange.start')
+    if (Number.isNaN(end)) fail(text('maintenanceEndInvalid'), 'dateRange.end')
+    if (end <= start) fail(text('maintenanceEndBeforeStart'), 'dateRange.end')
   }
 
   if (strategy === 'cron' || isRecurringStrategy(strategy)) {
     const pattern = buildCron(merged as MaintenanceDoc)
     if (!pattern) {
-      if (strategy === 'recurring-weekday') fail('Pick at least one weekday.', 'weekdays')
-      if (strategy === 'recurring-day-of-month') fail('Pick at least one day.', 'daysOfMonth')
-      fail('The schedule is incomplete.', strategy === 'cron' ? 'cron' : 'timeRange')
+      if (strategy === 'recurring-weekday') fail(text('maintenanceWeekdayRequired'), 'weekdays')
+      if (strategy === 'recurring-day-of-month') fail(text('maintenanceDayRequired'), 'daysOfMonth')
+      fail(text('maintenanceScheduleIncomplete'), strategy === 'cron' ? 'cron' : 'timeRange')
     }
     try {
       validateCron(pattern as string)
     } catch (error) {
       fail(
-        `Invalid cron expression: ${error instanceof Error ? error.message : String(error)}`,
+        text('maintenanceCronInvalid', {
+          error: error instanceof Error ? error.message : String(error),
+        }),
         'cron',
       )
     }
   }
 
   if (merged.timezone && !isValidTimezone(merged.timezone)) {
-    fail(`Unknown time zone "${merged.timezone}".`, 'timezone')
+    fail(text('maintenanceTimezoneUnknown', { timezone: merged.timezone }), 'timezone')
   }
   return data
 }
@@ -100,7 +109,7 @@ async function assertSameOrganization(
   ids: unknown[] | null | undefined,
   organization: string | number | null,
   path: string,
-  label: string,
+  kind: 'monitor' | 'statusPage',
 ) {
   const wanted = new Set(
     (ids ?? [])
@@ -123,7 +132,7 @@ async function assertSameOrganization(
       String(relId((doc as { organization?: unknown }).organization)) !== String(organization),
   )
   if (foreign.length > 0 || docs.length !== wanted.size) {
-    fail(`Every ${label} must belong to the same organization.`, path)
+    fail(userErrorText(req, 'maintenanceForeignReference', { kind }), path)
   }
 }
 
@@ -149,7 +158,7 @@ const prepare: CollectionBeforeChangeHook<MaintenanceDoc> = async ({ data, origi
       data.statusPages,
       organization,
       'statusPages',
-      'status page',
+      'statusPage',
     )
   }
 

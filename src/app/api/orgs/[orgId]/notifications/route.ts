@@ -8,6 +8,7 @@ import {
   resolveOrgRequest,
   toClientNotification,
 } from '@/server/notifications/api'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,10 +41,10 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const body = await readJson(request)
-  if (!body) return jsonError(400, 'Invalid JSON body')
+  if (!body) return jsonError(400, errorText(request, 'invalidJsonBody'))
   const input = pickInput(body)
-  if (!input.name) return jsonError(400, 'name is required')
-  if (!input.type) return jsonError(400, 'type is required')
+  if (!input.name) return jsonError(400, errorText(request, 'nameRequired'))
+  if (!input.type) return jsonError(400, errorText(request, 'typeRequired'))
 
   try {
     const doc = await ctx.payload.create({
@@ -63,6 +64,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     })
     return Response.json({ doc }, { status: 201 })
   } catch (error) {
-    return jsonError(errorStatus(error), errorMessage(error))
+    return jsonError(errorStatus(error), errorMessage(error, request))
   }
 }

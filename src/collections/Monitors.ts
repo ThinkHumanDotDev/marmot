@@ -19,6 +19,7 @@ import { outboundGuardActive } from '@/server/security/outbound-guard'
 import { HEARTBEAT_STATUSES } from './Heartbeats'
 import { relId } from './shared'
 import { adminT } from '@/i18n/admin'
+import { userErrorText } from '@/server/request-locale'
 
 const log = childLogger('monitors')
 
@@ -153,7 +154,7 @@ const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
     if (unique.length !== ids.length) {
       throw new ValidationError({
         collection: 'monitors',
-        errors: [{ message: 'Each tag may only be added once.', path: 'tags' }],
+        errors: [{ message: userErrorText(req, 'tagDuplicate'), path: 'tags' }],
       })
     }
     if (ids.length > 0) checks.push({ collection: 'tags', ids, path: 'tags' })
@@ -184,7 +185,7 @@ const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
         collection: 'monitors',
         errors: [
           {
-            message: 'Must belong to the same organization as the monitor.',
+            message: userErrorText(req, 'monitorForeignReference'),
             path: 'notifications',
           },
         ],
@@ -220,9 +221,7 @@ const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
     if (!ok) {
       throw new ValidationError({
         collection: 'monitors',
-        errors: [
-          { message: 'Must belong to the same organization as the monitor.', path: check.path },
-        ],
+        errors: [{ message: userErrorText(req, 'monitorForeignReference'), path: check.path }],
       })
     }
   }

@@ -9,6 +9,7 @@ import {
   readJson,
   resolveOrgRequest,
 } from '@/server/notifications/api'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,10 +53,10 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const body = await readJson(request)
-  if (!body) return jsonError(400, 'Invalid JSON body')
+  if (!body) return jsonError(400, errorText(request, 'invalidJsonBody'))
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
-    return jsonError(400, parsed.error.issues[0]?.message ?? 'Validation failed')
+    return jsonError(400, parsed.error.issues[0]?.message ?? errorText(request, 'validationFailed'))
   }
 
   const expiresAt =
@@ -64,7 +65,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       ? new Date(Date.now() + parsed.data.expiresInDays * 86_400_000).toISOString()
       : null)
   if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
-    return jsonError(400, 'expiresAt must be in the future')
+    return jsonError(400, errorText(request, 'expiresAtInPast'))
   }
 
   const generated = generateApiKey()
@@ -87,6 +88,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     })) as ApiKey
     return Response.json({ doc: toApiKeyRow(doc), key: generated.key }, { status: 201 })
   } catch (error) {
-    return jsonError(errorStatus(error), errorMessage(error))
+    return jsonError(errorStatus(error), errorMessage(error, request))
   }
 }

@@ -1,4 +1,4 @@
-import { APIError, type Payload } from 'payload'
+import type { Payload } from 'payload'
 import QRCode from 'qrcode'
 
 import { env } from '@/env'
@@ -12,6 +12,7 @@ import {
 } from './backup-codes'
 import { decryptSecret, encryptSecret } from './crypto'
 import { generateTotpSecret, totpUri, verifyTotp } from './totp'
+import { apiError } from '@/server/errors'
 
 /**
  * Account two-factor authentication: enrolment, verification and recovery codes. Every function
@@ -107,7 +108,7 @@ export async function beginTwoFactorSetup(
 ): Promise<TwoFactorSetup> {
   const user = await loadTwoFactorUser(payload, userId)
   if (user.twoFactorEnabled) {
-    throw new APIError('Two-factor authentication is already enabled.', 409)
+    throw apiError('twoFactorAlreadyEnabled', 409)
   }
   const secret = generateTotpSecret()
   await writeTwoFactorFields(payload, userId, {
@@ -130,13 +131,13 @@ export async function confirmTwoFactorSetup(
 ): Promise<{ backupCodes: string[] }> {
   const user = await loadTwoFactorUser(payload, userId)
   if (user.twoFactorEnabled) {
-    throw new APIError('Two-factor authentication is already enabled.', 409)
+    throw apiError('twoFactorAlreadyEnabled', 409)
   }
   const secret = decryptSecret(user.twoFactorPendingSecret, env.PAYLOAD_SECRET)
-  if (!secret) throw new APIError('Start the setup again to get a new QR code.', 400)
+  if (!secret) throw apiError('twoFactorSetupExpired', 400)
 
   const result = verifyTotp(code, secret, { now })
-  if (!result.valid) throw new APIError('That code is not valid. Try the next one.', 400)
+  if (!result.valid) throw apiError('twoFactorCodeInvalid', 400)
 
   const backupCodes = generateBackupCodes()
   await writeTwoFactorFields(payload, userId, {
@@ -169,7 +170,7 @@ export async function regenerateBackupCodes(
 ): Promise<{ backupCodes: string[] }> {
   const user = await loadTwoFactorUser(payload, userId)
   if (!user.twoFactorEnabled) {
-    throw new APIError('Two-factor authentication is not enabled.', 409)
+    throw apiError('twoFactorNotEnabled', 409)
   }
   const backupCodes = generateBackupCodes()
   await writeTwoFactorFields(payload, userId, {
