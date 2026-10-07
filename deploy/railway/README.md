@@ -3,8 +3,9 @@
 Service images for the official **Deploy on Railway** template. [`.railway/railway.ts`](../../.railway/railway.ts)
 declares the project: services, Postgres, volumes, variables, and each service's build and deploy settings.
 Railway reads that file only when someone runs `railway config apply`. The small images here carry
-everything a deploy reads from the repository: ports, roles, bind addresses, Caddy upstreams and the Marmot
-version. A release therefore reaches running projects and the published template without editing anything
+everything a deploy reads from the repository: roles, bind addresses, Caddy upstreams and the Marmot
+version. `PORT` is a service variable in `.railway/railway.ts`, because Railway injects its own `PORT`
+(8080) and that overrides an image's `ENV`. A release therefore reaches running projects and the published template without editing anything
 on Railway. Railway's template generator keeps only variables that reference other services, which is
 another reason fixed values live in the images.
 
@@ -64,7 +65,8 @@ Then:
    - set `PAYLOAD_SECRET` on `web` and `REDIS_PASSWORD` on `redis` to `${{secret(64)}}`, so every deployment
      generates its own secrets. Railway drops literal values from generated templates, and the values
      from step 2 must never be shared;
-   - check the other variables survived (they are references, which it keeps);
+   - check the other variables survived. The references should be there; `PORT` (3000 on `web`, 3001 on
+     `realtime`, 8080 on `edge`) is a literal, so re-add it if the generator dropped it;
    - add a description and the Marmot icon;
    - **publish** it. Kickback is only paid on published templates.
 3. Put the button in the README with the template slug and your referral code:

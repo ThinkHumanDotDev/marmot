@@ -56,7 +56,8 @@ export default defineRailway(() => {
     ...fromRepo('web'),
     healthcheck: '/api/health',
     healthcheckTimeout: 300,
-    env: { ...common, PAYLOAD_SECRET: secret('PAYLOAD_SECRET') },
+    // Railway injects PORT=8080 unless the service sets it; edge dials web on 3000.
+    env: { ...common, PORT: '3000', PAYLOAD_SECRET: secret('PAYLOAD_SECRET') },
     volumeMounts: { '/app/uploads': uploads },
   })
   const worker = service('worker', {
@@ -67,11 +68,15 @@ export default defineRailway(() => {
     ...fromRepo('realtime'),
     healthcheck: '/healthz',
     healthcheckTimeout: 300,
-    env: { ...common, PAYLOAD_SECRET: web.env.PAYLOAD_SECRET },
+    // PORT points Railway's healthcheck at the socket server, which listens on REALTIME_PORT (3001).
+    env: { ...common, PORT: '3001', PAYLOAD_SECRET: web.env.PAYLOAD_SECRET },
   })
 
   // The only public service; bootstrap.sh generates its Railway domain on port 8080.
-  const edge = service('edge', fromRepo('edge', ['docker/Caddyfile']))
+  const edge = service('edge', {
+    ...fromRepo('edge', ['docker/Caddyfile']),
+    env: { PORT: '8080' },
+  })
 
   return project('marmot', {
     resources: [db, uploads, redisData, redis, web, worker, realtime, edge],
