@@ -98,6 +98,7 @@ documentation remains the reference for the behaviour of the ported checks.
 | API keys                         |      ✓      | **landing** (#20), per organization                          |
 | Push endpoint `/api/push/:token` |      ✓      | **landing** (#20)                                            |
 | REST API for everything          |   partial   | **done** (Payload REST + GraphQL, org-scoped route handlers) |
+| MCP server for AI agents         |      –      | **landing** (#119, [MCP](MCP.md))                            |
 | Backup / restore JSON export     | deprecated  | **planned** (#28, import from Uptime Kuma included)          |
 | Settings: 2FA                    |      ✓      | **planned** (#25)                                            |
 
