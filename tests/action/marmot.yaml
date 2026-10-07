@@ -1,0 +1,16 @@
+# Monitors file used by .github/workflows/action.yml against tests/action/mock-api.mjs.
+version: 1
+monitors:
+  - key: api
+    name: API
+    type: http
+    url: https://api.example.com/health
+  - key: status-page
+    name: Status page
+    type: http
+    url: https://status.example.com
+  - key: legacy
+    name: Legacy
+    type: http
+    url: https://legacy.example.com
+    active: false

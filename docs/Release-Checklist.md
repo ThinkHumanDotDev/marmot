@@ -55,7 +55,8 @@ Nothing is tagged or pushed automatically from a developer machine; the steps be
 
   [`scripts/release.sh`](../scripts/release.sh) sets `package.json` `version`, the default image tag
   (`${MARMOT_VERSION:-0.1.0}`) in `docker/docker-compose.yml`, the image tag of the Railway template images
-  (`deploy/railway/*/Dockerfile`) and regenerates `CHANGELOG.md` with
+  (`deploy/railway/*/Dockerfile`), rebuilds the [GitHub Action](GitHub-Action.md) bundle (`action/dist`) and
+  regenerates `CHANGELOG.md` with
   `pnpm dlx git-cliff@2` (set `GIT_CLIFF` to use another binary). It prints the next commands and does not
   commit, tag or push.
 
@@ -70,7 +71,7 @@ Nothing is tagged or pushed automatically from a developer machine; the steps be
 
   ```bash
   git switch -c chore/release-0.1.0
-  git add package.json docker/docker-compose.yml deploy/railway CHANGELOG.md
+  git add package.json docker/docker-compose.yml deploy/railway action/dist CHANGELOG.md
   git commit -m "chore(release): v0.1.0"
   git push -u origin chore/release-0.1.0
   ```
@@ -125,7 +126,23 @@ Nothing is tagged or pushed automatically from a developer machine; the steps be
 - [ ] `docker buildx imagetools inspect ghcr.io/thinkhumandotdev/marmot:0.1.0` lists `linux/amd64` and
       `linux/arm64`; `:latest` and `:0.1` point at the same digest (final releases only).
 
-## 5. Announce
+## 5. GitHub Action
+
+The [GitHub Action](GitHub-Action.md) is versioned with the repository: the release tag is its version
+(`uses: thinkhumandotdev/marmot/action@vX.Y.Z`), so there is nothing to publish separately.
+
+- [ ] The **GitHub Action** workflow is green on the release commit: the committed bundle
+      (`action/dist/index.mjs`) matches its sources and the action passes against the mocked API.
+- [ ] In a scratch repository, a workflow with `uses: thinkhumandotdev/marmot/action@vX.Y.Z` (`mode: run`
+      against a test instance) passes for an up monitor and fails for a down one; `mode: apply` on a
+      `pull_request` shows the plan in the job summary.
+- [ ] While Marmot is `0.x`, do not create moving major tags (`v0`); from v1.0 on, move `v1` to each
+      `v1.Y.Z` release so `@v1` users get fixes.
+- [ ] GitHub Marketplace listing: only actions whose `action.yml` is at the root of a public repository can
+      be listed, so a listing needs a dedicated `thinkhumandotdev/marmot-action` repository that mirrors
+      `action/` per release (not set up yet).
+
+## 6. Announce
 
 - [ ] Review the generated GitHub Release notes; add upgrade notes or highlights at the top if needed.
 - [ ] Update [deployment docs](Deployment.md) if the upgrade needs manual steps.

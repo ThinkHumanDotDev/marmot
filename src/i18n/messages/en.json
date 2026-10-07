@@ -5498,6 +5498,49 @@
     "logout": {
       "done": "Removed profile {profile}.",
       "none": "No saved profile {profile}."
+    },
+    "action": {
+      "checksTitle": "Marmot checks",
+      "applyTitle": "Marmot monitors as code",
+      "totals": "{passed} passed, {failed} failed, {skipped} skipped",
+      "columns": {
+        "result": "Result",
+        "monitor": "Monitor",
+        "status": "Status",
+        "response": "Response",
+        "message": "Message"
+      },
+      "verdict": {
+        "pass": "passed",
+        "fail": "failed",
+        "skip": "skipped"
+      },
+      "statusError": "error",
+      "degradedAllowed": "Degraded, allowed (set fail-on-degraded to fail on it).",
+      "pendingRetry": "The check failed; the monitor has retries left, so it is still pending.",
+      "maintenance": "In a maintenance window: the check did not run.",
+      "assertionFailed": "Assertion failed: {kind}{target, select, none {} other { {target}}} {comparator} {expected} (got {actual})",
+      "assertionError": "Assertion could not be evaluated: {kind}{target, select, none {} other { {target}}}: {error}",
+      "notFound": "No monitor with the key or id “{ref}”.",
+      "rateLimited": "The instance rate-limits on-demand checks; retrying in {seconds} s.",
+      "checking": "Checking {count, plural, one {# monitor} other {# monitors}} on {url}",
+      "checkFailed": "{monitor}: {message}",
+      "failedChecks": "{count, plural, one {# check} other {# checks}} failed.",
+      "noTargets": "Mode run needs monitors to check: set the monitors input (keys or ids), or config to a monitors file.",
+      "configRequired": "Mode apply needs the config input (a monitors file).",
+      "modeInvalid": "Unknown mode “{mode}”: use run or apply.",
+      "booleanInvalid": "Input {name} must be true or false.",
+      "dryRunInvalid": "Input dry-run must be auto, true or false.",
+      "inputMissing": "Missing input {name} (or the environment variable {env}).",
+      "dryRunNote": "Dry run: nothing was applied.",
+      "dryRunAuto": "dry-run is auto and this is a {event} event; it applies on push.",
+      "noChanges": "No changes: the monitors match the file.",
+      "applied": "Applied: {created} created, {updated} updated, {deleted} deleted.",
+      "applyFailed": "Apply stopped at {key}: {message}",
+      "warnings": "Warnings",
+      "invalidFile": "The monitors file is not valid:",
+      "apiError": "The Marmot API answered {status}: {message}",
+      "networkError": "Could not reach {url}: {message}"
     }
   }
 }

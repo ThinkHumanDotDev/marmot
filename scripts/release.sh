@@ -7,14 +7,15 @@
 #   1. sets "version" in package.json
 #   2. sets the default image tag (MARMOT_VERSION) in docker/docker-compose.yml
 #   3. sets the image tag in the Railway template images (deploy/railway/*/Dockerfile)
-#   4. regenerates CHANGELOG.md with git-cliff (cliff.toml), treating unreleased commits as v<version>
+#   4. rebuilds the GitHub Action bundle (action/dist, versioned with the tag; docs/GitHub-Action.md)
+#   5. regenerates CHANGELOG.md with git-cliff (cliff.toml), treating unreleased commits as v<version>
 #
 # Override the git-cliff command with GIT_CLIFF (default: `pnpm dlx git-cliff@2`).
 # Full procedure: docs/Release-Checklist.md
 set -euo pipefail
 
 usage() {
-  sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -72,18 +73,21 @@ for f in "${RAILWAY_DOCKERFILES[@]}"; do
 done
 node scripts/check-railway.mjs
 
+echo "==> action/dist: GitHub Action bundle (version ${VERSION})"
+pnpm -s build:action
+
 echo "==> CHANGELOG.md (${GIT_CLIFF} --tag ${TAG})"
 $GIT_CLIFF --config cliff.toml --tag "$TAG" --output CHANGELOG.md
 pnpm exec prettier --log-level warn --write CHANGELOG.md package.json "$COMPOSE_FILE"
 
-git --no-pager diff --stat -- package.json "$COMPOSE_FILE" CHANGELOG.md deploy/railway
+git --no-pager diff --stat -- package.json "$COMPOSE_FILE" CHANGELOG.md deploy/railway action/dist
 
 cat <<EOF
 
 Release ${TAG} prepared. Review CHANGELOG.md, then:
 
   git switch -c chore/release-${VERSION}
-  git add package.json docker/docker-compose.yml deploy/railway CHANGELOG.md
+  git add package.json docker/docker-compose.yml deploy/railway action/dist CHANGELOG.md
   git commit -m "chore(release): ${TAG}"
   git push -u origin chore/release-${VERSION}     # open a PR, wait for CI, squash-merge
 
