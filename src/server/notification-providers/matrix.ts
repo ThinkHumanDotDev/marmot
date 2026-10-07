@@ -34,7 +34,7 @@ export const matrixFieldMeta: Record<keyof MatrixConfig, NotificationFieldMeta> 
     description: 'Log in with a dedicated bot user and copy its access token.',
   },
   useTemplate: { label: 'Use a custom message template' },
-  template: { label: 'Message template', multiline: true },
+  template: { template: 'text', label: 'Message template', multiline: true },
 }
 
 registerNotificationProvider({
@@ -44,7 +44,8 @@ registerNotificationProvider({
   docsUrl: 'https://spec.matrix.org/latest/client-server-api/#mroommessage',
   configSchema: matrixConfigSchema,
   fieldMeta: matrixFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat, locale, event, downtimeSeconds }) {
+  async send(ctx) {
+    const { config: raw, message, monitor, heartbeat, locale } = ctx
     const config = matrixConfigSchema.parse(raw)
     const size = 20
     const txnId = encodeURIComponent(randomBytes(size).toString('base64').slice(0, size))
@@ -52,10 +53,7 @@ registerNotificationProvider({
 
     const body =
       config.useTemplate && config.template?.trim()
-        ? renderMessageTemplate(config.template.trim(), message, monitor, heartbeat, locale, {
-            event,
-            downtimeSeconds,
-          })
+        ? renderMessageTemplate(config.template.trim(), message, monitor, heartbeat, locale, ctx)
         : message
 
     await httpRequest(

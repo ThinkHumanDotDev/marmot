@@ -8,6 +8,7 @@ import {
   renderMessageTemplate,
   renderTemplate,
 } from './message'
+import { TemplateError } from './liquid'
 
 const monitor = {
   id: 1,
@@ -56,8 +57,11 @@ describe('template renderer', () => {
     expect(renderTemplate('{{ constructor.name }}', ctx)).toBe('')
     expect(renderTemplate('{{ __proto__.polluted }}', ctx)).toBe('')
     expect(renderTemplate('{{ monitor.toString }}', ctx)).toBe('')
-    expect(renderTemplate('{{ 1 + 1 }} {{ a[0] }} {% if %}', ctx)).toBe(
-      '{{ 1 + 1 }} {{ a[0] }} {% if %}',
+    expect(renderTemplate('{{ process.env }}{{ globalThis }}{{ require }}', ctx)).toBe('')
+    // Invalid Liquid is an error for the renderer and the default message for a delivery.
+    expect(() => renderTemplate('{{ 1 + 1 }} {% if %}', ctx)).toThrow(TemplateError)
+    expect(renderMessageTemplate('{{ 1 + 1 }} {% if %}', 'default text', monitor, up)).toBe(
+      'default text',
     )
   })
 

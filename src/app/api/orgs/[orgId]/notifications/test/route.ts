@@ -4,6 +4,8 @@ import { jsonError, parseDocId, readJson, resolveOrgRequest } from '@/server/not
 import {
   normalizeNotificationConfig,
   sendTestNotification,
+  validateNotificationConfig,
+  validateNotificationTemplates,
   type NotificationChannelLike,
 } from '@/server/notifications/send'
 import { checkServerSmtpChange, ServerSmtpSendError } from '@/server/notifications/server-smtp'
@@ -96,6 +98,16 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   try {
+    // Unsaved templates get the same check as saving them; a bad one is not silently replaced
+    // by the default message in a test.
+    if (body.config !== undefined) {
+      validateNotificationTemplates(
+        channel.type,
+        validateNotificationConfig(channel.type, channel.config),
+        requestLocale(request),
+        saved,
+      )
+    }
     const { result, events: sent } = await sendTestNotification(ctx.payload, channel)
     // Providers report success with Kuma's fixed text; show it in the user's language.
     return Response.json({

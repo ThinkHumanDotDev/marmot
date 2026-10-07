@@ -3,7 +3,13 @@ import type { Messages } from '@/i18n/messages'
 import { serverTranslator } from '@/server/i18n'
 
 export type ImportMessageKey = keyof Messages['importExport']['messages']
-export type ImportText = (key: ImportMessageKey, values?: Record<string, string | number>) => string
+export type ImportText = ((
+  key: ImportMessageKey,
+  values?: Record<string, string | number>,
+) => string) & {
+  /** Language of the report, for text built outside `importExport.messages` (template errors). */
+  locale?: Locale
+}
 
 /**
  * Skip reasons and warnings of an import report in `locale` (`importExport.messages.*`). The
@@ -15,5 +21,7 @@ export function importText(locale: Locale = defaultLocale): ImportText {
     key: string,
     values?: Record<string, string | number>,
   ) => string
-  return (key, values) => t(`importExport.messages.${key}`, values)
+  const text: ImportText = (key, values) => t(`importExport.messages.${key}`, values)
+  text.locale = locale
+  return text
 }

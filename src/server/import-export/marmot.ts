@@ -51,7 +51,11 @@ import type {
   StatusPage,
   Template,
 } from '@/payload-types'
-import { NotificationConfigError, validateNotificationConfig } from '@/server/notifications/send'
+import {
+  NotificationConfigError,
+  validateNotificationConfig,
+  validateNotificationTemplates,
+} from '@/server/notifications/send'
 import { relationId } from '@/server/monitors/http'
 
 import {
@@ -521,6 +525,7 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
     let config: Record<string, unknown>
     try {
       config = validateNotificationConfig(parsed.data.type, parsed.data.config)
+      validateNotificationTemplates(parsed.data.type, config, t.locale)
     } catch (error) {
       plan.skipped.notifications.push({
         name,

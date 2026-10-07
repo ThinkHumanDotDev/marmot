@@ -2494,6 +2494,10 @@
           "subject": {
             "label": "Subject",
             "placeholder": "Notification from Marmot"
+          },
+          "htmlTemplate": {
+            "label": "HTML template",
+            "description": "Liquid template for the HTML part; values are HTML-escaped and the text part is generated. Defaults to a branded email."
           }
         }
       },
@@ -2537,6 +2541,10 @@
           "subject": {
             "label": "Subject",
             "placeholder": "Notification from Marmot"
+          },
+          "htmlTemplate": {
+            "label": "HTML template",
+            "description": "Liquid template for the HTML part; values are HTML-escaped and the text part is generated. Defaults to a branded email."
           }
         }
       },
@@ -2645,7 +2653,7 @@
           },
           "body": {
             "label": "Body template",
-            "description": "Defaults to the message and time."
+            "description": "Defaults to a branded HTML email with a plain-text part. With \"Send the body as HTML\", values are HTML-escaped and the text part is generated."
           },
           "htmlBody": {
             "label": "Send the body as HTML"
@@ -2800,7 +2808,7 @@
           },
           "customBody": {
             "label": "Custom body",
-            "description": "Sent verbatim after '{{' '}}' substitution, e.g. '{'\"text\": \"'{{' msg '}}'\"'}'. Set Content-Type in the headers below."
+            "description": "Liquid template sent as the body, e.g. '{'\"text\": '{{' msg | json '}}}'. Set Content-Type in the headers below."
           },
           "additionalHeaders": {
             "label": "Additional headers (JSON)"
@@ -2849,6 +2857,48 @@
             "label": "Webhook URL"
           }
         }
+      }
+    },
+    "email": {
+      "time": "Time",
+      "downtime": "Down for",
+      "address": "Address",
+      "viewMonitor": "View monitor",
+      "viewMonitorLink": "View monitor: {url}",
+      "footer": "Sent by Marmot for {organization}.",
+      "footerNoOrg": "Sent by Marmot."
+    },
+    "templates": {
+      "errors": {
+        "syntax": "Template error: {detail}",
+        "render": "Template error: {detail}",
+        "tooLong": "The template is longer than {max} characters.",
+        "outputTooLong": "The template output is longer than {max} characters.",
+        "unknownVariable": "Unknown template variable \"{name}\"."
+      }
+    },
+    "preview": {
+      "title": "Preview",
+      "description": "Renders the default message and this channel's templates with sample data. Nothing is sent.",
+      "event": "Sample event",
+      "show": "Show preview",
+      "hide": "Hide preview",
+      "rendering": "Rendering…",
+      "failed": "Could not render the preview.",
+      "defaultMessage": "Default message",
+      "subject": "Subject",
+      "html": "HTML",
+      "text": "Plain text",
+      "emailFrame": "Email preview",
+      "fallback": "This template fails and the default message is sent instead.",
+      "variables": "Template variables",
+      "variablesHint": "Templates use Liquid: print a variable with double braces and branch with if tags. Filters such as date, duration and json are available.",
+      "sample": {
+        "monitorName": "Example API",
+        "downMessage": "Request failed with status code 503",
+        "upMessage": "200 - OK",
+        "degradedMessage": "Response time 2400 ms is above the 1000 ms threshold",
+        "maintenanceTitle": "Database upgrade"
       }
     }
   },
