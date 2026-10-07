@@ -2,6 +2,7 @@
 
 import { Check, Copy, Link2, Link2Off, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -22,6 +23,7 @@ interface InviteLinkCardProps {
 
 /** Shareable invite link: anyone with the URL joins with the configured role. */
 export function InviteLinkCard({ orgId, link, viewerRole }: InviteLinkCardProps) {
+  const t = useTranslations('members.inviteLink')
   const router = useRouter()
   const [role, setRole] = React.useState<Role>(link.role)
   const [busy, setBusy] = React.useState(false)
@@ -32,10 +34,10 @@ export function InviteLinkCard({ orgId, link, viewerRole }: InviteLinkCardProps)
     setBusy(true)
     try {
       await orgApi.regenerateInviteLink(orgId, role)
-      toast.success(link.url ? 'Invite link regenerated' : 'Invite link created')
+      toast.success(link.url ? t('regenerated') : t('created'))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not update the invite link.')
+      toast.error(error instanceof Error ? error.message : t('updateFailed'))
     } finally {
       setBusy(false)
     }
@@ -45,10 +47,10 @@ export function InviteLinkCard({ orgId, link, viewerRole }: InviteLinkCardProps)
     setBusy(true)
     try {
       await orgApi.disableInviteLink(orgId)
-      toast.success('Invite link disabled')
+      toast.success(t('disabled'))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not disable the invite link.')
+      toast.error(error instanceof Error ? error.message : t('disableFailed'))
     } finally {
       setBusy(false)
     }
@@ -61,7 +63,7 @@ export function InviteLinkCard({ orgId, link, viewerRole }: InviteLinkCardProps)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      toast.error('Copy failed. Select the link and copy it manually.')
+      toast.error(t('copyFailed'))
     }
   }
 
@@ -69,48 +71,40 @@ export function InviteLinkCard({ orgId, link, viewerRole }: InviteLinkCardProps)
     <Card data-testid="invite-link-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Link2 className="size-4 text-muted-foreground" aria-hidden /> Invite link
+          <Link2 className="size-4 text-muted-foreground" aria-hidden /> {t('title')}
         </CardTitle>
-        <CardDescription>
-          Anyone with this link can join as the selected role. Regenerate it to invalidate links you
-          have already shared.
-        </CardDescription>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Input
             readOnly
             value={link.url ?? ''}
-            placeholder="No active invite link"
-            aria-label="Invite link"
+            placeholder={t('none')}
+            aria-label={t('title')}
             onFocus={(e) => e.currentTarget.select()}
             className="font-mono text-xs"
           />
-          <Button
-            variant="outline"
-            onClick={copy}
-            disabled={!link.url}
-            aria-label="Copy invite link"
-          >
-            {copied ? <Check /> : <Copy />} {copied ? 'Copied' : 'Copy'}
+          <Button variant="outline" onClick={copy} disabled={!link.url} aria-label={t('copyLabel')}>
+            {copied ? <Check /> : <Copy />} {copied ? t('copied') : t('copy')}
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">Joins as</span>
+          <span className="text-sm text-muted-foreground">{t('joinsAs')}</span>
           <RoleSelect
             size="sm"
             value={role}
             options={options}
             onChange={setRole}
             disabled={busy}
-            aria-label="Invite link role"
+            aria-label={t('roleLabel')}
           />
           <Button size="sm" onClick={regenerate} disabled={busy}>
-            <RefreshCw /> {link.url ? 'Regenerate' : 'Create link'}
+            <RefreshCw /> {link.url ? t('regenerate') : t('create')}
           </Button>
           {link.url && (
             <Button size="sm" variant="ghost" onClick={disable} disabled={busy}>
-              <Link2Off /> Disable
+              <Link2Off /> {t('disable')}
             </Button>
           )}
         </div>

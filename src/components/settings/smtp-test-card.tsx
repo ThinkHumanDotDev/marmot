@@ -1,6 +1,7 @@
 'use client'
 
 import { Send } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -27,6 +28,7 @@ interface SmtpTestCardProps {
 
 /** Email is configured through environment variables; this card only verifies the connection. */
 export function SmtpTestCard({ smtpHost, from, defaultRecipient }: SmtpTestCardProps) {
+  const t = useTranslations('settings.instance.smtp')
   const [to, setTo] = React.useState(defaultRecipient)
   const [pending, setPending] = React.useState(false)
   const id = React.useId()
@@ -35,9 +37,9 @@ export function SmtpTestCard({ smtpHost, from, defaultRecipient }: SmtpTestCardP
     setPending(true)
     try {
       const result = await instanceApi.smtpTest(to.trim() || undefined)
-      toast.success(`Test email sent to ${result.to}`)
+      toast.success(t('sent', { to: result.to }))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not send the test email.')
+      toast.error(error instanceof Error ? error.message : t('failed'))
     } finally {
       setPending(false)
     }
@@ -47,29 +49,26 @@ export function SmtpTestCard({ smtpHost, from, defaultRecipient }: SmtpTestCardP
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          Email (SMTP)
-          {smtpHost ? <Badge>Configured</Badge> : <Badge variant="secondary">Not configured</Badge>}
+          {t('title')}
+          {smtpHost ? (
+            <Badge>{t('configured')}</Badge>
+          ) : (
+            <Badge variant="secondary">{t('notConfigured')}</Badge>
+          )}
         </CardTitle>
         <CardDescription>
-          {smtpHost ? (
-            <>
-              Sending through <code className="font-mono">{smtpHost}</code> as{' '}
-              <code className="font-mono">{from}</code>. Set via <code>SMTP_*</code> and{' '}
-              <code>EMAIL_FROM</code>.
-            </>
-          ) : (
-            <>
-              Set <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>,{' '}
-              <code>SMTP_PASSWORD</code> and <code>EMAIL_FROM</code> and restart to send
-              invitations, password resets and email notifications. Until then mail is logged to the
-              console.
-            </>
-          )}
+          {smtpHost
+            ? t.rich('configuredDescription', {
+                host: () => <code className="font-mono">{smtpHost}</code>,
+                from: () => <code className="font-mono">{from}</code>,
+                code: (chunks) => <code>{chunks}</code>,
+              })
+            : t.rich('notConfiguredDescription', { code: (chunks) => <code>{chunks}</code> })}
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
         <div className="grid gap-2 sm:max-w-sm">
-          <Label htmlFor={id}>Send a test email to</Label>
+          <Label htmlFor={id}>{t('recipient')}</Label>
           <Input
             id={id}
             type="email"
@@ -81,7 +80,7 @@ export function SmtpTestCard({ smtpHost, from, defaultRecipient }: SmtpTestCardP
       </CardContent>
       <CardFooter className="justify-end border-t pt-6">
         <Button onClick={send} disabled={!smtpHost || pending}>
-          <Send aria-hidden /> {pending ? 'Sending…' : 'Send test email'}
+          <Send aria-hidden /> {pending ? t('sending') : t('send')}
         </Button>
       </CardFooter>
     </Card>

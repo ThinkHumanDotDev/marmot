@@ -1,6 +1,7 @@
 'use client'
 
 import { Check, Copy, KeyRound, Plus, Trash2 } from 'lucide-react'
+import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -44,33 +45,39 @@ interface ApiKeysViewProps {
 }
 
 const EXPIRY_OPTIONS = [
-  { value: 'never', label: 'Never expires', days: null },
-  { value: '30', label: '30 days', days: 30 },
-  { value: '90', label: '90 days', days: 90 },
-  { value: '365', label: '1 year', days: 365 },
+  { value: 'never', days: null },
+  { value: '30', days: 30 },
+  { value: '90', days: 90 },
+  { value: '365', days: 365 },
 ] as const
 
-const formatDate = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—'
-
-const relativeTime = (iso: string | null) => {
-  if (!iso) return 'Never'
-  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
-  if (minutes < 1) return 'Just now'
-  if (minutes < 60) return `${minutes} min ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 48) return `${hours} h ago`
-  return `${Math.round(hours / 24)} d ago`
+/** "Last used" as a compact relative time (`5 min ago`). */
+function useRelativeTime() {
+  const t = useTranslations('settings.apiKeys.lastUsed')
+  return (iso: string | null) => {
+    if (!iso) return t('never')
+    const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
+    if (minutes < 1) return t('justNow')
+    if (minutes < 60) return t('minutes', { count: minutes })
+    const hours = Math.round(minutes / 60)
+    if (hours < 48) return t('hours', { count: hours })
+    return t('days', { count: Math.round(hours / 24) })
+  }
 }
 
 function StatusBadge({ status }: { status: ApiKeyRow['status'] }) {
-  if (status === 'active') return <Badge variant="outline">Active</Badge>
-  if (status === 'expired') return <Badge variant="destructive">Expired</Badge>
-  return <Badge variant="secondary">Disabled</Badge>
+  const t = useTranslations('settings.apiKeys.status')
+  if (status === 'active') return <Badge variant="outline">{t('active')}</Badge>
+  if (status === 'expired') return <Badge variant="destructive">{t('expired')}</Badge>
+  return <Badge variant="secondary">{t('disabled')}</Badge>
 }
 
 /** Settings → API keys: list, create (reveals the key once), disable, revoke. */
 export function ApiKeysView({ orgId, initial, canManage }: ApiKeysViewProps) {
+  const t = useTranslations('settings.apiKeys')
+  const format = useFormatter()
+  const relativeTime = useRelativeTime()
+  const formatDate = (iso: string | null) => (iso ? format.dateTime(new Date(iso), 'date') : '—')
   const [rows, setRows] = React.useState<ApiKeyRow[]>(initial)
   const [createOpen, setCreateOpen] = React.useState(false)
   const [revealed, setRevealed] = React.useState<{ row: ApiKeyRow; key: string } | null>(null)
@@ -89,9 +96,9 @@ export function ApiKeysView({ orgId, initial, canManage }: ApiKeysViewProps) {
     try {
       const { doc } = await apiKeysApi.setActive(orgId, row.id, active)
       upsert(doc)
-      toast.success(active ? 'API key enabled' : 'API key disabled')
+      toast.success(active ? t('enabled') : t('disabled'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not update the key')
+      toast.error(error instanceof Error ? error.message : t('updateFailed'))
     } finally {
       setBusyId(null)
     }
@@ -103,10 +110,10 @@ export function ApiKeysView({ orgId, initial, canManage }: ApiKeysViewProps) {
     try {
       await apiKeysApi.revoke(orgId, revoking.id)
       setRows((current) => current.filter((r) => r.id !== revoking.id))
-      toast.success('API key revoked')
+      toast.success(t('revoked'))
       setRevoking(null)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not revoke the key')
+      toast.error(error instanceof Error ? error.message : t('revokeFailed'))
     } finally {
       setBusyId(null)
     }
@@ -118,17 +125,15 @@ export function ApiKeysView({ orgId, initial, canManage }: ApiKeysViewProps) {
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2">
-              <KeyRound className="size-4 text-muted-foreground" aria-hidden /> API keys
+              <KeyRound className="size-4 text-muted-foreground" aria-hidden /> {t('title')}
             </CardTitle>
             <CardDescription>
-              Keys authenticate Prometheus scrapes of <code>/api/metrics</code> and badges of
-              monitors that are not on a public status page. Send them as{' '}
-              <code>Authorization: Bearer</code> or <code>X-API-Key</code>.
+              {t.rich('description', { code: (chunks) => <code>{chunks}</code> })}
             </CardDescription>
           </div>
           {canManage && (
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus /> New key
+              <Plus /> {t('newKey')}
             </Button>
           )}
         </CardHeader>
@@ -136,22 +141,18 @@ export function ApiKeysView({ orgId, initial, canManage }: ApiKeysViewProps) {
           {rows.length === 0 ? (
             <EmptyState
               icon={KeyRound}
-              title="No API keys yet"
-              description={
-                canManage
-                  ? 'Create a key to scrape metrics or embed private badges.'
-                  : 'Admins of this organization can create API keys.'
-              }
+              title={t('emptyTitle')}
+              description={canManage ? t('emptyDescription') : t('emptyReadOnly')}
             />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Key</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Expires</TableHead>
-                  <TableHead>Last used</TableHead>
+                  <TableHead>{t('columns.name')}</TableHead>
+                  <TableHead>{t('columns.key')}</TableHead>
+                  <TableHead>{t('columns.status')}</TableHead>
+                  <TableHead>{t('columns.expires')}</TableHead>
+                  <TableHead>{t('columns.lastUsed')}</TableHead>
                   {canManage && <TableHead className="w-0" />}
                 </TableRow>
               </TableHeader>
@@ -178,12 +179,12 @@ export function ApiKeysView({ orgId, initial, canManage }: ApiKeysViewProps) {
                             checked={row.active}
                             disabled={busyId === row.id || row.status === 'expired'}
                             onCheckedChange={(checked) => toggleActive(row, checked)}
-                            aria-label={row.active ? 'Disable key' : 'Enable key'}
+                            aria-label={row.active ? t('disableKey') : t('enableKey')}
                           />
                           <Button
                             variant="ghost"
                             size="icon"
-                            aria-label={`Revoke ${row.name}`}
+                            aria-label={t('revokeLabel', { name: row.name })}
                             disabled={busyId === row.id}
                             onClick={() => setRevoking(row)}
                           >
@@ -217,22 +218,19 @@ export function ApiKeysView({ orgId, initial, canManage }: ApiKeysViewProps) {
       <Dialog open={revoking !== null} onOpenChange={(open) => !open && setRevoking(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Revoke “{revoking?.name}”?</DialogTitle>
-            <DialogDescription>
-              Anything still using this key will get 401 responses immediately. This cannot be
-              undone.
-            </DialogDescription>
+            <DialogTitle>{t('revokeTitle', { name: revoking?.name ?? '' })}</DialogTitle>
+            <DialogDescription>{t('revokeDescription')}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRevoking(null)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={confirmRevoke}
               disabled={busyId === revoking?.id}
             >
-              <Trash2 /> Revoke key
+              <Trash2 /> {t('revoke')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -249,6 +247,7 @@ interface CreateApiKeyDialogProps {
 }
 
 function CreateApiKeyDialog({ orgId, open, onOpenChange, onCreated }: CreateApiKeyDialogProps) {
+  const t = useTranslations('settings.apiKeys.create')
   const [name, setName] = React.useState('')
   const [expiry, setExpiry] = React.useState<(typeof EXPIRY_OPTIONS)[number]['value']>('never')
   const [busy, setBusy] = React.useState(false)
@@ -276,7 +275,7 @@ function CreateApiKeyDialog({ orgId, open, onOpenChange, onCreated }: CreateApiK
       handleOpenChange(false)
       onCreated(doc, key)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not create the key')
+      toast.error(error instanceof Error ? error.message : t('failed'))
     } finally {
       setBusy(false)
     }
@@ -287,27 +286,24 @@ function CreateApiKeyDialog({ orgId, open, onOpenChange, onCreated }: CreateApiK
       <DialogContent>
         <form onSubmit={submit} className="flex flex-col gap-6">
           <DialogHeader>
-            <DialogTitle>New API key</DialogTitle>
-            <DialogDescription>
-              Give the key a name you will recognise in this list, for example the system that will
-              use it.
-            </DialogDescription>
+            <DialogTitle>{t('title')}</DialogTitle>
+            <DialogDescription>{t('description')}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="api-key-name">Name</Label>
+              <Label htmlFor="api-key-name">{t('name')}</Label>
               <Input
                 id="api-key-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Prometheus"
+                placeholder={t('namePlaceholder')}
                 maxLength={120}
                 autoFocus
                 required
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="api-key-expiry">Expiry</Label>
+              <Label htmlFor="api-key-expiry">{t('expiry')}</Label>
               <Select value={expiry} onValueChange={(v) => setExpiry(v as typeof expiry)}>
                 <SelectTrigger id="api-key-expiry" className="w-full">
                   <SelectValue />
@@ -315,7 +311,7 @@ function CreateApiKeyDialog({ orgId, open, onOpenChange, onCreated }: CreateApiK
                 <SelectContent>
                   {EXPIRY_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                      {t(`expiryOptions.${option.value}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -324,10 +320,10 @@ function CreateApiKeyDialog({ orgId, open, onOpenChange, onCreated }: CreateApiK
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={busy || !name.trim()}>
-              <KeyRound /> Create key
+              <KeyRound /> {t('submit')}
             </Button>
           </DialogFooter>
         </form>
@@ -343,6 +339,7 @@ function RevealKeyDialog({
   revealed: { row: ApiKeyRow; key: string } | null
   onClose: () => void
 }) {
+  const t = useTranslations('settings.apiKeys.reveal')
   const [copied, setCopied] = React.useState(false)
 
   async function copy() {
@@ -352,7 +349,7 @@ function RevealKeyDialog({
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      toast.error('Copy failed. Select the key and copy it manually.')
+      toast.error(t('copyFailed'))
     }
   }
 
@@ -360,27 +357,26 @@ function RevealKeyDialog({
     <Dialog open={revealed !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Copy your new API key</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>
-            This is the only time the key for “{revealed?.row.name}” is shown. Store it somewhere
-            safe; if you lose it, revoke it and create a new one.
+            {t('description', { name: revealed?.row.name ?? '' })}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Input
             readOnly
             value={revealed?.key ?? ''}
-            aria-label="API key"
+            aria-label={t('keyLabel')}
             onFocus={(e) => e.currentTarget.select()}
             className="font-mono text-xs"
             data-testid="api-key-plaintext"
           />
-          <Button variant="outline" onClick={copy} aria-label="Copy API key">
-            {copied ? <Check /> : <Copy />} {copied ? 'Copied' : 'Copy'}
+          <Button variant="outline" onClick={copy} aria-label={t('copyLabel')}>
+            {copied ? <Check /> : <Copy />} {copied ? t('copied') : t('copy')}
           </Button>
         </div>
         <DialogFooter>
-          <Button onClick={onClose}>Done</Button>
+          <Button onClick={onClose}>{t('done')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

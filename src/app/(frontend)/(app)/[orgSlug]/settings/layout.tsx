@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server'
 import React from 'react'
 
 import { can } from '@/access/permissions'
@@ -26,13 +27,10 @@ export default async function SettingsLayout({ children, params }: SettingsLayou
   const { orgSlug } = await params
   const user = await getCurrentUser()
   const showBilling = await canSeeBilling(orgSlug)
+  const t = await getTranslations('settings.header')
   return (
     <>
-      <PageHeader
-        title="Settings"
-        description="Your account, this organization, who has access and shared monitor resources."
-        className="border-b-0 pb-2"
-      />
+      <PageHeader title={t('title')} description={t('description')} className="border-b-0 pb-2" />
       <div className="border-b px-4 sm:px-6 md:px-8">
         <SettingsTabs
           orgSlug={orgSlug}

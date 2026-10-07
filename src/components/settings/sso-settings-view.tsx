@@ -1,6 +1,7 @@
 'use client'
 
 import { Check, Copy, Globe, KeyRound, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { useLocale, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -58,6 +59,7 @@ const message = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback
 
 function CopyField({ label, value }: { label: string; value: string }) {
+  const t = useTranslations('settings.sso')
   const [copied, setCopied] = React.useState(false)
   return (
     <div className="flex flex-col gap-1">
@@ -68,14 +70,14 @@ function CopyField({ label, value }: { label: string; value: string }) {
           type="button"
           variant="ghost"
           size="icon"
-          aria-label={`Copy ${label}`}
+          aria-label={t('copyLabel', { label })}
           onClick={async () => {
             try {
               await navigator.clipboard.writeText(value)
               setCopied(true)
               setTimeout(() => setCopied(false), 1500)
             } catch {
-              toast.error('Could not copy')
+              toast.error(t('copyFailed'))
             }
           }}
         >
@@ -134,6 +136,8 @@ export function SsoSettingsView({
   enforceSso: initialEnforceSso,
   canManage,
 }: SsoSettingsViewProps) {
+  const t = useTranslations('settings.sso')
+  const locale = useLocale()
   const [connections, setConnections] = React.useState(initialConnections)
   const [domains, setDomains] = React.useState(initialDomains)
   const [enforceSso, setEnforceSso] = React.useState(initialEnforceSso)
@@ -145,11 +149,9 @@ export function SsoSettingsView({
       async () => {
         const result = await ssoApi.setEnforcement(orgId, value)
         setEnforceSso(result.enforceSso)
-        toast.success(
-          result.enforceSso ? 'Single sign-on is now required' : 'Password login allowed again',
-        )
+        toast.success(result.enforceSso ? t('enforcement.enabled') : t('enforcement.disabled'))
       },
-      'Could not change enforcement.',
+      t('enforcement.failed'),
     )
   const [editing, setEditing] = React.useState<{
     row: SsoConnectionRow | null
@@ -166,7 +168,7 @@ export function SsoSettingsView({
     setConnections((current) =>
       current.some((c) => String(c.id) === String(row.id))
         ? current.map((c) => (String(c.id) === String(row.id) ? row : c))
-        : [...current, row].sort((a, b) => a.name.localeCompare(b.name)),
+        : [...current, row].sort((a, b) => a.name.localeCompare(b.name, locale)),
     )
 
   async function run(key: string, action: () => Promise<void>, fallback: string) {
@@ -191,10 +193,10 @@ export function SsoSettingsView({
           ? await ssoApi.connections.update(orgId, editing.row.id, data)
           : await ssoApi.connections.create(orgId, data)
         upsert(doc)
-        toast.success(editing.row ? 'Connection saved' : 'Connection created')
+        toast.success(editing.row ? t('connections.saved') : t('connections.created'))
         setEditing(null)
       },
-      'Could not save the connection.',
+      t('connections.saveFailed'),
     )
 
   const toggle = (row: SsoConnectionRow, enabled: boolean) =>
@@ -203,9 +205,9 @@ export function SsoSettingsView({
       async () => {
         const { doc } = await ssoApi.connections.update(orgId, row.id, { enabled })
         upsert(doc)
-        toast.success(enabled ? 'Connection enabled' : 'Connection disabled')
+        toast.success(enabled ? t('connections.enabledToast') : t('connections.disabledToast'))
       },
-      'Could not update the connection.',
+      t('connections.updateFailed'),
     )
 
   const confirmRemove = async () => {
@@ -215,10 +217,10 @@ export function SsoSettingsView({
       async () => {
         await ssoApi.connections.remove(orgId, removing.id)
         setConnections((current) => current.filter((c) => String(c.id) !== String(removing.id)))
-        toast.success('Connection deleted')
+        toast.success(t('connections.deleted'))
         setRemoving(null)
       },
-      'Could not delete the connection.',
+      t('connections.deleteFailed'),
     )
   }
 
@@ -228,11 +230,13 @@ export function SsoSettingsView({
       'domain',
       async () => {
         const { doc } = await ssoApi.domains.add(orgId, newDomain)
-        setDomains((current) => [...current, doc].sort((a, b) => a.domain.localeCompare(b.domain)))
+        setDomains((current) =>
+          [...current, doc].sort((a, b) => a.domain.localeCompare(b.domain, locale)),
+        )
         setNewDomain('')
-        toast.success(`Add the TXT record for ${doc.domain}, then verify it`)
+        toast.success(t('domains.added', { domain: doc.domain }))
       },
-      'Could not add the domain.',
+      t('domains.addFailed'),
     )
   }
 
@@ -244,10 +248,10 @@ export function SsoSettingsView({
         setDomains((current) =>
           current.map((d) => (String(d.id) === String(row.id) ? result.doc : d)),
         )
-        if (result.verified) toast.success(`${row.domain} verified`)
-        else toast.error(result.reason ?? 'Not verified yet')
+        if (result.verified) toast.success(t('domains.verifiedToast', { domain: row.domain }))
+        else toast.error(result.reason ?? t('domains.notVerified'))
       },
-      'Could not verify the domain.',
+      t('domains.verifyFailed'),
     )
 
   const confirmRemoveDomain = async () => {
@@ -257,10 +261,10 @@ export function SsoSettingsView({
       async () => {
         await ssoApi.domains.remove(orgId, removingDomain.id)
         setDomains((current) => current.filter((d) => String(d.id) !== String(removingDomain.id)))
-        toast.success('Domain removed')
+        toast.success(t('domains.removed'))
         setRemovingDomain(null)
       },
-      'Could not remove the domain.',
+      t('domains.removeFailed'),
     )
   }
 
@@ -279,9 +283,9 @@ export function SsoSettingsView({
             idpCert: parsed.certificate ?? editing.form.idpCert,
           },
         })
-        toast.success('Identity provider settings imported')
+        toast.success(t('form.metadataImported'))
       },
-      'Could not read the metadata.',
+      t('form.metadataFailed'),
     )
 
   const form = editing?.form
@@ -296,17 +300,18 @@ export function SsoSettingsView({
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2">
-              <KeyRound className="size-4 text-muted-foreground" aria-hidden /> Single sign-on
+              <KeyRound className="size-4 text-muted-foreground" aria-hidden />{' '}
+              {t('connections.title')}
             </CardTitle>
             <CardDescription>
-              Let members sign in through your identity provider (OpenID Connect or SAML 2.0).
-              People who sign in this way join this organization automatically. Shareable sign-in
-              link: <code>/login/sso?org={orgSlug}</code>
+              {t.rich('connections.description', {
+                link: () => <code>/login/sso?org={orgSlug}</code>,
+              })}
             </CardDescription>
           </div>
           {canManage && (
             <Button onClick={() => setEditing({ row: null, form: emptyForm(orgSlug) })}>
-              <Plus /> New connection
+              <Plus /> {t('connections.new')}
             </Button>
           )}
         </CardHeader>
@@ -314,21 +319,19 @@ export function SsoSettingsView({
           {connections.length === 0 ? (
             <EmptyState
               icon={KeyRound}
-              title="No connections yet"
+              title={t('connections.emptyTitle')}
               description={
-                canManage
-                  ? 'Connect Okta, Entra ID, Keycloak, Google Workspace or any OIDC/SAML provider.'
-                  : 'Owners of this organization can set up single sign-on.'
+                canManage ? t('connections.emptyDescription') : t('connections.emptyReadOnly')
               }
             />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Provisioning</TableHead>
-                  <TableHead>Enabled</TableHead>
+                  <TableHead>{t('connections.columns.name')}</TableHead>
+                  <TableHead>{t('connections.columns.type')}</TableHead>
+                  <TableHead>{t('connections.columns.provisioning')}</TableHead>
+                  <TableHead>{t('connections.columns.enabled')}</TableHead>
                   <TableHead className="w-0" />
                 </TableRow>
               </TableHeader>
@@ -347,18 +350,20 @@ export function SsoSettingsView({
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {row.type === 'saml' ? 'SAML 2.0' : 'OpenID Connect'}
+                        {row.type === 'saml' ? t('protocols.saml') : t('protocols.oidc')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {row.autoProvision ? `Join as ${row.defaultRole}` : 'Existing users only'}
+                      {row.autoProvision
+                        ? t('connections.joinAs', { role: row.defaultRole })
+                        : t('connections.existingOnly')}
                     </TableCell>
                     <TableCell>
                       <Switch
                         checked={row.enabled}
                         disabled={!canManage || busy === String(row.id)}
                         onCheckedChange={(enabled) => toggle(row, enabled)}
-                        aria-label={`${row.name} enabled`}
+                        aria-label={t('connections.enabledLabel', { name: row.name })}
                       />
                     </TableCell>
                     <TableCell>
@@ -366,7 +371,7 @@ export function SsoSettingsView({
                         <Button
                           variant="ghost"
                           size="icon"
-                          aria-label={`Delete ${row.name}`}
+                          aria-label={t('connections.deleteLabel', { name: row.name })}
                           onClick={() => setRemoving(row)}
                         >
                           <Trash2 className="size-4" />
@@ -384,34 +389,30 @@ export function SsoSettingsView({
       <Card data-testid="sso-domains-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Globe className="size-4 text-muted-foreground" aria-hidden /> Verified domains
+            <Globe className="size-4 text-muted-foreground" aria-hidden /> {t('domains.title')}
           </CardTitle>
-          <CardDescription>
-            People who enter an email on a verified domain on the SSO sign-in page are sent to your
-            connections. Prove ownership with a DNS TXT record; a domain can belong to one
-            organization.
-          </CardDescription>
+          <CardDescription>{t('domains.description')}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {canManage && (
             <form onSubmit={addDomain} className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="flex flex-1 flex-col gap-1">
-                <Label htmlFor={ids.domain}>Domain</Label>
+                <Label htmlFor={ids.domain}>{t('domains.domain')}</Label>
                 <Input
                   id={ids.domain}
-                  placeholder="example.com"
+                  placeholder={t('domains.domainPlaceholder')}
                   value={newDomain}
                   onChange={(event) => setNewDomain(event.target.value)}
                   required
                 />
               </div>
               <Button type="submit" disabled={busy === 'domain' || !newDomain.trim()}>
-                <Plus /> Add domain
+                <Plus /> {t('domains.add')}
               </Button>
             </form>
           )}
           {domains.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No domains yet.</p>
+            <p className="text-sm text-muted-foreground">{t('domains.empty')}</p>
           ) : (
             <ul className="divide-y divide-border rounded-md border">
               {domains.map((row) => (
@@ -419,9 +420,9 @@ export function SsoSettingsView({
                   <div className="flex items-center gap-3">
                     <span className="flex-1 font-medium">{row.domain}</span>
                     {row.verifiedAt ? (
-                      <Badge variant="outline">Verified</Badge>
+                      <Badge variant="outline">{t('domains.verified')}</Badge>
                     ) : (
-                      <Badge variant="secondary">Pending</Badge>
+                      <Badge variant="secondary">{t('domains.pending')}</Badge>
                     )}
                     {canManage && !row.verifiedAt && (
                       <Button
@@ -430,14 +431,14 @@ export function SsoSettingsView({
                         disabled={busy === String(row.id)}
                         onClick={() => verify(row)}
                       >
-                        <RefreshCw className="size-4" /> Verify
+                        <RefreshCw className="size-4" /> {t('domains.verify')}
                       </Button>
                     )}
                     {canManage && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label={`Remove ${row.domain}`}
+                        aria-label={t('domains.removeLabel', { domain: row.domain })}
                         onClick={() => setRemovingDomain(row)}
                       >
                         <Trash2 className="size-4" />
@@ -446,8 +447,8 @@ export function SsoSettingsView({
                   </div>
                   {!row.verifiedAt && (
                     <div className="grid gap-2 sm:grid-cols-2">
-                      <CopyField label="TXT record name" value={row.record.name} />
-                      <CopyField label="TXT record value" value={row.record.value} />
+                      <CopyField label={t('domains.recordName')} value={row.record.name} />
+                      <CopyField label={t('domains.recordValue')} value={row.record.value} />
                     </div>
                   )}
                 </li>
@@ -459,25 +460,22 @@ export function SsoSettingsView({
 
       <Card data-testid="sso-enforcement-card">
         <CardHeader>
-          <CardTitle>Require single sign-on</CardTitle>
-          <CardDescription>
-            Refuse password logins for members whose email is on a verified domain. Owners keep a
-            break-glass password login, which is recorded in the audit log.
-          </CardDescription>
+          <CardTitle>{t('enforcement.title')}</CardTitle>
+          <CardDescription>{t('enforcement.description')}</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
             {canEnforce
               ? enforceSso
-                ? 'Members on your verified domains must sign in through a connection.'
-                : 'Members may still sign in with a password.'
-              : 'Verify a domain and enable a connection first.'}
+                ? t('enforcement.on')
+                : t('enforcement.off')
+              : t('enforcement.unavailable')}
           </p>
           <Switch
             checked={enforceSso}
             disabled={!canManage || !canEnforce || busy === 'enforce'}
             onCheckedChange={setEnforcement}
-            aria-label="Require single sign-on"
+            aria-label={t('enforcement.title')}
           />
         </CardContent>
       </Card>
@@ -494,38 +492,38 @@ export function SsoSettingsView({
             >
               <DialogHeader>
                 <DialogTitle>
-                  {editing?.row ? `Edit ${editing.row.name}` : 'New connection'}
+                  {editing?.row
+                    ? t('form.editTitle', { name: editing.row.name })
+                    : t('form.newTitle')}
                 </DialogTitle>
                 <DialogDescription>
-                  {form.type === 'saml'
-                    ? 'Register the service-provider details below at your identity provider, then paste what it gives you back.'
-                    : 'Register the redirect URI below at your identity provider as a confidential web client.'}
+                  {form.type === 'saml' ? t('form.samlDescription') : t('form.oidcDescription')}
                 </DialogDescription>
               </DialogHeader>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1">
-                  <Label>Name</Label>
+                  <Label>{t('form.name')}</Label>
                   <Input
                     value={form.name}
                     onChange={(e) => setForm({ name: e.target.value })}
                     required
-                    placeholder="Okta"
+                    placeholder={t('form.namePlaceholder')}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <Label>Slug</Label>
+                  <Label>{t('form.slug')}</Label>
                   <Input
                     value={form.slug}
                     onChange={(e) => setForm({ slug: e.target.value })}
                     required
                     pattern="[a-z0-9][a-z0-9-]{1,62}[a-z0-9]"
                     disabled={Boolean(editing?.row)}
-                    placeholder="acme-okta"
+                    placeholder={t('form.slugPlaceholder')}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <Label>Protocol</Label>
+                  <Label>{t('form.protocol')}</Label>
                   <Select
                     value={form.type}
                     onValueChange={(type) => setForm({ type: type as 'oidc' | 'saml' })}
@@ -535,13 +533,13 @@ export function SsoSettingsView({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="oidc">OpenID Connect</SelectItem>
-                      <SelectItem value="saml">SAML 2.0</SelectItem>
+                      <SelectItem value="oidc">{t('protocols.oidc')}</SelectItem>
+                      <SelectItem value="saml">{t('protocols.saml')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <Label>Default role for new members</Label>
+                  <Label>{t('form.defaultRole')}</Label>
                   <Select
                     value={form.defaultRole ?? 'member'}
                     onValueChange={(role) =>
@@ -552,9 +550,9 @@ export function SsoSettingsView({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">admin</SelectItem>
-                      <SelectItem value="member">member</SelectItem>
-                      <SelectItem value="viewer">viewer</SelectItem>
+                      <SelectItem value="admin">{t('roles.admin')}</SelectItem>
+                      <SelectItem value="member">{t('roles.member')}</SelectItem>
+                      <SelectItem value="viewer">{t('roles.viewer')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -563,18 +561,18 @@ export function SsoSettingsView({
               {form.type === 'oidc' ? (
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-1">
-                    <Label>Issuer URL</Label>
+                    <Label>{t('form.issuerUrl')}</Label>
                     <Input
                       type="url"
                       value={form.issuerUrl}
                       onChange={(e) => setForm({ issuerUrl: e.target.value })}
                       required
-                      placeholder="https://acme.okta.com"
+                      placeholder={t('form.issuerUrlPlaceholder')}
                     />
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="flex flex-col gap-1">
-                      <Label>Client id</Label>
+                      <Label>{t('form.clientId')}</Label>
                       <Input
                         value={form.clientId}
                         onChange={(e) => setForm({ clientId: e.target.value })}
@@ -582,26 +580,26 @@ export function SsoSettingsView({
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <Label>Client secret</Label>
+                      <Label>{t('form.clientSecret')}</Label>
                       <Input
                         type="password"
                         autoComplete="off"
                         value={form.clientSecret}
                         onChange={(e) => setForm({ clientSecret: e.target.value })}
                         required={!editing?.row?.hasClientSecret}
-                        placeholder={editing?.row?.hasClientSecret ? 'Unchanged' : ''}
+                        placeholder={editing?.row?.hasClientSecret ? t('form.unchanged') : ''}
                       />
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <Label>Scopes</Label>
+                    <Label>{t('form.scopes')}</Label>
                     <Input
                       value={form.scopes}
                       onChange={(e) => setForm({ scopes: e.target.value })}
                     />
                   </div>
                   {editing?.row && (
-                    <CopyField label="Redirect URI" value={editing.row.callbackUrl} />
+                    <CopyField label={t('form.redirectUri')} value={editing.row.callbackUrl} />
                   )}
                 </div>
               ) : (
@@ -609,24 +607,21 @@ export function SsoSettingsView({
                   {editing?.row && (
                     <div className="grid gap-2 rounded-md border p-3">
                       <CopyField
-                        label="SP entity id / metadata URL"
+                        label={t('form.spEntityId')}
                         value={editing.row.metadataUrl ?? ''}
                       />
-                      <CopyField
-                        label="Assertion consumer service URL (ACS)"
-                        value={editing.row.callbackUrl}
-                      />
+                      <CopyField label={t('form.acsUrl')} value={editing.row.callbackUrl} />
                     </div>
                   )}
                   <div className="flex flex-col gap-1">
-                    <Label htmlFor={ids.metadata}>Import from IdP metadata URL (optional)</Label>
+                    <Label htmlFor={ids.metadata}>{t('form.metadataUrl')}</Label>
                     <div className="flex gap-2">
                       <Input
                         id={ids.metadata}
                         type="url"
                         value={metadataUrl}
                         onChange={(e) => setMetadataUrl(e.target.value)}
-                        placeholder="https://idp.example.com/metadata"
+                        placeholder={t('form.metadataUrlPlaceholder')}
                       />
                       <Button
                         type="button"
@@ -634,12 +629,12 @@ export function SsoSettingsView({
                         disabled={busy === 'metadata' || !metadataUrl.trim()}
                         onClick={importMetadata}
                       >
-                        Import
+                        {t('form.import')}
                       </Button>
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <Label>IdP single sign-on URL</Label>
+                    <Label>{t('form.idpEntryPoint')}</Label>
                     <Input
                       type="url"
                       value={form.idpEntryPoint}
@@ -648,14 +643,14 @@ export function SsoSettingsView({
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <Label>IdP entity id (issuer)</Label>
+                    <Label>{t('form.idpEntityId')}</Label>
                     <Input
                       value={form.idpEntityId}
                       onChange={(e) => setForm({ idpEntityId: e.target.value })}
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <Label>IdP signing certificate</Label>
+                    <Label>{t('form.idpCert')}</Label>
                     <Textarea
                       rows={5}
                       value={form.idpCert}
@@ -665,14 +660,14 @@ export function SsoSettingsView({
                     />
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <Label>Require signed assertions</Label>
+                    <Label>{t('form.wantAssertionsSigned')}</Label>
                     <Switch
                       checked={form.wantAssertionsSigned !== false}
                       onCheckedChange={(v) => setForm({ wantAssertionsSigned: v })}
                     />
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <Label>Allow IdP-initiated login</Label>
+                    <Label>{t('form.allowIdpInitiated')}</Label>
                     <Switch
                       checked={form.allowIdpInitiated === true}
                       onCheckedChange={(v) => setForm({ allowIdpInitiated: v })}
@@ -683,10 +678,8 @@ export function SsoSettingsView({
 
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <Label>Create accounts on first login</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Off: only existing Marmot users can sign in through this connection.
-                  </p>
+                  <Label>{t('form.autoProvision')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('form.autoProvisionHint')}</p>
                 </div>
                 <Switch
                   checked={form.autoProvision !== false}
@@ -696,10 +689,14 @@ export function SsoSettingsView({
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditing(null)}>
-                  Cancel
+                  {t('form.cancel')}
                 </Button>
                 <Button type="submit" disabled={busy === 'save'}>
-                  {busy === 'save' ? 'Saving…' : editing?.row ? 'Save' : 'Create'}
+                  {busy === 'save'
+                    ? t('form.saving')
+                    : editing?.row
+                      ? t('form.save')
+                      : t('form.create')}
                 </Button>
               </DialogFooter>
             </form>
@@ -710,18 +707,18 @@ export function SsoSettingsView({
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}
-        title={`Delete ${removing?.name ?? ''}?`}
-        description="Members will no longer be able to sign in through this connection. Linked identities stay on their accounts."
-        confirmLabel="Delete"
+        title={t('connections.confirmDeleteTitle', { name: removing?.name ?? '' })}
+        description={t('connections.confirmDeleteDescription')}
+        confirmLabel={t('connections.confirmDelete')}
         destructive
         onConfirm={confirmRemove}
       />
       <ConfirmDialog
         open={removingDomain !== null}
         onOpenChange={(open) => !open && setRemovingDomain(null)}
-        title={`Remove ${removingDomain?.domain ?? ''}?`}
-        description="Emails on this domain will no longer be routed to your connections."
-        confirmLabel="Remove"
+        title={t('domains.confirmRemoveTitle', { domain: removingDomain?.domain ?? '' })}
+        description={t('domains.confirmRemoveDescription')}
+        confirmLabel={t('domains.confirmRemove')}
         destructive
         onConfirm={confirmRemoveDomain}
       />

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { Controller, type Control, type FieldValues, type Path } from 'react-hook-form'
 
@@ -41,6 +42,7 @@ export function ProviderField<T extends FieldValues>({
   disabled = false,
   note,
 }: ProviderFieldProps<T>) {
+  const t = useTranslations('notifications.field')
   const id = React.useId()
   const descriptionId = `${id}-description`
   const noteId = `${id}-note`
@@ -52,7 +54,10 @@ export function ProviderField<T extends FieldValues>({
       name={name}
       rules={
         field.required && field.kind !== 'boolean'
-          ? { validate: (value: unknown) => (isEmpty(value) ? `${field.label} is required` : true) }
+          ? {
+              validate: (value: unknown) =>
+                isEmpty(value) ? t('required', { label: field.label }) : true,
+            }
           : undefined
       }
       render={({ field: rhf, fieldState }) => {
@@ -89,7 +94,7 @@ export function ProviderField<T extends FieldValues>({
                 onValueChange={rhf.onChange}
               >
                 <SelectTrigger {...common} ref={rhf.ref} className="w-full">
-                  <SelectValue placeholder="Select…" />
+                  <SelectValue placeholder={t('selectPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {(field.values ?? []).map((value) => (
@@ -155,7 +160,7 @@ export function ProviderField<T extends FieldValues>({
                 <Label htmlFor={id} className={cn(error && 'text-destructive')}>
                   {field.label}
                   {!field.required && (
-                    <span className="font-normal text-muted-foreground">(optional)</span>
+                    <span className="font-normal text-muted-foreground">{t('optional')}</span>
                   )}
                 </Label>
                 {control}

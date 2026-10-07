@@ -1,6 +1,7 @@
 import { Bell } from 'lucide-react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
@@ -15,7 +16,10 @@ import type { Notification } from '@/payload-types'
 import { getProviderDescriptors, toClientNotification } from '@/server/notifications/api'
 import { serverSmtpRestriction } from '@/server/notifications/server-smtp'
 
-export const metadata: Metadata = { title: 'Notifications' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('notifications.page')
+  return { title: t('pageTitle') }
+}
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
@@ -46,17 +50,15 @@ export default async function NotificationsPage({ params }: PageProps) {
   const canManage = await canInOrg(payload, user, orgId, 'notification:update')
 
   if (!canRead) {
+    const t = await getTranslations('notifications.page')
     return (
       <>
-        <PageHeader
-          title="Notifications"
-          description="Where Marmot tells you when something changes."
-        />
+        <PageHeader title={t('title')} description={t('description')} />
         <section className="p-4 sm:p-6 md:p-8">
           <EmptyState
             icon={Bell}
-            title="Members only"
-            description="Notification channels are visible to members and managed by admins of this organization."
+            title={t('membersOnlyTitle')}
+            description={t('membersOnlyDescription')}
           />
         </section>
       </>

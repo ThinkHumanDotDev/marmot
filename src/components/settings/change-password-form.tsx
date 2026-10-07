@@ -1,6 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -26,21 +27,26 @@ import {
 import { Input } from '@/components/ui/input'
 import { accountApi } from '@/lib/org-api'
 
-const schema = z
-  .object({
-    currentPassword: z.string().min(1, 'Enter your current password'),
-    password: z.string().min(8, 'Use at least 8 characters'),
-    confirm: z.string(),
-  })
-  .refine((v) => v.password === v.confirm, {
-    path: ['confirm'],
-    message: 'Passwords do not match',
-  })
-
-type Values = z.infer<typeof schema>
+type Values = { currentPassword: string; password: string; confirm: string }
 
 /** Re-authenticates with the current password through `POST /api/account/password`. */
 export function ChangePasswordForm() {
+  const t = useTranslations('settings.account.password')
+  const tv = useTranslations('auth.validation')
+  const schema = React.useMemo(
+    () =>
+      z
+        .object({
+          currentPassword: z.string().min(1, t('currentRequired')),
+          password: z.string().min(8, tv('passwordMin')),
+          confirm: z.string(),
+        })
+        .refine((v) => v.password === v.confirm, {
+          path: ['confirm'],
+          message: tv('passwordsMismatch'),
+        }),
+    [t, tv],
+  )
   const [pending, setPending] = React.useState(false)
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -54,11 +60,11 @@ export function ChangePasswordForm() {
         currentPassword: values.currentPassword,
         password: values.password,
       })
-      toast.success('Password changed')
+      toast.success(t('changed'))
       form.reset()
     } catch (error) {
       form.setError('root', {
-        message: error instanceof Error ? error.message : 'Could not change your password.',
+        message: error instanceof Error ? error.message : t('failed'),
       })
     } finally {
       setPending(false)
@@ -72,8 +78,8 @@ export function ChangePasswordForm() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
           <CardHeader>
-            <CardTitle>Password</CardTitle>
-            <CardDescription>Choose a strong password you do not use elsewhere.</CardDescription>
+            <CardTitle>{t('title')}</CardTitle>
+            <CardDescription>{t('description')}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-5 pt-6">
             <FormField
@@ -81,7 +87,7 @@ export function ChangePasswordForm() {
               name="currentPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Current password</FormLabel>
+                  <FormLabel>{t('current')}</FormLabel>
                   <FormControl>
                     <Input type="password" autoComplete="current-password" {...field} />
                   </FormControl>
@@ -95,7 +101,7 @@ export function ChangePasswordForm() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>New password</FormLabel>
+                    <FormLabel>{t('new')}</FormLabel>
                     <FormControl>
                       <Input type="password" autoComplete="new-password" {...field} />
                     </FormControl>
@@ -108,7 +114,7 @@ export function ChangePasswordForm() {
                 name="confirm"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm new password</FormLabel>
+                    <FormLabel>{t('confirm')}</FormLabel>
                     <FormControl>
                       <Input type="password" autoComplete="new-password" {...field} />
                     </FormControl>
@@ -125,7 +131,7 @@ export function ChangePasswordForm() {
           </CardContent>
           <CardFooter className="justify-end border-t pt-6">
             <Button type="submit" disabled={pending}>
-              {pending ? 'Changing…' : 'Change password'}
+              {pending ? t('submitting') : t('submit')}
             </Button>
           </CardFooter>
         </form>
