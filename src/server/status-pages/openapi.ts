@@ -36,6 +36,7 @@ const ok = (description: string, contentType: string, schema: Record<string, unk
 const errors = {
   '304': { description: 'Not modified (the `If-None-Match` ETag still matches).' },
   '401': { $ref: '#/components/responses/Unauthorized' },
+  '403': { $ref: '#/components/responses/Forbidden' },
   '404': { $ref: '#/components/responses/NotFound' },
   '429': { $ref: '#/components/responses/TooManyRequests' },
 }
@@ -226,7 +227,12 @@ export function buildOpenApiDocument(
       },
       responses: {
         Unauthorized: {
-          description: 'The page is password-protected and the request has no access.',
+          description:
+            'The page is protected (password or email domain) and the request has no access.',
+          content: { 'application/problem+json': { schema: ref('Problem') } },
+        },
+        Forbidden: {
+          description: 'The page has an IP allow-list and the client address is not on it.',
           content: { 'application/problem+json': { schema: ref('Problem') } },
         },
         NotFound: {
@@ -250,7 +256,13 @@ export function buildOpenApiDocument(
             instance: text,
             code: {
               type: 'string',
-              enum: ['not-found', 'login-required', 'invalid-password', 'rate-limited'],
+              enum: [
+                'not-found',
+                'login-required',
+                'invalid-password',
+                'rate-limited',
+                'ip-not-allowed',
+              ],
             },
           },
         },

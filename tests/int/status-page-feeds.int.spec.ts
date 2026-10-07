@@ -22,6 +22,7 @@ import { GET as llmsRoute } from '@/app/status/[slug]/llms.txt/route'
 import { GET as icsRoute } from '@/app/status/[slug]/maintenance.ics/route'
 import { GET as rssRoute } from '@/app/status/[slug]/rss/route'
 import { closeRateLimitStore } from '@/server/security/rate-limit'
+import { resetInstanceSettingsCache } from '@/server/settings'
 import { clearVerifiedPasswords } from '@/server/status-pages/access'
 import type { JsonFeed } from '@/server/status-pages/feed-formats'
 import type {
@@ -40,6 +41,22 @@ import type {
 import { postOccurrenceUpdate } from '@/server/maintenance'
 
 let payload: Payload
+
+/** Every machine-readable endpoint of a page, for the access checks. */
+const ENDPOINTS: [unknown, string][] = [
+  [atomRoute, '/feed/atom'],
+  [jsonFeedRoute, '/feed/json'],
+  [rssRoute, '/rss'],
+  [icsRoute, '/maintenance.ics'],
+  [summaryRoute, '/api/v2/summary.json'],
+  [statusRoute, '/api/v2/status.json'],
+  [componentsRoute, '/api/v2/components.json'],
+  [incidentsRoute, '/api/v2/incidents.json'],
+  [maintenancesRoute, '/api/v2/scheduled-maintenances.json'],
+  [markdownRoute, '/index.md'],
+  [llmsRoute, '/llms.txt'],
+  [openapiRoute, '/api/openapi.json'],
+]
 
 const run = Date.now().toString(36)
 const PASSWORD = 'feeds password 1'
@@ -710,20 +727,7 @@ describe('status page feeds and machine-readable outputs', () => {
     })
 
     it('protects password pages: 401 without access, private responses with ?pw=', async () => {
-      const handlers: [unknown, string][] = [
-        [atomRoute, '/feed/atom'],
-        [jsonFeedRoute, '/feed/json'],
-        [rssRoute, '/rss'],
-        [icsRoute, '/maintenance.ics'],
-        [summaryRoute, '/api/v2/summary.json'],
-        [statusRoute, '/api/v2/status.json'],
-        [componentsRoute, '/api/v2/components.json'],
-        [incidentsRoute, '/api/v2/incidents.json'],
-        [maintenancesRoute, '/api/v2/scheduled-maintenances.json'],
-        [markdownRoute, '/index.md'],
-        [llmsRoute, '/llms.txt'],
-        [openapiRoute, '/api/openapi.json'],
-      ]
+      const handlers = ENDPOINTS
       for (const [handler, suffix] of handlers) {
         const denied = await get(handler, protectedPage.slug, suffix)
         expect(denied.status, suffix).toBe(401)
@@ -743,6 +747,71 @@ describe('status page feeds and machine-readable outputs', () => {
       const wrong = await get(summaryRoute, protectedPage.slug, '/api/v2/summary.json?pw=wrong')
       expect(wrong.status).toBe(401)
       expect(await wrong.json()).toMatchObject({ code: 'invalid-password' })
+    })
+
+    it('honours the email-domain and IP allow-list modes on every endpoint', async () => {
+      const settings = await payload.findGlobal({ slug: 'instance-settings' })
+      await payload.updateGlobal({ slug: 'instance-settings', data: { trustProxy: true } })
+      resetInstanceSettingsCache()
+      try {
+        const base = {
+          organization: org.id,
+          published: true,
+          groups: [{ name: 'Core', monitors: [{ monitor: web.id }] }],
+        }
+        const emailPage = await payload.create({
+          collection: 'status-pages',
+          data: {
+            ...base,
+            title: 'Feeds Staff',
+            slug: `feeds-staff-${run}`,
+            access: 'email-domain',
+            allowedEmailDomains: [{ domain: 'feeds.example' }],
+          } as never,
+          overrideAccess: true,
+        })
+        const ipPage = await payload.create({
+          collection: 'status-pages',
+          data: {
+            ...base,
+            title: 'Feeds Office',
+            slug: `feeds-office-${run}`,
+            access: 'ip-allowlist',
+            allowedIpRanges: [{ cidr: '203.0.113.0/24' }],
+          } as never,
+          overrideAccess: true,
+        })
+
+        for (const [handler, suffix] of ENDPOINTS) {
+          // Email domain: only the session cookie opens it; `?pw=` means nothing.
+          const email = await get(handler, emailPage.slug, `${suffix}?pw=anything`)
+          expect(email.status, suffix).toBe(401)
+          expect(await email.json()).toMatchObject({ status: 401, code: 'login-required' })
+
+          const outside = await get(handler, ipPage.slug, suffix, {
+            headers: { 'X-Forwarded-For': '198.51.100.7' },
+          })
+          expect(outside.status, suffix).toBe(403)
+          expect(outside.headers.get('content-type')).toBe(
+            'application/problem+json; charset=utf-8',
+          )
+          const problem = (await outside.json()) as { code: string; title: string }
+          expect(problem).toMatchObject({ code: 'ip-not-allowed', title: 'Forbidden' })
+          expect(JSON.stringify(problem)).not.toContain('Feeds Office')
+
+          const inside = await get(handler, ipPage.slug, suffix, {
+            headers: { 'X-Forwarded-For': '203.0.113.9' },
+          })
+          expect(inside.status, suffix).toBe(200)
+          expect(inside.headers.get('cache-control')).toBe('private, no-store')
+        }
+      } finally {
+        await payload.updateGlobal({
+          slug: 'instance-settings',
+          data: { trustProxy: Boolean(settings.trustProxy) },
+        })
+        resetInstanceSettingsCache()
+      }
     })
   })
 })

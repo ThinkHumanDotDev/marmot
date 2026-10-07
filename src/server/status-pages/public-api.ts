@@ -2,8 +2,9 @@
  * Response plumbing of the public read-only endpoints of a status page (feeds, the iCalendar feed,
  * the Statuspage-compatible JSON, Markdown, `llms.txt`, the OpenAPI document). Every one of them:
  *
- * - loads the published page and runs `checkStatusPageAccess` (cookie or `?pw=`), so password-protected
- *   pages answer 401 (429 while rate limited) and are never stored by shared caches;
+ * - loads the published page and runs `checkStatusPageAccess` (every access mode: password, email
+ *   domain, IP allow-list), so protected pages answer 401 / 403 (429 while rate limited) and are never
+ *   stored by shared caches;
  * - answers errors as RFC 9457 `application/problem+json`;
  * - sends `Cache-Control` matched to the page's auto-refresh interval plus `stale-while-revalidate`,
  *   a weak `ETag` of the body (`If-None-Match` → 304), and CORS `*` with the `ETag` exposed.
@@ -25,8 +26,9 @@ import { requestLocale } from '@/server/request-locale'
 import {
   accessRequestFrom,
   checkStatusPageAccess,
+  DENIAL_MESSAGES,
+  DENIAL_STATUS,
   PROTECTED_CACHE_CONTROL,
-  type AccessDenial,
   type StatusPageAccessDecision,
 } from './access'
 import { findPublishedStatusPage } from './public'
@@ -90,6 +92,7 @@ export function etagMatches(ifNoneMatch: string | null, etag: string): boolean {
 
 const STATUS_TITLES: Record<number, string> = {
   401: 'Unauthorized',
+  403: 'Forbidden',
   404: 'Not Found',
   429: 'Too Many Requests',
   500: 'Internal Server Error',
@@ -125,20 +128,17 @@ export function problemResponse(request: Request, problem: Problem): Response {
   })
 }
 
-const DENIAL_MESSAGES: Record<AccessDenial, ErrorKey> = {
-  'login-required': 'statusPageProtected',
-  'invalid-password': 'statusPagePasswordIncorrect',
-  'rate-limited': 'tooManyAttempts',
-}
-
-/** 401 (429 when rate limited) as problem details, with the protected-page headers. */
+/**
+ * 401 (sign-in required), 403 (IP not allowed) or 429 (rate limited) as problem details, with the
+ * protected-page headers. Status and message come from `checkStatusPageAccess`'s denial table.
+ */
 export function accessProblem(
   request: Request,
   decision: Extract<StatusPageAccessDecision, { allowed: false }>,
   locale: Locale = defaultLocale,
 ): Response {
   return problemResponse(request, {
-    status: decision.reason === 'rate-limited' ? 429 : 401,
+    status: DENIAL_STATUS[decision.reason],
     detail: translateError(locale, DENIAL_MESSAGES[decision.reason]),
     code: decision.reason,
     headers: {
