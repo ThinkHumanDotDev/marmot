@@ -27,7 +27,9 @@ import {
 import {
   buildPublicStatusPageData,
   findPublishedStatusPage,
+  pageOverallStatus,
   type OverallStatus,
+  type PublicStatusPageData,
 } from '@/server/status-pages/public'
 
 import type { StatusPage } from '@/payload-types'
@@ -75,6 +77,26 @@ export function statusPageBadgeState(data: BadgeStateInput): StatusPageBadgeStat
   if (impact) raise(FROM_IMPACT[impact])
   if (data.maintenance.some((m) => m.status === 'under-maintenance')) raise('maintenance')
   return state
+}
+
+/**
+ * The page's overall status without the lift the page banner applies to monitors with a degraded
+ * performance impact (`pageOverallStatus` counts them as not fully up, so the banner reads
+ * "partially degraded"). The badge has its own `degraded` state for them, which
+ * `statusPageBadgeState` raises to from the impact.
+ */
+export function badgeOverallStatus(
+  data: Pick<PublicStatusPageData, 'groups' | 'incidents'>,
+): OverallStatus {
+  const groups = data.groups.map((group) => ({
+    ...group,
+    monitors: group.monitors.map((row) =>
+      row.type === 'monitor' && row.impact === 'degraded_performance'
+        ? { ...row, impact: null }
+        : row,
+    ),
+  }))
+  return pageOverallStatus(groups, data.incidents)
 }
 
 export type BadgePageAccess =
@@ -146,7 +168,7 @@ export async function serveStatusPageBadge(
   }
 
   const data = await buildPublicStatusPageData(payload, page)
-  const state = statusPageBadgeState(data)
+  const state = statusPageBadgeState({ ...data, overall: badgeOverallStatus(data) })
   return new Response(renderStatusPageBadge(state, options), {
     status: 200,
     headers: access.restricted
