@@ -108,6 +108,8 @@ combined). In `superadmin` mode, channels set up before the upgrade keep sending
 | `GITHUB_CLIENT_SECRET`     | —                      | web     | GitHub OAuth app client secret.                                                                                                                                                      |
 | `GOOGLE_CLIENT_ID`         | —                      | web     | Google OAuth client id. With `GOOGLE_CLIENT_SECRET`, enables "Continue with Google"; redirect URI `<NEXT_PUBLIC_SERVER_URL>/api/auth/sso/google/callback`.                           |
 | `GOOGLE_CLIENT_SECRET`     | —                      | web     | Google OAuth client secret.                                                                                                                                                          |
+| `API_KEY_RATE_LIMIT`       | `600`                  | web     | Management API requests per minute per [API key](Integrations.md#management-api); `0` turns the limit off.                                                                           |
+| `API_KEY_WRITE_RATE_LIMIT` | `60`                   | web     | Of those, writes (`POST`/`PUT`/`PATCH`/`DELETE`) per minute per key; `0` turns the limit off.                                                                                        |
 | `STATUS_PAGE_SESSION_DAYS` | `30`                   | web     | Lifetime (days, 1–365) of the cookie a visitor gets after signing in to a [protected status page](Status-Pages.md#access) (password or email link).                                  |
 
 Full setup guide with provider walkthroughs: [Single sign-on](Single-Sign-On.md).

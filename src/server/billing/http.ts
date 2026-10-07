@@ -6,7 +6,8 @@
 import { APIError, getPayload, type Payload } from 'payload'
 
 import config from '@payload-config'
-import { errorMessageFor, errorText, rememberRequestUser } from '@/server/request-locale'
+import { authenticateRequest } from '@/server/auth/request-auth'
+import { errorMessageFor, errorText } from '@/server/request-locale'
 import { can } from '@/access/permissions'
 import { isBillingEnabled } from './entitlements'
 
@@ -40,9 +41,11 @@ export async function billingContext(
   if (!isBillingEnabled()) return { ok: false, response: billingDisabled(request) }
 
   const payload = await getPayload({ config })
-  const { user } = await payload.auth({ headers: request.headers })
+  // Session or organization API key; keys are refused on billing routes (`request-auth.ts`).
+  const auth = await authenticateRequest(payload, request)
+  if (auth.response) return { ok: false, response: auth.response }
+  const user = auth.user
   if (!user) return { ok: false, response: jsonError(errorText(request, 'unauthenticated'), 401) }
-  rememberRequestUser(request, user)
 
   const org = await payload.findByID({
     collection: 'organizations',

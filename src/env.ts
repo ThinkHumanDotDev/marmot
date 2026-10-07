@@ -92,6 +92,11 @@ const schema = z.object({
   // Skip the Redis side effects of the `monitors` hooks (tests without Redis).
   MARMOT_DISABLE_ENGINE_HOOKS: booleanish.default(false),
 
+  // Management API (#115): requests per minute per organization API key, and how many of them may
+  // be writes (POST/PUT/PATCH/DELETE). 0 turns the respective limit off.
+  API_KEY_RATE_LIMIT: z.coerce.number().int().min(0).default(600),
+  API_KEY_WRITE_RATE_LIMIT: z.coerce.number().int().min(0).default(60),
+
   // Lifetime of the cookie a visitor gets after signing in to a protected status page.
   STATUS_PAGE_SESSION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
 

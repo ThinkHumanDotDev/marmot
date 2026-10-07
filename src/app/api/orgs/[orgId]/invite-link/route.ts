@@ -7,7 +7,8 @@ type RouteContext = { params: Promise<{ orgId: string }> }
 
 /** POST /api/orgs/:orgId/invite-link  `{ role? }` — (re)generate the shareable invite link. */
 export const POST = withErrors(async (request: Request, { params }: RouteContext) => {
-  const { payload, user } = await getRequestContext(request)
+  const { payload, user, response } = await getRequestContext(request)
+  if (response) return response
   if (!user) return unauthorized(request)
   const { orgId } = await params
   const { role } = await readJson<{ role?: unknown }>(request)
@@ -23,7 +24,8 @@ export const POST = withErrors(async (request: Request, { params }: RouteContext
 
 /** DELETE /api/orgs/:orgId/invite-link — disable the shareable invite link. */
 export const DELETE = withErrors(async (request: Request, { params }: RouteContext) => {
-  const { payload, user } = await getRequestContext(request)
+  const { payload, user, response } = await getRequestContext(request)
+  if (response) return response
   if (!user) return unauthorized(request)
   const { orgId } = await params
 

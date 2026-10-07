@@ -35,6 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { API_KEY_SCOPES, type ApiKeyScope } from '@/lib/api-key-scopes'
 import { apiKeysApi, type ApiKeyRow } from '@/lib/api-keys-api'
 
 interface ApiKeysViewProps {
@@ -63,6 +64,15 @@ function useRelativeTime() {
     if (hours < 48) return t('hours', { count: hours })
     return t('days', { count: Math.round(hours / 24) })
   }
+}
+
+function ScopeBadge({ scope }: { scope: ApiKeyRow['scope'] }) {
+  const t = useTranslations('settings.apiKeys.scope')
+  return (
+    <Badge variant={scope === 'write' ? 'default' : 'secondary'} data-testid="api-key-scope">
+      {t(scope)}
+    </Badge>
+  )
 }
 
 function StatusBadge({ status }: { status: ApiKeyRow['status'] }) {
@@ -150,6 +160,7 @@ export function ApiKeysView({ orgId, initial, canManage }: ApiKeysViewProps) {
                 <TableRow>
                   <TableHead>{t('columns.name')}</TableHead>
                   <TableHead>{t('columns.key')}</TableHead>
+                  <TableHead>{t('columns.scope')}</TableHead>
                   <TableHead>{t('columns.status')}</TableHead>
                   <TableHead>{t('columns.expires')}</TableHead>
                   <TableHead>{t('columns.lastUsed')}</TableHead>
@@ -162,6 +173,9 @@ export function ApiKeysView({ orgId, initial, canManage }: ApiKeysViewProps) {
                     <TableCell className="font-medium">{row.name}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {row.display}
+                    </TableCell>
+                    <TableCell>
+                      <ScopeBadge scope={row.scope} />
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={row.status} />
@@ -250,11 +264,13 @@ function CreateApiKeyDialog({ orgId, open, onOpenChange, onCreated }: CreateApiK
   const t = useTranslations('settings.apiKeys.create')
   const [name, setName] = React.useState('')
   const [expiry, setExpiry] = React.useState<(typeof EXPIRY_OPTIONS)[number]['value']>('never')
+  const [scope, setScope] = React.useState<ApiKeyScope>('read')
   const [busy, setBusy] = React.useState(false)
 
   function reset() {
     setName('')
     setExpiry('never')
+    setScope('read')
   }
 
   function handleOpenChange(next: boolean) {
@@ -270,6 +286,7 @@ function CreateApiKeyDialog({ orgId, open, onOpenChange, onCreated }: CreateApiK
       const days = EXPIRY_OPTIONS.find((o) => o.value === expiry)?.days ?? null
       const { doc, key } = await apiKeysApi.create(orgId, {
         name: name.trim(),
+        scope,
         expiresInDays: days,
       })
       handleOpenChange(false)
@@ -301,6 +318,26 @@ function CreateApiKeyDialog({ orgId, open, onOpenChange, onCreated }: CreateApiK
                 autoFocus
                 required
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="api-key-scope">{t('scope')}</Label>
+              <Select value={scope} onValueChange={(v) => setScope(v as ApiKeyScope)}>
+                <SelectTrigger
+                  id="api-key-scope"
+                  className="w-full"
+                  data-testid="api-key-scope-select"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {API_KEY_SCOPES.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {t(`scopeOptions.${option}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t('scopeHint')}</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="api-key-expiry">{t('expiry')}</Label>

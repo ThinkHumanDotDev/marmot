@@ -23,6 +23,11 @@ export const AUDIT_ACTIONS = [
   'invitation.accepted',
   'organization.updated',
   'organization.deleted',
+  'api_key.created',
+  'api_key.updated',
+  'api_key.revoked',
+  // A write request (POST/PUT/PATCH/DELETE) to the management API authenticated by an API key.
+  'api_key.write_request',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]
 
@@ -47,7 +52,46 @@ export interface AuditEvent {
 /** `collection:id` label used in `target`. */
 export const auditTarget = (collection: string, id: OrgId): string => `${collection}:${String(id)}`
 
-const relation = (id: OrgId | null | undefined) => (id === undefined || id === null ? null : id)
+/**
+ * Users are stored as `actor`; API key principals (`src/server/auth/request-auth.ts`) have synthetic
+ * ids that are not user rows, so they never reach the relationship.
+ */
+const relation = (id: OrgId | null | undefined) =>
+  id === undefined || id === null || (typeof id === 'string' && id.startsWith('api-key:'))
+    ? null
+    : id
+
+/** Who performed an action, as `recordAuditEvent` fields. */
+export interface AuditActorFields {
+  actor: OrgId | null
+  metadata: { actorType: 'user' | 'apiKey'; apiKeyId?: string; apiKeyPrefix?: string }
+}
+
+/**
+ * `actor` + `metadata.actorType` for the request principal: a user, or an organization API key
+ * (`actorType: 'apiKey'`, with the key's id and public prefix, `actor` left empty). Spread it into
+ * every event recorded on behalf of a request so the log tells automation from people:
+ *
+ *   const who = auditActorFields(user)
+ *   await recordAuditEvent(payload, { action, organization, ...who, metadata: { ...who.metadata, … } })
+ */
+export function auditActorFields(user: unknown): AuditActorFields {
+  const principal = user as {
+    id?: OrgId
+    apiKey?: { id: OrgId; prefix: string } | null
+  } | null
+  if (principal?.apiKey) {
+    return {
+      actor: null,
+      metadata: {
+        actorType: 'apiKey',
+        apiKeyId: String(principal.apiKey.id),
+        apiKeyPrefix: principal.apiKey.prefix,
+      },
+    }
+  }
+  return { actor: principal?.id ?? null, metadata: { actorType: 'user' } }
+}
 
 /**
  * Appends one row to `audit-logs`. Writes bypass access control (`overrideAccess: true`); the

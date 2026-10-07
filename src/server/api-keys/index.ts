@@ -13,8 +13,11 @@
 import { createHash, randomBytes } from 'node:crypto'
 import type { Payload } from 'payload'
 
+import type { ApiKeyScope } from '@/lib/api-key-scopes'
 import { childLogger } from '@/lib/logger'
 import type { ApiKey } from '@/payload-types'
+
+export { API_KEY_SCOPES, type ApiKeyScope } from '@/lib/api-key-scopes'
 
 const log = childLogger('api-keys')
 
@@ -85,7 +88,12 @@ export function extractApiKey(headers: Headers): string | null {
 export interface ApiKeyAuth {
   organizationId: OrgId
   apiKey: ApiKey
+  scope: ApiKeyScope
 }
+
+/** Scope of a stored key; rows from before scopes existed count as `read`. */
+export const apiKeyScope = (doc: Pick<ApiKey, 'scope'>): ApiKeyScope =>
+  doc.scope === 'write' ? 'write' : 'read'
 
 export type ApiKeyStatus = 'active' | 'inactive' | 'expired'
 
@@ -154,7 +162,7 @@ export async function authenticateApiKeyValue(
       .catch((err: unknown) => log.warn({ err, apiKeyId: apiKey.id }, 'failed to stamp lastUsedAt'))
   }
 
-  return { organizationId, apiKey }
+  return { organizationId, apiKey, scope: apiKeyScope(apiKey) }
 }
 
 /** Fields the UI receives; `keyHash` never leaves the server. */
@@ -163,6 +171,7 @@ export interface ApiKeyRow {
   name: string
   prefix: string
   display: string
+  scope: ApiKeyScope
   active: boolean
   status: ApiKeyStatus
   expiresAt: string | null
@@ -176,6 +185,7 @@ export function toApiKeyRow(doc: ApiKey, now: Date = new Date()): ApiKeyRow {
     name: doc.name,
     prefix: doc.prefix,
     display: displayApiKey(doc.prefix),
+    scope: apiKeyScope(doc),
     active: doc.active !== false,
     status: apiKeyStatus(doc, now),
     expiresAt: doc.expiresAt ?? null,

@@ -8,6 +8,8 @@ README badges, cron jobs and Grafana dashboards keep working after a switch.
 | `GET /api/badge/:monitorId/<type>[/<range>]` | public status page **or** API key of the org       | shields.io-style SVG badges  |
 | `ALL /api/push/:token?status=&msg=&ping=`    | the monitor's push token                           | heartbeat for push monitors  |
 | `GET /api/metrics`                           | API key                                            | Prometheus exposition        |
+| `/api/orgs/:orgId/**`                        | session **or** API key of the org (scoped)         | management API               |
+| `GET /api/openapi.json`, `GET /api/docs`     | public                                             | management API reference     |
 | `GET/POST /api/orgs/:orgId/api-keys`         | session, `api-key:read` / `api-key:create` (admin) | manage keys                  |
 | `PATCH/DELETE /api/orgs/:orgId/api-keys/:id` | session, `api-key:delete` (admin)                  | disable / re-enable / revoke |
 
@@ -35,9 +37,50 @@ Authorization: Basic base64(<anything>:mk_…)   # Prometheus basic_auth
 ```
 
 Server side, `authenticateApiKey(payload, request)` (`src/server/api-keys`) resolves a request to
-`{ organizationId, apiKey }` or `null` (missing, unknown, disabled, expired). Endpoints then scope their
-queries to that organization. Keys are deliberately **not** a Payload auth strategy: they do not map to a
-user and never grant access to the REST/GraphQL API or the UI.
+`{ organizationId, apiKey, scope }` or `null` (missing, unknown, disabled, expired). Endpoints then scope
+their queries to that organization. Keys are deliberately **not** a Payload auth strategy: they never grant
+access to Payload's REST/GraphQL API (`/api/<collection>`) or the UI.
+
+### Scopes
+
+Every key has a `scope`, chosen on creation and fixed afterwards (keys created before scopes existed are
+`read`):
+
+| Scope   | Methods                  | Acts as  | Typical use                                                                    |
+| ------- | ------------------------ | -------- | ------------------------------------------------------------------------------ |
+| `read`  | `GET`, `HEAD`            | `viewer` | Prometheus, badges, dashboards, reporting                                      |
+| `write` | all (`POST`, `PATCH`, …) | `member` | CI/CD, Terraform, the CLI, MCP: monitors, status pages, incidents, maintenance |
+
+## Management API
+
+The route handlers under `/api/orgs/:orgId/**` that the UI uses are the management API. They accept a
+signed-in session or an API key of the organization in the URL. A key is turned into a synthetic principal
+with a single membership (`viewer` for `read`, `member` for `write`), so the same permission checks,
+per-organization overrides and collection access apply as for a person with that role
+(`src/server/auth/request-auth.ts`). On top of that:
+
+- a key of another organization gets `403`; an unknown, disabled or expired key `401`;
+- `read` keys get `403` on anything but `GET`/`HEAD`/`OPTIONS`;
+- keys never reach member, invitation, invite-link, API key, SSO, billing, permission or ownership routes
+  (`403`), whatever the organization's permission overrides say;
+- each key may send `API_KEY_RATE_LIMIT` requests per minute (default 600), of which
+  `API_KEY_WRITE_RATE_LIMIT` (default 60) may be writes; above that the API answers `429` with
+  `Retry-After` ([Configuration](Configuration.md#authentication));
+- every write is recorded in the audit log as `api_key.write_request` with `actorType: apiKey` and the
+  key's prefix; creating, disabling and revoking keys are recorded as `api_key.created`,
+  `api_key.updated` and `api_key.revoked`.
+
+The API is described by an OpenAPI 3.1 document at `/api/openapi.json` (request bodies are generated from
+the same zod schemas the handlers validate with) and browsable at `/api/docs`. Each operation carries
+`x-marmot-api-key-scope` (`read`, `write`, or `null` for session-only routes) and
+`x-marmot-permission`.
+
+```sh
+curl -H "Authorization: Bearer $MARMOT_KEY" https://marmot.example.com/api/orgs/1/monitors
+curl -X POST -H "Authorization: Bearer $MARMOT_KEY" -H 'content-type: application/json' \
+  -d '{"name":"API","type":"http","url":"https://api.example.com/health","interval":60}' \
+  https://marmot.example.com/api/orgs/1/monitors
+```
 
 ## Badges
 

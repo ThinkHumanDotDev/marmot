@@ -14,7 +14,8 @@ type RouteContext = { params: Promise<{ orgId: string }> }
 
 /** POST /api/orgs/:orgId/transfer-ownership  `{ userId }` — owner only; the caller becomes admin. */
 export const POST = withErrors(async (request: Request, { params }: RouteContext) => {
-  const { payload, user } = await getRequestContext(request)
+  const { payload, user, response } = await getRequestContext(request)
+  if (response) return response
   if (!user) return unauthorized(request)
   const { orgId } = await params
   const { userId } = await readJson<{ userId?: string | number }>(request)

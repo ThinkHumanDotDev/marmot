@@ -1,7 +1,6 @@
-import { z } from 'zod'
-
 import type { ApiKey } from '@/payload-types'
 import { toApiKeyRow } from '@/server/api-keys'
+import { apiKeyPatchSchema } from '@/server/api-keys/schemas'
 import {
   errorMessage,
   errorStatus,
@@ -12,12 +11,11 @@ import {
   type OrgRequestContext,
 } from '@/server/notifications/api'
 import { errorText } from '@/server/request-locale'
+import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 
 export const dynamic = 'force-dynamic'
 
 type RouteContext = { params: Promise<{ orgId: string; id: string }> }
-
-const patchSchema = z.object({ active: z.boolean() })
 
 /** Loads the key as the user and only when it belongs to the organization in the URL. */
 async function loadOrgApiKey(ctx: OrgRequestContext, rawId: string): Promise<ApiKey | null> {
@@ -43,7 +41,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const body = await readJson(request)
-  const parsed = patchSchema.safeParse(body)
+  const parsed = apiKeyPatchSchema.safeParse(body)
   if (!parsed.success) return jsonError(400, errorText(request, 'activeRequired'))
 
   const existing = await loadOrgApiKey(ctx, id)
@@ -58,6 +56,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       user: ctx.user,
       overrideAccess: false,
     })) as ApiKey
+    await recordRequestAuditEvent(ctx.payload, request, {
+      action: 'api_key.updated',
+      actor: ctx.user.id,
+      organization: ctx.orgId,
+      target: auditTarget('api-keys', doc.id),
+      metadata: { name: doc.name, prefix: doc.prefix, active: parsed.data.active },
+    })
     return Response.json({ doc: toApiKeyRow(doc) })
   } catch (error) {
     return jsonError(errorStatus(error), errorMessage(error, request))
@@ -80,6 +85,13 @@ export async function DELETE(request: Request, { params }: RouteContext) {
       depth: 0,
       user: ctx.user,
       overrideAccess: false,
+    })
+    await recordRequestAuditEvent(ctx.payload, request, {
+      action: 'api_key.revoked',
+      actor: ctx.user.id,
+      organization: ctx.orgId,
+      target: auditTarget('api-keys', existing.id),
+      metadata: { name: existing.name, prefix: existing.prefix },
     })
     return Response.json({ deleted: String(existing.id) })
   } catch (error) {

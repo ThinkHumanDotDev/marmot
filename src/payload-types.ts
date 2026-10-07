@@ -1117,6 +1117,7 @@ export interface ApiKey {
   name: string;
   keyHash: string;
   prefix: string;
+  scope: 'read' | 'write';
   active?: boolean | null;
   expiresAt?: string | null;
   lastUsedAt?: string | null;
@@ -2068,6 +2069,7 @@ export interface ApiKeysSelect<T extends boolean = true> {
   name?: T;
   keyHash?: T;
   prefix?: T;
+  scope?: T;
   active?: T;
   expiresAt?: T;
   lastUsedAt?: T;
