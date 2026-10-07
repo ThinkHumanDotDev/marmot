@@ -508,6 +508,18 @@ UI goes through dedicated route handlers backed by `src/server/members.ts` (`lis
 An organization always keeps at least one owner: the last owner cannot be demoted, removed or leave, and
 deleting an organization first removes its invitations and memberships (`beforeDelete` hooks).
 
+### API keys and the MCP server
+
+Route handlers authenticate through `authenticateRequest` (`src/server/auth/request-auth.ts`): a session,
+or on `/api/orgs/:orgId/**` an organization API key that becomes a synthetic `viewer`/`member` principal
+([Integrations](Integrations.md#management-api)). The MCP endpoint (`/api/mcp`, `src/server/mcp`) adds no
+business logic of its own: it verifies the key once per request, then each tool builds an in-process
+`Request` for the matching route handler and marks it with `delegateApiKeyRequest` (a `WeakMap`, so no
+client header can forge it). The handler runs its usual permission checks and validation; the delegated
+path skips the key lookup and request budget already spent, and the audit hooks record changes with
+actor type `mcp` (`apiKey.via`, `mcpActor` in `src/server/audit/context.ts`)
+([MCP](MCP.md)).
+
 ## Account security: two-factor authentication
 
 `src/auth/two-factor/` implements TOTP (RFC 6238, `otplib`) after Uptime Kuma's `login` / `prepare2FA` /

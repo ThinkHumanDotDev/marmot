@@ -21,6 +21,7 @@ import { z } from 'zod'
 
 import { PERMISSIONS, type Permission, ROLES } from '@/access/permissions'
 import { connectionSchema } from '@/app/api/orgs/[orgId]/sso/connections/route'
+import { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
 import { API_KEY_SCOPES } from '@/lib/api-key-scopes'
 import { COMPONENT_IMPACTS, INCIDENT_STATUSES } from '@/lib/incident-timeline'
 import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
@@ -31,6 +32,7 @@ import { monitorFormSchema } from '@/lib/validation/monitor-schema'
 import { apiKeyCreateSchema, apiKeyPatchSchema } from '@/server/api-keys/schemas'
 import { locationCreateSchema, locationPatchSchema } from '@/server/probes/schemas'
 import { API_KEY_FORBIDDEN_SECTIONS, isWriteMethod } from '@/server/auth/request-auth'
+import { STATS_RANGES } from '@/server/stats/uptime-calculator'
 import { createEndpointSchema, updateEndpointSchema } from '@/server/webhooks/manage'
 
 /** Version of the management API contract. Breaking changes bump the major version. */
@@ -81,7 +83,7 @@ const componentImpacts = z
   .array(z.object({ component: z.string().describe('Component (group row) id'), impact }))
   .describe('Affected components and their impact')
 
-const incidentUpdateBody = z.object({
+export const incidentUpdateBody = z.object({
   status: z.enum(INCIDENT_STATUSES),
   message: z.string().nullable().optional(),
   components: componentImpacts.optional(),
@@ -89,7 +91,7 @@ const incidentUpdateBody = z.object({
   impact: impact.optional().describe('Incident impact when no component is affected'),
 })
 
-const incidentCreateBody = z.object({
+export const incidentCreateBody = z.object({
   title: z.string().min(1),
   pinned: z.boolean().optional(),
   impact: impact.optional(),
@@ -167,7 +169,7 @@ const dockerTestBody = z.object({
   url: z.string().optional(),
 })
 
-const incidentNoteBody = z.object({ note: z.string().max(2000).optional() })
+export const incidentNoteBody = z.object({ note: z.string().max(2000).optional() })
 const publishIncidentBody = z.object({
   statusPageId: id,
   title: z.string().optional(),
@@ -753,6 +755,11 @@ export const OPERATIONS: OperationSpec[] = [
     query: [
       { name: 'limit', description: '1–500, default 50', schema: { type: 'integer' } },
       {
+        name: 'status',
+        description: 'Only heartbeats with this status',
+        schema: { type: 'string', enum: [...HEARTBEAT_STATUSES] },
+      },
+      {
         name: 'important',
         description: '`true` for status changes only',
         schema: { type: 'string', enum: ['true', 'false'] },
@@ -823,6 +830,25 @@ export const OPERATIONS: OperationSpec[] = [
     summary: 'Resume a monitor',
     tag: 'Monitors',
     permission: 'monitor:update',
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/monitors/{id}/stats`,
+    operationId: 'getMonitorStats',
+    summary: 'Uptime and response time of a monitor',
+    tag: 'Monitors',
+    permission: 'monitor:read',
+    query: [
+      {
+        name: 'range',
+        description: 'Time range (default 24h)',
+        schema: { type: 'string', enum: [...STATS_RANGES] },
+      },
+    ],
+    response: {
+      description: '`{ uptime, avgPing, degraded, range, granularity, buckets }`',
+      schema: anyObject,
+    },
   },
 
   // Notification channels
