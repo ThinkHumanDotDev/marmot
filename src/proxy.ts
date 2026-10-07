@@ -1,22 +1,26 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * Custom domains for status pages (Next.js 16 "proxy", formerly middleware).
+ * Status page URL rewrites (Next.js 16 "proxy", formerly middleware).
  *
- * When a request arrives on a host that is not Marmot's own (`NEXT_PUBLIC_SERVER_URL`), the host is
- * looked up through `GET /api/status-pages/resolve-domain?host=` (cached for 60 s by `fetch`). When
- * it belongs to a published status page the root paths are rewritten to that page:
+ * On every host, Markdown aliases that a route segment cannot express are rewritten:
+ *
+ *   /status/<slug>.md                               → /status/<slug>/index.md
+ *   /status/<slug>/events/<kind>/<publicId>.md      → /status/<slug>/event-md/<kind>/<publicId>
+ *
+ * Custom domains: when a request arrives on a host that is not Marmot's own (`NEXT_PUBLIC_SERVER_URL`),
+ * the host is looked up through `GET /api/status-pages/resolve-domain?host=` (cached for 60 s by
+ * `fetch`). When it belongs to a published status page the page's public paths are rewritten to it:
  *
  *   https://status.example.com/              → /status/<slug>
- *   https://status.example.com/rss           → /status/<slug>/rss
- *   https://status.example.com/manifest.json → /status/<slug>/manifest.json
- *   https://status.example.com/login         → /status/<slug>/login (password-protected pages)
- *   https://status.example.com/badge.svg     → /status/<slug>/badge.svg
- *   https://status.example.com/events        → /status/<slug>/events (history, #107)
+ *   https://status.example.com/rss           → /status/<slug>/rss (and every other path in
+ *                                              `REWRITES`: `manifest.json`, `login`, `badge.svg`,
+ *                                              the history `events`, `sitemap.xml`, `robots.txt`,
+ *                                              the feeds, `maintenance.ics`, `api/v2/*.json`,
+ *                                              `api/openapi.json`, `index.md`, `llms.txt`)
  *   https://status.example.com/events/incident/<id>    → /status/<slug>/events/incident/<id>
  *   https://status.example.com/events/maintenance/<id> → /status/<slug>/events/maintenance/<id>
- *   https://status.example.com/sitemap.xml   → /status/<slug>/sitemap.xml
- *   https://status.example.com/robots.txt    → /status/<slug>/robots.txt
+ *   https://status.example.com/events/incident/<id>.md → /status/<slug>/event-md/incident/<id>
  *
  * Everything else (the app, API, admin) is untouched, and any failure falls through to the normal
  * routing so a broken lookup can never take the main site down. See docs/Status-Pages.md.
@@ -33,9 +37,17 @@ export const config = {
     '/events/:kind/:id',
     '/sitemap.xml',
     '/robots.txt',
+    '/index.md',
+    '/llms.txt',
+    '/maintenance.ics',
+    '/feed/:path*',
+    '/api/v2/:path*',
+    '/api/openapi.json',
+    '/status/:path*',
   ],
 }
 
+/** Paths served at the root of a custom domain, exactly (`''` is the page itself). */
 const REWRITES: Record<string, string> = {
   '/': '',
   '/rss': '/rss',
@@ -45,15 +57,43 @@ const REWRITES: Record<string, string> = {
   '/events': '/events',
   '/sitemap.xml': '/sitemap.xml',
   '/robots.txt': '/robots.txt',
+  '/index.md': '/index.md',
+  '/llms.txt': '/llms.txt',
+  '/maintenance.ics': '/maintenance.ics',
+  '/feed/atom': '/feed/atom',
+  '/feed/json': '/feed/json',
+  '/api/openapi.json': '/api/openapi.json',
+  '/api/v2/summary.json': '/api/v2/summary.json',
+  '/api/v2/status.json': '/api/v2/status.json',
+  '/api/v2/components.json': '/api/v2/components.json',
+  '/api/v2/incidents.json': '/api/v2/incidents.json',
+  '/api/v2/scheduled-maintenances.json': '/api/v2/scheduled-maintenances.json',
 }
 
 /** Permalinks of incidents and maintenance windows (`src/lib/status-page-events.ts`). */
 const EVENT_PERMALINK = /^\/events\/(incident|maintenance)\/[0-9a-z]{8}$/
+/** Their Markdown versions. */
+const EVENT_MARKDOWN = /^\/events\/(incident|maintenance)\/([0-9a-z]{8})\.md$/
+const PAGE_MARKDOWN = /^\/status\/([a-z0-9-]+)\.md$/
+const PAGE_EVENT_MARKDOWN =
+  /^\/status\/([a-z0-9-]+)\/events\/(incident|maintenance)\/([0-9a-z]{8})\.md$/
+
+/** Rewrite of a Markdown alias under `/status/…` (any host), or undefined. */
+export function markdownAliasRewrite(pathname: string): string | undefined {
+  const page = PAGE_MARKDOWN.exec(pathname)
+  if (page) return `/status/${page[1]}/index.md`
+  const event = PAGE_EVENT_MARKDOWN.exec(pathname)
+  if (event) return `/status/${event[1]}/event-md/${event[2]}/${event[3]}`
+  return undefined
+}
 
 /** The path below `/status/<slug>` that `pathname` maps to on a custom domain, or undefined. */
 export function customDomainSuffix(pathname: string): string | undefined {
   if (Object.hasOwn(REWRITES, pathname)) return REWRITES[pathname]
-  return EVENT_PERMALINK.test(pathname) ? pathname : undefined
+  if (EVENT_PERMALINK.test(pathname)) return pathname
+  const markdown = EVENT_MARKDOWN.exec(pathname)
+  if (markdown) return `/event-md/${markdown[1]}/${markdown[2]}`
+  return undefined
 }
 
 const HOSTNAME = /^(?=.{1,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(?:\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/
@@ -89,7 +129,16 @@ async function resolveSlug(request: NextRequest, host: string): Promise<string |
 }
 
 export async function proxy(request: NextRequest) {
-  const suffix = customDomainSuffix(request.nextUrl.pathname)
+  const { pathname } = request.nextUrl
+  if (pathname.startsWith('/status/')) {
+    const alias = markdownAliasRewrite(pathname)
+    if (alias === undefined) return NextResponse.next()
+    const target = request.nextUrl.clone()
+    target.pathname = alias
+    return NextResponse.rewrite(target)
+  }
+
+  const suffix = customDomainSuffix(pathname)
   if (suffix === undefined) return NextResponse.next()
 
   const host = requestHostname(request)
