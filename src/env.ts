@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { parseCidrList } from '@/server/security/address-policy'
+import { cidrListError } from '@/lib/cidr-syntax'
 
 /**
  * Central, validated view of process.env. Import `env` everywhere instead of reading
@@ -19,11 +19,8 @@ const cidrList = z
   .string()
   .default('')
   .superRefine((value, ctx) => {
-    try {
-      parseCidrList(value)
-    } catch (err) {
-      ctx.addIssue({ code: 'custom', message: err instanceof Error ? err.message : String(err) })
-    }
+    const message = cidrListError(value)
+    if (message) ctx.addIssue({ code: 'custom', message })
   })
 
 const schema = z.object({
