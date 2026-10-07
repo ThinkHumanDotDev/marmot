@@ -4885,13 +4885,6 @@
           "notNull": false,
           "default": 24
         },
-        "past_incidents_days": {
-          "name": "past_incidents_days",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 7
-        },
         "footer_text": {
           "name": "footer_text",
           "type": "varchar",
@@ -5438,12 +5431,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "public_id": {
-          "name": "public_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
         "status": {
           "name": "status",
           "type": "enum_incidents_status",
@@ -5528,21 +5515,6 @@
           "columns": [
             {
               "expression": "status_page_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "incidents_public_id_idx": {
-          "name": "incidents_public_id_idx",
-          "columns": [
-            {
-              "expression": "public_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -6542,12 +6514,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "public_id": {
-          "name": "public_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
         "start": {
           "name": "start",
           "type": "timestamp(3) with time zone",
@@ -6622,21 +6588,6 @@
           "columns": [
             {
               "expression": "maintenance_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "maintenance_occurrences_public_id_idx": {
-          "name": "maintenance_occurrences_public_id_idx",
-          "columns": [
-            {
-              "expression": "public_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -9222,6 +9173,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "46892de4-c194-4fce-9006-499068984289",
+  "id": "653ee493-0859-4ff2-a015-51209548bdea",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
