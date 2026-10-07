@@ -101,11 +101,14 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'showValues',
   'autoRefreshInterval',
   'maintenanceVisibilityHours',
+  'pastIncidentsDays',
   'footerText',
   'customCSS',
   'googleAnalyticsId',
   'domains',
   'groups',
+  // Subscribers (#104): enabled, channels, deliveryMode, smsChannel, SMS templates.
+  'subscriptions',
 ] as const
 
 /**
