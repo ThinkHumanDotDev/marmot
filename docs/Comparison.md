@@ -63,19 +63,20 @@ documentation remains the reference for the behaviour of the ported checks.
 
 ## Status pages
 
-| Feature                                            | Uptime Kuma | Marmot                                                              |
-| -------------------------------------------------- | :---------: | ------------------------------------------------------------------- |
-| Multiple public status pages                       |      ✓      | **done**, per organization ([Status pages](Status-Pages.md))        |
-| Groups of monitors, drag and drop                  |      ✓      | **done**                                                            |
-| Incidents (styles, pinned, resolve)                |      ✓      | **done**                                                            |
-| Custom CSS, footer text, logo, theme               |      ✓      | **done**                                                            |
-| Custom domains                                     |      ✓      | **done** (with Caddy on-demand TLS)                                 |
-| Search-engine indexing toggle, Google Analytics id |      ✓      | **done**                                                            |
-| Auto refresh                                       |      ✓      | **done**                                                            |
-| RSS feed, web manifest                             |      ✓      | **done**                                                            |
-| Show tags / certificate expiry on the page         |      ✓      | toggles **done**; data **landing** with tags (#21) and expiry (#24) |
-| Maintenance banners on status pages                |      ✓      | **done** ([Maintenance](Maintenance.md))                            |
-| Status badges (shields.io style)                   |      ✓      | **landing** (#20, [Integrations](Integrations.md))                  |
+| Feature                                             | Uptime Kuma | Marmot                                                              |
+| --------------------------------------------------- | :---------: | ------------------------------------------------------------------- |
+| Multiple public status pages                        |      ✓      | **done**, per organization ([Status pages](Status-Pages.md))        |
+| Groups of monitors, drag and drop                   |      ✓      | **done**                                                            |
+| Incidents (styles, pinned, resolve)                 |      ✓      | **done**                                                            |
+| Custom CSS, footer text, logo, theme                |      ✓      | **done**                                                            |
+| Theme presets, colour overrides, dark logo, favicon |      —      | **done** ([Themes](Status-Pages.md#themes))                         |
+| Custom domains                                      |      ✓      | **done** (with Caddy on-demand TLS)                                 |
+| Search-engine indexing toggle, Google Analytics id  |      ✓      | **done**                                                            |
+| Auto refresh                                        |      ✓      | **done**                                                            |
+| RSS feed, web manifest                              |      ✓      | **done**                                                            |
+| Show tags / certificate expiry on the page          |      ✓      | toggles **done**; data **landing** with tags (#21) and expiry (#24) |
+| Maintenance banners on status pages                 |      ✓      | **done** ([Maintenance](Maintenance.md))                            |
+| Status badges (shields.io style)                    |      ✓      | **landing** (#20, [Integrations](Integrations.md))                  |
 
 ## Maintenance
 

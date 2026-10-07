@@ -212,6 +212,15 @@ export const adminTranslations = {
         groupsDescription: 'Monitors are shown in these groups, in this order.',
         sendUrlDescription: "Show the monitor's URL to visitors.",
         customUrlDescription: 'Link visitors to this URL instead.',
+        logoDescription: 'Shown in light mode, and in dark mode when there is no dark logo.',
+        themeDescription:
+          'auto lets visitors pick (system, light or dark); light and dark force that mode.',
+        themePresetDescription: 'Built-in palette id, e.g. default, high-contrast, ocean.',
+        themeOverridesDescription:
+          'Colour overrides per mode: { "light": { "primary": "#0b5cad" }, "dark": { … }, "radius": "0.5rem" }. Hex, rgb(), hsl() or oklch() only.',
+        bannerTextDescription: 'Replaces the automatic overall-status headline when set.',
+        logoDarkDescription: 'Shown instead of the logo in dark mode.',
+        faviconDescription: 'PNG, ICO or SVG; falls back to the logo.',
       },
       tags: {
         colorDescription: 'Hex colour of the chip, e.g. #2563EB.',

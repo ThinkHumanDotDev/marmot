@@ -19,7 +19,10 @@ Two org-scoped collections (`src/collections/StatusPages.ts`, `src/collections/I
 | `organization`                                       | Owning organization (required).                                                |
 | `slug`                                               | Globally unique, lower-cased; reserved words from `src/lib/reserved-slugs.ts`. |
 | `title`, `description`, `logo` (media), `footerText` | Shown on the page; description and footer accept the Markdown subset below.    |
-| `theme`                                              | `auto` (visitor preference), `light` or `dark`.                                |
+| `logoDark`, `favicon` (media)                        | Dark-mode logo and favicon ([Themes](#themes)); uploaded through the builder.  |
+| `theme`                                              | `auto` (visitor picks system/light/dark), or a forced `light` / `dark`.        |
+| `themePreset`, `themeOverrides`                      | Built-in palette id and validated colour overrides ([Themes](#themes)).        |
+| `bannerText`                                         | Optional headline (≤ 140 characters) that replaces the overall-status text.    |
 | `language`                                           | Locale of the page text (`en`), or `auto` to follow the visitor's browser.     |
 | `published`                                          | Only published pages are served; drafts 404 for visitors.                      |
 | `searchEngineIndex`                                  | Emits `robots: index, follow` instead of `noindex`.                            |
@@ -63,7 +66,11 @@ All of these are anonymous and return 404 for unknown or unpublished slugs.
     "title": "Acme Status",
     "description": "…",
     "logo": "/api/media/file/logo.png",
+    "logoDark": null, // dark-mode logo
+    "favicon": null, // falls back to the logo
     "theme": "auto",
+    "themePreset": "default",
+    "bannerText": null, // custom headline replacing the overall-status text
     "published": true,
     "showTags": false,
     "showCertificateExpiry": false,
@@ -129,9 +136,9 @@ realtime socket is not used on public pages).
 ## Builder
 
 `/{orgSlug}/status-pages` lists the organization's pages; `/{orgSlug}/status-pages/{id}` edits one with
-four tabs: **Settings** (title, slug, description, theme, language once Marmot ships more than one, refresh,
-custom CSS, analytics id, logo upload,
-display toggles, delete), **Groups & monitors** (drag-and-drop groups and monitors with `dnd-kit`,
+five tabs: **Settings** (title, slug, description, language once Marmot ships more than one, refresh,
+custom CSS, analytics id, display toggles, delete), **Theme** (colour mode, preset, colour overrides,
+banner headline, logos and favicon, with a live preview; see [Themes](#themes)), **Groups & monitors** (drag-and-drop groups and monitors with `dnd-kit`,
 per-monitor "show URL" / custom link), **Incidents** (post, edit, pin, resolve, reopen, delete) and
 **Domains**. The header switch publishes/unpublishes.
 
@@ -144,8 +151,80 @@ with `overrideAccess: false`, so the collections' access rules decide what each 
 | `GET`/`POST /api/orgs/:orgId/status-pages`               | List / create                                |
 | `GET`/`PATCH`/`DELETE /api/orgs/:orgId/status-pages/:id` | Read / partial update / delete (+ incidents) |
 | `POST`/`DELETE …/:id/logo`                               | Upload (multipart `file`) / remove logo      |
+| `POST`/`DELETE …/:id/logo-dark`                          | Upload / remove the dark-mode logo           |
+| `POST`/`DELETE …/:id/favicon`                            | Upload / remove the favicon                  |
 | `GET`/`POST …/:id/incidents`                             | List / post incident                         |
 | `PATCH`/`DELETE …/:id/incidents/:incidentId`             | Edit, pin, resolve / delete                  |
+
+## Themes
+
+Pages are themed through a documented set of CSS variables instead of internal class names, so a brand
+survives Marmot upgrades. Everything lives in `src/lib/status-page-themes/` and is shared by the
+collection (validation), the public page (CSS) and the editor (preview).
+
+**Colour mode** (`theme`): `auto` shows visitors a system / light / dark switch in the page header; the
+choice is remembered in `localStorage` (`marmot:status-page-theme`) and applied before paint, so the page
+never flashes. `light` and `dark` force that mode and hide the switch.
+
+**Presets** (`themePreset`) define every token for light and dark mode:
+
+| Id              | Notes                                                                     |
+| --------------- | ------------------------------------------------------------------------- |
+| `default`       | Marmot's own palette (`styles.css`). Emits no CSS at all.                 |
+| `high-contrast` | Black/white surfaces; text ≥ 7:1, status colours ≥ 4.5:1 (WCAG AAA / AA). |
+| `ocean`         | Blues, violet maintenance colour.                                         |
+| `forest`        | Greens on warm surfaces.                                                  |
+| `graphite`      | Neutral greys, tighter corners.                                           |
+
+Every preset except `default` keeps text and status colours at ≥ 4.5:1 against background and cards
+in both modes; `themes.test.ts` enforces it. To add a preset, add a file under
+`src/lib/status-page-themes/presets/`, register it in `presets/index.ts` and add its display name under
+`statusPages.theme.presets` in `src/i18n/messages/en.json`. The id is stored as text, so no migration is
+needed.
+
+**Overrides** (`themeOverrides`) replace single tokens per mode on top of the preset:
+
+```jsonc
+{
+  "light": { "primary": "#0b5cad" },
+  "dark": { "primary": "#ff8800", "destructive": "oklch(0.7 0.19 25)" },
+  "radius": "0.5rem",
+}
+```
+
+| Token                                                      | CSS variables                                                         |
+| ---------------------------------------------------------- | --------------------------------------------------------------------- |
+| `background`                                               | `--background`                                                        |
+| `foreground`                                               | `--foreground`, `--card-foreground`, `--popover-foreground`, …        |
+| `card`                                                     | `--card`, `--popover`                                                 |
+| `primary`, `primaryForeground`                             | `--primary`, `--ring`; `--primary-foreground`                         |
+| `muted`, `mutedForeground`                                 | `--muted`, `--secondary`, `--accent`; `--muted-foreground`            |
+| `border`                                                   | `--border`, `--input`                                                 |
+| `success` (up), `warning` (degraded), `info` (maintenance) | `--status-up`, `--status-pending`, `--status-maintenance` (+ `-text`) |
+| `destructive` (down)                                       | `--status-down`, `--status-down-text`, `--destructive`                |
+| `chart1` … `chart5`                                        | `--chart-1` … `--chart-5`                                             |
+| `radius` (both modes)                                      | `--radius`: `0`, up to `2rem` or up to `32px`                         |
+
+Colours must be hex (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`), `rgb()`/`rgba()`, `hsl()`/`hsla()` or
+`oklch()` with plain numbers; named colours, `var()`, `calc()`, `url()` and anything else are rejected
+with a 400 (the API, the builder and the Payload admin all go through the same field validation). The
+public layout renders the result as `html:not(.dark){…}` and `html.dark{…}` rules containing only known
+variables, re-validating every value, so overrides cannot inject CSS. The builder warns when text
+contrast drops below 4.5:1 (or an overridden status colour below 3:1) but does not block saving.
+`customCSS` stays available as an escape hatch.
+
+**Logos and favicon**: `logo` is shown in light mode (and in dark mode when there is no `logoDark`);
+`logoDark` replaces it in dark mode, swapped by CSS so it follows the visitor switch. The page title is
+always shown as text. Logos accept PNG, JPEG, GIF, WebP, AVIF or SVG up to 2 MB; the `favicon` accepts
+PNG, ICO or SVG up to 100 KB and falls back to the logo. Formats are detected from the file's bytes,
+not the declared type. SVGs are rebuilt by an allowlist sanitiser (`src/server/status-pages/svg.ts`):
+scripts, event handlers, `foreignObject`, external references, `<style>`, DOCTYPEs and entities are
+removed or rejected. Media URLs point at Marmot's own host, so logos and favicon also load on custom
+domains; the favicon and logo are listed in the web manifest.
+
+**Banner headline** (`bannerText`): replaces the automatic overall-status text (for example "Scheduled
+upgrade tonight"). The banner colour still follows the monitors, and screen readers still hear the
+real state.
 
 ## Custom domains
 
@@ -213,6 +292,11 @@ With another proxy (nginx, Traefik, Cloudflare), terminate TLS there, forward th
 - `tests/int/status-pages.int.spec.ts` — access rules (anonymous / member / other organization), slug and
   hostname normalisation, cross-organization monitor refusal, incident derivation and resolution, the public
   payload shape, 404s, `resolve-domain`, RSS validity and escaping, manifest.
+- `tests/int/status-page-themes.int.spec.ts` — presets and overrides through the builder API, rejection
+  of invalid colours (CSS injection, `var()`, unknown tokens), viewer access, light/dark logo and
+  favicon uploads (SVG sanitising, size and format caps, no orphaned media), public payload and manifest.
+- `src/lib/status-page-themes/themes.test.ts` — the colour grammar, CSS generation and preset contrast;
+  `src/server/status-pages/svg.test.ts` — the SVG sanitiser.
 - `src/lib/markdown.test.ts` — the Markdown subset and its HTML escaping.
 - `tests/e2e/status-pages.e2e.spec.ts` — seeds an organization, monitor and published page through the
   Local API, visits `/status/<slug>` anonymously, checks title, group, monitor link, incident and the
