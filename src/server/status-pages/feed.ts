@@ -113,7 +113,7 @@ export function incidentUpdateItems(
   page: { id: string | number; createdAt: string } = { id: 'page', createdAt: '' },
 ): FeedItem[] {
   const oldest = incident.updates.at(-1)?.id
-  const url = incidentPermalink(pageUrl, incident.id)
+  const url = incidentPermalink(pageUrl, incident.publicId)
   return incident.updates.map((update) => {
     const affected = update.components
       .map((c) =>

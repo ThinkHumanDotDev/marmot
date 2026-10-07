@@ -21,9 +21,13 @@ import { getActiveMaintenanceForStatusPage } from '@/server/maintenance/status-p
 import { resolveTimezone } from '@/server/maintenance/status'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 
+import { publicIdOf } from './public-ids'
+
 export interface MaintenanceEvent {
   /** Occurrence id (stable for the life of the window). */
   id: string
+  /** Public id of the occurrence's permalink (`<page>/events/maintenance/<publicId>`). */
+  publicId: string
   maintenanceId: string
   title: string
   description: string | null
@@ -130,6 +134,7 @@ export async function listMaintenanceEvents(
     const updatedAt = latest(occurrence.updatedAt, doc.updatedAt) || occurrence.updatedAt
     events.push({
       id: String(occurrence.id),
+      publicId: publicIdOf('maintenance-occurrences', occurrence),
       maintenanceId,
       title: doc.title,
       description: doc.description?.trim() || null,

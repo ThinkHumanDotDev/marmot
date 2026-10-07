@@ -16,7 +16,7 @@ import {
 } from '@/app/status/[slug]/api/v2/summary.json/route'
 import { GET as atomRoute } from '@/app/status/[slug]/feed/atom/route'
 import { GET as jsonFeedRoute } from '@/app/status/[slug]/feed/json/route'
-import { GET as incidentMarkdownRoute } from '@/app/status/[slug]/incident-md/[id]/route'
+import { GET as eventMarkdownRoute } from '@/app/status/[slug]/event-md/[kind]/[id]/route'
 import { GET as markdownRoute } from '@/app/status/[slug]/index.md/route'
 import { GET as llmsRoute } from '@/app/status/[slug]/llms.txt/route'
 import { GET as icsRoute } from '@/app/status/[slug]/maintenance.ics/route'
@@ -147,6 +147,7 @@ let staticC: string
 let openIncident: Incident
 let resolvedIncident: Incident
 let foreignIncident: Incident
+let networkWork: Maintenance
 
 const host = () => `feeds-${run}.example.com`
 
@@ -337,7 +338,7 @@ describe('status page feeds and machine-readable outputs', () => {
     })
 
     // Running occurrence, moved on to verifying.
-    const running = (await payload.create({
+    networkWork = (await payload.create({
       collection: 'maintenance',
       data: {
         organization: org.id,
@@ -351,12 +352,12 @@ describe('status page feeds and machine-readable outputs', () => {
       } as never,
       overrideAccess: true,
     })) as Maintenance
-    let [current] = await occurrencesOf(running.id)
+    let [current] = await occurrencesOf(networkWork.id)
     if (current.state === 'scheduled') {
-      await postOccurrenceUpdate(payload, running, current, { status: 'in-progress' })
-      ;[current] = await occurrencesOf(running.id)
+      await postOccurrenceUpdate(payload, networkWork, current, { status: 'in-progress' })
+      ;[current] = await occurrencesOf(networkWork.id)
     }
-    await postOccurrenceUpdate(payload, running, current, {
+    await postOccurrenceUpdate(payload, networkWork, current, {
       status: 'verifying',
       message: 'Checking the links.',
     })
@@ -391,7 +392,9 @@ describe('status page feeds and machine-readable outputs', () => {
       expect(xml).toContain('<author><name>Feeds &amp; Co</name></author>')
       expect(xml).toContain('<title type="text">[Identified] API errors</title>')
       expect(xml).toContain('<title type="text">Slow &lt;website&gt;</title>')
-      expect(xml).toContain(`href="${BASE}/status/${page.slug}/incidents/${openIncident.id}"`)
+      expect(xml).toContain(
+        `href="${BASE}/status/${page.slug}/events/incident/${openIncident.publicId}"`,
+      )
       // 4 updates + the API monitor that is down.
       expect((xml.match(/<entry>/g) ?? []).length).toBe(5)
       const ids = [...xml.matchAll(/<entry>\s*<id>([^<]+)<\/id>/g)].map((m) => m[1])
@@ -429,7 +432,9 @@ describe('status page feeds and machine-readable outputs', () => {
       const xml = await res.text()
       expectWellFormedXml(xml)
       expect((xml.match(/<item>/g) ?? []).length).toBe(5)
-      expect(xml).toContain(`<link>${BASE}/status/${page.slug}/incidents/${openIncident.id}</link>`)
+      expect(xml).toContain(
+        `<link>${BASE}/status/${page.slug}/events/incident/${openIncident.publicId}</link>`,
+      )
     })
   })
 
@@ -504,7 +509,7 @@ describe('status page feeds and machine-readable outputs', () => {
         status: 'identified',
         impact: 'critical',
         resolved_at: null,
-        shortlink: `${BASE}/status/${page.slug}/incidents/${openIncident.id}`,
+        shortlink: `${BASE}/status/${page.slug}/events/incident/${openIncident.publicId}`,
       })
       expect(incident.incident_updates.map((u) => u.status)).toEqual([
         'identified',
@@ -587,7 +592,9 @@ describe('status page feeds and machine-readable outputs', () => {
       })
       const summary = (await res.json()) as SpSummary
       expect(summary.page.url).toBe(`https://${host()}`)
-      expect(summary.incidents[0].shortlink).toBe(`https://${host()}/incidents/${openIncident.id}`)
+      expect(summary.incidents[0].shortlink).toBe(
+        `https://${host()}/events/incident/${openIncident.publicId}`,
+      )
 
       const llms = await (
         await get(llmsRoute, page.slug, '/llms.txt', { headers: { host: host() } })
@@ -610,26 +617,23 @@ describe('status page feeds and machine-readable outputs', () => {
       expect(md).toContain('- Website: Operational')
       expect(md).toContain('- Help desk: Degraded performance')
       expect(md).toContain(
-        `### [API errors](${BASE}/status/${page.slug}/incidents/${openIncident.id})`,
+        `### [API errors](${BASE}/status/${page.slug}/events/incident/${openIncident.publicId})`,
       )
       expect(md).toContain('A bad deploy.')
       expect(md).not.toContain('Slow')
-      expect(md).toContain('### Database upgrade')
-      expect(md).toContain('### Network work')
+      expect(md).toContain('### [Database upgrade](')
+      expect(md).toContain('### [Network work](')
       expect(md).toContain('- Status: Verifying')
       expect(md).toContain('Checking the links.')
       expect(md).not.toContain('Cancelled window')
       expect(md).toContain(`(${BASE}/status/${page.slug}/api/v2/summary.json)`)
     })
 
-    it('renders an incident as Markdown and 404s for unknown or foreign incidents', async () => {
-      const res = await get(
-        incidentMarkdownRoute,
-        page.slug,
-        `/incident-md/${resolvedIncident.id}`,
-        {},
-        { id: String(resolvedIncident.id) },
-      )
+    it('renders events as Markdown and 404s for unknown or foreign ones', async () => {
+      const eventMd = (kind: string, id: string) =>
+        get(eventMarkdownRoute, page.slug, `/event-md/${kind}/${id}`, {}, { kind, id })
+
+      const res = await eventMd('incident', resolvedIncident.publicId as string)
       expect(res.status).toBe(200)
       const md = await res.text()
       expect(md.startsWith('# Slow \\<website\\>\n')).toBe(true)
@@ -637,15 +641,22 @@ describe('status page feeds and machine-readable outputs', () => {
       expect(md).toContain('Pages are *slow*.')
       expect(md).toContain('_Affected: Website (Partial outage)_')
 
-      for (const id of [String(foreignIncident.id), 'nope', '999999999']) {
-        const missing = await get(
-          incidentMarkdownRoute,
-          page.slug,
-          `/incident-md/${id}`,
-          {},
-          { id },
-        )
-        expect(missing.status).toBe(404)
+      const [occurrence] = await occurrencesOf(networkWork.id)
+      const maintenance = await eventMd('maintenance', occurrence.publicId as string)
+      expect(maintenance.status).toBe(200)
+      const mmd = await maintenance.text()
+      expect(mmd.startsWith('# Network work\n')).toBe(true)
+      expect(mmd).toContain('- Status: Verifying')
+      expect(mmd).toContain('Checking the links.')
+
+      for (const [kind, id] of [
+        ['incident', foreignIncident.publicId as string],
+        ['incident', String(resolvedIncident.id)],
+        ['incident', 'zzzzzzzz'],
+        ['other', resolvedIncident.publicId as string],
+      ]) {
+        const missing = await eventMd(kind, id)
+        expect(missing.status, `${kind}/${id}`).toBe(404)
         expect(missing.headers.get('content-type')).toBe('application/problem+json; charset=utf-8')
       }
     })

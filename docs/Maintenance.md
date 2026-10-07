@@ -80,7 +80,7 @@ Attaching a status page to a window makes the page announce it; it does not put 
 maintenance (list them under **Monitors** for that). Public pages render, in a **maintenance** block above
 the monitor groups, the running occurrences, the next occurrence of each maintenance when it starts within
 seven days, and completed or cancelled occurrences for the page's `maintenanceVisibilityHours` (default 24,
-set under the page's settings; afterwards they belong to the history page). Each card shows the title,
+set under the page's settings; afterwards they are on the [history page](Status-Pages.md#history-and-permalinks)). Each card shows the title,
 description, state, the time range in the visitor's local time and the update timeline. The public JSON
 (`GET /api/status-pages/:slug/public`) exposes them in its `maintenance` array, running windows first
 ([Status pages](Status-Pages.md)); everything is read from the persisted occurrences. The page's overall status becomes `maintenance` when its monitors report

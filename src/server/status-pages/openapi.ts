@@ -173,15 +173,27 @@ export function buildOpenApiDocument(
         ok('Markdown', 'text/markdown', text),
         ['markdown'],
       ),
-      '/incidents/{id}.md': get(
-        'getIncidentMarkdown',
-        'One incident and its timeline as Markdown.',
+      '/events/{kind}/{id}.md': get(
+        'getEventMarkdown',
+        'One incident or maintenance window and its timeline as Markdown (its permalink plus `.md`).',
         ok('Markdown', 'text/markdown', text),
         ['markdown'],
         {
           parameters: [
             { $ref: '#/components/parameters/IfNoneMatch' },
-            { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+            {
+              name: 'kind',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', enum: ['incident', 'maintenance'] },
+            },
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              description: 'Public id of the permalink.',
+              schema: { type: 'string', pattern: '^[0-9a-z]{8}$' },
+            },
           ],
         },
       ),

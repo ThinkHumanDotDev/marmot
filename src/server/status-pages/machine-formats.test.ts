@@ -7,7 +7,7 @@ import { escapeIcalText, foldLine, icalDate } from './ical'
 import { eventSequence, isCancelledEvent } from './maintenance-events'
 import { escapeMarkdown } from './markdown-output'
 import { componentStatus, impactIndicator, pageStatus, type SpComponent } from './statuspage'
-import { incidentPermalink, statusPageLinks } from './urls'
+import { incidentPermalink, maintenancePermalink, statusPageLinks } from './urls'
 
 describe('iCalendar helpers', () => {
   it('escapes TEXT values', () => {
@@ -90,27 +90,40 @@ describe('links and rewrites', () => {
     expect(main.api('scheduled-maintenances')).toBe(
       'https://m.example/status/acme/api/v2/scheduled-maintenances.json',
     )
-    expect(main.incidentMarkdown(7)).toBe('https://m.example/status/acme/incidents/7.md')
+    expect(main.event('incident', 'k3x9a0b1')).toBe(
+      'https://m.example/status/acme/events/incident/k3x9a0b1',
+    )
+    expect(main.eventMarkdown('maintenance', 'k3x9a0b1')).toBe(
+      'https://m.example/status/acme/events/maintenance/k3x9a0b1.md',
+    )
     const custom = statusPageLinks('https://status.acme.com', true)
     expect(custom.markdown).toBe('https://status.acme.com/index.md')
-    expect(custom.incident('a b')).toBe('https://status.acme.com/incidents/a%20b')
-    expect(incidentPermalink('https://x', 1)).toBe('https://x/incidents/1')
+    expect(custom.events).toBe('https://status.acme.com/events')
+    expect(incidentPermalink('https://x', 'k3x9a0b1')).toBe('https://x/events/incident/k3x9a0b1')
+    expect(maintenancePermalink('https://x', 'k3x9a0b1')).toBe(
+      'https://x/events/maintenance/k3x9a0b1',
+    )
   })
 
   it('rewrites Markdown aliases and custom-domain paths', () => {
     expect(markdownAliasRewrite('/status/acme.md')).toBe('/status/acme/index.md')
-    expect(markdownAliasRewrite('/status/acme/incidents/42.md')).toBe('/status/acme/incident-md/42')
-    expect(markdownAliasRewrite('/status/acme')).toBeNull()
-    expect(markdownAliasRewrite('/status/acme/rss')).toBeNull()
+    expect(markdownAliasRewrite('/status/acme/events/incident/k3x9a0b1.md')).toBe(
+      '/status/acme/event-md/incident/k3x9a0b1',
+    )
+    expect(markdownAliasRewrite('/status/acme/events/maintenance/k3x9a0b1.md')).toBe(
+      '/status/acme/event-md/maintenance/k3x9a0b1',
+    )
+    expect(markdownAliasRewrite('/status/acme')).toBeUndefined()
+    expect(markdownAliasRewrite('/status/acme/rss')).toBeUndefined()
+    expect(markdownAliasRewrite('/status/acme/events/incident/k3x9a0b1')).toBeUndefined()
 
-    expect(customDomainSuffix('/')).toBe('')
     expect(customDomainSuffix('/feed/atom')).toBe('/feed/atom')
     expect(customDomainSuffix('/api/v2/summary.json')).toBe('/api/v2/summary.json')
-    expect(customDomainSuffix('/incidents/42.md')).toBe('/incident-md/42')
-    expect(customDomainSuffix('/incidents/42')).toBe('/incidents/42')
-    expect(customDomainSuffix('/api/v2/other.json')).toBeNull()
-    expect(customDomainSuffix('/admin')).toBeNull()
-    expect(customDomainSuffix('/constructor')).toBeNull()
+    expect(customDomainSuffix('/llms.txt')).toBe('/llms.txt')
+    expect(customDomainSuffix('/events/incident/k3x9a0b1.md')).toBe('/event-md/incident/k3x9a0b1')
+    expect(customDomainSuffix('/events/other/k3x9a0b1.md')).toBeUndefined()
+    expect(customDomainSuffix('/incidents/42')).toBeUndefined()
+    expect(customDomainSuffix('/api/v2/other.json')).toBeUndefined()
   })
 })
 

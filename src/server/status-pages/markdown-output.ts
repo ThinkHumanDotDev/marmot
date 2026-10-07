@@ -1,6 +1,7 @@
 /**
  * Plain Markdown views of a status page for LLM agents and terminals: the page (`/status/<slug>.md`),
- * an incident (`/status/<slug>/incidents/<id>.md`) and `llms.txt` (https://llmstxt.org), which
+ * an incident or maintenance window (`<permalink>.md`, the #107 permalinks
+ * `/status/<slug>/events/<kind>/<publicId>`) and `llms.txt` (https://llmstxt.org), which
  * describes the page and links every machine-readable endpoint. Text is rendered in the page's
  * locale with times in the organization's zone. Incident and maintenance text is the author's
  * Markdown, passed through as is.
@@ -10,7 +11,9 @@ import type { Payload } from 'payload'
 import { getStaticFormatter, getTranslator } from '@/i18n/translator'
 import type { Locale } from '@/i18n/locales'
 import { statusPageTimeZone } from '@/i18n/resolve'
-import type { Incident, StatusPage } from '@/payload-types'
+import type { OccurrenceState, OccurrenceUpdate } from '@/lib/maintenance-announcements'
+import type { StatusPage } from '@/payload-types'
+import type { PublicMaintenance } from '@/server/maintenance/status-page'
 
 import { announcedMaintenance, listMaintenanceEvents } from './maintenance-events'
 import {
@@ -84,6 +87,44 @@ function incidentSection(
   return out
 }
 
+interface MaintenanceView {
+  state: OccurrenceState
+  start: string | null
+  end: string | null
+  description: string | null
+  /** Newest first. */
+  updates: OccurrenceUpdate[]
+}
+
+/** Status and window of a maintenance occurrence, as list items. */
+function maintenanceFacts(view: MaintenanceView, { t, time }: Tools): string[] {
+  const when =
+    view.start && view.end
+      ? t('statusPages.machine.markdown.window', { start: time(view.start), end: time(view.end) })
+      : t('statusPages.machine.markdown.untilFurtherNotice')
+  return [
+    `- ${escapeMarkdown(t('statusPages.machine.markdown.status'))}: ${escapeMarkdown(
+      t(`statusPages.public.maintenance.state.${view.state}`),
+    )}`,
+    `- ${escapeMarkdown(t('statusPages.machine.markdown.when'))}: ${escapeMarkdown(when)}`,
+  ]
+}
+
+/** Timeline of a maintenance occurrence (newest first). */
+function maintenanceUpdates(
+  updates: readonly OccurrenceUpdate[],
+  { t, time }: Tools,
+  heading: '###' | '####',
+): string[] {
+  return updates.flatMap((update) => [
+    `${heading} ${escapeMarkdown(t(`statusPages.public.maintenance.state.${update.status}`))} · ${time(update.postedAt)}`,
+    '',
+    update.message.trim() ||
+      escapeMarkdown(t(`statusPages.public.maintenance.defaultMessage.${update.status}`)),
+    '',
+  ])
+}
+
 /** The whole page: overall status, components, ongoing incidents, maintenance and links. */
 export async function renderPageMarkdown({
   payload,
@@ -93,7 +134,7 @@ export async function renderPageMarkdown({
   now = new Date(),
 }: MarkdownInput): Promise<string> {
   const helpers = tools(page, locale)
-  const { t, time } = helpers
+  const { t } = helpers
   const [incidents, events] = await Promise.all([
     findActiveIncidents(payload, page.id),
     listMaintenanceEvents(payload, page.id, { now }),
@@ -133,7 +174,7 @@ export async function renderPageMarkdown({
   }
   for (const incident of active) {
     out.push(
-      `### [${escapeMarkdown(incident.title)}](${links.incident(incident.id)})`,
+      `### [${escapeMarkdown(incident.title)}](${links.event('incident', incident.publicId)})`,
       '',
       `- ${escapeMarkdown(t('statusPages.machine.markdown.status'))}: ${escapeMarkdown(
         t(`statusPages.public.incidents.status.${incident.status}`),
@@ -141,7 +182,7 @@ export async function renderPageMarkdown({
       `- ${escapeMarkdown(t('statusPages.machine.markdown.impact'))}: ${escapeMarkdown(
         t(`statusPages.public.impact.${incident.impact}`),
       )}`,
-      `- ${escapeMarkdown(t('statusPages.machine.markdown.details'))}: ${links.incidentMarkdown(incident.id)}`,
+      `- ${escapeMarkdown(t('statusPages.machine.markdown.details'))}: ${links.eventMarkdown('incident', incident.publicId)}`,
       '',
     )
     out.push(...incidentSection(incident, helpers, '####'))
@@ -152,31 +193,15 @@ export async function renderPageMarkdown({
     out.push(escapeMarkdown(t('statusPages.machine.markdown.noMaintenance')), '')
   }
   for (const event of maintenance) {
-    const when = event.end
-      ? t('statusPages.machine.markdown.window', {
-          start: time(event.start),
-          end: time(event.end),
-        })
-      : t('statusPages.machine.markdown.untilFurtherNotice')
     out.push(
-      `### ${escapeMarkdown(event.title)}`,
+      `### [${escapeMarkdown(event.title)}](${links.event('maintenance', event.publicId)})`,
       '',
-      `- ${escapeMarkdown(t('statusPages.machine.markdown.status'))}: ${escapeMarkdown(
-        t(`statusPages.public.maintenance.state.${event.state}`),
-      )}`,
-      `- ${escapeMarkdown(t('statusPages.machine.markdown.when'))}: ${escapeMarkdown(when)}`,
+      ...maintenanceFacts(event, helpers),
+      `- ${escapeMarkdown(t('statusPages.machine.markdown.details'))}: ${links.eventMarkdown('maintenance', event.publicId)}`,
       '',
+      ...(event.description ? [event.description, ''] : []),
+      ...maintenanceUpdates(event.updates.slice().reverse(), helpers, '####'),
     )
-    if (event.description) out.push(event.description, '')
-    for (const update of event.updates.slice().reverse()) {
-      out.push(
-        `#### ${escapeMarkdown(t(`statusPages.public.maintenance.state.${update.status}`))} · ${time(update.postedAt)}`,
-        '',
-        update.message.trim() ||
-          escapeMarkdown(t(`statusPages.public.maintenance.defaultMessage.${update.status}`)),
-        '',
-      )
-    }
   }
 
   out.push(
@@ -188,17 +213,15 @@ export async function renderPageMarkdown({
   return out.join('\n')
 }
 
-/** One incident with its full timeline (newest update first). */
+/** One incident with its full timeline (newest update first), for its permalink's `.md`. */
 export function renderIncidentMarkdown(
   page: StatusPage,
-  incident: Incident,
-  names: ReadonlyMap<string, string>,
+  view: PublicIncident,
   links: StatusPageLinks,
   locale: Locale,
 ): string {
   const helpers = tools(page, locale)
   const { t, time } = helpers
-  const view = toPublicIncident(incident, names)
   const startedAt = view.updates.at(-1)?.postedAt ?? view.createdAt
   const out: string[] = [
     `# ${escapeMarkdown(view.title)}`,
@@ -238,6 +261,28 @@ export function renderIncidentMarkdown(
     ...incidentSection(view, helpers, '###'),
   )
   return out.join('\n')
+}
+
+/** One maintenance occurrence with its timeline, for its permalink's `.md`. */
+export function renderMaintenanceMarkdown(
+  page: StatusPage,
+  view: PublicMaintenance,
+  links: StatusPageLinks,
+  locale: Locale,
+): string {
+  const helpers = tools(page, locale)
+  const { t } = helpers
+  return [
+    `# ${escapeMarkdown(view.title)}`,
+    '',
+    ...maintenanceFacts(view, helpers),
+    `- ${escapeMarkdown(t('statusPages.machine.markdown.statusPage'))}: [${escapeMarkdown(page.title)}](${links.page})`,
+    '',
+    ...(view.description ? [view.description, ''] : []),
+    `## ${escapeMarkdown(t('statusPages.machine.markdown.updates'))}`,
+    '',
+    ...maintenanceUpdates(view.updates, helpers, '###'),
+  ].join('\n')
 }
 
 /** `llms.txt`: what the page is, its current state, and links to every machine-readable view. */
@@ -296,6 +341,11 @@ export async function renderLlmsTxt({
     '',
     link('OpenAPI', links.openapi, t('statusPages.machine.llms.openapi')),
     link(page.title, links.page, t('statusPages.machine.llms.page')),
+    link(
+      t('statusPages.machine.llms.eventsLabel'),
+      links.events,
+      t('statusPages.machine.llms.events'),
+    ),
     '',
   ].join('\n')
 }

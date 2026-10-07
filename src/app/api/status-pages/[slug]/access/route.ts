@@ -10,6 +10,7 @@ import {
   signAccessToken,
   type PasswordAttempt,
 } from '@/server/status-pages/access'
+import { isEventsReturnPath } from '@/lib/status-page-events'
 import { consumeMagicLink, requestMagicLink } from '@/server/status-pages/magic-link'
 import { findPublishedStatusPage } from '@/server/status-pages/public'
 import { requestHostname, statusPageBasePath } from '@/server/status-pages/urls'
@@ -26,6 +27,8 @@ type Body = {
   email: string | null
   token: string | null
   form: boolean
+  /** Where to return after signing in: the history or a permalink below the page (#107). */
+  next: string | null
 }
 
 const str = (value: unknown): string | null => (typeof value === 'string' ? value : null)
@@ -39,6 +42,7 @@ async function readBody(request: Request): Promise<Body> {
       email: str(json?.email),
       token: str(json?.token),
       form: false,
+      next: null,
     }
   }
   const data = await request.formData().catch(() => null)
@@ -47,6 +51,8 @@ async function readBody(request: Request): Promise<Body> {
     email: str(data?.get('email')),
     token: str(data?.get('token')),
     form: true,
+    // Only the history page and permalinks below this page (never another host or path).
+    next: isEventsReturnPath(data?.get('next')) ? (data?.get('next') as string) : null,
   }
 }
 
@@ -99,7 +105,8 @@ async function passwordLogin(ctx: Ctx) {
       return accessDeniedResponse({ allowed: false, ...attempt }, 'json', requestLocale(request))
     }
     const error = attempt.reason === 'rate-limited' ? 'rate-limited' : 'invalid'
-    return redirect(`${base}/login?error=${error}`, retryHeaders(attempt.retryAfterSeconds))
+    const next = body.next ? `&next=${encodeURIComponent(body.next)}` : ''
+    return redirect(`${base}/login?error=${error}${next}`, retryHeaders(attempt.retryAfterSeconds))
   }
   return grant(ctx)
 }
@@ -150,7 +157,8 @@ async function emailDomainLogin(ctx: Ctx) {
  * POST /api/status-pages/:slug/access — sign in to a protected status page.
  *
  * Accepts the login forms (`application/x-www-form-urlencoded` / `multipart/form-data`) or JSON.
- * Forms are redirected (303) back to the page or to its login page (with `?error=…` or `?sent=1`);
+ * Forms are redirected (303) back to the page (or to the history page or permalink named by the
+ * optional `next` field, #107) or to its login page (with `?error=…` or `?sent=1`);
  * JSON callers get a JSON answer. Cross-site form posts are refused.
  *
  * - `password` pages: field `password`. A correct password sets the page's HttpOnly access cookie
@@ -183,7 +191,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const base = statusPageBasePath(page, request.headers)
-  const ctx: Ctx = { request, page, body, base, pagePath: base || '/' }
+  const pagePath = body.next ? `${base}${body.next}` : base || '/'
+  const ctx: Ctx = { request, page, body, base, pagePath }
 
   switch (page.access) {
     case 'password':

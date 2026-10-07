@@ -42,6 +42,7 @@ import {
   type PublicGroup,
   type PublicMonitor,
 } from './public'
+import { publicIdOf } from './public-ids'
 import type { StatusPageLinks } from './urls'
 
 export type SpComponentStatus = ComponentImpact | 'under_maintenance'
@@ -316,7 +317,7 @@ export function toSpIncident(incident: Incident, ctx: StatuspageContext): SpInci
     })(),
     resolved_at: state.resolvedAt ? iso(state.resolvedAt) : null,
     impact: impactIndicator(peakImpact(incident)),
-    shortlink: ctx.links.incident(incidentId),
+    shortlink: ctx.links.event('incident', publicIdOf('incidents', incident)),
     started_at: iso(startedAt),
     page_id: String(ctx.page.id),
     incident_updates: spUpdates.reverse(),
@@ -371,7 +372,7 @@ export function toSpMaintenance(
     monitoring_at: verifying ? iso(verifying.postedAt) : null,
     resolved_at: event.completedAt ? iso(event.completedAt) : null,
     impact: 'maintenance',
-    shortlink: ctx.links.page,
+    shortlink: ctx.links.event('maintenance', event.publicId),
     started_at: iso(event.startedAt ?? event.start),
     page_id: String(ctx.page.id),
     incident_updates: updates

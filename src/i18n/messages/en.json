@@ -2924,7 +2924,7 @@
       "llms": {
         "summary": "Live status of {title}: components, incidents and scheduled maintenance.",
         "currentStatus": "Current status: {status}.",
-        "incidentMarkdown": "Every incident link has a Markdown version: append .md to its URL.",
+        "incidentMarkdown": "Every incident and maintenance permalink has a Markdown version: append .md to its URL.",
         "statusSection": "Status",
         "feedsSection": "Feeds",
         "markdownLabel": "Status page (Markdown)",
@@ -2941,7 +2941,9 @@
         "rss": "RSS 2.0 feed, one item per incident update",
         "calendar": "maintenance windows as an iCalendar subscription",
         "openapi": "OpenAPI 3.1 description of these read-only endpoints",
-        "page": "the human-readable status page"
+        "page": "the human-readable status page",
+        "eventsLabel": "History",
+        "events": "past incidents and maintenance, each with a permalink"
       }
     },
     "editor": {
@@ -3054,7 +3056,9 @@
         "homepageUrlHint": "The logo and title link here.",
         "contactUrl": "Contact URL",
         "contactUrlHint": "Shown as a “Contact us” button. An https:// URL or mailto: address."
-      }
+      },
+      "pastIncidentsDays": "Past incidents shown (days)",
+      "pastIncidentsDaysHint": "Incidents of the last days are listed by day below the components; 0 hides the list. All of them stay on the history page."
     },
     "groups": {
       "title": "Groups & monitors",
@@ -3445,6 +3449,68 @@
       "copied": "Copied",
       "copyFailed": "Could not copy to the clipboard",
       "altText": "{title} status"
+    },
+    "events": {
+      "viewHistory": "View history",
+      "historyHeading": "History",
+      "historyDescription": "Incidents and maintenance windows, newest first.",
+      "backToStatus": "Back to the current status",
+      "currentStatus": "Current status",
+      "pastIncidents": "Past incidents",
+      "noIncidentsReported": "No incidents reported.",
+      "empty": "Nothing has been reported yet.",
+      "emptyFiltered": "No incidents or maintenance windows match these filters.",
+      "eventCount": "{count, plural, =0 {No events} one {# event} other {# events}}",
+      "filters": {
+        "label": "Filter the history",
+        "type": "Type",
+        "allTypes": "All types",
+        "incidents": "Incidents",
+        "maintenance": "Maintenance",
+        "component": "Component",
+        "allComponents": "All components",
+        "month": "Month",
+        "allMonths": "All months",
+        "apply": "Apply",
+        "reset": "Reset"
+      },
+      "pagination": {
+        "label": "History pages",
+        "newer": "Newer",
+        "older": "Older",
+        "page": "Page {page} of {total}"
+      },
+      "kind": {
+        "incident": "Incident",
+        "maintenance": "Maintenance"
+      },
+      "ongoing": "Ongoing",
+      "lasted": "Lasted {duration}",
+      "affects": "Affects {components}",
+      "status": "Status",
+      "started": "Started",
+      "resolved": "Resolved",
+      "ended": "Ended",
+      "cancelled": "Cancelled",
+      "duration": "Duration",
+      "notApplicable": "Not applicable",
+      "impact": "Impact",
+      "affectedComponents": "Affected components",
+      "noComponents": "None named",
+      "updates": "Updates",
+      "planned": "Planned window: {window}",
+      "copyLink": "Copy link",
+      "copied": "Link copied",
+      "copyFailed": "Could not copy"
+    },
+    "seo": {
+      "historyTitle": "History · {siteName}",
+      "historyDescription": "Incidents and maintenance windows of {siteName}, {dateRange}.",
+      "historyDescriptionEmpty": "Incidents and maintenance windows of {siteName}.",
+      "incidentTitle": "{title} · {siteName}",
+      "incidentDescription": "Incident on {siteName}: {status}, {dateRange}.",
+      "maintenanceTitle": "{title} · {siteName}",
+      "maintenanceDescription": "Maintenance on {siteName}: {status}, {dateRange}."
     }
   },
   "maintenance": {
@@ -4036,6 +4102,7 @@
     "statusPagePasswordTooShort": "The password must be at least {min} characters.",
     "statusPagePasswordTooLong": "The password must be at most {max} characters.",
     "statusPagePasswordRequired": "Set a password to protect this page.",
+    "statusPageEventNotFound": "Incident or maintenance window not found",
     "statusPageIpNotAllowed": "This status page is not available from your network.",
     "statusPageLinkInvalid": "This sign-in link is invalid, expired or already used.",
     "invalidEmailAddress": "Enter a valid email address.",
