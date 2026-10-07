@@ -34,6 +34,7 @@ import { applyAccessPassword } from '@/server/status-pages/access-password'
 import { applyAccessRestrictions } from '@/server/status-pages/access-restrictions'
 
 import { statusPageThemeFields } from './status-page-theme'
+import { detachTemplatesFromStatusPage } from './Templates'
 
 import type { StatusPage } from '@/payload-types'
 import type { ErrorKey } from '@/server/errors'
@@ -289,7 +290,7 @@ export const StatusPages: CollectionConfig = {
       applyAccessRestrictions,
       enforceEntitlementOnCreate('statusPages'),
     ],
-    beforeDelete: [removeSubscribers, removeViewers],
+    beforeDelete: [removeSubscribers, removeViewers, detachTemplatesFromStatusPage],
   },
   indexes: [{ fields: ['organization', 'published'] }],
   fields: [

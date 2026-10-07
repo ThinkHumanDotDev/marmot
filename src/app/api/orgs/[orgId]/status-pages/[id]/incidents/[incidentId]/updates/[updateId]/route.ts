@@ -1,5 +1,9 @@
 import { authenticate, errorResponse, jsonError, readJson } from '@/server/status-pages/http'
-import { editIncidentUpdate, loadOrgIncident } from '@/server/status-pages/incident-updates'
+import {
+  editIncidentUpdate,
+  loadOrgIncident,
+  unfilledPlaceholders,
+} from '@/server/status-pages/incident-updates'
 
 import { errorText } from '@/server/request-locale'
 
@@ -23,6 +27,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (!body || typeof body.message !== 'string') {
     return jsonError(errorText(request, 'incidentMessageInvalid'), 400)
   }
+  const unfilled = unfilledPlaceholders(body.message)
+  if (unfilled) return jsonError(errorText(request, 'templatePlaceholdersUnfilled', unfilled), 400)
 
   try {
     const incident = await loadOrgIncident(auth.ctx, orgId, id, incidentId)

@@ -30,6 +30,8 @@ export interface ImportReport {
   monitors: ImportSectionReport
   notifications: ImportSectionReport
   statusPages: ImportSectionReport
+  /** Incident and maintenance templates (Marmot exports only). */
+  templates: ImportSectionReport
   /** Uptime Kuma tags are reported but not imported until the tags collection exists. */
   tags: ImportSectionReport
   warnings: string[]
@@ -52,4 +54,7 @@ export function detectImportFormat(json: unknown): ImportFormat | null {
 
 /** Total number of documents an import will create. */
 export const totalCreates = (report: ImportReport): number =>
-  report.monitors.create + report.notifications.create + report.statusPages.create
+  report.monitors.create +
+  report.notifications.create +
+  report.statusPages.create +
+  report.templates.create
