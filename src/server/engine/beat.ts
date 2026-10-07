@@ -4,6 +4,9 @@
  * Ported from Uptime Kuma 2.5.5 `server/model/monitor.js` (`Monitor.beat`, `isImportantBeat`,
  * `isImportantForNotification`) — Copyright (c) 2021 Louis Lam, MIT License. See THIRD_PARTY_NOTICES.md.
  *
+ * Marmot addition (#147): the recovery threshold (`applyRecoveryThreshold`), N consecutive successes
+ * before a DOWN monitor is UP again. With the default of 1 the Uptime Kuma path is unchanged.
+ *
  * Everything here is pure: the worker feeds the previous cached state plus the check result in and
  * persists what comes out. That keeps the transition rules unit-testable without Redis or a database.
  */
@@ -23,6 +26,11 @@ export interface PrevState {
   status?: BeatStatus | null
   retries?: number | null
   downCount?: number | null
+  /**
+   * Consecutive successes counted towards `successThreshold` while a DOWN monitor recovers (the
+   * beats in between are PENDING). 0 or missing = not recovering.
+   */
+  recoveries?: number | null
 }
 
 /** Outcome of running `MonitorType.check()`. */
@@ -55,6 +63,8 @@ export interface MonitorSettings {
   maxRetries?: number | null
   resendInterval?: number | null
   upsideDown?: boolean | null
+  /** Consecutive successes a DOWN monitor needs before it is UP again (default 1). */
+  successThreshold?: number | null
 }
 
 export interface NextState {
@@ -64,6 +74,8 @@ export interface NextState {
   duration: number | null
   retries: number
   downCount: number
+  /** Successes counted towards `successThreshold` (0 unless recovering). */
+  recoveries: number
   /** Status changed compared to the previous beat (first beat included). */
   important: boolean
   /** Notification providers should be triggered for this beat. */
@@ -159,6 +171,70 @@ export function nextIntervalSeconds(status: BeatStatus, monitor: MonitorSettings
   return interval
 }
 
+/** Effective recovery threshold: a whole number ≥ 1. */
+export function successThresholdOf(monitor: Pick<MonitorSettings, 'successThreshold'>): number {
+  const value = Math.floor(monitor.successThreshold ?? 1)
+  return Number.isFinite(value) && value > 1 ? value : 1
+}
+
+/** Message of a recovering beat: "Recovering 1/3: <check message>". */
+export function recoveringMessage(count: number, threshold: number, msg: string): string {
+  const label = `Recovering ${count}/${threshold}`
+  return msg.trim() ? `${label}: ${msg.trim()}` : label
+}
+
+export interface RecoveryInput {
+  /** Status, message and retries after the Uptime Kuma rules ran. */
+  status: BeatStatus
+  msg: string
+  retries: number
+}
+
+export interface RecoveryOutcome extends RecoveryInput {
+  recoveries: number
+  /**
+   * The status transitions are judged against: DOWN throughout a recovery streak, so its PENDING
+   * beats are neither a recovery nor a new outage and the beat that completes it is DOWN → UP.
+   */
+  previousStatus: BeatStatus | null | undefined
+}
+
+/**
+ * Recovery threshold (#147): a DOWN monitor needs `successThreshold` consecutive successes before
+ * it is UP again. The successes before that are PENDING beats labelled "Recovering n/N", polled at
+ * `retryInterval` like retries; `retries` keeps its DOWN value meanwhile, so a failure during the
+ * streak goes straight back to DOWN (no new retry round, no new DOWN notification) and the count
+ * starts over. Maintenance also ends the streak. With a threshold of 1 nothing changes.
+ */
+export function applyRecoveryThreshold(
+  prev: PrevState | null | undefined,
+  beat: RecoveryInput,
+  monitor: Pick<MonitorSettings, 'successThreshold'>,
+): RecoveryOutcome {
+  const threshold = successThresholdOf(monitor)
+  const streak = prev?.status === PENDING ? Math.max(0, prev?.recoveries ?? 0) : 0
+  const recovering = streak > 0
+  const previousStatus = recovering ? DOWN : prev?.status
+  if (previousStatus !== DOWN) return { ...beat, recoveries: 0, previousStatus }
+
+  if (beat.status === UP) {
+    const count = streak + 1
+    if (count >= threshold) return { ...beat, recoveries: 0, previousStatus }
+    return {
+      status: PENDING,
+      msg: recoveringMessage(count, threshold, beat.msg),
+      retries: prev?.retries ?? beat.retries,
+      recoveries: count,
+      previousStatus,
+    }
+  }
+  // A failure during the streak is the outage continuing, not a fresh retry round.
+  if (recovering && beat.status === PENDING) {
+    return { ...beat, status: DOWN, recoveries: 0, previousStatus }
+  }
+  return { ...beat, recoveries: 0, previousStatus }
+}
+
 /**
  * Compute the next heartbeat from the previous state and a check result.
  *
@@ -168,6 +244,7 @@ export function nextIntervalSeconds(status: BeatStatus, monitor: MonitorSettings
  * - upside-down monitors treat a successful check as a failure ("Flip UP to DOWN"),
  * - `important` marks transitions; `notify` additionally honours `resendInterval` while DOWN and
  *   skips the very first beat unless it is DOWN (as `Monitor.sendNotification` does).
+ * Marmot then applies the recovery threshold (`applyRecoveryThreshold`) before judging the transition.
  */
 export function computeNextBeat(
   prev: PrevState | null | undefined,
@@ -220,13 +297,17 @@ export function computeNextBeat(
     }
   }
 
-  const important = isImportantBeat(isFirstBeat, prev?.status, status)
+  const recovery = applyRecoveryThreshold(prev, { status, msg, retries }, monitor)
+  ;({ status, msg, retries } = recovery)
+  const previousStatus = recovery.previousStatus
+
+  const important = isImportantBeat(isFirstBeat, previousStatus, status)
   let notify = false
 
   if (important) {
     // The very first beat is only announced when it is DOWN (Monitor.sendNotification).
     notify =
-      isImportantForNotification(isFirstBeat, prev?.status, status) &&
+      isImportantForNotification(isFirstBeat, previousStatus, status) &&
       (!isFirstBeat || status === DOWN)
     downCount = 0
   } else if (status === DOWN && resendInterval > 0) {
@@ -245,6 +326,7 @@ export function computeNextBeat(
     duration,
     retries,
     downCount,
+    recoveries: recovery.recoveries,
     important,
     notify,
     isFirstBeat,

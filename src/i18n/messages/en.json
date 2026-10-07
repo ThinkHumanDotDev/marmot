@@ -562,6 +562,18 @@
         "resend": "Resend notification",
         "resendHint": "Re-notify every {count} consecutive DOWN beats",
         "resendDescription": "Every N consecutive DOWN beats (0 = never)",
+        "reminderBackoff": "Reminder spacing",
+        "reminderBackoffDescription": "Wait longer between reminders the longer an outage lasts.",
+        "reminderBackoffOptions": {
+          "none": "Fixed (every resend interval)",
+          "linear": "Linear (1×, 2×, 3× …)",
+          "exponential": "Exponential (1×, 2×, 4× …)"
+        },
+        "maxReminders": "Maximum reminders",
+        "maxRemindersDescription": "Stop reminding after this many per incident (0 = unlimited). Acknowledging also stops them.",
+        "successThreshold": "Recovery threshold",
+        "successThresholdDescription": "Successful checks in a row before a DOWN monitor is UP again.",
+        "successThresholdHint": "UP after {count} successful checks in a row; the checks before are pending (recovering)",
         "timeout": "Request timeout",
         "timeoutDefault": "0 uses 80% of the interval"
       },

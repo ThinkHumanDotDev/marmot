@@ -184,6 +184,7 @@ export async function recordBeat(
     status: monitor.status?.lastStatus,
     retries: monitor.status?.retries,
     downCount: monitor.status?.downCount,
+    recoveries: monitor.status?.recoveries,
   }
   const next = computeNextBeat(prev, result, monitor)
 
@@ -231,6 +232,7 @@ export async function recordBeat(
         lastMsg: next.msg,
         retries: next.retries,
         downCount: next.downCount,
+        recoveries: next.recoveries,
         ...options.statusPatch,
       },
       ...(tlsInfo ? { certInfo: tlsInfo as unknown as Monitor['certInfo'] } : {}),

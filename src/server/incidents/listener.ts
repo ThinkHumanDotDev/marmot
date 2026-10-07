@@ -82,7 +82,8 @@ export async function handleIncidentBeat(
 export async function incidentReminderGate(event: HeartbeatEvent): Promise<boolean> {
   if (!isReminderBeat(event)) return true
   const incident = await findOpenIncident(event.payload, event.monitor.id)
-  const now = new Date()
+  // The beat's own time, so the backoff measures the same clock as the beats it spaces.
+  const now = beatTime(event)
   const send = await getReminderPolicy()({ event, incident, now })
   if (send && incident) await recordReminder(event.payload, incident, now)
   if (!send) {

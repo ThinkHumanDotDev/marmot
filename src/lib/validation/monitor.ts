@@ -9,6 +9,11 @@ import { z } from 'zod'
 
 import type { Messages } from '@/i18n/messages'
 import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
+import {
+  MAX_REMINDERS_LIMIT,
+  MAX_SUCCESS_THRESHOLD,
+  REMINDER_BACKOFFS,
+} from '@/lib/reminder-backoff'
 
 /** Key of a validation message under `monitors.validation` in the catalogues. */
 export type MonitorValidationKey = keyof Messages['monitors']['validation']
@@ -443,6 +448,10 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         .max(MAX_INTERVAL_SECONDS),
       maxRetries: nonNegativeInt(1000),
       resendInterval: nonNegativeInt(100_000),
+      // Older exports and Uptime Kuma backups lack these: default to the Uptime Kuma behaviour.
+      successThreshold: z.number().int().min(1).max(MAX_SUCCESS_THRESHOLD).default(1),
+      reminderBackoff: z.enum(REMINDER_BACKOFFS).default('none'),
+      maxReminders: nonNegativeInt(MAX_REMINDERS_LIMIT).default(0),
       timeout: z.number().min(0).max(MAX_INTERVAL_SECONDS),
       upsideDown: z.boolean().default(false),
 
@@ -786,6 +795,9 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     retryInterval: 60,
     maxRetries: 0,
     resendInterval: 0,
+    successThreshold: 1,
+    reminderBackoff: 'none',
+    maxReminders: 0,
     timeout: 48,
     upsideDown: false,
     method: 'GET',

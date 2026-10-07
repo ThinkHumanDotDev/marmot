@@ -30,6 +30,7 @@ import * as migration_20261007_075026_status_page_restricted_access from './2026
 import * as migration_20261007_082448_status_page_history from './20261007_082448_status_page_history';
 import * as migration_20261007_085940_status_page_subscribers from './20261007_085940_status_page_subscribers';
 import * as migration_20261007_102848_monitor_incidents from './20261007_102848_monitor_incidents';
+import * as migration_20261007_110034_engine_recovery from './20261007_110034_engine_recovery';
 
 export const migrations = [
   {
@@ -190,6 +191,11 @@ export const migrations = [
   {
     up: migration_20261007_102848_monitor_incidents.up,
     down: migration_20261007_102848_monitor_incidents.down,
-    name: '20261007_102848_monitor_incidents'
+    name: '20261007_102848_monitor_incidents',
+  },
+  {
+    up: migration_20261007_110034_engine_recovery.up,
+    down: migration_20261007_110034_engine_recovery.down,
+    name: '20261007_110034_engine_recovery'
   },
 ];

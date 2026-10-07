@@ -30,12 +30,16 @@ maintenance?  → MAINTENANCE
 check ok      → UP
 check failed  → retries < maxretries ? PENDING (scheduler switched to retryInterval) : DOWN
 upsideDown    → flip UP/DOWN
+was DOWN, ok  → successThreshold reached ? UP : PENDING "Recovering n/N" (applyRecoveryThreshold)
 ```
 
-Important beats (status transitions) trigger notifications; `resendInterval` re-notifies while down.
+Important beats (status transitions) trigger notifications; `resendInterval` re-notifies while down, spaced by
+the reminder policy (`reminderBackoff`, `maxReminders`). The recovery threshold (#147) is the one Marmot step
+in the ported state machine: during a recovery streak the previous status counts as DOWN, so its PENDING beats
+are silent, a failure returns to DOWN without notifying, and the beat that completes it is DOWN → UP.
 
 After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
-`lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`) and calls every listener registered with
+`lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`, `recoveries`) and calls every listener registered with
 `registerHeartbeatListener()` (`src/server/engine/hooks.ts`); stats, realtime and notifications plug in there.
 
 ## Time-series storage

@@ -17,6 +17,11 @@ import { MONITOR_TARGET_FIELDS, monitorTargetProblem } from '@/server/security/m
 import { outboundGuardActive } from '@/server/security/outbound-guard'
 
 import { HEARTBEAT_STATUSES } from './Heartbeats'
+import {
+  MAX_REMINDERS_LIMIT,
+  MAX_SUCCESS_THRESHOLD,
+  REMINDER_BACKOFFS,
+} from '@/lib/reminder-backoff'
 import { relId } from './shared'
 import { adminGroup, adminT } from '@/i18n/admin'
 import { userErrorText } from '@/server/request-locale'
@@ -119,6 +124,12 @@ const statusGroup: Field = {
     { name: 'lastMsg', type: 'text' },
     { name: 'retries', type: 'number', defaultValue: 0 },
     { name: 'downCount', type: 'number', defaultValue: 0 },
+    {
+      name: 'recoveries',
+      type: 'number',
+      defaultValue: 0,
+      admin: { description: adminT('marmot:monitors:recoveriesDescription') },
+    },
     {
       name: 'lastPushAt',
       type: 'date',
@@ -536,6 +547,37 @@ export const Monitors: CollectionConfig = {
           defaultValue: 48,
           min: 0,
           admin: { description: adminT('marmot:monitors:timeoutDescription') },
+        },
+      ],
+    },
+    {
+      type: 'row',
+      fields: [
+        {
+          name: 'successThreshold',
+          type: 'number',
+          defaultValue: 1,
+          min: 1,
+          max: MAX_SUCCESS_THRESHOLD,
+          admin: { description: adminT('marmot:monitors:successThresholdDescription') },
+        },
+        {
+          name: 'reminderBackoff',
+          type: 'select',
+          defaultValue: 'none',
+          options: REMINDER_BACKOFFS.map((value) => ({
+            label: adminT(`marmot:monitors:reminderBackoff_${value}`),
+            value,
+          })),
+          admin: { description: adminT('marmot:monitors:reminderBackoffDescription') },
+        },
+        {
+          name: 'maxReminders',
+          type: 'number',
+          defaultValue: 0,
+          min: 0,
+          max: MAX_REMINDERS_LIMIT,
+          admin: { description: adminT('marmot:monitors:maxRemindersDescription') },
         },
       ],
     },

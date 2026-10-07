@@ -60,6 +60,7 @@ documentation remains the reference for the behaviour of the ported checks.
 | Nostr                                                                                                                                                                           |      ✓      | not planned (dependency weight)                                                                     |
 | Message templates with `{{ variables }}`                                                                                                                                        |      ✓      | **done**                                                                                            |
 | Retry on delivery failure                                                                                                                                                       |      —      | **done** (BullMQ, 3 attempts with backoff)                                                          |
+| Recovery threshold and reminder backoff against alert flapping                                                                                                                  |      —      | **landing** (#147, [Monitors](Monitors.md#recovery-threshold-and-reminder-backoff))                 |
 
 ## Status pages
 
