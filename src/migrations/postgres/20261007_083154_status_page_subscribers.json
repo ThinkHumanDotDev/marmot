@@ -4380,6 +4380,176 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.status_pages_allowed_email_domains": {
+      "name": "status_pages_allowed_email_domains",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "domain": {
+          "name": "domain",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "status_pages_allowed_email_domains_order_idx": {
+          "name": "status_pages_allowed_email_domains_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_pages_allowed_email_domains_parent_id_idx": {
+          "name": "status_pages_allowed_email_domains_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "status_pages_allowed_email_domains_parent_id_fk": {
+          "name": "status_pages_allowed_email_domains_parent_id_fk",
+          "tableFrom": "status_pages_allowed_email_domains",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.status_pages_allowed_ip_ranges": {
+      "name": "status_pages_allowed_ip_ranges",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "cidr": {
+          "name": "cidr",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "label": {
+          "name": "label",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "status_pages_allowed_ip_ranges_order_idx": {
+          "name": "status_pages_allowed_ip_ranges_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_pages_allowed_ip_ranges_parent_id_idx": {
+          "name": "status_pages_allowed_ip_ranges_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "status_pages_allowed_ip_ranges_parent_id_fk": {
+          "name": "status_pages_allowed_ip_ranges_parent_id_fk",
+          "tableFrom": "status_pages_allowed_ip_ranges",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.status_pages_subscriptions_channels": {
       "name": "status_pages_subscriptions_channels",
       "schema": "",
@@ -5270,6 +5440,180 @@
           "tableTo": "notifications",
           "columnsFrom": [
             "subscriptions_sms_channel_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.status_page_viewers": {
+      "name": "status_page_viewers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "page_id": {
+          "name": "page_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "enum_status_page_viewers_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "status_page_viewers_organization_idx": {
+          "name": "status_page_viewers_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_viewers_page_idx": {
+          "name": "status_page_viewers_page_idx",
+          "columns": [
+            {
+              "expression": "page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_viewers_updated_at_idx": {
+          "name": "status_page_viewers_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_viewers_created_at_idx": {
+          "name": "status_page_viewers_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "page_email_idx": {
+          "name": "page_email_idx",
+          "columns": [
+            {
+              "expression": "page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "status_page_viewers_organization_id_organizations_id_fk": {
+          "name": "status_page_viewers_organization_id_organizations_id_fk",
+          "tableFrom": "status_page_viewers",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "status_page_viewers_page_id_status_pages_id_fk": {
+          "name": "status_page_viewers_page_id_status_pages_id_fk",
+          "tableFrom": "status_page_viewers",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "page_id"
           ],
           "columnsTo": [
             "id"
@@ -8914,6 +9258,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "status_page_viewers_id": {
+          "name": "status_page_viewers_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "incidents_id": {
           "name": "incidents_id",
           "type": "integer",
@@ -9269,6 +9619,21 @@
           "columns": [
             {
               "expression": "status_pages_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_status_page_viewers_id_idx": {
+          "name": "payload_locked_documents_rels_status_page_viewers_id_idx",
+          "columns": [
+            {
+              "expression": "status_page_viewers_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -9641,6 +10006,19 @@
           "tableTo": "status_pages",
           "columnsFrom": [
             "status_pages_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_status_page_viewers_fk": {
+          "name": "payload_locked_documents_rels_status_page_viewers_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "status_page_viewers",
+          "columnsFrom": [
+            "status_page_viewers_id"
           ],
           "columnsTo": [
             "id"
@@ -10571,7 +10949,9 @@
       "schema": "public",
       "values": [
         "public",
-        "password"
+        "password",
+        "email-domain",
+        "ip-allowlist"
       ]
     },
     "public.enum_status_pages_subscriptions_delivery_mode": {
@@ -10580,6 +10960,14 @@
       "values": [
         "review",
         "auto"
+      ]
+    },
+    "public.enum_status_page_viewers_status": {
+      "name": "enum_status_page_viewers_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "revoked"
       ]
     },
     "public.enum_incidents_updates_components_impact": {
@@ -10874,6 +11262,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "0f2d9048-dd00-433f-a9b4-0efbeb528b48",
+  "id": "2c24cad6-8679-4672-b457-ee890cab551a",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

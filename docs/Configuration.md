@@ -108,7 +108,7 @@ combined). In `superadmin` mode, channels set up before the upgrade keep sending
 | `GITHUB_CLIENT_SECRET`     | —                      | web     | GitHub OAuth app client secret.                                                                                                                                                      |
 | `GOOGLE_CLIENT_ID`         | —                      | web     | Google OAuth client id. With `GOOGLE_CLIENT_SECRET`, enables "Continue with Google"; redirect URI `<NEXT_PUBLIC_SERVER_URL>/api/auth/sso/google/callback`.                           |
 | `GOOGLE_CLIENT_SECRET`     | —                      | web     | Google OAuth client secret.                                                                                                                                                          |
-| `STATUS_PAGE_SESSION_DAYS` | `30`                   | web     | Lifetime (days, 1–365) of the cookie a visitor gets after entering the password of a [password-protected status page](Status-Pages.md#password-protection).                          |
+| `STATUS_PAGE_SESSION_DAYS` | `30`                   | web     | Lifetime (days, 1–365) of the cookie a visitor gets after signing in to a [protected status page](Status-Pages.md#access) (password or email link).                                  |
 
 Full setup guide with provider walkthroughs: [Single sign-on](Single-Sign-On.md).
 
@@ -204,16 +204,16 @@ global it takes precedence over the variable. The Instance tab also shows whethe
 offers **Send test email** (`POST /api/instance/smtp-test { to? }`, superadmin-only; answers `400` while
 `SMTP_HOST` is unset).
 
-| Setting                             | Default                  | Description                                                                      |
-| ----------------------------------- | ------------------------ | -------------------------------------------------------------------------------- |
-| `primaryBaseUrl`                    | `NEXT_PUBLIC_SERVER_URL` | Public URL used in notifications and status page links.                          |
-| `allowSignup`                       | `!DISABLE_SIGNUP`        | Whether anyone may create an account (`POST /api/users`, `/signup`).             |
-| `entryPage`                         | `dashboard`              | `dashboard` or `status-page`: what the root URL shows.                           |
-| `tlsExpiryNotifyDays`               | `7, 14, 21`              | Days before a TLS certificate expires at which to notify.                        |
-| `domainExpiryNotifyDays`            | `7, 14, 21`              | Days before a domain registration expires at which to notify.                    |
-| `keepDataPeriodDays`                | `KEEP_DATA_PERIOD_DAYS`  | Retention of daily aggregates and important heartbeats (`0` disables).           |
-| `trustProxy`                        | `false`                  | Trust `X-Forwarded-*` headers from the reverse proxy for client IPs.             |
-| `steamApiKey`, `globalpingApiToken` | —                        | Third-party API keys for the corresponding monitor types (superadmin-only read). |
+| Setting                             | Default                  | Description                                                                                                               |
+| ----------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `primaryBaseUrl`                    | `NEXT_PUBLIC_SERVER_URL` | Public URL used in notifications and status page links.                                                                   |
+| `allowSignup`                       | `!DISABLE_SIGNUP`        | Whether anyone may create an account (`POST /api/users`, `/signup`).                                                      |
+| `entryPage`                         | `dashboard`              | `dashboard` or `status-page`: what the root URL shows.                                                                    |
+| `tlsExpiryNotifyDays`               | `7, 14, 21`              | Days before a TLS certificate expires at which to notify.                                                                 |
+| `domainExpiryNotifyDays`            | `7, 14, 21`              | Days before a domain registration expires at which to notify.                                                             |
+| `keepDataPeriodDays`                | `KEEP_DATA_PERIOD_DAYS`  | Retention of daily aggregates and important heartbeats (`0` disables).                                                    |
+| `trustProxy`                        | `false`                  | Trust `X-Forwarded-*` headers from the reverse proxy for client IPs (rate limits, audit log, status page IP allow-lists). |
+| `steamApiKey`, `globalpingApiToken` | —                        | Third-party API keys for the corresponding monitor types (superadmin-only read).                                          |
 
 Server code reads the resolved values through `getInstanceSettings(payload)` (`src/server/settings.ts`),
 which caches them for 60 seconds per process; saving the global clears the cache of the web process

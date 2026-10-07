@@ -11,7 +11,7 @@ import type {
   SubscriberChannel,
   SubscriberSource,
 } from '@/lib/status-page-subscribers'
-import type { Incident, Monitor, StatusPage } from '@/payload-types'
+import type { Incident, Monitor, StatusPage, StatusPageViewer } from '@/payload-types'
 
 export type OrgId = string | number
 
@@ -56,6 +56,8 @@ export type StatusPagePatch = Partial<
     | 'groups'
     | 'access'
     | 'subscriptions'
+    | 'allowedEmailDomains'
+    | 'allowedIpRanges'
   >
 > & {
   /** New page password (write-only; never returned). */
@@ -142,6 +144,17 @@ export const statusPagesApi = {
         `${base(orgId)}/${id}/incidents/${incidentId}/updates/${encodeURIComponent(updateId)}`,
         { message },
       ),
+  },
+
+  viewers: {
+    list: (orgId: OrgId, id: OrgId) =>
+      api.get<{ docs: StatusPageViewer[] }>(`${base(orgId)}/${id}/viewers`),
+    setStatus: (orgId: OrgId, id: OrgId, viewerId: OrgId, status: StatusPageViewer['status']) =>
+      api.patch<{ doc: StatusPageViewer }>(`${base(orgId)}/${id}/viewers/${viewerId}`, {
+        status,
+      }),
+    remove: (orgId: OrgId, id: OrgId, viewerId: OrgId) =>
+      api.delete<{ ok: true }>(`${base(orgId)}/${id}/viewers/${viewerId}`),
   },
 }
 

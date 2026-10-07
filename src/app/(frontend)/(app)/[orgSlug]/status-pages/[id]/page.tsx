@@ -5,6 +5,7 @@ import { getTranslations } from 'next-intl/server'
 import { StatusPageEditor } from '@/components/status-pages/editor/status-page-editor'
 import type { MonitorOption } from '@/components/status-pages/api'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
+import { getInstanceSettings } from '@/server/settings'
 
 import { resolveOrg } from '../resolve-org'
 
@@ -24,7 +25,7 @@ export default async function StatusPageEditorPage({
   const { payload, user, org, can } = await resolveOrg(orgSlug)
   const pageId = payload.db.defaultIDType === 'number' && /^\d+$/.test(id) ? Number(id) : id
 
-  const [{ docs: pages }, { docs: monitors }, timeZone] = await Promise.all([
+  const [{ docs: pages }, { docs: monitors }, timeZone, settings] = await Promise.all([
     payload.find({
       collection: 'status-pages',
       where: { and: [{ id: { equals: pageId } }, { organization: { equals: org.id } }] },
@@ -44,6 +45,7 @@ export default async function StatusPageEditorPage({
       overrideAccess: false,
     }),
     getOrganizationTimezone(payload, org.id),
+    getInstanceSettings(payload),
   ])
 
   const page = pages[0]
@@ -98,6 +100,7 @@ export default async function StatusPageEditorPage({
       canManageSubscribers={can('subscriber:manage')}
       canSendNotifications={can('subscriber:send')}
       smsChannels={twilioChannels.map((channel) => ({ id: channel.id, name: channel.name }))}
+      trustProxy={settings.trustProxy}
     />
   )
 }
