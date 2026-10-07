@@ -11,6 +11,7 @@ const publishedSlug = `e2e-status-${run}`
 const draftSlug = `e2e-draft-${run}`
 
 const created: { collection: string; id: DocId }[] = []
+const seeded: { org?: DocId; page?: DocId; monitor?: DocId } = {}
 
 test.use({ storageState: ANONYMOUS })
 
@@ -65,10 +66,13 @@ test.describe('Status pages', () => {
         statusPage: page.id,
         organization: org.id,
         title: 'E2E planned maintenance',
+        // Pre-timeline shape (content + style): still accepted and shown as one update.
         content: 'We are **upgrading** the database tonight.',
-        style: 'warning',
+        style: 'info',
       }),
     )
+
+    Object.assign(seeded, { org: org.id, page: page.id, monitor: monitor.id })
 
     track(
       'status-pages',
@@ -104,6 +108,46 @@ test.describe('Status pages', () => {
     await expect(page.locator('strong', { hasText: 'upgrading' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Powered by Marmot' })).toBeVisible()
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+  })
+
+  test('shows the incident timeline and component impact until resolved', async ({
+    page,
+    adminApi,
+  }) => {
+    const incident = await adminApi.create('incidents', {
+      statusPage: seeded.page,
+      organization: seeded.org,
+      title: 'E2E site outage',
+      updates: [
+        {
+          status: 'investigating',
+          message: 'The site is unreachable.',
+          components: [{ monitor: seeded.monitor, impact: 'major_outage' }],
+        },
+        { status: 'identified', message: 'A bad **certificate**.' },
+      ],
+    })
+    created.unshift({ collection: 'incidents', id: incident.id })
+
+    await page.goto(`/status/${publishedSlug}`)
+    await expect(page.getByRole('status')).toHaveText(/Major outage/)
+    await expect(page.locator(`[data-monitor-impact="major_outage"]`)).toContainText(
+      'Marketing site',
+    )
+    const card = page.locator('article', {
+      has: page.getByRole('heading', { level: 3, name: 'E2E site outage' }),
+    })
+    // Latest update inline, the rest behind the disclosure.
+    await expect(card.locator('strong', { hasText: 'certificate' })).toBeVisible()
+    await expect(card.getByText('The site is unreachable.')).toBeHidden()
+    await card.getByText(/Show all 2 updates/).click()
+    await expect(card.getByText('The site is unreachable.')).toBeVisible()
+    await expect(card.locator('time')).toHaveCount(2)
+
+    await adminApi.update('incidents', incident.id, { active: false })
+    await page.reload()
+    await expect(page.getByRole('status')).toHaveText(/All systems operational/)
+    await expect(page.locator('[data-monitor-impact]')).toHaveCount(0)
   })
 
   test('serves the public API, RSS feed and manifest', async ({ request }) => {

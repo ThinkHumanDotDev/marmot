@@ -9,9 +9,11 @@ import { StatusDot } from '@/components/status-dot'
 import { renderMarkdown } from '@/lib/markdown'
 import { cn } from '@/lib/utils'
 import type { PublicMaintenance } from '@/server/maintenance/status-page'
+import type { ComponentImpact } from '@/lib/incident-timeline'
 import type {
   OverallStatus,
   PublicIncident,
+  PublicIncidentUpdate,
   PublicMonitor,
   PublicStatusPageData,
 } from '@/server/status-pages/public'
@@ -60,24 +62,118 @@ function OverallBanner({ status }: { status: OverallStatus }) {
   )
 }
 
-export function IncidentCard({ incident }: { incident: PublicIncident }) {
+const MARKDOWN_CLASS =
+  'prose-sm max-w-none text-sm leading-relaxed [&_a]:underline [&_code]:rounded [&_code]:bg-background/60 [&_code]:px-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5'
+
+/** Badge colours per component impact (shared by incident cards and monitor rows). */
+export const impactStyles: Record<ComponentImpact, string> = {
+  operational: 'border-status-up/40 text-foreground',
+  degraded_performance: 'border-status-pending/60 bg-status-pending/10 text-foreground',
+  partial_outage: 'border-status-pending/80 bg-status-pending/20 text-foreground',
+  major_outage: 'border-status-down/60 bg-status-down/15 text-foreground',
+}
+
+export function ImpactBadge({ impact, name }: { impact: ComponentImpact; name?: string }) {
+  const t = useTranslations('statusPages.public.incidents')
+  const label = t(`impact.${impact}`)
+  return (
+    <span
+      data-impact={impact}
+      className={cn(
+        'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap',
+        impactStyles[impact],
+      )}
+    >
+      {name ? t('componentImpact', { name, impact: label }) : label}
+    </span>
+  )
+}
+
+function IncidentUpdateEntry({ update }: { update: PublicIncidentUpdate }) {
+  const t = useTranslations('statusPages.public.incidents')
   const format = useFormatter()
+  return (
+    <div data-update-status={update.status}>
+      <p className="flex flex-wrap items-baseline gap-x-2 text-xs">
+        <span className="font-semibold">{t(`status.${update.status}`)}</span>
+        <time dateTime={update.postedAt} className="text-muted-foreground">
+          {format.dateTime(new Date(update.postedAt), 'short')}
+        </time>
+        {update.editedAt && (
+          <span
+            className="text-muted-foreground italic"
+            title={t('editedAt', { time: format.dateTime(new Date(update.editedAt), 'short') })}
+          >
+            ({t('edited')})
+          </span>
+        )}
+      </p>
+      {update.message && (
+        <div
+          className={cn('mt-1', MARKDOWN_CLASS)}
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(update.message) }}
+        />
+      )}
+      {update.components.length > 0 && (
+        <p className="mt-1.5 flex flex-wrap gap-1">
+          {update.components.map((c) => (
+            <ImpactBadge key={c.id} impact={c.impact} name={c.name} />
+          ))}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * An incident: title, current status and impact, the latest update inline and the rest of the
+ * timeline (newest first) behind a disclosure.
+ */
+export function IncidentCard({ incident }: { incident: PublicIncident }) {
+  const t = useTranslations('statusPages.public.incidents')
+  const [latest, ...earlier] = incident.updates
+  const impacted = incident.components.filter((c) => c.impact !== 'operational')
   return (
     <article
       data-incident-style={incident.style}
+      data-incident-status={incident.status}
+      data-incident-impact={incident.impact}
       className={cn('rounded-xl border px-5 py-4', incidentStyles[incident.style])}
     >
       <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h3 className="text-base font-semibold">{incident.title}</h3>
-        <time dateTime={incident.updatedAt} className="text-xs text-muted-foreground">
-          {format.dateTime(new Date(incident.updatedAt), 'short')}
-        </time>
+        {incident.active && incident.impact !== 'operational' && (
+          <ImpactBadge impact={incident.impact} />
+        )}
       </header>
-      {incident.content && (
-        <div
-          className="prose-sm mt-2 max-w-none text-sm leading-relaxed [&_a]:underline [&_code]:rounded [&_code]:bg-background/60 [&_code]:px-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5"
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(incident.content) }}
-        />
+      {impacted.length > 0 && (
+        <p className="mt-2 flex flex-wrap gap-1" aria-label={t('affectedLabel')}>
+          {impacted.map((c) => (
+            <ImpactBadge key={c.id} impact={c.impact} name={c.name} />
+          ))}
+        </p>
+      )}
+      {latest && (
+        <section className="mt-3" aria-label={t('latestUpdate')}>
+          <IncidentUpdateEntry update={latest} />
+        </section>
+      )}
+      {earlier.length > 0 && (
+        <details className="group mt-3">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
+            {t('showTimeline', { count: incident.updates.length })}
+          </summary>
+          <ol
+            className="mt-3 flex flex-col gap-3 border-l pl-4"
+            aria-label={t('timelineLabel', { title: incident.title })}
+          >
+            {earlier.map((update) => (
+              <li key={update.id}>
+                <IncidentUpdateEntry update={update} />
+              </li>
+            ))}
+          </ol>
+        </details>
       )}
     </article>
   )
@@ -149,11 +245,15 @@ function MonitorRow({ monitor }: { monitor: PublicMonitor }) {
   return (
     <li
       data-monitor-id={monitor.id}
+      data-monitor-impact={monitor.impact}
       className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 py-3 sm:grid-cols-[auto_minmax(0,14rem)_minmax(0,1fr)_auto]"
     >
       <StatusDot status={monitor.status} />
       <div className="flex min-w-0 flex-col">
-        <span className="truncate">{name}</span>
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="truncate">{name}</span>
+          {monitor.impact && <ImpactBadge impact={monitor.impact} />}
+        </span>
         {monitor.tags && monitor.tags.length > 0 && (
           <span className="mt-1 flex flex-wrap gap-1">
             {monitor.tags.map((tag, i) => (

@@ -15,10 +15,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { track } from '@/lib/analytics'
 import type { Incident, StatusPage } from '@/payload-types'
 
-import { publicStatusPagePath, statusPagesApi, type MonitorOption, type OrgId } from '../api'
+import {
+  publicStatusPagePath,
+  relationId,
+  statusPagesApi,
+  type MonitorOption,
+  type OrgId,
+} from '../api'
 import { DomainsPanel } from './domains-panel'
 import { GroupsEditor } from './groups-editor'
-import { IncidentsPanel } from './incidents-panel'
+import { IncidentsPanel, type IncidentComponentOption } from './incidents-panel'
 import { SettingsForm } from './settings-form'
 
 export interface EditorProps {
@@ -31,6 +37,22 @@ export interface EditorProps {
   canDelete: boolean
   /** Organization time zone the incident timestamps render in. */
   timeZone: string
+}
+
+/** Monitors placed in the page's groups, in display order: what an incident can affect. */
+function pageComponents(page: StatusPage, monitors: MonitorOption[]): IncidentComponentOption[] {
+  const names = new Map(monitors.map((m) => [String(m.id), m.name]))
+  const seen = new Set<string>()
+  const options: IncidentComponentOption[] = []
+  for (const group of page.groups ?? []) {
+    for (const row of group.monitors ?? []) {
+      const id = relationId(row.monitor)
+      if (seen.has(id)) continue
+      seen.add(id)
+      options.push({ id, name: names.get(id) ?? `#${id}` })
+    }
+  }
+  return options
 }
 
 export function StatusPageEditor({
@@ -47,6 +69,7 @@ export function StatusPageEditor({
   const [page, setPage] = React.useState(initialPage)
   const [publishing, setPublishing] = React.useState(false)
   const publicHref = publicStatusPagePath(page.slug)
+  const incidentComponents = React.useMemo(() => pageComponents(page, monitors), [page, monitors])
 
   async function togglePublished(next: boolean) {
     setPublishing(true)
@@ -143,6 +166,7 @@ export function StatusPageEditor({
               orgId={orgId}
               pageId={page.id}
               initialIncidents={initialIncidents}
+              components={incidentComponents}
               timeZone={timeZone}
               canEdit={canEdit}
             />

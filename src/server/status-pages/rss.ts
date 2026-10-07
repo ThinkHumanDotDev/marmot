@@ -1,5 +1,6 @@
 /**
- * RSS 2.0 feed of a status page: incidents (newest first) and monitors that are currently down.
+ * RSS 2.0 feed of a status page: one item per incident update (newest first) and monitors that are
+ * currently down.
  * Mirrors Uptime Kuma's `StatusPage.renderRSS` (MIT) with a hand-written XML builder instead of
  * the `feed` package.
  */
@@ -11,7 +12,13 @@ import type { Locale } from '@/i18n/locales'
 import { resolveStatusPageLocale, statusPageTimeZone } from '@/i18n/resolve'
 import type { Incident, StatusPage } from '@/payload-types'
 
-import { buildPublicGroups, overallStatus } from './public'
+import {
+  buildPublicGroups,
+  componentNamesOf,
+  pageOverallStatus,
+  toPublicIncident,
+  type PublicIncident,
+} from './public'
 
 export const escapeXml = (value: string): string =>
   value.replace(
@@ -39,6 +46,9 @@ export interface RssChannel {
   items: RssItem[]
   lastBuildDate?: Date
 }
+
+/** Newest items kept in the feed. */
+export const MAX_FEED_ITEMS = 200
 
 const element = (name: string, value: string) => `<${name}>${escapeXml(value)}</${name}>`
 
@@ -91,6 +101,48 @@ export async function findFeedIncidents(
   return docs
 }
 
+type Translator = ReturnType<typeof getTranslator>
+
+/**
+ * One item per update: the opening update carries the incident title, later ones are prefixed with
+ * their status (`[Resolved] Database failover`). The description is the update's Markdown plus the
+ * components it affected.
+ */
+export function incidentUpdateItems(
+  incident: PublicIncident,
+  pageUrl: string,
+  t: Translator,
+): RssItem[] {
+  const oldest = incident.updates.at(-1)?.id
+  return incident.updates.map((update) => {
+    const affected = update.components
+      .map((c) =>
+        t('statusPages.public.incidents.componentImpact', {
+          name: c.name,
+          impact: t(`statusPages.public.incidents.impact.${c.impact}`),
+        }),
+      )
+      .join(', ')
+    return {
+      title:
+        update.id === oldest
+          ? incident.title
+          : t('statusPages.public.incidents.feedTitle', {
+              title: incident.title,
+              status: t(`statusPages.public.incidents.status.${update.status}`),
+            }),
+      description:
+        renderMarkdown(update.message) +
+        (affected
+          ? `<p>${escapeXml(t('statusPages.public.incidents.affected', { components: affected }))}</p>`
+          : ''),
+      link: pageUrl,
+      guid: `incident-${incident.id}-${update.id}`,
+      pubDate: new Date(update.postedAt),
+    }
+  })
+}
+
 /**
  * Builds the feed for a published status page. `pageUrl` is the public URL of the page; the
  * text is rendered in `locale` (`statusPageFeedLocale`) with times in the organization's zone.
@@ -109,18 +161,16 @@ export async function buildStatusPageRss(
   const format = getStaticFormatter(locale, statusPageTimeZone(page))
 
   const monitors = groups.flatMap((g) => g.monitors)
-  const overall = overallStatus(monitors.map((m) => m.status))
+  const names = componentNamesOf(groups)
+  const publicIncidents = incidents.map((incident) => toPublicIncident(incident, names))
+  const overall = pageOverallStatus(
+    groups,
+    publicIncidents.filter((incident) => incident.active),
+  )
 
-  const items: RssItem[] = incidents.map((incident) => ({
-    title:
-      incident.active === false
-        ? t('statusPages.rss.resolved', { title: incident.title })
-        : incident.title,
-    description: renderMarkdown(incident.content ?? ''),
-    link: pageUrl,
-    guid: `incident-${incident.id}-${incident.updatedAt}`,
-    pubDate: new Date(incident.updatedAt ?? incident.createdAt),
-  }))
+  const items: RssItem[] = publicIncidents.flatMap((incident) =>
+    incidentUpdateItems(incident, pageUrl, t),
+  )
 
   for (const monitor of monitors) {
     if (monitor.status !== 'down') continue
@@ -140,6 +190,7 @@ export async function buildStatusPageRss(
   }
 
   items.sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime())
+  items.splice(MAX_FEED_ITEMS)
 
   return renderRss({
     title: t('statusPages.rss.title', { title: page.title }),

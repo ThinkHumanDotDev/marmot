@@ -897,7 +897,6 @@
     "rss": {
       "title": "{title} status",
       "description": "Current status: {status}",
-      "resolved": "[Resolved] {title}",
       "monitorDown": "{name} is down",
       "monitorDownSince": "{name} has been down since {since}.",
       "monitorDownDescription": "{name} is down."
@@ -1048,48 +1047,74 @@
     },
     "incidents": {
       "title": "Incidents",
-      "description": "Announcements shown on the public page and in its RSS feed.",
-      "post": "Post incident",
+      "description": "Post incidents and follow them up with updates. Visitors see the latest update and the full timeline.",
+      "post": "New incident",
       "empty": "No incidents. Post one when something needs explaining.",
       "resolvedHeading": "Resolved",
-      "styles": {
-        "info": "info",
-        "warning": "warning",
-        "danger": "danger",
-        "primary": "primary"
-      },
       "pinnedBadge": "Pinned",
-      "resolvedBadge": "Resolved",
-      "resolvedAt": " · resolved {time}",
-      "edit": "Edit",
       "pin": "Pin",
       "unpin": "Unpin",
-      "resolve": "Resolve",
-      "reopen": "Reopen",
       "delete": "Delete",
       "confirmDelete": "Delete incident \"{title}\"?",
       "posted": "Incident posted",
-      "updated": "Incident updated",
       "pinned": "Pinned",
       "unpinned": "Unpinned",
       "resolved": "Incident resolved",
       "reopened": "Incident reopened",
       "deleted": "Incident deleted",
-      "saveFailed": "Could not save incident",
       "updateFailed": "Could not update incident",
       "deleteFailed": "Could not delete incident",
-      "dialog": {
-        "postTitle": "Post incident",
-        "editTitle": "Edit incident",
-        "description": "Markdown is supported: paragraphs, **bold**, _italics_, `code`, links and lists.",
-        "title": "Title",
-        "details": "Details",
-        "style": "Style",
+      "resolvedAt": " · resolved {time}",
+      "openedAt": "Opened {time}",
+      "rename": "Rename",
+      "renamed": "Incident renamed",
+      "saveFailed": "Could not save incident",
+      "timeline": "Timeline",
+      "showTimeline": "Show timeline ({count})",
+      "hideTimeline": "Hide timeline",
+      "edited": "edited",
+      "editedTitle": "Edited {time}",
+      "editUpdate": "Edit update text",
+      "saveUpdate": "Save",
+      "cancel": "Cancel",
+      "updateEdited": "Update edited",
+      "noMessage": "No message.",
+      "composer": {
+        "title": "Post update",
+        "status": "Status",
+        "message": "Message",
+        "messagePlaceholder": "What changed? Markdown is supported.",
+        "post": "Post update",
+        "posting": "Posting…",
+        "posted": "Update posted",
+        "failed": "Could not post update",
+        "resolveHint": "Resolving resets every affected component to operational."
+      },
+      "components": {
+        "title": "Affected components",
+        "hint": "Components you leave unchanged keep their current impact.",
+        "add": "Add component",
+        "addPlaceholder": "Add a component…",
+        "none": "Add monitors to this page's groups to mark them as affected.",
+        "remove": "Remove {name}",
+        "unknown": "Monitor #{id}",
+        "overallImpact": "Impact",
+        "overallImpactHint": "No component selected: this impact applies to the whole page."
+      },
+      "newDialog": {
+        "title": "New incident",
+        "description": "Opens an incident with its first update. Markdown is supported: paragraphs, **bold**, _italics_, `code`, links and lists.",
+        "titleLabel": "Title",
         "pinToTop": "Pin to top",
         "cancel": "Cancel",
-        "post": "Post",
-        "save": "Save",
+        "submit": "Open incident",
         "saving": "Saving…"
+      },
+      "renameDialog": {
+        "title": "Rename incident",
+        "titleLabel": "Title",
+        "cancel": "Cancel",
+        "save": "Save"
       }
     },
     "domains": {
@@ -1110,6 +1135,31 @@
         "cname": "Create a <code>CNAME</code> record for the hostname pointing at <host></host>.",
         "addHere": "Add the hostname here, save, and make sure the page is published.",
         "certificate": "Your reverse proxy must obtain a certificate for the hostname (Caddy on-demand TLS is documented in <code>docs/Status-Pages.md</code>)."
+      }
+    },
+    "public": {
+      "incidents": {
+        "status": {
+          "investigating": "Investigating",
+          "identified": "Identified",
+          "monitoring": "Monitoring",
+          "resolved": "Resolved"
+        },
+        "impact": {
+          "operational": "Operational",
+          "degraded_performance": "Degraded performance",
+          "partial_outage": "Partial outage",
+          "major_outage": "Major outage"
+        },
+        "feedTitle": "[{status}] {title}",
+        "affected": "Affected: {components}",
+        "affectedLabel": "Affected components",
+        "componentImpact": "{name} ({impact})",
+        "latestUpdate": "Latest update",
+        "showTimeline": "Show all {count, plural, one {# update} other {# updates}}",
+        "timelineLabel": "Updates for {title}",
+        "edited": "edited",
+        "editedAt": "Edited {time}"
       }
     }
   },

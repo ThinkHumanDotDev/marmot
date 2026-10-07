@@ -17,6 +17,7 @@ import { z } from 'zod'
 
 import type { OrgId } from '@/access/permissions'
 import { MARMOT_EXPORT_FORMAT, MARMOT_EXPORT_VERSION } from '@/lib/import-export'
+import { incidentTimeline } from '@/lib/incident-timeline'
 import {
   defaultMonitorValues,
   monitorToFormValues,
@@ -141,9 +142,17 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
           row.monitor !== null,
       ),
   })),
+  // The update timeline is not exported yet: an incident travels as its latest message and its
+  // impact as the legacy style, which the importer turns back into a single update.
   incidents: incidents.map((incident) => ({
     title: incident.title,
-    content: incident.content ?? null,
+    content:
+      incidentTimeline(incident)
+        .updates.map((update) => update.message)
+        .filter(Boolean)
+        .at(-1) ??
+      incident.content ??
+      null,
     style: incident.style ?? 'info',
     pinned: incident.pinned ?? true,
     active: incident.active ?? true,
