@@ -20,6 +20,7 @@ import { StatDaily } from './StatDaily'
 import { StatHourly } from './StatHourly'
 import { StatMinutely } from './StatMinutely'
 import { StatusPages } from './StatusPages'
+import { StatusPageViewers } from './StatusPageViewers'
 import { Tags } from './Tags'
 import { Users } from './Users'
 
@@ -46,6 +47,7 @@ export const collections: CollectionConfig[] = [
   StatHourly,
   StatDaily,
   StatusPages,
+  StatusPageViewers,
   Incidents,
   Maintenance,
   ApiKeys,

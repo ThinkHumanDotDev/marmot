@@ -91,7 +91,7 @@ export async function serveBadge(
 
   const params = badgeParamsFromSearch(new URL(request.url).searchParams)
   const svg = renderBadge(buildBadge(type, data, params))
-  // Badges served through a password-protected status page must not land in shared caches.
+  // Badges served through a protected status page must not land in shared caches.
   const headers =
     access === 'status-page'
       ? { ...BADGE_HEADERS, 'Cache-Control': 'private, no-store' }

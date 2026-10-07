@@ -83,6 +83,8 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'access',
   // Write-only; hashed by the collection hook (`applyAccessPassword`).
   'password',
+  'allowedEmailDomains',
+  'allowedIpRanges',
   'searchEngineIndex',
   'showTags',
   'showCertificateExpiry',

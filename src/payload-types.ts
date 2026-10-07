@@ -85,6 +85,7 @@ export interface Config {
     'stat-hourly': StatHourly;
     'stat-daily': StatDaily;
     'status-pages': StatusPage;
+    'status-page-viewers': StatusPageViewer;
     incidents: Incident;
     maintenance: Maintenance;
     'api-keys': ApiKey;
@@ -114,6 +115,7 @@ export interface Config {
     'stat-hourly': StatHourlySelect<false> | StatHourlySelect<true>;
     'stat-daily': StatDailySelect<false> | StatDailySelect<true>;
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
+    'status-page-viewers': StatusPageViewersSelect<false> | StatusPageViewersSelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
     maintenance: MaintenanceSelect<false> | MaintenanceSelect<true>;
     'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
@@ -699,9 +701,22 @@ export interface StatusPage {
   theme?: ('auto' | 'light' | 'dark') | null;
   language?: ('auto' | 'en') | null;
   published?: boolean | null;
-  access?: ('public' | 'password') | null;
+  access?: ('public' | 'password' | 'email-domain' | 'ip-allowlist') | null;
   password?: string | null;
   passwordHash?: string | null;
+  allowedEmailDomains?:
+    | {
+        domain: string;
+        id?: string | null;
+      }[]
+    | null;
+  allowedIpRanges?:
+    | {
+        cidr: string;
+        label?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   searchEngineIndex?: boolean | null;
   showTags?: boolean | null;
   showCertificateExpiry?: boolean | null;
@@ -730,6 +745,20 @@ export interface StatusPage {
         id?: string | null;
       }[]
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "status-page-viewers".
+ */
+export interface StatusPageViewer {
+  id: number;
+  organization: number | Organization;
+  page: number | StatusPage;
+  email: string;
+  status: 'active' | 'revoked';
+  lastSeenAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -955,6 +984,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'status-pages';
         value: number | StatusPage;
+      } | null)
+    | ({
+        relationTo: 'status-page-viewers';
+        value: number | StatusPageViewer;
       } | null)
     | ({
         relationTo: 'incidents';
@@ -1437,6 +1470,19 @@ export interface StatusPagesSelect<T extends boolean = true> {
   access?: T;
   password?: T;
   passwordHash?: T;
+  allowedEmailDomains?:
+    | T
+    | {
+        domain?: T;
+        id?: T;
+      };
+  allowedIpRanges?:
+    | T
+    | {
+        cidr?: T;
+        label?: T;
+        id?: T;
+      };
   searchEngineIndex?: T;
   showTags?: T;
   showCertificateExpiry?: T;
@@ -1465,6 +1511,19 @@ export interface StatusPagesSelect<T extends boolean = true> {
             };
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "status-page-viewers_select".
+ */
+export interface StatusPageViewersSelect<T extends boolean = true> {
+  organization?: T;
+  page?: T;
+  email?: T;
+  status?: T;
+  lastSeenAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

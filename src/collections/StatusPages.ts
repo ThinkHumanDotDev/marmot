@@ -2,6 +2,7 @@ import {
   ValidationError,
   type Access,
   type CollectionBeforeChangeHook,
+  type CollectionBeforeDeleteHook,
   type CollectionBeforeValidateHook,
   type CollectionConfig,
   type Where,
@@ -15,6 +16,7 @@ import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { STATUS_PAGE_ACCESS_MODES } from '@/lib/status-page-access'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 import { applyAccessPassword } from '@/server/status-pages/access-password'
+import { applyAccessRestrictions } from '@/server/status-pages/access-restrictions'
 
 import type { StatusPage } from '@/payload-types'
 
@@ -53,11 +55,12 @@ export const readStatusPages: Access = ({ req }) => {
   const user = req.user as UserLike | null | undefined
   if (user && isSuperadmin(user)) return true
 
-  // Password-protected pages are only served through the public endpoints, which check access.
+  // Protected pages (any access mode but `public`) are only served through the public endpoints,
+  // which check access.
   const published: Where = {
     and: [
       { published: { equals: true } },
-      { or: [{ access: { not_equals: 'password' } }, { access: { exists: false } }] },
+      { or: [{ access: { equals: 'public' } }, { access: { exists: false } }] },
     ],
   }
   if (!user) return published
@@ -167,6 +170,20 @@ const validateReferences: CollectionBeforeChangeHook<StatusPage> = async ({
   return data
 }
 
+/**
+ * Visitor records (`status-page-viewers`) reference the page with a NOT NULL foreign key on
+ * Postgres, so they go before the page does.
+ */
+const removeViewers: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  await req.payload.delete({
+    collection: 'status-page-viewers',
+    where: { page: { equals: id } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
+}
+
 export const StatusPages: CollectionConfig = {
   slug: 'status-pages',
   admin: {
@@ -186,8 +203,10 @@ export const StatusPages: CollectionConfig = {
     beforeChange: [
       validateReferences,
       applyAccessPassword,
+      applyAccessRestrictions,
       enforceEntitlementOnCreate('statusPages'),
     ],
+    beforeDelete: [removeViewers],
   },
   indexes: [{ fields: ['organization', 'published'] }],
   fields: [
@@ -273,6 +292,31 @@ export const StatusPages: CollectionConfig = {
       type: 'text',
       access: { read: () => false, create: () => false, update: () => false },
       admin: { hidden: true },
+    },
+    {
+      // `email-domain` access: visitors with an address at one of these domains get a magic link.
+      name: 'allowedEmailDomains',
+      type: 'array',
+      admin: {
+        position: 'sidebar',
+        condition: (data) => data?.access === 'email-domain',
+        description: adminT('marmot:statusPages:allowedEmailDomainsDescription'),
+      },
+      fields: [{ name: 'domain', type: 'text', required: true }],
+    },
+    {
+      // `ip-allowlist` access: IPv4/IPv6 CIDR ranges (client address via the `trustProxy` setting).
+      name: 'allowedIpRanges',
+      type: 'array',
+      admin: {
+        position: 'sidebar',
+        condition: (data) => data?.access === 'ip-allowlist',
+        description: adminT('marmot:statusPages:allowedIpRangesDescription'),
+      },
+      fields: [
+        { name: 'cidr', type: 'text', required: true },
+        { name: 'label', type: 'text' },
+      ],
     },
     {
       type: 'row',
