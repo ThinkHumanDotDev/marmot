@@ -776,6 +776,7 @@ export interface StatusPage {
   showValues?: boolean | null;
   autoRefreshInterval?: number | null;
   maintenanceVisibilityHours?: number | null;
+  pastIncidentsDays?: number | null;
   footerText?: string | null;
   customCSS?: string | null;
   googleAnalyticsId?: string | null;
@@ -830,6 +831,7 @@ export interface Incident {
   organization: number | Organization;
   statusPage: number | StatusPage;
   title: string;
+  publicId?: string | null;
   status?: ('investigating' | 'identified' | 'monitoring' | 'resolved') | null;
   impact?: ('operational' | 'degraded_performance' | 'partial_outage' | 'major_outage') | null;
   updates?:
@@ -943,6 +945,7 @@ export interface MaintenanceOccurrence {
   id: number;
   organization: number | Organization;
   maintenance: number | Maintenance;
+  publicId?: string | null;
   start: string;
   end?: string | null;
   state: 'scheduled' | 'in-progress' | 'verifying' | 'completed' | 'cancelled';
@@ -1644,6 +1647,7 @@ export interface StatusPagesSelect<T extends boolean = true> {
   showValues?: T;
   autoRefreshInterval?: T;
   maintenanceVisibilityHours?: T;
+  pastIncidentsDays?: T;
   footerText?: T;
   customCSS?: T;
   googleAnalyticsId?: T;
@@ -1696,6 +1700,7 @@ export interface IncidentsSelect<T extends boolean = true> {
   organization?: T;
   statusPage?: T;
   title?: T;
+  publicId?: T;
   status?: T;
   impact?: T;
   updates?:
@@ -1773,6 +1778,7 @@ export interface MaintenanceSelect<T extends boolean = true> {
 export interface MaintenanceOccurrencesSelect<T extends boolean = true> {
   organization?: T;
   maintenance?: T;
+  publicId?: T;
   start?: T;
   end?: T;
   state?: T;

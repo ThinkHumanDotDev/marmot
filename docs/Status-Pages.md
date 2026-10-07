@@ -8,7 +8,8 @@ To publish one: **Status pages → New page**, give it a title and slug, add gro
 them on the **Groups & monitors** tab, then flip **Published** in the header. Visitors see each monitor's
 current status, its last 50 heartbeats and 24h/30d uptime (unless hidden), [static components](#components)
 whose status you set through incidents, the incidents you post, running and upcoming
-[maintenance windows](Maintenance.md), and (landing in the current release) status badges. Members and above can edit pages; viewers can see
+[maintenance windows](Maintenance.md), the last days of incidents, and (landing in the current release)
+status badges and a [history page with a permalink per incident and maintenance window](#history-and-permalinks). Members and above can edit pages; viewers can see
 drafts but not change them.
 
 ## Data model
@@ -37,6 +38,7 @@ Three org-scoped collections (`src/collections/StatusPages.ts`, `src/collections
 | `showValues`                                         | Default `true`. Off hides uptime % and response times page-wide (HTML + JSON). |
 | `autoRefreshInterval`                                | Seconds between client refreshes of the public API; `0` disables.              |
 | `maintenanceVisibilityHours`                         | Hours a completed or cancelled maintenance window stays on the page (24).      |
+| `pastIncidentsDays`                                  | Days of past incidents listed by day on the page (7, max 90, `0` hides them).  |
 | `customCSS`                                          | Injected into the public page as a `<style>` tag.                              |
 | `googleAnalyticsId`                                  | `G-…` measurement id; the gtag snippet is only emitted when set.               |
 | `domains[].hostname`                                 | Custom hostnames (see below). Unique across all pages.                         |
@@ -46,6 +48,7 @@ Three org-scoped collections (`src/collections/StatusPages.ts`, `src/collections
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `statusPage`, `organization` | The organization is derived from the page in a `beforeChange` hook.                                         |
 | `title`                      | Shown on the card.                                                                                          |
+| `publicId`                   | 8 base36 characters of the [permalink](#history-and-permalinks); assigned on create, never by clients.      |
 | `updates[]`                  | The timeline: `status`, `message` (Markdown), `postedAt`, `editedAt`, `components[] { component, impact }`. |
 | `status`                     | Derived: status of the latest update (`investigating`, `identified`, `monitoring`, `resolved`).             |
 | `impact`                     | Derived: worst current component impact; set directly for incidents that name no component.                 |
@@ -193,16 +196,23 @@ All of these are anonymous and return 404 for unknown or unpublished slugs. Prot
 access (see [Access](#access)): the page's access cookie or `?pw=` (401 otherwise), or a client address
 in the IP allow-list (403 otherwise).
 
-| Route                                        | Returns                                                              |
-| -------------------------------------------- | -------------------------------------------------------------------- |
-| `GET /status/:slug`                          | Server-rendered page (OpenGraph meta, manifest link, RSS alternate). |
-| `GET /api/status-pages/:slug/public`         | JSON (below); `Cache-Control: public, max-age=30`.                   |
-| `GET /status/:slug/rss`                      | RSS 2.0: one item per incident update and monitors currently down.   |
-| `GET /status/:slug/manifest.json`            | Web app manifest.                                                    |
-| `GET /status/:slug/badge.svg`                | Overall status badge ([below](#status-badge)).                       |
-| `GET /api/status-pages/resolve-domain?host=` | `{ slug }` for a custom hostname (used by the proxy).                |
-| `GET /status/:slug/login`                    | Password form of a protected page.                                   |
-| `POST /api/status-pages/:slug/access`        | Checks the page password and sets the access cookie.                 |
+| Route                                          | Returns                                                              |
+| ---------------------------------------------- | -------------------------------------------------------------------- |
+| `GET /status/:slug`                            | Server-rendered page (OpenGraph meta, manifest link, RSS alternate). |
+| `GET /api/status-pages/:slug/public`           | JSON (below); `Cache-Control: public, max-age=30`.                   |
+| `GET /status/:slug/rss`                        | RSS 2.0: one item per incident update and monitors currently down.   |
+| `GET /status/:slug/manifest.json`              | Web app manifest.                                                    |
+| `GET /status/:slug/badge.svg`                  | Overall status badge ([below](#status-badge)).                       |
+| `GET /status/:slug/events`                     | History page ([below](#history-and-permalinks)).                     |
+| `GET /status/:slug/events/incident/:id`        | Permalink of an incident (`:id` is its `publicId`).                  |
+| `GET /status/:slug/events/maintenance/:id`     | Permalink of a maintenance window (occurrence `publicId`).           |
+| `GET /api/status-pages/:slug/events`           | History as JSON (filters as on the page).                            |
+| `GET /api/status-pages/:slug/events/:kind/:id` | One incident or maintenance window as JSON.                          |
+| `GET /status/:slug/sitemap.xml`                | Sitemap of indexable pages (404 otherwise).                          |
+| `GET /status/:slug/robots.txt`                 | `robots.txt` (served at `/robots.txt` on custom domains).            |
+| `GET /api/status-pages/resolve-domain?host=`   | `{ slug }` for a custom hostname (used by the proxy).                |
+| `GET /status/:slug/login`                      | Password form of a protected page.                                   |
+| `POST /api/status-pages/:slug/access`          | Checks the page password and sets the access cookie.                 |
 
 ```jsonc
 {
@@ -267,6 +277,7 @@ in the IP allow-list (403 otherwise).
     // active incidents, pinned first, newest first
     {
       "id": "3",
+      "publicId": "k3x9a0b1", // permalink: <page>/events/incident/k3x9a0b1
       "title": "API errors",
       "status": "identified", // investigating | identified | monitoring | resolved
       "impact": "major_outage", // operational | degraded_performance | partial_outage | major_outage
@@ -296,6 +307,7 @@ in the IP allow-list (403 otherwise).
       "style": "danger", // card colour derived from impact (pre-timeline clients)
       "pinned": true,
       "active": true,
+      "startedAt": "2026-10-05T03:00:00.000Z", // first update
       "createdAt": "…",
       "updatedAt": "…",
       "resolvedAt": null,
@@ -306,6 +318,7 @@ in the IP allow-list (403 otherwise).
     // within 7 days, then windows finished within maintenanceVisibilityHours (Maintenance.md)
     {
       "id": "41", // occurrence id
+      "publicId": "p0m4r7q2", // permalink: <page>/events/maintenance/p0m4r7q2
       "maintenanceId": "7",
       "title": "Database upgrade",
       "description": "Expect a few minutes of read-only mode.",
@@ -327,6 +340,28 @@ in the IP allow-list (403 otherwise).
           "postedAt": "…",
         },
         { "id": "…", "status": "in-progress", "message": "", "postedAt": "…" },
+      ],
+    },
+  ],
+  "pastIncidentsDays": 7,
+  "pastIncidents": [
+    // one entry per day (organization time zone), today first; quiet days have no incidents
+    {
+      "date": "2026-10-05",
+      "start": "2026-10-04T22:00:00.000Z", // when that day starts
+      "incidents": [
+        {
+          "kind": "incident",
+          "publicId": "k3x9a0b1",
+          "title": "API errors",
+          "status": "identified",
+          "impact": "major_outage", // worst impact the incident had
+          "ongoing": true,
+          "start": "2026-10-05T03:00:00.000Z",
+          "end": null, // resolution time once resolved
+          "components": [{ "id": "6702f1c4e1b2a3d4e5f60718", "name": "API" }],
+          "latest": { "status": "identified", "message": "…", "postedAt": "…" },
+        },
       ],
     },
   ],
@@ -378,6 +413,67 @@ still send `{ title, content, style, affectedComponents }`. Posting an update: `
 `{ status, message?, components?, postedAt?, impact? }`; it returns `201 { doc, update }`. Invalid statuses
 or impacts, components that are not on the page and future `postedAt` values are refused with `400`;
 viewers get `403`. The Payload REST API (`/api/incidents`) applies the same hooks.
+
+## History and permalinks
+
+Resolved incidents and finished maintenance windows leave the page but stay in its history:
+
+- **The page** lists the incidents of the last `pastIncidentsDays` days (default 7; **Settings → Past
+  incidents shown**) grouped by the day they started in the organization's time zone, with "No incidents
+  reported" on quiet days, and links to **View history**. Incident and maintenance cards link to their
+  permalink. Upcoming maintenance windows show their planned time in the visitor's time zone (the server
+  renders the organization's zone; the browser switches after loading).
+- **`/status/:slug/events`** is the history: every incident and maintenance window, newest first and
+  grouped by month, 20 per page, with filters for the type (`?type=incident|maintenance`), a component
+  (`?component=<component id>`) and a month (`?month=YYYY-MM`, organization time zone). The filters are a
+  plain `GET` form, so the page works without JavaScript. Incidents are dated by creation, maintenance
+  windows by their planned start.
+- **`/status/:slug/events/incident/:id`** and **`/status/:slug/events/maintenance/:id`** are permalinks
+  with the full update timeline, the status, start and end, the duration, the impact, the affected
+  components and a **Copy link** button. `:id` is the event's `publicId`: 8 random base36 characters
+  assigned when the incident or maintenance occurrence is created, never the database id. Documents
+  created before public ids existed get an id derived from their database id with an HMAC keyed by
+  `PAYLOAD_SECRET` (`src/server/status-pages/public-ids.ts`) until their next write stores it, so their links
+  are stable without a data migration (rotating `PAYLOAD_SECRET` before that write changes them).
+
+What is public (`src/server/status-pages/events.ts`): every incident of the page (incidents have no
+draft state), and the occurrences of maintenances that list the page under **Status pages**: running,
+completed and cancelled ones always, upcoming ones while the maintenance is active. Only running,
+completed and cancelled windows are listed in the history; upcoming ones are on the page. Unannounced
+windows that were dropped are deleted, so they never appear. Components are named only when they are
+visible on the page; a maintenance window affects the components of its monitors. Unknown ids, other
+pages' events and windows of paused maintenances answer 404.
+
+Every surface goes through the page's access check: on a [password-protected](#password-protection)
+page the HTML pages redirect to the login form, which returns to the history or permalink after signing
+in (`next`, only paths below the page are accepted), and the JSON endpoints answer 401. The RSS feed
+links each item to its incident's permalink. `statusPageEventUrl()` in `src/server/status-pages/urls.ts`
+builds the absolute permalink for emails, and maintenance events (`MaintenanceEvent.occurrence.publicId`)
+and incident events (`incident.publicId`) carry the id for subscriber notifications (#104).
+
+### Search engines and link previews
+
+All public HTML pages of a status page share one decision (`isIndexable` in
+`src/server/status-pages/seo.ts`): a page is indexed only when it is published, **Search engine indexing**
+is on and it is not access-protected. Otherwise every page, the history and every permalink is
+`noindex, nofollow`, the JSON endpoints send `X-Robots-Tag: noindex, nofollow`, `sitemap.xml` answers 404
+and `robots.txt` disallows everything. Filtered or paginated history views are `noindex, follow`.
+
+| Page        | Title                  | Description                                                                 |
+| ----------- | ---------------------- | --------------------------------------------------------------------------- |
+| Status page | `{title}`              | The page description.                                                       |
+| History     | `History · {siteName}` | `Incidents and maintenance windows of {siteName}, {dateRange}.`             |
+| Incident    | `{title} · {siteName}` | The latest update (≤ 200 characters), else `Incident on {siteName}: …`.     |
+| Maintenance | `{title} · {siteName}` | The latest update, else `Maintenance on {siteName}: {status}, {dateRange}.` |
+
+The templates are messages under `statusPages.seo` in `src/i18n/messages/en.json`, so they follow the
+page language. Every page has a canonical URL (on the custom domain when the request arrived on one),
+Open Graph (`website`, or `article` with published and modified times for permalinks) and Twitter card
+metadata with the logo as image, the RSS alternate and the favicon.
+
+`/status/:slug/sitemap.xml` (`/sitemap.xml` on a custom domain) lists the page, the history and every
+public permalink with its last modification. `/status/:slug/robots.txt` is meant for custom domains, where
+it is served as `/robots.txt` and points crawlers at the sitemap.
 
 ## Status badge
 
@@ -586,13 +682,15 @@ real state.
 ## Custom domains
 
 A page can be served at the root of its own hostnames (`domains[].hostname`). `src/proxy.ts` (the
-Next.js 16 proxy, formerly middleware) runs for `/`, `/rss`, `/manifest.json`, `/login` and `/badge.svg` only:
+Next.js 16 proxy, formerly middleware) runs for `/`, `/rss`, `/manifest.json`, `/login`, `/badge.svg`,
+`/events`, `/events/incident/:id`, `/events/maintenance/:id`, `/sitemap.xml` and `/robots.txt` only:
 
 1. It reads the visitor's host (`X-Forwarded-Host`, then `Host`) and ignores requests for Marmot's own
    hostname (`NEXT_PUBLIC_SERVER_URL`) or `localhost`.
 2. It asks `GET /api/status-pages/resolve-domain?host=<host>` on the same origin (the response is cached
    for 60 s) and, when a published page lists that host, rewrites the request to
-   `/status/<slug>[/rss|/manifest.json|/login|/badge.svg]`.
+   `/status/<slug>` followed by the same path (`/` maps to the page itself). Links on the page, the history
+   and the permalinks stay on the custom domain.
 3. Any failure (lookup error, invalid host, no match) falls through to normal routing, so the proxy can
    never take the main site down.
 
@@ -645,6 +743,14 @@ With another proxy (nginx, Traefik, Cloudflare), terminate TLS there, forward th
 `X-Forwarded-Host`) and point the hostname at the same upstream as the main site.
 
 ## Testing
+
+- `tests/int/status-page-history.int.spec.ts` — public ids (assigned, not spoofable, derived for older
+  documents), the history (merge order, type, component and month filters, pagination, what is public),
+  past incidents in the public payload, permalinks of incidents and maintenance windows, the JSON API,
+  RSS links, password protection (401, return path after login, no open redirect), sitemap and robots on
+  the main host and custom domains. `src/lib/status-page-events.test.ts`,
+  `src/server/status-pages/event-summary.test.ts` (days and months across time zones and DST) and
+  `src/proxy.test.ts` (custom domain paths) are the unit tests.
 
 - `tests/int/incident-timeline.int.spec.ts` — the investigating → identified → monitoring → resolved flow
   through the REST routes, per-component impact in the public payload and overall status, RSS items per

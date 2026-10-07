@@ -1,16 +1,22 @@
 import 'server-only'
 
 import { headers } from 'next/headers'
+import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import { cache } from 'react'
 
 import config from '@payload-config'
-import { checkStatusPageAccess, type StatusPageAccessDecision } from '@/server/status-pages/access'
+import {
+  checkStatusPageAccess,
+  isProtectedPage,
+  type StatusPageAccessDecision,
+} from '@/server/status-pages/access'
 import {
   buildPublicStatusPageData,
   findPublishedStatusPage,
   type PublicStatusPageData,
 } from '@/server/status-pages/public'
+import { statusPageBasePath } from '@/server/status-pages/urls'
 
 import type { StatusPage } from '@/payload-types'
 
@@ -44,3 +50,22 @@ export const loadPageAccess = cache(
     )
   },
 )
+
+/**
+ * The published page a visitor may see, for the history and permalink pages: 404 for unknown or
+ * unpublished slugs; visitors without access to a protected page are sent to its login form, which
+ * brings them back to `returnPath` (a path below the page, see `isEventsReturnPath`).
+ */
+export async function requireVisiblePage(
+  slug: string,
+  returnPath: string,
+): Promise<{ page: StatusPage; basePath: string; restricted: boolean }> {
+  const page = await loadPublishedPage(slug)
+  if (!page) notFound()
+  const basePath = statusPageBasePath(page, await headers())
+  const restricted = isProtectedPage(page)
+  if (restricted && !(await loadPageAccess(slug))?.allowed) {
+    redirect(`${basePath}/login?next=${encodeURIComponent(returnPath)}`)
+  }
+  return { page, basePath, restricted }
+}

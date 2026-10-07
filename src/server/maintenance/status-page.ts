@@ -23,6 +23,7 @@ import {
 } from '@/lib/maintenance-announcements'
 import type { MaintenanceStrategy } from '@/lib/validation/maintenance'
 import type { Maintenance, MaintenanceOccurrence } from '@/payload-types'
+import { publicIdOf } from '@/server/status-pages/public-ids'
 import { toOccurrenceUpdate } from './occurrences'
 import { relationId } from './serialize'
 import { resolveTimezone } from './status'
@@ -35,6 +36,8 @@ export type PublicMaintenanceStatus = 'under-maintenance' | 'scheduled' | 'compl
 export interface PublicMaintenance {
   /** Occurrence id (a maintenance can have a finished and an upcoming occurrence listed). */
   id: string
+  /** Short id of the permalink (`<page>/events/maintenance/<publicId>`). */
+  publicId: string
   maintenanceId: string
   title: string
   description: string | null
@@ -79,6 +82,37 @@ const ORDER: Record<PublicMaintenanceStatus, number> = {
   scheduled: 1,
   completed: 2,
   cancelled: 2,
+}
+
+/** Public view of one occurrence of `doc`; `timezone` is the zone the window was planned in. */
+export function toPublicMaintenance(
+  doc: Maintenance,
+  occurrence: MaintenanceOccurrence,
+  timezone: string,
+): PublicMaintenance {
+  return {
+    id: String(occurrence.id),
+    publicId: publicIdOf('maintenance-occurrences', occurrence),
+    maintenanceId: String(doc.id),
+    title: doc.title,
+    description: doc.description ?? null,
+    strategy: doc.strategy,
+    status: publicStatus(occurrence.state),
+    state: occurrence.state,
+    start: occurrence.start ?? null,
+    end: occurrence.end ?? null,
+    startedAt: occurrence.startedAt ?? null,
+    completedAt: occurrence.completedAt ?? null,
+    cancelledAt: occurrence.cancelledAt ?? null,
+    timezone,
+    updates: (occurrence.updates ?? []).map(toOccurrenceUpdate).reverse(),
+  }
+}
+
+/** The zone a maintenance's windows are planned in (its own, else the organization's). */
+export async function maintenanceTimezone(payload: Payload, doc: Maintenance): Promise<string> {
+  const serverTimezone = await getOrganizationTimezone(payload, relationId(doc.organization))
+  return resolveTimezone(doc.timezone, serverTimezone)
 }
 
 /** Maintenance entries of a status page: running first, then upcoming, then recently finished. */
@@ -139,8 +173,7 @@ export async function getActiveMaintenanceForStatusPage(
     const key = String(doc.id)
     const cached = zones.get(key)
     if (cached) return cached
-    const serverTimezone = await getOrganizationTimezone(payload, relationId(doc.organization))
-    const zone = resolveTimezone(doc.timezone, serverTimezone)
+    const zone = await maintenanceTimezone(payload, doc)
     zones.set(key, zone)
     return zone
   }
@@ -164,22 +197,7 @@ export async function getActiveMaintenanceForStatusPage(
       if (ms(occurrence.start) > horizon) continue
       upcomingListed.add(maintenanceId)
     }
-    items.push({
-      id: String(occurrence.id),
-      maintenanceId,
-      title: doc.title,
-      description: doc.description ?? null,
-      strategy: doc.strategy,
-      status: publicStatus(occurrence.state),
-      state: occurrence.state,
-      start: occurrence.start ?? null,
-      end: occurrence.end ?? null,
-      startedAt: occurrence.startedAt ?? null,
-      completedAt: occurrence.completedAt ?? null,
-      cancelledAt: occurrence.cancelledAt ?? null,
-      timezone: await zoneOf(doc),
-      updates: (occurrence.updates ?? []).map(toOccurrenceUpdate).reverse(),
-    })
+    items.push(toPublicMaintenance(doc, occurrence, await zoneOf(doc)))
   }
 
   const finishedAt = (item: PublicMaintenance) => ms(item.completedAt ?? item.cancelledAt) || 0
