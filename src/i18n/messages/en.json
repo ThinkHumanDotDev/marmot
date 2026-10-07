@@ -203,7 +203,20 @@
       "pushUrl": "Push URL",
       "pushHint": "Call this URL at least every {seconds} seconds. Optional query parameters:<code> status</code> (up|down), <code>msg</code>, <code>ping</code>.",
       "description": "Description",
-      "noDescription": "No description yet. Add one from Edit."
+      "noDescription": "No description yet. Add one from Edit.",
+      "assertions": {
+        "title": "Assertions",
+        "description": "Result of each check in the last run.",
+        "check": "Check",
+        "condition": "Condition",
+        "actual": "Actual",
+        "result": "Result",
+        "passed": "Passed",
+        "failed": "Failed",
+        "none": "(none)",
+        "inRange": "in",
+        "legacy": "monitor setting"
+      }
     },
     "new": {
       "pageTitle": "New monitor",
@@ -473,9 +486,62 @@
       "nodeRequired": "Add at least one node URL",
       "nodeUrl": "Nodes are management API URLs such as https://node1:15672",
       "gameRequired": "Game is required",
-      "channelsUnique": "Each channel may only be added once"
+      "channelsUnique": "Each channel may only be added once",
+      "assertionRow": "Assertion {row}: {message}",
+      "assertionKind": "This kind of assertion does not apply to this monitor type",
+      "assertionComparator": "This comparison does not apply to this kind of assertion",
+      "assertionTooMany": "At most {max} assertions of each kind ({kind})",
+      "assertionTargetRequired": "Enter the header name or expression to check",
+      "assertionHeaderName": "Enter a valid header name, e.g. content-type",
+      "assertionRecordType": "Use a record type such as A, AAAA, CNAME, MX, NS or TXT",
+      "assertionValueRequired": "Enter the expected value",
+      "assertionStatusCode": "Enter a status code between 100 and 599",
+      "assertionNumber": "Enter a number",
+      "assertionRegex": "Enter a valid regular expression of at most {max} characters",
+      "assertionTooLong": "At most {max} characters"
     },
     "form": {
+      "assertions": {
+        "title": "Assertions",
+        "description": "Extra checks on the response. All must pass. Status assertions replace the accepted status codes.",
+        "descriptionDns": "Checks on the records. All must pass. Equals, contains and matches pass when any record matches; their negations when none does.",
+        "empty": "No assertions yet.",
+        "add": "Add assertion",
+        "remove": "Remove assertion {index}",
+        "limit": "Up to {max} assertions of each kind.",
+        "kind": "Check",
+        "comparator": "Condition",
+        "value": "Expected value",
+        "monitorRecordType": "Monitor record type ({type})",
+        "kinds": {
+          "status": "Status code",
+          "header": "Header",
+          "textBody": "Body text",
+          "jsonBody": "JSON body",
+          "dnsRecord": "DNS record"
+        },
+        "targets": {
+          "status": "Target",
+          "header": "Header name",
+          "textBody": "Target",
+          "jsonBody": "JSONata / JSONPath",
+          "dnsRecord": "Record type"
+        },
+        "comparators": {
+          "eq": "equals",
+          "not_eq": "does not equal",
+          "gt": "greater than",
+          "gte": "at least",
+          "lt": "less than",
+          "lte": "at most",
+          "contains": "contains",
+          "not_contains": "does not contain",
+          "empty": "is empty",
+          "not_empty": "is not empty",
+          "matches": "matches regex",
+          "not_matches": "does not match regex"
+        }
+      },
       "onePerLine": "One per line.",
       "choose": "Choose…",
       "none": "None",

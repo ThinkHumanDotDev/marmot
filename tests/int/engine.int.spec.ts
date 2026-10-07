@@ -442,6 +442,128 @@ describe('check pipeline (processCheckJob with a fake job)', () => {
     })
   })
 
+  it('assertions: status, header and body assertions decide the beat and are stored', async () => {
+    const passing = await createMonitor({
+      name: 'assert-pass',
+      type: 'http',
+      url: `http://127.0.0.1:${httpPort}/json`,
+      assertions: [
+        { kind: 'status', comparator: 'eq', value: '200' },
+        { kind: 'header', target: 'Content-Type', comparator: 'contains', value: 'json' },
+        { kind: 'textBody', comparator: 'not_contains', value: 'error' },
+        { kind: 'jsonBody', target: 'data.count', comparator: 'gte', value: '3' },
+      ],
+    })
+    const up = await run(passing.id)
+    expect(up.heartbeat).toMatchObject({ status: 'up', msg: '200 - OK, 4 assertions passed' })
+    const stored = up.heartbeat?.assertions as { kind: string; passed: boolean }[]
+    expect(stored.map((r) => [r.kind, r.passed])).toEqual([
+      ['status', true],
+      ['header', true],
+      ['textBody', true],
+      ['jsonBody', true],
+    ])
+
+    const failing = await createMonitor({
+      name: 'assert-fail',
+      type: 'http',
+      url: `http://127.0.0.1:${httpPort}/`,
+      assertions: [
+        { kind: 'textBody', comparator: 'contains', value: 'marmot' },
+        { kind: 'header', target: 'content-type', comparator: 'contains', value: 'json' },
+        { kind: 'jsonBody', target: 'status', comparator: 'eq', value: 'ok' },
+      ],
+    })
+    const down = await run(failing.id)
+    expect(down.heartbeat).toMatchObject({
+      status: 'down',
+      msg: 'header content-type: expected contains "json", got "text/html"',
+    })
+    // Every assertion is evaluated; the legacy status row comes first.
+    expect(
+      (down.heartbeat?.assertions as { kind: string; passed: boolean; legacy?: boolean }[]).map(
+        (r) => [r.kind, r.passed, r.legacy ?? false],
+      ),
+    ).toEqual([
+      ['status', true, true],
+      ['textBody', true, false],
+      ['header', false, false],
+      ['jsonBody', false, false],
+    ])
+  })
+
+  it('assertions: status assertions replace the accepted status codes', async () => {
+    const monitor = await createMonitor({
+      name: 'assert-status-500',
+      type: 'http',
+      url: `http://127.0.0.1:${httpPort}/missing`,
+      assertions: [{ kind: 'status', comparator: 'gte', value: '500' }],
+    })
+    expect((await run(monitor.id)).heartbeat).toMatchObject({
+      status: 'up',
+      msg: '500 - Internal Server Error, 1 assertion passed',
+    })
+    const strict = await createMonitor({
+      name: 'assert-status-eq',
+      type: 'http',
+      url: `http://127.0.0.1:${httpPort}/`,
+      acceptedStatusCodes: ['200-299'],
+      assertions: [{ kind: 'status', comparator: 'eq', value: '204' }],
+    })
+    expect((await run(strict.id)).heartbeat).toMatchObject({
+      status: 'down',
+      msg: 'status code: expected == 204, got 200',
+    })
+  })
+
+  it('assertions: keyword monitors keep their message and add assertions', async () => {
+    const monitor = await createMonitor({
+      name: 'kw-assert',
+      type: 'keyword',
+      url: `http://127.0.0.1:${httpPort}/`,
+      keyword: 'marmot',
+      assertions: [{ kind: 'textBody', comparator: 'not_contains', value: 'marmot' }],
+    })
+    const result = await run(monitor.id)
+    expect(result.heartbeat).toMatchObject({
+      status: 'down',
+      msg: 'body: expected not contains "marmot", got "<html><body>hello marmot</body></html>"',
+    })
+    expect(
+      (result.heartbeat?.assertions as { kind: string; legacy?: boolean }[]).map((r) => [
+        r.kind,
+        r.legacy ?? false,
+      ]),
+    ).toEqual([
+      ['status', true],
+      ['textBody', true],
+      ['textBody', false],
+    ])
+  })
+
+  it('assertions: rejected on save when they do not fit the type', async () => {
+    await expect(
+      createMonitor({
+        name: 'assert-invalid',
+        type: 'http',
+        url: `http://127.0.0.1:${httpPort}/`,
+        assertions: [{ kind: 'dnsRecord', comparator: 'eq', value: '1.2.3.4' }],
+      }),
+    ).rejects.toThrow(/assertion/i)
+    await expect(
+      createMonitor({
+        name: 'assert-too-many',
+        type: 'http',
+        url: `http://127.0.0.1:${httpPort}/`,
+        assertions: Array.from({ length: 11 }, () => ({
+          kind: 'textBody' as const,
+          comparator: 'not_contains' as const,
+          value: 'x',
+        })),
+      }),
+    ).rejects.toThrow(/assertion/i)
+  })
+
   it('port: open and closed TCP ports', async () => {
     const open = await createMonitor({
       name: 'port-open',
@@ -480,6 +602,41 @@ describe('check pipeline (processCheckJob with a fake job)', () => {
     })
     const result = await run(monitor.id)
     expect(result.heartbeat).toMatchObject({ status: 'up', msg: 'Records: 127.0.0.1' })
+  })
+
+  it('dns: record assertions', async () => {
+    const passing = await createMonitor({
+      name: 'dns-assert-pass',
+      type: 'dns',
+      hostname: 'marmot.test',
+      dnsResolveServer: '127.0.0.1',
+      dnsResolveType: 'A',
+      port: dnsPort,
+      assertions: [
+        { kind: 'dnsRecord', comparator: 'eq', value: '127.0.0.1' },
+        { kind: 'dnsRecord', target: 'A', comparator: 'not_contains', value: '10.' },
+      ],
+    })
+    const up = await run(passing.id)
+    expect(up.heartbeat).toMatchObject({
+      status: 'up',
+      msg: 'Records: 127.0.0.1, 2 assertions passed',
+    })
+    expect(up.heartbeat?.assertions).toHaveLength(2)
+
+    const failing = await createMonitor({
+      name: 'dns-assert-fail',
+      type: 'dns',
+      hostname: 'marmot.test',
+      dnsResolveServer: '127.0.0.1',
+      dnsResolveType: 'A',
+      port: dnsPort,
+      assertions: [{ kind: 'dnsRecord', comparator: 'eq', value: '192.0.2.1' }],
+    })
+    expect((await run(failing.id)).heartbeat).toMatchObject({
+      status: 'down',
+      msg: 'A record: expected == "192.0.2.1", got "127.0.0.1"',
+    })
   })
 
   it('ping: reports a clear error when the binary is missing, or succeeds against localhost', async () => {

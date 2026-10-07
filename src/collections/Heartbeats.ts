@@ -62,6 +62,11 @@ export const Heartbeats: CollectionConfig = {
       index: true,
       admin: { description: adminT('marmot:heartbeats:importantDescription') },
     },
+    {
+      name: 'assertions',
+      type: 'json',
+      admin: { readOnly: true, description: adminT('marmot:heartbeats:assertionsDescription') },
+    },
     { name: 'retries', type: 'number', defaultValue: 0 },
     { name: 'downCount', type: 'number', defaultValue: 0 },
     {

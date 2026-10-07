@@ -88,6 +88,7 @@ export async function runCheck(
       ping: ctx.heartbeat.ping ?? null,
       duration: typeof ctx.heartbeat.duration === 'number' ? ctx.heartbeat.duration : null,
       tlsInfo: ctx.tlsInfo ?? null,
+      assertions: ctx.assertions ?? null,
     }
   }
 
@@ -106,6 +107,7 @@ export async function runCheck(
     ping: ctx.heartbeat.ping ?? Date.now() - startedAt,
     duration: typeof ctx.heartbeat.duration === 'number' ? ctx.heartbeat.duration : null,
     tlsInfo: ctx.tlsInfo ?? null,
+    assertions: ctx.assertions ?? null,
   }
 }
 
@@ -213,6 +215,11 @@ export async function recordBeat(
       retries: next.retries,
       downCount: next.downCount,
       time: now.toISOString(),
+      // Per-assertion results for the monitor page (and run-on-demand results); omitted when the
+      // type has none, so plain beats stay small.
+      ...(result.assertions?.length
+        ? { assertions: result.assertions as unknown as Heartbeat['assertions'] }
+        : {}),
     },
   })) as Heartbeat
 

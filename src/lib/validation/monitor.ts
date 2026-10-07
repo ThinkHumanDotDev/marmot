@@ -10,6 +10,17 @@ import { z } from 'zod'
 import type { Messages } from '@/i18n/messages'
 import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
 
+import {
+  ASSERTION_COMPARATORS,
+  ASSERTION_KINDS,
+  assertionProblems,
+  MAX_ASSERTION_TARGET_LENGTH,
+  MAX_ASSERTION_VALUE_LENGTH,
+  MAX_ASSERTIONS_PER_KIND,
+  normalizeAssertions,
+  supportsAssertions,
+} from './assertions'
+
 /** Key of a validation message under `monitors.validation` in the catalogues. */
 export type MonitorValidationKey = keyof Messages['monitors']['validation']
 
@@ -393,6 +404,18 @@ const tagRow = z.object({
   value: optionalText(200),
 })
 
+/** `monitors.assertions` row (see `./assertions.ts`); the value is kept verbatim (no trimming). */
+const assertionRow = z.object({
+  kind: z.enum(ASSERTION_KINDS),
+  target: optionalText(MAX_ASSERTION_TARGET_LENGTH),
+  comparator: z.enum(ASSERTION_COMPARATORS),
+  value: z
+    .string()
+    .max(MAX_ASSERTION_VALUE_LENGTH)
+    .nullish()
+    .transform((v) => (v ? v : null)),
+})
+
 const nonNegativeInt = (max = 1_000_000) => z.number().int().min(0).max(max)
 
 /** List of non-empty strings (brokers, nodes); blanks are dropped. */
@@ -469,6 +492,12 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       jsonPath: optionalText(2000),
       jsonPathOperator: z.enum(JSON_PATH_OPERATORS).default('=='),
       expectedValue: optionalText(2000),
+
+      // Assertions (HTTP family and DNS): all must pass
+      assertions: z
+        .array(assertionRow)
+        .max(ASSERTION_KINDS.length * MAX_ASSERTIONS_PER_KIND)
+        .default([]),
 
       // Authentication
       authMethod: z.enum(AUTH_METHODS).default('none'),
@@ -634,6 +663,19 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
           issue('authMethod', message('wsAuthMethod'))
         } else {
           checkAuth()
+        }
+      }
+
+      if (supportsAssertions(type)) {
+        for (const problem of assertionProblems(values.assertions, type)) {
+          ctx.addIssue({
+            code: 'custom',
+            path:
+              problem.index === null
+                ? ['assertions']
+                : ['assertions', problem.index, problem.field ?? 'kind'],
+            message: message(problem.key, problem.values),
+          })
         }
       }
 
@@ -803,6 +845,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     jsonPath: null,
     jsonPathOperator: '==',
     expectedValue: null,
+    assertions: [],
     authMethod: 'none',
     basicAuthUser: null,
     basicAuthPass: null,
@@ -906,9 +949,13 @@ export function monitorToFormValues(doc: MonitorLike): MonitorFormValues {
       })
     : []
 
-  const out: Record<string, unknown> = { ...base, ...relations, tags, notifications }
+  // Stored rows carry Payload's row `id`; the form and exports use the bare shape.
+  const assertions = normalizeAssertions(doc.assertions)
+
+  const out: Record<string, unknown> = { ...base, ...relations, tags, notifications, assertions }
   for (const key of Object.keys(base) as (keyof MonitorFormValues)[]) {
-    if (key in relations || key === 'tags' || key === 'notifications') continue
+    if (key in relations || key === 'tags' || key === 'notifications' || key === 'assertions')
+      continue
     const value = doc[key]
     if (value !== undefined && value !== null) out[key] = value
   }
