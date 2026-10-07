@@ -46,8 +46,8 @@ export default defineConfig([
     ignores: ['src/app/(payload)/**', 'src/components/ui/**', '**/*.test.tsx'],
     plugins: { marmot: { rules: { 'no-literal-jsx-text': noLiteralJsxText } } },
     rules: {
-      // Product name and key caps are the same in every language.
-      'marmot/no-literal-jsx-text': ['error', { allow: ['Marmot', 'G'] }],
+      // Product name, key caps and the font specimen are the same in every language.
+      'marmot/no-literal-jsx-text': ['error', { allow: ['Marmot', 'G', 'Aa'] }],
     },
   },
 ])

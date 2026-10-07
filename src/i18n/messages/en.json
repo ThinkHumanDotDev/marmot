@@ -2911,6 +2911,7 @@
       "draftNotice": "Visitors get a 404 until the page is published. Signed-in members can preview it any time.",
       "tabs": {
         "settings": "Settings",
+        "theme": "Theme",
         "groups": "Groups & monitors",
         "incidents": "Incidents",
         "domains": "Domains"
@@ -2929,27 +2930,11 @@
       "footerTextPlaceholder": "Contact support@example.com for help. Markdown links are supported.",
       "appearance": {
         "title": "Appearance",
-        "description": "Theme, refresh rate and custom styling."
-      },
-      "theme": "Theme",
-      "themes": {
-        "auto": "Auto (follow visitor)",
-        "light": "Light",
-        "dark": "Dark"
+        "description": "Language, refresh rate and custom styling."
       },
       "autoRefresh": "Auto refresh (seconds, 0 = off)",
       "customCss": "Custom CSS",
       "googleAnalytics": "Google Analytics measurement ID",
-      "logo": {
-        "title": "Logo",
-        "upload": "Upload",
-        "uploading": "Uploading…",
-        "replace": "Replace",
-        "remove": "Remove",
-        "updated": "Logo updated",
-        "uploadFailed": "Upload failed",
-        "removeFailed": "Could not remove logo"
-      },
       "visibility": {
         "title": "Visibility",
         "searchEngineIndex": "Search engine indexing",
@@ -3098,6 +3083,132 @@
         "cname": "Create a <code>CNAME</code> record for the hostname pointing at <host></host>.",
         "addHere": "Add the hostname here, save, and make sure the page is published.",
         "certificate": "Your reverse proxy must obtain a certificate for the hostname (Caddy on-demand TLS is documented in <code>docs/Status-Pages.md</code>)."
+      }
+    },
+    "theme": {
+      "mode": {
+        "title": "Colour mode",
+        "description": "Auto lets visitors switch between their system setting, light and dark. Light and dark force that mode and hide the switch.",
+        "label": "Mode",
+        "auto": "Auto (visitors can switch)",
+        "light": "Always light",
+        "dark": "Always dark"
+      },
+      "preset": {
+        "title": "Preset",
+        "description": "A palette for both light and dark mode. Your overrides below take precedence.",
+        "selected": "Selected"
+      },
+      "presets": {
+        "default": "Marmot",
+        "high-contrast": "High contrast",
+        "ocean": "Ocean",
+        "forest": "Forest",
+        "graphite": "Graphite"
+      },
+      "overrides": {
+        "title": "Colour overrides",
+        "description": "Override single colours per mode. Leave a field empty to use the preset. Accepts hex (#rrggbb), rgb(), hsl() and oklch().",
+        "light": "Light mode",
+        "dark": "Dark mode",
+        "groups": {
+          "surfaces": "Surfaces and text",
+          "status": "Status",
+          "charts": "Charts"
+        },
+        "picker": "Pick {token} colour",
+        "reset": "Use the preset {token} colour",
+        "clear": "Clear {mode} overrides",
+        "invalid": "Not a valid colour. Use #rrggbb, rgb(), hsl() or oklch().",
+        "count": "{count, plural, =0 {No overrides} one {# override} other {# overrides}}"
+      },
+      "tokens": {
+        "background": "Background",
+        "foreground": "Text",
+        "card": "Cards",
+        "primary": "Primary",
+        "primaryForeground": "Text on primary",
+        "muted": "Muted surfaces",
+        "mutedForeground": "Muted text",
+        "border": "Borders",
+        "success": "Operational",
+        "warning": "Degraded",
+        "info": "Maintenance",
+        "destructive": "Down",
+        "chart1": "Chart 1",
+        "chart2": "Chart 2",
+        "chart3": "Chart 3",
+        "chart4": "Chart 4",
+        "chart5": "Chart 5"
+      },
+      "radius": {
+        "label": "Corner radius",
+        "hint": "0, up to 2rem or up to 32px. Empty uses the preset ({value}).",
+        "invalid": "Use 0, up to 2rem or up to 32px."
+      },
+      "contrast": {
+        "title": "Contrast",
+        "ok": "Text colours meet WCAG AA (4.5:1) in {mode}.",
+        "low": "{pair}: {ratio}:1, below the recommended {min}:1.",
+        "pairs": {
+          "text": "Text on background",
+          "card": "Text on cards",
+          "muted": "Muted text on background",
+          "primary": "Text on primary",
+          "status": "{status} on background"
+        }
+      },
+      "banner": {
+        "title": "Banner headline",
+        "description": "Replaces the automatic overall-status text, for example “Scheduled upgrade tonight”. The banner colour still follows your monitors.",
+        "label": "Custom headline",
+        "placeholder": "Leave empty for the automatic text"
+      },
+      "branding": {
+        "title": "Logos and favicon",
+        "description": "The page title is always shown as text next to the logo.",
+        "logo": "Logo",
+        "logoHint": "Shown in light mode, and in dark mode when there is no dark logo. PNG, JPEG, GIF, WebP, AVIF or SVG, up to 2 MB.",
+        "logoDark": "Dark mode logo",
+        "logoDarkHint": "Optional. Shown instead of the logo in dark mode. Same formats, up to 2 MB.",
+        "favicon": "Favicon",
+        "faviconHint": "PNG, ICO or SVG, up to 100 KB. Without one the logo is used. SVGs are sanitised.",
+        "upload": "Upload",
+        "uploading": "Uploading…",
+        "replace": "Replace",
+        "remove": "Remove",
+        "updated": "{asset} updated",
+        "removed": "{asset} removed",
+        "uploadFailed": "Upload failed",
+        "removeFailed": "Could not remove",
+        "tooLarge": "{asset} must be {size} or smaller."
+      },
+      "preview": {
+        "title": "Preview",
+        "description": "Shows unsaved changes. The public page updates when you save.",
+        "mode": "Preview mode",
+        "light": "Light",
+        "dark": "Dark",
+        "sampleGroup": "Core services",
+        "sampleMonitors": {
+          "website": "Website",
+          "api": "API",
+          "database": "Database"
+        },
+        "sampleIncident": "Elevated error rates",
+        "sampleIncidentBody": "We are investigating increased errors on the API."
+      },
+      "save": "Save theme",
+      "saving": "Saving…",
+      "saved": "Theme saved",
+      "saveFailed": "Could not save theme",
+      "reset": "Discard changes",
+      "fixErrors": "Fix the highlighted values first.",
+      "toggle": {
+        "label": "Colour theme",
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
       }
     }
   },
@@ -3601,6 +3712,10 @@
     "incidentComponentsInvalid": "Each affected component must be listed once and belong to the status page.",
     "httpUrlRequired": "Enter an http(s) URL.",
     "contactUrlInvalid": "Enter an http(s) URL or a mailto: address.",
-    "componentMonitorRequired": "Pick a monitor for this component."
+    "componentMonitorRequired": "Pick a monitor for this component.",
+    "assetTooLarge": "{kind, select, logoDark {Dark logo} favicon {Favicon} other {Logo}} must be {size} or smaller",
+    "assetType": "{kind, select, logoDark {Dark logo} favicon {Favicon} other {Logo}} must be one of: {types}",
+    "svgRejected": "SVG rejected: {reason}",
+    "themePresetUnknown": "Unknown theme preset. Use one of: {presets}."
   }
 }

@@ -173,7 +173,7 @@ JSX text with letters, string literals rendered as children (`{busy ? 'Saving…
 literal `placeholder`, `title`, `alt`, `aria-label`, `label` and `description` props. It lets through
 text without letters, text inside `<code>`, `<pre>`, `<kbd>` and `<samp>`, technical values (URLs,
 hostnames, paths, identifiers such as `my-node`, JSON and markup) and the names in its `allow` option
-(`Marmot`). An example value that still trips it gets a disable comment that says why:
+(`Marmot`, the `Aa` font specimen). An example value that still trips it gets a disable comment that says why:
 
 ```tsx
 // eslint-disable-next-line marmot/no-literal-jsx-text -- example value, not prose
