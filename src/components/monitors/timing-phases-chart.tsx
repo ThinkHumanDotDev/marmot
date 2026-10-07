@@ -12,8 +12,8 @@ import {
   YAxis,
 } from 'recharts'
 
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '@/lib/api'
 import { bucketTimingAverages, TIMING_PHASES, type TimingPhase } from '@/lib/request-timing'
 
@@ -130,15 +130,26 @@ export function TimingPhasesChart({
           <CardTitle className="text-base">{t('chartTitle')}</CardTitle>
           <CardDescription>{t('chartDescription')}</CardDescription>
         </div>
-        <Tabs value={range} onValueChange={(value) => setRange(value as Range)}>
-          <TabsList aria-label={t('rangeLabel')}>
-            {RANGES.map((value) => (
-              <TabsTrigger key={value} value={value} data-testid={`timing-range-${value}`}>
-                {t(`ranges.${value}`)}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div
+          role="group"
+          aria-label={t('rangeLabel')}
+          className="inline-flex rounded-lg bg-muted p-[3px]"
+        >
+          {RANGES.map((value) => (
+            <Button
+              key={value}
+              type="button"
+              size="xs"
+              variant="ghost"
+              aria-pressed={range === value}
+              className="aria-pressed:bg-background aria-pressed:shadow-sm"
+              onClick={() => setRange(value)}
+              data-testid={`timing-range-${value}`}
+            >
+              {t(`ranges.${value}`)}
+            </Button>
+          ))}
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {hasTiming ? (
