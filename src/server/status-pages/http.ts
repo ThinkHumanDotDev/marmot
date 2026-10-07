@@ -107,6 +107,8 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'googleAnalyticsId',
   'domains',
   'groups',
+  // Subscribers (#104): enabled, channels, deliveryMode, smsChannel, SMS templates.
+  'subscriptions',
 ] as const
 
 /**

@@ -61,6 +61,20 @@ export default async function StatusPageEditorPage({
     overrideAccess: false,
   })
 
+  // Twilio channels for the SMS sender of subscriptions (names only: configs hold credentials).
+  const { docs: twilioChannels } = can('notification:read')
+    ? await payload.find({
+        collection: 'notifications',
+        where: { and: [{ organization: { equals: org.id } }, { type: { equals: 'twilio' } }] },
+        sort: 'name',
+        limit: 100,
+        depth: 0,
+        select: { name: true },
+        user,
+        overrideAccess: false,
+      })
+    : { docs: [] }
+
   const monitorOptions: MonitorOption[] = monitors.map((m) => ({
     id: m.id,
     name: m.name,
@@ -82,6 +96,10 @@ export default async function StatusPageEditorPage({
       canEdit={can('status-page:update')}
       canDelete={can('status-page:delete')}
       timeZone={timeZone}
+      canReadSubscribers={can('subscriber:read')}
+      canManageSubscribers={can('subscriber:manage')}
+      canSendNotifications={can('subscriber:send')}
+      smsChannels={twilioChannels.map((channel) => ({ id: channel.id, name: channel.name }))}
       trustProxy={settings.trustProxy}
     />
   )

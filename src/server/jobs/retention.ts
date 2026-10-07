@@ -11,6 +11,8 @@
  * - `stat-daily`         older than `KEEP_DATA_PERIOD_DAYS` (skipped when < 1, like Uptime Kuma)
  * - `heartbeats`         non-important beats older than 24 hours, important beats older than
  *                        `KEEP_DATA_PERIOD_DAYS` (only when the engine's collection exists)
+ * - `status-page-subscribers` self sign-ups never confirmed within 72 hours
+ * - `subscriber-deliveries` older than 90 days (the per-subscriber delivery log)
  *
  * Runs hourly as a BullMQ job scheduler on the `marmot:maintenance` queue.
  */
@@ -18,6 +20,7 @@ import { Queue, Worker, type ConnectionOptions, type Job } from 'bullmq'
 import type { CollectionSlug, Payload, Where } from 'payload'
 
 import { env } from '@/env'
+import { UNCONFIRMED_SUBSCRIBER_TTL_HOURS } from '@/lib/status-page-subscribers'
 import { childLogger } from '@/lib/logger'
 import { QUEUE_NAMES } from '@/server/engine'
 import { createRedis } from '@/server/redis'
@@ -33,6 +36,8 @@ export const HOURLY_KEEP_SECONDS = 30 * 24 * 60 * 60
 export const HEARTBEAT_KEEP_SECONDS = 24 * 60 * 60
 /** Security audit rows (`audit-logs`) are kept for a year regardless of `KEEP_DATA_PERIOD_DAYS`. */
 export const AUDIT_LOG_KEEP_DAYS = 365
+/** Per-subscriber delivery log rows of status page notifications. */
+export const SUBSCRIBER_DELIVERY_KEEP_DAYS = 90
 
 /** Slug of the engine's raw heartbeat collection (delivered by the engine issue). */
 const HEARTBEATS_SLUG = 'heartbeats'
@@ -50,6 +55,8 @@ export type RetentionResult = {
   heartbeats: number
   importantHeartbeats: number
   auditLogs: number
+  unconfirmedSubscribers: number
+  subscriberDeliveries: number
 }
 
 const subtractSeconds = (date: Date, seconds: number): Date =>
@@ -64,6 +71,8 @@ export function retentionCutoffs(now: Date, keepDataPeriodDays: number) {
     heartbeats: subtractSeconds(now, HEARTBEAT_KEEP_SECONDS),
     importantHeartbeats: subtractSeconds(now, keepDataPeriodDays * 86400),
     auditLogs: subtractSeconds(now, AUDIT_LOG_KEEP_DAYS * 86400),
+    unconfirmedSubscribers: subtractSeconds(now, UNCONFIRMED_SUBSCRIBER_TTL_HOURS * 3600),
+    subscriberDeliveries: subtractSeconds(now, SUBSCRIBER_DELIVERY_KEEP_DAYS * 86400),
   }
 }
 
@@ -96,6 +105,8 @@ export async function runRetention(
     heartbeats: 0,
     importantHeartbeats: 0,
     auditLogs: 0,
+    unconfirmedSubscribers: 0,
+    subscriberDeliveries: 0,
   }
 
   result.minutely = await deleteWhere(payload, 'stat-minutely', {
@@ -134,6 +145,19 @@ export async function runRetention(
   if (hasCollection(payload, AUDIT_LOGS_SLUG)) {
     result.auditLogs = await deleteWhere(payload, AUDIT_LOGS_SLUG, {
       createdAt: { less_than: cutoffs.auditLogs.toISOString() },
+    })
+  }
+
+  if (hasCollection(payload, 'status-page-subscribers')) {
+    result.unconfirmedSubscribers = await deleteWhere(payload, 'status-page-subscribers', {
+      and: [
+        { source: { equals: 'self_signup' } },
+        { confirmedAt: { exists: false } },
+        { createdAt: { less_than: cutoffs.unconfirmedSubscribers.toISOString() } },
+      ],
+    })
+    result.subscriberDeliveries = await deleteWhere(payload, 'subscriber-deliveries', {
+      createdAt: { less_than: cutoffs.subscriberDeliveries.toISOString() },
     })
   }
 

@@ -13,6 +13,7 @@ import { renderMarkdown } from '@/lib/markdown'
 import { EVENTS_PATH, eventPath, type EventKind } from '@/lib/status-page-events'
 import { cn } from '@/lib/utils'
 
+import { SubscribeDialog } from './subscribe-dialog'
 import { ImpactBadge, IncidentUpdateEntry, impactStyles, StatusPageLogo } from './parts'
 import { ThemeToggle } from './theme-toggle'
 
@@ -430,6 +431,14 @@ export function StatusPageView({ slug, initial, basePath }: StatusPageViewProps)
               <Mail className="size-4" aria-hidden />
               {t('public.contact')}
             </a>
+          )}
+          {config.subscriptionChannels.length > 0 && (
+            <SubscribeDialog
+              slug={slug}
+              title={config.title}
+              channels={config.subscriptionChannels}
+              groups={groups}
+            />
           )}
           {config.theme === 'auto' && <ThemeToggle className="shrink-0" />}
         </header>

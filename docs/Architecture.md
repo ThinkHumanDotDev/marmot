@@ -183,8 +183,25 @@ never diverges from the timeline.
 
 After every write the `afterChange` hook calls `emitIncidentUpdatePosted()`
 (`src/server/status-pages/incident-events.ts`) once per new update, with `kind` `opened`, `updated`,
-`resolved` or `reopened`. That is the extension point for subscriber notifications (#104): register with
-`onIncidentUpdatePosted(listener)`; nothing listens yet. Lazily migrated updates are not announced.
+`resolved` or `reopened`. That is the extension point for subscriber notifications (#104): listeners register with
+`onIncidentUpdatePosted(listener)` and get the write's `req` to defer work until the commit. Lazily
+migrated updates are not announced.
+
+### Status page subscribers
+
+`registerSubscriberListeners()` (`src/server/status-pages/subscribers/events.ts`) runs from Payload's
+`onInit`, so every process listens: incident updates (`onIncidentUpdatePosted`, deferred with
+`afterCommit`) and maintenance events (`registerMaintenanceEventListener`) become
+`subscriber-notifications` documents through `createNotificationBatch()`, deduplicated by a unique
+`dedupeKey` (`incident:<page>:<incident>:<update>`, `maintenance:<page>:<occurrence>:<type>:<update|reminder>`).
+In `review` mode they wait as `pending_review`; sending (or `auto` mode) enqueues a `subscriber-fanout` job
+on `marmot:notifications`, which the notification worker routes by job name: the fan-out creates one
+`subscriber-deliveries` row per matching confirmed subscriber and one `subscriber-delivery` job each
+(job ids `spn-<notification>-<round>`, `spd-<delivery>-<round>`; five attempts, jittered exponential
+backoff). Deliveries render per channel (`content.ts`, emails in `src/server/email/subscriber-emails.ts`)
+and send through the Payload email adapter, the Twilio provider, or a signed webhook
+(`src/server/webhooks/signature.ts`); the last delivery to finish sets the notification's final state.
+Retention deletes delivery rows after 90 days and unconfirmed self sign-ups after 72 hours.
 
 The public payload (`buildPublicStatusPageData`) maps each monitor to the worst impact of the active
 incidents naming it and computes `overall` from both: a `major_outage` component counts as down, a
@@ -323,6 +340,8 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `notification:create`, `notification:update`, `notification:delete` |        |        |   ✓   |   ✓   |
 | `status-page:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
 | `status-page:create`, `status-page:update`, `status-page:delete`    |        |   ✓    |   ✓   |   ✓   |
+| `subscriber:read`, `subscriber:manage`                              |        |   ✓    |   ✓   |   ✓   |
+| `subscriber:send`                                                   |        |        |   ✓   |   ✓   |
 | `maintenance:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
 | `maintenance:create`, `maintenance:update`, `maintenance:delete`    |        |   ✓    |   ✓   |   ✓   |
 | `tag:read`                                                          |   ✓    |   ✓    |   ✓   |   ✓   |

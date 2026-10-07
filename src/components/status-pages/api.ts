@@ -4,6 +4,13 @@
  */
 import { api } from '@/lib/api'
 import type { ComponentImpact, IncidentStatus } from '@/lib/incident-timeline'
+import type {
+  DeliveryState,
+  NotificationBatchState,
+  NotificationEvent,
+  SubscriberChannel,
+  SubscriberSource,
+} from '@/lib/status-page-subscribers'
 import type { Incident, Monitor, StatusPage, StatusPageViewer } from '@/payload-types'
 
 export type OrgId = string | number
@@ -49,6 +56,7 @@ export type StatusPagePatch = Partial<
     | 'domains'
     | 'groups'
     | 'access'
+    | 'subscriptions'
     | 'allowedEmailDomains'
     | 'allowedIpRanges'
   >
@@ -148,6 +156,120 @@ export const statusPagesApi = {
       }),
     remove: (orgId: OrgId, id: OrgId, viewerId: OrgId) =>
       api.delete<{ ok: true }>(`${base(orgId)}/${id}/viewers/${viewerId}`),
+  },
+}
+
+export interface SubscriberRow {
+  id: OrgId
+  channel: SubscriberChannel
+  target: string
+  components: string[]
+  source: SubscriberSource
+  confirmedAt: string | null
+  createdAt: string
+  lastDeliveredAt: string | null
+  lastError: string | null
+  secret?: string
+  headers?: { name: string; value: string }[]
+}
+
+export interface SubscriberList {
+  docs: SubscriberRow[]
+  totalDocs: number
+  page: number
+  totalPages: number
+  confirmed: Record<SubscriberChannel, number>
+}
+
+export interface SubscriberDraft {
+  channel: SubscriberChannel
+  target: string
+  components?: string[]
+  headers?: { name: string; value: string }[]
+}
+
+export interface NotificationRow {
+  id: OrgId
+  event: NotificationEvent
+  state: NotificationBatchState
+  title: string
+  status: string | null
+  message: string
+  components: string[]
+  occurredAt: string
+  recipientCount: number | null
+  channels: SubscriberChannel[]
+  approvedAt: string | null
+  discardedAt: string | null
+  sendingStartedAt: string | null
+  completedAt: string | null
+  createdAt: string
+}
+
+export interface NotificationDetail {
+  doc: NotificationRow
+  preview: {
+    email: { subject: string; text: string; html: string }
+    sms: string
+    recipients: Record<SubscriberChannel, number> & { total: number }
+    smsUnavailable: boolean
+  }
+  deliveries: {
+    counts: Record<DeliveryState, number> & { total: number }
+    docs: {
+      id: OrgId
+      channel: SubscriberChannel
+      state: DeliveryState
+      attempts: number
+      error: string | null
+      sentAt: string | null
+      updatedAt: string
+      target: string | null
+    }[]
+  }
+}
+
+const subscribersBase = (orgId: OrgId, id: OrgId) => `${base(orgId)}/${id}/subscribers`
+const notificationsBase = (orgId: OrgId, id: OrgId) => `${base(orgId)}/${id}/notifications`
+
+export const subscribersApi = {
+  list: (orgId: OrgId, id: OrgId, query: { page?: number; q?: string } = {}) => {
+    const params = new URLSearchParams()
+    if (query.page) params.set('page', String(query.page))
+    if (query.q) params.set('q', query.q)
+    const qs = params.toString()
+    return api.get<SubscriberList>(`${subscribersBase(orgId, id)}${qs ? `?${qs}` : ''}`)
+  },
+  add: (orgId: OrgId, id: OrgId, data: SubscriberDraft) =>
+    api.post<{ doc: SubscriberRow }>(subscribersBase(orgId, id), { ...data }),
+  remove: (orgId: OrgId, id: OrgId, subscriberId: OrgId) =>
+    api.delete<{ ok: true }>(`${subscribersBase(orgId, id)}/${subscriberId}`),
+  exportUrl: (orgId: OrgId, id: OrgId) => `${subscribersBase(orgId, id)}/export`,
+  import: async (orgId: OrgId, id: OrgId, file: File) => {
+    const body = new FormData()
+    body.append('file', file)
+    const res = await fetch(`${subscribersBase(orgId, id)}/import`, {
+      method: 'POST',
+      body,
+      credentials: 'include',
+    })
+    const json = (await res.json()) as {
+      created?: number
+      skipped?: { line: number; reason: string }[]
+      error?: string
+    }
+    if (!res.ok) throw new Error(json.error ?? '')
+    return { created: json.created ?? 0, skipped: json.skipped ?? [] }
+  },
+  notifications: {
+    list: (orgId: OrgId, id: OrgId) =>
+      api.get<{ docs: NotificationRow[] }>(notificationsBase(orgId, id)),
+    get: (orgId: OrgId, id: OrgId, notificationId: OrgId) =>
+      api.get<NotificationDetail>(`${notificationsBase(orgId, id)}/${notificationId}`),
+    act: (orgId: OrgId, id: OrgId, notificationId: OrgId, action: 'send' | 'discard' | 'retry') =>
+      api.post<{ doc: NotificationRow }>(`${notificationsBase(orgId, id)}/${notificationId}`, {
+        action,
+      }),
   },
 }
 
