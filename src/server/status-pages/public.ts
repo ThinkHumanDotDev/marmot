@@ -14,6 +14,7 @@ import { defaultLocale } from '@/i18n/locales'
 import { statusPageTimeZone } from '@/i18n/resolve'
 import { DEFAULT_PAST_INCIDENTS_DAYS, MAX_PAST_INCIDENTS_DAYS } from '@/lib/status-page-events'
 import { getThemePreset } from '@/lib/status-page-themes'
+import { offeredChannels, type SubscriberChannel } from '@/lib/status-page-subscribers'
 import {
   incidentTimeline,
   legacyStyleFromImpact,
@@ -171,6 +172,8 @@ export interface PublicConfig {
   customCSS: string | null
   footerText: string | null
   googleAnalyticsId: string | null
+  /** Channels visitors may subscribe with (#104); empty when subscriptions are off. */
+  subscriptionChannels: SubscriberChannel[]
 }
 
 export interface PublicStatusPageData {
@@ -247,6 +250,7 @@ export function toPublicConfig(page: StatusPage): PublicConfig {
     customCSS: page.customCSS ?? null,
     footerText: page.footerText ?? null,
     googleAnalyticsId: page.googleAnalyticsId ?? null,
+    subscriptionChannels: offeredChannels(page.subscriptions),
   }
 }
 

@@ -25,6 +25,12 @@ import { BANNER_TEXT_MAX_LENGTH } from '@/collections/status-page-theme'
 import { MARMOT_EXPORT_FORMAT, MARMOT_EXPORT_VERSION } from '@/lib/import-export'
 import { COMPONENT_IMPACTS, INCIDENT_STATUSES, incidentTimeline } from '@/lib/incident-timeline'
 import {
+  MAX_SMS_MAX_SEGMENTS,
+  SMS_TEMPLATE_KEYS,
+  SUBSCRIBER_CHANNELS,
+  SUBSCRIBER_DELIVERY_MODES,
+} from '@/lib/status-page-subscribers'
+import {
   DEFAULT_THEME_PRESET,
   isThemePresetId,
   parseThemeOverrides,
@@ -109,6 +115,16 @@ export interface ExportedStatusPage {
   footerText: string | null
   customCSS: string | null
   googleAnalyticsId: string | null
+  /** Subscription settings (#104); subscribers themselves are exported per page as CSV. */
+  subscriptions?: {
+    enabled: boolean
+    channels: string[]
+    deliveryMode: string
+    /** Exported notification channel id (Twilio). */
+    smsChannel: OrgId | null
+    smsMaxSegments: number | null
+    smsTemplates: Record<string, string | null>
+  }
   domains: string[]
   groups: {
     name: string
@@ -205,6 +221,16 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
   footerText: doc.footerText ?? null,
   customCSS: doc.customCSS ?? null,
   googleAnalyticsId: doc.googleAnalyticsId ?? null,
+  subscriptions: {
+    enabled: doc.subscriptions?.enabled ?? false,
+    channels: doc.subscriptions?.channels ?? ['email'],
+    deliveryMode: doc.subscriptions?.deliveryMode ?? 'review',
+    smsChannel: relationId(doc.subscriptions?.smsChannel),
+    smsMaxSegments: doc.subscriptions?.smsMaxSegments ?? null,
+    smsTemplates: Object.fromEntries(
+      SMS_TEMPLATE_KEYS.map((key) => [key, doc.subscriptions?.smsTemplates?.[key] ?? null]),
+    ),
+  },
   domains: (doc.domains ?? []).map((row) => row.hostname),
   groups: (doc.groups ?? []).map((group) => ({
     name: group.name,
@@ -379,6 +405,16 @@ const statusPageSchema = z.object({
   footerText: z.string().nullish(),
   customCSS: z.string().nullish(),
   googleAnalyticsId: z.string().nullish(),
+  subscriptions: z
+    .object({
+      enabled: z.boolean().nullish(),
+      channels: z.array(z.enum(SUBSCRIBER_CHANNELS)).nullish(),
+      deliveryMode: z.enum(SUBSCRIBER_DELIVERY_MODES).nullish(),
+      smsChannel: idSchema.nullish(),
+      smsMaxSegments: z.number().int().min(1).max(MAX_SMS_MAX_SEGMENTS).nullish(),
+      smsTemplates: z.record(z.string(), z.string().nullable()).nullish(),
+    })
+    .nullish(),
   domains: z.array(z.string()).default([]),
   groups: z
     .array(
@@ -620,6 +656,26 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
         customCSS: page.customCSS ?? null,
         googleAnalyticsId: page.googleAnalyticsId ?? null,
       },
+      ...(page.subscriptions
+        ? {
+            subscriptions: {
+              enabled: page.subscriptions.enabled ?? false,
+              channels: page.subscriptions.channels ?? ['email'],
+              deliveryMode: page.subscriptions.deliveryMode ?? 'review',
+              smsChannelKey:
+                page.subscriptions.smsChannel != null
+                  ? String(page.subscriptions.smsChannel)
+                  : null,
+              smsMaxSegments: page.subscriptions.smsMaxSegments ?? null,
+              smsTemplates: Object.fromEntries(
+                SMS_TEMPLATE_KEYS.map((key) => [
+                  key,
+                  page.subscriptions?.smsTemplates?.[key] ?? null,
+                ]),
+              ),
+            },
+          }
+        : {}),
       domains: page.domains.map((d) => d.trim().toLowerCase()).filter(Boolean),
       groups: page.groups.map((group) => ({
         name: group.name,

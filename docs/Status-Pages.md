@@ -9,7 +9,8 @@ them on the **Groups & monitors** tab, then flip **Published** in the header. Vi
 current status, its last 50 heartbeats and 24h/30d uptime (unless hidden), [static components](#components)
 whose status you set through incidents, the incidents you post, running and upcoming
 [maintenance windows](Maintenance.md), the last days of incidents, and (landing in the current release)
-status badges and a [history page with a permalink per incident and maintenance window](#history-and-permalinks). Members and above can edit pages; viewers can see
+status badges, a [history page with a permalink per incident and maintenance window](#history-and-permalinks)
+and [subscriptions](#subscribers) by email, SMS, webhook or Slack. Members and above can edit pages; viewers can see
 drafts but not change them.
 
 ## Data model
@@ -88,7 +89,7 @@ components (rows of the page's groups, by component id — see [Components](#com
   impact (`info`/`primary` → operational, `warning` → degraded performance, `danger` → major outage). The
   update is stored on the incident's next write; no migration job is needed on either database.
 - Every new update is announced through `onIncidentUpdatePosted()`
-  (`src/server/status-pages/incident-events.ts`), the hook subscriber notifications build on.
+  (`src/server/status-pages/incident-events.ts`), the hook [subscriber notifications](#subscribers) build on.
 
 ### Templates
 
@@ -377,13 +378,13 @@ realtime socket is not used on public pages).
 ## Builder
 
 `/{orgSlug}/status-pages` lists the organization's pages; `/{orgSlug}/status-pages/{id}` edits one with
-seven tabs: **Settings** (title, slug, description, language once Marmot ships more than one, refresh,
+nine tabs: **Settings** (title, slug, description, language once Marmot ships more than one, refresh,
 custom CSS, analytics id, header links, display toggles, delete), **Theme** (colour mode, preset, colour
 overrides, banner headline, logos and favicon, with a live preview; see [Themes](#themes)), **Groups &
 monitors** (drag-and-drop groups and components with
 `dnd-kit`, static components, per-component public name, description, values toggle, "show URL" / custom
 link, per-group "expanded by default"), **Incidents** (post, edit, pin, resolve, reopen, delete, affected
-components and their impact, [templates](#templates)),
+components and their impact, [templates](#templates)), **Subscribers** and **Notifications** (see [Subscribers](#subscribers)),
 **Domains**, **Access** (public, password, email domain or IP allow-list, with the list of signed-in
 visitors for email-domain pages; see below) and **Share** (the [status badge](#status-badge) with
 Markdown and HTML snippets). The header switch publishes/unpublishes.
@@ -413,6 +414,179 @@ still send `{ title, content, style, affectedComponents }`. Posting an update: `
 `{ status, message?, components?, postedAt?, impact? }`; it returns `201 { doc, update }`. Invalid statuses
 or impacts, components that are not on the page and future `postedAt` values are refused with `400`;
 viewers get `403`. The Payload REST API (`/api/incidents`) applies the same hooks.
+
+## Subscribers
+
+_(landing in the current release)_ Visitors can subscribe to a page's incident and maintenance
+announcements by **email**, **SMS**, **webhook** or **Slack**, for every component or only the ones they
+choose. Raw monitor alerts are never sent to subscribers: only what you publish on the page.
+
+### Setting it up
+
+On the builder's **Subscribers** tab:
+
+- **Show a Subscribe button**: turns subscriptions on (`subscriptions.enabled`).
+- **Channels visitors can choose**: any of email, SMS, webhook and Slack (default: email). Owners can add
+  subscribers on every channel regardless.
+- **Sending**: _Review before sending_ (default) or _Send automatically_ (`subscriptions.deliveryMode`
+  `review` | `auto`).
+- **SMS sender**: SMS go out through a [Twilio notification channel](Notifications.md) of the organization
+  (`subscriptions.smsChannel`; its account SID, auth token, sender number and messaging service are used,
+  the recipient is the subscriber). Without one, SMS is not offered to visitors. Optional **SMS templates**
+  per event (new incident, incident update, new maintenance, maintenance update) take
+  `{{ siteName }} {{ title }} {{ status }} {{ message }} {{ url }}`; texts are shortened to
+  **Maximum SMS segments** (default 2, GSM-7 or UCS-2 aware) and always keep the URL.
+- Emails go through the instance's SMTP settings ([Configuration](Configuration.md#email)); without
+  `SMTP_HOST` they are only written to the log. No other configuration is needed.
+
+### What triggers an announcement
+
+| Event                                                           | `event`                                                          |
+| --------------------------------------------------------------- | ---------------------------------------------------------------- |
+| An incident is opened                                           | `incident_opened`                                                |
+| An incident update is posted (also reopening)                   | `incident_updated`                                               |
+| An incident is resolved                                         | `incident_resolved`                                              |
+| A maintenance window attached to the page is announced          | `maintenance_scheduled`                                          |
+| A maintenance reminder is due ([Maintenance](Maintenance.md))   | `maintenance_reminder`                                           |
+| A maintenance starts, gets an update, completes or is cancelled | `maintenance_started` / `_updated` / `_completed` / `_cancelled` |
+
+Only published pages with subscriptions on announce anything, and only when at least one confirmed
+subscriber would receive it. Every message links to the event's [permalink](#history-and-permalinks)
+(`statusPageEventUrl()`, `{{ url }}` in SMS templates).
+
+**Component scoping.** An incident concerns every component it ever named (any update's `components` and
+the current `affectedComponents`); a maintenance concerns the page's components showing one of its
+monitors. A subscriber who chose components receives an announcement when one of them is concerned, or
+when the announcement names no component at all (page-wide); subscribers without a choice receive
+everything. So a subscriber of component A gets nothing about component B.
+
+### Review before sending
+
+Every announcement is a **notification** (`subscriber-notifications`): a snapshot of the title, status,
+message, affected components and maintenance window taken when the event happened. In _review_ mode it
+waits as a draft (`pending_review`) on the **Notifications** tab, which shows the rendered email and SMS,
+the number of recipients per channel (counted live) and a warning when SMS subscribers exist without an
+SMS sender. Someone with `subscriber:send` (admins by default) **sends** or **discards** it. Nothing is
+sent before that. In _auto_ mode notifications skip the draft.
+
+Sending fans out on the worker: one row per recipient in `subscriber-deliveries` (the delivery log:
+channel, state `queued` / `retrying` / `sent` / `failed` / `skipped`, attempts, last error) and one job
+per recipient. The notification ends `sent`, `partially_failed` or `failed`; **Retry failed** re-queues
+the failed deliveries only. Delivery rows are kept 90 days.
+
+### Subscribing
+
+The page header gets a **Subscribe** button (a dialog with the channel, the address and an optional
+component choice). Sign-ups go to `POST /api/status-pages/:slug/subscribe`:
+
+- **Email**: double opt-in. The confirmation email links to `/status/:slug/confirm/:token`, a page with a
+  _Confirm_ button (a form post, so mail scanners that prefetch links cannot confirm). Unconfirmed
+  sign-ups receive nothing and are deleted after 72 hours.
+- **SMS**: a six-digit code by SMS, entered in the dialog (`POST …/subscribe/verify`); codes expire after
+  15 minutes and allow five tries.
+- **Webhook / Slack**: active at once; the first request (`type: "test"`) carries the manage links and, for
+  webhooks, the signing secret.
+
+The response is always `202 { ok: true, next }` (`confirm-email`, `enter-code` or `done`) whatever the
+address's state: an address that is already subscribed gets a "manage your subscription" email instead of
+an error, so the form cannot be used to find out who is subscribed. Sign-ups are rate limited per page and
+client IP (10 per 10 minutes, then 15 minutes blocked), keyed on the trusted client address (the instance
+setting `trustProxy`, never a raw `X-Forwarded-For`); without one, all visitors of a page share a wider
+bucket. Each address receives at most three sign-up messages per hour.
+
+On **password-protected** pages, signing up needs the page's access cookie like the rest of the page; the
+links in messages carry the token instead and work without it.
+
+### Links and unsubscribing
+
+Every message carries two signed links: `/status/:slug/manage/:token` (choose components, unsubscribe)
+and `/status/:slug/unsubscribe/:token` (a one-button page). Tokens are `<subscriber id>.<HMAC>` keyed by
+`PAYLOAD_SECRET`; they cannot be guessed, and die with the subscription. Emails also carry
+`List-Unsubscribe: <…/api/status-pages/:slug/subscriptions/:token/unsubscribe>` and
+`List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058), so mail clients unsubscribe in one click.
+Unsubscribing deletes the subscriber and its delivery log.
+
+SMS subscribers can reply **STOP** (also `UNSUBSCRIBE`, `CANCEL`, `END`, `QUIT`, `STOPALL`, `OPTOUT`,
+`REVOKE`): point the Twilio number's incoming-message webhook at
+`<NEXT_PUBLIC_SERVER_URL>/api/status-pages/:slug/sms-inbound` (requests are checked against
+`X-Twilio-Signature` with the channel's auth token). Twilio also blocks numbers that replied STOP; when it
+refuses a send for that reason (error 21610) Marmot removes the subscriber.
+
+### Webhook payload
+
+Webhook subscribers receive a `POST` with `Content-Type: application/json`, a 5-second timeout and no
+redirects:
+
+```jsonc
+{
+  "version": "1",
+  "type": "incident", // incident | maintenance | test
+  "event": "incident_updated",
+  "id": "42", // notification id
+  "created_at": "2026-10-07T09:00:00.000Z",
+  "page": { "name": "Acme status", "url": "https://status.acme.com" },
+  "url": "https://marmot.example.com/status/acme/events/incident/k3x9q2ab", // permalink
+  "data": {
+    "incident": {
+      "id": "7",
+      "title": "API errors",
+      "status": "identified",
+      "components": [{ "id": "66f1…", "name": "API" }],
+      "update": { "id": "…", "status": "identified", "message": "Markdown", "posted_at": "…" },
+    },
+    // maintenance: { id, occurrence_id, title, state, message, starts_at, ends_at, reminder_minutes, components }
+  },
+  "subscription": { "manage_url": "…", "unsubscribe_url": "…" },
+}
+```
+
+Requests carry `X-Marmot-Event`, `X-Marmot-Delivery` (stable across retries) and
+`X-Marmot-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>` with the
+subscriber's `whsec_…` secret (shown to owners in the builder and sent once in the `test` request). Reject
+signatures older than five minutes. The signer lives in `src/server/webhooks/signature.ts` and is the one
+organization-level outbound webhooks (#157) will use. Owners can add custom headers (for example an
+`Authorization` token) to a webhook subscriber. Discord webhook URLs get a Discord embed instead (unsigned);
+Slack subscribers must use an incoming-webhook URL (`https://hooks.slack.com/services/…`) and get Block
+Kit messages.
+
+**Retries.** Network errors, timeouts, `5xx` and `429` are retried up to five attempts with jittered
+exponential backoff (about 10 s, 20 s, 40 s, 80 s); other `4xx` responses fail at once. Email (SMTP
+`4xx` / connection errors) and SMS (Twilio `5xx` / `429`) follow the same policy.
+
+### Managing subscribers
+
+The **Subscribers** tab lists subscribers (search, 50 per page, confirmed counts per channel), adds
+subscribers without confirmation (`source: added_by_owner`, for example a customer's webhook), removes
+them, and exports or imports CSV (`channel,target,components,source,confirmed_at`; imports need `channel`
+and `target`, `components` are `;`-separated component ids, and imported rows are confirmed with
+`source: import`). Webhook secrets and headers are never exported.
+
+| Permission          | Default | Allows                                                      |
+| ------------------- | ------- | ----------------------------------------------------------- |
+| `subscriber:read`   | member  | See subscribers, notifications and the delivery log; export |
+| `subscriber:manage` | member  | Add, change, remove and import subscribers                  |
+| `subscriber:send`   | admin   | Send or discard drafts, retry failed deliveries             |
+
+| Method & path                                                   | Purpose                                                                        |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `GET`/`POST …/:id/subscribers`                                  | List (`?page=&q=&channel=`) / add                                              |
+| `PATCH`/`DELETE …/:id/subscribers/:subscriberId`                | Change components or headers / remove                                          |
+| `GET …/:id/subscribers/export`, `POST …/:id/subscribers/import` | CSV export / import (`text/csv` or multipart `file`)                           |
+| `GET …/:id/notifications`                                       | Notifications, newest first                                                    |
+| `GET`/`POST …/:id/notifications/:notificationId`                | Preview, recipients, deliveries / `{ action: "send" \| "discard" \| "retry" }` |
+
+Public routes (anonymous, never cached):
+
+| Route                                                               | Purpose                                       |
+| ------------------------------------------------------------------- | --------------------------------------------- |
+| `POST /api/status-pages/:slug/subscribe`                            | Sign up `{ channel, target, components? }`    |
+| `POST /api/status-pages/:slug/subscribe/verify`                     | SMS code `{ target, code }`                   |
+| `GET`/`PATCH`/`DELETE /api/status-pages/:slug/subscriptions/:token` | Read / change components / unsubscribe        |
+| `POST …/subscriptions/:token/confirm`                               | Email confirmation (form or JSON)             |
+| `POST …/subscriptions/:token/unsubscribe`                           | One-click unsubscribe (RFC 8058) and the form |
+| `POST /api/status-pages/:slug/sms-inbound`                          | Twilio incoming SMS (STOP)                    |
+
+The whole flow is described in [Architecture](Architecture.md#status-page-subscribers).
 
 ## History and permalinks
 
@@ -449,7 +623,7 @@ page the HTML pages redirect to the login form, which returns to the history or 
 in (`next`, only paths below the page are accepted), and the JSON endpoints answer 401. The RSS feed
 links each item to its incident's permalink. `statusPageEventUrl()` in `src/server/status-pages/urls.ts`
 builds the absolute permalink for emails, and maintenance events (`MaintenanceEvent.occurrence.publicId`)
-and incident events (`incident.publicId`) carry the id for subscriber notifications (#104).
+and incident events (`incident.publicId`) carry the id that [subscriber notifications](#subscribers) link to.
 
 ### Search engines and link previews
 
@@ -782,5 +956,11 @@ With another proxy (nginx, Traefik, Cloudflare), terminate TLS there, forward th
   `?pw=`, cookies per page, custom domains, password change ending sessions, rate limiting, export.
   `src/server/status-pages/access.test.ts` and `src/server/security/password-hash.test.ts` cover the
   token and hash primitives.
+- `tests/int/status-page-subscribers.int.spec.ts` — email double opt-in, review mode (nothing sent before
+  approval, preview and recipient counts, permissions), one-click unsubscribe, component scoping, signed
+  and retried webhooks, Slack, SMS codes and templates, STOP (inbound and provider error), maintenance
+  announcements and discarding, CSV import/export, password-protected pages, rate limiting and cascades.
+  `src/lib/status-page-subscribers.test.ts` (targets, scoping, SMS segments) and
+  `src/server/webhooks/signature.test.ts` cover the helpers.
 - `tests/e2e/status-pages.e2e.spec.ts` also protects a page, checks the login redirect and form, and
   that the page and its feed open after signing in.

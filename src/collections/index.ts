@@ -21,6 +21,9 @@ import { StatDaily } from './StatDaily'
 import { StatHourly } from './StatHourly'
 import { StatMinutely } from './StatMinutely'
 import { StatusPages } from './StatusPages'
+import { StatusPageSubscribers } from './StatusPageSubscribers'
+import { SubscriberDeliveries } from './SubscriberDeliveries'
+import { SubscriberNotifications } from './SubscriberNotifications'
 import { StatusPageViewers } from './StatusPageViewers'
 import { Tags } from './Tags'
 import { Templates } from './Templates'
@@ -51,6 +54,9 @@ export const collections: CollectionConfig[] = [
   StatusPages,
   StatusPageViewers,
   Incidents,
+  StatusPageSubscribers,
+  SubscriberNotifications,
+  SubscriberDeliveries,
   Maintenance,
   MaintenanceOccurrences,
   Templates,

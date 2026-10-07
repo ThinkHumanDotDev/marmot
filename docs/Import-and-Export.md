@@ -213,7 +213,11 @@ Ids are the exporting instance's document ids and only serve to link documents i
 importer remaps them. Component rows carry their `id` so templates can reference them; the importer maps
 them to the rows it creates (`templates` is optional, files from before templates import unchanged). Status page components keep their type, public name, description and
 `showValues`; incident impacts on components (`affectedComponents`) are not exported because component ids
-are regenerated on import. Heartbeats, statistics, maintenance windows, members and organization settings are not part of the export.
+are regenerated on import. A page's subscription settings (`subscriptions`: enabled, channels, review or
+automatic sending, SMS templates) travel with it, and its SMS sender when that Twilio channel is in the
+same file; the subscribers themselves do not (they are personal data, and their component choices name
+component ids): export and import them per page as CSV from the builder's **Subscribers** tab
+([Status pages](Status-Pages.md#managing-subscribers)). Heartbeats, statistics, maintenance windows, members and organization settings are not part of the export.
 Logos (media uploads) are not exported. Tags, proxies and Docker hosts are not exported either: a monitor's
 `tags`, `proxy` and `dockerHost` fields hold ids of the exporting organization, so the importer drops tag and
 proxy assignments (noted in the report) and skips `docker` monitors with a reason.

@@ -1,3 +1,8 @@
+import type {
+  SmsTemplateKey,
+  SubscriberChannel,
+  SubscriberDeliveryMode,
+} from '@/lib/status-page-subscribers'
 /**
  * The import plan is the format-independent intermediate between a parsed file (Uptime Kuma backup
  * or Marmot export) and the database. Parsers produce it without touching the database;
@@ -76,9 +81,21 @@ export type PlannedIncident = Pick<
   'title' | 'content' | 'style' | 'pinned' | 'active' | 'resolvedAt'
 >
 
+/** Subscription settings of a page; the SMS channel is referenced by its key in the file. */
+export interface PlannedSubscriptions {
+  enabled: boolean
+  channels: SubscriberChannel[]
+  deliveryMode: SubscriberDeliveryMode
+  smsChannelKey: string | null
+  smsMaxSegments: number | null
+  smsTemplates: Partial<Record<SmsTemplateKey, string | null>>
+}
+
 export interface PlannedStatusPage {
   key: string
   data: PlannedStatusPageFields
+  /** Optional: files from before subscriptions (#104) have none. */
+  subscriptions?: PlannedSubscriptions
   domains: string[]
   groups: PlannedStatusPageGroup[]
   incidents: PlannedIncident[]

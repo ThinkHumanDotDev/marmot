@@ -28,8 +28,10 @@ import { AccessPanel } from './access-panel'
 import { DomainsPanel } from './domains-panel'
 import { GroupsEditor } from './groups-editor'
 import { IncidentsPanel, type IncidentComponentOption } from './incidents-panel'
+import { NotificationsPanel } from './notifications-panel'
 import { SettingsForm } from './settings-form'
 import { SharePanel } from './share-panel'
+import { SubscribersPanel, type SmsChannelOption } from './subscribers-panel'
 import { ThemeEditor } from './theme-editor'
 
 export interface EditorProps {
@@ -46,6 +48,12 @@ export interface EditorProps {
   orgName: string
   /** Incident templates of the organization (all pages, all kinds). */
   templates: TemplateRow[]
+  /** `subscriber:read`, `subscriber:manage` and `subscriber:send` in the organization. */
+  canReadSubscribers: boolean
+  canManageSubscribers: boolean
+  canSendNotifications: boolean
+  /** Twilio channels of the organization (SMS sender of subscriptions). */
+  smsChannels: SmsChannelOption[]
   /** Instance setting `trustProxy` (the IP allow-list needs client addresses). */
   trustProxy: boolean
 }
@@ -75,6 +83,10 @@ export function StatusPageEditor({
   timeZone,
   orgName,
   templates,
+  canReadSubscribers,
+  canManageSubscribers,
+  canSendNotifications,
+  smsChannels,
   trustProxy,
 }: EditorProps) {
   const t = useTranslations('statusPages.editorPage')
@@ -164,6 +176,10 @@ export function StatusPageEditor({
             <TabsTrigger value="theme">{t('tabs.theme')}</TabsTrigger>
             <TabsTrigger value="groups">{t('tabs.groups')}</TabsTrigger>
             <TabsTrigger value="incidents">{t('tabs.incidents')}</TabsTrigger>
+            <TabsTrigger value="subscribers">{t('tabs.subscribers')}</TabsTrigger>
+            {canReadSubscribers && (
+              <TabsTrigger value="notifications">{t('tabs.notifications')}</TabsTrigger>
+            )}
             <TabsTrigger value="domains">{t('tabs.domains')}</TabsTrigger>
             <TabsTrigger value="access">{ta('tab')}</TabsTrigger>
             <TabsTrigger value="share">{t('tabs.share')}</TabsTrigger>
@@ -201,6 +217,23 @@ export function StatusPageEditor({
               canEdit={canEdit}
             />
           </TabsContent>
+          <TabsContent value="subscribers" className="pt-6">
+            <SubscribersPanel
+              orgId={orgId}
+              page={page}
+              onSaved={setPage}
+              canEdit={canEdit}
+              canRead={canReadSubscribers}
+              canManage={canManageSubscribers}
+              smsChannels={smsChannels}
+              components={incidentComponents}
+            />
+          </TabsContent>
+          {canReadSubscribers && (
+            <TabsContent value="notifications" className="pt-6">
+              <NotificationsPanel orgId={orgId} pageId={page.id} canSend={canSendNotifications} />
+            </TabsContent>
+          )}
           <TabsContent value="domains" className="pt-6">
             <DomainsPanel orgId={orgId} page={page} onSaved={setPage} canEdit={canEdit} />
           </TabsContent>

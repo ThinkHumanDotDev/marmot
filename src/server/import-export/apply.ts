@@ -337,6 +337,21 @@ export async function applyImportPlan(
         data: {
           ...planned.data,
           organization: orgId,
+          ...(planned.subscriptions
+            ? {
+                subscriptions: {
+                  enabled: planned.subscriptions.enabled,
+                  channels: planned.subscriptions.channels,
+                  deliveryMode: planned.subscriptions.deliveryMode,
+                  // Only a channel imported in the same file; otherwise SMS is left unconfigured.
+                  smsChannel: planned.subscriptions.smsChannelKey
+                    ? (notificationIds.get(planned.subscriptions.smsChannelKey) ?? null)
+                    : null,
+                  smsMaxSegments: planned.subscriptions.smsMaxSegments,
+                  smsTemplates: planned.subscriptions.smsTemplates,
+                },
+              }
+            : {}),
           domains: planned.domains.map((hostname) => ({ hostname })),
           groups: planned.groups.map((group) => ({
             name: group.name,

@@ -43,6 +43,12 @@ export const PERMISSIONS = {
   'status-page:update': 'member',
   'status-page:delete': 'member',
 
+  // Status page subscribers (#104): addresses are personal data, so viewers do not see them.
+  'subscriber:read': 'member',
+  'subscriber:manage': 'member',
+  // Approve, discard and retry subscriber notifications (review-before-send).
+  'subscriber:send': 'admin',
+
   'maintenance:read': 'viewer',
   'maintenance:create': 'member',
   'maintenance:update': 'member',
