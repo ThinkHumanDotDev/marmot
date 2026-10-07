@@ -234,3 +234,12 @@ export function emitCertInfo(
     info,
   })
 }
+
+/** Instance-wide: broadcast the checker status to every connected socket (all organizations). */
+export function emitCheckerStatus(payload: RealtimePayloads['checkerStatus']): void {
+  try {
+    getEmitter().emit(RealtimeEvents.checkerStatus, payload)
+  } catch (err) {
+    log.error({ err }, 'failed to emit the checker status')
+  }
+}

@@ -124,13 +124,14 @@ scrape_configs:
       credentials: mk_… # or basic_auth: { username: marmot, password: mk_… }
 ```
 
-| Metric                        | Labels            | Value                                            |
-| ----------------------------- | ----------------- | ------------------------------------------------ |
-| `monitor_status`              | common            | `1` up, `0` down, `2` pending, `3` maintenance   |
-| `monitor_response_time`       | common            | last ping in ms (`-1` when the beat had no ping) |
-| `monitor_uptime_ratio`        | common + `window` | `0.0…1.0` over `24h` and `30d`                   |
-| `monitor_cert_days_remaining` | common            | from `monitors.certInfo` (only when present)     |
-| `monitor_cert_is_valid`       | common            | `1` / `0`, from `monitors.certInfo`              |
+| Metric                        | Labels            | Value                                                                                                            |
+| ----------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `monitor_status`              | common            | `1` up, `0` down, `2` pending, `3` maintenance                                                                   |
+| `monitor_response_time`       | common            | last ping in ms (`-1` when the beat had no ping)                                                                 |
+| `monitor_uptime_ratio`        | common + `window` | `0.0…1.0` over `24h` and `30d`                                                                                   |
+| `monitor_cert_days_remaining` | common            | from `monitors.certInfo` (only when present)                                                                     |
+| `monitor_cert_is_valid`       | common            | `1` / `0`, from `monitors.certInfo`                                                                              |
+| `marmot_checker_online`       | `location`        | `1` online, `0` offline ([self connectivity check](Configuration.md#self-connectivity-check), only when enabled) |
 
 Common labels: `monitor_id`, `monitor_name`, `monitor_type`, `monitor_url`, `monitor_hostname`,
 `monitor_port` (empty string when a monitor has no such field). Names and labels match Uptime Kuma's

@@ -46,6 +46,11 @@ export interface CheckResult {
    * flipping (the verdict does not depend on the target's state).
    */
   blocked?: boolean
+  /**
+   * The worker itself was offline (self connectivity check, `connectivity.ts`): the beat is held by
+   * `holdBeatWhileCheckerOffline` instead of going through the transition rules.
+   */
+  checkerOffline?: boolean
 }
 
 /** Subset of the monitor document the state machine needs. */
@@ -174,6 +179,8 @@ export function computeNextBeat(
   result: CheckResult,
   monitor: MonitorSettings,
 ): NextState {
+  if (result.checkerOffline) return holdBeatWhileCheckerOffline(prev, result, monitor)
+
   const isFirstBeat = !prev?.status
   const upsideDown = Boolean(monitor.upsideDown)
   const maxRetries = monitor.maxRetries ?? 0
@@ -249,5 +256,31 @@ export function computeNextBeat(
     notify,
     isFirstBeat,
     nextIntervalSeconds: nextIntervalSeconds(status, monitor),
+  }
+}
+
+/**
+ * Marmot addition (#148): the beat of a check skipped (or failed) while the worker's own
+ * connectivity was lost. It is PENDING ("checker offline") so nothing goes DOWN, never important or
+ * notified, and it carries the previous retries/downCount over unchanged: the worker keeps the
+ * monitor's cached status as it was, so the first real check after connectivity returns is judged
+ * against the state from before the outage. The cadence stays the one of the previous status.
+ */
+export function holdBeatWhileCheckerOffline(
+  prev: PrevState | null | undefined,
+  result: CheckResult,
+  monitor: MonitorSettings,
+): NextState {
+  return {
+    status: PENDING,
+    msg: result.msg,
+    ping: null,
+    duration: null,
+    retries: prev?.retries ?? 0,
+    downCount: prev?.downCount ?? 0,
+    important: false,
+    notify: false,
+    isFirstBeat: !prev?.status,
+    nextIntervalSeconds: nextIntervalSeconds(prev?.status ?? UP, monitor),
   }
 }

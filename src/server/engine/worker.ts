@@ -10,6 +10,7 @@ import { emitHeartbeat, isUnderMaintenance } from './hooks'
 import { QUEUE_NAMES } from './names'
 import { createWorker, type CheckJobData, type QueueFactoryOptions } from './queues'
 import { effectiveIntervalMs, removeMonitorSchedule, syncMonitor } from './scheduler'
+import { guardAgainstOfflineChecker } from './connectivity'
 import { certificateChanged } from './tls'
 import { findBlockedMessage } from '@/server/security/outbound-guard'
 
@@ -144,7 +145,9 @@ export async function processCheckJob(
   const underMaintenance = await isUnderMaintenance(monitor, payload)
   const result: CheckResult = underMaintenance
     ? { ok: false, msg: 'Monitor under maintenance', underMaintenance: true }
-    : await runCheck(payload, monitor, timeoutMs)
+    : await guardAgainstOfflineChecker(payload, monitor, () =>
+        runCheck(payload, monitor, timeoutMs),
+      )
 
   const { heartbeat, next } = await recordBeat(payload, monitor, result, {
     queue: queueOptions?.queue,
@@ -186,6 +189,8 @@ export async function recordBeat(
     downCount: monitor.status?.downCount,
   }
   const next = computeNextBeat(prev, result, monitor)
+  // A beat held while the worker was offline leaves the cached status as it was (#148).
+  const held = result.checkerOffline === true
 
   const now = options.now ?? new Date()
   const lastCheckAt = monitor.status?.lastCheckAt ? new Date(monitor.status.lastCheckAt) : null
@@ -231,6 +236,9 @@ export async function recordBeat(
         lastMsg: next.msg,
         retries: next.retries,
         downCount: next.downCount,
+        ...(held
+          ? { lastStatus: monitor.status?.lastStatus, lastPing: monitor.status?.lastPing }
+          : {}),
         ...options.statusPatch,
       },
       ...(tlsInfo ? { certInfo: tlsInfo as unknown as Monitor['certInfo'] } : {}),
@@ -271,6 +279,7 @@ export async function recordBeat(
     organizationId,
     tlsInfo,
     certChanged,
+    checkerOffline: held,
   })
 
   return { heartbeat, monitor: updated, next }

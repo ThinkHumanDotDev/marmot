@@ -10,6 +10,7 @@ import { Gauge, Registry } from 'prom-client'
 import type { Payload } from 'payload'
 
 import type { Monitor } from '@/payload-types'
+import { getCheckerSummary, type CheckerSummary } from '@/server/engine/connectivity-state'
 import { getUptime, type StatsRange } from '@/server/stats/uptime-calculator'
 
 export const MONITOR_LABELS = [
@@ -78,6 +79,8 @@ export interface MetricsSource {
   monitors: Monitor[]
   /** Uptime ratio per monitor id and window; missing entries are skipped. */
   uptime: Map<string, Partial<Record<StatsRange, number>>>
+  /** Self connectivity check of the workers (#148); omitted when disabled. */
+  checker?: CheckerSummary
 }
 
 /** Build a registry from already loaded data (pure; tests call this directly). */
@@ -115,6 +118,18 @@ export function buildRegistry(source: MetricsSource): Registry {
     labelNames,
     registers: [registry],
   })
+
+  if (source.checker && source.checker.status !== 'disabled') {
+    const checkerOnline = new Gauge({
+      name: 'marmot_checker_online',
+      help: 'Self connectivity check of the worker location (1 = online, 0 = offline: external checks are held)',
+      labelNames: ['location'],
+      registers: [registry],
+    })
+    for (const { location, status } of source.checker.locations) {
+      if (status !== 'unknown') checkerOnline.set({ location }, status === 'online' ? 1 : 0)
+    }
+  }
 
   for (const monitor of source.monitors) {
     const labels = monitorLabelValues(monitor)
@@ -175,5 +190,5 @@ export async function collectOrganizationMetrics(
     }),
   )
 
-  return buildRegistry({ monitors, uptime })
+  return buildRegistry({ monitors, uptime, checker: await getCheckerSummary() })
 }

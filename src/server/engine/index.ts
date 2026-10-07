@@ -7,9 +7,12 @@
  *   (`beat.ts`), persists `heartbeats`, refreshes `monitors.status` and emits to listeners — `worker.ts`
  * - listener registry for stats / realtime / notifications — `hooks.ts`
  * - resync of all schedulers on worker boot — `scheduler.ts` (`resyncAll`)
+ * - self connectivity check that holds checks while the worker is offline — `connectivity.ts`
+ *   (worker wiring in `connectivity-runtime.ts`, shared status in `connectivity-state.ts`)
  */
 export * from './names'
 export * from './beat'
+export * from './connectivity'
 export * from './hooks'
 export * from './queues'
 export * from './scheduler'

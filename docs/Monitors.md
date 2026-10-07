@@ -56,6 +56,10 @@ Only **important** beats (a change between UP, DOWN and MAINTENANCE, or the firs
 notify. PENDING never notifies, so `maxRetries: 2` with `retryInterval: 20` gives a flaky endpoint 40 seconds
 to recover before anyone is paged.
 
+When the [self connectivity check](Configuration.md#self-connectivity-check) is on and the worker itself
+loses its internet connection, checks of external targets are held as PENDING `checker offline` beats
+instead: no notification, no downtime, and the monitor keeps the status it had before the outage.
+
 Scheduling is handled by the worker process through BullMQ job schedulers (one per active monitor); the
 web process only writes the monitor and nudges the scheduler. Several worker replicas share the load and a
 monitor is never checked twice at once ([Architecture](Architecture.md#polling-engine)).
