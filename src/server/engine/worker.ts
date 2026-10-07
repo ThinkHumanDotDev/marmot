@@ -100,6 +100,7 @@ export async function runCheck(
       tlsInfo: ctx.tlsInfo ?? null,
       details: heartbeatDetails(ctx.heartbeat),
       assertions: ctx.assertions ?? null,
+      timing: ctx.timing ?? null,
     }
   }
 
@@ -120,6 +121,7 @@ export async function runCheck(
     tlsInfo: ctx.tlsInfo ?? null,
     details: heartbeatDetails(ctx.heartbeat),
     assertions: ctx.assertions ?? null,
+    timing: ctx.timing ?? null,
   }
 }
 
@@ -241,6 +243,8 @@ export async function recordBeat(
       ...(result.assertions?.length
         ? { assertions: result.assertions as unknown as Heartbeat['assertions'] }
         : {}),
+      // Request timing phases (#94); omitted for types that do not measure them.
+      ...(result.timing ? { timing: result.timing } : {}),
     },
   })) as Heartbeat
 

@@ -105,6 +105,8 @@ export interface CheckResult {
   statusCode?: number | null
   tls?: { valid: boolean; daysRemaining: number | null; validTo: string | null } | null
   details?: Record<string, unknown>
+  /** Request timing phases in ms (servers with #94). */
+  timing?: Record<string, number | null> | null
   recorded?: boolean
   [field: string]: unknown
 }

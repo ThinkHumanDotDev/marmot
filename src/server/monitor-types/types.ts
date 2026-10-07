@@ -4,6 +4,7 @@
  */
 import type { Payload } from 'payload'
 
+import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
 import type { Monitor } from '@/payload-types'
 import type { TlsInfo } from '@/server/engine/tls'
@@ -34,6 +35,11 @@ export interface MonitorCheckContext {
    * verdict. The worker stores it on the heartbeat (`heartbeats.assertions`).
    */
   assertions?: AssertionResult[] | null
+  /**
+   * Request timing phases of this check (HTTP types, TCP port), set when the type measures them.
+   * The worker stores them on the heartbeat (`heartbeats.timing`) and rolls up their averages.
+   */
+  timing?: RequestTiming | null
 }
 
 export interface MonitorType {

@@ -148,6 +148,8 @@ export const adminTranslations = {
         triggerDescription:
           'What started the check: "manual" for Check now; empty for scheduled checks and pushes.',
         assertionsDescription: 'Per-assertion results of this check (HTTP and DNS monitors).',
+        timingDescription:
+          'Request phases in ms: DNS, connect, TLS, time to first byte and transfer (HTTP and TCP monitors).',
       },
       pushEvents: {
         description:

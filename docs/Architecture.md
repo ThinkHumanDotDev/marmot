@@ -67,6 +67,14 @@ read by `/api/health`, `/api/metrics` and the UI banner through `connectivity-st
 replica sends it) and re-enqueues the held monitors when connectivity returns. `connectivityLocationOf()` is
 the hook for multi-location checks (#92): every location will run its own monitor.
 
+**Request timing** (#94): `performHttpCheck` builds its per-check undici agent with an
+`HttpTimingCapture` (`src/server/monitor-types/http-timing.ts`). A connector wrapper placed outside the
+outbound guard timestamps each new connection and its socket's `lookup`, `connect` and `secureConnect`
+events (the guard's own resolution counts as DNS); a dispatch interceptor composed inside the redirect
+interceptor timestamps each hop's dispatch, response headers and body end. The final hop's phases
+(`dns`, `connect`, `tls`, `ttfb`, `transfer`, ms, null when not applicable) go to `ctx.timing`, the
+heartbeat's `timing` group and the stats rollup. The TCP port type records `dns` and `connect`.
+
 After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
 `lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`, `recoveries`) and calls every listener registered with
 `registerHeartbeatListener()` (`src/server/engine/hooks.ts`); stats, realtime and notifications plug in there.
@@ -85,7 +93,8 @@ second of the bucket start (minute / hour / UTC day), guarded by a unique compou
 
 Each row stores `up`, `down`, `ping` (average of UP beats), `pingMin`, `pingMax` and an `extras` JSON with
 `maintenance` (beats during maintenance, also counted as `up`), `degraded` (slow successful checks, also
-counted as `up`, their ping included) and `pingCount` (weight of `ping`). `pending`
+counted as `up`, their ping included), `pingCount` (weight of `ping`) and `timing` (per-phase running
+averages of the request timing, `{ dns: { avg, count }, … }`, from successful checks). `pending`
 beats count as `down`. The maths is a port of Uptime Kuma's `UptimeCalculator`
 (`src/server/stats/uptime-calculator.ts`): the worker's heartbeat listener calls
 `recordHeartbeat(payload, { monitorId, organizationId, status, ping, time })`, which reads the three current

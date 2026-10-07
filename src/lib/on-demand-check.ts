@@ -3,6 +3,7 @@
  * Shared by the worker (which produces it), the route handlers (which return it as JSON) and the UI
  * (which renders it), so it must stay free of Node-only imports.
  */
+import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
 
 export type OnDemandCheckStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded'
@@ -45,6 +46,8 @@ export interface OnDemandCheckResult {
   tls: OnDemandCheckTls | null
   /** Per-assertion results (HTTP and DNS monitors), `null` when the type has none. */
   assertions: AssertionResult[] | null
+  /** Request timing phases in ms (HTTP types, TCP port), `null` when the type measures none. */
+  timing: RequestTiming | null
   /**
    * Extra, type-specific fields the check reported. Rendered generically so new fields show up
    * without UI changes.
