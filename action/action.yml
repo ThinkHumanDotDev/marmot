@@ -1,0 +1,75 @@
+# Marmot GitHub Action (#118): run Marmot's checks from a workflow, or apply a monitors-as-code file.
+# Usage: `uses: thinkhumandotdev/marmot/action@vX.Y.Z`. Docs: docs/GitHub-Action.md.
+# The code is src/action (with the CLI core of src/cli), bundled into dist/index.mjs by
+# `pnpm build:action`; the bundle is committed and versioned with the repository's release tags.
+name: Marmot
+description: Run Marmot monitors now and fail the job when one is down, or apply monitors as code.
+author: ThinkHumanDotDev
+branding:
+  icon: activity
+  color: green
+
+inputs:
+  url:
+    description: Base URL of the Marmot instance, e.g. https://status.example.com (default $MARMOT_URL).
+    required: false
+  api-key:
+    description: >-
+      Organization API key (mk_…), from a secret (default $MARMOT_API_KEY). run and apply need a
+      write key; a read key can plan (apply with dry-run).
+    required: false
+  org:
+    description: Organization id (default $MARMOT_ORG).
+    required: false
+  mode:
+    description: run (check monitors now) or apply (monitors as code).
+    required: false
+    default: run
+  monitors:
+    description: >-
+      run: monitor keys or ids to check, separated by newlines, commas or spaces. When empty, every
+      active monitor listed in the config file is checked.
+    required: false
+    default: ''
+  config:
+    description: >-
+      Monitors file (YAML or JSON, the format of `marmot monitors apply`). apply: the file to apply;
+      run: the monitors to check when monitors is empty.
+    required: false
+    default: ''
+  fail-on-degraded:
+    description: 'run: also fail when a check is degraded (slower than its threshold).'
+    required: false
+    default: 'false'
+  dry-run:
+    description: >-
+      apply: only show the plan. auto (default) plans on pull_request, pull_request_target and
+      merge_group events and applies otherwise; true or false force it.
+    required: false
+    default: auto
+  prune:
+    description: 'apply: delete monitors that have a key but are no longer in the file.'
+    required: false
+    default: 'false'
+
+outputs:
+  result:
+    description: 'run: passed or failed.'
+  passed:
+    description: 'run: number of passing checks.'
+  failed:
+    description: 'run: number of failing checks.'
+  skipped:
+    description: 'run: number of skipped checks (maintenance).'
+  json:
+    description: 'run: the results as a JSON array (monitor, status, ping, message, verdict).'
+  changes:
+    description: 'apply: number of changes in the plan (0 when the monitors match the file).'
+  plan:
+    description: 'apply: the plan as text (diff format), e.g. for a pull request comment.'
+  dry-run:
+    description: 'apply: whether the run only planned (true) or applied (false).'
+
+runs:
+  using: node24
+  main: dist/index.mjs
