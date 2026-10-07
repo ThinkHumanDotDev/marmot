@@ -232,7 +232,6 @@ export function IncidentCard({ incident }: { incident: PublicIncident }) {
   )
 }
 
-
 /** Public component description, revealed on hover or focus of the info icon. */
 function DescriptionTooltip({ name, description }: { name: string; description: string }) {
   const t = useTranslations('statusPages.public')

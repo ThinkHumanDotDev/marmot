@@ -331,8 +331,10 @@ domain the same badge is served at `https://status.example.com/badge.svg`.
 | Under maintenance       | `#1747f5` | A monitor is in maintenance, or a maintenance window attached to the page is running.      |
 | Unknown                 | `#999`    | No monitor has been checked yet, the page is not published, or the visitor may not see it. |
 
-The state is computed from the same data as the page (`overall` in the public JSON, see
-`statusPageBadgeState()` in `src/server/status-pages/badge.ts`); when several apply, the most severe wins
+The state is computed from the same data as the page (the components' statuses, the incident impacts and
+the running maintenance, see `badgeInput()` / `statusPageBadgeState()` in
+`src/server/status-pages/badge.ts`); an active incident that names no component counts with its declared
+impact. When several apply, the most severe wins
 (major > partial > degraded > maintenance > operational > unknown). A static component with an impact
 also changes its own status (amber or red), which counts towards `overall` exactly as on the page. Only the state is rendered: never
 monitor names, uptime or response times, whatever the page's display settings.

@@ -25,7 +25,7 @@ import * as migration_20261007_021706_status_page_components from './20261007_02
 import * as migration_20261007_031019_status_page_themes from './20261007_031019_status_page_themes';
 import * as migration_20261007_034435_status_page_access from './20261007_034435_status_page_access';
 import * as migration_20261007_063246_maintenance_announcements from './20261007_063246_maintenance_announcements';
-import * as migration_20261007_073635_incident_timeline from './20261007_073635_incident_timeline';
+import * as migration_20261007_065512_incident_timeline from './20261007_065512_incident_timeline';
 
 export const migrations = [
   {
@@ -164,8 +164,8 @@ export const migrations = [
     name: '20261007_063246_maintenance_announcements',
   },
   {
-    up: migration_20261007_073635_incident_timeline.up,
-    down: migration_20261007_073635_incident_timeline.down,
-    name: '20261007_073635_incident_timeline'
+    up: migration_20261007_065512_incident_timeline.up,
+    down: migration_20261007_065512_incident_timeline.down,
+    name: '20261007_065512_incident_timeline'
   },
 ];
