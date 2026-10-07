@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Plus, Trash2 } from 'lucide-react'
+import { Box, GripVertical, Plus, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -34,21 +34,39 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import type { ComponentType } from '@/lib/status-page-components'
 import { cn } from '@/lib/utils'
 import type { StatusPage } from '@/payload-types'
 
-import { relationId, statusPagesApi, type MonitorOption, type OrgId } from '../api'
+import {
+  relationId,
+  statusPagesApi,
+  type MonitorOption,
+  type OrgId,
+  type StatusPageGroup,
+} from '../api'
 
+/**
+ * One component row (see `src/lib/status-page-components.ts`). `id` is the stored row id: it is
+ * sent back on save so incidents that reference the component keep pointing at it.
+ */
 interface DraftMonitor {
   key: string
+  id?: string
+  type: ComponentType
   monitorId: string
+  name: string
+  description: string
+  showValues: boolean
   sendUrl: boolean
   customUrl: string
 }
 
 interface DraftGroup {
   key: string
+  id?: string
   name: string
+  defaultOpen: boolean
   monitors: DraftMonitor[]
 }
 
@@ -58,10 +76,17 @@ const uid = () => `k${++counter}-${Math.random().toString(36).slice(2, 7)}`
 function fromPage(page: StatusPage): DraftGroup[] {
   return (page.groups ?? []).map((group) => ({
     key: group.id ?? uid(),
+    ...(group.id ? { id: group.id } : {}),
     name: group.name,
+    defaultOpen: group.defaultOpen !== false,
     monitors: (group.monitors ?? []).map((row) => ({
       key: row.id ?? uid(),
-      monitorId: relationId(row.monitor),
+      ...(row.id ? { id: row.id } : {}),
+      type: row.type === 'static' ? 'static' : 'monitor',
+      monitorId: row.type === 'static' || row.monitor == null ? '' : relationId(row.monitor),
+      name: row.name ?? '',
+      description: row.description ?? '',
+      showValues: row.showValues !== false,
       sendUrl: Boolean(row.sendUrl),
       customUrl: row.customUrl ?? '',
     })),
@@ -75,15 +100,27 @@ function toPatch(
 ): StatusPage['groups'] {
   const byId = new Map(monitors.map((m) => [String(m.id), m.id]))
   return groups.map((group) => ({
+    ...(group.id ? { id: group.id } : {}),
     name: group.name.trim() || untitled,
-    monitors: group.monitors.flatMap((row) => {
+    defaultOpen: group.defaultOpen,
+    monitors: group.monitors.flatMap((row): NonNullable<StatusPageGroup['monitors']> => {
+      const common = {
+        ...(row.id ? { id: row.id } : {}),
+        type: row.type,
+        name: row.name.trim() || null,
+        description: row.description.trim() || null,
+        showValues: row.showValues,
+        customUrl: row.customUrl.trim() || null,
+      }
+      if (row.type === 'static') return [{ ...common, monitor: null, sendUrl: false }]
       const id = byId.get(row.monitorId)
-      return id === undefined
-        ? []
-        : [{ monitor: id, sendUrl: row.sendUrl, customUrl: row.customUrl.trim() || null }]
+      return id === undefined ? [] : [{ ...common, monitor: id, sendUrl: row.sendUrl }]
     }),
   }))
 }
+
+const isInvalid = (groups: DraftGroup[]) =>
+  groups.some((g) => g.monitors.some((row) => row.type === 'static' && !row.name.trim()))
 
 type SortableHandle = Pick<ReturnType<typeof useSortable>, 'attributes' | 'listeners'>
 
@@ -120,56 +157,112 @@ function SortableMonitorRow({
     disabled,
   })
   const style = { transform: CSS.Transform.toString(transform), transition }
+  const isStatic = row.type === 'static'
+  const monitorName = monitor?.name ?? t('unknownMonitor', { id: row.monitorId })
+  const label = row.name.trim() || (isStatic ? t('componentFallback') : monitorName)
+  const defaultName = monitor?.publicName?.trim() || monitor?.name || ''
 
   return (
     <li
       ref={setNodeRef}
       style={style}
+      data-component-type={row.type}
       className={cn(
-        'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 rounded-lg border bg-background px-2 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,14rem)_auto]',
+        'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 rounded-lg border bg-background px-2 py-2',
         isDragging && 'z-10 shadow-md',
       )}
     >
       <DragHandle
         attributes={attributes}
         listeners={listeners}
-        label={t('reorderMonitor', { name: monitor?.name ?? t('monitorFallback') })}
+        label={t('reorderMonitor', { name: label })}
       />
       <span className="flex min-w-0 items-center gap-2 text-sm">
-        <StatusDot status={monitor?.lastStatus ?? 'unknown'} pulse={false} />
-        <span className="truncate font-medium">
-          {monitor?.name ?? t('unknownMonitor', { id: row.monitorId })}
-        </span>
-        {monitor && monitor.active === false && (
-          <span className="text-xs text-muted-foreground">{t('pausedHidden')}</span>
+        {isStatic ? (
+          <>
+            <Box className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="rounded-full border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {t('staticBadge')}
+            </span>
+            <span className="truncate text-xs text-muted-foreground">{t('staticHint')}</span>
+          </>
+        ) : (
+          <>
+            <StatusDot status={monitor?.lastStatus ?? 'unknown'} pulse={false} />
+            <span className="truncate font-medium">{monitorName}</span>
+            {monitor && monitor.active === false && (
+              <span className="text-xs text-muted-foreground">{t('pausedHidden')}</span>
+            )}
+          </>
         )}
       </span>
-      <label className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Switch
-          size="sm"
-          checked={row.sendUrl}
-          disabled={disabled}
-          onCheckedChange={(v) => onChange({ ...row, sendUrl: v })}
-        />
-        {t('showUrl')}
-      </label>
-      <Input
-        className="col-span-2 h-8 text-xs sm:col-span-1"
-        placeholder={t('customUrlPlaceholder')}
-        value={row.customUrl}
-        disabled={disabled}
-        onChange={(e) => onChange({ ...row, customUrl: e.target.value })}
-      />
       <Button
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label={t('removeMonitor')}
+        aria-label={t('removeComponent')}
         disabled={disabled}
         onClick={onRemove}
       >
         <Trash2 />
       </Button>
+
+      <div className="col-span-3 grid gap-2 sm:col-start-2 sm:col-end-4 sm:grid-cols-2">
+        <Input
+          className="h-8 text-xs"
+          aria-label={t('componentName')}
+          aria-invalid={isStatic && !row.name.trim() ? true : undefined}
+          required={isStatic}
+          placeholder={
+            isStatic
+              ? t('staticNamePlaceholder')
+              : t('componentNamePlaceholder', { name: defaultName })
+          }
+          value={row.name}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...row, name: e.target.value })}
+        />
+        <Input
+          className="h-8 text-xs"
+          aria-label={t('componentDescription')}
+          placeholder={t('componentDescription')}
+          value={row.description}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...row, description: e.target.value })}
+        />
+        <Input
+          className="h-8 text-xs"
+          aria-label={t('customUrlPlaceholder')}
+          placeholder={t('customUrlPlaceholder')}
+          value={row.customUrl}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...row, customUrl: e.target.value })}
+        />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {!isStatic && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Switch
+                size="sm"
+                checked={row.sendUrl}
+                disabled={disabled}
+                onCheckedChange={(v) => onChange({ ...row, sendUrl: v })}
+              />
+              {t('showUrl')}
+            </label>
+          )}
+          {!isStatic && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Switch
+                size="sm"
+                checked={row.showValues}
+                disabled={disabled}
+                onCheckedChange={(v) => onChange({ ...row, showValues: v })}
+              />
+              {t('showValues')}
+            </label>
+          )}
+        </div>
+      </div>
     </li>
   )
 }
@@ -199,7 +292,7 @@ function SortableGroup({
   )
   const [picker, setPicker] = React.useState('')
 
-  const used = new Set(group.monitors.map((m) => m.monitorId))
+  const used = new Set(group.monitors.filter((m) => m.type === 'monitor').map((m) => m.monitorId))
   const available = monitors.filter((m) => !used.has(String(m.id)))
   const byId = new Map(monitors.map((m) => [String(m.id), m]))
 
@@ -212,13 +305,22 @@ function SortableGroup({
     onChange({ ...group, monitors: arrayMove(group.monitors, from, to) })
   }
 
+  const blank = { name: '', description: '', showValues: true, sendUrl: false, customUrl: '' }
+
   function addMonitor(id: string) {
     if (!id) return
     onChange({
       ...group,
-      monitors: [...group.monitors, { key: uid(), monitorId: id, sendUrl: false, customUrl: '' }],
+      monitors: [...group.monitors, { ...blank, key: uid(), type: 'monitor', monitorId: id }],
     })
     setPicker('')
+  }
+
+  function addStatic() {
+    onChange({
+      ...group,
+      monitors: [...group.monitors, { ...blank, key: uid(), type: 'static', monitorId: '' }],
+    })
   }
 
   return (
@@ -244,8 +346,17 @@ function SortableGroup({
           className="h-8 max-w-xs font-medium"
           onChange={(e) => onChange({ ...group, name: e.target.value })}
         />
-        <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-          {t('monitorCount', { count: group.monitors.length })}
+        <label className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+          <Switch
+            size="sm"
+            checked={group.defaultOpen}
+            disabled={disabled}
+            onCheckedChange={(v) => onChange({ ...group, defaultOpen: v })}
+          />
+          {t('defaultOpen')}
+        </label>
+        <span className="hidden text-xs text-muted-foreground tabular-nums sm:inline">
+          {t('componentCount', { count: group.monitors.length })}
         </span>
         <Button
           type="button"
@@ -285,7 +396,7 @@ function SortableGroup({
         </SortableContext>
       </DndContext>
 
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <Select
           value={picker}
           onValueChange={addMonitor}
@@ -302,12 +413,18 @@ function SortableGroup({
                 <span className="inline-flex items-center gap-2">
                   <StatusDot status={m.lastStatus ?? 'unknown'} pulse={false} />
                   {m.name}
+                  {m.publicName && (
+                    <span className="text-xs text-muted-foreground">({m.publicName})</span>
+                  )}
                   <span className="text-xs text-muted-foreground">{m.type}</span>
                 </span>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={addStatic}>
+          <Plus /> {t('addStatic')}
+        </Button>
       </div>
     </li>
   )
@@ -338,6 +455,7 @@ export function GroupsEditor({
   const dirty =
     JSON.stringify(toPatch(groups, monitors, untitled)) !==
     JSON.stringify(toPatch(fromPage(page), monitors, untitled))
+  const invalid = isInvalid(groups)
 
   function onGroupDragEnd(event: DragEndEvent) {
     const { active, over } = event
@@ -380,17 +498,33 @@ export function GroupsEditor({
             onClick={() =>
               setGroups((g) => [
                 ...g,
-                { key: uid(), name: t('defaultName', { number: g.length + 1 }), monitors: [] },
+                {
+                  key: uid(),
+                  name: t('defaultName', { number: g.length + 1 }),
+                  defaultOpen: true,
+                  monitors: [],
+                },
               ])
             }
           >
             <Plus /> {t('addGroup')}
           </Button>
-          <Button type="button" size="sm" disabled={!canEdit || !dirty || saving} onClick={save}>
+          <Button
+            type="button"
+            size="sm"
+            disabled={!canEdit || !dirty || saving || invalid}
+            onClick={save}
+          >
             {saving ? t('saving') : t('save')}
           </Button>
         </div>
       </div>
+
+      {invalid && (
+        <p role="alert" className="text-sm text-destructive">
+          {t('staticNameRequired')}
+        </p>
+      )}
 
       {monitors.length === 0 && (
         <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">

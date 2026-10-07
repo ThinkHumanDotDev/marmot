@@ -30,12 +30,15 @@ type Values = Required<
     | 'title'
     | 'slug'
     | 'description'
+    | 'homepageUrl'
+    | 'contactUrl'
     | 'theme'
     | 'language'
     | 'searchEngineIndex'
     | 'showTags'
     | 'showCertificateExpiry'
     | 'showPoweredBy'
+    | 'showValues'
     | 'autoRefreshInterval'
     | 'footerText'
     | 'customCSS'
@@ -47,12 +50,15 @@ const fromPage = (page: StatusPage): Values => ({
   title: page.title,
   slug: page.slug,
   description: page.description ?? '',
+  homepageUrl: page.homepageUrl ?? '',
+  contactUrl: page.contactUrl ?? '',
   theme: page.theme ?? 'auto',
   language: page.language ?? defaultLocale,
   searchEngineIndex: Boolean(page.searchEngineIndex),
   showTags: Boolean(page.showTags),
   showCertificateExpiry: Boolean(page.showCertificateExpiry),
   showPoweredBy: page.showPoweredBy !== false,
+  showValues: page.showValues !== false,
   autoRefreshInterval: page.autoRefreshInterval ?? 300,
   footerText: page.footerText ?? '',
   customCSS: page.customCSS ?? '',
@@ -121,6 +127,8 @@ export function SettingsForm({
       const { doc } = await statusPagesApi.update(orgId, page.id, {
         ...values,
         description: values.description || null,
+        homepageUrl: values.homepageUrl?.trim() || null,
+        contactUrl: values.contactUrl?.trim() || null,
         footerText: values.footerText || null,
         customCSS: values.customCSS || null,
         googleAnalyticsId: values.googleAnalyticsId || null,
@@ -227,6 +235,37 @@ export function SettingsForm({
                 placeholder={ts('footerTextPlaceholder')}
                 onChange={(e) => set('footerText', e.target.value)}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{ts('links.title')}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div className="grid content-start gap-2">
+              <Label htmlFor="homepageUrl">{ts('links.homepageUrl')}</Label>
+              <Input
+                id="homepageUrl"
+                type="url"
+                placeholder="https://example.com"
+                value={values.homepageUrl ?? ''}
+                disabled={!canEdit}
+                onChange={(e) => set('homepageUrl', e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{ts('links.homepageUrlHint')}</p>
+            </div>
+            <div className="grid content-start gap-2">
+              <Label htmlFor="contactUrl">{ts('links.contactUrl')}</Label>
+              <Input
+                id="contactUrl"
+                placeholder="mailto:support@example.com"
+                value={values.contactUrl ?? ''}
+                disabled={!canEdit}
+                onChange={(e) => set('contactUrl', e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{ts('links.contactUrlHint')}</p>
             </div>
           </CardContent>
         </Card>
@@ -395,6 +434,14 @@ export function SettingsForm({
               checked={Boolean(values.showTags)}
               disabled={!canEdit}
               onChange={(v) => set('showTags', v)}
+            />
+            <Toggle
+              id="showValues"
+              label={ts('visibility.showValues')}
+              description={ts('visibility.showValuesHint')}
+              checked={Boolean(values.showValues)}
+              disabled={!canEdit}
+              onChange={(v) => set('showValues', v)}
             />
             <Toggle
               id="showCertificateExpiry"

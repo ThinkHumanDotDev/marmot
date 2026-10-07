@@ -55,7 +55,14 @@ test.describe('Status pages', () => {
         slug: publishedSlug,
         description: 'Everything we run, in one place.',
         published: true,
-        groups: [{ name: 'Public services', monitors: [{ monitor: monitor.id, sendUrl: true }] }],
+        groups: [
+          { name: 'Public services', monitors: [{ monitor: monitor.id, sendUrl: true }] },
+          {
+            name: 'People',
+            defaultOpen: false,
+            monitors: [{ type: 'static', name: 'Customer support' }],
+          },
+        ],
       }),
     )
 
@@ -98,6 +105,13 @@ test.describe('Status pages', () => {
       'href',
       monitorUrl,
     )
+    // Collapsed group: closed on load, opens on click (#106).
+    const people = page.getByRole('button', { name: 'People' })
+    await expect(people).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.getByText('Customer support')).toBeHidden()
+    await people.click()
+    await expect(people).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.getByText('Customer support')).toBeVisible()
     await expect(
       page.getByRole('heading', { level: 3, name: 'E2E planned maintenance' }),
     ).toBeVisible()

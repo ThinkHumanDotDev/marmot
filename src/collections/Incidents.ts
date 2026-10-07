@@ -7,8 +7,9 @@ import {
 
 import { orgScoped } from '@/access/org-scoped'
 
-import type { Incident } from '@/payload-types'
+import type { Incident, StatusPage } from '@/payload-types'
 import { adminT } from '@/i18n/admin'
+import { COMPONENT_IMPACTS } from '@/lib/status-page-components'
 
 export const INCIDENT_STYLES = ['info', 'warning', 'danger', 'primary'] as const
 export type IncidentStyle = (typeof INCIDENT_STYLES)[number]
@@ -39,15 +40,39 @@ const deriveFromStatusPage: CollectionBeforeChangeHook<Incident> = async ({
     })
   }
 
-  if (data.statusPage !== undefined || data.organization === undefined) {
-    const page = await req.payload.findByID({
+  const affected = Array.isArray(data.affectedComponents) ? data.affectedComponents : []
+  let page: StatusPage | null = null
+  const loadPage = async () =>
+    (page ??= await req.payload.findByID({
       collection: 'status-pages',
       id: statusPageId,
       depth: 0,
       req,
       overrideAccess: true,
-    })
-    data.organization = relId(page.organization) as Incident['organization']
+    }))
+
+  if (data.statusPage !== undefined || data.organization === undefined) {
+    data.organization = relId((await loadPage()).organization) as Incident['organization']
+  }
+
+  // Every affected component must be a component (group row) of the incident's page.
+  if (affected.length > 0) {
+    const known = new Set<string>()
+    for (const group of (await loadPage()).groups ?? []) {
+      for (const row of group.monitors ?? []) if (row.id) known.add(String(row.id))
+    }
+    const ids = affected.map((row) => String(row?.component ?? ''))
+    if (ids.some((id) => !known.has(id)) || new Set(ids).size !== ids.length) {
+      throw new ValidationError({
+        collection: 'incidents',
+        errors: [
+          {
+            message: 'Each affected component must be listed once and belong to the status page.',
+            path: 'affectedComponents',
+          },
+        ],
+      })
+    }
   }
 
   const wasActive = originalDoc?.active ?? true
@@ -134,6 +159,33 @@ export const Incidents: CollectionConfig = {
           defaultValue: true,
           index: true,
           admin: { description: adminT('marmot:incidents:activeDescription') },
+        },
+      ],
+    },
+    {
+      // Components (status page group rows, by row id) this incident affects while active. A static
+      // component's status comes only from these impacts and maintenance windows.
+      name: 'affectedComponents',
+      type: 'array',
+      admin: { description: adminT('marmot:incidents:affectedComponentsDescription') },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'component',
+              type: 'text',
+              required: true,
+              admin: { description: adminT('marmot:incidents:componentDescription') },
+            },
+            {
+              name: 'impact',
+              type: 'select',
+              required: true,
+              defaultValue: 'partial_outage',
+              options: COMPONENT_IMPACTS.map((impact) => ({ label: impact, value: impact })),
+            },
+          ],
         },
       ],
     },

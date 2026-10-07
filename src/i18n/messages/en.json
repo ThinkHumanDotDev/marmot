@@ -543,6 +543,8 @@
         "group": "Monitor group",
         "groupEmpty": "Create a Group monitor to nest monitors under it.",
         "groupDescription": "Groups aggregate the status of their children.",
+        "publicName": "Public name",
+        "publicNameDescription": "Shown on status pages instead of the friendly name. Leave empty to use the friendly name.",
         "descriptionLabel": "Description",
         "descriptionPlaceholder": "Shown on the detail page and status pages."
       },
@@ -1842,6 +1844,18 @@
       "window24h": "24h",
       "window30d": "30d"
     },
+    "public": {
+      "contact": "Contact us",
+      "homepage": "{title} home page",
+      "aboutComponent": "About {name}",
+      "componentMaintenance": "Under maintenance",
+      "impact": {
+        "operational": "Operational",
+        "degraded_performance": "Degraded performance",
+        "partial_outage": "Partial outage",
+        "major_outage": "Major outage"
+      }
+    },
     "beats": {
       "none": "No checks yet",
       "summary": "Last {count, plural, one {# check} other {# checks}}: {parts}. Latest: {latest}.",
@@ -1971,7 +1985,9 @@
         "showTags": "Show tags",
         "showTagsHint": "Display monitor tags next to their names.",
         "showCertificateExpiry": "Show certificate expiry",
-        "showPoweredBy": "Show “Powered by Marmot”"
+        "showPoweredBy": "Show “Powered by Marmot”",
+        "showValues": "Show uptime & response times",
+        "showValuesHint": "Off hides uptime percentages and latency everywhere on the page and in its JSON."
       },
       "reset": "Reset",
       "save": "Save settings",
@@ -1985,6 +2001,13 @@
         "confirm": "Delete \"{title}\" and all of its incidents? This cannot be undone.",
         "deleted": "Status page deleted",
         "failed": "Could not delete"
+      },
+      "links": {
+        "title": "Header links",
+        "homepageUrl": "Homepage URL",
+        "homepageUrlHint": "The logo and title link here.",
+        "contactUrl": "Contact URL",
+        "contactUrlHint": "Shown as a “Contact us” button. An https:// URL or mailto: address."
       }
     },
     "groups": {
@@ -2002,17 +2025,27 @@
       "groupName": "Group name",
       "reorderGroup": "Reorder group {name}",
       "removeGroup": "Remove group",
-      "monitorCount": "{count, plural, one {# monitor} other {# monitors}}",
       "addMonitor": "Add monitor",
       "addMonitorPlaceholder": "Add a monitor…",
       "allMonitorsAdded": "All monitors are in this group",
       "reorderMonitor": "Reorder {name}",
-      "monitorFallback": "monitor",
       "unknownMonitor": "Monitor #{id}",
       "pausedHidden": "(paused, hidden publicly)",
       "showUrl": "Show URL",
       "customUrlPlaceholder": "Custom link (optional)",
-      "removeMonitor": "Remove monitor from group"
+      "addStatic": "Add static component",
+      "staticBadge": "Static",
+      "staticHint": "Status set by incidents and maintenance",
+      "componentName": "Public name",
+      "componentNamePlaceholder": "Public name (default: {name})",
+      "staticNamePlaceholder": "Name, e.g. Customer support",
+      "componentDescription": "Description (tooltip)",
+      "showValues": "Show uptime & response time",
+      "defaultOpen": "Expanded by default",
+      "componentFallback": "component",
+      "removeComponent": "Remove component from group",
+      "componentCount": "{count, plural, one {# component} other {# components}}",
+      "staticNameRequired": "Static components need a name."
     },
     "incidents": {
       "title": "Incidents",
@@ -2058,6 +2091,21 @@
         "post": "Post",
         "save": "Save",
         "saving": "Saving…"
+      },
+      "components": {
+        "label": "Affected components",
+        "hint": "Components show this impact on the public page while the incident is active.",
+        "none": "Add components to the page's groups first.",
+        "add": "Add affected component…",
+        "remove": "Remove {name}",
+        "impact": "Impact of {name}",
+        "unknown": "Removed component",
+        "impacts": {
+          "operational": "Operational",
+          "degraded_performance": "Degraded performance",
+          "partial_outage": "Partial outage",
+          "major_outage": "Major outage"
+        }
       }
     },
     "domains": {
