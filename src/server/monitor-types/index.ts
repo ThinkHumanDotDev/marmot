@@ -9,6 +9,7 @@ import './push'
 import './group'
 import './manual'
 import './docker'
+import './globalping'
 // Protocols
 import './grpc-keyword'
 import './websocket-upgrade'

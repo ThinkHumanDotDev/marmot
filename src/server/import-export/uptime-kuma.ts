@@ -36,6 +36,14 @@ import {
 } from '@/lib/validation/monitor'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
 import {
+  GLOBALPING_HTTP_METHODS,
+  GLOBALPING_MAX_PACKETS,
+  GLOBALPING_MEASUREMENTS,
+  GLOBALPING_MIN_INTERVAL_SECONDS,
+  GLOBALPING_PROTOCOL_VALUES,
+  globalpingProtocolAllowed,
+} from '@/lib/validation/globalping'
+import {
   NotificationConfigError,
   validateNotificationConfig,
   validateNotificationTemplates,
@@ -118,6 +126,34 @@ function mapAuthMethod(value: unknown): (typeof AUTH_METHODS)[number] | undefine
 }
 
 /**
+ * Kuma's Globalping monitor (`server/monitor-types/globalping.js`) asks one probe of one location
+ * (`subtype`, `location`, `ping_count`, `protocol`, `ipFamily`); Marmot's form generalises it.
+ */
+function mapKumaGlobalping(
+  raw: Record<string, unknown>,
+  defaults: MonitorFormInput,
+): Partial<MonitorFormInput> {
+  const measurement = oneOf(GLOBALPING_MEASUREMENTS, raw.subtype) ?? 'http'
+  const protocol = oneOf(GLOBALPING_PROTOCOL_VALUES, asText(raw.protocol)?.toUpperCase())
+  const packets = asInt(raw.ping_count)
+  const ipFamily = asText(raw.ipFamily)
+  return {
+    globalpingMeasurement: measurement,
+    globalpingLocations: asText(raw.location),
+    globalpingProbes: 1,
+    globalpingSuccessRule: 'all',
+    globalpingProtocol:
+      protocol && globalpingProtocolAllowed(measurement, protocol) ? protocol : null,
+    globalpingPackets:
+      packets && packets >= 1
+        ? Math.min(packets, GLOBALPING_MAX_PACKETS)
+        : defaults.globalpingPackets,
+    globalpingIpVersion: ipFamily === 'ipv4' ? '4' : ipFamily === 'ipv6' ? '6' : null,
+    method: oneOf(GLOBALPING_HTTP_METHODS, raw.method) ?? 'GET',
+  }
+}
+
+/**
  * Maps one `Monitor.toJSON()` object onto `monitorFormSchema` input. Returns `null` when the
  * monitor type does not exist in Marmot; schema violations are reported by the caller.
  */
@@ -138,10 +174,11 @@ function mapKumaMonitor(
 
   const interval = asInt(raw.interval) ?? defaults.interval
   const retryInterval = asInt(raw.retryInterval) ?? defaults.retryInterval
+  const minInterval = type === 'globalping' ? GLOBALPING_MIN_INTERVAL_SECONDS : MIN_INTERVAL_SECONDS
   const clamp = (field: 'interval' | 'retryInterval', value: number): number => {
-    if (value >= MIN_INTERVAL_SECONDS) return value
-    warnings.push(t('intervalRaised', { name, field, value, min: MIN_INTERVAL_SECONDS }))
-    return MIN_INTERVAL_SECONDS
+    if (value >= minInterval) return value
+    warnings.push(t('intervalRaised', { name, field, value, min: minInterval }))
+    return minInterval
   }
 
   const acceptedRaw = Array.isArray(raw.accepted_statuscodes)
@@ -265,6 +302,7 @@ function mapKumaMonitor(
     wsIgnoreSecWebsocketAcceptHeader: asBool(raw.wsIgnoreSecWebsocketAcceptHeader) ?? false,
     game: asText(raw.game),
     gamedigGivenPortOnly: asBool(raw.gamedigGivenPortOnly) ?? defaults.gamedigGivenPortOnly,
+    ...(type === 'globalping' ? mapKumaGlobalping(raw, defaults) : {}),
   }
 
   return { input, type }

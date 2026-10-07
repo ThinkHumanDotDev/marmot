@@ -16,7 +16,7 @@
 import { degradedThresholdMs } from '@/lib/monitor-degraded'
 import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
-import type { HeartbeatStatus } from '@/server/monitor-types/types'
+import type { HeartbeatStatus, ProbeResult } from '@/server/monitor-types/types'
 import type { TlsInfo } from './tls'
 
 export type BeatStatus = HeartbeatStatus
@@ -88,6 +88,13 @@ export interface CheckResult {
    * `holdBeatWhileCheckerOffline` instead of going through the transition rules.
    */
   checkerOffline?: boolean
+  /**
+   * The check was deferred (`CheckDeferredError`, e.g. an API rate limit): held like a checker
+   * offline beat, PENDING with the check's message and the previous state kept.
+   */
+  deferred?: boolean
+  /** Per-probe results of a multi-location check (Globalping), whatever the outcome. */
+  probes?: ProbeResult[] | null
   /**
    * Extra fields the type set on `ctx.heartbeat` besides status/msg/ping/duration (e.g.
    * `statusCode`). Not persisted; returned by on-demand checks.
@@ -345,7 +352,9 @@ export function computeNextBeat(
   result: CheckResult,
   monitor: MonitorSettings,
 ): NextState {
-  if (result.checkerOffline) return holdBeatWhileCheckerOffline(prev, result, monitor)
+  if (result.checkerOffline || result.deferred) {
+    return holdBeatWhileCheckerOffline(prev, result, monitor)
+  }
 
   const isFirstBeat = !prev?.status
   const upsideDown = Boolean(monitor.upsideDown)
@@ -451,6 +460,8 @@ export function computeNextBeat(
  * notified, and it carries the previous retries/downCount over unchanged: the worker keeps the
  * monitor's cached status as it was, so the first real check after connectivity returns is judged
  * against the state from before the outage. The cadence stays the one of the previous status.
+ *
+ * Deferred checks (#142, `CheckDeferredError`: a third-party API rate limit) are held the same way.
  */
 export function holdBeatWhileCheckerOffline(
   prev: PrevState | null | undefined,
