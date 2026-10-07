@@ -522,7 +522,30 @@ describe('sendgrid / resend', () => {
       ],
       from: { email: 'alerts@example.com' },
       subject: 'Alert',
-      content: [{ type: 'text/plain', value: downMessage }],
+      content: [
+        { type: 'text/plain', value: expect.stringContaining(downMessage) },
+        { type: 'text/html', value: expect.stringContaining('<!doctype html>') },
+      ],
+    })
+  })
+
+  it('sendgrid renders the subject and HTML templates', async () => {
+    await send('sendgrid', {
+      apiKey: 'SG.x',
+      fromEmail: 'alerts@example.com',
+      toEmail: 'ops@example.com',
+      subject: '{% if heartbeat.status == "down" %}DOWN{% else %}UP{% endif %}: {{ name }}',
+      htmlTemplate: '<p>{{ heartbeat.msg }} {{ "<b>" }}</p><a href="https://x.test">Open</a>',
+    })
+    const body = calls[0].body as { subject: string; content: { type: string; value: string }[] }
+    expect(body.subject).toBe('DOWN: API')
+    expect(body.content[1]).toEqual({
+      type: 'text/html',
+      value: `<p>${downBeat.msg} &lt;b&gt;</p><a href="https://x.test">Open</a>`,
+    })
+    expect(body.content[0]).toEqual({
+      type: 'text/plain',
+      value: `${downBeat.msg} <b>\nOpen (https://x.test)`,
     })
   })
 
@@ -538,7 +561,8 @@ describe('sendgrid / resend', () => {
       from: 'Marmot <alerts@example.com>',
       to: 'ops@example.com',
       subject: 'Notification from Marmot',
-      text: upMessage,
+      text: expect.stringContaining(upMessage),
+      html: expect.stringContaining('<!doctype html>'),
     })
   })
 })

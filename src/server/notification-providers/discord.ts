@@ -46,6 +46,7 @@ export const discordFieldMeta: Record<keyof DiscordConfig, NotificationFieldMeta
     options: { normal: 'Embed', minimalist: 'Minimalist', custom: 'Custom template' },
   },
   messageTemplate: {
+    template: 'text',
     label: 'Message template',
     multiline: true,
     description: 'Used when format is "Custom template". Supports {{ monitor.name }} placeholders.',
@@ -92,7 +93,8 @@ registerNotificationProvider({
   docsUrl: 'https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks',
   configSchema: discordConfigSchema,
   fieldMeta: discordFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat, locale, event, downtimeSeconds }) {
+  async send(ctx) {
+    const { config: raw, message, monitor, heartbeat, locale, downtimeSeconds } = ctx
     const config = discordConfigSchema.parse(raw)
     const p = providerText(locale)
     const username = config.username || 'Marmot'
@@ -124,7 +126,7 @@ registerNotificationProvider({
           monitor,
           heartbeat,
           locale,
-          { event, downtimeSeconds },
+          ctx,
         )
       }
       await postJson(url.toString(), decorate({ username, content }))
@@ -138,7 +140,7 @@ registerNotificationProvider({
         monitor,
         heartbeat,
         locale,
-        { event, downtimeSeconds },
+        ctx,
       )
       await postJson(url.toString(), decorate({ username, content }))
       return OK_MESSAGE

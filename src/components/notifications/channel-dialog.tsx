@@ -37,6 +37,7 @@ import {
 } from '@/lib/notification-events'
 
 import { ProviderField } from './provider-field'
+import { hasTemplates, TemplatePreview } from './template-preview'
 import {
   notificationsApi,
   PROVIDER_GROUP_ORDER,
@@ -129,6 +130,7 @@ export function ChannelDialog({
   const applyExisting = useWatch({ control: form.control, name: 'applyExisting' })
   const active = useWatch({ control: form.control, name: 'active' })
   const events = useWatch({ control: form.control, name: 'events' })
+  const config = useWatch({ control: form.control, name: 'config' })
   const provider = React.useMemo(() => providers.find((p) => p.name === type), [providers, type])
 
   // Reset the form whenever the dialog opens for a different channel.
@@ -340,6 +342,19 @@ export function ChannelDialog({
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">{t('dialog.noProviders')}</p>
+          )}
+
+          {provider && hasTemplates(provider) && (
+            <>
+              <Separator />
+              <TemplatePreview
+                key={`${channel?.id ?? 'new'}.${provider.name}`}
+                orgId={orgId}
+                provider={provider}
+                config={cleanConfig(provider, config ?? {})}
+                initialEvent={events[0] ?? 'down'}
+              />
+            </>
           )}
 
           <Separator />

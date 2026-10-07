@@ -23,10 +23,11 @@ import {
   normalizeNotificationConfig,
   NotificationConfigError,
   validateNotificationConfig,
+  validateNotificationTemplates,
 } from '@/server/notifications/send'
 import { checkServerSmtpChange } from '@/server/notifications/server-smtp'
 import { adminGroup, adminT } from '@/i18n/admin'
-import { userErrorText } from '@/server/request-locale'
+import { userErrorText, userLocale } from '@/server/request-locale'
 import { apiError } from '@/server/errors'
 
 const log = childLogger('notifications')
@@ -35,7 +36,8 @@ const extractId = (value: OrgId | { id: OrgId } | null | undefined): OrgId | nul
   value === null || value === undefined ? null : typeof value === 'object' ? value.id : value
 
 /**
- * `type` must name a registered provider and `config` must satisfy its schema. Runs in
+ * `type` must name a registered provider, `config` must satisfy its schema and its message
+ * templates must be valid Liquid with known variables (#150). Runs in
  * `beforeValidate` so the error surfaces as a normal field validation error (REST 400).
  */
 const validateProviderConfig: CollectionBeforeValidateHook<Notification> = ({
@@ -55,6 +57,9 @@ const validateProviderConfig: CollectionBeforeValidateHook<Notification> = ({
   const config = data.config !== undefined ? data.config : originalDoc?.config
   try {
     data.config = validateNotificationConfig(type, config)
+    // Only new or changed templates are checked, so unrelated updates (the worker's `lastSentAt`)
+    // never fail on a template saved before a rule existed.
+    validateNotificationTemplates(type, data.config, userLocale(req.user), originalDoc)
   } catch (error) {
     if (error instanceof NotificationConfigError) {
       throw new ValidationError({

@@ -15,7 +15,7 @@ import {
   type MaintenanceNotificationJobData,
 } from './maintenance'
 import { buildDefaultMessage } from './message'
-import { getChannelLocale, sendNotification } from './send'
+import { getChannelOrganization, sendNotification } from './send'
 import { ServerSmtpSendError } from './server-smtp'
 import {
   isSubscriberJobName,
@@ -103,7 +103,8 @@ export async function processNotificationJob(
   )) as Heartbeat | null
   if (!heartbeat) return { outcome: 'skipped', reason: 'heartbeat-not-found' }
 
-  const locale = await getChannelLocale(payload, notification)
+  const channelOrganization = await getChannelOrganization(payload, notification)
+  const { locale } = channelOrganization
   const downtimeSeconds =
     event === 'up' ? await findOrNull(() => recoveryDowntimeSeconds(payload, heartbeat)) : null
   const message = buildDefaultMessage(monitor, heartbeat, locale, { event, downtimeSeconds })
@@ -115,6 +116,7 @@ export async function processNotificationJob(
       event,
       downtimeSeconds,
       locale,
+      channelOrganization,
     })
     await recordOutcome(payload, notification, { ok: true })
     log.info(
@@ -178,7 +180,8 @@ export async function processMaintenanceNotificationJob(
   const names = (docs as Pick<Monitor, 'id' | 'name'>[]).map((doc) => doc.name)
   if (names.length === 0) return { outcome: 'skipped', reason: 'monitor-not-found' }
 
-  const locale = await getChannelLocale(payload, notification)
+  const channelOrganization = await getChannelOrganization(payload, notification)
+  const { locale } = channelOrganization
   const collator = new Intl.Collator(locale)
   const message = buildMaintenanceMessage(type, title, names.sort(collator.compare), locale)
   try {
@@ -188,6 +191,7 @@ export async function processMaintenanceNotificationJob(
       heartbeat: null,
       event: 'maintenance',
       locale,
+      channelOrganization,
     })
     await recordOutcome(payload, notification, { ok: true })
     log.info({ notificationId, type: notification.type, maintenance: type }, 'notification sent')
