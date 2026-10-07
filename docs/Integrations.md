@@ -50,6 +50,9 @@ user and never grant access to the REST/GraphQL API or the UI.
 /api/badge/:monitorId/response
 ```
 
+For one badge with the overall state of a whole status page, see
+[Status pages → Status badge](Status-Pages.md#status-badge).
+
 Badges are rendered with [`badge-maker`](https://www.npmjs.com/package/badge-maker) (the shields.io
 renderer) and answered with `Content-Type: image/svg+xml`, `Cache-Control: public, max-age=300` and
 `Access-Control-Allow-Origin: *`.
