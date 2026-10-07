@@ -21,6 +21,7 @@ import {
   type RealtimeRange,
   type ServerToClientEvents,
 } from './events'
+import type { MonitorIncidentSummary } from '@/lib/monitor-incidents'
 import { toRealtimeMonitor, type MonitorSummarySource } from './serialize'
 
 const log = childLogger('realtime:emitter')
@@ -232,6 +233,17 @@ export function emitCertInfo(
     organizationId: id(organizationId),
     monitorId: id(monitorId),
     info,
+  })
+}
+
+/** A monitor incident changed (`monitorIncident`). */
+export function emitMonitorIncident(
+  organizationId: string | number,
+  incident: MonitorIncidentSummary,
+): void {
+  emitToOrg(organizationId, RealtimeEvents.monitorIncident, {
+    organizationId: id(organizationId),
+    incident,
   })
 }
 

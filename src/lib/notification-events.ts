@@ -11,7 +11,10 @@
  * - `degraded`: it became DEGRADED or went back from DEGRADED to UP (#93);
  * - `reminder`: the `resendInterval` repeat while still DOWN;
  * - `certificate`: TLS certificate and domain expiry warnings;
- * - `maintenance`: a maintenance window of the monitor started or ended.
+ * - `maintenance`: a maintenance window of the monitor started or ended;
+ * - `acknowledged`: a member acknowledged the monitor's incident (#100);
+ * - `resolved`: a member resolved the monitor's incident by hand (#100; automatic resolutions are
+ *   announced by `up`).
  */
 export const CHANNEL_EVENTS = [
   'down',
@@ -20,19 +23,24 @@ export const CHANNEL_EVENTS = [
   'reminder',
   'certificate',
   'maintenance',
+  'acknowledged',
+  'resolved',
 ] as const
 
 export type ChannelEvent = (typeof CHANNEL_EVENTS)[number]
 
 /**
  * What a channel receives unless it chooses otherwise: everything that was sent before per-channel
- * filters existed. `degraded` and `maintenance` are opt-in.
+ * filters existed, plus the incident acknowledgements and manual resolutions (#100), which tell the
+ * people paged by a DOWN alert that someone is on it. `degraded` and `maintenance` are opt-in.
  */
 export const DEFAULT_CHANNEL_EVENTS: readonly ChannelEvent[] = [
   'down',
   'up',
   'reminder',
   'certificate',
+  'acknowledged',
+  'resolved',
 ]
 
 export const isChannelEvent = (value: unknown): value is ChannelEvent =>

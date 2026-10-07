@@ -351,6 +351,7 @@ export const Monitors: CollectionConfig = {
           'stat-hourly',
           'stat-daily',
           'notification-sent-history',
+          'monitor-incidents',
           'push-events',
         ] as const) {
           await req.payload.delete({ collection, where: { monitor: { equals: id } }, ...common })

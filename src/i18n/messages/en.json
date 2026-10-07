@@ -84,7 +84,8 @@
       "maintenance": "Maintenance",
       "notifications": "Notifications",
       "members": "Members",
-      "settings": "Settings"
+      "settings": "Settings",
+      "incidents": "Incidents"
     },
     "orgSwitcher": {
       "trigger": "Organization: {name}. Switch organization",
@@ -1523,7 +1524,8 @@
         "apiKey": "API keys",
         "auditLog": "Audit log",
         "sso": "Single sign-on",
-        "subscriber": "Status page subscribers"
+        "subscriber": "Status page subscribers",
+        "monitorIncident": "Monitor incidents"
       },
       "actions": {
         "read": "View",
@@ -1534,7 +1536,9 @@
         "remove": "Remove",
         "updateRole": "Change roles",
         "manage": "Manage",
-        "send": "Send"
+        "send": "Send",
+        "acknowledge": "Acknowledge",
+        "resolve": "Resolve"
       },
       "custom": "Custom",
       "fixed": "(fixed)",
@@ -2071,6 +2075,14 @@
       "maintenance": {
         "label": "Maintenance",
         "description": "A maintenance window of a monitor starts or ends."
+      },
+      "acknowledged": {
+        "label": "Incident acknowledged",
+        "description": "A member acknowledged the incident of a monitor that is down."
+      },
+      "resolved": {
+        "label": "Incident resolved by hand",
+        "description": "A member resolved an incident before the monitor recovered."
       }
     },
     "messages": {
@@ -2143,6 +2155,19 @@
         "name": "Name",
         "description": "Description",
         "monitor": "Monitor"
+      },
+      "incident": {
+        "label": {
+          "acknowledged": "👀 Acknowledged",
+          "resolved": "✅ Resolved"
+        },
+        "acknowledged": "Acknowledged.",
+        "acknowledgedBy": "Acknowledged by {name}.",
+        "acknowledgedViaLink": "Acknowledged from a notification link.",
+        "resolved": "Resolved by hand after {duration}.",
+        "resolvedBy": "Resolved by {name} after {duration}.",
+        "note": "Note: {note}",
+        "ackLink": "Acknowledge: {url}"
       }
     },
     "providers": {
@@ -4290,6 +4315,152 @@
       "hoursUnit": "h"
     }
   },
+  "incidents": {
+    "status": {
+      "open": "Open",
+      "acknowledged": "Acknowledged",
+      "resolved": "Resolved"
+    },
+    "list": {
+      "pageTitle": "Incidents",
+      "title": "Incidents",
+      "description": "Outages of your monitors: opened when a monitor goes down, resolved when it recovers.",
+      "loading": "Loading incidents",
+      "emptyTitle": "No incidents",
+      "emptyDescription": "Nothing matches these filters. An incident opens automatically when a monitor goes down.",
+      "columns": {
+        "monitor": "Monitor",
+        "status": "Status",
+        "started": "Started",
+        "duration": "Duration",
+        "response": "Response"
+      },
+      "ongoing": "{duration} so far",
+      "acknowledgedBy": "Acknowledged by {name}",
+      "acknowledgedViaLink": "Acknowledged from a notification link",
+      "notAcknowledged": "Not acknowledged yet",
+      "resolvedAuto": "Resolved automatically",
+      "resolvedBy": "Resolved by {name}",
+      "resolvedManually": "Resolved by hand",
+      "unknownMonitor": "Deleted monitor",
+      "pagination": "Page {page} of {total}",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "filters": {
+      "status": "Status",
+      "monitor": "Monitor",
+      "range": "Period",
+      "allMonitors": "All monitors",
+      "statuses": {
+        "active": "Unresolved",
+        "all": "All statuses",
+        "open": "Open",
+        "acknowledged": "Acknowledged",
+        "resolved": "Resolved"
+      },
+      "ranges": {
+        "24h": "Last 24 hours",
+        "7d": "Last 7 days",
+        "30d": "Last 30 days",
+        "90d": "Last 90 days",
+        "all": "All time"
+      }
+    },
+    "stats": {
+      "total": "Incidents",
+      "unresolved": "Unresolved",
+      "unresolvedHint": "{open} open · {acknowledged} acknowledged",
+      "mtta": "Mean time to acknowledge",
+      "mttr": "Mean time to resolve",
+      "noData": "No data",
+      "label": "Summary for the selected period and monitor"
+    },
+    "detail": {
+      "breadcrumb": "Incidents",
+      "title": "{monitor} is down",
+      "titleResolved": "{monitor} was down",
+      "started": "Started",
+      "duration": "Duration",
+      "cause": "Cause",
+      "noCause": "No message",
+      "acknowledged": "Acknowledged",
+      "resolved": "Resolved",
+      "reminders": "Reminders sent",
+      "timeline": "Timeline",
+      "viewMonitor": "View monitor",
+      "statusPageIncident": "Status page incident",
+      "openStatusPage": "Open in the status page editor",
+      "notYet": "Not yet"
+    },
+    "timeline": {
+      "opened": "The monitor went down",
+      "maintenance": "The monitor entered maintenance",
+      "acknowledged": "Acknowledged by {name}",
+      "acknowledgedAnonymous": "Acknowledged from a notification link",
+      "resolvedAuto": "Resolved automatically: the monitor recovered",
+      "resolved": "Resolved by {name}",
+      "resolvedAnonymous": "Resolved by hand",
+      "published": "Published to a status page as “{title}”",
+      "publishedBy": "{name} published it to a status page as “{title}”",
+      "via": {
+        "dashboard": "from the dashboard",
+        "api": "through the API",
+        "link": "from a notification link"
+      }
+    },
+    "actions": {
+      "acknowledge": "Acknowledge",
+      "resolve": "Resolve",
+      "publish": "Publish to status page",
+      "note": "Note (optional)",
+      "notePlaceholder": "What is being done about it?",
+      "acknowledgeTitle": "Acknowledge this incident?",
+      "acknowledgeDescription": "Reminders stop re-sending and the monitor’s channels are told that you are on it.",
+      "resolveTitle": "Resolve this incident?",
+      "resolveDescription": "Use this when the outage is handled although the monitor has not recovered. The monitor’s channels are told; a new incident opens the next time the monitor goes down.",
+      "acknowledged": "Incident acknowledged",
+      "resolved": "Incident resolved",
+      "failed": "Could not update the incident.",
+      "cancel": "Cancel",
+      "working": "Working…"
+    },
+    "publish": {
+      "title": "Publish to a status page",
+      "description": "Creates a public incident on the status page. It names the page’s components that show this monitor.",
+      "statusPage": "Status page",
+      "chooseStatusPage": "Choose a status page",
+      "noStatusPages": "This organization has no status pages yet.",
+      "incidentTitle": "Title",
+      "message": "Message",
+      "messagePlaceholder": "We are investigating problems with this service.",
+      "submit": "Publish",
+      "published": "Published to the status page",
+      "failed": "Could not publish the incident."
+    },
+    "monitorCard": {
+      "title": "Recent incidents",
+      "empty": "No incidents yet.",
+      "viewAll": "View all"
+    },
+    "ack": {
+      "pageTitle": "Acknowledge incident",
+      "title": "Acknowledge this incident?",
+      "description": "{monitor} has been down since {time}.",
+      "cause": "Cause: {cause}",
+      "signedIn": "The acknowledgement will carry your name ({name}).",
+      "anonymous": "You are not signed in: the acknowledgement is recorded as coming from a notification link.",
+      "confirm": "Acknowledge",
+      "working": "Acknowledging…",
+      "done": "Acknowledged. Reminders stop until the monitor recovers.",
+      "alreadyAcknowledged": "This incident is already acknowledged.",
+      "resolved": "This incident is resolved.",
+      "invalidTitle": "Link expired or invalid",
+      "invalidDescription": "Acknowledge the incident from the dashboard instead.",
+      "failed": "Could not acknowledge the incident.",
+      "openDashboard": "Open Marmot"
+    }
+  },
   "templates": {
     "kinds": {
       "incident": "New incident",
@@ -4754,7 +4925,11 @@
     "subscriberNotFound": "Subscriber not found.",
     "subscriberNotificationNotFound": "Notification not found.",
     "subscriberNotificationState": "This notification cannot be {action, select, send {sent} discard {discarded} retry {retried} other {changed}} in its current state.",
-    "subscriberImportInvalid": "Upload a CSV file with the columns channel, target and (optionally) components."
+    "subscriberImportInvalid": "Upload a CSV file with the columns channel, target and (optionally) components.",
+    "incidentAlreadyAcknowledged": "This incident is already acknowledged.",
+    "incidentAlreadyResolved": "This incident is already resolved.",
+    "incidentAlreadyPublished": "This incident is already published to a status page.",
+    "incidentAckLinkInvalid": "This acknowledge link is invalid or has expired."
   },
   "subscriberMessages": {
     "sms": {

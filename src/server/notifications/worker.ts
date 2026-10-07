@@ -2,6 +2,7 @@ import { UnrecoverableError, type Job, type Worker } from 'bullmq'
 import type { Payload } from 'payload'
 
 import { env } from '@/env'
+import type { Locale } from '@/i18n/locales'
 import { childLogger } from '@/lib/logger'
 import type { Heartbeat, Monitor, Notification } from '@/payload-types'
 import { QUEUE_NAMES } from '@/server/engine/names'
@@ -22,6 +23,14 @@ import {
   type SubscriberJobData,
 } from '@/server/status-pages/subscribers/queue'
 import { processSubscriberJob } from '@/server/status-pages/subscribers/worker'
+import { ackLinkUrl } from '@/server/incidents/ack-link'
+import {
+  isIncidentJobName,
+  processIncidentNotificationJob,
+  type IncidentNotificationJobData,
+} from '@/server/incidents/notify'
+import { findOpenIncident } from '@/server/incidents/store'
+import { serverTranslator } from '@/server/i18n'
 
 const log = childLogger('notifications:worker')
 
@@ -62,6 +71,28 @@ async function recordOutcome(
     })
   } catch (err) {
     log.warn({ err, notificationId: notification.id }, 'failed to record notification outcome')
+  }
+}
+
+/**
+ * A DOWN message (first alert or reminder) of a monitor whose incident nobody acknowledged yet ends
+ * with a signed acknowledge link (`src/server/incidents/ack-link.ts`); otherwise nothing.
+ */
+async function ackLinkLine(
+  payload: Payload,
+  monitor: Monitor,
+  heartbeat: Heartbeat,
+  locale: Locale,
+): Promise<string> {
+  if (heartbeat.status !== 'down') return ''
+  try {
+    const incident = await findOpenIncident(payload, monitor.id)
+    if (!incident || incident.status !== 'open') return ''
+    const url = ackLinkUrl(incident.id)
+    return `\n${serverTranslator(locale)('notifications.messages.incident.ackLink', { url })}`
+  } catch (err) {
+    log.warn({ err, monitorId: monitor.id }, 'failed to build the acknowledge link')
+    return ''
   }
 }
 
@@ -107,7 +138,9 @@ export async function processNotificationJob(
   const { locale } = channelOrganization
   const downtimeSeconds =
     event === 'up' ? await findOrNull(() => recoveryDowntimeSeconds(payload, heartbeat)) : null
-  const message = buildDefaultMessage(monitor, heartbeat, locale, { event, downtimeSeconds })
+  const message =
+    buildDefaultMessage(monitor, heartbeat, locale, { event, downtimeSeconds }) +
+    (await ackLinkLine(payload, monitor, heartbeat, locale))
   try {
     const result = await sendNotification(payload, notification, {
       message,
@@ -214,7 +247,8 @@ export interface StartNotificationWorkerOptions extends QueueFactoryOptions {
 
 /**
  * Start the BullMQ worker consuming the notifications queue: monitor alerts (`notify`), maintenance
- * windows (`notify-maintenance`) and status page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`).
+ * windows (`notify-maintenance`), incident acknowledgements and resolutions (`incident-notify`) and
+ * status page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`).
  */
 export function startNotificationWorker(
   payload: Payload,
@@ -233,6 +267,14 @@ export function startNotificationWorker(
         await processMaintenanceNotificationJob(
           payload,
           job as unknown as Job<MaintenanceNotificationJobData>,
+        )
+        return
+      }
+      // Incident acknowledgements and resolutions (#100).
+      if (isIncidentJobName(job.name)) {
+        await processIncidentNotificationJob(
+          payload,
+          job as unknown as Job<IncidentNotificationJobData>,
         )
         return
       }

@@ -62,17 +62,19 @@ job data; `notificationEventFor()` in `src/server/engine/beat.ts`):
 Every channel has an `events` selection (`src/lib/notification-events.ts`); a channel is only told about
 the events it selected:
 
-| Event         | Sent when                                                                             | Default |
-| ------------- | ------------------------------------------------------------------------------------- | :-----: |
-| `down`        | a monitor went DOWN                                                                   |   on    |
-| `up`          | it recovered from DOWN (the message carries the downtime)                             |   on    |
-| `degraded`    | it became DEGRADED or went back from DEGRADED to UP                                   |   off   |
-| `reminder`    | the `resendInterval` repeat while still DOWN                                          |   on    |
-| `certificate` | a TLS certificate or domain expiry warning (monitors with the expiry options on)      |   on    |
-| `maintenance` | a maintenance window covering the monitor starts or ends (once per channel and event) |   off   |
+| Event          | Sent when                                                                             | Default |
+| -------------- | ------------------------------------------------------------------------------------- | :-----: |
+| `down`         | a monitor went DOWN                                                                   |   on    |
+| `up`           | it recovered from DOWN (the message carries the downtime)                             |   on    |
+| `degraded`     | it became DEGRADED or went back from DEGRADED to UP                                   |   off   |
+| `reminder`     | the `resendInterval` repeat while still DOWN                                          |   on    |
+| `certificate`  | a TLS certificate or domain expiry warning (monitors with the expiry options on)      |   on    |
+| `maintenance`  | a maintenance window covering the monitor starts or ends (once per channel and event) |   off   |
+| `acknowledged` | a member acknowledged the monitor's [incident](Monitors.md#incidents)                 |   on    |
+| `resolved`     | a member resolved the monitor's incident by hand (automatic resolution is `up`)       |   on    |
 
-The defaults are exactly what every channel received before the filters existed, and a channel without a
-selection (one created before the field existed, or saved with an empty list) gets the defaults, so
+The defaults are what every channel received before the filters existed plus the incident events, and a
+channel without a selection (one created before the field existed, or saved with an empty list) gets the defaults, so
 existing channels behave as before after the upgrade without a data migration. The names are stable
 identifiers (stored on channels, exported, sent to templates as `{{ event }}`); new events are added,
 never renamed.
@@ -93,6 +95,28 @@ the window's monitors (children of listed groups included) gets one `notify-main
 `notif-maint:<channel>:<occurrence>:<started|completed>`) and one message,
 `[Marmot] [🔧 Maintenance] Maintenance "DB upgrade" started for API and Web.` Announcements, reminders,
 notes and cancellations stay with status page subscribers.
+
+Before enqueuing, the listener asks the **notification gates** (`registerNotificationGate` in
+`src/server/notifications/gates.ts`); any gate answering `false` holds the beat back, and a gate that throws
+is ignored. Monitor incidents register one that runs the **reminder policy**
+(`src/server/incidents/reminders.ts`, replaceable with `setReminderPolicy`) on `resendInterval` reminders: by
+default reminders stop while the monitor's incident is acknowledged. Reminders that go out are counted on the
+incident (`remindersSent`, `lastReminderAt`).
+
+### Incident notifications
+
+Acknowledging or resolving a [monitor incident](Monitors.md#incidents) by hand notifies the monitor's active
+channels that selected the event, through the same queue: job `incident-notify` with id
+`inc-<channel>-<incident>-<event>`, event `acknowledged` or `resolved` (filtered by
+`channelAcceptsEvent()` like everything else). The message keeps the usual shape:
+`[name] [👀 Acknowledged] Acknowledged by Ada. Note: …` or `[name] [✅ Resolved] Resolved by Ada after 12
+minutes.`, sent with the monitor and no heartbeat (like a test message, so rich providers send the text).
+An automatic resolution sends nothing extra: the UP notification already announces the recovery.
+
+While the incident is still open, DOWN messages (first alert and reminders) end with
+`Acknowledge: <server>/ack/<token>`, a signed link to acknowledge from the phone. Providers that build their
+own layout from the heartbeat (Discord embeds, Slack blocks, …) show it only with a custom template that
+includes `{{ msg }}`.
 
 The default message is `[monitor name] [✅ Up|🔴 Down|⚠️ Pending|🔧 Maintenance|🐢 Degraded] <heartbeat message>`.
 The status labels, the test message and the certificate/domain expiry warnings are written in the

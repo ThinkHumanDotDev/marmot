@@ -134,7 +134,14 @@ afterEach(() => {
 describe('channel selection', () => {
   it('defaults to the events channels received before, normalises and never stores an empty list', async () => {
     const plain = await channel('plain')
-    expect(plain.events).toEqual(['down', 'up', 'reminder', 'certificate'])
+    expect(plain.events).toEqual([
+      'down',
+      'up',
+      'reminder',
+      'certificate',
+      'acknowledged',
+      'resolved',
+    ])
 
     const chosen = await channel('chosen', { events: ['maintenance', 'down'] as never })
     expect(chosen.events).toEqual(['down', 'maintenance'])
@@ -156,7 +163,14 @@ describe('channel selection', () => {
   it('a channel without a selection (created before the field existed) behaves as before', () => {
     for (const legacy of [{ events: null }, { events: [] }, {}] as Pick<Notification, 'events'>[]) {
       expect(normalizeChannelEvents(legacy.events)).toEqual([...DEFAULT_CHANNEL_EVENTS])
-      for (const event of ['down', 'up', 'reminder', 'certificate'] as const) {
+      for (const event of [
+        'down',
+        'up',
+        'reminder',
+        'certificate',
+        'acknowledged',
+        'resolved',
+      ] as const) {
         expect(channelAcceptsEvent(legacy, event)).toBe(true)
       }
       expect(channelAcceptsEvent(legacy, 'degraded')).toBe(false)

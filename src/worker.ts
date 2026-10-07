@@ -20,6 +20,7 @@ import {
   createMaintenanceResolver,
   startMaintenanceWorker,
 } from '@/server/maintenance'
+import { registerIncidentListener } from '@/server/incidents/listener'
 import { startConnectivityCheck } from '@/server/engine/connectivity-runtime'
 import { closeCheckerStateStore } from '@/server/engine/connectivity-state'
 import { registerExpiryNotificationListener } from '@/server/jobs/expiry-notifications'
@@ -77,6 +78,10 @@ async function main() {
   // Realtime: publishes each heartbeat (+ refreshed 24h uptime/avgPing) to the org's socket room.
   // Registered after the stats listener so the figures already include the new beat.
   registerRealtimeListener()
+
+  // Monitor incidents: opened on DOWN, resolved on recovery; holds reminders back once acknowledged.
+  // Registered before the notification listener so a DOWN alert can link to its incident.
+  registerIncidentListener(payload)
 
   // Notifications: enqueue one job per attached channel when a beat should notify.
   registerNotificationListener(payload)

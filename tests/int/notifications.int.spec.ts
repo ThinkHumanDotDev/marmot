@@ -536,9 +536,9 @@ describe('notification endpoints', () => {
     expect(await ok.json()).toEqual({
       ok: true,
       result: 'Sent Successfully.',
-      events: ['down', 'up', 'reminder', 'certificate'],
+      events: ['down', 'up', 'reminder', 'certificate', 'acknowledged', 'resolved'],
     })
-    expect(fetchCalls).toHaveLength(4)
+    expect(fetchCalls).toHaveLength(6)
     expect(fetchCalls[0].url).toBe('https://discord.com/api/webhooks/1/t')
     expect((fetchCalls[0].body as { content: string }).content).toContain('[⚠️ Test] Down:')
 
@@ -684,7 +684,14 @@ describe('notification endpoints', () => {
     ).toBe(String(org.id))
     expect(doc.config).toMatchObject({ richMessage: true })
     // Without a selection a channel gets the events every channel received before #126.
-    expect(doc.events).toEqual(['down', 'up', 'reminder', 'certificate'])
+    expect(doc.events).toEqual([
+      'down',
+      'up',
+      'reminder',
+      'certificate',
+      'acknowledged',
+      'resolved',
+    ])
 
     const filtered = await createRoute(
       await orgRoute(admin, {

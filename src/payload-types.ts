@@ -81,6 +81,7 @@ export interface Config {
     'docker-hosts': DockerHost;
     'notification-sent-history': NotificationSentHistory;
     heartbeats: Heartbeat;
+    'monitor-incidents': MonitorIncident;
     'push-events': PushEvent;
     'stat-minutely': StatMinutely;
     'stat-hourly': StatHourly;
@@ -117,6 +118,7 @@ export interface Config {
     'docker-hosts': DockerHostsSelect<false> | DockerHostsSelect<true>;
     'notification-sent-history': NotificationSentHistorySelect<false> | NotificationSentHistorySelect<true>;
     heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
+    'monitor-incidents': MonitorIncidentsSelect<false> | MonitorIncidentsSelect<true>;
     'push-events': PushEventsSelect<false> | PushEventsSelect<true>;
     'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
     'stat-hourly': StatHourlySelect<false> | StatHourlySelect<true>;
@@ -596,7 +598,8 @@ export interface Notification {
     | number
     | boolean
     | null;
-  events?: ('down' | 'up' | 'degraded' | 'reminder' | 'certificate' | 'maintenance')[] | null;
+  events?:
+    ('down' | 'up' | 'degraded' | 'reminder' | 'certificate' | 'maintenance' | 'acknowledged' | 'resolved')[] | null;
   isDefault?: boolean | null;
   applyExisting?: boolean | null;
   active?: boolean | null;
@@ -679,94 +682,80 @@ export interface Heartbeat {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "push-events".
+ * via the `definition` "monitor-incidents".
  */
-export interface PushEvent {
+export interface MonitorIncident {
   id: number;
+  organization: number | Organization;
   monitor: number | Monitor;
-  organization?: (number | null) | Organization;
-  kind: 'success' | 'fail' | 'start' | 'log';
-  source?: ('http' | 'email') | null;
-  msg?: string | null;
-  body?: string | null;
-  bodyTruncated?: boolean | null;
-  rid?: string | null;
-  exitCode?: number | null;
-  duration?: number | null;
-  method?: string | null;
-  time: string;
+  status: 'open' | 'acknowledged' | 'resolved';
+  openKey?: string | null;
+  cause?: string | null;
+  startedAt: string;
+  acknowledgedAt?: string | null;
+  resolvedAt?: string | null;
+  acknowledgedBy?: (number | null) | User;
+  acknowledgedVia?: ('dashboard' | 'api' | 'link') | null;
+  resolvedBy?: (number | null) | User;
+  autoResolved?: boolean | null;
+  remindersSent?: number | null;
+  lastReminderAt?: string | null;
+  statusPageIncident?: (number | null) | Incident;
+  timeline?:
+    | {
+        type: 'opened' | 'maintenance' | 'acknowledged' | 'resolved' | 'published';
+        at: string;
+        by?: (number | null) | User;
+        via?: ('dashboard' | 'api' | 'link') | null;
+        message?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "stat-minutely".
+ * via the `definition` "incidents".
  */
-export interface StatMinutely {
+export interface Incident {
   id: number;
-  monitor: number | Monitor;
   organization: number | Organization;
-  timestamp: number;
-  up: number;
-  down: number;
-  ping?: number | null;
-  pingMin?: number | null;
-  pingMax?: number | null;
-  extras?:
+  statusPage: number | StatusPage;
+  title: string;
+  publicId?: string | null;
+  status?: ('investigating' | 'identified' | 'monitoring' | 'resolved') | null;
+  impact?: ('operational' | 'degraded_performance' | 'partial_outage' | 'major_outage') | null;
+  updates?:
     | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
+        status: 'investigating' | 'identified' | 'monitoring' | 'resolved';
+        postedAt: string;
+        editedAt?: string | null;
+        message?: string | null;
+        components?:
+          | {
+              component: string;
+              impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
     | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "stat-hourly".
- */
-export interface StatHourly {
-  id: number;
-  monitor: number | Monitor;
-  organization: number | Organization;
-  timestamp: number;
-  up: number;
-  down: number;
-  ping?: number | null;
-  pingMin?: number | null;
-  pingMax?: number | null;
-  extras?:
+  affectedComponents?:
     | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
+        component: string;
+        impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
+        id?: string | null;
+      }[]
     | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "stat-daily".
- */
-export interface StatDaily {
-  id: number;
-  monitor: number | Monitor;
-  organization: number | Organization;
-  timestamp: number;
-  up: number;
-  down: number;
-  ping?: number | null;
-  pingMin?: number | null;
-  pingMax?: number | null;
-  extras?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  pinned?: boolean | null;
+  active?: boolean | null;
+  resolvedAt?: string | null;
+  content?: string | null;
+  style?: ('info' | 'warning' | 'danger' | 'primary') | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -899,6 +888,97 @@ export interface StatusPage {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "push-events".
+ */
+export interface PushEvent {
+  id: number;
+  monitor: number | Monitor;
+  organization?: (number | null) | Organization;
+  kind: 'success' | 'fail' | 'start' | 'log';
+  source?: ('http' | 'email') | null;
+  msg?: string | null;
+  body?: string | null;
+  bodyTruncated?: boolean | null;
+  rid?: string | null;
+  exitCode?: number | null;
+  duration?: number | null;
+  method?: string | null;
+  time: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-minutely".
+ */
+export interface StatMinutely {
+  id: number;
+  monitor: number | Monitor;
+  organization: number | Organization;
+  timestamp: number;
+  up: number;
+  down: number;
+  ping?: number | null;
+  pingMin?: number | null;
+  pingMax?: number | null;
+  extras?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-hourly".
+ */
+export interface StatHourly {
+  id: number;
+  monitor: number | Monitor;
+  organization: number | Organization;
+  timestamp: number;
+  up: number;
+  down: number;
+  ping?: number | null;
+  pingMin?: number | null;
+  pingMax?: number | null;
+  extras?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-daily".
+ */
+export interface StatDaily {
+  id: number;
+  monitor: number | Monitor;
+  organization: number | Organization;
+  timestamp: number;
+  up: number;
+  down: number;
+  ping?: number | null;
+  pingMin?: number | null;
+  pingMax?: number | null;
+  extras?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "status-page-viewers".
  */
 export interface StatusPageViewer {
@@ -908,49 +988,6 @@ export interface StatusPageViewer {
   email: string;
   status: 'active' | 'revoked';
   lastSeenAt?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "incidents".
- */
-export interface Incident {
-  id: number;
-  organization: number | Organization;
-  statusPage: number | StatusPage;
-  title: string;
-  publicId?: string | null;
-  status?: ('investigating' | 'identified' | 'monitoring' | 'resolved') | null;
-  impact?: ('operational' | 'degraded_performance' | 'partial_outage' | 'major_outage') | null;
-  updates?:
-    | {
-        status: 'investigating' | 'identified' | 'monitoring' | 'resolved';
-        postedAt: string;
-        editedAt?: string | null;
-        message?: string | null;
-        components?:
-          | {
-              component: string;
-              impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
-              id?: string | null;
-            }[]
-          | null;
-        id?: string | null;
-      }[]
-    | null;
-  affectedComponents?:
-    | {
-        component: string;
-        impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
-        id?: string | null;
-      }[]
-    | null;
-  pinned?: boolean | null;
-  active?: boolean | null;
-  resolvedAt?: string | null;
-  content?: string | null;
-  style?: ('info' | 'warning' | 'danger' | 'primary') | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1295,6 +1332,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'heartbeats';
         value: number | Heartbeat;
+      } | null)
+    | ({
+        relationTo: 'monitor-incidents';
+        value: number | MonitorIncident;
       } | null)
     | ({
         relationTo: 'push-events';
@@ -1781,6 +1822,39 @@ export interface HeartbeatsSelect<T extends boolean = true> {
   retries?: T;
   downCount?: T;
   time?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "monitor-incidents_select".
+ */
+export interface MonitorIncidentsSelect<T extends boolean = true> {
+  organization?: T;
+  monitor?: T;
+  status?: T;
+  openKey?: T;
+  cause?: T;
+  startedAt?: T;
+  acknowledgedAt?: T;
+  resolvedAt?: T;
+  acknowledgedBy?: T;
+  acknowledgedVia?: T;
+  resolvedBy?: T;
+  autoResolved?: T;
+  remindersSent?: T;
+  lastReminderAt?: T;
+  statusPageIncident?: T;
+  timeline?:
+    | T
+    | {
+        type?: T;
+        at?: T;
+        by?: T;
+        via?: T;
+        message?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

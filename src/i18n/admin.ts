@@ -193,6 +193,17 @@ export const adminTranslations = {
         remindersDescription:
           'Minutes before the start at which status page subscribers are reminded.',
       },
+      monitorIncidents: {
+        description:
+          'Outages of monitors, opened by the engine on DOWN and resolved on recovery. Managed by the server.',
+        statusDescription: 'open → acknowledged → resolved.',
+        openKeyDescription: 'Uniqueness guard: one unresolved incident per monitor.',
+        causeDescription: 'Message of the first DOWN heartbeat.',
+        autoResolvedDescription: 'Resolved by the engine when the monitor recovered.',
+        remindersSentDescription: 'Resend-interval reminders sent while the incident was open.',
+        statusPageIncidentDescription: 'Public status-page incident created from this incident.',
+        timelineDescription: 'What happened, oldest first.',
+      },
       maintenanceOccurrences: {
         description:
           'Concrete windows of maintenances with their state and public update timeline. Managed by the server.',
