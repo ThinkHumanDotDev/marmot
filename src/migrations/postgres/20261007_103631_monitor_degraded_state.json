@@ -2837,89 +2837,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.notifications_events": {
-      "name": "notifications_events",
-      "schema": "",
-      "columns": {
-        "order": {
-          "name": "order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value": {
-          "name": "value",
-          "type": "enum_notifications_events",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "notifications_events_order_idx": {
-          "name": "notifications_events_order_idx",
-          "columns": [
-            {
-              "expression": "order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "notifications_events_parent_idx": {
-          "name": "notifications_events_parent_idx",
-          "columns": [
-            {
-              "expression": "parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "notifications_events_parent_fk": {
-          "name": "notifications_events_parent_fk",
-          "tableFrom": "notifications_events",
-          "tableTo": "notifications",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.notifications": {
       "name": "notifications",
       "schema": "",
@@ -8727,6 +8644,296 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.templates_components": {
+      "name": "templates_components",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "component": {
+          "name": "component",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "impact": {
+          "name": "impact",
+          "type": "enum_templates_components_impact",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'major_outage'"
+        }
+      },
+      "indexes": {
+        "templates_components_order_idx": {
+          "name": "templates_components_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "templates_components_parent_id_idx": {
+          "name": "templates_components_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "templates_components_parent_id_fk": {
+          "name": "templates_components_parent_id_fk",
+          "tableFrom": "templates_components",
+          "tableTo": "templates",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.templates": {
+      "name": "templates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "enum_templates_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'incident'"
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "body": {
+          "name": "body",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum_templates_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "impact": {
+          "name": "impact",
+          "type": "enum_templates_impact",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration": {
+          "name": "duration",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_page_id": {
+          "name": "status_page_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "templates_organization_idx": {
+          "name": "templates_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "templates_status_page_idx": {
+          "name": "templates_status_page_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "templates_updated_at_idx": {
+          "name": "templates_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "templates_created_at_idx": {
+          "name": "templates_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organization_name_1_idx": {
+          "name": "organization_name_1_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "templates_organization_id_organizations_id_fk": {
+          "name": "templates_organization_id_organizations_id_fk",
+          "tableFrom": "templates",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "templates_status_page_id_status_pages_id_fk": {
+          "name": "templates_status_page_id_status_pages_id_fk",
+          "tableFrom": "templates",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "status_page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.api_keys": {
       "name": "api_keys",
       "schema": "",
@@ -9451,6 +9658,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "templates_id": {
+          "name": "templates_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "api_keys_id": {
           "name": "api_keys_id",
           "type": "integer",
@@ -9885,6 +10098,21 @@
           "method": "btree",
           "with": {}
         },
+        "payload_locked_documents_rels_templates_id_idx": {
+          "name": "payload_locked_documents_rels_templates_id_idx",
+          "columns": [
+            {
+              "expression": "templates_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "payload_locked_documents_rels_api_keys_id_idx": {
           "name": "payload_locked_documents_rels_api_keys_id_idx",
           "columns": [
@@ -10248,6 +10476,19 @@
           "tableTo": "maintenance_occurrences",
           "columnsFrom": [
             "maintenance_occurrences_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_templates_fk": {
+          "name": "payload_locked_documents_rels_templates_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "templates",
+          "columnsFrom": [
+            "templates_id"
           ],
           "columnsTo": [
             "id"
@@ -11034,18 +11275,6 @@
         "degraded"
       ]
     },
-    "public.enum_notifications_events": {
-      "name": "enum_notifications_events",
-      "schema": "public",
-      "values": [
-        "down",
-        "up",
-        "degraded",
-        "reminder",
-        "certificate",
-        "maintenance"
-      ]
-    },
     "public.enum_proxies_protocol": {
       "name": "enum_proxies_protocol",
       "schema": "public",
@@ -11419,6 +11648,46 @@
         "cancelled"
       ]
     },
+    "public.enum_templates_components_impact": {
+      "name": "enum_templates_components_impact",
+      "schema": "public",
+      "values": [
+        "operational",
+        "degraded_performance",
+        "partial_outage",
+        "major_outage"
+      ]
+    },
+    "public.enum_templates_kind": {
+      "name": "enum_templates_kind",
+      "schema": "public",
+      "values": [
+        "incident",
+        "incident-update",
+        "maintenance",
+        "maintenance-update"
+      ]
+    },
+    "public.enum_templates_status": {
+      "name": "enum_templates_status",
+      "schema": "public",
+      "values": [
+        "investigating",
+        "identified",
+        "monitoring",
+        "resolved"
+      ]
+    },
+    "public.enum_templates_impact": {
+      "name": "enum_templates_impact",
+      "schema": "public",
+      "values": [
+        "operational",
+        "degraded_performance",
+        "partial_outage",
+        "major_outage"
+      ]
+    },
     "public.enum_instance_settings_entry_page": {
       "name": "enum_instance_settings_entry_page",
       "schema": "public",
@@ -11438,6 +11707,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "29410b5b-6d86-495a-bdd0-b8bcf89d6ecc",
+  "id": "aead2829-61f1-4158-83ee-8dbedf453a97",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
