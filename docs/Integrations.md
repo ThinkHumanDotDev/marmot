@@ -3,13 +3,14 @@
 Marmot's machine-facing endpoints live under `src/app/api/` and mirror Uptime Kuma's, so existing
 README badges, cron jobs and Grafana dashboards keep working after a switch.
 
-| Endpoint                                     | Auth                                               | Purpose                      |
-| -------------------------------------------- | -------------------------------------------------- | ---------------------------- |
-| `GET /api/badge/:monitorId/<type>[/<range>]` | public status page **or** API key of the org       | shields.io-style SVG badges  |
-| `ALL /api/push/:token?status=&msg=&ping=`    | the monitor's push token                           | heartbeat for push monitors  |
-| `GET /api/metrics`                           | API key                                            | Prometheus exposition        |
-| `GET/POST /api/orgs/:orgId/api-keys`         | session, `api-key:read` / `api-key:create` (admin) | manage keys                  |
-| `PATCH/DELETE /api/orgs/:orgId/api-keys/:id` | session, `api-key:delete` (admin)                  | disable / re-enable / revoke |
+| Endpoint                                     | Auth                                               | Purpose                                           |
+| -------------------------------------------- | -------------------------------------------------- | ------------------------------------------------- |
+| `GET /api/badge/:monitorId/<type>[/<range>]` | public status page **or** API key of the org       | shields.io-style SVG badges                       |
+| `ALL /api/push/:token?status=&msg=&ping=`    | the monitor's push token                           | heartbeat for push monitors                       |
+| `GET /api/metrics`                           | API key                                            | Prometheus exposition                             |
+| `GET/POST /api/orgs/:orgId/api-keys`         | session, `api-key:read` / `api-key:create` (admin) | manage keys                                       |
+| `PATCH/DELETE /api/orgs/:orgId/api-keys/:id` | session, `api-key:delete` (admin)                  | disable / re-enable / revoke                      |
+| `GET /api/orgs/:orgId/audit-logs[/export]`   | session, `audit-log:read` (admin)                  | [audit log](Security.md#audit-log) as JSON or CSV |
 
 ## API keys
 

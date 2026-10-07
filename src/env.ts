@@ -78,6 +78,8 @@ const schema = z.object({
 
   // Monitoring defaults
   KEEP_DATA_PERIOD_DAYS: z.coerce.number().int().default(365),
+  // Audit log rows are pruned after this many days by the retention job; 0 keeps them forever.
+  AUDIT_LOG_RETENTION_DAYS: z.coerce.number().int().min(0).default(365),
   // Polling engine (worker): parallel checks per worker process.
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(10),
   // Docker monitors: allow Docker hosts that connect through a local unix socket (the worker's own

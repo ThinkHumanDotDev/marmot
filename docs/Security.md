@@ -11,7 +11,7 @@ described in [SECURITY.md](../.github/SECURITY.md).
 | Organizations        | Every collection is scoped to the user's organizations through role-based access (`src/access`). Server code that acts for a user passes `overrideAccess: false`.                                                                                                                                                                                                                           |
 | CORS / CSRF          | Only `NEXT_PUBLIC_SERVER_URL` and the origins in `ADDITIONAL_ORIGINS` may use the auth cookie against the API. Other origins get no session.                                                                                                                                                                                                                                                |
 | Rate limiting        | Redis-backed (`rate-limiter-flexible`): password login 10/min per client with a 5-minute block, password reset 5 per 15 min, SSO login, callback and lookup 20/min. Responses carry `Retry-After`, `X-RateLimit-Limit` and `X-RateLimit-Remaining`. Fails open if Redis is down (one warning is logged).                                                                                    |
-| Audit log            | `audit-logs` collection: logins (success, failure, rate-limited), member role changes and removals, invitations created/accepted, organizations updated/deleted, with actor, IP and user agent. Readable by organization admins (their organization) and superadmins; never writable by clients; pruned after 365 days.                                                                     |
+| Audit log            | Every change to an organization's resources plus sign-ins and account security events, with actor, IP, user agent and a redacted diff. See [Audit log](#audit-log).                                                                                                                                                                                                                         |
 | Security headers     | `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, a restrictive `Permissions-Policy`, `X-Frame-Options: DENY` everywhere except public status pages (`/status/*`, which may be embedded), and HSTS when the public URL is https.                                                                                                                       |
 | Secrets in the model | Invitation tokens, invite-link tokens and SSO identifiers (`auth-accounts` rows) are write-protected; API responses only expose them to roles that need them.                                                                                                                                                                                                                               |
 | Outbound guard       | With `MONITOR_DENY_PRIVATE_ADDRESSES=true`, monitor checks and notification deliveries are refused when the target resolves to a private, loopback, link-local, CGNAT or container-network address. The check runs after DNS resolution and at connect time (each redirect hop included); host-local types are refused. Details in [Configuration](Configuration.md#private-address-guard). |
@@ -38,6 +38,46 @@ that overwrites those headers. Leave it off when clients connect directly: anyon
 own rate-limit bucket. Without a trusted address, login and password-reset limits fall back to the targeted
 account (per e-mail) and the OIDC endpoints are not limited. Status pages with an
 [IP allow-list](Status-Pages.md#ip-allow-list) admit nobody without a trusted address.
+
+## Audit log
+
+The `audit-logs` collection is append-only: rows are written by the server (`recordAuditEvent` in
+`src/server/security/audit.ts`), never by clients, and pruned after `AUDIT_LOG_RETENTION_DAYS` (default 365).
+
+**What is recorded**
+
+- Sign-ins and account security (instance-level rows, superadmins only): `auth.login`, `auth.login_failed`,
+  `auth.rate_limited`, `auth.forgot_password`, `auth.break_glass`, `auth.sso_login(_failed)`,
+  `auth.two_factor_*`, `auth.password_changed`, `auth.backup_codes_regenerated`.
+- Membership: `member.role_changed`, `member.removed`, `member.ownership_transferred`,
+  `invitation.created/accepted`.
+- Every create, update and delete of monitors, notification channels, tags, proxies, Docker hosts, status
+  pages, status page viewers, incidents, subscribers, subscriber notifications, maintenance, templates, API
+  keys, SSO connections and domains, invitations and the organization itself (`<entity>.created|updated|deleted`),
+  with named verbs where they say more: `monitor.paused/resumed/cloned`, `maintenance.paused/resumed`,
+  `notification.enabled/disabled`, `api_key.enabled/disabled/revoked`, `maintenance_occurrence.updated`.
+- Imports (`import.completed`, one row per import) and instance settings (`instance_settings.updated`).
+
+`src/collections/audit.ts` lists every collection as audited or deliberately not audited (heartbeats,
+rollups, delivery logs …); a test fails when a new collection is in neither list. Writes that only touch
+caches the worker maintains (monitor status, certificate info, `lastSentAt`) are not recorded.
+
+**Each row** names the actor (`actorType` user, apiKey, mcp or system, `actorId`, and the email or key name
+at the time), the resource (`entityType`, `entityId`, `entityLabel`), the changed paths (`changedFields`) with
+their `before`/`after` values, the client IP (only with `trustProxy`) and user agent. Rows join the
+transaction of the change, so a rolled-back change leaves no row. Integrations subscribe with
+`onAuditEvent` (`src/server/audit/bus.ts`), which delivers each row after its transaction commits.
+
+**Secrets are never stored.** Values of keys that look like secrets (passwords, tokens, API keys, private
+keys, webhook URLs, headers, hashes …) and of every provider field marked `secret` become `[redacted]`;
+passwords inside URLs are masked and long strings are cut at 500 characters. A changed secret still shows
+up in `changedFields`.
+
+**Reading it**: Settings → Audit log (filters by actor, action, resource and date, a diff per event, CSV
+export), the Activity tab of a monitor, and `GET /api/orgs/:orgId/audit-logs` (`actorType`, `actorId`,
+`entityType`, `entityId`, `action` exact or `monitor.`-style prefix, `from`, `to`, `page`, `limit`) plus
+`/export` for CSV. Reading needs `audit-log:read`: owners and admins by default; an owner can lower it to
+members under Settings → Permissions. Superadmins also see instance-level rows (`scope=instance`).
 
 ## Hardening checklist
 

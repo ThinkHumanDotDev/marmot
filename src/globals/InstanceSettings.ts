@@ -1,13 +1,36 @@
-import type { FieldAccess, GlobalConfig } from 'payload'
+import type { FieldAccess, GlobalAfterChangeHook, GlobalConfig } from 'payload'
 
 import { authenticated, superadminOnly } from '@/access/org-scoped'
 import { isSuperadmin } from '@/access/permissions'
 import { env } from '@/env'
+import { AUDIT_SKIP_CONTEXT } from '@/server/audit/context'
+import { diffDocs } from '@/server/audit/diff'
+import { recordAuditEventFromReq } from '@/server/security/audit'
 import { DEFAULT_EXPIRY_NOTIFY_DAYS, resetInstanceSettingsCache } from '@/server/settings'
 import { adminGroup } from '@/i18n/admin'
 import { adminT } from '@/i18n/admin'
 
 const superadminField: FieldAccess = ({ req }) => isSuperadmin(req.user)
+
+/** Instance-level audit row (superadmins) with the changed settings; secrets are redacted. */
+const auditInstanceSettings: GlobalAfterChangeHook = async ({ doc, previousDoc, req }) => {
+  if (req.context?.[AUDIT_SKIP_CONTEXT]) return doc
+  const current = doc as Record<string, unknown>
+  const previous = (previousDoc ?? {}) as Record<string, unknown>
+  const comparable: Record<string, unknown> = {}
+  for (const key of Object.keys(current)) comparable[key] = previous[key]
+  const diff = diffDocs(comparable, current, { ignore: ['globalType'] })
+  if (diff.changedFields.length === 0) return doc
+  await recordAuditEventFromReq(req, {
+    action: 'instance_settings.updated',
+    organization: null,
+    entityType: 'instance_settings',
+    changedFields: diff.changedFields,
+    before: diff.before,
+    after: diff.after,
+  })
+  return doc
+}
 
 export const INSTANCE_SETTINGS_SLUG = 'instance-settings' as const
 
@@ -32,6 +55,9 @@ export const InstanceSettings: GlobalConfig = {
   },
   hooks: {
     afterChange: [
+      // Before the cache reset: the audit row reads `trustProxy` through the cache, outside this
+      // transaction, and would otherwise cache the old settings again.
+      auditInstanceSettings,
       ({ doc }) => {
         resetInstanceSettingsCache()
         return doc

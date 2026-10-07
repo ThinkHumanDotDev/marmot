@@ -1,5 +1,6 @@
 import { verifyPassword } from '@/auth/password'
 import { getRequestContext, readJson, unauthorized, withErrors } from '@/server/http'
+import { recordUserAuditEvent } from '@/server/security/audit'
 import { apiError } from '@/server/errors'
 
 export const dynamic = 'force-dynamic'
@@ -38,5 +39,6 @@ export const POST = withErrors(async (request: Request) => {
     user,
     overrideAccess: false,
   })
+  await recordUserAuditEvent(payload, request, user, 'auth.password_changed')
   return Response.json({ updated: true })
 })

@@ -109,8 +109,10 @@ export const adminTranslations = {
       },
       auditLogs: {
         description:
-          'Security-relevant events. Rows are written by the server and cannot be edited.',
-        targetDescription: 'Affected record, e.g. user:42.',
+          'Security events and changes to organization resources. Rows are written by the server and cannot be edited.',
+        targetDescription: 'Affected record, e.g. monitor:42.',
+        actorLabelDescription: 'Email or API key name at the time of the event.',
+        changedFieldsDescription: 'Paths that changed; secret values are redacted in before/after.',
       },
       authAccounts: {
         description: 'Single sign-on identities linked to users. Managed by the login flows.',

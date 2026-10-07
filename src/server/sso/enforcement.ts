@@ -67,8 +67,12 @@ export const enforceSsoOnPasswordLogin: CollectionBeforeLoginHook = async ({ use
     await recordRequestAuditEvent(req.payload, req, {
       action: 'auth.break_glass',
       actor: account.id,
+      actorLabel: account.email,
       organization: org.id,
       target: `users:${String(account.id)}`,
+      entityType: 'user',
+      entityId: account.id,
+      entityLabel: account.email,
       metadata: { reason: 'password login while single sign-on is enforced' },
       req,
     })

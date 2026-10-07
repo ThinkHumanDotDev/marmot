@@ -1,4 +1,5 @@
 import { transferOwnership } from '@/server/members'
+import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 import {
   getRequestContext,
   localizedError,
@@ -27,6 +28,15 @@ export const POST = withErrors(async (request: Request, { params }: RouteContext
     actor: user,
     orgId: parseId(payload, orgId),
     userId: parseId(payload, String(userId)),
+  })
+  await recordRequestAuditEvent(payload, request, {
+    action: 'member.ownership_transferred',
+    actor: user.id,
+    actorLabel: user.email,
+    organization: parseId(payload, orgId),
+    entityType: 'member',
+    entityId: parseId(payload, String(userId)),
+    target: auditTarget('users', parseId(payload, String(userId))),
   })
   return Response.json(result)
 })

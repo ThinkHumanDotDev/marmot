@@ -19,7 +19,9 @@ import { childLogger } from '@/lib/logger'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import type { Incident, Monitor, Notification, StatusPage, Template } from '@/payload-types'
 import type { RequestUser } from '@/server/monitors/http'
+import { AUDIT_SKIP_CONTEXT } from '@/server/audit/context'
 import { checkServerSmtpChange } from '@/server/notifications/server-smtp'
+import { recordAuditEventFromReq } from '@/server/security/audit'
 
 import type { ImportPlan, PlannedMonitor } from './types'
 import { defaultLocale, type Locale } from '@/i18n/locales'
@@ -278,6 +280,8 @@ export async function applyImportPlan(
 
   // ---- Commit ---------------------------------------------------------------------------------
   const req: PayloadRequest = await createLocalReq({ user }, payload)
+  // One `import.completed` row summarises the import instead of a row per created document.
+  req.context = { ...req.context, [AUDIT_SKIP_CONTEXT]: true }
   const transactionID = await payload.db.beginTransaction()
   if (transactionID) req.transactionID = transactionID
   const createdMonitors: Monitor[] = []
@@ -439,6 +443,20 @@ export async function applyImportPlan(
       })
       created.templates.push(doc.id)
     }
+
+    await recordAuditEventFromReq(req, {
+      action: 'import.completed',
+      organization: orgId,
+      entityType: 'import',
+      entityLabel: plan.format,
+      metadata: {
+        format: plan.format,
+        monitors: created.monitors.length,
+        notifications: created.notifications.length,
+        statusPages: created.statusPages.length,
+        templates: created.templates.length,
+      },
+    })
 
     if (transactionID) await payload.db.commitTransaction(transactionID)
   } catch (error) {

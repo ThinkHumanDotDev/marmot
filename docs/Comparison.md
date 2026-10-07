@@ -129,7 +129,7 @@ Uptime Kuma is single-user with optional read-only status pages. Marmot borrows 
 | First-run setup wizard, superadmin role, instance settings        | **done**                                                             |
 | Instance-wide sign-up switch                                      | **done**                                                             |
 | Billing / plan entitlements for hosted offerings                  | **landing** (#26, off on self-host; [Billing](Billing.md))           |
-| Audit log                                                         | planned                                                              |
+| Audit log                                                         | **done** ([Security](Security.md#audit-log))                         |
 
 ## Migrating from Uptime Kuma
 
