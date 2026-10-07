@@ -305,8 +305,7 @@ export function computeNextBeat(
   }
 
   // Status before the current retry streak (only stored state matters while PENDING).
-  const prevSettled =
-    (prev?.status === PENDING ? prev?.settledStatus : prev?.status) ?? null
+  const prevSettled = (prev?.status === PENDING ? prev?.settledStatus : prev?.status) ?? null
   const settledStatus = status === PENDING ? prevSettled : status
 
   const important =
