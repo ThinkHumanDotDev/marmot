@@ -157,6 +157,28 @@ Routes: `GET/POST /api/orgs/:orgId/maintenance`, `GET/PATCH/DELETE .../:id`, `PO
 (`maintenance:*` permissions, zod schema shared with the form in `src/lib/validation/maintenance.ts`). UI:
 `/[orgSlug]/maintenance` (live list), `/new`, `/[id]/edit`.
 
+## Monitor incidents
+
+`monitor-incidents` (#100) is the on-call record of an outage, separate from the public status-page
+`incidents` below: `monitor`, `status` (`open → acknowledged → resolved`), `cause` (first DOWN message),
+`startedAt`, `acknowledgedAt`/`acknowledgedBy`/`acknowledgedVia`, `resolvedAt`/`resolvedBy`/`autoResolved`,
+`remindersSent`/`lastReminderAt`, `statusPageIncident` (link to a published status-page incident) and a
+`timeline[] { type, at, by, via, message }` array, written atomically with the state like the status-page
+timeline. Only the server writes it (Local API with `overrideAccess`; collection create/update/delete are
+superadmin-only); members act through the route handlers. A unique `openKey` (`open:<monitor>` while
+unresolved, `resolved:<uuid>` afterwards, set by a `beforeChange` hook) allows one unresolved incident per
+monitor on both databases, so two racing DOWN beats cannot open two.
+
+The engine side lives in one place, `registerIncidentListener()` (`src/server/incidents/listener.ts`),
+registered by the worker and the push pipeline **before** the notification listener. Its heartbeat listener
+applies `incidentActionForBeat()` (`src/lib/monitor-incidents.ts`) to important beats: DOWN opens, MAINTENANCE
+adds a note, a working status (UP, and DEGRADED once #93 lands) resolves automatically. Its notification gate
+runs the pluggable reminder policy on resend-interval reminders (default: none while acknowledged). Every
+change is published as the realtime `monitorIncident` event (`MonitorIncidentSummary`). Acknowledge and manual
+resolve enqueue `incident-notify` jobs on `marmot:notifications` (events `acknowledged`, `resolved`), and the
+notification worker appends a signed acknowledge link (`src/server/incidents/ack-link.ts`) to DOWN messages of
+an unacknowledged incident. See [Monitors](Monitors.md#incidents) and [Notifications](Notifications.md).
+
 ## Status page incidents
 
 An incident (`src/collections/Incidents.ts`) is a title plus a **timeline** of updates stored as an array
@@ -214,7 +236,7 @@ The realtime process (`src/realtime.ts` → `createRealtimeServer()` in `src/ser
 a socket.io server on `REALTIME_PORT` with `@socket.io/redis-adapter`, so several replicas can run. Web and
 worker never hold sockets: they publish with `@socket.io/redis-emitter` through the helpers in
 `src/server/realtime/emitter.ts` (`emitHeartbeat`, `emitMonitorUpdated`, `emitMonitorDeleted`, `emitUptime`,
-`emitAvgPing`, `emitMaintenanceList`, `emitNotificationList`, `emitCertInfo`). The emitter connects to Redis
+`emitAvgPing`, `emitMaintenanceList`, `emitNotificationList`, `emitCertInfo`, `emitMonitorIncident`). The emitter connects to Redis
 lazily and swallows (logs) failures, so a Redis outage degrades live updates but never breaks a request or a
 check.
 
@@ -336,6 +358,8 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `member:invite`, `member:remove`, `member:update-role`              |        |        |   ✓   |   ✓   |
 | `monitor:read`                                                      |   ✓    |   ✓    |   ✓   |   ✓   |
 | `monitor:create`, `monitor:update`, `monitor:delete`                |        |   ✓    |   ✓   |   ✓   |
+| `monitor-incident:read`                                             |   ✓    |   ✓    |   ✓   |   ✓   |
+| `monitor-incident:acknowledge`, `monitor-incident:resolve`          |        |   ✓    |   ✓   |   ✓   |
 | `notification:read`                                                 |        |   ✓    |   ✓   |   ✓   |
 | `notification:create`, `notification:update`, `notification:delete` |        |        |   ✓   |   ✓   |
 | `status-page:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |

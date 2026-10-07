@@ -15,6 +15,14 @@ import {
   type SubscriberJobData,
 } from '@/server/status-pages/subscribers/queue'
 import { processSubscriberJob } from '@/server/status-pages/subscribers/worker'
+import { ackLinkUrl } from '@/server/incidents/ack-link'
+import {
+  isIncidentJobName,
+  processIncidentNotificationJob,
+  type IncidentNotificationJobData,
+} from '@/server/incidents/notify'
+import { findOpenIncident } from '@/server/incidents/store'
+import { serverTranslator } from '@/server/i18n'
 
 const log = childLogger('notifications:worker')
 
@@ -59,6 +67,28 @@ async function recordOutcome(
 }
 
 /**
+ * A DOWN message (first alert or reminder) of a monitor whose incident nobody acknowledged yet ends
+ * with a signed acknowledge link (`src/server/incidents/ack-link.ts`); otherwise nothing.
+ */
+async function ackLinkLine(
+  payload: Payload,
+  monitor: Monitor,
+  heartbeat: Heartbeat,
+  locale: Awaited<ReturnType<typeof getChannelLocale>>,
+): Promise<string> {
+  if (heartbeat.status !== 'down') return ''
+  try {
+    const incident = await findOpenIncident(payload, monitor.id)
+    if (!incident || incident.status !== 'open') return ''
+    const url = ackLinkUrl(incident.id)
+    return `\n${serverTranslator(locale)('notifications.messages.incident.ackLink', { url })}`
+  } catch (err) {
+    log.warn({ err, monitorId: monitor.id }, 'failed to build the acknowledge link')
+    return ''
+  }
+}
+
+/**
  * Job processor: load channel + monitor + heartbeat, render the message, call the provider and
  * store the outcome on the channel. Throws on delivery failure so BullMQ retries, except for
  * deliveries refused by the server-SMTP rules (retrying would only repeat the refusal). Exported so
@@ -92,7 +122,9 @@ export async function processNotificationJob(
   if (!heartbeat) return { outcome: 'skipped', reason: 'heartbeat-not-found' }
 
   const locale = await getChannelLocale(payload, notification)
-  const message = buildDefaultMessage(monitor, heartbeat, locale)
+  const message =
+    buildDefaultMessage(monitor, heartbeat, locale) +
+    (await ackLinkLine(payload, monitor, heartbeat, locale))
   try {
     const result = await sendNotification(payload, notification, {
       message,
@@ -123,8 +155,9 @@ export interface StartNotificationWorkerOptions extends QueueFactoryOptions {
 }
 
 /**
- * Start the BullMQ worker consuming the notifications queue: monitor alerts (`notify`) and status
- * page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`).
+ * Start the BullMQ worker consuming the notifications queue: monitor alerts (`notify`), incident
+ * notifications (`incident-notify`) and status page subscriber jobs (`subscriber-fanout`,
+ * `subscriber-delivery`).
  */
 export function startNotificationWorker(
   payload: Payload,
@@ -137,6 +170,14 @@ export function startNotificationWorker(
       // Subscriber jobs share the queue; their data has another shape.
       if (isSubscriberJobName(job.name)) {
         await processSubscriberJob(payload, job as unknown as Job<SubscriberJobData>)
+        return
+      }
+      // Incident acknowledgements and resolutions (#100).
+      if (isIncidentJobName(job.name)) {
+        await processIncidentNotificationJob(
+          payload,
+          job as unknown as Job<IncidentNotificationJobData>,
+        )
         return
       }
       await processNotificationJob(payload, job)

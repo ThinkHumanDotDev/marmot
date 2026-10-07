@@ -6,6 +6,7 @@
  *
  * This module must stay free of Node-only imports: it is bundled into client components.
  */
+import type { MonitorIncidentSummary } from '@/lib/monitor-incidents'
 
 /** Server → client events. */
 export const RealtimeEvents = {
@@ -20,6 +21,7 @@ export const RealtimeEvents = {
   certInfo: 'certInfo',
   maintenanceList: 'maintenanceList',
   notificationList: 'notificationList',
+  monitorIncident: 'monitorIncident',
   info: 'info',
 } as const
 
@@ -113,6 +115,8 @@ export interface RealtimePayloads {
   maintenanceList: { organizationId: RealtimeId; items: unknown[] }
   /** Notification providers of an organization (shape owned by the notifications issue). */
   notificationList: { organizationId: RealtimeId; items: unknown[] }
+  /** A monitor incident was opened, acknowledged, resolved or published (#100). */
+  monitorIncident: { organizationId: RealtimeId; incident: MonitorIncidentSummary }
   /** Server information, sent once per connection. */
   info: { version: string; serverTime: string }
 }

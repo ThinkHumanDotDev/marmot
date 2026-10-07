@@ -7,6 +7,7 @@ export const PERMISSION_RESOURCE_KEYS = {
   organization: 'organization',
   member: 'member',
   monitor: 'monitor',
+  'monitor-incident': 'monitorIncident',
   notification: 'notification',
   'status-page': 'statusPage',
   subscriber: 'subscriber',
@@ -29,6 +30,8 @@ export const PERMISSION_ACTION_KEYS = {
   'update-role': 'updateRole',
   manage: 'manage',
   send: 'send',
+  acknowledge: 'acknowledge',
+  resolve: 'resolve',
 } as const
 
 export type PermissionResourceKey =

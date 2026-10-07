@@ -42,6 +42,28 @@ The state machine decides when a beat notifies (`notify`): status transitions
 (`isImportantForNotification`) plus the `resendInterval` tick while DOWN. The first beat only notifies when
 it is DOWN. Everything runs in the worker process (`src/worker.ts`).
 
+Before enqueuing, the listener asks the **notification gates** (`registerNotificationGate` in
+`src/server/notifications/gates.ts`); any gate answering `false` holds the beat back, and a gate that throws
+is ignored. Monitor incidents register one that runs the **reminder policy**
+(`src/server/incidents/reminders.ts`, replaceable with `setReminderPolicy`) on `resendInterval` reminders: by
+default reminders stop while the monitor's incident is acknowledged. Reminders that go out are counted on the
+incident (`remindersSent`, `lastReminderAt`).
+
+### Incident notifications
+
+Acknowledging or resolving a [monitor incident](Monitors.md#incidents) by hand notifies the monitor's active
+channels through the same queue: job `incident-notify` with id `inc-<channel>-<incident>-<event>`, event
+`acknowledged` or `resolved` (stable names for per-channel event filters;
+`channelAcceptsIncidentEvent()` is the filter point). The message keeps the usual shape:
+`[name] [👀 Acknowledged] Acknowledged by Ada. Note: …` or `[name] [✅ Resolved] Resolved by Ada after 12
+minutes.`, sent with the monitor and no heartbeat (like a test message, so rich providers send the text).
+An automatic resolution sends nothing extra: the UP notification already announces the recovery.
+
+While the incident is still open, DOWN messages (first alert and reminders) end with
+`Acknowledge: <server>/ack/<token>`, a signed link to acknowledge from the phone. Providers that build their
+own layout from the heartbeat (Discord embeds, Slack blocks, …) show it only with a custom template that
+includes `{{ msg }}`.
+
 The default message is `[monitor name] [✅ Up|🔴 Down|⚠️ Pending|🔧 Maintenance] <heartbeat message>`.
 The status labels, the test message and the certificate/domain expiry warnings are written in the
 organization's language (`organizations.settings.language`, English by default); the bracketed layout

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { getTranslations } from 'next-intl/server'
 
+import { MonitorIncidentsCard } from '@/components/incidents/monitor-incidents-card'
 import { CertificatePanel } from '@/components/monitors/certificate-panel'
 import { monitorTarget, useMonitorFormat } from '@/components/monitors/format'
 import { HeartbeatBar, type BeatLike } from '@/components/monitors/heartbeat-bar'
@@ -21,6 +22,7 @@ import { env } from '@/env'
 import { timeZoneOrDefault } from '@/i18n/formats'
 import { isHttpMonitorType } from '@/lib/validation/monitor'
 import type { Heartbeat, Monitor } from '@/payload-types'
+import { recentMonitorIncidents, renderTime } from '@/server/incidents/store'
 import { toRealtimeTags } from '@/server/realtime/serialize'
 import { getMonitorChannels, getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
 import { getStats, getUptime } from '@/server/stats/uptime-calculator'
@@ -76,7 +78,8 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
 
   const { payload } = ctx
   // Access was verified on the monitor; its history is read with the Local API directly.
-  const [stats24h, uptime30d, uptime1y, latest, events, channels] = await Promise.all([
+  const canReadIncidents = ctx.allowed('monitor-incident:read')
+  const [stats24h, uptime30d, uptime1y, latest, events, channels, incidents] = await Promise.all([
     getStats(payload, monitor.id, '24h'),
     getUptime(payload, monitor.id, '30d'),
     getUptime(payload, monitor.id, '1y'),
@@ -97,6 +100,9 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
       depth: 0,
     }),
     getMonitorChannels(ctx, monitor),
+    canReadIncidents
+      ? recentMonitorIncidents(payload, monitor.id, { user: ctx.requestUser })
+      : Promise.resolve(null),
   ])
 
   const hasHistory = latest.docs.length > 0 || stats24h.buckets.length > 0
@@ -231,6 +237,15 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             timeZone={timeZone}
           />
           <div className="flex flex-col gap-6">
+            {incidents && (
+              <MonitorIncidentsCard
+                orgId={ctx.org.id}
+                orgSlug={orgSlug}
+                monitorId={String(monitor.id)}
+                initial={incidents}
+                now={renderTime()}
+              />
+            )}
             {(isHttpMonitorType(monitor.type) ||
               monitor.certInfo ||
               monitor.domainExpiry ||

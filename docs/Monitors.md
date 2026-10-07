@@ -71,10 +71,44 @@ uptime; it updates over the WebSocket connection without reloading. The detail p
 - the certificate panel for HTTPS targets (issuer, expiry; filled by the certificate job landing in the
   current release);
 - the notification channels the monitor alerts through;
+- its **recent incidents** (see below);
 - actions: **Pause/Resume**, **Edit**, **Clone**, **Delete**.
 
 Statistics are kept as minutely (24 h), hourly (30 d) and daily (`KEEP_DATA_PERIOD_DAYS`, default one
 year) buckets, so a monitor's history survives the pruning of raw heartbeats after 24 hours.
+
+## Incidents
+
+An outage is recorded as an **incident** (`monitor-incidents`), so a team can see who is on it and how long it
+took. This is the internal, on-call side of an outage; the public side is the status-page incident
+([Status pages](Status-Pages.md)), and one can be created from the other.
+
+- **Opened** by the engine on the transition to DOWN (from UP, PENDING, MAINTENANCE or a first DOWN beat), with
+  the message of that beat as its **cause**. A monitor has at most one unresolved incident.
+- **Acknowledged** by a member: from the incident page, the API or the signed link at the end of DOWN
+  messages. While an incident is acknowledged, `resendInterval` reminders stop; the acknowledgement is sent to
+  the monitor's channels (`[name] [👀 Acknowledged] Acknowledged by Ada.`).
+- **Resolved** automatically when the monitor recovers (UP), with the duration shown. A member can also
+  resolve it by hand (the channels are told); it then stays resolved until the monitor recovers and fails
+  again. Entering MAINTENANCE adds a note and keeps it open.
+- Every step is on the incident's **timeline**, with who did it and an optional note.
+
+`/{org}/incidents` lists incidents with filters (status, monitor, period), each one's duration and who
+acknowledged or resolved it, and a summary of the period: count, unresolved, **MTTA** (mean time to
+acknowledge) and **MTTR** (mean time to resolve). The list and the incident page update live. **Publish to
+status page** creates a public status-page incident (status "investigating", the page's components that show
+the monitor marked as major outage) and links it; resolving the monitor incident does not post to the status
+page, so public updates stay deliberate.
+
+Viewers see incidents (`monitor-incident:read`); members acknowledge and resolve them
+(`monitor-incident:acknowledge`, `monitor-incident:resolve`); publishing also needs `status-page:update`.
+Incidents go with their monitor when it is deleted. A monitor that is already DOWN when this feature is
+deployed gets its incident on its next transition to DOWN.
+
+The acknowledge link (`/ack/<token>`) is signed with a key derived from `PAYLOAD_SECRET`, names one incident and
+expires after seven days. It opens a page with an **Acknowledge** button, so link previews in chat apps cannot
+acknowledge. Anyone holding the message can use it: a signed-in member is recorded by name, anyone else as
+"from a notification link".
 
 ## Groups
 
@@ -150,7 +184,26 @@ same permissions as the UI (`monitor:read` for viewers, `monitor:create|update|d
 | `POST /api/orgs/:orgId/monitors/:id/resume`      | Resume                                            |
 | `POST /api/orgs/:orgId/monitors/:id/clone`       | Clone (returns the new, paused monitor)           |
 | `GET /api/monitors/:id/stats?range=24h\|30d\|1y` | Uptime, average ping and buckets for a range      |
+| `GET /api/orgs/:orgId/monitor-incidents`         | Incidents + MTTA/MTTR (see below)                 |
 | `GET /api/monitors` (Payload REST)               | List with Payload's `where`/`limit`/`sort` syntax |
+
+Incident routes (`monitor-incident:*` permissions; ids are strings on MongoDB and numbers on Postgres):
+
+| Method & path                                             | Purpose                                                                                                                                                                                    |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/orgs/:orgId/monitor-incidents`                  | `?status=active\|all\|open\|acknowledged\|resolved`, `monitor`, `range=24h\|7d\|30d\|90d\|all` (by start, default `30d`), `page`, `limit` → `{ docs, page, totalPages, totalDocs, stats }` |
+| `GET /api/orgs/:orgId/monitor-incidents/:id`              | One incident with its timeline                                                                                                                                                             |
+| `POST /api/orgs/:orgId/monitor-incidents/:id/acknowledge` | `{ note? }`; 409 unless open                                                                                                                                                               |
+| `POST /api/orgs/:orgId/monitor-incidents/:id/resolve`     | `{ note? }`; 409 when already resolved                                                                                                                                                     |
+| `POST /api/orgs/:orgId/monitor-incidents/:id/publish`     | `{ statusPageId, title?, message?, status?, impact? }` → `{ incident, statusPageIncident }` (201); 409 when already published                                                              |
+| `POST /api/incident-ack`                                  | `{ token }` from the signed link; no session needed                                                                                                                                        |
+| `GET /api/monitor-incidents` (Payload REST, read only)    | Payload's `where`/`limit`/`sort` syntax                                                                                                                                                    |
+
+`stats` holds `total`, `open`, `acknowledged`, `resolved`, `mtta` and `mttr` (seconds, `null` without data)
+over the monitor and period filters. An incident reads `{ id, monitor { id, name }, status, cause, startedAt,
+acknowledgedAt, acknowledgedBy { id, name }, acknowledgedVia (dashboard | api | link), resolvedAt,
+resolvedBy, autoResolved, remindersSent, lastReminderAt, statusPageIncident, timeline[] { type, at, by, via,
+message } }`; the realtime `monitorIncident` event carries the same object.
 
 Requests from outside the browser must send the `payload-token` cookie or a `JWT` `Authorization` header
 (`POST /api/users/login` returns one) and an `Origin` matching `NEXT_PUBLIC_SERVER_URL`. Organization API

@@ -10,6 +10,7 @@ import { Invitations } from './Invitations'
 import { Maintenance } from './Maintenance'
 import { MaintenanceOccurrences } from './MaintenanceOccurrences'
 import { Media } from './Media'
+import { MonitorIncidents } from './MonitorIncidents'
 import { Monitors } from './Monitors'
 import { Notifications } from './Notifications'
 import { NotificationSentHistory } from './NotificationSentHistory'
@@ -47,6 +48,7 @@ export const collections: CollectionConfig[] = [
   DockerHosts,
   NotificationSentHistory,
   Heartbeats,
+  MonitorIncidents,
   StatMinutely,
   StatHourly,
   StatDaily,

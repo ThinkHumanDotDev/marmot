@@ -2,8 +2,8 @@
  * Push monitors: `ALL /api/push/:token?status=up|down&msg=&ping=`.
  *
  * The web process records the beat synchronously through the engine (`recordExternalBeat`), so the
- * same heartbeat listeners that run in the worker — stats rollups, realtime emitter, notification
- * dispatch — fire here too. They are registered lazily on the first push (`ensureBeatPipeline`);
+ * same heartbeat listeners that run in the worker — stats rollups, realtime emitter, monitor
+ * incidents, notification dispatch — fire here too. They are registered lazily on the first push (`ensureBeatPipeline`);
  * all three are Redis publishers or plain database writers, nothing in the web process consumes
  * queues.
  *
@@ -15,6 +15,7 @@ import type { Payload } from 'payload'
 import { childLogger } from '@/lib/logger'
 import type { Heartbeat, Monitor } from '@/payload-types'
 import { recordExternalBeat } from '@/server/engine/worker'
+import { registerIncidentListener } from '@/server/incidents/listener'
 import { registerNotificationListener } from '@/server/notifications'
 import { registerRealtimeListener } from '@/server/realtime/listener'
 import { registerStatsListener } from '@/server/stats'
@@ -37,6 +38,7 @@ export function ensureBeatPipeline(payload: Payload): void {
     log.error({ err }, 'failed to register the stats listener'),
   )
   registerRealtimeListener()
+  registerIncidentListener(payload)
   registerNotificationListener(payload)
 }
 
