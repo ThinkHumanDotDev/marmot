@@ -101,6 +101,7 @@ export function SettingsForm({
   canDelete: boolean
 }) {
   const t = useTranslations('statusPages.editor')
+  const ts = useTranslations('statusPages.settings')
   const router = useRouter()
   const [values, setValues] = React.useState<Values>(() => fromPage(page))
   const [saving, setSaving] = React.useState(false)
@@ -126,9 +127,9 @@ export function SettingsForm({
       })
       onSaved(doc)
       setValues(fromPage(doc))
-      toast.success('Settings saved')
+      toast.success(ts('saved'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not save')
+      toast.error(error instanceof Error ? error.message : ts('saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -139,9 +140,9 @@ export function SettingsForm({
     setUploading(true)
     try {
       onSaved(await statusPagesApi.uploadLogo(orgId, page.id, file))
-      toast.success('Logo updated')
+      toast.success(ts('logo.updated'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Upload failed')
+      toast.error(error instanceof Error && error.message ? error.message : ts('logo.uploadFailed'))
     } finally {
       setUploading(false)
       if (fileInput.current) fileInput.current.value = ''
@@ -154,22 +155,21 @@ export function SettingsForm({
       const { doc } = await statusPagesApi.removeLogo(orgId, page.id)
       onSaved(doc)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not remove logo')
+      toast.error(error instanceof Error ? error.message : ts('logo.removeFailed'))
     } finally {
       setUploading(false)
     }
   }
 
   async function remove() {
-    if (!window.confirm(`Delete "${page.title}" and all of its incidents? This cannot be undone.`))
-      return
+    if (!window.confirm(ts('danger.confirm', { title: page.title }))) return
     try {
       await statusPagesApi.remove(orgId, page.id)
-      toast.success('Status page deleted')
+      toast.success(ts('danger.deleted'))
       router.push(`/${orgSlug}/status-pages`)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not delete')
+      toast.error(error instanceof Error ? error.message : ts('danger.failed'))
     }
   }
 
@@ -178,12 +178,12 @@ export function SettingsForm({
       <div className="flex flex-col gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>General</CardTitle>
-            <CardDescription>What visitors see at the top of the page.</CardDescription>
+            <CardTitle>{ts('general.title')}</CardTitle>
+            <CardDescription>{ts('general.description')}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">{ts('title')}</Label>
               <Input
                 id="title"
                 value={values.title}
@@ -193,7 +193,7 @@ export function SettingsForm({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="slug">Slug</Label>
+              <Label htmlFor="slug">{ts('slug')}</Label>
               <div className="flex items-center gap-2">
                 <span className="shrink-0 text-sm text-muted-foreground">/status/</span>
                 <Input
@@ -205,12 +205,10 @@ export function SettingsForm({
                   onChange={(e) => set('slug', e.target.value.toLowerCase())}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Changing the slug changes the public URL; old links stop working.
-              </p>
+              <p className="text-xs text-muted-foreground">{ts('slugHint')}</p>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{ts('description')}</Label>
               <Textarea
                 id="description"
                 rows={3}
@@ -220,13 +218,13 @@ export function SettingsForm({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="footerText">Footer text</Label>
+              <Label htmlFor="footerText">{ts('footerText')}</Label>
               <Textarea
                 id="footerText"
                 rows={2}
                 value={values.footerText ?? ''}
                 disabled={!canEdit}
-                placeholder="Contact support@example.com for help. Markdown links are supported."
+                placeholder={ts('footerTextPlaceholder')}
                 onChange={(e) => set('footerText', e.target.value)}
               />
             </div>
@@ -235,13 +233,13 @@ export function SettingsForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>Appearance</CardTitle>
-            <CardDescription>Theme, refresh rate and custom styling.</CardDescription>
+            <CardTitle>{ts('appearance.title')}</CardTitle>
+            <CardDescription>{ts('appearance.description')}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="theme">Theme</Label>
+                <Label htmlFor="theme">{ts('theme')}</Label>
                 <Select
                   value={values.theme ?? 'auto'}
                   disabled={!canEdit}
@@ -251,9 +249,9 @@ export function SettingsForm({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="auto">Auto (follow visitor)</SelectItem>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
+                    <SelectItem value="auto">{ts('themes.auto')}</SelectItem>
+                    <SelectItem value="light">{ts('themes.light')}</SelectItem>
+                    <SelectItem value="dark">{ts('themes.dark')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -280,7 +278,7 @@ export function SettingsForm({
                 </div>
               )}
               <div className="grid gap-2">
-                <Label htmlFor="autoRefreshInterval">Auto refresh (seconds, 0 = off)</Label>
+                <Label htmlFor="autoRefreshInterval">{ts('autoRefresh')}</Label>
                 <Input
                   id="autoRefreshInterval"
                   type="number"
@@ -293,7 +291,7 @@ export function SettingsForm({
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="customCSS">Custom CSS</Label>
+              <Label htmlFor="customCSS">{ts('customCss')}</Label>
               <Textarea
                 id="customCSS"
                 rows={6}
@@ -306,7 +304,7 @@ export function SettingsForm({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="googleAnalyticsId">Google Analytics measurement ID</Label>
+              <Label htmlFor="googleAnalyticsId">{ts('googleAnalytics')}</Label>
               <Input
                 id="googleAnalyticsId"
                 placeholder="G-XXXXXXXXXX"
@@ -322,7 +320,7 @@ export function SettingsForm({
       <div className="flex flex-col gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Logo</CardTitle>
+            <CardTitle>{ts('logo.title')}</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center gap-4">
             {logoUrl ? (
@@ -356,7 +354,11 @@ export function SettingsForm({
                 disabled={!canEdit || uploading}
                 onClick={() => fileInput.current?.click()}
               >
-                {uploading ? 'Uploading…' : logoUrl ? 'Replace' : 'Upload'}
+                {uploading
+                  ? ts('logo.uploading')
+                  : logoUrl
+                    ? ts('logo.replace')
+                    : ts('logo.upload')}
               </Button>
               {logoUrl && (
                 <Button
@@ -366,7 +368,7 @@ export function SettingsForm({
                   disabled={!canEdit || uploading}
                   onClick={removeLogo}
                 >
-                  Remove
+                  {ts('logo.remove')}
                 </Button>
               )}
             </div>
@@ -375,35 +377,35 @@ export function SettingsForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>Visibility</CardTitle>
+            <CardTitle>{ts('visibility.title')}</CardTitle>
           </CardHeader>
           <CardContent className="divide-y">
             <Toggle
               id="searchEngineIndex"
-              label="Search engine indexing"
-              description="Allow Google and others to index the page."
+              label={ts('visibility.searchEngineIndex')}
+              description={ts('visibility.searchEngineIndexHint')}
               checked={Boolean(values.searchEngineIndex)}
               disabled={!canEdit}
               onChange={(v) => set('searchEngineIndex', v)}
             />
             <Toggle
               id="showTags"
-              label="Show tags"
-              description="Display monitor tags next to their names."
+              label={ts('visibility.showTags')}
+              description={ts('visibility.showTagsHint')}
               checked={Boolean(values.showTags)}
               disabled={!canEdit}
               onChange={(v) => set('showTags', v)}
             />
             <Toggle
               id="showCertificateExpiry"
-              label="Show certificate expiry"
+              label={ts('visibility.showCertificateExpiry')}
               checked={Boolean(values.showCertificateExpiry)}
               disabled={!canEdit}
               onChange={(v) => set('showCertificateExpiry', v)}
             />
             <Toggle
               id="showPoweredBy"
-              label="Show “Powered by Marmot”"
+              label={ts('visibility.showPoweredBy')}
               checked={Boolean(values.showPoweredBy)}
               disabled={!canEdit}
               onChange={(v) => set('showPoweredBy', v)}
@@ -418,24 +420,22 @@ export function SettingsForm({
             disabled={!dirty || saving}
             onClick={() => setValues(fromPage(page))}
           >
-            Reset
+            {ts('reset')}
           </Button>
           <Button type="submit" disabled={!canEdit || !dirty || saving}>
-            {saving ? 'Saving…' : 'Save settings'}
+            {saving ? ts('saving') : ts('save')}
           </Button>
         </div>
 
         {canDelete && (
           <Card className="border-destructive/40">
             <CardHeader>
-              <CardTitle className="text-destructive">Danger zone</CardTitle>
-              <CardDescription>
-                Deleting the page removes its incidents. Monitors are not affected.
-              </CardDescription>
+              <CardTitle className="text-destructive">{ts('danger.title')}</CardTitle>
+              <CardDescription>{ts('danger.description')}</CardDescription>
             </CardHeader>
             <CardContent>
               <Button type="button" variant="destructive" size="sm" onClick={remove}>
-                <Trash2 /> Delete status page
+                <Trash2 /> {ts('danger.delete')}
               </Button>
             </CardContent>
           </Card>

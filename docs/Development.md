@@ -150,6 +150,9 @@ key fails `pnpm typecheck`, and `tests/int/i18n.int.spec.ts` checks that every c
    is what keeps the server HTML and the client hydration identical.
 5. Stable identifiers stay untranslated: monitor type slugs, status enum values, webhook payload keys, log
    lines and the `code` of API errors. Only their display labels are messages.
+6. A zod schema shared by a form and its route handlers takes its messages as a parameter
+   (`createMaintenanceFormSchema(messages)`): the handlers use the English defaults, the form passes
+   `t(…)` values built in a `useMemo`.
 
 ### Locale resolution
 

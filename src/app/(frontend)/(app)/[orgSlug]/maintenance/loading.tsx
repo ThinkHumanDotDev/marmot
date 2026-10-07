@@ -1,5 +1,8 @@
+import { useTranslations } from 'next-intl'
+
 import { ListPageSkeleton } from '@/components/page-skeletons'
 
 export default function Loading() {
-  return <ListPageSkeleton title="Maintenance" label="Loading maintenance" rows={2} />
+  const t = useTranslations('maintenance.list')
+  return <ListPageSkeleton title={t('title')} label={t('loading')} rows={2} />
 }
