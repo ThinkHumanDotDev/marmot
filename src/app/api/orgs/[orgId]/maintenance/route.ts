@@ -2,6 +2,7 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { maintenanceFormSchema } from '@/lib/validation/maintenance'
+import { unfilledPlaceholders } from '@/lib/templates'
 import type { Maintenance } from '@/payload-types'
 import { listOrgMaintenance, summarizeMaintenance, toMaintenanceData } from '@/server/maintenance'
 import {
@@ -63,6 +64,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
   const parsed = maintenanceFormSchema.safeParse(body)
   if (!parsed.success) return validationError(parsed.error, request)
+  const unfilled = unfilledPlaceholders(parsed.data.title, parsed.data.description)
+  if (unfilled) return jsonError(400, errorText(request, 'templatePlaceholdersUnfilled', unfilled))
 
   try {
     const doc = (await payload.create({

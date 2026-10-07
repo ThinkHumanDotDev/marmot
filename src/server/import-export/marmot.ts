@@ -2,10 +2,15 @@
  * Marmot's own export format and its importer.
  *
  *   { format: 'marmot', version: 1, exportedAt, organization: { name, slug },
- *     notifications: [{ id, name, type, config, isDefault, active }],
+ *     notifications: [{ id, name, type, config, events, isDefault, active }],
  *     monitors:      [{ id, ...MonitorFormValues, parent: id | null, notifications: [id], pushToken }],
  *     statusPages:   [{ id, ...fields, domains: [hostname], groups: [{ name, monitors: [{ monitor: id, sendUrl, customUrl }] }],
- *                      incidents: [{ title, content, style, pinned, active, resolvedAt, createdAt }] }] }
+ *                      incidents: [{ title, content, style, pinned, active, resolvedAt, createdAt }] }],
+ *     templates:     [{ name, kind, title, body, status, impact, duration, statusPage: id | null,
+ *                      components: [{ component: <group row id>, impact }] }] }
+ *
+ * Group rows carry their `id` so templates can reference them; `templates` is optional on import
+ * (files written before #153 have none).
  *
  * Ids are the plain document ids of the exporting instance and are only used to link documents
  * inside the file; the importer remaps them. THE FILE CONTAINS SECRETS: notification configs are
@@ -18,26 +23,39 @@ import { z } from 'zod'
 import type { OrgId } from '@/access/permissions'
 import { BANNER_TEXT_MAX_LENGTH } from '@/collections/status-page-theme'
 import { MARMOT_EXPORT_FORMAT, MARMOT_EXPORT_VERSION } from '@/lib/import-export'
+import { COMPONENT_IMPACTS, INCIDENT_STATUSES, incidentTimeline } from '@/lib/incident-timeline'
 import {
   MAX_SMS_MAX_SEGMENTS,
   SMS_TEMPLATE_KEYS,
   SUBSCRIBER_CHANNELS,
   SUBSCRIBER_DELIVERY_MODES,
 } from '@/lib/status-page-subscribers'
-import { incidentTimeline } from '@/lib/incident-timeline'
 import {
   DEFAULT_THEME_PRESET,
   isThemePresetId,
   parseThemeOverrides,
 } from '@/lib/status-page-themes'
+import { TEMPLATE_KINDS, TEMPLATE_MAX_DURATION_MINUTES } from '@/lib/templates'
 import {
   defaultMonitorValues,
   monitorToFormValues,
   type MonitorFormValues,
 } from '@/lib/validation/monitor'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
-import type { Incident, Monitor, Notification, Organization, StatusPage } from '@/payload-types'
-import { NotificationConfigError, validateNotificationConfig } from '@/server/notifications/send'
+import { normalizeChannelEvents, type ChannelEvent } from '@/lib/notification-events'
+import type {
+  Incident,
+  Monitor,
+  Notification,
+  Organization,
+  StatusPage,
+  Template,
+} from '@/payload-types'
+import {
+  NotificationConfigError,
+  validateNotificationConfig,
+  validateNotificationTemplates,
+} from '@/server/notifications/send'
 import { relationId } from '@/server/monitors/http'
 
 import {
@@ -50,6 +68,7 @@ import {
   type ImportPlan,
   type PlannedIncident,
   type PlannedStatusPage,
+  type PlannedTemplate,
 } from './types'
 import { importText, type ImportText } from './text'
 
@@ -66,6 +85,8 @@ export interface ExportedNotification {
   name: string
   type: string
   config: Record<string, unknown>
+  /** Event filter (#126); older files have none (the defaults). */
+  events: ChannelEvent[]
   isDefault: boolean
   active: boolean
 }
@@ -122,6 +143,8 @@ export interface ExportedStatusPage {
 }
 
 export interface ExportedComponent {
+  /** Row id; templates reference components by it. */
+  id?: string | null
   type?: 'monitor' | 'static'
   monitor: OrgId | null
   name?: string | null
@@ -129,6 +152,18 @@ export interface ExportedComponent {
   showValues?: boolean
   sendUrl: boolean
   customUrl: string | null
+}
+
+export interface ExportedTemplate {
+  name: string
+  kind: Template['kind']
+  title: string | null
+  body: string | null
+  status: Template['status']
+  impact: Template['impact']
+  duration: number | null
+  statusPage: OrgId | null
+  components: { component: string; impact: NonNullable<Template['components']>[number]['impact'] }[]
 }
 
 export interface MarmotExport {
@@ -139,6 +174,7 @@ export interface MarmotExport {
   notifications: ExportedNotification[]
   monitors: ExportedMonitor[]
   statusPages: ExportedStatusPage[]
+  templates: ExportedTemplate[]
 }
 
 const MONITOR_FIELDS = Object.keys(defaultMonitorValues()) as (keyof MonitorFormValues)[]
@@ -153,6 +189,21 @@ const toExportedMonitor = (doc: Monitor): ExportedMonitor => {
   out.pushToken = doc.type === 'push' ? (doc.pushToken ?? null) : null
   return out as ExportedMonitor
 }
+
+const toExportedTemplate = (doc: Template): ExportedTemplate => ({
+  name: doc.name,
+  kind: doc.kind,
+  title: doc.title ?? null,
+  body: doc.body ?? null,
+  status: doc.status ?? null,
+  impact: doc.impact ?? null,
+  duration: doc.duration ?? null,
+  statusPage: relationId(doc.statusPage),
+  components: (doc.components ?? []).map((row) => ({
+    component: row.component,
+    impact: row.impact,
+  })),
+})
 
 const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedStatusPage => ({
   id: doc.id,
@@ -193,6 +244,7 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
     defaultOpen: group.defaultOpen ?? true,
     monitors: (group.monitors ?? [])
       .map((row): ExportedComponent => ({
+        id: row.id ?? null,
         type: row.type === 'static' ? 'static' : 'monitor',
         monitor: row.type === 'static' ? null : relationId(row.monitor),
         name: row.name ?? null,
@@ -239,7 +291,7 @@ export async function buildMarmotExport(
     overrideAccess: false,
   })) as Organization
 
-  const [monitors, notifications, statusPages, incidents] = await Promise.all([
+  const [monitors, notifications, statusPages, incidents, templates] = await Promise.all([
     payload.find({
       collection: 'monitors',
       where: { organization: { equals: orgId } },
@@ -264,6 +316,12 @@ export async function buildMarmotExport(
       sort: 'createdAt',
       ...common,
     }),
+    payload.find({
+      collection: 'templates',
+      where: { organization: { equals: orgId } },
+      sort: 'name',
+      ...common,
+    }),
   ])
 
   const incidentsByPage = new Map<string, Incident[]>()
@@ -285,6 +343,7 @@ export async function buildMarmotExport(
       name: doc.name,
       type: doc.type,
       config: isRecord(doc.config) ? doc.config : {},
+      events: normalizeChannelEvents(doc.events),
       isDefault: doc.isDefault ?? false,
       active: doc.active ?? true,
     })),
@@ -292,6 +351,7 @@ export async function buildMarmotExport(
     statusPages: (statusPages.docs as StatusPage[]).map((doc) =>
       toExportedStatusPage(doc, incidentsByPage.get(String(doc.id)) ?? []),
     ),
+    templates: (templates.docs as Template[]).map(toExportedTemplate),
   }
 }
 
@@ -308,6 +368,7 @@ const envelopeSchema = z.object({
   notifications: z.array(z.unknown()).default([]),
   monitors: z.array(z.unknown()).default([]),
   statusPages: z.array(z.unknown()).default([]),
+  templates: z.array(z.unknown()).default([]),
 })
 
 const notificationSchema = z.object({
@@ -315,6 +376,8 @@ const notificationSchema = z.object({
   name: z.string().trim().min(1).max(150),
   type: z.string().min(1),
   config: z.record(z.string(), z.unknown()).default({}),
+  // Unknown event names (a newer Marmot) are dropped rather than failing the channel.
+  events: z.array(z.string()).optional(),
   isDefault: z.boolean().default(false),
   active: z.boolean().default(true),
 })
@@ -372,6 +435,7 @@ const statusPageSchema = z.object({
           .array(
             z.union([
               z.object({
+                id: z.string().nullish(),
                 type: z.literal('static'),
                 monitor: z.null().optional(),
                 name: z.string().trim().min(1),
@@ -381,6 +445,7 @@ const statusPageSchema = z.object({
                 customUrl: z.string().nullish(),
               }),
               z.object({
+                id: z.string().nullish(),
                 type: z.literal('monitor').optional(),
                 monitor: idSchema,
                 name: z.string().nullish(),
@@ -406,6 +471,20 @@ const statusPageSchema = z.object({
         resolvedAt: z.string().nullish(),
       }),
     )
+    .default([]),
+})
+
+const templateSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  kind: z.enum(TEMPLATE_KINDS),
+  title: z.string().max(200).nullish(),
+  body: z.string().nullish(),
+  status: z.enum(INCIDENT_STATUSES).nullish(),
+  impact: z.enum(COMPONENT_IMPACTS).nullish(),
+  duration: z.number().int().min(1).max(TEMPLATE_MAX_DURATION_MINUTES).nullish(),
+  statusPage: idSchema.nullish(),
+  components: z
+    .array(z.object({ component: z.string().min(1), impact: z.enum(COMPONENT_IMPACTS) }))
     .default([]),
 })
 
@@ -446,6 +525,7 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
     let config: Record<string, unknown>
     try {
       config = validateNotificationConfig(parsed.data.type, parsed.data.config)
+      validateNotificationTemplates(parsed.data.type, config, t.locale)
     } catch (error) {
       plan.skipped.notifications.push({
         name,
@@ -469,6 +549,7 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
       name: parsed.data.name,
       type: parsed.data.type,
       config,
+      ...(parsed.data.events ? { events: normalizeChannelEvents(parsed.data.events) } : {}),
       isDefault: parsed.data.isDefault,
       active: parsed.data.active,
     })
@@ -619,6 +700,7 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
             return keep
           })
           .map((row) => ({
+            ...(row.id ? { key: row.id } : {}),
             monitorKey: row.type === 'static' ? null : String(row.monitor),
             type: row.type === 'static' ? ('static' as const) : ('monitor' as const),
             name: asText(row.name),
@@ -641,6 +723,60 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
       plan.warnings.push(t('rowsDropped', { title: page.title, count: droppedRows }))
     }
     plan.statusPages.push(planned)
+  })
+
+  // Templates reference a planned status page and its rows by their keys in the file; references
+  // to pages or rows that are not imported are dropped with a warning.
+  const componentKeysByPage = new Map(
+    plan.statusPages.map((page) => [
+      page.key,
+      new Set(page.groups.flatMap((group) => group.monitors.flatMap((row) => row.key ?? []))),
+    ]),
+  )
+  const templateNames = new Set<string>()
+  file.templates.forEach((entry, index) => {
+    const fallback = t('unnamed', { kind: 'template', id: index + 1 })
+    const name = isRecord(entry) ? (asText(entry.name) ?? fallback) : fallback
+    const parsed = templateSchema.safeParse(entry)
+    if (!parsed.success) {
+      plan.skipped.templates.push({
+        name,
+        reason: t('invalidTemplate', { issues: issueList(parsed.error.issues) }),
+      })
+      return
+    }
+    const template = parsed.data
+    if (templateNames.has(template.name)) {
+      plan.skipped.templates.push({ name, reason: t('duplicateTemplate') })
+      return
+    }
+    templateNames.add(template.name)
+    const pageKey =
+      template.statusPage === null || template.statusPage === undefined
+        ? null
+        : String(template.statusPage)
+    const rowKeys = pageKey === null ? undefined : componentKeysByPage.get(pageKey)
+    const components = template.components.filter((row) => rowKeys?.has(row.component))
+    if (components.length < template.components.length) {
+      plan.warnings.push(
+        t('templateComponentsDropped', {
+          name: template.name,
+          count: template.components.length - components.length,
+        }),
+      )
+    }
+    const planned: PlannedTemplate = {
+      name: template.name,
+      kind: template.kind,
+      title: template.title ?? null,
+      body: template.body ?? null,
+      status: template.status ?? null,
+      impact: template.impact ?? null,
+      duration: template.duration ?? null,
+      statusPageKey: rowKeys ? pageKey : null,
+      components: components.map((row) => ({ componentKey: row.component, impact: row.impact })),
+    }
+    plan.templates.push(planned)
   })
 
   return plan

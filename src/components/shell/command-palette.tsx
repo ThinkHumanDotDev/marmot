@@ -14,6 +14,7 @@ import {
   SunMoon,
   Sun,
   Wrench,
+  Zap,
 } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
@@ -36,6 +37,7 @@ import { publicStatusPagePath } from '@/components/status-pages/api'
 import { isRole, PERMISSIONS, roleSatisfies, type Permission } from '@/access/permissions'
 import { api, authApi } from '@/lib/api'
 import type { OrgMembership } from '@/lib/auth'
+import { supportsCheckNow } from '@/lib/on-demand-check'
 import {
   selectMonitorList,
   statusKey,
@@ -55,6 +57,7 @@ interface CommandPaletteProps {
 interface PaletteMonitor {
   id: string
   name: string
+  type?: string
   active: boolean
   status: MonitorStatusKey
 }
@@ -102,6 +105,7 @@ function usePaletteData(open: boolean, orgId: string | number) {
           docs: {
             id: string | number
             name: string
+            type?: string
             active?: boolean | null
             status?: { lastStatus?: string | null } | null
           }[]
@@ -112,6 +116,7 @@ function usePaletteData(open: boolean, orgId: string | number) {
             docs.map((doc) => ({
               id: String(doc.id),
               name: doc.name,
+              type: doc.type,
               active: doc.active !== false,
               status:
                 doc.active === false
@@ -148,6 +153,7 @@ function usePaletteData(open: boolean, orgId: string | number) {
     return selectMonitorList({ monitors: storeMonitors }, locale).map((m) => ({
       id: m.id,
       name: m.name,
+      type: m.type,
       active: m.active,
       status: m.active ? statusKey(storeHeartbeats[m.id]?.last()?.status) : ('unknown' as const),
     }))
@@ -222,6 +228,21 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
     }
   }
 
+  async function checkMonitorNow(monitor: PaletteMonitor) {
+    const pending = toast.loading(t('checkingMonitor', { name: monitor.name }))
+    try {
+      const result = await api.post<{ status: MonitorStatusKey; msg: string }>(
+        `/api/orgs/${currentOrg.id}/monitors/${monitor.id}/check`,
+      )
+      const text = t('checkResult', { name: monitor.name, status: result.status, msg: result.msg })
+      if (result.status === 'down') toast.error(text, { id: pending })
+      else toast.success(text, { id: pending })
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('checkFailed'), { id: pending })
+    }
+  }
+
   const otherOrgs = organizations.filter((org) => org.slug !== currentOrg.slug)
   const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark'
 
@@ -267,6 +288,18 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
                 : t('resumeMonitor', { name: currentMonitor.name })}
             </CommandItem>
           )}
+          {currentMonitor &&
+            canWriteMonitors &&
+            currentMonitor.active &&
+            supportsCheckNow(currentMonitor.type) && (
+              <CommandItem
+                value={`check now run monitor ${currentMonitor.name}`}
+                keywords={[t('checkNow', { name: currentMonitor.name })]}
+                onSelect={run(() => checkMonitorNow(currentMonitor))}
+              >
+                <Zap aria-hidden /> {t('checkNow', { name: currentMonitor.name })}
+              </CommandItem>
+            )}
           {currentMonitor && canWriteMonitors && (
             <CommandItem
               value={`edit monitor ${currentMonitor.name}`}

@@ -1,14 +1,15 @@
 /**
  * Writes an import plan into one organization — or, on a dry run, only computes the report.
  *
- * Order: notifications → monitors (groups before their children) → status pages → incidents, so
+ * Order: notifications → monitors (groups before their children) → status pages → incidents →
+ * templates, so
  * every relationship can be resolved to a freshly created id. Everything runs in one database
  * transaction (same pattern as `runSetup`); on adapters without transactions the writes are
  * sequential and a failure leaves the documents created so far.
  *
  * Permissions: the caller must hold `monitor:create` (checked by the route). Notifications and
  * status pages are only imported when the caller also holds `notification:create` /
- * `status-page:create`; otherwise those parts are skipped with a warning.
+ * `status-page:create` / `template:create`; otherwise those parts are skipped with a warning.
  */
 import { createLocalReq, type Payload, type PayloadRequest } from 'payload'
 
@@ -16,7 +17,7 @@ import { can, type OrgId } from '@/access/permissions'
 import type { ImportReport, SkippedItem } from '@/lib/import-export'
 import { childLogger } from '@/lib/logger'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
-import type { Incident, Monitor, Notification, StatusPage } from '@/payload-types'
+import type { Incident, Monitor, Notification, StatusPage, Template } from '@/payload-types'
 import type { RequestUser } from '@/server/monitors/http'
 import { checkServerSmtpChange } from '@/server/notifications/server-smtp'
 
@@ -79,6 +80,7 @@ export async function applyImportPlan(
     monitors: { create: 0, skipped: [...plan.skipped.monitors] },
     notifications: { create: 0, skipped: [...plan.skipped.notifications] },
     statusPages: { create: 0, skipped: [...plan.skipped.statusPages] },
+    templates: { create: 0, skipped: [...plan.skipped.templates] },
     tags: { create: 0, skipped: [...plan.skipped.tags] },
     warnings: [...plan.warnings],
   }
@@ -86,6 +88,7 @@ export async function applyImportPlan(
     monitors: [] as OrgId[],
     notifications: [] as OrgId[],
     statusPages: [] as OrgId[],
+    templates: [] as OrgId[],
   }
 
   const skipAll = (items: { name: string }[], target: SkippedItem[], reason: string) => {
@@ -139,6 +142,13 @@ export async function applyImportPlan(
     plan = { ...plan, statusPages: [] }
   }
 
+  const canTemplates = can(user, orgId, 'template:create')
+  if (!canTemplates && plan.templates.length > 0) {
+    report.warnings.push(t('templatesSkipped'))
+    skipAll(plan.templates, report.templates.skipped, t('noTemplatePermission'))
+    plan = { ...plan, templates: [] }
+  }
+
   // ---- Conflict detection (reads only; also used by the dry run) -----------------------------
   const notificationIds = new Map<string, OrgId>()
   const monitorIds = new Map<string, OrgId>()
@@ -168,6 +178,32 @@ export async function applyImportPlan(
           name: planned.name,
           reason: t('channelExists'),
         })
+        return false
+      }),
+    }
+  }
+
+  if (plan.templates.length > 0) {
+    const { docs } = await payload.find({
+      collection: 'templates',
+      where: {
+        and: [
+          { organization: { equals: orgId } },
+          { name: { in: plan.templates.map((template) => template.name) } },
+        ],
+      },
+      depth: 0,
+      limit: 0,
+      pagination: false,
+      overrideAccess: true,
+      select: { name: true },
+    })
+    const existing = new Set((docs as Pick<Template, 'name'>[]).map((doc) => doc.name))
+    plan = {
+      ...plan,
+      templates: plan.templates.filter((planned) => {
+        if (!existing.has(planned.name)) return true
+        report.templates.skipped.push({ name: planned.name, reason: t('templateExists') })
         return false
       }),
     }
@@ -223,6 +259,20 @@ export async function applyImportPlan(
   report.notifications.create = plan.notifications.length
   report.monitors.create = orderedMonitors.length
   report.statusPages.create = statusPages.length
+  report.templates.create = plan.templates.length
+  // Templates bound to a page that will not be created lose the page and its components.
+  const importedPageKeys = new Set(statusPages.map((page) => page.key))
+  const templates = plan.templates.map((planned) => {
+    if (planned.statusPageKey === null || importedPageKeys.has(planned.statusPageKey)) {
+      return planned
+    }
+    if (planned.components.length > 0) {
+      report.warnings.push(
+        t('templateComponentsDropped', { name: planned.name, count: planned.components.length }),
+      )
+    }
+    return { ...planned, statusPageKey: null, components: [] }
+  })
 
   if (dryRun) return report
 
@@ -231,6 +281,8 @@ export async function applyImportPlan(
   const transactionID = await payload.db.beginTransaction()
   if (transactionID) req.transactionID = transactionID
   const createdMonitors: Monitor[] = []
+  /** Planned status page key → created page id and row key → created row id. */
+  const createdPages = new Map<string, { id: OrgId; rows: Map<string, string> }>()
 
   try {
     for (const planned of plan.notifications) {
@@ -240,6 +292,7 @@ export async function applyImportPlan(
           name: planned.name,
           type: planned.type,
           config: planned.config,
+          ...(planned.events ? { events: planned.events } : {}),
           isDefault: planned.isDefault,
           active: planned.active,
           organization: orgId as Notification['organization'],
@@ -326,6 +379,23 @@ export async function applyImportPlan(
         overrideAccess: false,
       })
       created.statusPages.push(doc.id)
+      // Rows are created in plan order (minus those whose monitor was not imported), so the saved
+      // rows line up with the planned ones that were kept.
+      const keptRows = planned.groups.map((group) =>
+        group.monitors.filter(
+          (row) =>
+            row.type === 'static' ||
+            (row.monitorKey !== null && monitorIds.get(row.monitorKey) != null),
+        ),
+      )
+      const rows = new Map<string, string>()
+      ;(doc as StatusPage).groups?.forEach((group, g) =>
+        group.monitors?.forEach((row, r) => {
+          const key = keptRows[g]?.[r]?.key
+          if (key && row.id) rows.set(key, row.id)
+        }),
+      )
+      createdPages.set(planned.key, { id: doc.id, rows })
       for (const incident of planned.incidents) {
         await payload.create({
           collection: 'incidents',
@@ -342,6 +412,35 @@ export async function applyImportPlan(
       }
     }
 
+    for (const planned of templates) {
+      const page = planned.statusPageKey ? createdPages.get(planned.statusPageKey) : undefined
+      const doc = await payload.create({
+        collection: 'templates',
+        data: {
+          organization: orgId,
+          name: planned.name,
+          kind: planned.kind,
+          title: planned.title,
+          body: planned.body,
+          status: planned.status,
+          impact: planned.impact,
+          duration: planned.duration,
+          statusPage: page?.id ?? null,
+          components: page
+            ? planned.components.flatMap((row) => {
+                const component = page.rows.get(row.componentKey)
+                return component ? [{ component, impact: row.impact }] : []
+              })
+            : [],
+        } as Omit<Template, 'id' | 'createdAt' | 'updatedAt'>,
+        depth: 0,
+        req,
+        user,
+        overrideAccess: false,
+      })
+      created.templates.push(doc.id)
+    }
+
     if (transactionID) await payload.db.commitTransaction(transactionID)
   } catch (error) {
     if (transactionID) await payload.db.rollbackTransaction(transactionID)
@@ -352,6 +451,7 @@ export async function applyImportPlan(
   report.monitors.created = created.monitors
   report.notifications.created = created.notifications
   report.statusPages.created = created.statusPages
+  report.templates.created = created.templates
   return report
 }
 

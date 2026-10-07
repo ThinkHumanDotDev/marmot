@@ -81,6 +81,8 @@ const schema = z.object({
   KEEP_DATA_PERIOD_DAYS: z.coerce.number().int().default(365),
   // Polling engine (worker): parallel checks per worker process.
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(10),
+  // On-demand checks ("Check now" and ad-hoc tests) allowed per organization and minute.
+  ON_DEMAND_CHECKS_PER_MINUTE: z.coerce.number().int().positive().default(30),
   // Self connectivity check (worker): while the worker itself cannot reach the internet, checks of
   // external targets are held as PENDING "checker offline" beats instead of going DOWN. Off by default.
   CONNECTIVITY_CHECK_ENABLED: booleanish.default(false),

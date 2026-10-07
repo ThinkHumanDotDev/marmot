@@ -118,6 +118,19 @@ describe('applyBeat', () => {
     expect(bucket.ping).toBe(200)
   })
 
+  it('counts degraded as up, in extras.degraded, and keeps its ping in the average', () => {
+    const bucket = beats([
+      ['up', 100],
+      ['degraded', 900],
+      ['degraded', 800],
+      ['down', null],
+    ])
+    expect(bucket).toMatchObject({ up: 3, down: 1, ping: 600, pingMin: 100, pingMax: 900 })
+    expect(bucket.extras.degraded).toBe(2)
+    expect(bucket.extras.pingCount).toBe(3)
+    expect(flatStatus('degraded')).toBe('up')
+  })
+
   it('skips missing or invalid pings while still counting the beat as up', () => {
     const bucket = beats([
       ['up', null],
@@ -133,7 +146,14 @@ describe('applyBeat', () => {
 
 describe('summarize', () => {
   it('returns zero uptime and null ping without data', () => {
-    expect(summarize([])).toEqual({ uptime: 0, avgPing: null })
+    expect(summarize([])).toEqual({ uptime: 0, avgPing: null, degraded: 0 })
+  })
+
+  it('sums degraded checks across buckets (rows without the counter count as 0)', () => {
+    const a = { ...emptyBucket(), up: 3, extras: { degraded: 2 } }
+    const b = { ...emptyBucket(), up: 1, down: 1, extras: { degraded: 1 } }
+    const c = { ...emptyBucket(), up: 5 }
+    expect(summarize([a, b, c])).toMatchObject({ uptime: 9 / 10, degraded: 3 })
   })
 
   it('computes uptime as up / (up + down) across buckets', () => {
@@ -176,12 +196,16 @@ describe('summarize', () => {
   })
 
   it('returns null ping when only down beats were recorded', () => {
-    expect(summarize([{ ...emptyBucket(), down: 5 }])).toEqual({ uptime: 0, avgPing: null })
+    expect(summarize([{ ...emptyBucket(), down: 5 }])).toEqual({
+      uptime: 0,
+      avgPing: null,
+      degraded: 0,
+    })
   })
 
   it('reports 100 % uptime for maintenance-only buckets', () => {
     const bucket = applyBeat(emptyBucket(), 'maintenance', null)
-    expect(summarize([bucket])).toEqual({ uptime: 1, avgPing: null })
+    expect(summarize([bucket])).toEqual({ uptime: 1, avgPing: null, degraded: 0 })
   })
 })
 

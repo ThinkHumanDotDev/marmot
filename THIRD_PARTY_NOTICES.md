@@ -53,7 +53,10 @@ attribution comment and are listed here:
 - `src/server/notification-providers/http.ts` — error formatting and `extractAddress` from
   `server/notification-providers/notification-provider.js`
 - `src/server/notifications/message.ts` — default message text from `Monitor.sendNotification`
-  (`server/model/monitor.js`)
+  (`server/model/monitor.js`); the `monitorJSON` / `heartbeatJSON` template variable names and
+  `heartbeatJSON.localDateTime` / `timezone` from `server/notification-providers/notification-provider.js`
+- `src/lib/notification-template-variables.ts` — the Uptime Kuma 2.x template variable names
+  (`monitorJSON`, `heartbeatJSON`) from `server/notification-providers/notification-provider.js`
 - `src/server/notification-providers/discord.ts` — `server/notification-providers/discord.js`
 - `src/server/notification-providers/slack.ts` — `server/notification-providers/slack.js`
 - `src/server/notification-providers/telegram.ts` — `server/notification-providers/telegram.js`

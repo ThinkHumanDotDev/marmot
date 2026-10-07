@@ -1,8 +1,8 @@
 # Monitors
 
 A monitor is one thing Marmot checks on a schedule: a URL, a host and port, a DNS name, a database, or a
-system that reports in by itself. Each check produces a **heartbeat** (`up`, `down`, `pending` or
-`maintenance`, with a message and a response time), the heartbeats feed the uptime statistics and the
+system that reports in by itself. Each check produces a **heartbeat** (`up`, `degraded`, `down`, `pending`
+or `maintenance`, with a message and a response time), the heartbeats feed the uptime statistics and the
 status pages, and status changes trigger notifications. Monitors belong to an organization; viewers can
 see them, members and above can create, edit, pause and delete them
 ([Organizations and members](Organizations-and-Members.md)).
@@ -11,23 +11,27 @@ see them, members and above can create, edit, pause and delete them
 
 The type decides what a check does and which fields the form shows. The built-in set on `main`:
 
-| Group   | Type                 | UP when                                                                      |
-| ------- | -------------------- | ---------------------------------------------------------------------------- |
-| General | HTTP(s)              | the response status is in `acceptedStatusCodes` (default `200-299`)          |
-| General | HTTP(s) - Keyword    | the response body contains the keyword (or lacks it with `invertKeyword`)    |
-| General | HTTP(s) - Json Query | a JSONata expression over the JSON response compares as expected             |
-| General | TCP Port             | a TCP connection to `hostname:port` succeeds                                 |
-| General | Ping                 | the host answers ICMP echo requests                                          |
-| General | DNS                  | the resolver returns a record of `dnsResolveType` for `hostname`             |
-| Passive | Push                 | your system called `/api/push/<token>` within the interval (plus 10 % grace) |
-| Passive | Manual               | you set the status by hand; nothing is checked                               |
-| Special | Group                | every child monitor is UP                                                    |
-| Special | Docker Container     | the container is running (and healthy, when it has a health check)           |
+| Group   | Type                 | UP when                                                                           |
+| ------- | -------------------- | --------------------------------------------------------------------------------- |
+| General | HTTP(s)              | the response status is in `acceptedStatusCodes` (default `200-299`)               |
+| General | HTTP(s) - Keyword    | the response body contains the keyword (or lacks it with `invertKeyword`)         |
+| General | HTTP(s) - Json Query | a JSONata expression over the JSON response compares as expected                  |
+| General | TCP Port             | a TCP connection to `hostname:port` succeeds                                      |
+| General | Ping                 | the host answers ICMP echo requests                                               |
+| General | DNS                  | the resolver returns a record of `dnsResolveType` for `hostname`                  |
+| Passive | Push                 | your system called `/api/push/<token>` on schedule (interval or cron, plus grace) |
+| Passive | Manual               | you set the status by hand; nothing is checked                                    |
+| Special | Group                | every child monitor is UP                                                         |
+| Special | Docker Container     | the container is running (and healthy, when it has a health check)                |
 
 HTTP monitors also support request method and body, extra headers, redirects, `ignoreTls`, basic/bearer/
 OAuth2 client-credentials/NTLM/mTLS authentication and certificate-expiry alerts. The extended set adds gRPC, WebSocket, MQTT, Kafka, RabbitMQ, SMTP, SNMP, NTP, SFTP, RADIUS, Tailscale
 ping, MySQL/MariaDB, PostgreSQL, SQL Server, MongoDB, Redis, Steam and GameDig checks plus a remote-browser
 HTTP check; every field of every type is listed in [Monitor types](Monitor-Types.md).
+
+HTTP(s), Keyword, Json Query and DNS monitors take **assertions** on top of their own condition: status
+code, header, body text and JSON checks, or DNS record checks, all of which must pass. See
+[Monitor types → Assertions](Monitor-Types.md#assertions).
 
 Marmot's type set follows Uptime Kuma's, so a monitor you know from there behaves the same here (the check
 code is in many cases a direct port, see `THIRD_PARTY_NOTICES.md`).
@@ -41,20 +45,43 @@ code is in many cases a direct port, see `THIRD_PARTY_NOTICES.md`).
 | `retryInterval`  | 60 s    | Seconds between checks while PENDING (usually shorter than `interval` to confirm an outage quickly).                 |
 | `resendInterval` | 0       | Re-send the DOWN notification every N consecutive DOWN beats. `0` notifies once per transition.                      |
 | `timeout`        | 48 s    | Seconds before a check is aborted. `0` means 80 % of the interval.                                                   |
+| `degradedAfter`  | empty   | Milliseconds. A successful check slower than this is DEGRADED instead of UP (see below). Empty or `0` turns it off.  |
 | `upsideDown`     | off     | Invert the result: a failed check counts as UP and a successful one as DOWN (useful for "this port must be closed"). |
 
 The state machine (a port of Uptime Kuma's) is:
 
 ```
-maintenance window active  → MAINTENANCE (no notifications)
-check ok                   → UP
-check failed, retries left → PENDING, next check after retryInterval
-check failed, no retries   → DOWN
+maintenance window active                  → MAINTENANCE (no notifications)
+check ok, response time > degradedAfter    → DEGRADED
+check ok                                   → UP
+check failed, retries left                 → PENDING, next check after retryInterval
+check failed, no retries                   → DOWN
 ```
 
-Only **important** beats (a change between UP, DOWN and MAINTENANCE, or the first beat when it is DOWN)
-notify. PENDING never notifies, so `maxRetries: 2` with `retryInterval: 20` gives a flaky endpoint 40 seconds
-to recover before anyone is paged.
+Only **important** beats (a change between UP, DEGRADED, DOWN and MAINTENANCE, or the first beat when it is
+DOWN) notify. PENDING never notifies, so `maxRetries: 2` with `retryInterval: 20` gives a flaky endpoint 40
+seconds to recover before anyone is paged.
+
+### Degraded
+
+A service that answers correctly but slowly is not healthy. Set **Degraded after** (`degradedAfter`, in ms) on
+an HTTP(s), keyword, JSON query, TCP port, ping, DNS or gRPC monitor and every successful check whose
+response time exceeds it is recorded as **degraded** (yellow in the heartbeat and uptime bars, a "Degraded"
+badge, "Degraded performance" on status pages). The heartbeat message says by how much the threshold was
+crossed. Other types ignore the setting.
+
+- Degraded counts as **up** for uptime; the statistics count degraded checks separately (`extras.degraded`
+  in the buckets, `degraded` in `GET /api/monitors/:id/stats`, "N degraded checks" on the detail page) and
+  include their response times in the average.
+- Transitions UP ↔ DEGRADED ↔ DOWN are important beats. A failed check while degraded goes through PENDING
+  and retries like any other failure; when the retries end, the monitor's status before them
+  (`status.settledStatus`) decides whether anything changed, so DEGRADED → PENDING → UP still announces
+  the recovery.
+- Upside-down monitors ignore the threshold (their UP comes from a failed check). Maintenance overrides
+  degraded like every other status.
+- Notifications carry an event: `down`, `up` (recovered from DOWN, also to DEGRADED), `degraded` (UP ↔
+  DEGRADED) and `reminder` (`resendInterval`). Channels receive `down`, `up` and `reminder` by default;
+  `degraded` is opt-in per channel ([Notifications](Notifications.md)).
 
 When the [self connectivity check](Configuration.md#self-connectivity-check) is on and the worker itself
 loses its internet connection, checks of external targets are held as PENDING `checker offline` beats
@@ -69,40 +96,67 @@ monitor is never checked twice at once ([Architecture](Architecture.md#polling-e
 `/{org}/monitors` lists every monitor with its live status, a bar of the last 100 heartbeats and the 24 h
 uptime; it updates over the WebSocket connection without reloading. The detail page adds:
 
-- uptime for 24 h and 30 d, average and current response time;
+- uptime for 24 h and 30 d, average and current response time, and the number of degraded checks in the
+  last 24 hours;
 - a response-time chart;
 - the list of **important events** (status changes with their message);
 - the certificate panel for HTTPS targets (issuer, expiry; filled by the certificate job landing in the
   current release);
 - the notification channels the monitor alerts through;
-- actions: **Pause/Resume**, **Edit**, **Clone**, **Delete**.
+- actions: **Check now**, **Pause/Resume**, **Edit**, **Clone**, **Delete**.
 
 Statistics are kept as minutely (24 h), hourly (30 d) and daily (`KEEP_DATA_PERIOD_DAYS`, default one
 year) buckets, so a monitor's history survives the pruning of raw heartbeats after 24 hours.
 
+## Check now and Test
+
+- **Check now** (detail page, or the command palette on a monitor's page) runs the monitor's check
+  immediately instead of waiting for the next interval. The heartbeat is stored with `trigger: manual` and
+  counts like any other beat: it feeds retries, status, statistics and notifications, and the heartbeat
+  bar updates live. A dialog shows the result: status, message, response time, HTTP status code,
+  certificate and any check-specific details (such as assertion results).
+- **Test** in the monitor form runs the configuration you are editing once, before saving, and shows the
+  same result under the form. Nothing is stored.
+
+Both run on the worker, never in the web process, with the monitor's timeout, its proxy and the
+[outbound address guard](Security.md) exactly like scheduled checks; with `MONITOR_DENY_PRIVATE_ADDRESSES`
+on, private and link-local targets are refused. They need `monitor:update` (Test: `monitor:create` or
+`monitor:update`), so viewers cannot trigger checks, and share a budget of `ON_DEMAND_CHECKS_PER_MINUTE`
+(default 30) per organization. Push monitors are fed by your system and cannot be checked on demand;
+paused monitors must be resumed first. Group and manual monitors cannot be tested before saving.
+
 ## Groups
 
 A **Group** monitor has no target of its own; set `parent` on other monitors to put them inside it. The
-group is UP when all children are UP, DOWN as soon as one child is DOWN, and PENDING while a child is
-retrying. Groups nest, show as a tree in the monitor list and can be placed on status pages like any other
+group is UP when all children are UP, DOWN as soon as one child is DOWN, PENDING while a child is
+retrying, and DEGRADED when a child is degraded and none is worse. Groups nest, show as a tree in the monitor list and can be placed on status pages like any other
 monitor, which is the easy way to publish "API: operational" over a dozen internal checks. Deleting a group
 detaches its children instead of deleting them.
 
 ## Push monitors
 
 A push monitor is checked by **your** system: cron jobs, backup scripts, IoT devices, anything that can make
-an HTTP request. Create a monitor of type _Push_; Marmot generates a `pushToken` and shows the URL to call.
-The worker's periodic check only verifies that a push arrived within `interval` plus a 10 % grace period and
-marks the monitor DOWN otherwise; `maxRetries` and `upsideDown` apply as usual.
+an HTTP request. Create a monitor of type _Push_; Marmot generates a `pushToken` and shows the URL to call,
+with copy-ready curl, bash-wrapper and crontab snippets.
+
+Pings are expected either every `interval` or on a **cron schedule** ("0 2 * * *" in Europe/Berlin, the
+organization's time zone by default), with a **grace period** for late pings. Jobs can report more than
+"I'm alive": `/start` when they begin (a run that does not finish within the grace period goes DOWN),
+`/fail` or their exit code when they end, `/log` for intermediate output, and the output itself as the
+request body (the first 10 000 bytes are kept in the ping log). The time from start to success is recorded
+as the heartbeat's ping, so the response-time chart shows how long the job took; an optional maximum run
+duration reports slow runs. `maxRetries` and `upsideDown` apply as usual.
 
 ```bash
 # at the end of your job
 curl -fsS "https://status.example.com/api/push/<token>?status=up&msg=OK&ping=12"
+# or: report start, outcome and duration
+curl -fsS "https://status.example.com/api/push/<token>/start"
+/usr/local/bin/backup.sh; curl -fsS "https://status.example.com/api/push/<token>/$?"
 ```
 
-The endpoint accepts `GET` or any other method, `status=up|down`, a free-text `msg` and an optional `ping`
-in ms; every call records a heartbeat and stamps `lastPushAt`. See [Integrations](Integrations.md) for
-the full reference, badges and API keys.
+See [Integrations](Integrations.md#push-monitors) for the endpoint reference and
+[Monitor types](Monitor-Types.md#push-schedules-and-signals) for the scheduling rules.
 
 ## Public name
 
@@ -153,9 +207,63 @@ same permissions as the UI (`monitor:read` for viewers, `monitor:create|update|d
 | `POST /api/orgs/:orgId/monitors/:id/pause`       | Pause                                             |
 | `POST /api/orgs/:orgId/monitors/:id/resume`      | Resume                                            |
 | `POST /api/orgs/:orgId/monitors/:id/clone`       | Clone (returns the new, paused monitor)           |
+| `POST /api/orgs/:orgId/monitors/:id/check`       | Check now (see below)                             |
+| `POST /api/orgs/:orgId/checks`                   | Test an unsaved configuration (see below)         |
 | `GET /api/monitors/:id/stats?range=24h\|30d\|1y` | Uptime, average ping and buckets for a range      |
 | `GET /api/monitors` (Payload REST)               | List with Payload's `where`/`limit`/`sort` syntax |
 
 Requests from outside the browser must send the `payload-token` cookie or a `JWT` `Authorization` header
 (`POST /api/users/login` returns one) and an `Origin` matching `NEXT_PUBLIC_SERVER_URL`. Organization API
 keys give machine access to badges and metrics ([Integrations](Integrations.md)).
+
+### On-demand checks
+
+`POST /api/orgs/:orgId/monitors/:id/check` enqueues a check of the monitor on the worker (concurrent
+requests for the same monitor share one job) and waits up to the monitor's timeout for the result:
+
+```json
+{
+  "status": "down",
+  "ok": false,
+  "msg": "500 - Internal Server Error",
+  "ping": 41,
+  "statusCode": 500,
+  "startedAt": "2026-10-07T09:00:00.000Z",
+  "elapsedMs": 45,
+  "blocked": false,
+  "maintenance": false,
+  "tls": null,
+  "assertions": [
+    {
+      "kind": "status",
+      "target": null,
+      "comparator": "in",
+      "expected": "200-299",
+      "actual": "500",
+      "passed": false,
+      "legacy": true
+    }
+  ],
+  "details": {},
+  "recorded": true,
+  "heartbeat": {
+    "id": "123",
+    "status": "down",
+    "time": "2026-10-07T09:00:00.045Z",
+    "important": true
+  }
+}
+```
+
+`status` is the beat's status after `upsideDown`, the degraded threshold and retries (a failing check
+with retries left is `pending`); `assertions` lists the per-assertion results of HTTP and DNS monitors
+(the same shape as `heartbeats.assertions`) and `details` carries other check-specific fields. Query parameters:
+`wait=false` answers `202 { "jobId", "monitorId", "status": "queued" }` at once (the heartbeat arrives over
+realtime), `record=false` runs the check without storing a heartbeat or changing the monitor's state.
+
+`POST /api/orgs/:orgId/checks` takes the same body as creating a monitor and returns the same result
+shape with `recorded: false`; nothing is stored. Errors: `400` invalid body, untestable type (push, group,
+manual) or a target the address guard refuses; `403` without the permission; `404` unknown monitor; `409`
+paused or push monitor; `429` organization budget used up (`Retry-After`); `504` no result in time (is the
+worker running?). Organization API keys will be accepted here once API keys can call the management API
+(#115); until then use a session as described above.

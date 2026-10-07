@@ -54,7 +54,7 @@ export const MARKDOWN_CLASS =
 /** Badge colours per component impact (incident cards and component rows). */
 export const impactStyles: Record<ComponentImpact, string> = {
   operational: 'border-status-up/40 text-status-up',
-  degraded_performance: 'border-status-pending/50 text-status-pending',
+  degraded_performance: 'border-status-degraded/50 text-status-degraded-text',
   partial_outage: 'border-status-pending/50 text-status-pending',
   major_outage: 'border-status-down/40 text-status-down',
 }

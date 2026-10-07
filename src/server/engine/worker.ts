@@ -1,14 +1,12 @@
-import type { Job, Worker } from 'bullmq'
+import type { Job } from 'bullmq'
 import type { Payload } from 'payload'
 
-import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import type { Heartbeat, Monitor } from '@/payload-types'
 import { getMonitorType, type MonitorCheckContext } from '@/server/monitor-types'
 import { computeNextBeat, type CheckResult, type NextState, type PrevState } from './beat'
 import { emitHeartbeat, isUnderMaintenance } from './hooks'
-import { QUEUE_NAMES } from './names'
-import { createWorker, type CheckJobData, type QueueFactoryOptions } from './queues'
+import type { CheckJobData, QueueFactoryOptions } from './queues'
 import { effectiveIntervalMs, removeMonitorSchedule, syncMonitor } from './scheduler'
 import { guardAgainstOfflineChecker } from './connectivity'
 import { certificateChanged } from './tls'
@@ -32,6 +30,17 @@ export function checkTimeoutMs(monitor: Pick<Monitor, 'timeout' | 'interval'>): 
   const seconds =
     monitor.timeout && monitor.timeout > 0 ? monitor.timeout : Math.max(1, monitor.interval) * 0.8
   return Math.round(seconds * 1000)
+}
+
+const HEARTBEAT_CORE_FIELDS = new Set(['status', 'msg', 'ping', 'duration'])
+
+/** Type-specific fields a check put on `ctx.heartbeat` (e.g. `statusCode`). */
+function heartbeatDetails(heartbeat: MonitorCheckContext['heartbeat']): Record<string, unknown> {
+  const details: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(heartbeat)) {
+    if (!HEARTBEAT_CORE_FIELDS.has(key) && value !== undefined) details[key] = value
+  }
+  return details
 }
 
 const isTimeoutError = (err: unknown) =>
@@ -89,6 +98,8 @@ export async function runCheck(
       ping: ctx.heartbeat.ping ?? null,
       duration: typeof ctx.heartbeat.duration === 'number' ? ctx.heartbeat.duration : null,
       tlsInfo: ctx.tlsInfo ?? null,
+      details: heartbeatDetails(ctx.heartbeat),
+      assertions: ctx.assertions ?? null,
     }
   }
 
@@ -107,6 +118,8 @@ export async function runCheck(
     ping: ctx.heartbeat.ping ?? Date.now() - startedAt,
     duration: typeof ctx.heartbeat.duration === 'number' ? ctx.heartbeat.duration : null,
     tlsInfo: ctx.tlsInfo ?? null,
+    details: heartbeatDetails(ctx.heartbeat),
+    assertions: ctx.assertions ?? null,
   }
 }
 
@@ -162,6 +175,8 @@ export interface RecordBeatOptions {
   statusPatch?: Partial<NonNullable<Monitor['status']>>
   /** Beat time; defaults to now. */
   now?: Date
+  /** What started the check; stored on the heartbeat. Scheduled checks leave it unset. */
+  trigger?: Heartbeat['trigger']
 }
 
 export interface RecordBeatResult {
@@ -187,6 +202,7 @@ export async function recordBeat(
     status: monitor.status?.lastStatus,
     retries: monitor.status?.retries,
     downCount: monitor.status?.downCount,
+    settledStatus: monitor.status?.settledStatus,
   }
   const next = computeNextBeat(prev, result, monitor)
   // A beat held while the worker was offline leaves the cached status as it was (#148).
@@ -218,6 +234,12 @@ export async function recordBeat(
       retries: next.retries,
       downCount: next.downCount,
       time: now.toISOString(),
+      ...(options.trigger ? { trigger: options.trigger } : {}),
+      // Per-assertion results for the monitor page (and run-on-demand results); omitted when the
+      // type has none, so plain beats stay small.
+      ...(result.assertions?.length
+        ? { assertions: result.assertions as unknown as Heartbeat['assertions'] }
+        : {}),
     },
   })) as Heartbeat
 
@@ -236,6 +258,7 @@ export async function recordBeat(
         lastMsg: next.msg,
         retries: next.retries,
         downCount: next.downCount,
+        settledStatus: next.settledStatus,
         ...(held
           ? { lastStatus: monitor.status?.lastStatus, lastPing: monitor.status?.lastPing }
           : {}),
@@ -254,7 +277,7 @@ export async function recordBeat(
     }
   }
 
-  const level = next.status === 'up' ? 'debug' : 'warn'
+  const level = next.status === 'up' ? 'debug' : next.status === 'degraded' ? 'info' : 'warn'
   log[level](
     {
       monitorId,
@@ -276,6 +299,7 @@ export async function recordBeat(
     previousStatus: prev.status,
     isFirstBeat: next.isFirstBeat,
     notify: next.notify,
+    notificationEvent: next.notificationEvent,
     organizationId,
     tlsInfo,
     certChanged,
@@ -294,14 +318,15 @@ export interface ExternalBeatInput {
 /**
  * Record a beat reported from outside the worker (the push endpoint). Maintenance windows,
  * retries/PENDING and `upsideDown` apply exactly as for polled checks; the monitor's
- * `status.lastPushAt` is stamped so the periodic push check knows the heartbeat arrived.
+ * `status.lastPushAt` is stamped so the periodic push check knows the heartbeat arrived (plus any
+ * `statusPatch`, e.g. the push run bookkeeping).
  * Port of the `/api/push/:pushToken` handler in Uptime Kuma 2.5.5 `server/routers/api-router.js`.
  */
 export async function recordExternalBeat(
   payload: Payload,
   monitor: Monitor,
   input: ExternalBeatInput,
-  options: Omit<RecordBeatOptions, 'statusPatch'> = {},
+  options: RecordBeatOptions = {},
 ): Promise<RecordBeatResult> {
   const now = options.now ?? new Date()
   const msg = input.msg?.trim() || 'OK'
@@ -315,37 +340,6 @@ export async function recordExternalBeat(
   return recordBeat(payload, monitor, result, {
     ...options,
     now,
-    statusPatch: { lastPushAt: now.toISOString() },
+    statusPatch: { lastPushAt: now.toISOString(), ...options.statusPatch },
   })
-}
-
-export interface StartCheckWorkerOptions extends QueueFactoryOptions {
-  concurrency?: number
-}
-
-/** Start the BullMQ worker consuming the checks queue. */
-export function startCheckWorker(
-  payload: Payload,
-  options: StartCheckWorkerOptions = {},
-): Worker<CheckJobData, void, 'check'> {
-  const concurrency = options.concurrency ?? env.WORKER_CONCURRENCY
-  const worker = createWorker<CheckJobData, void, 'check'>(
-    QUEUE_NAMES.checks,
-    async (job) => {
-      await processCheckJob(payload, job)
-    },
-    { connection: options.connection, prefix: options.prefix, concurrency },
-  )
-
-  worker.on('failed', (job, err) => {
-    log.error({ err, jobId: job?.id, monitorId: job?.data.monitorId }, 'check job failed')
-  })
-  worker.on('error', (err) => {
-    log.error({ err }, 'check worker error')
-  })
-  worker.on('ready', () => {
-    log.info({ queue: QUEUE_NAMES.checks, concurrency }, 'check worker ready')
-  })
-
-  return worker
 }

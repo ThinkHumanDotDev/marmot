@@ -280,6 +280,37 @@ describe('connectivity check with a simulated offline worker', () => {
     await tick()
   })
 
+  it('holds a late cron push monitor (#216) and keeps its push state', async () => {
+    const cron = await createMonitor({
+      name: 'push cron',
+      type: 'push',
+      pushToken: `c${run}`,
+      pushSchedule: 'cron',
+      pushCron: '* * * * *',
+      pushGrace: 60,
+    })
+    await setLastPush(cron.id, 1)
+    expect((await check(cron.id)).next?.status).toBe('up')
+
+    uplink = false
+    await tick()
+    await setLastPush(cron.id, 3600)
+    const pushedAt = (await findMonitor(cron.id)).status?.lastPushAt
+    const held = await check(cron.id)
+    expect(held.heartbeat?.status).toBe('pending')
+    expect(held.heartbeat?.msg).toBe(CHECKER_OFFLINE_MSG)
+    expect(held.next).toMatchObject({ notify: false, notificationEvent: null })
+    const during = await findMonitor(cron.id)
+    expect(during.status?.lastStatus).toBe('up')
+    expect(during.status?.lastPushAt).toBe(pushedAt)
+
+    uplink = true
+    await tick()
+    // Back online, the missed push is a real verdict again.
+    const down = await check(cron.id)
+    expect(down.next).toMatchObject({ status: 'down', notify: true })
+  })
+
   it('publishes the verdict for the health endpoint and metrics', async () => {
     process.env.CONNECTIVITY_CHECK_ENABLED = '1'
     resetEnvCache()

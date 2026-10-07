@@ -79,7 +79,14 @@ export function statusPageMetadata(page: StatusPage, options: StatusPageMetadata
     ...(restricted ? {} : { manifest: `${base}/manifest.json` }),
     alternates: {
       canonical: url,
-      types: { 'application/rss+xml': `${base}/rss` },
+      // Feed discovery (RSS, Atom, JSON Feed, the maintenance calendar and Markdown, #108).
+      types: {
+        'application/rss+xml': `${base}/rss`,
+        'application/atom+xml': `${base}/feed/atom`,
+        'application/feed+json': `${base}/feed/json`,
+        'text/calendar': `${base}/maintenance.ics`,
+        'text/markdown': `${base}.md`,
+      },
     },
     openGraph: {
       type: options.type ?? 'website',

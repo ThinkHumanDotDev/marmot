@@ -11,6 +11,7 @@ import { POST as importRoute } from '@/app/api/orgs/[orgId]/import/route'
 import { POST as importKumaRoute } from '@/app/api/orgs/[orgId]/import/uptime-kuma/route'
 import { env } from '@/env'
 import type { ImportReport } from '@/lib/import-export'
+import type { MonitorAssertion } from '@/lib/validation/assertions'
 import type { Monitor, Notification, Organization, StatusPage, User } from '@/payload-types'
 import type { MarmotExport } from '@/server/import-export/marmot'
 
@@ -91,6 +92,13 @@ const idOf = (value: unknown): string =>
   String(
     value && typeof value === 'object' && 'id' in value ? (value as { id: unknown }).id : value,
   )
+
+const WEBSITE_ASSERTIONS = [
+  { kind: 'status', target: null, comparator: 'lt', value: '400' },
+  { kind: 'header', target: 'cache-control', comparator: 'contains', value: 'max-age' },
+  { kind: 'textBody', target: null, comparator: 'not_contains', value: 'error' },
+  { kind: 'jsonBody', target: '$.status', comparator: 'eq', value: 'ok' },
+] as const satisfies MonitorAssertion[]
 
 let orgA: Organization
 let orgB: Organization
@@ -294,6 +302,13 @@ describe('import / export', () => {
         })
       ).docs as Monitor[]
       const website = monitors.find((m) => m.name === 'Website')!
+      await payload.update({
+        collection: 'monitors',
+        id: website.id,
+        data: { assertions: WEBSITE_ASSERTIONS },
+        context: { skipEngineSync: true },
+        depth: 0,
+      })
       const page = await payload.create({
         collection: 'status-pages',
         data: {
@@ -336,6 +351,8 @@ describe('import / export', () => {
         '123456:ABC-DEF',
       )
       const site = exported.monitors.find((m) => m.name === 'Website')!
+      // Assertions are exported without Payload's row ids.
+      expect(site.assertions).toEqual(WEBSITE_ASSERTIONS)
       const group = exported.monitors.find((m) => m.name === 'Production')!
       expect(String(site.parent)).toBe(String(group.id))
       expect(site.notifications.map(String).sort()).toEqual(
@@ -388,6 +405,14 @@ describe('import / export', () => {
       const group = byName('Production')
       expect(idOf(byName('Website').parent)).toBe(String(group.id))
       expect(byName('Nightly backup job').pushToken).toBe('kumaPushToken0123')
+      expect(
+        (byName('Website').assertions ?? []).map(({ kind, target, comparator, value }) => ({
+          kind,
+          target: target ?? null,
+          comparator,
+          value: value ?? null,
+        })),
+      ).toEqual(WEBSITE_ASSERTIONS)
 
       const channels = (
         await payload.find({
