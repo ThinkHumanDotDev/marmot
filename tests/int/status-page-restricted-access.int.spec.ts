@@ -13,6 +13,7 @@ import {
 } from '@/app/api/orgs/[orgId]/status-pages/[id]/viewers/[viewerId]/route'
 import { POST as accessRoute } from '@/app/api/status-pages/[slug]/access/route'
 import { GET as publicRoute } from '@/app/api/status-pages/[slug]/public/route'
+import { GET as pageBadgeRoute } from '@/app/status/[slug]/badge.svg/route'
 import { GET as manifestRoute } from '@/app/status/[slug]/manifest.json/route'
 import { GET as rssRoute } from '@/app/status/[slug]/rss/route'
 import { serveBadge } from '@/server/badges'
@@ -385,6 +386,13 @@ describe('restricted status pages (email domain, IP allow-list)', () => {
         ['status'],
       )
       expect(badge.status).toBe(404)
+      const pageBadge = await call(
+        pageBadgeRoute,
+        `http://localhost:3000/status/${emailPage.slug}/badge.svg`,
+        { slug: emailPage.slug },
+      )
+      expect(await pageBadge.text()).toContain('>Unknown</text>')
+      expect(pageBadge.headers.get('cache-control')).toBe('private, no-store')
     })
 
     it('an allowed address receives a single-use link; the answer never reveals the domain', async () => {
@@ -510,6 +518,15 @@ describe('restricted status pages (email domain, IP allow-list)', () => {
       )
       expect(badge.status).toBe(200)
       expect(badge.headers.get('cache-control')).toBe('private, no-store')
+
+      const pageBadge = await call(
+        pageBadgeRoute,
+        `http://localhost:3000/status/${emailPage.slug}/badge.svg`,
+        { slug: emailPage.slug },
+        { headers: { Cookie: cookie } },
+      )
+      expect(await pageBadge.text()).not.toContain('>Unknown</text>')
+      expect(pageBadge.headers.get('cache-control')).toBe('private, no-store')
     })
 
     it('works with the login forms (no JavaScript)', async () => {
@@ -780,6 +797,13 @@ describe('restricted status pages (email domain, IP allow-list)', () => {
         ['status'],
       )
       expect(badge.status).toBe(404)
+      const pageBadge = await call(
+        pageBadgeRoute,
+        `http://localhost:3000/status/${ipPage.slug}/badge.svg`,
+        { slug: ipPage.slug },
+        { headers: outside },
+      )
+      expect(await pageBadge.text()).toContain('>Unknown</text>')
     })
 
     it('feeds, manifest and badges work from inside', async () => {
@@ -807,6 +831,14 @@ describe('restricted status pages (email domain, IP allow-list)', () => {
       )
       expect(badge.status).toBe(200)
       expect(badge.headers.get('cache-control')).toBe('private, no-store')
+      const pageBadge = await call(
+        pageBadgeRoute,
+        `http://localhost:3000/status/${ipPage.slug}/badge.svg`,
+        { slug: ipPage.slug },
+        { headers: inside },
+      )
+      expect(await pageBadge.text()).not.toContain('>Unknown</text>')
+      expect(pageBadge.headers.get('cache-control')).toBe('private, no-store')
     })
 
     it('custom domains apply the same allow-list', async () => {
