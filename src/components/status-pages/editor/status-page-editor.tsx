@@ -41,6 +41,8 @@ export interface EditorProps {
   canDelete: boolean
   /** Organization time zone the incident timestamps render in. */
   timeZone: string
+  /** Instance setting `trustProxy` (the IP allow-list needs client addresses). */
+  trustProxy: boolean
 }
 
 /** The page's components (group rows, by row id) in display order: what an incident can affect. */
@@ -66,6 +68,7 @@ export function StatusPageEditor({
   canEdit,
   canDelete,
   timeZone,
+  trustProxy,
 }: EditorProps) {
   const t = useTranslations('statusPages.editorPage')
   const ta = useTranslations('statusPages.access.editor')
@@ -184,7 +187,14 @@ export function StatusPageEditor({
             <DomainsPanel orgId={orgId} page={page} onSaved={setPage} canEdit={canEdit} />
           </TabsContent>
           <TabsContent value="access" className="pt-6">
-            <AccessPanel orgId={orgId} page={page} onSaved={setPage} canEdit={canEdit} />
+            <AccessPanel
+              orgId={orgId}
+              page={page}
+              onSaved={setPage}
+              canEdit={canEdit}
+              trustProxy={trustProxy}
+              timeZone={timeZone}
+            />
           </TabsContent>
           <TabsContent value="share" className="pt-6">
             <SharePanel page={page} />
