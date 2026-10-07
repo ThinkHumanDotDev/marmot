@@ -224,6 +224,19 @@ const removeApiKeys: CollectionBeforeDeleteHook = async ({ id, req }) => {
   })
 }
 
+/** Webhook endpoints and their delivery log carry a NOT NULL `organization` on Postgres too. */
+const removeWebhooks: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  for (const collection of ['webhook-deliveries', 'webhook-endpoints'] as const) {
+    await req.payload.delete({
+      collection,
+      where: { organization: { equals: id } },
+      depth: 0,
+      req,
+      overrideAccess: true,
+    })
+  }
+}
+
 /**
  * Tenant collection for `@payloadcms/plugin-multi-tenant`. Access is implemented here (the plugin's
  * own tenant-collection access is disabled) so that any authenticated user can create their first
@@ -246,7 +259,7 @@ export const Organizations: CollectionConfig = {
   hooks: {
     beforeValidate: [normalizeSlug],
     afterChange: [grantOwnerMembership, syncStripeCustomer, trackOrgCreated],
-    beforeDelete: [removeInvitations, removeApiKeys, removeSso, removeMemberships],
+    beforeDelete: [removeInvitations, removeApiKeys, removeSso, removeWebhooks, removeMemberships],
   },
   fields: [
     {

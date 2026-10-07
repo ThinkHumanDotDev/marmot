@@ -39,6 +39,7 @@ import * as migration_20261007_163630_monitor_incidents from './20261007_163630_
 import * as migration_20261007_173835_engine_recovery from './20261007_173835_engine_recovery';
 import * as migration_20261007_181153_audit_log_coverage from './20261007_181153_audit_log_coverage';
 import * as migration_20261007_192808_sso_group_mapping from './20261007_192808_sso_group_mapping';
+import * as migration_20261007_201419_outbound_webhooks from './20261007_201419_outbound_webhooks';
 
 export const migrations = [
   {
@@ -244,6 +245,11 @@ export const migrations = [
   {
     up: migration_20261007_192808_sso_group_mapping.up,
     down: migration_20261007_192808_sso_group_mapping.down,
-    name: '20261007_192808_sso_group_mapping'
+    name: '20261007_192808_sso_group_mapping',
+  },
+  {
+    up: migration_20261007_201419_outbound_webhooks.up,
+    down: migration_20261007_201419_outbound_webhooks.down,
+    name: '20261007_201419_outbound_webhooks'
   },
 ];

@@ -31,6 +31,8 @@ import {
 } from '@/server/incidents/notify'
 import { findOpenIncident } from '@/server/incidents/store'
 import { serverTranslator } from '@/server/i18n'
+import { processWebhookDeliveryJob } from '@/server/webhooks/deliver'
+import { isWebhookJobName, type WebhookDeliveryJobData } from '@/server/webhooks/queue'
 
 const log = childLogger('notifications:worker')
 
@@ -247,8 +249,9 @@ export interface StartNotificationWorkerOptions extends QueueFactoryOptions {
 
 /**
  * Start the BullMQ worker consuming the notifications queue: monitor alerts (`notify`), maintenance
- * windows (`notify-maintenance`), incident acknowledgements and resolutions (`incident-notify`) and
- * status page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`).
+ * windows (`notify-maintenance`), incident acknowledgements and resolutions (`incident-notify`) ,
+ * status page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`) and outbound webhook
+ * deliveries (`webhook-delivery`).
  */
 export function startNotificationWorker(
   payload: Payload,
@@ -276,6 +279,10 @@ export function startNotificationWorker(
           payload,
           job as unknown as Job<IncidentNotificationJobData>,
         )
+        return
+      }
+      if (isWebhookJobName(job.name)) {
+        await processWebhookDeliveryJob(payload, job as unknown as Job<WebhookDeliveryJobData>)
         return
       }
       await processNotificationJob(payload, job)
