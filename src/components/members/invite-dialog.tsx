@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -31,12 +32,7 @@ import { orgApi } from '@/lib/org-api'
 import { assignableRoles } from './role-badge'
 import { RoleSelect } from './role-select'
 
-const schema = z.object({
-  email: z.email('Enter a valid email address'),
-  role: z.enum(ROLES),
-})
-
-type Values = z.infer<typeof schema>
+type Values = { email: string; role: Role }
 
 interface InviteDialogProps {
   open: boolean
@@ -53,6 +49,12 @@ export function InviteDialog({
   orgName,
   viewerRole,
 }: InviteDialogProps) {
+  const t = useTranslations('members.invite')
+  const tv = useTranslations('auth.validation')
+  const schema = React.useMemo(
+    () => z.object({ email: z.email(tv('email')), role: z.enum(ROLES) }),
+    [tv],
+  )
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
   const options = assignableRoles(viewerRole)
@@ -69,12 +71,12 @@ export function InviteDialog({
     setPending(true)
     try {
       await orgApi.invite(orgId, values)
-      toast.success(`Invitation sent to ${values.email}`)
+      toast.success(t('sent', { email: values.email }))
       onOpenChange(false)
       router.refresh()
     } catch (error) {
       form.setError('root', {
-        message: error instanceof Error ? error.message : 'Could not send the invitation.',
+        message: error instanceof Error ? error.message : t('failed'),
       })
     } finally {
       setPending(false)
@@ -87,10 +89,8 @@ export function InviteDialog({
     <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite to {orgName}</DialogTitle>
-          <DialogDescription>
-            They will receive an email with a link that is valid for seven days.
-          </DialogDescription>
+          <DialogTitle>{t('title', { organization: orgName })}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form
@@ -104,12 +104,12 @@ export function InviteDialog({
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t('email')}</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
                       autoComplete="off"
-                      placeholder="teammate@example.com"
+                      placeholder={t('emailPlaceholder')}
                       autoFocus
                       {...field}
                     />
@@ -123,7 +123,7 @@ export function InviteDialog({
               name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Role</FormLabel>
+                  <FormLabel>{t('role')}</FormLabel>
                   <FormControl>
                     <RoleSelect
                       value={field.value}
@@ -131,7 +131,7 @@ export function InviteDialog({
                       options={options}
                       className="w-full"
                       withDescriptions
-                      aria-label="Invited role"
+                      aria-label={t('roleLabel')}
                     />
                   </FormControl>
                   <FormMessage />
@@ -150,10 +150,10 @@ export function InviteDialog({
                 onClick={() => onOpenChange(false)}
                 disabled={pending}
               >
-                Cancel
+                {t('cancel')}
               </Button>
               <Button type="submit" disabled={pending}>
-                {pending ? 'Sending…' : 'Send invitation'}
+                {pending ? t('sending') : t('send')}
               </Button>
             </DialogFooter>
           </form>

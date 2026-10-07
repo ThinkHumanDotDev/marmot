@@ -2,6 +2,7 @@
 
 import { MoreHorizontal, UserMinus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -45,6 +46,7 @@ export function MembersTable({
   viewerRole,
   members,
 }: MembersTableProps) {
+  const t = useTranslations('members.table')
   const router = useRouter()
   const [removing, setRemoving] = React.useState<MemberRow | null>(null)
   const [busyId, setBusyId] = React.useState<string | number | null>(null)
@@ -68,10 +70,10 @@ export function MembersTable({
     setBusyId(member.id)
     try {
       await orgApi.updateMemberRole(orgId, member.id, role)
-      toast.success(`${member.name || member.email} is now ${role}`)
+      toast.success(t('roleChanged', { member: member.name || member.email, role }))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not change the role.')
+      toast.error(error instanceof Error ? error.message : t('roleFailed'))
     } finally {
       setBusyId(null)
     }
@@ -80,11 +82,11 @@ export function MembersTable({
   async function remove(member: MemberRow) {
     try {
       await orgApi.removeMember(orgId, member.id)
-      toast.success(`Removed ${member.name || member.email}`)
+      toast.success(t('removed', { member: member.name || member.email }))
       setRemoving(null)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not remove the member.')
+      toast.error(error instanceof Error ? error.message : t('removeFailed'))
     }
   }
 
@@ -93,10 +95,10 @@ export function MembersTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Member</TableHead>
-            <TableHead className="w-40">Role</TableHead>
+            <TableHead>{t('columns.member')}</TableHead>
+            <TableHead className="w-40">{t('columns.role')}</TableHead>
             <TableHead className="w-12">
-              <span className="sr-only">Actions</span>
+              <span className="sr-only">{t('columns.actions')}</span>
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -121,7 +123,7 @@ export function MembersTable({
                         <span className="truncate font-medium">{label}</span>
                         {isSelf && (
                           <Badge variant="outline" className="text-[10px]">
-                            You
+                            {t('you')}
                           </Badge>
                         )}
                       </div>
@@ -139,7 +141,7 @@ export function MembersTable({
                       options={options}
                       disabled={busyId === member.id}
                       onChange={(role) => changeRole(member, role)}
-                      aria-label={`Role of ${label}`}
+                      aria-label={t('roleOf', { member: label })}
                     />
                   ) : (
                     <RoleBadge role={member.role} />
@@ -149,7 +151,11 @@ export function MembersTable({
                   {canRemove && manageable(member) && !lastOwner && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${label}`}>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={t('actionsFor', { member: label })}
+                        >
                           <MoreHorizontal />
                         </Button>
                       </DropdownMenuTrigger>
@@ -158,7 +164,7 @@ export function MembersTable({
                           variant="destructive"
                           onSelect={() => setRemoving(member)}
                         >
-                          <UserMinus /> Remove from organization
+                          <UserMinus /> {t('remove')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -172,9 +178,9 @@ export function MembersTable({
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}
-        title={`Remove ${removing?.name || removing?.email}?`}
-        description={`They will lose access to ${orgSlug} immediately. You can invite them again later.`}
-        confirmLabel="Remove member"
+        title={t('confirmRemoveTitle', { member: removing?.name || removing?.email || '' })}
+        description={t('confirmRemoveDescription', { organization: orgSlug })}
+        confirmLabel={t('confirmRemove')}
         destructive
         onConfirm={() => (removing ? remove(removing) : undefined)}
       />

@@ -1,6 +1,7 @@
 'use client'
 
 import { ExternalLink, Loader2, Send } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { useForm, useWatch, type Path } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -33,7 +34,6 @@ import { ApiError } from '@/lib/api'
 import { ProviderField } from './provider-field'
 import {
   notificationsApi,
-  PROVIDER_GROUP_LABELS,
   PROVIDER_GROUP_ORDER,
   type NotificationInput,
   type NotificationProviderDescriptor,
@@ -100,6 +100,7 @@ export function ChannelDialog({
   onOpenChange,
   onSaved,
 }: ChannelDialogProps) {
+  const t = useTranslations('notifications')
   const [saving, setSaving] = React.useState(false)
   const [testing, setTesting] = React.useState(false)
 
@@ -143,7 +144,7 @@ export function ChannelDialog({
   }
 
   function applyServerError(error: unknown) {
-    const message = error instanceof Error ? error.message : 'Something went wrong.'
+    const message = error instanceof Error ? error.message : t('dialog.failed')
     const [path, text] = splitFieldError(message)
     const known = path && (path === 'name' || path === 'type' || path.startsWith('config.'))
     if (known) form.setError(path as Path<FormValues>, { message: text })
@@ -166,7 +167,7 @@ export function ChannelDialog({
         ? await notificationsApi.update(orgId, channel.id, input)
         : await notificationsApi.create(orgId, input)
       if (!channel) track('notification_channel_created', { provider: input.type })
-      toast.success(channel ? 'Channel updated' : 'Channel created')
+      toast.success(channel ? t('dialog.updated') : t('dialog.created'))
       onSaved(saved)
       onOpenChange(false)
     } catch (error) {
@@ -188,11 +189,11 @@ export function ChannelDialog({
         config: cleanConfig(provider, values.config),
         name: values.name.trim() || undefined,
       })
-      toast.success('Test message sent', { description: result.result })
+      toast.success(t('test.sent'), { description: result.result })
     } catch (error) {
       const details = error instanceof ApiError ? (error.details as { error?: string }) : null
-      const message = details?.error ?? (error instanceof Error ? error.message : 'Test failed')
-      toast.error('Test failed', { description: message })
+      const message = details?.error ?? (error instanceof Error ? error.message : t('test.failed'))
+      toast.error(t('test.failed'), { description: message })
       form.setError('root', { message })
     } finally {
       setTesting(false)
@@ -210,11 +211,9 @@ export function ChannelDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{channel ? 'Edit channel' : 'New notification channel'}</DialogTitle>
+          <DialogTitle>{channel ? t('dialog.editTitle') : t('dialog.newTitle')}</DialogTitle>
           <DialogDescription>
-            {channel
-              ? 'Change where this channel delivers alerts.'
-              : 'Pick a provider, fill in its settings and send yourself a test message.'}
+            {channel ? t('dialog.editDescription') : t('dialog.newDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -226,15 +225,15 @@ export function ChannelDialog({
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="channel-type">Provider</Label>
+              <Label htmlFor="channel-type">{t('dialog.provider')}</Label>
               <Select value={type} onValueChange={changeProvider} disabled={Boolean(channel)}>
                 <SelectTrigger id="channel-type" className="w-full">
-                  <SelectValue placeholder="Choose a provider" />
+                  <SelectValue placeholder={t('dialog.providerPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {grouped.map(({ group, items }) => (
                     <SelectGroup key={group}>
-                      <SelectLabel>{PROVIDER_GROUP_LABELS[group]}</SelectLabel>
+                      <SelectLabel>{t(`groups.${group}`)}</SelectLabel>
                       {items.map((p) => (
                         <SelectItem key={p.name} value={p.name}>
                           {p.label}
@@ -251,19 +250,23 @@ export function ChannelDialog({
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:underline"
                 >
-                  Setup guide <ExternalLink className="size-3" aria-hidden />
+                  {t('dialog.setupGuide')} <ExternalLink className="size-3" aria-hidden />
                 </a>
               )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="channel-name" className={nameError ? 'text-destructive' : undefined}>
-                Friendly name
+                {t('dialog.name')}
               </Label>
               <Input
                 id="channel-name"
-                placeholder={provider ? `${provider.label} alerts` : 'Alerts'}
+                placeholder={
+                  provider
+                    ? t('dialog.namePlaceholder', { provider: provider.label })
+                    : t('dialog.namePlaceholderGeneric')
+                }
                 aria-invalid={!!nameError}
-                {...form.register('name', { required: 'Give the channel a name' })}
+                {...form.register('name', { required: t('dialog.nameRequired') })}
               />
               {nameError && (
                 <p role="alert" className="text-sm text-destructive">
@@ -297,7 +300,7 @@ export function ChannelDialog({
               })}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No providers are registered.</p>
+            <p className="text-sm text-muted-foreground">{t('dialog.noProviders')}</p>
           )}
 
           <Separator />
@@ -305,22 +308,22 @@ export function ChannelDialog({
           <div className="grid gap-3">
             <ToggleRow
               id="channel-default"
-              label="Default channel"
-              description="Attach to every monitor created from now on."
+              label={t('dialog.isDefault')}
+              description={t('dialog.isDefaultHint')}
               checked={isDefault}
               onCheckedChange={(v) => form.setValue('isDefault', v, { shouldDirty: true })}
             />
             <ToggleRow
               id="channel-apply-existing"
-              label="Apply to all existing monitors"
-              description="On save, attach this channel to every monitor in the organization."
+              label={t('dialog.applyExisting')}
+              description={t('dialog.applyExistingHint')}
               checked={applyExisting}
               onCheckedChange={(v) => form.setValue('applyExisting', v, { shouldDirty: true })}
             />
             <ToggleRow
               id="channel-active"
-              label="Active"
-              description="Inactive channels stay attached but are never sent to."
+              label={t('dialog.active')}
+              description={t('dialog.activeHint')}
               checked={active}
               onCheckedChange={(v) => form.setValue('active', v, { shouldDirty: true })}
             />
@@ -344,15 +347,15 @@ export function ChannelDialog({
             disabled={testing || saving || !provider}
           >
             {testing ? <Loader2 className="animate-spin" /> : <Send />}
-            Send test
+            {t('dialog.sendTest')}
           </Button>
           <div className="flex gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('dialog.cancel')}
             </Button>
             <Button type="submit" form="channel-form" disabled={saving || testing || !provider}>
               {saving && <Loader2 className="animate-spin" />}
-              {channel ? 'Save changes' : 'Create channel'}
+              {channel ? t('dialog.save') : t('dialog.create')}
             </Button>
           </div>
         </DialogFooter>

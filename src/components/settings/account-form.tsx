@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -24,6 +25,7 @@ interface AccountFormProps {
 
 /** Profile: avatar, name and email. Writes to `PATCH /api/users/:id` (self only). */
 export function AccountForm({ user }: AccountFormProps) {
+  const t = useTranslations('settings.account.profile')
   const router = useRouter()
   const [name, setName] = React.useState(user.name)
   const [email, setEmail] = React.useState(user.email)
@@ -39,10 +41,10 @@ export function AccountForm({ user }: AccountFormProps) {
     setPending(true)
     try {
       await accountApi.update(user.id, { name: name.trim(), email: email.trim().toLowerCase() })
-      toast.success('Profile updated')
+      toast.success(t('saved'))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not update your profile.')
+      toast.error(error instanceof Error ? error.message : t('saveFailed'))
     } finally {
       setPending(false)
     }
@@ -51,10 +53,10 @@ export function AccountForm({ user }: AccountFormProps) {
   async function setAvatar(media: { id: string | number } | null) {
     try {
       await accountApi.update(user.id, { avatar: media ? media.id : null })
-      toast.success(media ? 'Avatar updated' : 'Avatar removed')
+      toast.success(media ? t('avatarUpdated') : t('avatarRemoved'))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not update your avatar.')
+      toast.error(error instanceof Error ? error.message : t('avatarFailed'))
     }
   }
 
@@ -62,12 +64,12 @@ export function AccountForm({ user }: AccountFormProps) {
     <Card>
       <form onSubmit={save}>
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>How teammates see you across organizations.</CardDescription>
+          <CardTitle>{t('title')}</CardTitle>
+          <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6 pt-6">
           <div className="grid gap-2">
-            <Label>Avatar</Label>
+            <Label>{t('avatar')}</Label>
             <ImageUpload
               value={user.avatarUrl}
               label={user.name || user.email}
@@ -76,7 +78,7 @@ export function AccountForm({ user }: AccountFormProps) {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor={ids.name}>Name</Label>
+            <Label htmlFor={ids.name}>{t('name')}</Label>
             <Input
               id={ids.name}
               value={name}
@@ -86,7 +88,7 @@ export function AccountForm({ user }: AccountFormProps) {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor={ids.email}>Email</Label>
+            <Label htmlFor={ids.email}>{t('email')}</Label>
             <Input
               id={ids.email}
               type="email"
@@ -95,14 +97,12 @@ export function AccountForm({ user }: AccountFormProps) {
               autoComplete="email"
               required
             />
-            <p className="text-xs text-muted-foreground">
-              Used to sign in and for notifications and invitations.
-            </p>
+            <p className="text-xs text-muted-foreground">{t('emailHint')}</p>
           </div>
         </CardContent>
         <CardFooter className="justify-end border-t pt-6">
           <Button type="submit" disabled={!canSave}>
-            {pending ? 'Saving…' : 'Save changes'}
+            {pending ? t('saving') : t('save')}
           </Button>
         </CardFooter>
       </form>

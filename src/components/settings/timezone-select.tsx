@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import {
@@ -51,14 +52,15 @@ export function TimezoneSelect({
   id,
   extraOptions = [],
 }: TimezoneSelectProps) {
+  const t = useTranslations('settings.timezone')
   const zones = React.useMemo(
     () => listTimezones(extraOptions.some((o) => o.value === value) ? '' : value),
     [value, extraOptions],
   )
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={id} className="w-full" aria-label="Time zone">
-        <SelectValue placeholder="Select a time zone" />
+      <SelectTrigger id={id} className="w-full" aria-label={t('label')}>
+        <SelectValue placeholder={t('placeholder')} />
       </SelectTrigger>
       <SelectContent position="popper" className="max-h-72">
         {extraOptions.map((option) => (

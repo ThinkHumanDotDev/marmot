@@ -147,7 +147,9 @@ key fails `pnpm typecheck`, and `tests/int/i18n.int.spec.ts` checks that every c
 4. Dates and numbers never go through `toLocaleString()`: use `useFormatter()` / `getFormatter()` with a
    named format (`format.dateTime(date, 'short')`, `format.number(fraction, 'percent')`). The request config
    renders in UTC, public status pages in the organization's `settings.timezone`; passing the zone explicitly
-   is what keeps the server HTML and the client hydration identical.
+   is what keeps the server HTML and the client hydration identical. Organization pages load the zone
+   with `getOrganizationTimezone(payload, org.id)` and hand it to client islands as a `timeZone` prop
+   (`format.dateTime(date, 'date', { timeZone })`).
 5. Stable identifiers stay untranslated: monitor type slugs, status enum values, webhook payload keys, log
    lines and the `code` of API errors. Only their display labels are messages.
 

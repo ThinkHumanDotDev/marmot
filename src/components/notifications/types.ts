@@ -21,13 +21,7 @@ export interface NotificationRow {
   updatedAt: string
 }
 
-export const PROVIDER_GROUP_LABELS: Record<NotificationProviderGroup, string> = {
-  chat: 'Chat',
-  push: 'Push',
-  email: 'Email',
-  generic: 'Generic',
-}
-
+/** Display order of the provider groups; their labels are `notifications.groups.<group>`. */
 export const PROVIDER_GROUP_ORDER: NotificationProviderGroup[] = [
   'chat',
   'push',

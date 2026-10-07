@@ -2,6 +2,7 @@
 
 import { KeyRound, Link2, Unlink } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -23,19 +24,25 @@ interface ConnectedAccountsCardProps {
   returnPath: string
   /** `?error=<code>` from a failed link attempt, already turned into text. */
   error?: string
+  /** Organization time zone the "last used" dates render in. */
+  timeZone: string
 }
-
-const formatDate = (value: string | null) =>
-  value
-    ? new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-    : '—'
 
 /**
  * Account security: the single sign-on identities linked to the account, with **Unlink** (never the
  * last way in) and **Link** buttons for the providers this instance offers. Linking is a redirect
  * through the provider (`/api/auth/sso/<id>/login?link=1`), so the list is refreshed on return.
  */
-export function ConnectedAccountsCard({ initial, returnPath, error }: ConnectedAccountsCardProps) {
+export function ConnectedAccountsCard({
+  initial,
+  returnPath,
+  error,
+  timeZone,
+}: ConnectedAccountsCardProps) {
+  const t = useTranslations('settings.account.connected')
+  const format = useFormatter()
+  const formatDate = (value: string | null) =>
+    value ? format.dateTime(new Date(value), 'short', { timeZone }) : '—'
   const router = useRouter()
   const [data, setData] = React.useState(initial)
   const [pending, setPending] = React.useState<string | number | null>(null)
@@ -48,10 +55,10 @@ export function ConnectedAccountsCard({ initial, returnPath, error }: ConnectedA
     try {
       await accountApi.connectedAccounts.unlink(account.id)
       setData(await accountApi.connectedAccounts.list())
-      toast.success(`${account.providerName} unlinked`)
+      toast.success(t('unlinked', { provider: account.providerName }))
       router.refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not unlink the account.')
+      toast.error(err instanceof Error ? err.message : t('unlinkFailed'))
     } finally {
       setPending(null)
       setConfirm(null)
@@ -61,11 +68,8 @@ export function ConnectedAccountsCard({ initial, returnPath, error }: ConnectedA
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Connected accounts</CardTitle>
-        <CardDescription>
-          Sign in with these identities as well as your password. An identity can only be linked to
-          one Marmot account.
-        </CardDescription>
+        <CardTitle>{t('title')}</CardTitle>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 pt-6">
         {error && (
@@ -77,7 +81,7 @@ export function ConnectedAccountsCard({ initial, returnPath, error }: ConnectedA
           </p>
         )}
         {data.accounts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No identities linked yet.</p>
+          <p className="text-sm text-muted-foreground">{t('empty')}</p>
         ) : (
           <ul className="divide-y divide-border rounded-md border">
             {data.accounts.map((account) => (
@@ -86,22 +90,20 @@ export function ConnectedAccountsCard({ initial, returnPath, error }: ConnectedA
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">{account.providerName}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {account.email ?? account.providerAccountId} · last used{' '}
-                    {formatDate(account.lastLoginAt)}
+                    {t('identity', {
+                      identity: account.email ?? account.providerAccountId,
+                      lastUsed: formatDate(account.lastLoginAt),
+                    })}
                   </p>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   disabled={pending !== null || onlyWayIn}
-                  title={
-                    onlyWayIn
-                      ? 'This is the only way to sign in to your account. Set a password or link another account first.'
-                      : undefined
-                  }
+                  title={onlyWayIn ? t('onlyWayIn') : undefined}
                   onClick={() => setConfirm(account)}
                 >
-                  <Unlink className="size-4" aria-hidden /> Unlink
+                  <Unlink className="size-4" aria-hidden /> {t('unlink')}
                 </Button>
               </li>
             ))}
@@ -116,7 +118,7 @@ export function ConnectedAccountsCard({ initial, returnPath, error }: ConnectedA
                 href={`${provider.loginPath}?link=1&next=${encodeURIComponent(returnPath)}`}
                 rel="nofollow"
               >
-                <Link2 className="size-4" aria-hidden /> Link {provider.name}
+                <Link2 className="size-4" aria-hidden /> {t('link', { provider: provider.name })}
               </a>
             </Button>
           ))}
@@ -125,9 +127,9 @@ export function ConnectedAccountsCard({ initial, returnPath, error }: ConnectedA
       <ConfirmDialog
         open={confirm !== null}
         onOpenChange={(open) => !open && setConfirm(null)}
-        title={`Unlink ${confirm?.providerName ?? ''}?`}
-        description="You will no longer be able to sign in with this identity. You can link it again later."
-        confirmLabel="Unlink"
+        title={t('confirmTitle', { provider: confirm?.providerName ?? '' })}
+        description={t('confirmDescription')}
+        confirmLabel={t('unlink')}
         destructive
         onConfirm={() => (confirm ? unlink(confirm) : undefined)}
       />

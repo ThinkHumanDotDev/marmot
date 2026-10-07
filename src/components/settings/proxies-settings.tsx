@@ -1,6 +1,7 @@
 'use client'
 
 import { Loader2, Network, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useLocale, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -39,20 +40,13 @@ interface ProxiesSettingsProps {
   canManage: boolean
 }
 
-const PROTOCOL_LABELS: Record<ProxyProtocol, string> = {
-  http: 'HTTP',
-  https: 'HTTPS',
-  socks: 'SOCKS (v5, remote DNS)',
-  socks5: 'SOCKS v5',
-  socks5h: 'SOCKS v5 (remote DNS)',
-  socks4: 'SOCKS v4',
-}
-
-const sortRows = (rows: ProxyRow[]) =>
-  [...rows].sort((a, b) => proxyLabel(a).localeCompare(proxyLabel(b)))
+const sortRows = (rows: ProxyRow[], locale: string) =>
+  [...rows].sort((a, b) => proxyLabel(a).localeCompare(proxyLabel(b), locale))
 
 export function ProxiesSettings({ orgId, initial, canManage }: ProxiesSettingsProps) {
-  const [rows, setRows] = React.useState<ProxyRow[]>(() => sortRows(initial))
+  const t = useTranslations('settings.proxies')
+  const locale = useLocale()
+  const [rows, setRows] = React.useState<ProxyRow[]>(() => sortRows(initial, locale))
   const [editing, setEditing] = React.useState<ProxyRow | 'new' | null>(null)
   const [deleting, setDeleting] = React.useState<ProxyRow | null>(null)
 
@@ -62,22 +56,19 @@ export function ProxiesSettings({ orgId, initial, canManage }: ProxiesSettingsPr
       const others = current
         .filter((r) => r.id !== row.id)
         .map((r) => (row.default ? { ...r, default: false } : r))
-      return sortRows([...others, row])
+      return sortRows([...others, row], locale)
     })
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div className="space-y-1.5">
-          <CardTitle>Proxies</CardTitle>
-          <CardDescription>
-            HTTP(s) and SOCKS proxies that HTTP monitors can send their requests through. The
-            default proxy is preselected for new HTTP monitors.
-          </CardDescription>
+          <CardTitle>{t('title')}</CardTitle>
+          <CardDescription>{t('description')}</CardDescription>
         </div>
         {canManage && (
           <Button size="sm" onClick={() => setEditing('new')} data-testid="proxy-new">
-            <Plus /> New proxy
+            <Plus /> {t('new')}
           </Button>
         )}
       </CardHeader>
@@ -85,12 +76,8 @@ export function ProxiesSettings({ orgId, initial, canManage }: ProxiesSettingsPr
         {rows.length === 0 ? (
           <EmptyState
             icon={Network}
-            title="No proxies"
-            description={
-              canManage
-                ? 'Add a proxy, then pick it in the HTTP options of a monitor.'
-                : 'Admins of this organization can add proxies.'
-            }
+            title={t('emptyTitle')}
+            description={canManage ? t('emptyDescription') : t('emptyReadOnly')}
           />
         ) : (
           <ul className="divide-y rounded-lg border">
@@ -104,16 +91,16 @@ export function ProxiesSettings({ orgId, initial, canManage }: ProxiesSettingsPr
               >
                 <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                   <span className="truncate font-mono text-sm">{proxyLabel(row)}</span>
-                  {row.default && <Badge variant="secondary">Default</Badge>}
-                  {row.auth && <Badge variant="outline">Auth</Badge>}
-                  {!row.active && <Badge variant="outline">Inactive</Badge>}
+                  {row.default && <Badge variant="secondary">{t('badge.default')}</Badge>}
+                  {row.auth && <Badge variant="outline">{t('badge.auth')}</Badge>}
+                  {!row.active && <Badge variant="outline">{t('badge.inactive')}</Badge>}
                 </span>
                 {canManage && (
                   <span className="flex gap-1">
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Edit ${proxyLabel(row)}`}
+                      aria-label={t('editLabel', { name: proxyLabel(row) })}
                       onClick={() => setEditing(row)}
                     >
                       <Pencil />
@@ -121,7 +108,7 @@ export function ProxiesSettings({ orgId, initial, canManage }: ProxiesSettingsPr
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Delete ${proxyLabel(row)}`}
+                      aria-label={t('deleteLabel', { name: proxyLabel(row) })}
                       onClick={() => setDeleting(row)}
                     >
                       <Trash2 />
@@ -150,19 +137,19 @@ export function ProxiesSettings({ orgId, initial, canManage }: ProxiesSettingsPr
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
-        title={`Delete proxy ${deleting ? proxyLabel(deleting) : ''}?`}
-        description="Monitors using it fall back to direct connections. This cannot be undone."
-        confirmLabel="Delete proxy"
+        title={t('confirmDeleteTitle', { name: deleting ? proxyLabel(deleting) : '' })}
+        description={t('confirmDeleteDescription')}
+        confirmLabel={t('confirmDelete')}
         destructive
         onConfirm={async () => {
           if (!deleting) return
           try {
             await proxiesApi.remove(deleting.id)
             setRows((current) => current.filter((r) => r.id !== deleting.id))
-            toast.success('Proxy deleted')
+            toast.success(t('deleted'))
             setDeleting(null)
           } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Could not delete the proxy')
+            toast.error(error instanceof Error ? error.message : t('deleteFailed'))
           }
         }}
       />
@@ -217,6 +204,7 @@ function ProxyForm({
   onOpenChange: (open: boolean) => void
   onSaved: (row: ProxyRow) => void
 }) {
+  const t = useTranslations('settings.proxies.form')
   const [form, setForm] = React.useState<ProxyFormState>(() =>
     proxy
       ? {
@@ -259,10 +247,10 @@ function ProxyForm({
       const row = proxy
         ? await proxiesApi.update(proxy.id, data)
         : await proxiesApi.create(orgId, data)
-      toast.success(proxy ? 'Proxy saved' : 'Proxy created')
+      toast.success(proxy ? t('saved') : t('created'))
       onSaved(row)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not save the proxy')
+      toast.error(error instanceof Error ? error.message : t('failed'))
     } finally {
       setSaving(false)
     }
@@ -272,14 +260,11 @@ function ProxyForm({
     <>
       <form onSubmit={save} className="grid gap-5">
         <DialogHeader>
-          <DialogTitle>{proxy ? 'Edit proxy' : 'New proxy'}</DialogTitle>
-          <DialogDescription>
-            SOCKS v4 and v5 resolve hostnames locally; SOCKS v5 (remote DNS) lets the proxy resolve
-            them.
-          </DialogDescription>
+          <DialogTitle>{proxy ? t('editTitle') : t('newTitle')}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">
-          <Label htmlFor="proxy-protocol">Protocol</Label>
+          <Label htmlFor="proxy-protocol">{t('protocol')}</Label>
           <Select value={form.protocol} onValueChange={(v) => set('protocol', v as ProxyProtocol)}>
             <SelectTrigger id="proxy-protocol" className="w-full">
               <SelectValue />
@@ -287,7 +272,7 @@ function ProxyForm({
             <SelectContent>
               {PROXY_PROTOCOLS.map((protocol) => (
                 <SelectItem key={protocol} value={protocol}>
-                  {PROTOCOL_LABELS[protocol]}
+                  {t(`protocols.${protocol}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -295,17 +280,17 @@ function ProxyForm({
         </div>
         <div className="grid gap-5 sm:grid-cols-[1fr_7rem]">
           <div className="grid gap-2">
-            <Label htmlFor="proxy-host">Host</Label>
+            <Label htmlFor="proxy-host">{t('host')}</Label>
             <Input
               id="proxy-host"
               value={form.host}
-              placeholder="proxy.example.com"
+              placeholder={t('hostPlaceholder')}
               autoComplete="off"
               onChange={(e) => set('host', e.target.value)}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="proxy-port">Port</Label>
+            <Label htmlFor="proxy-port">{t('port')}</Label>
             <Input
               id="proxy-port"
               type="number"
@@ -320,15 +305,15 @@ function ProxyForm({
         </div>
         <SwitchRow
           id="proxy-auth"
-          label="Authentication"
-          description="The proxy requires a username and password."
+          label={t('auth')}
+          description={t('authHint')}
           checked={form.auth}
           onChange={(v) => set('auth', v)}
         />
         {form.auth && (
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="proxy-username">Username</Label>
+              <Label htmlFor="proxy-username">{t('username')}</Label>
               <Input
                 id="proxy-username"
                 value={form.username}
@@ -337,7 +322,7 @@ function ProxyForm({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="proxy-password">Password</Label>
+              <Label htmlFor="proxy-password">{t('password')}</Label>
               <Input
                 id="proxy-password"
                 type="password"
@@ -350,25 +335,25 @@ function ProxyForm({
         )}
         <SwitchRow
           id="proxy-active"
-          label="Active"
-          description="Inactive proxies are skipped: monitors connect directly."
+          label={t('active')}
+          description={t('activeHint')}
           checked={form.active}
           onChange={(v) => set('active', v)}
         />
         <SwitchRow
           id="proxy-default"
-          label="Default"
-          description="Preselect this proxy for new HTTP monitors."
+          label={t('default')}
+          description={t('defaultHint')}
           checked={form.default}
           onChange={(v) => set('default', v)}
         />
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button type="submit" disabled={!canSave}>
             {saving && <Loader2 className="animate-spin" />}
-            {proxy ? 'Save' : 'Create proxy'}
+            {proxy ? t('save') : t('create')}
           </Button>
         </DialogFooter>
       </form>

@@ -2,6 +2,7 @@
 
 import { Copy, KeyRound, ShieldCheck, ShieldOff } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -31,6 +32,8 @@ interface TwoFactorCardProps {
   status: TwoFactorStatus
   /** SSO accounts have no Marmot password; the password prompts are skipped for them. */
   hasPassword: boolean
+  /** Organization time zone the "enabled on" date renders in. */
+  timeZone: string
 }
 
 type Flow = 'idle' | 'setup' | 'backup-codes' | 'regenerate' | 'disable'
@@ -42,7 +45,9 @@ const message = (error: unknown, fallback: string) =>
  * Account security: enable TOTP (QR code → confirm code → backup codes shown once), regenerate
  * backup codes and disable with password + code. All calls go to `/api/account/2fa/*`.
  */
-export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
+export function TwoFactorCard({ status, hasPassword, timeZone }: TwoFactorCardProps) {
+  const t = useTranslations('settings.account.twoFactor')
+  const format = useFormatter()
   const router = useRouter()
   const [flow, setFlow] = React.useState<Flow>('idle')
   const [setup, setSetup] = React.useState<TwoFactorSetup | null>(null)
@@ -80,7 +85,7 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
       const result = await accountApi.twoFactor.setup(password)
       setSetup(result)
       setPassword('')
-    }, 'Could not start the setup.')
+    }, t('setupFailed'))
 
   const confirmSetup = () =>
     run(async () => {
@@ -88,9 +93,9 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
       setCodes(backupCodes)
       setFlow('backup-codes')
       setCode('')
-      toast.success('Two-factor authentication enabled')
+      toast.success(t('enabledToast'))
       router.refresh()
-    }, 'That code is not valid.')
+    }, t('invalidCode'))
 
   const regenerate = () =>
     run(async () => {
@@ -98,31 +103,31 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
       setCodes(backupCodes)
       setFlow('backup-codes')
       setCode('')
-      toast.success('New backup codes generated')
+      toast.success(t('regenerated'))
       router.refresh()
-    }, 'Could not regenerate the backup codes.')
+    }, t('regenerateFailed'))
 
   const disable = () =>
     run(async () => {
       await accountApi.twoFactor.disable({ password, code })
-      toast.success('Two-factor authentication disabled')
+      toast.success(t('disabledToast'))
       reset()
       router.refresh()
-    }, 'Could not disable two-factor authentication.')
+    }, t('disableFailed'))
 
   async function copyCodes() {
     if (!codes) return
     try {
       await navigator.clipboard.writeText(codes.join('\n'))
-      toast.success('Backup codes copied')
+      toast.success(t('copied'))
     } catch {
-      toast.error('Could not copy. Select the codes and copy them manually.')
+      toast.error(t('copyFailed'))
     }
   }
 
   const passwordField = hasPassword && (
     <div className="grid gap-2">
-      <Label htmlFor={ids.password}>Password</Label>
+      <Label htmlFor={ids.password}>{t('password')}</Label>
       <Input
         id={ids.password}
         type="password"
@@ -133,7 +138,7 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
     </div>
   )
 
-  const codeField = (label = 'Authentication code') => (
+  const codeField = (label = t('code')) => (
     <div className="grid gap-2">
       <Label htmlFor={ids.code}>{label}</Label>
       <Input
@@ -158,42 +163,43 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          Two-factor authentication
+          {t('title')}
           {status.enabled ? (
             <Badge className="gap-1">
-              <ShieldCheck aria-hidden /> On
+              <ShieldCheck aria-hidden /> {t('on')}
             </Badge>
           ) : (
             <Badge variant="secondary" className="gap-1">
-              <ShieldOff aria-hidden /> Off
+              <ShieldOff aria-hidden /> {t('off')}
             </Badge>
           )}
         </CardTitle>
         <CardDescription>
           {status.enabled
-            ? `Signing in requires a code from your authenticator app. ${status.backupCodesRemaining} backup ${status.backupCodesRemaining === 1 ? 'code' : 'codes'} left.`
-            : 'Add a second step to your sign-in with an authenticator app (TOTP).'}
+            ? t('enabledDescription', { count: status.backupCodesRemaining })
+            : t('disabledDescription')}
         </CardDescription>
       </CardHeader>
       {status.enabled && status.verifiedAt && (
         <CardContent className="pt-6 text-sm text-muted-foreground">
-          Enabled on {new Date(status.verifiedAt).toLocaleDateString()}.
-          {!hasPassword &&
-            ' Your account signs in with single sign-on; the code is asked after the provider login.'}
+          {t('enabledOn', {
+            date: format.dateTime(new Date(status.verifiedAt), 'date', { timeZone }),
+          })}
+          {!hasPassword && ` ${t('ssoNote')}`}
         </CardContent>
       )}
       <CardFooter className="flex flex-wrap justify-end gap-2 border-t pt-6">
         {status.enabled ? (
           <>
             <Button variant="outline" onClick={() => setFlow('regenerate')}>
-              <KeyRound aria-hidden /> New backup codes
+              <KeyRound aria-hidden /> {t('newBackupCodes')}
             </Button>
             <Button variant="destructive" onClick={() => setFlow('disable')}>
-              Disable
+              {t('disable')}
             </Button>
           </>
         ) : (
-          <Button onClick={() => setFlow('setup')}>Enable two-factor authentication</Button>
+          <Button onClick={() => setFlow('setup')}>{t('enable')}</Button>
         )}
       </CardFooter>
 
@@ -201,13 +207,13 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
       <Dialog open={flow === 'setup'} onOpenChange={(open) => !open && reset()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Set up two-factor authentication</DialogTitle>
+            <DialogTitle>{t('setup.title')}</DialogTitle>
             <DialogDescription>
               {setup
-                ? 'Scan the QR code with your authenticator app, then enter the code it shows.'
+                ? t('setup.scan')
                 : hasPassword
-                  ? 'Confirm your password to start.'
-                  : 'A new secret will be generated for your authenticator app.'}
+                  ? t('setup.confirmPassword')
+                  : t('setup.newSecret')}
             </DialogDescription>
           </DialogHeader>
           {setup ? (
@@ -216,17 +222,20 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
                 {/* eslint-disable-next-line @next/next/no-img-element -- data URL generated server-side */}
                 <img
                   src={setup.qrDataUrl}
-                  alt="QR code for your authenticator app"
+                  alt={t('setup.qrAlt')}
                   width={240}
                   height={240}
                   className="rounded-lg border bg-white p-2"
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Can&apos;t scan? Enter this key manually:{' '}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-foreground select-all">
-                  {setup.secret}
-                </code>
+                {t.rich('setup.manualKey', {
+                  key: () => (
+                    <code className="rounded bg-muted px-1 py-0.5 font-mono text-foreground select-all">
+                      {setup.secret}
+                    </code>
+                  ),
+                })}
               </p>
               {codeField()}
               {errorLine}
@@ -239,15 +248,15 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={reset} disabled={pending}>
-              Cancel
+              {t('cancel')}
             </Button>
             {setup ? (
               <Button onClick={confirmSetup} disabled={pending || code.trim().length < 6}>
-                {pending ? 'Verifying…' : 'Turn on'}
+                {pending ? t('setup.verifying') : t('setup.turnOn')}
               </Button>
             ) : (
               <Button onClick={beginSetup} disabled={pending || (hasPassword && !password)}>
-                {pending ? 'Preparing…' : 'Continue'}
+                {pending ? t('setup.preparing') : t('setup.continue')}
               </Button>
             )}
           </DialogFooter>
@@ -258,11 +267,8 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
       <Dialog open={flow === 'backup-codes'} onOpenChange={(open) => !open && reset()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Save your backup codes</DialogTitle>
-            <DialogDescription>
-              Each code signs you in once if you lose access to your authenticator app. They are
-              shown only now; store them somewhere safe.
-            </DialogDescription>
+            <DialogTitle>{t('backupCodes.title')}</DialogTitle>
+            <DialogDescription>{t('backupCodes.description')}</DialogDescription>
           </DialogHeader>
           <ul className="grid grid-cols-2 gap-2 rounded-lg border bg-muted/40 p-4 font-mono text-sm">
             {codes?.map((c) => (
@@ -273,9 +279,9 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
           </ul>
           <DialogFooter>
             <Button variant="outline" onClick={copyCodes}>
-              <Copy aria-hidden /> Copy
+              <Copy aria-hidden /> {t('backupCodes.copy')}
             </Button>
-            <Button onClick={reset}>I saved them</Button>
+            <Button onClick={reset}>{t('backupCodes.done')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -284,11 +290,8 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
       <Dialog open={flow === 'regenerate'} onOpenChange={(open) => !open && reset()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Generate new backup codes</DialogTitle>
-            <DialogDescription>
-              Your current backup codes stop working. Enter a code from your authenticator app to
-              continue.
-            </DialogDescription>
+            <DialogTitle>{t('regenerate.title')}</DialogTitle>
+            <DialogDescription>{t('regenerate.description')}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             {codeField()}
@@ -296,10 +299,10 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={reset} disabled={pending}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button onClick={regenerate} disabled={pending || code.trim().length < 6}>
-              {pending ? 'Generating…' : 'Generate'}
+              {pending ? t('regenerate.submitting') : t('regenerate.submit')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -309,28 +312,28 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
       <Dialog open={flow === 'disable'} onOpenChange={(open) => !open && reset()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Disable two-factor authentication</DialogTitle>
+            <DialogTitle>{t('disableDialog.title')}</DialogTitle>
             <DialogDescription>
-              Your account will be protected by {hasPassword ? 'your password' : 'single sign-on'}{' '}
-              only. Confirm with {hasPassword ? 'your password and ' : ''}a current code (or a
-              backup code).
+              {hasPassword
+                ? t('disableDialog.descriptionPassword')
+                : t('disableDialog.descriptionSso')}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             {passwordField}
-            {codeField('Authentication or backup code')}
+            {codeField(t('disableDialog.codeLabel'))}
             {errorLine}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={reset} disabled={pending}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={disable}
               disabled={pending || code.trim().length < 6 || (hasPassword && !password)}
             >
-              {pending ? 'Disabling…' : 'Disable'}
+              {pending ? t('disableDialog.submitting') : t('disable')}
             </Button>
           </DialogFooter>
         </DialogContent>

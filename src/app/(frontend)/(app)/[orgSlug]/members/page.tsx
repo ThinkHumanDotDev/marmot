@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
@@ -9,9 +10,13 @@ import { requireUser } from '@/lib/auth'
 import { effectiveRole, getOrgBySlug } from '@/lib/org'
 import type { InvitationRow, InviteLink } from '@/lib/org-api'
 import { inviteLinkUrl } from '@/server/invites'
+import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 import { listOrgMembers } from '@/server/members'
 
-export const metadata: Metadata = { title: 'Members' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('members.page')
+  return { title: t('pageTitle') }
+}
 export const dynamic = 'force-dynamic'
 
 export default async function MembersPage({ params }: { params: Promise<{ orgSlug: string }> }) {
@@ -24,7 +29,10 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
   const role = effectiveRole(user, org.id)
   const canInvite = canWithOverrides(user, org, 'member:invite')
 
-  const members = await listOrgMembers(payload, org.id, { user, overrideAccess: false })
+  const [members, timeZone] = await Promise.all([
+    listOrgMembers(payload, org.id, { user, overrideAccess: false }),
+    getOrganizationTimezone(payload, org.id),
+  ])
 
   let invitations: InvitationRow[] = []
   let inviteLink: InviteLink | null = null
@@ -61,6 +69,7 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
       members={members}
       invitations={invitations}
       inviteLink={inviteLink}
+      timeZone={timeZone}
     />
   )
 }

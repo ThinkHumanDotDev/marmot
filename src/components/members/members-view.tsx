@@ -1,6 +1,7 @@
 'use client'
 
 import { UserPlus, Users } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import { can, type Role } from '@/access/permissions'
@@ -23,6 +24,8 @@ export interface MembersViewProps {
   invitations: InvitationRow[]
   /** `null` when the viewer may not invite. */
   inviteLink: InviteLink | null
+  /** Organization time zone the invitation expiry dates render in. */
+  timeZone: string
 }
 
 /** Members page body: table of members, pending invitations and the shareable invite link. */
@@ -33,7 +36,9 @@ export function MembersView({
   members,
   invitations,
   inviteLink,
+  timeZone,
 }: MembersViewProps) {
+  const t = useTranslations('members.page')
   const [inviteOpen, setInviteOpen] = React.useState(false)
   const viewer = { id: currentUserId, organizations: role ? [{ organization: org.id, role }] : [] }
   const canInvite = can(viewer, org.id, 'member:invite')
@@ -43,12 +48,12 @@ export function MembersView({
   return (
     <>
       <PageHeader
-        title="Members"
-        description={`People in ${org.name} and what they can do.`}
+        title={t('title')}
+        description={t('description', { organization: org.name })}
         actions={
           canInvite ? (
             <Button onClick={() => setInviteOpen(true)}>
-              <UserPlus /> Invite member
+              <UserPlus /> {t('invite')}
             </Button>
           ) : undefined
         }
@@ -64,12 +69,12 @@ export function MembersView({
         {canInvite && solo && (
           <EmptyState
             icon={Users}
-            title="It is just you so far"
-            description="Invite teammates to share monitors, status pages and on-call notifications."
+            title={t('emptyTitle')}
+            description={t('emptyDescription')}
             data-testid="members-empty"
             action={
               <Button onClick={() => setInviteOpen(true)}>
-                <UserPlus /> Invite your team
+                <UserPlus /> {t('inviteTeam')}
               </Button>
             }
           />
@@ -80,6 +85,7 @@ export function MembersView({
               <PendingInvitations
                 orgId={org.id}
                 invitations={invitations}
+                timeZone={timeZone}
                 onInvite={() => setInviteOpen(true)}
               />
             )}

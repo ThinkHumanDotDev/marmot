@@ -6,16 +6,19 @@
 /** `#rgb` or `#rrggbb`. */
 export const TAG_COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
 
-/** Uptime Kuma's tag palette (`src/components/TagEditDialog.vue`). */
+/**
+ * Uptime Kuma's tag palette (`src/components/TagEditDialog.vue`). `key` names the colour's label in
+ * `settings.tags.colors`.
+ */
 export const TAG_COLORS = [
-  { label: 'Grey', value: '#4B5563' },
-  { label: 'Red', value: '#DC2626' },
-  { label: 'Orange', value: '#D97706' },
-  { label: 'Green', value: '#059669' },
-  { label: 'Blue', value: '#2563EB' },
-  { label: 'Indigo', value: '#4F46E5' },
-  { label: 'Purple', value: '#7C3AED' },
-  { label: 'Pink', value: '#DB2777' },
+  { key: 'grey', value: '#4B5563' },
+  { key: 'red', value: '#DC2626' },
+  { key: 'orange', value: '#D97706' },
+  { key: 'green', value: '#059669' },
+  { key: 'blue', value: '#2563EB' },
+  { key: 'indigo', value: '#4F46E5' },
+  { key: 'purple', value: '#7C3AED' },
+  { key: 'pink', value: '#DB2777' },
 ] as const
 
 /** A tag as monitors and status pages display it. */
