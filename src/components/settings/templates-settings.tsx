@@ -37,6 +37,8 @@ import {
   type IncidentStatus,
 } from '@/lib/incident-timeline'
 import {
+  isMaintenanceKind,
+  isUpdateKind,
   TEMPLATE_KINDS,
   TEMPLATE_MAX_DURATION_MINUTES,
   TEMPLATE_VARIABLES,
@@ -215,7 +217,7 @@ function TemplateForm({
   const [duration, setDuration] = React.useState<number | null>(template?.duration ?? null)
   const [saving, setSaving] = React.useState(false)
 
-  const maintenance = kind === 'maintenance'
+  const maintenance = isMaintenanceKind(kind)
   const page = pages.find((p) => p.id === statusPage) ?? null
   const canSave = name.trim().length > 0 && !saving
 
@@ -227,7 +229,7 @@ function TemplateForm({
       const data = {
         name: name.trim(),
         kind,
-        title: kind === 'incident-update' ? null : title,
+        title: isUpdateKind(kind) ? null : title,
         body,
         status: maintenance ? null : status,
         impact: maintenance ? null : impact,
@@ -236,7 +238,7 @@ function TemplateForm({
           maintenance || !page
             ? []
             : Object.entries(impacts).map(([component, value]) => ({ component, impact: value })),
-        duration: maintenance ? duration : null,
+        duration: kind === 'maintenance' ? duration : null,
       }
       const row = template
         ? await templatesApi.update(template.id, data)
@@ -285,7 +287,7 @@ function TemplateForm({
         </div>
       </div>
 
-      {kind !== 'incident-update' && (
+      {!isUpdateKind(kind) && (
         <div className="grid gap-2">
           <Label htmlFor="template-title">{t('title')}</Label>
           <Input
@@ -319,7 +321,7 @@ function TemplateForm({
         </div>
       </div>
 
-      {maintenance ? (
+      {kind === 'maintenance' && (
         <div className="grid gap-2">
           <Label htmlFor="template-duration">{t('duration')}</Label>
           <div className="relative sm:w-56">
@@ -340,7 +342,8 @@ function TemplateForm({
           </div>
           <p className="text-xs text-muted-foreground">{t('durationHint')}</p>
         </div>
-      ) : (
+      )}
+      {!maintenance && (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">

@@ -1,6 +1,7 @@
 /**
  * Incident and maintenance templates (issue #153): pre-approved wording that the incident dialog,
- * the update composer and the maintenance form pre-fill from. Shared by the `templates` collection,
+ * the incident update composer, the maintenance form and the maintenance update composer pre-fill
+ * from. Shared by the `templates` collection,
  * the import/export mappers and the client, so it imports nothing server-only.
  *
  * A template's title and body may contain `{{ placeholders }}`. When a template is applied, the
@@ -15,12 +16,25 @@ import {
   type ComponentImpact,
   type IncidentStatus,
 } from '@/lib/incident-timeline'
-import { renderPlaceholders } from '@/lib/placeholders'
+import { findPlaceholders, renderPlaceholders } from '@/lib/placeholders'
 
-export { findPlaceholders } from '@/lib/placeholders'
+export { findPlaceholders }
 
-export const TEMPLATE_KINDS = ['incident', 'incident-update', 'maintenance'] as const
+export const TEMPLATE_KINDS = [
+  'incident',
+  'incident-update',
+  'maintenance',
+  'maintenance-update',
+] as const
 export type TemplateKind = (typeof TEMPLATE_KINDS)[number]
+
+/** Maintenance kinds carry no incident status, impact or components. */
+export const isMaintenanceKind = (kind: TemplateKind): boolean =>
+  kind === 'maintenance' || kind === 'maintenance-update'
+
+/** Update kinds pre-fill a message only, so they have no title. */
+export const isUpdateKind = (kind: TemplateKind): boolean =>
+  kind === 'incident-update' || kind === 'maintenance-update'
 
 export const isTemplateKind = (value: unknown): value is TemplateKind =>
   typeof value === 'string' && (TEMPLATE_KINDS as readonly string[]).includes(value)
@@ -34,12 +48,15 @@ export const isTemplateKind = (value: unknown): value is TemplateKind =>
  * - `components` (alias `component`): names of the affected components, as a list
  * - `incident`: the incident's title (updates only)
  * - `date`: today's date
- * - `start`, `end`, `duration`: the maintenance window, when the form already has it
+ * - `start`, `end`, `duration`: the maintenance window, when the form already has it (for an
+ *   update: the occurrence's window)
+ * - `maintenance`: the maintenance's title (maintenance updates only)
  */
 export const TEMPLATE_VARIABLES = {
   incident: ['organization', 'page', 'components', 'component', 'date'],
   'incident-update': ['organization', 'page', 'components', 'component', 'incident', 'date'],
   maintenance: ['organization', 'start', 'end', 'duration', 'date'],
+  'maintenance-update': ['organization', 'maintenance', 'start', 'end', 'date'],
 } as const satisfies Record<TemplateKind, readonly string[]>
 
 export type TemplateVariable = (typeof TEMPLATE_VARIABLES)[TemplateKind][number]
@@ -146,6 +163,17 @@ export function templateImpacts(
     if (known.has(row.component)) impacts[row.component] = row.impact
   }
   return impacts
+}
+
+/**
+ * Template placeholders (`{{ eta }}`) left in text about to be published: the values for the
+ * `templatePlaceholdersUnfilled` error, or `null` when there are none. Markdown code is ignored.
+ */
+export function unfilledPlaceholders(...texts: unknown[]): { names: string } | null {
+  const names = findPlaceholders(
+    ...texts.filter((text): text is string => typeof text === 'string'),
+  )
+  return names.length > 0 ? { names: names.map((name) => `{{ ${name} }}`).join(', ') } : null
 }
 
 /** Replaces every `{{ name }}` placeholder with `value` (the "fill in" field of the composers). */

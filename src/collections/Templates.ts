@@ -10,7 +10,7 @@ import {
 import { orgScoped } from '@/access/org-scoped'
 import { adminGroup, adminT } from '@/i18n/admin'
 import { COMPONENT_IMPACTS, INCIDENT_STATUSES, isComponentImpact } from '@/lib/incident-timeline'
-import { TEMPLATE_KINDS, TEMPLATE_MAX_DURATION_MINUTES } from '@/lib/templates'
+import { isMaintenanceKind, TEMPLATE_KINDS, TEMPLATE_MAX_DURATION_MINUTES } from '@/lib/templates'
 import type { ErrorKey } from '@/server/errors'
 import { userErrorText } from '@/server/request-locale'
 
@@ -33,8 +33,8 @@ const invalid = (req: PayloadRequest, key: ErrorKey, path: string): never => {
  * - the status page (optional) must belong to the template's organization;
  * - default components must be components of that page, once each, with a valid impact. Components
  *   stored earlier that the page no longer has are dropped instead of failing the save;
- * - fields that do not apply to the kind are cleared (maintenance has no status, impact or
- *   components; incidents have no duration).
+ * - fields that do not apply to the kind are cleared (maintenance kinds have no status, impact or
+ *   components; only `maintenance` has a duration).
  */
 const normalize: CollectionBeforeChangeHook<Template> = async ({ data, originalDoc, req }) => {
   if (typeof data.name === 'string') data.name = data.name.trim()
@@ -60,10 +60,11 @@ const normalize: CollectionBeforeChangeHook<Template> = async ({ data, originalD
     }
   }
 
-  if (kind === 'maintenance') {
+  if (isMaintenanceKind(kind)) {
     data.status = null
     data.impact = null
     data.components = []
+    if (kind !== 'maintenance') data.duration = null
     return data
   }
   data.duration = null
@@ -108,7 +109,7 @@ export const detachTemplatesFromStatusPage: CollectionBeforeDeleteHook = async (
 }
 
 const impactOptions = COMPONENT_IMPACTS.map((impact) => ({ label: impact, value: impact }))
-const notMaintenance = (data: Partial<Template>) => data?.kind !== 'maintenance'
+const notMaintenance = (data: Partial<Template>) => !isMaintenanceKind(data?.kind ?? 'incident')
 
 /**
  * Incident and maintenance templates (#153): pre-approved wording the incident dialog, the update

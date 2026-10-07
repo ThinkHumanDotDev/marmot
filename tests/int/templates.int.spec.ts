@@ -8,7 +8,18 @@ import { POST as createIncidentRoute } from '@/app/api/orgs/[orgId]/status-pages
 import { PATCH as patchIncidentRoute } from '@/app/api/orgs/[orgId]/status-pages/[id]/incidents/[incidentId]/route'
 import { POST as postUpdateRoute } from '@/app/api/orgs/[orgId]/status-pages/[id]/incidents/[incidentId]/updates/route'
 import { PATCH as editUpdateRoute } from '@/app/api/orgs/[orgId]/status-pages/[id]/incidents/[incidentId]/updates/[updateId]/route'
-import type { Incident, Organization, StatusPage, Template, User } from '@/payload-types'
+import { POST as createMaintenanceRoute } from '@/app/api/orgs/[orgId]/maintenance/route'
+import { PATCH as patchMaintenanceRoute } from '@/app/api/orgs/[orgId]/maintenance/[id]/route'
+import { POST as postOccurrenceUpdateRoute } from '@/app/api/orgs/[orgId]/maintenance/[id]/occurrences/[occurrenceId]/updates/route'
+import type {
+  Incident,
+  Maintenance,
+  MaintenanceOccurrence,
+  Organization,
+  StatusPage,
+  Template,
+  User,
+} from '@/payload-types'
 import { applyImportPlan } from '@/server/import-export/apply'
 import { buildMarmotExport, parseMarmotExport } from '@/server/import-export/marmot'
 import type { RequestUser } from '@/server/monitors/http'
@@ -144,6 +155,10 @@ describe('incident and maintenance templates', () => {
     for (const org of [orgA, orgB]) {
       if (!org?.id) continue
       await payload.delete({ collection: 'templates', where: { organization: { equals: org.id } } })
+      await payload.delete({
+        collection: 'maintenance',
+        where: { organization: { equals: org.id } },
+      })
       await payload.delete({ collection: 'incidents', where: { organization: { equals: org.id } } })
       await payload.delete({
         collection: 'status-pages',
@@ -266,6 +281,15 @@ describe('incident and maintenance templates', () => {
 
       const incident = await createTemplate(owner, { organization: orgA.id, duration: 30 })
       expect(incident.duration ?? null).toBeNull()
+
+      const update = await createTemplate(owner, {
+        organization: orgA.id,
+        kind: 'maintenance-update',
+        body: 'Work on {{ maintenance }} continues.',
+        status: 'identified',
+        duration: 30,
+      })
+      expect(update).toMatchObject({ kind: 'maintenance-update', status: null, duration: null })
     })
 
     it('templates of a deleted status page become organization-wide', async () => {
@@ -345,6 +369,59 @@ describe('incident and maintenance templates', () => {
       const posted = await call(postUpdateRoute, 'POST', params, {
         status: 'monitoring',
         message: 'Fixed at 14:00.',
+      })
+      expect(posted.status).toBe(201)
+    })
+  })
+
+  describe('maintenance: publishing is blocked while placeholders are unfilled', () => {
+    it('refuses placeholders in a new or edited maintenance and in occurrence updates', async () => {
+      const window = {
+        start: new Date(Date.now() + 2 * 3_600_000).toISOString().slice(0, 16),
+        end: new Date(Date.now() + 3 * 3_600_000).toISOString().slice(0, 16),
+      }
+      const base = {
+        title: 'Planned network maintenance',
+        description: 'Routers are upgraded.',
+        strategy: 'single',
+        timezone: 'UTC',
+        dateRange: window,
+        monitors: [],
+        statusPages: [page.id],
+      }
+      const orgParams = { orgId: String(orgA.id) }
+      const blocked = await call(createMaintenanceRoute, 'POST', orgParams, {
+        ...base,
+        description: 'Back by {{ eta }}.',
+      })
+      expect(blocked.status).toBe(400)
+
+      const created = await call(createMaintenanceRoute, 'POST', orgParams, base)
+      expect(created.status).toBe(201)
+      const maintenanceId = String((created.json as { id: string | number }).id)
+      const one = { ...orgParams, id: maintenanceId }
+
+      const blockedPatch = await call(patchMaintenanceRoute, 'PATCH', one, {
+        title: 'Maintenance {{ x }}',
+      })
+      expect(blockedPatch.status).toBe(400)
+
+      const { docs } = await payload.find({
+        collection: 'maintenance-occurrences',
+        where: { maintenance: { equals: (created.json as unknown as Maintenance).id } },
+        depth: 0,
+      })
+      const occurrence = docs[0] as MaintenanceOccurrence
+      expect(occurrence).toBeDefined()
+      const params = { ...one, occurrenceId: String(occurrence.id) }
+      const blockedUpdate = await call(postOccurrenceUpdateRoute, 'POST', params, {
+        status: occurrence.state,
+        message: 'Starting at {{ time }}.',
+      })
+      expect(blockedUpdate.status).toBe(400)
+      const posted = await call(postOccurrenceUpdateRoute, 'POST', params, {
+        status: occurrence.state,
+        message: 'Starting on time.',
       })
       expect(posted.status).toBe(201)
     })

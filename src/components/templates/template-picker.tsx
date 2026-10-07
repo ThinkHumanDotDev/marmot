@@ -17,13 +17,18 @@ import type { TemplateKind, TemplateRow } from '@/lib/templates'
 
 /** Message key of a template kind (`templates.kinds.*`). */
 export const templateKindKey = (kind: TemplateKind) =>
-  kind === 'incident-update' ? 'incidentUpdate' : kind
+  kind === 'incident-update'
+    ? 'incidentUpdate'
+    : kind === 'maintenance-update'
+      ? 'maintenanceUpdate'
+      : kind
 
 /** `{{ name }}` as written in a template. */
 export const placeholderToken = (name: string) => `{{ ${name} }}`
 
 /**
- * "Use template" select of the incident dialog, the update composer and the maintenance form.
+ * "Use template" select of the incident dialog, the incident and maintenance update composers and
+ * the maintenance form.
  * Renders nothing when no template applies. Picking one calls `onApply`; the select itself keeps no
  * value, so the same template can be applied again.
  */

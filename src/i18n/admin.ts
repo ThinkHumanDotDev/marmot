@@ -351,7 +351,7 @@ export const adminTranslations = {
       },
       templates: {
         kindDescription:
-          'incident pre-fills a new incident, incident-update the update composer, maintenance the maintenance form.',
+          'incident pre-fills a new incident, incident-update the incident update composer, maintenance the maintenance form, maintenance-update the maintenance update composer.',
         bodyDescription:
           'Markdown with placeholders in double braces (page, components, eta, …). Unfilled placeholders block publishing.',
         statusPageDescription:

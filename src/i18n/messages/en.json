@@ -3635,7 +3635,8 @@
     "kinds": {
       "incident": "New incident",
       "incidentUpdate": "Incident update",
-      "maintenance": "Maintenance"
+      "maintenance": "Maintenance",
+      "maintenanceUpdate": "Maintenance update"
     },
     "variables": {
       "organization": "the organization's name",
@@ -3643,6 +3644,7 @@
       "components": "the affected components",
       "component": "same as components",
       "incident": "the incident's title",
+      "maintenance": "the maintenance's title",
       "date": "today's date",
       "start": "the window's start",
       "end": "the window's end",
