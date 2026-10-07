@@ -71,6 +71,8 @@ per-organization overrides and collection access apply as for a person with that
   (`monitor.created`, `incident.updated`, …) with actor type `apiKey` and the key's name, so automation
   is told apart from people; the key's own life cycle is `api_key.created`, `api_key.enabled`,
   `api_key.disabled` and `api_key.revoked`;
+- keys are not password logins: SSO-only mode (`OIDC_DISABLE_LOCAL_LOGIN`) and organizations'
+  `enforceSso` do not affect them (revoke or disable keys to cut automation off);
 - on-demand checks (`POST …/monitors/:id/check`, `POST …/checks`) need a `write` key and share the
   organization's `ON_DEMAND_CHECKS_PER_MINUTE` budget; monitor-incident acknowledgements and resolutions
   made with a key are recorded with source `api`.

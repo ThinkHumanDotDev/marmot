@@ -15,7 +15,7 @@ import { GET as getMonitor } from '@/app/api/orgs/[orgId]/monitors/[id]/route'
 import { GET as listMonitors, POST as createMonitor } from '@/app/api/orgs/[orgId]/monitors/route'
 import { GET as listStatusPages } from '@/app/api/orgs/[orgId]/status-pages/route'
 import { GET as openApiRoute } from '@/app/api/openapi.json/route'
-import { env } from '@/env'
+import { env, resetEnvCache } from '@/env'
 import { defaultMonitorValues } from '@/lib/validation/monitor'
 import type { AuditLog, Monitor, Organization, User } from '@/payload-types'
 import { generateApiKey } from '@/server/api-keys'
@@ -23,6 +23,7 @@ import { buildManagementOpenApi, OPERATIONS, requiredScope } from '@/server/api/
 import { apiKeyPrincipal, consumeApiKeyBudget, orgRouteOf } from '@/server/auth/request-auth'
 import { resolveCheckActor } from '@/server/monitors/checks'
 import type { RateLimiter } from '@/server/security/rate-limit'
+import { isLocalLoginDisabled } from '@/server/sso/local-login'
 
 let payload: Payload
 
@@ -224,6 +225,31 @@ describe('management API with API keys', () => {
       kind: 'api-key',
       apiKey: { scope: 'write' },
     })
+  })
+
+  it('keeps working in SSO-only mode (keys are not password logins)', async () => {
+    const before = process.env.OIDC_DISABLE_LOCAL_LOGIN
+    Object.assign(process.env, { OIDC_DISABLE_LOCAL_LOGIN: 'true' })
+    resetEnvCache()
+    try {
+      expect(isLocalLoginDisabled()).toBe(true)
+      const list = await listMonitors(keyRequest(orgUrl(orgA, 'monitors'), readKey), {
+        params: params(orgA.id),
+      })
+      expect(list.status).toBe(200)
+      const created = await createMonitor(
+        keyRequest(orgUrl(orgA, 'monitors'), writeKey, {
+          method: 'POST',
+          body: httpMonitor('sso only'),
+        }),
+        { params: params(orgA.id) },
+      )
+      expect(created.status).toBe(201)
+    } finally {
+      if (before === undefined) delete process.env.OIDC_DISABLE_LOCAL_LOGIN
+      else process.env.OIDC_DISABLE_LOCAL_LOGIN = before
+      resetEnvCache()
+    }
   })
 
   it('refuses keys of another organization, unknown keys and anonymous requests', async () => {

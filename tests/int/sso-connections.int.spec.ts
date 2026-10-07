@@ -624,4 +624,138 @@ describe('per-organization single sign-on', () => {
       ).toBe('/login?error=provider_unknown')
     })
   })
+
+  describe('groups on connections', () => {
+    const oidcSlug = `corp-groups-${run}`
+    const samlSlug = `corp-saml-groups-${run}`
+    const samlAcs = `${ORIGIN}/api/auth/saml/${samlSlug}/acs`
+    const samlMetadataUrl = `${ORIGIN}/api/auth/saml/${samlSlug}/metadata`
+
+    async function samlLogin(nameId: string, attributes: Record<string, string | string[]>) {
+      const start = await handleSamlLogin(
+        new Request(`${ORIGIN}/api/auth/saml/${samlSlug}/login`),
+        samlSlug,
+      )
+      const { id } = decodeAuthnRequest(locationOf(start))
+      const cookie = txCookieOf(start, 'marmot-saml')
+      const { xml } = buildSamlResponse({
+        destination: samlAcs,
+        audience: samlMetadataUrl,
+        inResponseTo: id,
+        nameId,
+        attributes,
+      })
+      return handleSamlAcs(
+        new Request(samlAcs, {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
+          body: new URLSearchParams({ SAMLResponse: encodeResponse(xml), RelayState: samlSlug }),
+        }),
+        samlSlug,
+      )
+    }
+
+    it('stores the group settings through the API and returns them on the row', async () => {
+      const res = await createConnection(
+        request(`${ORIGIN}/api/orgs/${orgA.id}/sso/connections`, {
+          method: 'POST',
+          body: {
+            ...oidcInput(),
+            name: 'Corp groups',
+            slug: oidcSlug,
+            allowedGroups: 'Staff, Leads',
+            groupRoles: [{ group: 'Leads', role: 'admin' }],
+          },
+          session: owner,
+        }),
+        orgParams(orgA),
+      )
+      expect(res.status).toBe(201)
+      const { doc } = (await res.json()) as {
+        doc: { allowedGroups: string; groupClaim: string | null; groupRoles: unknown[] }
+      }
+      expect(doc.allowedGroups).toBe('Staff, Leads')
+      expect(doc.groupClaim).toBeNull()
+      expect(doc.groupRoles).toEqual([{ group: 'Leads', role: 'admin' }])
+
+      const invalid = await createConnection(
+        request(`${ORIGIN}/api/orgs/${orgA.id}/sso/connections`, {
+          method: 'POST',
+          body: { ...oidcInput(), slug: `bad-${run}`, groupRoles: [{ group: 'x', role: 'god' }] },
+          session: owner,
+        }),
+        orgParams(orgA),
+      )
+      expect(invalid.status).toBe(400)
+    })
+
+    it('refuses identities outside the allowed groups and maps roles on every login', async () => {
+      const address = email('grouped')
+      issuer.setUser({
+        sub: `grouped-${run}`,
+        email: address,
+        email_verified: true,
+        groups: ['guests'],
+      })
+      expect(locationOf((await loginVia(oidcSlug)).res)).toBe('/login?error=group_not_allowed')
+
+      issuer.setUser({
+        sub: `grouped-${run}`,
+        email: address,
+        email_verified: true,
+        groups: ['STAFF'],
+      })
+      let user = await authenticate(sessionCookieOf((await loginVia(oidcSlug)).res))
+      // No mapped group: the default role, as before.
+      expect(getUserRole(user, orgA.id)).toBe('member')
+
+      issuer.setUser({
+        sub: `grouped-${run}`,
+        email: address,
+        email_verified: true,
+        groups: ['staff', 'leads'],
+      })
+      user = await authenticate(sessionCookieOf((await loginVia(oidcSlug)).res))
+      expect(getUserRole(user, orgA.id)).toBe('admin')
+      // Connections only manage their own organization.
+      expect(getUserRole(user, orgB.id)).toBeNull()
+
+      issuer.setUser({ sub: `grouped-${run}`, email: address, email_verified: true })
+      expect(locationOf((await loginVia(oidcSlug)).res)).toBe('/login?error=groups_missing')
+    })
+
+    it('reads groups from a SAML attribute', async () => {
+      const res = await createConnection(
+        request(`${ORIGIN}/api/orgs/${orgA.id}/sso/connections`, {
+          method: 'POST',
+          body: {
+            name: 'Corp SAML groups',
+            slug: samlSlug,
+            type: 'saml',
+            idpEntryPoint: IDP_SSO_URL,
+            idpEntityId: IDP_ENTITY_ID,
+            idpCert: IDP_CERT,
+            defaultRole: 'viewer',
+            groupClaim: 'memberOf',
+            allowedGroups: 'staff',
+            groupRoles: [{ group: 'leads', role: 'admin' }],
+          },
+          session: owner,
+        }),
+        orgParams(orgA),
+      )
+      expect(res.status).toBe(201)
+
+      const refused = await samlLogin(`saml-guest-${run}@${DOMAIN}`, { memberOf: ['Guests'] })
+      expect(locationOf(refused)).toBe('/login?error=group_not_allowed')
+      const missing = await samlLogin(`saml-guest-${run}@${DOMAIN}`, { displayName: 'G' })
+      expect(locationOf(missing)).toBe('/login?error=groups_missing')
+
+      const lead = await samlLogin(`saml-lead-${run}@${DOMAIN}`, { memberOf: ['Staff', 'Leads'] })
+      expect(lead.status).toBe(303)
+      expect(getUserRole(await authenticate(sessionCookieOf(lead)), orgA.id)).toBe('admin')
+      const staff = await samlLogin(`saml-staff-${run}@${DOMAIN}`, { memberOf: 'Staff' })
+      expect(getUserRole(await authenticate(sessionCookieOf(staff)), orgA.id)).toBe('viewer')
+    })
+  })
 })

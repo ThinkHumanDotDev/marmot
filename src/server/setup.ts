@@ -137,6 +137,12 @@ export interface SetupSession {
 }
 
 /**
+ * `req.context` flag of the login that ends the setup wizard. The SSO-only mode
+ * (`src/server/sso/local-login.ts`) lets it through: the wizard runs once, before any user exists.
+ */
+export const SETUP_SESSION_CONTEXT = 'marmotSetupSession'
+
+/**
  * Logs the freshly created admin in through Payload's own login operation and returns the token
  * plus the `Set-Cookie` header the browser needs, so the setup response leaves the user signed in.
  */
@@ -149,6 +155,7 @@ export async function createSetupSession(
     collection: 'users',
     data: credentials,
     depth: 0,
+    context: { [SETUP_SESSION_CONTEXT]: true },
     req: headers ? { headers } : undefined,
   })
   if (!token) throw new SetupError('Login after setup did not return a token.', 500)

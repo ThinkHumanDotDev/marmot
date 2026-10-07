@@ -25,6 +25,11 @@ export interface SsoConnectionInput {
   allowIdpInitiated?: boolean
   autoProvision?: boolean
   defaultRole?: 'admin' | 'member' | 'viewer'
+  /** Claim (OIDC) or attribute (SAML) with the groups; empty = `groups`. */
+  groupClaim?: string
+  /** Comma-separated allow-list; empty lets everybody in. */
+  allowedGroups?: string
+  groupRoles?: { group: string; role: 'owner' | 'admin' | 'member' | 'viewer' }[]
 }
 
 export interface ParsedIdpMetadata {

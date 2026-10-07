@@ -886,6 +886,96 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.sso_connections_group_roles": {
+      "name": "sso_connections_group_roles",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "group": {
+          "name": "group",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "enum_sso_connections_group_roles_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'member'"
+        }
+      },
+      "indexes": {
+        "sso_connections_group_roles_order_idx": {
+          "name": "sso_connections_group_roles_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sso_connections_group_roles_parent_id_idx": {
+          "name": "sso_connections_group_roles_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sso_connections_group_roles_parent_id_fk": {
+          "name": "sso_connections_group_roles_parent_id_fk",
+          "tableFrom": "sso_connections_group_roles",
+          "tableTo": "sso_connections",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.sso_connections": {
       "name": "sso_connections",
       "schema": "",
@@ -1000,6 +1090,18 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'member'"
+        },
+        "group_claim": {
+          "name": "group_claim",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "allowed_groups": {
+          "name": "allowed_groups",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
         },
         "updated_at": {
           "name": "updated_at",
@@ -12285,6 +12387,16 @@
         "en"
       ]
     },
+    "public.enum_sso_connections_group_roles_role": {
+      "name": "enum_sso_connections_group_roles_role",
+      "schema": "public",
+      "values": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ]
+    },
     "public.enum_sso_connections_type": {
       "name": "enum_sso_connections_type",
       "schema": "public",
@@ -13074,6 +13186,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "4de95375-e7d2-46aa-9cd3-fad8f19afa8f",
+  "id": "31c66cf1-3506-4293-8962-422f803c5002",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

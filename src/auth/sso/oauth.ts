@@ -7,6 +7,7 @@ import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import type { User } from '@/payload-types'
 import { findEnabledConnection, toOAuthProvider } from '@/server/sso/connections'
+import { isLocalLoginDisabled } from '@/server/sso/local-login'
 
 import { userResolution } from './hooks'
 import { getInstanceProviders, OIDC_PROVIDER_ID } from './providers'
@@ -36,7 +37,8 @@ export interface LoginProvider extends ProviderInfo {
 export const ssoLoginPath = (providerId: string): string => `/api/auth/sso/${providerId}/login`
 
 export interface AuthProviders {
-  local: true
+  /** Password login is offered (`false` in SSO-only mode, `OIDC_DISABLE_LOCAL_LOGIN`). */
+  local: boolean
   /** The env-configured OIDC client; kept for API compatibility with `{ local, oidc }` consumers. */
   oidc: { enabled: boolean; displayName: string }
   /** Every enabled instance-wide provider, in display order. */
@@ -48,7 +50,7 @@ export function getAuthProviders(): AuthProviders {
   const providers = getInstanceProviders()
   const oidcProvider = providers.find((provider) => provider.id === OIDC_PROVIDER_ID)
   return {
-    local: true,
+    local: !isLocalLoginDisabled(),
     oidc: {
       enabled: oidcProvider !== undefined,
       displayName: oidcProvider?.name ?? env.OIDC_DISPLAY_NAME,

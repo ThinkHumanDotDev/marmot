@@ -1,5 +1,6 @@
 import {
   AuthError,
+  type IdentityContext,
   type ProviderInfo,
   type UserResolutionOptions,
 } from '@thinkhuman/payload-plugin-auth'
@@ -10,9 +11,11 @@ import { getUserRole } from '@/access/permissions'
 import { acceptInvitation } from '@/collections/Invitations'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
+import { checkGroupAccess, extractGroups, parseGroupList } from '@/lib/sso-groups'
 import type { Invitation, User } from '@/payload-types'
-import { recordUserAuditEvent } from '@/server/security/audit'
+import { recordRequestAuditEvent, recordUserAuditEvent } from '@/server/security/audit'
 import { isConnectionMeta } from '@/server/sso/connections'
+import { applyGroupMapping, type GroupPolicy } from '@/server/sso/group-mapping'
 import { isVerifiedDomainOf } from '@/server/sso/domains'
 
 import { OIDC_PROVIDER_ID } from './providers'
@@ -47,6 +50,64 @@ const authProviderFor = (provider: ProviderInfo): User['authProvider'] => {
 }
 
 /**
+ * Group settings of a sign-in method: the instance-wide OIDC provider reads the `OIDC_*` group
+ * variables, an organization connection its own fields (rules for its organization only, never
+ * removal or superadmin). GitHub and Google assert no groups and have none.
+ */
+export function groupPolicyFor(provider: ProviderInfo): GroupPolicy | null {
+  if (isConnectionMeta(provider.meta)) {
+    const meta = provider.meta
+    return {
+      claim: meta.groupClaim || 'groups',
+      allowed: meta.allowedGroups ?? [],
+      rules: (meta.groupRoles ?? []).map((rule) => ({
+        group: rule.group,
+        org: { id: meta.organization },
+        role: rule.role,
+      })),
+      remove: false,
+    }
+  }
+  if (provider.id !== OIDC_PROVIDER_ID) return null
+  return {
+    claim: env.OIDC_GROUP_CLAIM,
+    allowed: parseGroupList(env.OIDC_ALLOWED_GROUPS),
+    rules: env.OIDC_ROLE_MAPPING,
+    remove: env.OIDC_ROLE_MAPPING_REMOVE,
+  }
+}
+
+/**
+ * The group allow-list. Runs before an account is provisioned or linked and again on every login,
+ * so nobody outside the allowed groups gets an account, a linked identity or a session. Refusals
+ * are audited as `auth.sso_group_denied` and end the flow with `group_not_allowed` (or
+ * `groups_missing` when the provider sent no group claim at all).
+ */
+async function assertGroupAccess({ payload, request, identity, provider }: IdentityContext) {
+  const policy = groupPolicyFor(provider)
+  if (!policy || policy.allowed.length === 0) return
+  const groups = extractGroups(identity.raw, policy.claim)
+  const decision = checkGroupAccess(policy.allowed, groups)
+  if (decision.ok) return
+  log.info(
+    { provider: provider.id, email: identity.email, reason: decision.code },
+    'single sign-on refused by the group allow-list',
+  )
+  await recordRequestAuditEvent(payload, request, {
+    action: 'auth.sso_group_denied',
+    organization: isConnectionMeta(provider.meta) ? provider.meta.organization : null,
+    metadata: {
+      provider: provider.id,
+      email: identity.email ?? null,
+      reason: decision.code,
+      claim: policy.claim,
+      groups: groups?.slice(0, 50) ?? null,
+    },
+  })
+  throw new AuthError(decision.code)
+}
+
+/**
  * How identities become Marmot users, shared by the OAuth/OIDC and SAML integrations:
  *
  * - **Instance-wide providers** (`OIDC_*`, GitHub, Google): provisioning honours the provider's
@@ -58,6 +119,9 @@ const authProviderFor = (provider: ProviderInfo): User['authProvider'] => {
  *   organization with its `defaultRole` (just-in-time membership) unless they are a member already.
  * - Installs from before the `auth-accounts` collection stored the OIDC identity on the user:
  *   `findUser` matches those columns so they keep signing in.
+ * - Groups (`groupPolicyFor`): the allow-list is checked before provisioning, before linking and on
+ *   every login; the group → role mapping (`applyGroupMapping`) runs on every login. A connection
+ *   whose mapping assigned a role in its organization skips the default-role membership.
  */
 export const userResolution: UserResolutionOptions = {
   autoProvision: ({ provider }) =>
@@ -82,7 +146,9 @@ export const userResolution: UserResolutionOptions = {
     return docs[0] ?? null
   },
 
-  beforeProvision: async ({ payload, identity, provider }) => {
+  beforeProvision: async (ctx) => {
+    await assertGroupAccess(ctx)
+    const { payload, identity, provider } = ctx
     if (isConnectionMeta(provider.meta) || !env.DISABLE_SIGNUP) return
     const email = identity.email?.trim().toLowerCase()
     if (!email || !(await findPendingInvitation(payload, email))) {
@@ -105,6 +171,8 @@ export const userResolution: UserResolutionOptions = {
     return trusted
   },
 
+  beforeLink: assertGroupAccess,
+
   mapNewUser: ({ provider }) => ({ authProvider: authProviderFor(provider) }),
 
   afterProvision: async ({ payload, user, identity, provider }) => {
@@ -120,13 +188,17 @@ export const userResolution: UserResolutionOptions = {
     }
   },
 
-  afterLogin: async ({ payload, user, provider, request, created, linked }) => {
+  afterLogin: async (ctx) => {
+    const { payload, user, provider, request, created, linked } = ctx
+    await assertGroupAccess(ctx)
+    const mapped = await mapGroups(ctx)
     await recordUserAuditEvent(payload, request, user, 'auth.sso_login', {
       organization: isConnectionMeta(provider.meta) ? provider.meta.organization : null,
       metadata: { provider: provider.id, created, linked },
     })
     if (!isConnectionMeta(provider.meta)) return
     const { organization, defaultRole } = provider.meta
+    if (mapped.has(String(organization))) return
     const current = await payload.findByID({
       collection: 'users',
       id: user.id,
@@ -137,4 +209,37 @@ export const userResolution: UserResolutionOptions = {
     await addOrgMembership({ payload, userId: user.id, orgId: organization, role: defaultRole })
     log.info({ user: user.id, organization, role: defaultRole }, 'joined organization through SSO')
   },
+}
+
+/**
+ * Applies the provider's group → role mapping for the user who just signed in. An identity
+ * without the group claim leaves memberships as they are (a provider that stopped releasing the
+ * claim must not strip everybody's access); with an allow-list such a login never gets here.
+ */
+async function mapGroups({
+  payload,
+  request,
+  identity,
+  provider,
+  user,
+}: IdentityContext & { user: { id: string | number } }): Promise<Map<string, string>> {
+  const policy = groupPolicyFor(provider)
+  if (!policy || policy.rules.length === 0) return new Map()
+  const groups = extractGroups(identity.raw, policy.claim)
+  if (groups === null) {
+    log.warn(
+      { provider: provider.id, user: user.id, claim: policy.claim },
+      'no group claim in the identity; role mapping skipped',
+    )
+    return new Map()
+  }
+  const { roles } = await applyGroupMapping({
+    payload,
+    request,
+    userId: user.id,
+    provider: { id: provider.id, name: provider.name },
+    policy,
+    groups,
+  })
+  return roles
 }
