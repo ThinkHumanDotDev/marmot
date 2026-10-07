@@ -15,6 +15,8 @@ export const HeartbeatStatus = {
   UP: 1,
   PENDING: 2,
   MAINTENANCE: 3,
+  /** Marmot addition: the check succeeded but was slower than the monitor's `degradedAfter`. */
+  DEGRADED: 4,
 } as const
 export type HeartbeatStatus = (typeof HeartbeatStatus)[keyof typeof HeartbeatStatus]
 
@@ -193,7 +195,7 @@ export const selectUptime = (id: string | number, period: UptimePeriod) => (s: M
 
 export const selectAvgPing = (id: string | number) => (s: MonitorState) => s.avgPing[toId(id)]
 
-export type MonitorStatusKey = 'up' | 'down' | 'pending' | 'maintenance' | 'unknown'
+export type MonitorStatusKey = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded' | 'unknown'
 
 export const statusKey = (status: HeartbeatStatus | undefined): MonitorStatusKey => {
   switch (status) {
@@ -205,6 +207,8 @@ export const statusKey = (status: HeartbeatStatus | undefined): MonitorStatusKey
       return 'pending'
     case HeartbeatStatus.MAINTENANCE:
       return 'maintenance'
+    case HeartbeatStatus.DEGRADED:
+      return 'degraded'
     default:
       return 'unknown'
   }
@@ -224,6 +228,7 @@ export const selectStatusCounts = (s: MonitorState): Record<MonitorStatusKey, nu
     down: 0,
     pending: 0,
     maintenance: 0,
+    degraded: 0,
     unknown: 0,
   }
   for (const id of Object.keys(s.monitors)) counts[selectMonitorStatus(id)(s)] += 1

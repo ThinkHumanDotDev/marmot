@@ -184,6 +184,7 @@ export async function recordBeat(
     status: monitor.status?.lastStatus,
     retries: monitor.status?.retries,
     downCount: monitor.status?.downCount,
+    settledStatus: monitor.status?.settledStatus,
   }
   const next = computeNextBeat(prev, result, monitor)
 
@@ -231,6 +232,7 @@ export async function recordBeat(
         lastMsg: next.msg,
         retries: next.retries,
         downCount: next.downCount,
+        settledStatus: next.settledStatus,
         ...options.statusPatch,
       },
       ...(tlsInfo ? { certInfo: tlsInfo as unknown as Monitor['certInfo'] } : {}),
@@ -246,7 +248,7 @@ export async function recordBeat(
     }
   }
 
-  const level = next.status === 'up' ? 'debug' : 'warn'
+  const level = next.status === 'up' ? 'debug' : next.status === 'degraded' ? 'info' : 'warn'
   log[level](
     {
       monitorId,
@@ -268,6 +270,7 @@ export async function recordBeat(
     previousStatus: prev.status,
     isFirstBeat: next.isFirstBeat,
     notify: next.notify,
+    notificationEvent: next.notificationEvent,
     organizationId,
     tlsInfo,
     certChanged,

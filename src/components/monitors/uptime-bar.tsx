@@ -9,6 +9,7 @@ const barColour: Record<ReturnType<typeof statusKey>, string> = {
   down: 'bg-status-down',
   pending: 'bg-status-pending',
   maintenance: 'bg-status-maintenance',
+  degraded: 'bg-status-degraded',
   unknown: 'bg-muted-foreground/20',
 }
 

@@ -24,7 +24,7 @@ export type MonitorOption = Pick<Monitor, 'id' | 'name' | 'type' | 'active'> & {
   publicName?: string | null
   url?: string | null
   hostname?: string | null
-  lastStatus?: 'up' | 'down' | 'pending' | 'maintenance' | null
+  lastStatus?: 'up' | 'down' | 'pending' | 'maintenance' | 'degraded' | null
 }
 
 export type StatusPagePatch = Partial<

@@ -10,6 +10,7 @@
       "down": "Down",
       "pending": "Pending",
       "maintenance": "Maintenance",
+      "degraded": "Degraded",
       "unknown": "Unknown"
     },
     "notFound": {
@@ -46,6 +47,7 @@
         "down": "down",
         "pending": "pending",
         "maintenance": "maintenance",
+        "degraded": "degraded",
         "unknown": "unknown"
       }
     },
@@ -243,7 +245,8 @@
       "uptime": "Uptime",
       "last24Hours": "Last 24 hours",
       "last30Days": "Last 30 days",
-      "lastYear": "Last year"
+      "lastYear": "Last year",
+      "last24HoursDegraded": "Last 24 hours · {count, plural, one {# degraded check} other {# degraded checks}}"
     },
     "chart": {
       "title": "Response time",
@@ -562,7 +565,10 @@
         "resendHint": "Re-notify every {count} consecutive DOWN beats",
         "resendDescription": "Every N consecutive DOWN beats (0 = never)",
         "timeout": "Request timeout",
-        "timeoutDefault": "0 uses 80% of the interval"
+        "timeoutDefault": "0 uses 80% of the interval",
+        "degradedAfter": "Degraded after",
+        "milliseconds": "ms",
+        "degradedAfterDescription": "Mark a successful check as DEGRADED when it takes longer than this. Empty or 0 turns it off."
       },
       "connection": {
         "title": "Connection",
@@ -1861,6 +1867,7 @@
         "down": "🔴 Down",
         "pending": "⚠️ Pending",
         "maintenance": "🔧 Maintenance",
+        "degraded": "🐢 Degraded",
         "test": "⚠️ Test"
       },
       "noMessage": "N/A",
@@ -2838,6 +2845,7 @@
     "overall": {
       "up": "All systems operational",
       "partial": "Partially degraded service",
+      "degraded": "Degraded performance",
       "down": "Major outage",
       "maintenance": "Under maintenance",
       "unknown": "No data yet"
@@ -2922,6 +2930,7 @@
         "down": "down",
         "pending": "pending",
         "maintenance": "maintenance",
+        "degraded": "degraded",
         "unknown": "unknown"
       },
       "ping": "{ms} ms"

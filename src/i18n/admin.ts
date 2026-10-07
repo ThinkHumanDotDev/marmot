@@ -204,6 +204,10 @@ export const adminTranslations = {
         maxRetriesDescription: 'Retries before the monitor is marked DOWN.',
         resendIntervalDescription: 'Re-notify every N consecutive DOWN beats (0 = never).',
         timeoutDescription: 'Request timeout in seconds (0 = 80% of the interval).',
+        degradedAfterDescription:
+          'Response time in ms above which a successful check is marked DEGRADED (empty or 0 = off).',
+        settledStatusDescription:
+          'Last status other than pending (decides transitions after retries).',
         upsideDownDescription: 'Flip status: a failed check counts as UP and vice versa.',
         headersDescription: 'JSON object of extra request headers.',
         acceptedStatusCodesDescription: 'Status codes or ranges counted as UP, e.g. 200-299, 304.',

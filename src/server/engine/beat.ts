@@ -4,9 +4,13 @@
  * Ported from Uptime Kuma 2.5.5 `server/model/monitor.js` (`Monitor.beat`, `isImportantBeat`,
  * `isImportantForNotification`) — Copyright (c) 2021 Louis Lam, MIT License. See THIRD_PARTY_NOTICES.md.
  *
+ * Marmot addition (#93): the DEGRADED status (a successful check slower than `degradedAfter`), its
+ * transitions and the notification event of each beat (`notificationEventFor`).
+ *
  * Everything here is pure: the worker feeds the previous cached state plus the check result in and
  * persists what comes out. That keeps the transition rules unit-testable without Redis or a database.
  */
+import { degradedThresholdMs } from '@/lib/monitor-degraded'
 import type { HeartbeatStatus } from '@/server/monitor-types/types'
 import type { TlsInfo } from './tls'
 
@@ -16,6 +20,19 @@ export const UP: BeatStatus = 'up'
 export const DOWN: BeatStatus = 'down'
 export const PENDING: BeatStatus = 'pending'
 export const MAINTENANCE: BeatStatus = 'maintenance'
+export const DEGRADED: BeatStatus = 'degraded'
+
+/**
+ * Why notification channels are told about a beat. Channels filter on it (#126); the default set
+ * (`DEFAULT_NOTIFICATION_EVENTS` in `src/server/notifications/dispatch.ts`) keeps the behaviour from
+ * before the degraded state, so `degraded` is opt-in.
+ * - `down`: the monitor went DOWN (first beat included);
+ * - `up`: it recovered from DOWN (to UP or DEGRADED);
+ * - `degraded`: it entered DEGRADED or went back from DEGRADED to UP (not involving DOWN);
+ * - `reminder`: `resendInterval` repeat while still DOWN.
+ */
+export const NOTIFICATION_EVENTS = ['down', 'up', 'degraded', 'reminder'] as const
+export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number]
 
 /** State carried over from the previous heartbeat (the monitor's `status` cache group). */
 export interface PrevState {
@@ -23,6 +40,12 @@ export interface PrevState {
   status?: BeatStatus | null
   retries?: number | null
   downCount?: number | null
+  /**
+   * Last status that was not PENDING. Leaving a retry streak compares against it, so
+   * DEGRADED → PENDING → UP still announces the end of the degradation. Missing on monitors
+   * that have not been checked since the degraded state shipped.
+   */
+  settledStatus?: BeatStatus | null
 }
 
 /** Outcome of running `MonitorType.check()`. */
@@ -55,6 +78,10 @@ export interface MonitorSettings {
   maxRetries?: number | null
   resendInterval?: number | null
   upsideDown?: boolean | null
+  /** Monitor type; the degraded threshold only applies to the types in `DEGRADED_TYPES`. */
+  type?: string | null
+  /** Response time (ms) above which a successful check is DEGRADED; empty or 0 = off. */
+  degradedAfter?: number | null
 }
 
 export interface NextState {
@@ -64,10 +91,14 @@ export interface NextState {
   duration: number | null
   retries: number
   downCount: number
+  /** Last non-PENDING status (see `PrevState.settledStatus`). */
+  settledStatus: BeatStatus | null
   /** Status changed compared to the previous beat (first beat included). */
   important: boolean
   /** Notification providers should be triggered for this beat. */
   notify: boolean
+  /** Why notifications fire for this beat; `null` exactly when `notify` is false. */
+  notificationEvent: NotificationEvent | null
   /** Whether this is the first beat of the monitor. */
   isFirstBeat: boolean
   /** Seconds until the next check: `retryInterval` while pending, otherwise `interval`. */
@@ -150,6 +181,52 @@ export function isImportantForNotification(
   )
 }
 
+/**
+ * Does this beat enter or leave DEGRADED? Leaving PENDING compares with the status before the retry
+ * streak (`settledStatus`), so UP → PENDING → DEGRADED and DEGRADED → PENDING → UP are transitions
+ * while DEGRADED → PENDING → DEGRADED is not. Entering PENDING never is (as UP → PENDING).
+ */
+export function isDegradedTransition(
+  previousBeatStatus: BeatStatus | null | undefined,
+  currentBeatStatus: BeatStatus,
+  settledStatus?: BeatStatus | null,
+): boolean {
+  const from = previousBeatStatus === PENDING ? settledStatus : previousBeatStatus
+  if (!from || from === PENDING || currentBeatStatus === PENDING) return false
+  if (from === currentBeatStatus) return false
+  return from === DEGRADED || currentBeatStatus === DEGRADED
+}
+
+/**
+ * Notification event of a beat, or `null` when channels stay quiet. Uptime Kuma's rules
+ * (`isImportantForNotification`, first beat only when DOWN) decide `down` / `up`; DEGRADED adds:
+ * DEGRADED → DOWN is `down`, DOWN → DEGRADED is `up` (a recovery, if a slow one), and the other
+ * degraded transitions are `degraded`, except DEGRADED → MAINTENANCE (UP → MAINTENANCE is silent too).
+ */
+export function notificationEventFor(
+  isFirstBeat: boolean,
+  previousBeatStatus: BeatStatus | null | undefined,
+  currentBeatStatus: BeatStatus,
+  settledStatus?: BeatStatus | null,
+): Exclude<NotificationEvent, 'reminder'> | null {
+  if (isFirstBeat) return currentBeatStatus === DOWN ? 'down' : null
+  if (isImportantForNotification(false, previousBeatStatus, currentBeatStatus)) {
+    if (currentBeatStatus === DOWN) return 'down'
+    if (currentBeatStatus === UP) return 'up'
+  }
+  if (!isDegradedTransition(previousBeatStatus, currentBeatStatus, settledStatus)) return null
+  if (currentBeatStatus === DOWN) return 'down'
+  if (previousBeatStatus === DOWN) return 'up'
+  if (currentBeatStatus === MAINTENANCE) return null
+  return 'degraded'
+}
+
+/** Message of a DEGRADED beat: the check's own message plus the threshold that was crossed. */
+export function degradedMessage(msg: string, ping: number, thresholdMs: number): string {
+  const detail = `response time ${Math.round(ping)} ms exceeds the degraded threshold of ${thresholdMs} ms`
+  return msg.trim() ? `${msg.trim()} (${detail})` : detail.charAt(0).toUpperCase() + detail.slice(1)
+}
+
 /** Seconds until the next check for a monitor in the given status. */
 export function nextIntervalSeconds(status: BeatStatus, monitor: MonitorSettings): number {
   const interval = monitor.interval > 0 ? monitor.interval : 1
@@ -198,6 +275,13 @@ export function computeNextBeat(
           throw new Error('Flip UP to DOWN')
         }
       }
+      // A slow success is DEGRADED. Upside-down monitors never get here with a real response
+      // (their UP comes from a failed check), so the threshold does not apply to them.
+      const threshold = degradedThresholdMs(monitor)
+      if (status === UP && !upsideDown && threshold !== null && ping !== null && ping > threshold) {
+        status = DEGRADED
+        msg = degradedMessage(msg, ping, threshold)
+      }
       retries = 0
     } else {
       throw new Error(result.msg || 'Check failed')
@@ -220,23 +304,28 @@ export function computeNextBeat(
     }
   }
 
-  const important = isImportantBeat(isFirstBeat, prev?.status, status)
-  let notify = false
+  // Status before the current retry streak (only stored state matters while PENDING).
+  const prevSettled = (prev?.status === PENDING ? prev?.settledStatus : prev?.status) ?? null
+  const settledStatus = status === PENDING ? prevSettled : status
+
+  const important =
+    isImportantBeat(isFirstBeat, prev?.status, status) ||
+    isDegradedTransition(prev?.status, status, prevSettled)
+  let notificationEvent: NotificationEvent | null = null
 
   if (important) {
     // The very first beat is only announced when it is DOWN (Monitor.sendNotification).
-    notify =
-      isImportantForNotification(isFirstBeat, prev?.status, status) &&
-      (!isFirstBeat || status === DOWN)
+    notificationEvent = notificationEventFor(isFirstBeat, prev?.status, status, prevSettled)
     downCount = 0
   } else if (status === DOWN && resendInterval > 0) {
     ++downCount
     if (downCount >= resendInterval) {
       // Send the notification again because we are still DOWN.
-      notify = true
+      notificationEvent = 'reminder'
       downCount = 0
     }
   }
+  const notify = notificationEvent !== null
 
   return {
     status,
@@ -245,8 +334,10 @@ export function computeNextBeat(
     duration,
     retries,
     downCount,
+    settledStatus,
     important,
     notify,
+    notificationEvent,
     isFirstBeat,
     nextIntervalSeconds: nextIntervalSeconds(status, monitor),
   }

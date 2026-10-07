@@ -35,6 +35,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { track } from '@/lib/analytics'
 import { api, ApiError } from '@/lib/api'
+import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
 import {
   AUTH_METHODS,
   BODY_ENCODINGS,
@@ -1191,6 +1192,17 @@ export function MonitorForm({
                       ? t('timing.timeoutDefault')
                       : timingHint(timeout)
                   }
+                />
+              )}
+              {supportsDegradedThreshold(type) && (
+                <NumberField
+                  control={control}
+                  name="degradedAfter"
+                  label={t('timing.degradedAfter')}
+                  unit={t('timing.milliseconds')}
+                  min={0}
+                  step={1}
+                  description={t('timing.degradedAfterDescription')}
                 />
               )}
             </CardContent>

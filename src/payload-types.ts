@@ -420,6 +420,7 @@ export interface Monitor {
   maxRetries: number;
   resendInterval: number;
   timeout: number;
+  degradedAfter?: number | null;
   upsideDown?: boolean | null;
   method?: ('GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS') | null;
   httpBodyEncoding?: ('json' | 'form' | 'xml') | null;
@@ -515,12 +516,13 @@ export interface Monitor {
   gamedigGivenPortOnly?: boolean | null;
   remoteBrowser?: string | null;
   status?: {
-    lastStatus?: ('up' | 'down' | 'pending' | 'maintenance') | null;
+    lastStatus?: ('up' | 'down' | 'pending' | 'maintenance' | 'degraded') | null;
     lastCheckAt?: string | null;
     lastPing?: number | null;
     lastMsg?: string | null;
     retries?: number | null;
     downCount?: number | null;
+    settledStatus?: ('up' | 'down' | 'pending' | 'maintenance' | 'degraded') | null;
     lastPushAt?: string | null;
   };
   updatedAt: string;
@@ -617,7 +619,7 @@ export interface Heartbeat {
   id: number;
   monitor: number | Monitor;
   organization?: (number | null) | Organization;
-  status: 'up' | 'down' | 'pending' | 'maintenance';
+  status: 'up' | 'down' | 'pending' | 'maintenance' | 'degraded';
   msg?: string | null;
   ping?: number | null;
   duration?: number | null;
@@ -1509,6 +1511,7 @@ export interface MonitorsSelect<T extends boolean = true> {
   maxRetries?: T;
   resendInterval?: T;
   timeout?: T;
+  degradedAfter?: T;
   upsideDown?: T;
   method?: T;
   httpBodyEncoding?: T;
@@ -1596,6 +1599,7 @@ export interface MonitorsSelect<T extends boolean = true> {
         lastMsg?: T;
         retries?: T;
         downCount?: T;
+        settledStatus?: T;
         lastPushAt?: T;
       };
   updatedAt?: T;
