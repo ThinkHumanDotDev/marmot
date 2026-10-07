@@ -30,6 +30,9 @@ export type StatusPagePatch = Partial<
     | 'homepageUrl'
     | 'contactUrl'
     | 'theme'
+    | 'themePreset'
+    | 'themeOverrides'
+    | 'bannerText'
     | 'language'
     | 'published'
     | 'searchEngineIndex'
@@ -69,6 +72,14 @@ export type IncidentOpenDraft = Omit<IncidentUpdateDraft, 'postedAt'> & {
   pinned?: boolean
 }
 
+export type StatusPageAssetKind = 'logo' | 'logoDark' | 'favicon'
+
+const ASSET_PATHS: Record<StatusPageAssetKind, string> = {
+  logo: 'logo',
+  logoDark: 'logo-dark',
+  favicon: 'favicon',
+}
+
 const base = (orgId: OrgId) => `/api/orgs/${encodeURIComponent(String(orgId))}/status-pages`
 
 export const statusPagesApi = {
@@ -80,10 +91,11 @@ export const statusPagesApi = {
     api.patch<{ doc: StatusPage }>(`${base(orgId)}/${id}`, data as Record<string, unknown>),
   remove: (orgId: OrgId, id: OrgId) => api.delete<{ ok: true }>(`${base(orgId)}/${id}`),
 
-  uploadLogo: async (orgId: OrgId, id: OrgId, file: File) => {
+  /** Uploads the light logo, dark logo or favicon (multipart `file`). */
+  uploadAsset: async (orgId: OrgId, id: OrgId, kind: StatusPageAssetKind, file: File) => {
     const body = new FormData()
     body.append('file', file)
-    const res = await fetch(`${base(orgId)}/${id}/logo`, {
+    const res = await fetch(`${base(orgId)}/${id}/${ASSET_PATHS[kind]}`, {
       method: 'POST',
       body,
       credentials: 'include',
@@ -92,8 +104,8 @@ export const statusPagesApi = {
     if (!res.ok || !json.doc) throw new Error(json.error ?? '')
     return json.doc
   },
-  removeLogo: (orgId: OrgId, id: OrgId) =>
-    api.delete<{ doc: StatusPage }>(`${base(orgId)}/${id}/logo`),
+  removeAsset: (orgId: OrgId, id: OrgId, kind: StatusPageAssetKind) =>
+    api.delete<{ doc: StatusPage }>(`${base(orgId)}/${id}/${ASSET_PATHS[kind]}`),
 
   incidents: {
     list: (orgId: OrgId, id: OrgId) =>

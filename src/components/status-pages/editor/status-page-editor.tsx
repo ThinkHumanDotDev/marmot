@@ -27,6 +27,7 @@ import { DomainsPanel } from './domains-panel'
 import { GroupsEditor } from './groups-editor'
 import { IncidentsPanel, type IncidentComponentOption } from './incidents-panel'
 import { SettingsForm } from './settings-form'
+import { ThemeEditor } from './theme-editor'
 
 export interface EditorProps {
   orgId: OrgId
@@ -137,6 +138,7 @@ export function StatusPageEditor({
         <Tabs defaultValue="settings">
           <TabsList className="no-scrollbar max-w-full justify-start overflow-x-auto">
             <TabsTrigger value="settings">{t('tabs.settings')}</TabsTrigger>
+            <TabsTrigger value="theme">{t('tabs.theme')}</TabsTrigger>
             <TabsTrigger value="groups">{t('tabs.groups')}</TabsTrigger>
             <TabsTrigger value="incidents">{t('tabs.incidents')}</TabsTrigger>
             <TabsTrigger value="domains">{t('tabs.domains')}</TabsTrigger>
@@ -150,6 +152,9 @@ export function StatusPageEditor({
               canEdit={canEdit}
               canDelete={canDelete}
             />
+          </TabsContent>
+          <TabsContent value="theme" className="pt-6">
+            <ThemeEditor orgId={orgId} page={page} onSaved={setPage} canEdit={canEdit} />
           </TabsContent>
           <TabsContent value="groups" className="pt-6">
             <GroupsEditor

@@ -15,6 +15,8 @@ import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { COMPONENT_TYPES, isContactUrl, isHttpUrl } from '@/lib/status-page-components'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 
+import { statusPageThemeFields } from './status-page-theme'
+
 import type { StatusPage } from '@/payload-types'
 
 export const STATUS_PAGE_THEMES = ['auto', 'light', 'dark'] as const
@@ -227,7 +229,12 @@ export const StatusPages: CollectionConfig = {
       ],
     },
     { name: 'description', type: 'textarea' },
-    { name: 'logo', type: 'upload', relationTo: 'media' },
+    {
+      name: 'logo',
+      type: 'upload',
+      relationTo: 'media',
+      admin: { description: adminT('marmot:statusPages:logoDescription') },
+    },
     {
       type: 'row',
       fields: [
@@ -250,7 +257,9 @@ export const StatusPages: CollectionConfig = {
       type: 'select',
       defaultValue: 'auto',
       options: STATUS_PAGE_THEMES.map((theme) => ({ label: theme, value: theme })),
+      admin: { description: adminT('marmot:statusPages:themeDescription') },
     },
+    ...statusPageThemeFields,
     {
       name: 'language',
       type: 'select',

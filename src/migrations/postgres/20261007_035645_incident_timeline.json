@@ -4776,6 +4776,37 @@
           "notNull": false,
           "default": "'auto'"
         },
+        "theme_preset": {
+          "name": "theme_preset",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'default'"
+        },
+        "theme_overrides": {
+          "name": "theme_overrides",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "banner_text": {
+          "name": "banner_text",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logo_dark_id": {
+          "name": "logo_dark_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "favicon_id": {
+          "name": "favicon_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "language": {
           "name": "language",
           "type": "enum_status_pages_language",
@@ -4912,6 +4943,36 @@
           "method": "btree",
           "with": {}
         },
+        "status_pages_logo_dark_idx": {
+          "name": "status_pages_logo_dark_idx",
+          "columns": [
+            {
+              "expression": "logo_dark_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_pages_favicon_idx": {
+          "name": "status_pages_favicon_idx",
+          "columns": [
+            {
+              "expression": "favicon_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "status_pages_published_idx": {
           "name": "status_pages_published_idx",
           "columns": [
@@ -4999,6 +5060,32 @@
           "tableTo": "media",
           "columnsFrom": [
             "logo_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "status_pages_logo_dark_id_media_id_fk": {
+          "name": "status_pages_logo_dark_id_media_id_fk",
+          "tableFrom": "status_pages",
+          "tableTo": "media",
+          "columnsFrom": [
+            "logo_dark_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "status_pages_favicon_id_media_id_fk": {
+          "name": "status_pages_favicon_id_media_id_fk",
+          "tableFrom": "status_pages",
+          "tableTo": "media",
+          "columnsFrom": [
+            "favicon_id"
           ],
           "columnsTo": [
             "id"
@@ -8453,6 +8540,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "4456e1e6-bc8b-486e-bb79-90e602de3bb6",
+  "id": "de479588-15dd-41d8-85b5-4675461b3db1",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
