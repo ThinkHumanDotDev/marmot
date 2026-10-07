@@ -5,6 +5,7 @@ import type { Payload } from 'payload'
 import type { OrgId, Role } from '@/access/permissions'
 import { openClientSecret, SSO_CONNECTIONS_SLUG } from '@/collections/SsoConnections'
 import { env } from '@/env'
+import { normalizeGroup, parseGroupList } from '@/lib/sso-groups'
 import type { SsoConnection } from '@/payload-types'
 
 const serverUrl = () => env.NEXT_PUBLIC_SERVER_URL.replace(/\/$/, '')
@@ -15,7 +16,22 @@ export interface ConnectionMeta {
   organization: OrgId
   autoProvision: boolean
   defaultRole: Role
+  /** Claim (OIDC) or attribute (SAML) carrying the groups; default `groups`. */
+  groupClaim: string
+  /** Normalised allow-list; empty lets everybody in. */
+  allowedGroups: string[]
+  /** Normalised group → organization role rules. */
+  groupRoles: { group: string; role: Role }[]
 }
+
+export const DEFAULT_GROUP_CLAIM = 'groups'
+
+/** A connection's `groupRoles` rows, normalised (blank groups dropped). */
+export const groupRolesOf = (connection: Pick<SsoConnection, 'groupRoles'>) =>
+  (connection.groupRoles ?? []).flatMap((row) => {
+    const group = normalizeGroup(row.group ?? '')
+    return group && row.role ? [{ group, role: row.role as Role }] : []
+  })
 
 export const isConnectionMeta = (meta: unknown): meta is ConnectionMeta =>
   !!meta && typeof meta === 'object' && 'connectionId' in meta && 'organization' in meta
@@ -30,6 +46,9 @@ const metaOf = (connection: SsoConnection): Record<string, unknown> => {
     organization: orgIdOf(connection),
     autoProvision: connection.autoProvision !== false,
     defaultRole: (connection.defaultRole ?? 'member') as Role,
+    groupClaim: connection.groupClaim?.trim() || DEFAULT_GROUP_CLAIM,
+    allowedGroups: parseGroupList(connection.allowedGroups),
+    groupRoles: groupRolesOf(connection),
   }
   return { ...meta }
 }
@@ -155,6 +174,9 @@ export interface SsoConnectionRow {
   allowIdpInitiated: boolean
   autoProvision: boolean
   defaultRole: Role
+  groupClaim: string | null
+  allowedGroups: string | null
+  groupRoles: { group: string; role: Role }[]
   loginUrl: string
   callbackUrl: string
   metadataUrl: string | null
@@ -181,6 +203,12 @@ export function toConnectionRow(connection: SsoConnection): SsoConnectionRow {
     allowIdpInitiated: connection.allowIdpInitiated === true,
     autoProvision: connection.autoProvision !== false,
     defaultRole: (connection.defaultRole ?? 'member') as Role,
+    groupClaim: connection.groupClaim ?? null,
+    allowedGroups: connection.allowedGroups ?? null,
+    groupRoles: (connection.groupRoles ?? []).map((row) => ({
+      group: row.group,
+      role: row.role as Role,
+    })),
     ...endpoints,
     createdAt: connection.createdAt,
   }

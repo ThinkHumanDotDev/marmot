@@ -27,6 +27,12 @@ export const forgotPasswordLimiter: RateLimiter = createRateLimiter(
   FORGOT_PASSWORD_RATE_LIMIT,
 )
 
+/**
+ * `req.context` flag with which Marmot's own login flow (`src/auth/two-factor`) and password
+ * re-checks (`src/auth/password.ts`) call `payload.login`. Re-exported by `src/collections/Users.ts`.
+ */
+export const TWO_FACTOR_GATE_CONTEXT = 'twoFactorGate'
+
 type AuthAttempt = { operation: 'login' | 'forgotPassword'; email: string | null }
 
 const limiterFor: Record<AuthAttempt['operation'], RateLimiter> = {
@@ -73,11 +79,19 @@ export const rateLimitAuthOperations: CollectionBeforeOperationHook = async ({
  * transaction (`req`): the login has already updated the user row, and an insert referencing it
  * from another transaction would wait on that lock until the login commits — a deadlock.
  */
-export const auditLogin: CollectionAfterLoginHook = async ({ req, user }) => {
+export const auditLogin: CollectionAfterLoginHook = async ({ req, user, context }) => {
+  // Marmot's own login routes and password re-checks record their outcome themselves (after the
+  // second factor, or not at all for a re-authentication).
+  if (context?.[TWO_FACTOR_GATE_CONTEXT] === true) return
   await recordRequestAuditEvent(req.payload, req, {
     action: 'auth.login',
     actor: user.id,
+    actorLabel: typeof user.email === 'string' ? user.email : null,
     target: `users:${String(user.id)}`,
+    entityType: 'user',
+    entityId: user.id,
+    entityLabel: typeof user.email === 'string' ? user.email : null,
+    metadata: { method: 'password' },
     req,
   })
 }

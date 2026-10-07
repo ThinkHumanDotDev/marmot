@@ -85,7 +85,8 @@ map one to one. Name, description, URL/hostname/port, interval, retry interval, 
 resend interval, timeout, upside-down mode, HTTP method, body and encoding, headers, accepted status codes,
 redirects, TLS options, certificate-expiry notification, keyword (+ invert), JSON query (path, operator,
 expected value), authentication (basic, NTLM, bearer, OAuth2 client credentials, mTLS), DNS resolver and
-record type, weight, paused state (`active`) and the push token are kept. Group membership (`parent`) is
+record type, weight, paused state (`active`) and the push token are kept (push monitors use the
+interval schedule with the automatic grace period, as in Kuma). Group membership (`parent`) is
 rebuilt from the backup's ids, and `notificationIDList` becomes the monitor's channel links.
 
 Intervals below Marmot's 20-second minimum are raised to 20 s (noted in the report). Invalid monitors (for
@@ -106,7 +107,9 @@ assignments are listed in the report as skipped.
 **Notification channels** — the Kuma provider names below map to Marmot providers; their config keys are
 translated one by one (`src/server/import-export/kuma-notifications.ts`) and validated against the Marmot
 provider's schema. Channels of unsupported providers, or with settings the schema rejects, are skipped with
-the reason.
+the reason. Uptime Kuma has no per-channel event filters, so imported channels get Marmot's defaults (down,
+recovery, reminders, certificate and domain expiry; see [Notifications](Notifications.md#event-filters)).
+Marmot exports carry each channel's `events`; files without them import with the defaults.
 
 `discord`, `slack`, `telegram`, `teams`, `ntfy`, `gotify`, `pushover`, `matrix`, `webhook`, `smtp`,
 `mattermost`, `rocket.chat`, `GoogleChat`, `PagerDuty`, `Opsgenie`, `apprise`, `signal`, `HomeAssistant`,
@@ -133,6 +136,7 @@ not contain. The "default enabled" flag is kept; "apply to all existing monitors
       "name": "Ops Slack",
       "type": "slack",
       "config": { "webhookUrl": "..." },
+      "events": ["down", "up", "reminder", "certificate"],
       "isDefault": true,
       "active": true
     }
@@ -213,7 +217,8 @@ Ids are the exporting instance's document ids and only serve to link documents i
 importer remaps them. Component rows carry their `id` so templates can reference them; the importer maps
 them to the rows it creates (`templates` is optional, files from before templates import unchanged). Status page components keep their type, public name, description and
 `showValues`; incident impacts on components (`affectedComponents`) are not exported because component ids
-are regenerated on import. A page's subscription settings (`subscriptions`: enabled, channels, review or
+are regenerated on import. Push monitors keep their token and schedule (`pushSchedule`, `pushCron`,
+`pushTimezone`, `pushGrace`, `pushMaxDuration`); their ping log and open runs are not exported. A page's subscription settings (`subscriptions`: enabled, channels, review or
 automatic sending, SMS templates) travel with it, and its SMS sender when that Twilio channel is in the
 same file; the subscribers themselves do not (they are personal data, and their component choices name
 component ids): export and import them per page as CSV from the builder's **Subscribers** tab

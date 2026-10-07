@@ -29,6 +29,8 @@ interface LoginFormProps {
   next?: string
   /** Start on the code step: single sign-on already succeeded and the account has 2FA. */
   twoFactor?: boolean
+  /** Break-glass login of the SSO-only mode: posts with `?local=1`. */
+  local?: boolean
 }
 
 /**
@@ -36,7 +38,7 @@ interface LoginFormProps {
  * `requiresTwoFactor` for protected accounts; the code (authenticator or backup) then goes to
  * `POST /api/auth/2fa`, which sets the session cookie.
  */
-export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
+export function LoginForm({ next, twoFactor = false, local = false }: LoginFormProps) {
   const t = useTranslations('auth.login')
   const tf = useTranslations('auth.fields')
   const tv = useTranslations('auth.validation')
@@ -74,7 +76,7 @@ export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
   async function onSubmit(values: Values) {
     setPending(true)
     try {
-      const result = await authApi.login(values)
+      const result = await authApi.login(values, { local })
       if (result.requiresTwoFactor) {
         setChallenge(result.challenge)
         setStep('code')
@@ -221,7 +223,7 @@ export function LoginForm({ next, twoFactor = false }: LoginFormProps) {
               <div className="flex items-center justify-between">
                 <FormLabel>{tf('password')}</FormLabel>
                 <Link
-                  href="/forgot-password"
+                  href={local ? '/forgot-password?local=1' : '/forgot-password'}
                   className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 >
                   {tf('forgotPassword')}

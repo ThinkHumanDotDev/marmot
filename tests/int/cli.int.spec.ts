@@ -6,6 +6,7 @@ import { getPayload, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import config from '@payload-config'
+import * as checkRoute from '@/app/api/orgs/[orgId]/monitors/[id]/check/route'
 import * as cloneRoute from '@/app/api/orgs/[orgId]/monitors/[id]/clone/route'
 import * as importRoute from '@/app/api/orgs/[orgId]/import/route'
 import * as heartbeatsRoute from '@/app/api/orgs/[orgId]/monitors/[id]/heartbeats/route'
@@ -51,6 +52,11 @@ const ROUTES: [RegExp, string[], RouteModule][] = [
   ],
   [/^\/api\/orgs\/([^/]+)\/tags$/, ['orgId'], tagsRoute as unknown as RouteModule],
   [/^\/api\/orgs\/([^/]+)\/status-pages$/, ['orgId'], statusPagesRoute as unknown as RouteModule],
+  [
+    /^\/api\/orgs\/([^/]+)\/monitors\/([^/]+)\/check$/,
+    ['orgId', 'id'],
+    checkRoute as unknown as RouteModule,
+  ],
   [/^\/api\/orgs\/([^/]+)\/import$/, ['orgId'], importRoute as unknown as RouteModule],
   [
     /^\/api\/orgs\/([^/]+)\/monitors\/([^/]+)\/clone$/,
@@ -356,6 +362,12 @@ describe('marmot CLI against the management API', () => {
 
     const missing = await cli(['monitors', 'info', 'nope'])
     expect(missing.code).toBe(1)
+  })
+
+  it('needs a write key to run a check now', async () => {
+    const result = await cli(['monitors', 'check', 'api'], readKey)
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain('read scope')
   })
 
   it('rejects unknown commands and flags with exit code 2', async () => {

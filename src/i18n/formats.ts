@@ -25,6 +25,8 @@ export const formats = {
     time: { timeStyle: 'short' },
     /** `Oct 6, 2026, 10:00:42 AM`: heartbeats and events, where seconds matter. */
     precise: { dateStyle: 'medium', timeStyle: 'medium' },
+    /** `Monday`: weekday names (cron schedule descriptions). */
+    weekday: { weekday: 'long' },
   },
   number: {
     /** `99.98%` */

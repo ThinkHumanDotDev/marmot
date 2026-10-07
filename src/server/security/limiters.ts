@@ -11,6 +11,12 @@ export const SSO_RATE_LIMIT = { points: 20, duration: 60 }
 /** The single sign-on login and callback routes (`/api/auth/{oidc,sso}`) share one bucket per client IP. */
 export const ssoLimiter: RateLimiter = createRateLimiter('sso', SSO_RATE_LIMIT)
 
+/** On-demand checks ("Check now", ad-hoc tests): one bucket per organization. */
+export const onDemandCheckLimiter: RateLimiter = createRateLimiter('on-demand-checks', {
+  points: env.ON_DEMAND_CHECKS_PER_MINUTE,
+  duration: 60,
+})
+
 /**
  * Management API requests per organization API key (`API_KEY_RATE_LIMIT` per minute), keyed by the
  * key's id. `null` when the limit is turned off (`0`).

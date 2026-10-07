@@ -78,6 +78,7 @@
     "ioredis": "^5.6.1",
     "jose": "^6.2.12",
     "jsonata": "^2.2.2",
+    "liquidjs": "^10.30.0",
     "lucide-react": "^1.52.0",
     "next": "16.3.8",
     "next-intl": "^4.14.9",

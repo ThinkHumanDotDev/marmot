@@ -26,6 +26,9 @@ export const adminTranslations = {
       labels: {
         tcpPort: 'TCP Port',
         push: 'Push',
+        pushSchedule: 'Push schedule',
+        pushScheduleInterval: 'Interval',
+        pushScheduleCron: 'Cron expression',
         group: 'Group',
         manual: 'Manual',
         dockerContainer: 'Docker Container',
@@ -40,6 +43,7 @@ export const adminTranslations = {
         httpOptions: 'HTTP options',
         keyword: 'Keyword',
         jsonQuery: 'JSON query',
+        assertions: 'Assertions',
         authentication: 'Authentication',
         none: 'None',
         bearerToken: 'Bearer token',
@@ -109,10 +113,23 @@ export const adminTranslations = {
         scopeDescription:
           'read: GET requests only (acts as a viewer). write: also mutations (acts as a member). Fixed at creation.',
       },
+      webhookEndpoints: {
+        description:
+          'Outbound event webhooks of an organization. Manage them under Settings → Webhooks; the signing secret is shown once.',
+        eventsDescription: 'Event types, group wildcards (incident.*) or * for every event.',
+        consecutiveFailuresDescription:
+          'Deliveries in a row that failed for good; the endpoint is disabled at WEBHOOK_DISABLE_AFTER_FAILURES.',
+      },
+      webhookDeliveries: {
+        description:
+          'Delivery log of outbound webhooks, pruned after WEBHOOK_DELIVERY_RETENTION_DAYS.',
+      },
       auditLogs: {
         description:
-          'Security-relevant events. Rows are written by the server and cannot be edited.',
-        targetDescription: 'Affected record, e.g. user:42.',
+          'Security events and changes to organization resources. Rows are written by the server and cannot be edited.',
+        targetDescription: 'Affected record, e.g. monitor:42.',
+        actorLabelDescription: 'Email or API key name at the time of the event.',
+        changedFieldsDescription: 'Paths that changed; secret values are redacted in before/after.',
       },
       authAccounts: {
         description: 'Single sign-on identities linked to users. Managed by the login flows.',
@@ -128,6 +145,18 @@ export const adminTranslations = {
         pingDescription: 'Response time in milliseconds (null when not measured).',
         durationDescription: 'Seconds since the previous heartbeat of this monitor.',
         importantDescription: 'True when the status changed compared to the previous heartbeat.',
+        triggerDescription:
+          'What started the check: "manual" for Check now; empty for scheduled checks and pushes.',
+        assertionsDescription: 'Per-assertion results of this check (HTTP and DNS monitors).',
+      },
+      pushEvents: {
+        description:
+          'Signals received by push monitors (success, fail, start, log) with their message and captured request body. The newest 100 per monitor are kept.',
+        kindDescription: 'success, fail, start or log.',
+        sourceDescription: 'How the signal arrived (http).',
+        bodyDescription: 'First 10 000 bytes of the request body (the job output).',
+        ridDescription: 'Run id pairing a start with its success or failure.',
+        durationDescription: 'Run duration in milliseconds (start to success/failure).',
       },
       incidents: {
         organizationDescription: 'Derived from the status page.',
@@ -179,6 +208,17 @@ export const adminTranslations = {
         remindersDescription:
           'Minutes before the start at which status page subscribers are reminded.',
       },
+      monitorIncidents: {
+        description:
+          'Outages of monitors, opened by the engine on DOWN and resolved on recovery. Managed by the server.',
+        statusDescription: 'open → acknowledged → resolved.',
+        openKeyDescription: 'Uniqueness guard: one unresolved incident per monitor.',
+        causeDescription: 'Message of the first DOWN heartbeat.',
+        autoResolvedDescription: 'Resolved by the engine when the monitor recovered.',
+        remindersSentDescription: 'Resend-interval reminders sent while the incident was open.',
+        statusPageIncidentDescription: 'Public status-page incident created from this incident.',
+        timelineDescription: 'What happened, oldest first.',
+      },
       maintenanceOccurrences: {
         description:
           'Concrete windows of maintenances with their state and public update timeline. Managed by the server.',
@@ -191,7 +231,20 @@ export const adminTranslations = {
       },
       monitors: {
         statusDescription: 'Maintained by the worker. Mirrors the latest heartbeat.',
-        lastPushAtDescription: 'Push monitors: time of the last call to the push endpoint.',
+        lastPushAtDescription:
+          'Push monitors: time of the last success or failure reported to the push endpoint.',
+        lastPushStatusDescription: 'Push monitors: outcome of that last success or failure.',
+        pushRunsDescription:
+          'Push monitors: runs announced with /start that have not reported success or failure yet.',
+        pushScheduleDescription:
+          'When pings are expected: every interval, or at the times of a cron expression.',
+        pushCronDescription: 'Five-field cron expression, e.g. 0 2 * * * for 02:00 every day.',
+        pushTimezoneDescription:
+          "IANA time zone of the cron expression. SAME_AS_SERVER uses the organization's time zone.",
+        pushGraceDescription:
+          'Seconds a ping may be late (and a started run may take) before the monitor goes DOWN. Empty: 10 % of the interval, 60 s for cron.',
+        pushMaxDurationDescription:
+          'Optional: runs (from /start to success) longer than this many seconds are reported DOWN.',
         activeDescription: 'Paused monitors are not checked.',
         parentDescription: 'Group this monitor belongs to.',
         publicNameDescription: 'Name shown on status pages instead of the monitor name.',
@@ -207,6 +260,14 @@ export const adminTranslations = {
         retryIntervalDescription: 'Seconds between checks while pending (retrying).',
         maxRetriesDescription: 'Retries before the monitor is marked DOWN.',
         resendIntervalDescription: 'Re-notify every N consecutive DOWN beats (0 = never).',
+        successThresholdDescription:
+          'Consecutive successful checks a DOWN monitor needs before it is UP again (1 = the first one).',
+        reminderBackoffDescription: 'Spacing of resend-interval reminders while DOWN.',
+        reminderBackoff_none: 'Fixed (every resend interval)',
+        reminderBackoff_linear: 'Linear (1×, 2×, 3× …)',
+        reminderBackoff_exponential: 'Exponential (1×, 2×, 4× …)',
+        maxRemindersDescription: 'Stop reminders after this many per incident (0 = unlimited).',
+        recoveriesDescription: 'Successful checks counted so far towards the recovery threshold.',
         timeoutDescription: 'Request timeout in seconds (0 = 80% of the interval).',
         degradedAfterDescription:
           'Response time in ms above which a successful check is marked DEGRADED (empty or 0 = off).',
@@ -224,6 +285,10 @@ export const adminTranslations = {
         domainExpiryDescription: 'Maintained by the worker: cached RDAP domain expiry lookup.',
         invertKeywordDescription: 'UP when the keyword is absent.',
         jsonPathDescription: 'JSONata expression, e.g. `$.status` or `data[0].ok`.',
+        assertionsDescription:
+          'All must pass. HTTP monitors: status, header, textBody, jsonBody; DNS monitors: dnsRecord. At most 10 per kind.',
+        assertionTargetDescription:
+          'Header name, JSONata expression (jsonBody) or record type (dnsRecord).',
         dnsResolveServerDescription: 'Comma-separated resolver IPs or hostnames.',
         pushTokenDescription:
           'Generated automatically. Call /api/push/<token> to report a heartbeat.',
@@ -261,6 +326,8 @@ export const adminTranslations = {
         activeDescription: 'Inactive channels are never sent to.',
         lastSentAtDescription: 'Maintained by the worker.',
         lastErrorDescription: 'Last delivery error; cleared on the next success.',
+        eventsDescription:
+          'Events this channel is told about. Leave empty for the defaults (down, recovery, reminders, certificate and domain expiry).',
       },
       organizations: {
         slugDescription: 'Lowercase letters, numbers and hyphens. Used in URLs.',
@@ -298,6 +365,12 @@ export const adminTranslations = {
         autoProvisionDescription:
           'Create a Marmot account on first login and add it to the organization.',
         defaultRoleDescription: 'Role given to users who join through SSO.',
+        groupClaimDescription:
+          'OIDC claim or SAML attribute that lists the groups (default `groups`; dotted paths such as `realm_access.roles` work).',
+        allowedGroupsDescription:
+          'Comma-separated, case-insensitive. When set, only members of these groups can sign in through this connection.',
+        groupRolesDescription:
+          'Organization role per group, applied on every login; the highest matching role wins. The last owner is never demoted.',
       },
       ssoDomains: {
         verificationTokenDescription: 'Value of the DNS TXT record that proves ownership.',

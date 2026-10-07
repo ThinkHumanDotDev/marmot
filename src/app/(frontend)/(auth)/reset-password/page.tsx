@@ -5,6 +5,7 @@ import { getTranslations } from 'next-intl/server'
 import { AuthCard } from '@/components/auth/auth-card'
 import { ResetPasswordForm } from '@/components/auth/reset-password-form'
 import { Button } from '@/components/ui/button'
+import { isBreakGlassEnabled, isLocalLoginDisabled } from '@/server/sso/local-login'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('auth.resetPassword')
@@ -18,6 +19,17 @@ export default async function ResetPasswordPage({
 }) {
   const { token } = await searchParams
   const t = await getTranslations('auth.resetPassword')
+
+  // SSO-only mode without break-glass: nobody has a password to reset.
+  if (isLocalLoginDisabled() && !isBreakGlassEnabled()) {
+    return (
+      <AuthCard title={t('disabledTitle')} description={t('disabledDescription')}>
+        <Button asChild className="w-full">
+          <Link href="/login">{t('backToSignIn')}</Link>
+        </Button>
+      </AuthCard>
+    )
+  }
 
   if (!token) {
     return (

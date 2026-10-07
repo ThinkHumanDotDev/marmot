@@ -9,6 +9,24 @@ import { z } from 'zod'
 
 import type { Messages } from '@/i18n/messages'
 import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
+import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
+import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
+
+import {
+  ASSERTION_COMPARATORS,
+  ASSERTION_KINDS,
+  assertionProblems,
+  MAX_ASSERTION_TARGET_LENGTH,
+  MAX_ASSERTION_VALUE_LENGTH,
+  MAX_ASSERTIONS_PER_KIND,
+  normalizeAssertions,
+  supportsAssertions,
+} from './assertions'
+import {
+  MAX_REMINDERS_LIMIT,
+  MAX_SUCCESS_THRESHOLD,
+  REMINDER_BACKOFFS,
+} from '@/lib/reminder-backoff'
 
 /** Key of a validation message under `monitors.validation` in the catalogues. */
 export type MonitorValidationKey = keyof Messages['monitors']['validation']
@@ -402,6 +420,18 @@ const tagRow = z.object({
   value: optionalText(200),
 })
 
+/** `monitors.assertions` row (see `./assertions.ts`); the value is kept verbatim (no trimming). */
+const assertionRow = z.object({
+  kind: z.enum(ASSERTION_KINDS),
+  target: optionalText(MAX_ASSERTION_TARGET_LENGTH),
+  comparator: z.enum(ASSERTION_COMPARATORS),
+  value: z
+    .string()
+    .max(MAX_ASSERTION_VALUE_LENGTH)
+    .nullish()
+    .transform((v) => (v ? v : null)),
+})
+
 const nonNegativeInt = (max = 1_000_000) => z.number().int().min(0).max(max)
 
 /** List of non-empty strings (brokers, nodes); blanks are dropped. */
@@ -457,6 +487,10 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         .max(MAX_INTERVAL_SECONDS),
       maxRetries: nonNegativeInt(1000),
       resendInterval: nonNegativeInt(100_000),
+      // Older exports and Uptime Kuma backups lack these: default to the Uptime Kuma behaviour.
+      successThreshold: z.number().int().min(1).max(MAX_SUCCESS_THRESHOLD).default(1),
+      reminderBackoff: z.enum(REMINDER_BACKOFFS).default('none'),
+      maxReminders: nonNegativeInt(MAX_REMINDERS_LIMIT).default(0),
       timeout: z.number().min(0).max(MAX_INTERVAL_SECONDS),
       /** Response time (ms) above which a successful check is DEGRADED; empty or 0 = off (#93). */
       // `null` (not `undefined`) when cleared, so a PATCH really removes the stored value.
@@ -493,6 +527,12 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       jsonPathOperator: z.enum(JSON_PATH_OPERATORS).default('=='),
       expectedValue: optionalText(2000),
 
+      // Assertions (HTTP family and DNS): all must pass
+      assertions: z
+        .array(assertionRow)
+        .max(ASSERTION_KINDS.length * MAX_ASSERTIONS_PER_KIND)
+        .default([]),
+
       // Authentication
       authMethod: z.enum(AUTH_METHODS).default('none'),
       basicAuthUser: optionalText(500),
@@ -512,6 +552,19 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       // DNS
       dnsResolveServer: optionalText(500),
       dnsResolveType: z.enum(DNS_RECORD_TYPES).default('A'),
+
+      // Push schedule
+      pushSchedule: z.enum(PUSH_SCHEDULE_TYPES).default('interval'),
+      pushCron: optionalText(200),
+      pushTimezone: z
+        .string()
+        .trim()
+        .max(100)
+        .nullish()
+        .transform((v) => v || SAME_AS_SERVER)
+        .refine(isValidTimezone, message('timezoneInvalid')),
+      pushGrace: z.number().int().min(0).max(MAX_PUSH_SECONDS).nullish().default(null),
+      pushMaxDuration: z.number().int().min(1).max(MAX_PUSH_SECONDS).nullish().default(null),
 
       // Manual
       manualStatus: z.enum(MANUAL_STATUSES).nullish(),
@@ -660,6 +713,19 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         }
       }
 
+      if (supportsAssertions(type)) {
+        for (const problem of assertionProblems(values.assertions, type)) {
+          ctx.addIssue({
+            code: 'custom',
+            path:
+              problem.index === null
+                ? ['assertions']
+                : ['assertions', problem.index, problem.field ?? 'kind'],
+            message: message(problem.key, problem.values),
+          })
+        }
+      }
+
       if (isKeywordMonitorType(type) && !values.keyword)
         issue('keyword', message('keywordRequired'))
       if (type === 'json-query' || (type === 'mqtt' && values.mqttCheckType === 'json-query')) {
@@ -676,6 +742,10 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       }
       if (type === 'dns' && !values.dnsResolveType) {
         issue('dnsResolveType', message('recordTypeRequired'))
+      }
+      if (type === 'push' && values.pushSchedule === 'cron') {
+        if (!values.pushCron) issue('pushCron', message('cronRequired'))
+        else if (!isValidCronPattern(values.pushCron)) issue('pushCron', message('cronInvalid'))
       }
       if (type === 'manual' && !values.manualStatus) {
         issue('manualStatus', message('manualStatusRequired'))
@@ -810,6 +880,9 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     retryInterval: 60,
     maxRetries: 0,
     resendInterval: 0,
+    successThreshold: 1,
+    reminderBackoff: 'none',
+    maxReminders: 0,
     timeout: 48,
     degradedAfter: null,
     upsideDown: false,
@@ -828,6 +901,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     jsonPath: null,
     jsonPathOperator: '==',
     expectedValue: null,
+    assertions: [],
     authMethod: 'none',
     basicAuthUser: null,
     basicAuthPass: null,
@@ -844,6 +918,11 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     tlsCa: null,
     dnsResolveServer: type === 'dns' ? '1.1.1.1' : null,
     dnsResolveType: 'A',
+    pushSchedule: 'interval',
+    pushCron: null,
+    pushTimezone: SAME_AS_SERVER,
+    pushGrace: null,
+    pushMaxDuration: null,
     manualStatus: type === 'manual' ? 'up' : null,
     dockerHost: null,
     dockerContainer: null,
@@ -931,9 +1010,13 @@ export function monitorToFormValues(doc: MonitorLike): MonitorFormValues {
       })
     : []
 
-  const out: Record<string, unknown> = { ...base, ...relations, tags, notifications }
+  // Stored rows carry Payload's row `id`; the form and exports use the bare shape.
+  const assertions = normalizeAssertions(doc.assertions)
+
+  const out: Record<string, unknown> = { ...base, ...relations, tags, notifications, assertions }
   for (const key of Object.keys(base) as (keyof MonitorFormValues)[]) {
-    if (key in relations || key === 'tags' || key === 'notifications') continue
+    if (key in relations || key === 'tags' || key === 'notifications' || key === 'assertions')
+      continue
     const value = doc[key]
     if (value !== undefined && value !== null) out[key] = value
   }

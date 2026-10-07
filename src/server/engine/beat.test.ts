@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  applyRecoveryThreshold,
   computeNextBeat,
   degradedMessage,
   flipStatus,
@@ -12,6 +13,7 @@ import {
   type BeatStatus,
   type CheckResult,
   type MonitorSettings,
+  type NextState,
 } from './beat'
 
 const settings = (over: Partial<MonitorSettings> = {}): MonitorSettings => ({
@@ -482,5 +484,144 @@ describe('notification events of the existing transitions', () => {
       notify: true,
       notificationEvent: 'reminder',
     })
+  })
+})
+
+describe('recovery threshold (#147)', () => {
+  const s = settings({ successThreshold: 3, maxRetries: 2 })
+  const down: NextState = computeNextBeat({ status: 'pending', retries: 2 }, fail(), s)
+
+  it('threshold 1 (default) keeps the Uptime Kuma path', () => {
+    expect(
+      applyRecoveryThreshold({ status: 'down' }, { status: 'up', msg: 'OK', retries: 0 }, {}),
+    ).toMatchObject({ status: 'up', recoveries: 0, previousStatus: 'down' })
+    const next = computeNextBeat(
+      { status: 'down', retries: 5 },
+      ok(),
+      settings({ successThreshold: 1 }),
+    )
+    expect(next).toMatchObject({ status: 'up', important: true, notify: true, recoveries: 0 })
+  })
+
+  it('needs N consecutive successes; the beats in between are PENDING "Recovering n/N"', () => {
+    expect(down).toMatchObject({ status: 'down', retries: 3, notify: true })
+
+    const r1 = computeNextBeat(down, ok(), s)
+    expect(r1).toMatchObject({
+      status: 'pending',
+      msg: 'Recovering 1/3: 200 - OK',
+      recoveries: 1,
+      retries: 3,
+      important: false,
+      notify: false,
+      nextIntervalSeconds: 20,
+    })
+    const r2 = computeNextBeat(r1, ok(), s)
+    expect(r2).toMatchObject({ status: 'pending', msg: 'Recovering 2/3: 200 - OK', recoveries: 2 })
+    const up = computeNextBeat(r2, ok(), s)
+    expect(up).toMatchObject({
+      status: 'up',
+      msg: '200 - OK',
+      recoveries: 0,
+      retries: 0,
+      important: true,
+      notify: true,
+    })
+  })
+
+  it('a failure during recovery goes straight back to DOWN, silently, and resets the count', () => {
+    const r1 = computeNextBeat(down, ok(), s)
+    const again = computeNextBeat(r1, fail('flap'), s)
+    expect(again).toMatchObject({
+      status: 'down',
+      msg: 'flap',
+      recoveries: 0,
+      important: false,
+      notify: false,
+    })
+    const r1b = computeNextBeat(again, ok(), s)
+    expect(r1b).toMatchObject({ status: 'pending', recoveries: 1 })
+  })
+
+  it('a flapping service produces one DOWN and one UP notification', () => {
+    const pattern = [false, true, false, true, true, false, true, true, true, true]
+    let state: NextState = computeNextBeat({ status: 'up', retries: 0 }, fail(), {
+      ...s,
+      maxRetries: 0,
+    })
+    const notified: string[] = [state.status]
+    for (const success of pattern) {
+      state = computeNextBeat(state, success ? ok() : fail(), { ...s, maxRetries: 0 })
+      if (state.notify) notified.push(state.status)
+    }
+    expect(notified).toEqual(['down', 'up'])
+    expect(state.status).toBe('up')
+  })
+
+  it('does not apply to PENDING retries from UP or to the first beat', () => {
+    const retry = computeNextBeat({ status: 'up', retries: 0 }, fail(), s)
+    expect(retry).toMatchObject({ status: 'pending', recoveries: 0 })
+    expect(computeNextBeat(retry, ok(), s)).toMatchObject({ status: 'up', important: false })
+    expect(computeNextBeat(null, ok(), s)).toMatchObject({ status: 'up', isFirstBeat: true })
+  })
+
+  it('a failure during recovery does not start a new retry round even if retries were reset', () => {
+    const next = computeNextBeat({ status: 'pending', retries: 0, recoveries: 2 }, fail(), s)
+    expect(next).toMatchObject({ status: 'down', important: false, notify: false })
+  })
+
+  it('maintenance ends the streak like it ends an outage', () => {
+    const r1 = computeNextBeat(down, ok(), s)
+    const maintenance = computeNextBeat(r1, { ok: false, msg: 'x', underMaintenance: true }, s)
+    expect(maintenance).toMatchObject({ status: 'maintenance', recoveries: 0, important: true })
+  })
+
+  it('counts upside-down successes (a failing check) towards recovery', () => {
+    const u = settings({ upsideDown: true, successThreshold: 2 })
+    const r1 = computeNextBeat({ status: 'down', retries: 1 }, fail('refused'), u)
+    expect(r1).toMatchObject({ status: 'pending', msg: 'Recovering 1/2: refused', recoveries: 1 })
+    expect(computeNextBeat(r1, fail('refused'), u)).toMatchObject({ status: 'up', notify: true })
+  })
+
+  it('reminders are not counted while recovering', () => {
+    const r = settings({ successThreshold: 2, resendInterval: 2 })
+    let state = computeNextBeat({ status: 'down', retries: 1, downCount: 1 }, ok(), r)
+    expect(state).toMatchObject({ status: 'pending', downCount: 1 })
+    state = computeNextBeat(state, fail(), r)
+    expect(state).toMatchObject({ status: 'down', downCount: 0, notify: true })
+  })
+
+  it('a slow success (DEGRADED) counts towards recovery and completes it as an up event', () => {
+    const d = settings({ successThreshold: 2, type: 'http', degradedAfter: 100 })
+    const r1 = computeNextBeat(
+      { status: 'down', retries: 1, settledStatus: 'down' },
+      ok('OK', 500),
+      d,
+    )
+    expect(r1).toMatchObject({ status: 'pending', recoveries: 1, notify: false })
+    expect(r1.msg).toMatch(/^Recovering 1\/2: OK \(response time 500 ms/)
+    expect(computeNextBeat(r1, ok('OK', 500), d)).toMatchObject({
+      status: 'degraded',
+      important: true,
+      notificationEvent: 'up',
+    })
+    expect(computeNextBeat(r1, ok('OK', 20), d)).toMatchObject({
+      status: 'up',
+      notificationEvent: 'up',
+      settledStatus: 'up',
+    })
+  })
+
+  it('a checker-offline beat keeps the streak', () => {
+    const r1 = computeNextBeat(down, ok(), s)
+    const held = computeNextBeat(r1, { ok: false, msg: 'checker offline', checkerOffline: true }, s)
+    expect(held).toMatchObject({ status: 'pending', recoveries: 1, notify: false })
+  })
+
+  it('emits the up event, not degraded, when recovering from DOWN', () => {
+    const r1 = computeNextBeat(down, ok(), s)
+    expect(r1.settledStatus).toBe('down')
+    const r2 = computeNextBeat(r1, ok(), s)
+    expect(computeNextBeat(r2, ok(), s)).toMatchObject({ notificationEvent: 'up' })
   })
 })
