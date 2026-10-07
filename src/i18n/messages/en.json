@@ -2931,7 +2931,8 @@
         "theme": "Theme",
         "groups": "Groups & monitors",
         "incidents": "Incidents",
-        "domains": "Domains"
+        "domains": "Domains",
+        "share": "Share"
       }
     },
     "settings": {
@@ -3265,6 +3266,50 @@
           "warning": "This puts the password in URLs, browser history and server logs. Prefer it only for clients that cannot keep a cookie."
         }
       }
+    },
+    "share": {
+      "title": "Status badge",
+      "description": "One badge with the overall state of this page (operational, degraded, outage or maintenance) for a README or a website footer. It links to the page and refreshes with the page's auto-refresh interval.",
+      "draftNotice": "The badge shows “Unknown” until the page is published.",
+      "address": "Address",
+      "mainAddress": "Marmot address (/status/…)",
+      "style": "Style",
+      "styles": {
+        "pill": "Pill (default)",
+        "flat": "Flat",
+        "flat-square": "Flat square",
+        "plastic": "Plastic",
+        "for-the-badge": "For the badge",
+        "social": "Social"
+      },
+      "theme": "Theme",
+      "themes": {
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "size": "Size",
+      "sizes": {
+        "sm": "Small",
+        "md": "Medium",
+        "lg": "Large",
+        "xl": "Extra large"
+      },
+      "variant": "Variant",
+      "variants": {
+        "default": "Filled",
+        "outline": "Outline"
+      },
+      "label": "Label",
+      "labelPlaceholderPill": "None",
+      "labelPlaceholderShields": "Status",
+      "preview": "Preview",
+      "markdown": "Markdown",
+      "html": "HTML",
+      "imageUrl": "Image URL",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Could not copy to the clipboard",
+      "altText": "{title} status"
     }
   },
   "maintenance": {
