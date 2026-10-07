@@ -48,6 +48,8 @@ attribution comment and are listed here:
 - `src/server/monitor-types/radius.ts` — `server/radius-client.js` and `radius` from `server/util-server.js`
 - `src/server/monitor-types/tailscale-ping.ts` — `server/monitor-types/tailscale-ping.js`
 - `src/server/monitor-types/steam.ts` — `server/monitor-types/steam.js`
+- `src/server/monitor-types/globalping.ts` — request shapes, the retry after a 500, API error and
+  "out of credits" messages and the probe location format of `server/monitor-types/globalping.js`
 - `src/server/monitor-types/gamedig.ts` — `server/monitor-types/gamedig.js`
 - `src/server/monitor-types/real-browser.ts` — `server/monitor-types/real-browser-monitor-type.js`
 - `src/server/notification-providers/http.ts` — error formatting and `extractAddress` from

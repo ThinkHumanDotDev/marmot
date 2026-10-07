@@ -29,6 +29,8 @@ export type HeartbeatContext = {
   }
   /** Held while the worker was offline (#148): not recorded, so it is neither up nor down. */
   checkerOffline?: boolean
+  /** Deferred by the check (#142, rate limit): held like a checker offline beat. */
+  deferred?: boolean
   /** Monitors are org-scoped, but the engine types the id as optional; beats without one are skipped. */
   organizationId?: string | number | null
 }
@@ -39,7 +41,7 @@ type HeartbeatListener = (ctx: HeartbeatContext) => Promise<void> | void
 export const createStatsListener =
   (payload: Payload): HeartbeatListener =>
   async (ctx) => {
-    if (ctx.checkerOffline) return
+    if (ctx.checkerOffline || ctx.deferred) return
     if (ctx.organizationId === null || ctx.organizationId === undefined) {
       log.warn(
         { monitorId: ctx.monitor.id },

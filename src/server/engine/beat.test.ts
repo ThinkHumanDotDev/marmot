@@ -618,6 +618,17 @@ describe('recovery threshold (#147)', () => {
     expect(held).toMatchObject({ status: 'pending', recoveries: 1, notify: false })
   })
 
+  it('a deferred check (rate limit, #142) is held like a checker-offline beat', () => {
+    const held = computeNextBeat(down, { ok: false, msg: 'rate limited', deferred: true }, s)
+    expect(held).toMatchObject({
+      status: 'pending',
+      msg: 'rate limited',
+      important: false,
+      notify: false,
+      retries: down.retries ?? 0,
+    })
+  })
+
   it('emits the up event, not degraded, when recovering from DOWN', () => {
     const r1 = computeNextBeat(down, ok(), s)
     expect(r1.settledStatus).toBe('down')

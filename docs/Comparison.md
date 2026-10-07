@@ -27,7 +27,8 @@ documentation remains the reference for the behaviour of the ported checks.
 | Real-browser (Chromium) monitor                                                                |      ✓      | **done**, via a remote Playwright browser server                             |
 | Docker container monitor, proxies                                                              |      ✓      | **planned** (#21)                                                            |
 | Oracle DB monitor                                                                              |      ✓      | not planned (driver too heavy for the default image)                         |
-| SIP options, system service, pm2, Globalping monitors                                          |      ✓      | not planned for now                                                          |
+| Globalping monitor                                                                             |      ✓      | **done**, several probes per check with a status rule (#142)                 |
+| SIP options, system service, pm2 monitors                                                      |      ✓      | not planned for now                                                          |
 | Intervals, retries, retry interval, resend interval, timeout                                   |      ✓      | **done**                                                                     |
 | Upside-down mode                                                                               |      ✓      | **done**                                                                     |
 | Accepted status codes, redirects, custom headers and body                                      |      ✓      | **done**                                                                     |
