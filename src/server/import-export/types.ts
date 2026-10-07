@@ -6,7 +6,8 @@
  */
 import type { ImportFormat, SkippedItem } from '@/lib/import-export'
 import type { MonitorFormValues } from '@/lib/validation/monitor'
-import type { Incident, StatusPage } from '@/payload-types'
+import type { TemplateKind } from '@/lib/templates'
+import type { Incident, StatusPage, Template } from '@/payload-types'
 
 export interface PlannedNotification {
   /** Source id as a string; monitors reference channels by this key. */
@@ -53,6 +54,8 @@ export type PlannedStatusPageFields = Pick<
 
 /** A group row (component). Static components have no `monitorKey`. */
 export interface PlannedStatusPageComponent {
+  /** Row id in the file; templates reference components by it. */
+  key?: string | null
   monitorKey: string | null
   type?: 'monitor' | 'static'
   name?: string | null
@@ -81,15 +84,34 @@ export interface PlannedStatusPage {
   incidents: PlannedIncident[]
 }
 
+export interface PlannedTemplate {
+  name: string
+  kind: TemplateKind
+  title: string | null
+  body: string | null
+  status: Template['status']
+  impact: Template['impact']
+  duration: number | null
+  /** Key of a planned status page, or `null` for a template offered on every page. */
+  statusPageKey: string | null
+  /** Default components by their row key in the file (`PlannedStatusPageComponent.key`). */
+  components: {
+    componentKey: string
+    impact: NonNullable<Template['components']>[number]['impact']
+  }[]
+}
+
 export interface ImportPlan {
   format: ImportFormat
   monitors: PlannedMonitor[]
   notifications: PlannedNotification[]
   statusPages: PlannedStatusPage[]
+  templates: PlannedTemplate[]
   skipped: {
     monitors: SkippedItem[]
     notifications: SkippedItem[]
     statusPages: SkippedItem[]
+    templates: SkippedItem[]
     tags: SkippedItem[]
   }
   warnings: string[]
@@ -100,7 +122,8 @@ export const emptyPlan = (format: ImportFormat): ImportPlan => ({
   monitors: [],
   notifications: [],
   statusPages: [],
-  skipped: { monitors: [], notifications: [], statusPages: [], tags: [] },
+  templates: [],
+  skipped: { monitors: [], notifications: [], statusPages: [], templates: [], tags: [] },
   warnings: [],
 })
 

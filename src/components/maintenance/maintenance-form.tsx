@@ -11,6 +11,11 @@ import { useForm, useWatch, type Control, type FieldPath } from 'react-hook-form
 import { toast } from 'sonner'
 
 import { TimezoneSelect } from '@/components/settings/timezone-select'
+import {
+  PlaceholderNotice,
+  TemplatePicker,
+  useTemplateDate,
+} from '@/components/templates/template-picker'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -23,6 +28,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -33,6 +39,12 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ApiError } from '@/lib/api'
+import {
+  fillPlaceholder,
+  findPlaceholders,
+  renderTemplateText,
+  type TemplateRow,
+} from '@/lib/templates'
 import { cn } from '@/lib/utils'
 import { timeZoneOrDefault } from '@/i18n/formats'
 import {
@@ -66,6 +78,10 @@ export interface MaintenanceFormProps {
   statusPages: StatusPageOption[]
   /** The organization's timezone, used for the "Organization default" label. */
   orgTimezone: string
+  /** Maintenance templates offered by "Use template" (create mode). */
+  templates?: TemplateRow[]
+  /** Name of the organization (`{{ organization }}` in templates). */
+  orgName?: string
 }
 
 type Name = FieldPath<MaintenanceFormInput>
@@ -260,8 +276,12 @@ export function MaintenanceForm({
   monitors,
   statusPages,
   orgTimezone,
+  templates = [],
+  orgName = '',
 }: MaintenanceFormProps) {
   const t = useTranslations('maintenance.form')
+  const tTemplates = useTranslations('templates')
+  const templateDate = useTemplateDate()
   const tv = useTranslations('maintenance.validation')
   const tStrategy = useTranslations('maintenance.strategies')
   const tHelp = useTranslations('maintenance.strategyHelp')
@@ -295,10 +315,11 @@ export function MaintenanceForm({
   })
   const { control, setValue, getValues } = form
 
-  const [strategy, timezone, cron, dateStart] = useWatch({
+  const [strategy, timezone, cron, dateStart, title, description] = useWatch({
     control,
-    name: ['strategy', 'timezone', 'cron', 'dateRange.start'],
+    name: ['strategy', 'timezone', 'cron', 'dateRange.start', 'title', 'description'],
   })
+  const unfilled = findPlaceholders(title, description)
   const scheduled = hasSchedule(strategy)
   const recurring = isRecurringStrategy(strategy)
   const previewZone =
@@ -340,7 +361,55 @@ export function MaintenanceForm({
     })
   }
 
+  /**
+   * "Use template": title and description from the template with its variables filled in, and its
+   * default duration as the end of a single window (from its start) or a cron window's duration.
+   */
+  function applyTemplate(template: TemplateRow) {
+    const minutes = template.duration
+    if (minutes) {
+      const start = getValues('dateRange.start')
+      if (getValues('strategy') === 'single' && start) {
+        const from = new Date(start)
+        if (!Number.isNaN(from.getTime())) {
+          setValue('dateRange.end', toDateTimeLocal(new Date(from.getTime() + minutes * 60_000)), {
+            shouldDirty: true,
+          })
+        }
+      } else if (getValues('strategy') === 'cron') {
+        setValue('duration', minutes, { shouldDirty: true })
+      }
+    }
+    // `datetime-local` values are wall-clock times: show them as typed (the browser's zone).
+    const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const wallClock = (value: string | null | undefined) => {
+      const date = value ? new Date(value) : null
+      return date && !Number.isNaN(date.getTime())
+        ? format.dateTime(date, 'short', { timeZone: localZone })
+        : null
+    }
+    const render = (text: string) =>
+      renderTemplateText(text, 'maintenance', {
+        organization: orgName,
+        start: wallClock(getValues('dateRange.start')),
+        end: wallClock(getValues('dateRange.end')),
+        duration: minutes ? tTemplates('duration', { minutes }) : null,
+        date: templateDate,
+      })
+    if (template.title) setValue('title', render(template.title), { shouldDirty: true })
+    setValue('description', render(template.body), { shouldDirty: true })
+    toast.success(tTemplates('picker.applied', { name: template.name }))
+  }
+
+  function fillTemplatePlaceholder(name: string, value: string) {
+    setValue('title', fillPlaceholder(getValues('title') ?? '', name, value), { shouldDirty: true })
+    setValue('description', fillPlaceholder(getValues('description') ?? '', name, value), {
+      shouldDirty: true,
+    })
+  }
+
   async function onSubmit(values: MaintenanceFormValues) {
+    if (unfilled.length > 0) return
     if (values.monitors.length === 0 && values.statusPages.length === 0) {
       form.setError('monitors', {
         message: t('noTargets'),
@@ -408,6 +477,16 @@ export function MaintenanceForm({
             <CardDescription>{t('general.description')}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5">
+            {mode === 'create' && templates.length > 0 && (
+              <div className="grid gap-2">
+                <Label htmlFor="maintenance-template">{tTemplates('picker.label')}</Label>
+                <TemplatePicker
+                  id="maintenance-template"
+                  templates={templates}
+                  onApply={applyTemplate}
+                />
+              </div>
+            )}
             <TextInputField
               control={control}
               name="title"
@@ -424,6 +503,9 @@ export function MaintenanceForm({
                     <Textarea
                       rows={3}
                       placeholder={t('descriptionPlaceholder')}
+                      className={
+                        findPlaceholders(field.value).length > 0 ? 'border-destructive' : undefined
+                      }
                       {...field}
                       value={(field.value as string | null | undefined) ?? ''}
                     />
@@ -432,6 +514,11 @@ export function MaintenanceForm({
                   <FormMessage />
                 </FormItem>
               )}
+            />
+            <PlaceholderNotice
+              idPrefix="maintenance"
+              names={unfilled}
+              onFill={fillTemplatePlaceholder}
             />
             <FormField
               control={control}
@@ -705,7 +792,11 @@ export function MaintenanceForm({
           <Button variant="outline" asChild>
             <Link href={`/${orgSlug}/maintenance`}>{t('cancel')}</Link>
           </Button>
-          <Button type="submit" disabled={pending} data-testid="maintenance-submit">
+          <Button
+            type="submit"
+            disabled={pending || unfilled.length > 0}
+            data-testid="maintenance-submit"
+          >
             {pending && <Loader2 className="animate-spin" />}
             {mode === 'create' ? t('create') : t('save')}
           </Button>

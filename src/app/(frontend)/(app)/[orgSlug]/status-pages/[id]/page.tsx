@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server'
 
 import { StatusPageEditor } from '@/components/status-pages/editor/status-page-editor'
 import type { MonitorOption } from '@/components/status-pages/api'
+import { toTemplateRow } from '@/lib/templates'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 
 import { resolveOrg } from '../resolve-org'
@@ -24,7 +25,7 @@ export default async function StatusPageEditorPage({
   const { payload, user, org, can } = await resolveOrg(orgSlug)
   const pageId = payload.db.defaultIDType === 'number' && /^\d+$/.test(id) ? Number(id) : id
 
-  const [{ docs: pages }, { docs: monitors }, timeZone] = await Promise.all([
+  const [{ docs: pages }, { docs: monitors }, timeZone, { docs: templates }] = await Promise.all([
     payload.find({
       collection: 'status-pages',
       where: { and: [{ id: { equals: pageId } }, { organization: { equals: org.id } }] },
@@ -44,6 +45,21 @@ export default async function StatusPageEditorPage({
       overrideAccess: false,
     }),
     getOrganizationTimezone(payload, org.id),
+    payload.find({
+      collection: 'templates',
+      where: {
+        and: [
+          { organization: { equals: org.id } },
+          { kind: { in: ['incident', 'incident-update'] } },
+        ],
+      },
+      sort: 'name',
+      limit: 500,
+      pagination: false,
+      depth: 0,
+      user,
+      overrideAccess: false,
+    }),
   ])
 
   const page = pages[0]
@@ -80,6 +96,8 @@ export default async function StatusPageEditorPage({
       canEdit={can('status-page:update')}
       canDelete={can('status-page:delete')}
       timeZone={timeZone}
+      orgName={org.name}
+      templates={templates.map(toTemplateRow)}
     />
   )
 }

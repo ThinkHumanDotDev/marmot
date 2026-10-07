@@ -10,6 +10,7 @@ export const PERMISSION_RESOURCE_KEYS = {
   notification: 'notification',
   'status-page': 'statusPage',
   maintenance: 'maintenance',
+  template: 'template',
   tag: 'tag',
   proxy: 'proxy',
   'docker-host': 'dockerHost',

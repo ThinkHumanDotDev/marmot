@@ -332,6 +332,17 @@ export const adminTranslations = {
       tags: {
         colorDescription: 'Hex colour of the chip, e.g. #2563EB.',
       },
+      templates: {
+        kindDescription:
+          'incident pre-fills a new incident, incident-update the update composer, maintenance the maintenance form.',
+        bodyDescription:
+          'Markdown with placeholders in double braces (page, components, eta, …). Unfilled placeholders block publishing.',
+        statusPageDescription:
+          'Status page the default components belong to. Empty: the template is offered on every page.',
+        componentsDescription: 'Default affected components (group row ids of the status page).',
+        impactDescription: 'Overall impact when the template names no component.',
+        durationDescription: 'Maintenance: default window length in minutes.',
+      },
       users: {
         superadminDescription:
           'Instance administrator: can access the Payload admin panel and every organization.',

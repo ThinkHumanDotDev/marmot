@@ -10,6 +10,7 @@ import {
   type ComponentImpact,
   type IncidentStatus,
 } from '@/lib/incident-timeline'
+import { findPlaceholders } from '@/lib/placeholders'
 import type { Incident } from '@/payload-types'
 import type { ErrorKey } from '@/server/errors'
 
@@ -31,7 +32,9 @@ export interface IncidentUpdateInput {
 export function parseUpdateInput(
   body: Record<string, unknown>,
   defaults: { status?: IncidentStatus } = {},
-): { ok: true; input: IncidentUpdateInput } | { ok: false; error: ErrorKey } {
+):
+  | { ok: true; input: IncidentUpdateInput }
+  | { ok: false; error: ErrorKey; values?: Record<string, string> } {
   const status = body.status ?? defaults.status
   if (!isIncidentStatus(status)) {
     return { ok: false, error: 'incidentUpdateStatusInvalid' }
@@ -57,6 +60,8 @@ export function parseUpdateInput(
   if (body.impact !== undefined && !isComponentImpact(body.impact)) {
     return { ok: false, error: 'incidentImpactInvalid' }
   }
+  const unfilled = unfilledPlaceholders(body.message)
+  if (unfilled) return { ok: false, error: 'templatePlaceholdersUnfilled', values: unfilled }
   return {
     ok: true,
     input: {
@@ -67,6 +72,17 @@ export function parseUpdateInput(
       ...(isComponentImpact(body.impact) ? { impact: body.impact } : {}),
     },
   }
+}
+
+/**
+ * Template placeholders (`{{ eta }}`) left in text about to be published (#153): the values for
+ * the `templatePlaceholdersUnfilled` error, or `null` when there are none. Markdown code is ignored.
+ */
+export function unfilledPlaceholders(...texts: unknown[]): { names: string } | null {
+  const names = findPlaceholders(
+    ...texts.filter((text): text is string => typeof text === 'string'),
+  )
+  return names.length > 0 ? { names: names.map((name) => `{{ ${name} }}`).join(', ') } : null
 }
 
 /** The update row a client sends for a new timeline entry (the hook assigns id and defaults). */

@@ -302,6 +302,8 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `status-page:create`, `status-page:update`, `status-page:delete`    |        |   ✓    |   ✓   |   ✓   |
 | `maintenance:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
 | `maintenance:create`, `maintenance:update`, `maintenance:delete`    |        |   ✓    |   ✓   |   ✓   |
+| `template:read`                                                     |   ✓    |   ✓    |   ✓   |   ✓   |
+| `template:create`, `template:update`, `template:delete`             |        |   ✓    |   ✓   |   ✓   |
 | `tag:read`                                                          |   ✓    |   ✓    |   ✓   |   ✓   |
 | `tag:create`, `tag:update`, `tag:delete`                            |        |   ✓    |   ✓   |   ✓   |
 | `proxy:read` (password only with `proxy:update`)                    |        |   ✓    |   ✓   |   ✓   |

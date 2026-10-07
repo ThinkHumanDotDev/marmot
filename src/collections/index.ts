@@ -21,6 +21,7 @@ import { StatHourly } from './StatHourly'
 import { StatMinutely } from './StatMinutely'
 import { StatusPages } from './StatusPages'
 import { Tags } from './Tags'
+import { Templates } from './Templates'
 import { Users } from './Users'
 
 /**
@@ -48,6 +49,7 @@ export const collections: CollectionConfig[] = [
   StatusPages,
   Incidents,
   Maintenance,
+  Templates,
   ApiKeys,
   AuditLogs,
 ]

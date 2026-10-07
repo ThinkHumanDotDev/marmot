@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { track } from '@/lib/analytics'
 import { componentDisplayName } from '@/lib/status-page-components'
+import type { TemplateRow } from '@/lib/templates'
 import type { Incident, StatusPage } from '@/payload-types'
 
 import {
@@ -40,6 +41,10 @@ export interface EditorProps {
   canDelete: boolean
   /** Organization time zone the incident timestamps render in. */
   timeZone: string
+  /** Name of the organization (`{{ organization }}` in templates). */
+  orgName: string
+  /** Incident templates of the organization (all pages, all kinds). */
+  templates: TemplateRow[]
 }
 
 /** The page's components (group rows, by row id) in display order: what an incident can affect. */
@@ -65,6 +70,8 @@ export function StatusPageEditor({
   canEdit,
   canDelete,
   timeZone,
+  orgName,
+  templates,
 }: EditorProps) {
   const t = useTranslations('statusPages.editorPage')
   const ta = useTranslations('statusPages.access.editor')
@@ -72,6 +79,16 @@ export function StatusPageEditor({
   const [publishing, setPublishing] = React.useState(false)
   const publicHref = publicStatusPagePath(page.slug)
   const incidentComponents = React.useMemo(() => pageComponents(page, monitors), [page, monitors])
+  const templateContext = React.useMemo(
+    () => ({
+      templates: templates.filter(
+        (template) => template.statusPage === null || template.statusPage === String(page.id),
+      ),
+      organization: orgName,
+      page: page.title,
+    }),
+    [templates, orgName, page.id, page.title],
+  )
 
   async function togglePublished(next: boolean) {
     setPublishing(true)
@@ -174,6 +191,7 @@ export function StatusPageEditor({
               pageId={page.id}
               initialIncidents={initialIncidents}
               components={incidentComponents}
+              templateContext={templateContext}
               timeZone={timeZone}
               canEdit={canEdit}
             />

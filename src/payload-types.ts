@@ -87,6 +87,7 @@ export interface Config {
     'status-pages': StatusPage;
     incidents: Incident;
     maintenance: Maintenance;
+    templates: Template;
     'api-keys': ApiKey;
     'audit-logs': AuditLog;
     'payload-kv': PayloadKv;
@@ -116,6 +117,7 @@ export interface Config {
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
     maintenance: MaintenanceSelect<false> | MaintenanceSelect<true>;
+    templates: TemplatesSelect<false> | TemplatesSelect<true>;
     'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -900,6 +902,31 @@ export interface Maintenance {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "templates".
+ */
+export interface Template {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  kind: 'incident' | 'incident-update' | 'maintenance';
+  title?: string | null;
+  body?: string | null;
+  status?: ('investigating' | 'identified' | 'monitoring' | 'resolved') | null;
+  impact?: ('operational' | 'degraded_performance' | 'partial_outage' | 'major_outage') | null;
+  duration?: number | null;
+  statusPage?: (number | null) | StatusPage;
+  components?:
+    | {
+        component: string;
+        impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "api-keys".
  */
 export interface ApiKey {
@@ -1042,6 +1069,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'maintenance';
         value: number | Maintenance;
+      } | null)
+    | ({
+        relationTo: 'templates';
+        value: number | Template;
       } | null)
     | ({
         relationTo: 'api-keys';
@@ -1633,6 +1664,30 @@ export interface MaintenanceSelect<T extends boolean = true> {
   duration?: T;
   monitors?: T;
   statusPages?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "templates_select".
+ */
+export interface TemplatesSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  kind?: T;
+  title?: T;
+  body?: T;
+  status?: T;
+  impact?: T;
+  duration?: T;
+  statusPage?: T;
+  components?:
+    | T
+    | {
+        component?: T;
+        impact?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }

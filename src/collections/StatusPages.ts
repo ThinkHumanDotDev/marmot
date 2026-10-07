@@ -18,6 +18,7 @@ import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 import { applyAccessPassword } from '@/server/status-pages/access-password'
 
 import { statusPageThemeFields } from './status-page-theme'
+import { detachTemplatesFromStatusPage } from './Templates'
 
 import type { StatusPage } from '@/payload-types'
 import type { ErrorKey } from '@/server/errors'
@@ -214,6 +215,7 @@ export const StatusPages: CollectionConfig = {
       applyAccessPassword,
       enforceEntitlementOnCreate('statusPages'),
     ],
+    beforeDelete: [detachTemplatesFromStatusPage],
   },
   indexes: [{ fields: ['organization', 'published'] }],
   fields: [

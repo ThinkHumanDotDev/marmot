@@ -48,6 +48,12 @@ export const PERMISSIONS = {
   'maintenance:update': 'member',
   'maintenance:delete': 'member',
 
+  // Incident and maintenance templates (#153): everyone reads them, whoever posts incidents writes them.
+  'template:read': 'viewer',
+  'template:create': 'member',
+  'template:update': 'member',
+  'template:delete': 'member',
+
   'tag:read': 'viewer',
   'tag:create': 'member',
   'tag:update': 'member',

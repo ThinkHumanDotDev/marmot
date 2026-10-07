@@ -36,6 +36,8 @@ interface ImportExportViewProps {
   canImportNotifications: boolean
   /** `status-page:create` */
   canImportStatusPages: boolean
+  /** `template:create` */
+  canImportTemplates: boolean
   /** `organization:update` */
   canExport: boolean
 }
@@ -59,6 +61,7 @@ export function ImportExportView({
   canImport,
   canImportNotifications,
   canImportStatusPages,
+  canImportTemplates,
   canExport,
 }: ImportExportViewProps) {
   const t = useTranslations('importExport')
@@ -140,10 +143,12 @@ export function ImportExportView({
             <p className="text-sm text-muted-foreground">{t('import.forbidden')}</p>
           ) : (
             <>
-              {(!canImportNotifications || !canImportStatusPages) && (
+              {(!canImportNotifications || !canImportStatusPages || !canImportTemplates) && (
                 <p className="text-sm text-muted-foreground">
                   {!canImportNotifications && t('import.skipNotifications')}
                   {!canImportStatusPages && t('import.skipStatusPages')}
+                  {!canImportStatusPages && !canImportTemplates && ' '}
+                  {!canImportTemplates && t('import.skipTemplates')}
                 </p>
               )}
               <input
