@@ -1,6 +1,7 @@
 'use client'
 
 import { ImageUp, Trash2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -29,6 +30,7 @@ export function ImageUpload({
   shape = 'square',
   className,
 }: ImageUploadProps) {
+  const t = useTranslations('common.imageUpload')
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [busy, setBusy] = React.useState(false)
 
@@ -37,7 +39,7 @@ export function ImageUpload({
     event.target.value = ''
     if (!file) return
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Please choose an image under 5 MB.')
+      toast.error(t('tooLarge'))
       return
     }
     setBusy(true)
@@ -45,7 +47,7 @@ export function ImageUpload({
       const media = await uploadMedia(file, label)
       await onChange(media)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Upload failed.')
+      toast.error(error instanceof Error ? error.message : t('failed'))
     } finally {
       setBusy(false)
     }
@@ -78,7 +80,7 @@ export function ImageUpload({
           className="sr-only"
           onChange={handleFile}
           disabled={disabled || busy}
-          aria-label={`Upload ${label} image`}
+          aria-label={t('inputLabel', { label })}
         />
         <Button
           type="button"
@@ -87,7 +89,7 @@ export function ImageUpload({
           disabled={disabled || busy}
           onClick={() => inputRef.current?.click()}
         >
-          <ImageUp /> {busy ? 'Uploading…' : value ? 'Replace' : 'Upload'}
+          <ImageUp /> {busy ? t('uploading') : value ? t('replace') : t('upload')}
         </Button>
         {value && (
           <Button
@@ -97,7 +99,7 @@ export function ImageUpload({
             disabled={disabled || busy}
             onClick={clear}
           >
-            <Trash2 /> Remove
+            <Trash2 /> {t('remove')}
           </Button>
         )}
       </div>

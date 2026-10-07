@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 
 import { MonitorForm } from '@/components/monitors/monitor-form'
@@ -16,7 +17,11 @@ import {
   getOrgPageContext,
 } from '@/server/monitors/page-data'
 
-export const metadata: Metadata = { title: 'New monitor' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('monitors.new')
+  return { title: t('pageTitle') }
+}
+
 export const dynamic = 'force-dynamic'
 
 interface NewMonitorPageProps {
@@ -42,6 +47,7 @@ export default async function NewMonitorPage({ params, searchParams }: NewMonito
     ...defaultMonitorValues(initialType),
     proxy: defaultProxy ? defaultProxy.id : null,
   }
+  const t = await getTranslations('monitors.new')
   const types = listMonitorTypes().map(({ name, label }) => ({ name, label }))
 
   return (
@@ -49,11 +55,11 @@ export default async function NewMonitorPage({ params, searchParams }: NewMonito
       <PageHeader
         eyebrow={
           <Link href={`/${orgSlug}/monitors`} className="hover:text-foreground">
-            ← Monitors
+            {t('back')}
           </Link>
         }
-        title="New monitor"
-        description="Marmot starts checking as soon as you save."
+        title={t('title')}
+        description={t('description')}
       />
       <section className="p-4 sm:p-6 md:p-8">
         <MonitorForm

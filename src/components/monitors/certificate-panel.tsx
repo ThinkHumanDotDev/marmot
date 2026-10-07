@@ -1,4 +1,5 @@
 import { Globe, ShieldAlert, ShieldCheck, ShieldX } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,7 +8,7 @@ import type { Monitor } from '@/payload-types'
 import { certificateChain, daysUntil, isTlsInfo, type CertificateInfo } from '@/server/engine/tls'
 import { isDomainExpiryInfo } from '@/server/jobs/domain-expiry'
 
-import { formatDateTime, formatRelative } from './format'
+import { useMonitorFormat } from './format'
 
 export type CertificatePanelMonitor = Pick<
   Monitor,
@@ -27,11 +28,15 @@ export function expiryTone(days: number | null | undefined): string {
   return 'text-status-up'
 }
 
-export function formatDaysRemaining(days: number | null | undefined): string {
-  if (days === null || days === undefined || !Number.isFinite(days)) return '–'
-  if (days < 0) return `expired ${Math.abs(days)} ${Math.abs(days) === 1 ? 'day' : 'days'} ago`
-  if (days === 0) return 'expires today'
-  return `${days} ${days === 1 ? 'day' : 'days'}`
+/** "12 days", "expires today", "expired 3 days ago". */
+function useDaysRemaining(): (days: number | null | undefined) => string {
+  const t = useTranslations('monitors.certificate')
+  return (days) => {
+    if (days === null || days === undefined || !Number.isFinite(days)) return '–'
+    if (days < 0) return t('expiredAgo', { count: Math.abs(days) })
+    if (days === 0) return t('expiresToday')
+    return t('days', { count: days })
+  }
 }
 
 /** Shorten `AA:BB:…` fingerprints for display while keeping the full value in `title`. */
@@ -62,6 +67,7 @@ function CertificateDetails({
   authorizationError,
   checkedAt,
   now,
+  timeZone,
 }: {
   cert: CertificateInfo
   valid: boolean
@@ -69,7 +75,11 @@ function CertificateDetails({
   authorizationError: string | null
   checkedAt: string
   now: Date
+  timeZone?: string
 }) {
+  const t = useTranslations('monitors.certificate')
+  const format = useMonitorFormat(timeZone)
+  const formatDaysRemaining = useDaysRemaining()
   // Recompute from `validTo` so the panel does not show the age-at-capture figure.
   const days = daysUntil(cert.validTo, now)
   const chain = certificateChain(cert)
@@ -80,24 +90,24 @@ function CertificateDetails({
       <div className="flex flex-wrap items-center gap-2">
         <Icon className={cn('size-4', valid ? 'text-status-up' : 'text-status-down')} aria-hidden />
         <Badge variant={valid ? 'secondary' : 'destructive'} data-testid="certificate-validity">
-          {valid ? 'Valid' : 'Invalid'}
+          {valid ? t('valid') : t('invalid')}
         </Badge>
-        {hostnameMatch === false && <Badge variant="outline">Hostname mismatch</Badge>}
+        {hostnameMatch === false && <Badge variant="outline">{t('hostnameMismatch')}</Badge>}
         <span className="text-xs text-muted-foreground">
-          Checked {formatRelative(checkedAt, now.getTime())}
+          {t('checked', { when: format.relative(checkedAt, now.getTime()) })}
         </span>
       </div>
 
       <dl className="flex flex-col gap-2">
-        <Row label="Subject">{cert.subjectCN ?? '–'}</Row>
-        <Row label="Issuer">
+        <Row label={t('subject')}>{cert.subjectCN ?? '–'}</Row>
+        <Row label={t('issuer')}>
           {cert.issuer.O
             ? `${cert.issuer.O}${cert.issuerCN ? ` · ${cert.issuerCN}` : ''}`
             : (cert.issuerCN ?? '–')}
         </Row>
-        <Row label="Valid from">{formatDateTime(cert.validFrom)}</Row>
-        <Row label="Valid until">{formatDateTime(cert.validTo)}</Row>
-        <Row label="Expires in">
+        <Row label={t('validFrom')}>{format.dateTime(cert.validFrom)}</Row>
+        <Row label={t('validUntil')}>{format.dateTime(cert.validTo)}</Row>
+        <Row label={t('expiresIn')}>
           <span
             className={cn('font-semibold tabular-nums', expiryTone(days))}
             data-testid="certificate-days-remaining"
@@ -105,16 +115,16 @@ function CertificateDetails({
             {formatDaysRemaining(days)}
           </span>
         </Row>
-        <Row label="Fingerprint" mono>
+        <Row label={t('fingerprint')} mono>
           <span title={cert.fingerprint256}>{shortFingerprint(cert.fingerprint256)}</span>
         </Row>
         {cert.validFor.length > 0 && (
-          <Row label="Valid for">
+          <Row label={t('validFor')}>
             <span className="font-mono text-xs">{cert.validFor.join(', ')}</span>
           </Row>
         )}
         {authorizationError && (
-          <Row label="Error">
+          <Row label={t('error')}>
             <span className="text-status-down">{authorizationError}</span>
           </Row>
         )}
@@ -123,7 +133,7 @@ function CertificateDetails({
       {chain.length > 1 && (
         <div>
           <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Chain
+            {t('chain')}
           </p>
           <ol className="flex flex-col gap-1 text-xs" data-testid="certificate-chain">
             {chain.map((link, index) => {
@@ -135,7 +145,7 @@ function CertificateDetails({
                 >
                   <span className="min-w-0 truncate">
                     <span className="text-muted-foreground">{index + 1}.</span>{' '}
-                    {link.subjectCN ?? '(no CN)'}{' '}
+                    {link.subjectCN ?? t('noCommonName')}{' '}
                     <span className="text-muted-foreground">({link.certType})</span>
                   </span>
                   <span className={cn('shrink-0 tabular-nums', expiryTone(linkDays))}>
@@ -158,10 +168,16 @@ function CertificateDetails({
 export function CertificatePanel({
   monitor,
   now = new Date(),
+  timeZone,
 }: {
   monitor: CertificatePanelMonitor
   now?: Date
+  /** Zone of the validity dates (the organization's). */
+  timeZone?: string
 }) {
+  const t = useTranslations('monitors.certificate')
+  const format = useMonitorFormat(timeZone)
+  const formatDaysRemaining = useDaysRemaining()
   const tls = isTlsInfo(monitor.certInfo) ? monitor.certInfo : null
   const domain = isDomainExpiryInfo(monitor.domainExpiry) ? monitor.domainExpiry : null
   const isHttps = ['http', 'keyword', 'json-query'].includes(monitor.type)
@@ -172,11 +188,9 @@ export function CertificatePanel({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <ShieldCheck className="size-4 text-muted-foreground" aria-hidden />
-          Certificate
+          {t('title')}
         </CardTitle>
-        <CardDescription>
-          Issuer, validity window and days until expiry of the server certificate.
-        </CardDescription>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         {tls?.certInfo ? (
@@ -187,38 +201,37 @@ export function CertificatePanel({
             authorizationError={tls.authorizationError ?? null}
             checkedAt={tls.checkedAt}
             now={now}
+            timeZone={timeZone}
           />
         ) : (
           <p className="text-sm text-muted-foreground" data-testid="certificate-empty">
-            {isHttps
-              ? 'No certificate captured yet. It appears after the first check of an https:// URL.'
-              : 'Certificates are captured for HTTPS monitors.'}
+            {isHttps ? t('emptyHttps') : t('emptyOther')}
           </p>
         )}
 
         <p className="text-xs text-muted-foreground">
           {monitor.ignoreTls
-            ? 'TLS errors are ignored for this monitor, so no expiry warnings are sent.'
+            ? t('tlsIgnored')
             : monitor.expiryNotification
-              ? 'Expiry notifications are switched on for this monitor.'
-              : 'Turn on "Certificate expiry notification" in the monitor settings to be warned before it expires.'}
+              ? t('notificationsOn')
+              : t('notificationsOff')}
         </p>
 
         {(domain || monitor.domainExpiryNotification) && (
           <div className="border-t pt-4" data-testid="domain-expiry">
             <p className="mb-2 flex items-center gap-2 text-sm font-medium">
               <Globe className="size-4 text-muted-foreground" aria-hidden />
-              Domain registration
+              {t('domainTitle')}
             </p>
             {domain ? (
               <dl className="flex flex-col gap-2">
-                <Row label="Domain" mono>
+                <Row label={t('domain')} mono>
                   {domain.domain}
                 </Row>
                 {domain.expiresAt ? (
                   <>
-                    <Row label="Expires on">{formatDateTime(domain.expiresAt)}</Row>
-                    <Row label="Expires in">
+                    <Row label={t('expiresOn')}>{format.dateTime(domain.expiresAt)}</Row>
+                    <Row label={t('expiresIn')}>
                       <span
                         className={cn('font-semibold tabular-nums', expiryTone(domainDays))}
                         data-testid="domain-days-remaining"
@@ -228,18 +241,18 @@ export function CertificatePanel({
                     </Row>
                   </>
                 ) : (
-                  <Row label="Expires on">
+                  <Row label={t('expiresOn')}>
                     <span className="text-muted-foreground">
-                      {domain.error ?? 'Unknown (no expiration published)'}
+                      {domain.error ?? t('domainUnknown')}
                     </span>
                   </Row>
                 )}
-                <Row label="Checked">{formatRelative(domain.checkedAt, now.getTime())}</Row>
+                <Row label={t('domainChecked')}>
+                  {format.relative(domain.checkedAt, now.getTime())}
+                </Row>
               </dl>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                The registration is looked up via RDAP on the next check.
-              </p>
+              <p className="text-sm text-muted-foreground">{t('domainPending')}</p>
             )}
           </div>
         )}

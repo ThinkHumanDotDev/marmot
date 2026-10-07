@@ -1,7 +1,9 @@
+import { useTranslations } from 'next-intl'
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
-import { formatPing, formatUptime } from './format'
+import { useMonitorFormat } from './format'
 
 export interface UptimeSummary {
   /** 0..1 */
@@ -53,38 +55,40 @@ function StatTile({
 
 /** Uptime (24h / 30d / 1y) and ping tiles, Uptime Kuma's detail header row. */
 export function UptimeCards({ summary }: { summary: UptimeSummary }) {
+  const t = useTranslations('monitors.stats')
+  const format = useMonitorFormat()
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-5" data-testid="uptime-cards">
       <StatTile
-        label="Response"
-        hint="Latest check"
-        value={formatPing(summary.lastPing)}
+        label={t('response')}
+        hint={t('latestCheck')}
+        value={format.ping(summary.lastPing)}
         testId="stat-response"
       />
       <StatTile
-        label="Avg. response"
-        hint="Last 24 hours"
-        value={formatPing(summary.avgPing24h)}
+        label={t('avgResponse')}
+        hint={t('last24Hours')}
+        value={format.ping(summary.avgPing24h)}
         testId="stat-avg-response"
       />
       <StatTile
-        label="Uptime"
-        hint="Last 24 hours"
-        value={formatUptime(summary.uptime24h)}
+        label={t('uptime')}
+        hint={t('last24Hours')}
+        value={format.uptime(summary.uptime24h)}
         valueClassName={tier(summary.uptime24h)}
         testId="stat-uptime-24h"
       />
       <StatTile
-        label="Uptime"
-        hint="Last 30 days"
-        value={formatUptime(summary.uptime30d)}
+        label={t('uptime')}
+        hint={t('last30Days')}
+        value={format.uptime(summary.uptime30d)}
         valueClassName={tier(summary.uptime30d)}
         testId="stat-uptime-30d"
       />
       <StatTile
-        label="Uptime"
-        hint="Last year"
-        value={formatUptime(summary.uptime1y)}
+        label={t('uptime')}
+        hint={t('lastYear')}
+        value={format.uptime(summary.uptime1y)}
         valueClassName={tier(summary.uptime1y)}
         testId="stat-uptime-1y"
       />

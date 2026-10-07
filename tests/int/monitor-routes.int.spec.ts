@@ -13,7 +13,8 @@ import { POST as cloneMonitor } from '@/app/api/orgs/[orgId]/monitors/[id]/clone
 import { POST as pauseMonitor } from '@/app/api/orgs/[orgId]/monitors/[id]/pause/route'
 import { POST as resumeMonitor } from '@/app/api/orgs/[orgId]/monitors/[id]/resume/route'
 import { env } from '@/env'
-import { defaultMonitorValues, monitorFormSchema } from '@/lib/validation/monitor'
+import { defaultMonitorValues } from '@/lib/validation/monitor'
+import { monitorFormSchema } from '@/lib/validation/monitor-schema'
 import type { Monitor, Organization, User } from '@/payload-types'
 
 let payload: Payload

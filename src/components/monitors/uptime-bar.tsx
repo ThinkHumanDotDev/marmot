@@ -1,4 +1,6 @@
-import { describeBeats, statusLabel } from '@/components/status-dot'
+import { useFormatter, useTranslations } from 'next-intl'
+
+import { useDescribeBeats } from '@/components/status-dot'
 import { cn } from '@/lib/utils'
 import { statusKey, type Heartbeat } from '@/stores/monitor-store'
 
@@ -21,6 +23,10 @@ interface UptimeBarProps {
 
 /** Row of thin bars, one per recent heartbeat, coloured by status. Empty slots stay muted. */
 export function UptimeBar({ beats, count = UPTIME_BAR_BEATS, className }: UptimeBarProps) {
+  const describeBeats = useDescribeBeats()
+  const tStatus = useTranslations('common.status')
+  const tFormat = useTranslations('monitors.format')
+  const format = useFormatter()
   const recent = beats.slice(-count)
   const padding = Math.max(0, count - recent.length)
 
@@ -39,9 +45,10 @@ export function UptimeBar({ beats, count = UPTIME_BAR_BEATS, className }: Uptime
       ))}
       {recent.map((beat, i) => {
         const key = statusKey(beat.status)
-        const title = `${statusLabel[key]} · ${new Date(beat.time).toLocaleString()}${
-          beat.ping != null ? ` · ${Math.round(beat.ping)} ms` : ''
-        }${beat.msg ? ` · ${beat.msg}` : ''}`
+        const parts = [tStatus(key), format.dateTime(new Date(beat.time), 'precise')]
+        if (beat.ping != null) parts.push(tFormat('ping', { ms: Math.round(beat.ping) }))
+        if (beat.msg) parts.push(beat.msg)
+        const title = parts.join(' · ')
         return (
           <span
             key={`${beat.time}-${i}`}

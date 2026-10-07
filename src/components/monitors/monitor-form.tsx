@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2, Plus, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { useForm, useWatch, type Control, type FieldPath } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -53,8 +54,10 @@ import {
   JSON_PATH_OPERATORS,
   MANUAL_STATUSES,
   MONITOR_TYPE_GROUPS,
-  monitorFormSchema,
+  type MonitorTypeGroup,
+  createMonitorFormSchema,
   MQTT_CHECK_TYPES,
+  OAUTH_AUTH_METHODS,
   SMTP_SECURITY_MODES,
   SNMP_VERSIONS,
   SSH_AUTH_METHODS,
@@ -96,28 +99,6 @@ type Name = FieldPath<MonitorFormInput>
 type FormControlType = Control<MonitorFormInput, unknown, MonitorFormValues>
 
 const NONE = '__none__'
-
-const AUTH_LABELS: Record<(typeof AUTH_METHODS)[number], string> = {
-  none: 'None',
-  basic: 'HTTP Basic',
-  bearer: 'Bearer token',
-  'oauth2-cc': 'OAuth2 client credentials',
-  ntlm: 'NTLM',
-  mtls: 'mTLS (client certificate)',
-}
-
-const ENCODING_LABELS: Record<(typeof BODY_ENCODINGS)[number], string> = {
-  json: 'JSON',
-  form: 'Form (x-www-form-urlencoded)',
-  xml: 'XML',
-}
-
-const SMTP_SECURITY_LABELS: Record<(typeof SMTP_SECURITY_MODES)[number], string> = {
-  opportunistic: 'STARTTLS if offered',
-  starttls: 'Require STARTTLS',
-  secure: 'SMTPS (implicit TLS)',
-  nostarttls: 'Ignore STARTTLS',
-}
 
 /** WebSocket upgrades carry credentials only as headers or client certificates. */
 const WS_AUTH_METHODS = AUTH_METHODS.filter((m) => m !== 'oauth2-cc' && m !== 'ntlm')
@@ -376,6 +357,7 @@ function ListField({
   description?: React.ReactNode
   placeholder?: string
 }) {
+  const t = useTranslations('monitors.form')
   return (
     <FormField
       control={control}
@@ -404,7 +386,7 @@ function ListField({
                 }
               />
             </FormControl>
-            <FormDescription>{description ?? 'One per line.'}</FormDescription>
+            <FormDescription>{description ?? t('onePerLine')}</FormDescription>
             <FormMessage />
           </FormItem>
         )
@@ -416,13 +398,14 @@ function ListField({
 /** Chip input for accepted status codes / ranges (Enter, comma or space adds; Backspace removes). */
 function StatusCodesField({
   control,
-  label = 'Accepted status codes',
+  label,
   description,
 }: {
   control: FormControlType
   label?: string
   description?: React.ReactNode
 }) {
+  const t = useTranslations('monitors.form')
   const [draft, setDraft] = React.useState('')
   return (
     <FormField
@@ -439,7 +422,7 @@ function StatusCodesField({
         }
         return (
           <FormItem>
-            <FormLabel>{label}</FormLabel>
+            <FormLabel>{label ?? t('statusCodes.label')}</FormLabel>
             <FormControl>
               <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-input px-2 py-1 shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30">
                 {codes.map((code) => (
@@ -447,7 +430,7 @@ function StatusCodesField({
                     {code}
                     <button
                       type="button"
-                      aria-label={`Remove ${code}`}
+                      aria-label={t('statusCodes.remove', { code })}
                       className="rounded-full p-0.5 hover:bg-foreground/10"
                       onClick={() => field.onChange(codes.filter((c) => c !== code))}
                     >
@@ -456,7 +439,7 @@ function StatusCodesField({
                   </Badge>
                 ))}
                 <input
-                  aria-label="Add status code"
+                  aria-label={t('statusCodes.add')}
                   className="h-7 min-w-24 flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground"
                   placeholder={codes.length ? '' : '200-299'}
                   value={draft}
@@ -474,11 +457,8 @@ function StatusCodesField({
               </div>
             </FormControl>
             <FormDescription>
-              {description ?? (
-                <>
-                  Codes or ranges counted as UP, e.g. <code>200-299</code>, <code>304</code>.
-                </>
-              )}
+              {description ??
+                t.rich('statusCodes.description', { code: (chunks) => <code>{chunks}</code> })}
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -498,9 +478,10 @@ function TagsField({
   tags: MonitorFormResources['tags']
   orgSlug: string
 }) {
+  const t = useTranslations('monitors.form')
   const [draftTag, setDraftTag] = React.useState<string>('')
   const [draftValue, setDraftValue] = React.useState('')
-  const byId = React.useMemo(() => new Map(tags.map((t) => [String(t.id), t])), [tags])
+  const byId = React.useMemo(() => new Map(tags.map((tag) => [String(tag.id), tag])), [tags])
 
   return (
     <FormField
@@ -509,7 +490,7 @@ function TagsField({
       render={({ field }) => {
         const rows = (field.value as { tag: string | number; value?: string | null }[]) ?? []
         const used = new Set(rows.map((row) => String(row.tag)))
-        const available = tags.filter((t) => !used.has(String(t.id)))
+        const available = tags.filter((tag) => !used.has(String(tag.id)))
         const add = () => {
           const tag = byId.get(draftTag)
           if (!tag) return
@@ -519,7 +500,7 @@ function TagsField({
         }
         return (
           <FormItem>
-            <FormLabel>Tags</FormLabel>
+            <FormLabel>{t('tags.label')}</FormLabel>
             {rows.length > 0 && (
               <div className="flex flex-wrap gap-1.5" data-testid="monitor-tags">
                 {rows.map((row) => {
@@ -528,7 +509,7 @@ function TagsField({
                     <TagChip
                       key={String(row.tag)}
                       tag={{
-                        name: tag?.name ?? 'Unknown tag',
+                        name: tag?.name ?? t('tags.unknown'),
                         color: tag?.color,
                         value: row.value,
                       }}
@@ -536,7 +517,9 @@ function TagsField({
                     >
                       <button
                         type="button"
-                        aria-label={`Remove ${tag?.name ?? 'tag'}`}
+                        aria-label={t('tags.remove', {
+                          name: tag?.name ?? t('tags.removeFallback'),
+                        })}
                         className="rounded-full p-0.5 hover:bg-foreground/10"
                         onClick={() =>
                           field.onChange(rows.filter((r) => String(r.tag) !== String(row.tag)))
@@ -551,11 +534,16 @@ function TagsField({
             )}
             {tags.length === 0 ? (
               <FormDescription>
-                No tags yet.{' '}
-                <Link href={`/${orgSlug}/settings/tags`} className="underline underline-offset-2">
-                  Create tags
-                </Link>{' '}
-                to label monitors.
+                {t.rich('tags.empty', {
+                  link: (chunks) => (
+                    <Link
+                      href={`/${orgSlug}/settings/tags`}
+                      className="underline underline-offset-2"
+                    >
+                      {chunks}
+                    </Link>
+                  ),
+                })}
               </FormDescription>
             ) : (
               <>
@@ -563,29 +551,29 @@ function TagsField({
                   <Select value={draftTag} onValueChange={setDraftTag}>
                     <SelectTrigger
                       className="w-full"
-                      aria-label="Tag to add"
+                      aria-label={t('tags.tagToAdd')}
                       disabled={available.length === 0}
                     >
                       <SelectValue
-                        placeholder={available.length ? 'Choose a tag' : 'All tags added'}
+                        placeholder={available.length ? t('tags.chooseTag') : t('tags.allAdded')}
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {available.map((t) => (
-                        <SelectItem key={String(t.id)} value={String(t.id)}>
+                      {available.map((tag) => (
+                        <SelectItem key={String(tag.id)} value={String(tag.id)}>
                           <span
                             className="size-2.5 rounded-full"
-                            style={{ backgroundColor: t.color }}
+                            style={{ backgroundColor: tag.color }}
                             aria-hidden
                           />
-                          {t.name}
+                          {tag.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <Input
-                    aria-label="Tag value (optional)"
-                    placeholder="Value (optional)"
+                    aria-label={t('tags.valueLabel')}
+                    placeholder={t('tags.valuePlaceholder')}
                     value={draftValue}
                     maxLength={200}
                     onChange={(e) => setDraftValue(e.target.value)}
@@ -597,14 +585,20 @@ function TagsField({
                     }}
                   />
                   <Button type="button" variant="outline" onClick={add} disabled={!draftTag}>
-                    <Plus /> Add
+                    <Plus /> {t('tags.add')}
                   </Button>
                 </div>
                 <FormDescription>
-                  Shown in the monitor list and on status pages that enable tags.{' '}
-                  <Link href={`/${orgSlug}/settings/tags`} className="underline underline-offset-2">
-                    Manage tags
-                  </Link>
+                  {t.rich('tags.description', {
+                    link: (chunks) => (
+                      <Link
+                        href={`/${orgSlug}/settings/tags`}
+                        className="underline underline-offset-2"
+                      >
+                        {chunks}
+                      </Link>
+                    ),
+                  })}
                 </FormDescription>
               </>
             )}
@@ -623,7 +617,7 @@ function RelationSelectField({
   label,
   description,
   options,
-  noneLabel = 'None',
+  noneLabel,
 }: {
   control: FormControlType
   name: Name
@@ -633,6 +627,8 @@ function RelationSelectField({
   /** `null` hides the "none" entry (required relationship). */
   noneLabel?: string | null
 }) {
+  const t = useTranslations('monitors.form')
+  const none = noneLabel === undefined ? t('none') : noneLabel
   return (
     <FormField
       control={control}
@@ -643,7 +639,7 @@ function RelationSelectField({
           <FormItem>
             <FormLabel>{label}</FormLabel>
             <Select
-              value={empty ? (noneLabel === null ? '' : NONE) : String(field.value)}
+              value={empty ? (none === null ? '' : NONE) : String(field.value)}
               onValueChange={(value) => {
                 if (value === NONE) return field.onChange(null)
                 const match = options.find((o) => String(o.id) === value)
@@ -652,11 +648,11 @@ function RelationSelectField({
             >
               <FormControl>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Choose…" />
+                  <SelectValue placeholder={t('choose')} />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {noneLabel !== null && <SelectItem value={NONE}>{noneLabel}</SelectItem>}
+                {none !== null && <SelectItem value={NONE}>{none}</SelectItem>}
                 {options.map((o) => (
                   <SelectItem key={String(o.id)} value={String(o.id)}>
                     {o.label}
@@ -709,11 +705,20 @@ export function MonitorForm({
   groups,
   resources = EMPTY_RESOURCES,
 }: MonitorFormProps) {
+  const t = useTranslations('monitors.form')
+  const tMonitors = useTranslations('monitors')
+  const tValidation = useTranslations('monitors.validation')
+  const tDuration = useTranslations('common.duration')
   const router = useRouter()
   const [pending, setPending] = React.useState(false)
+  // Client-side validation messages in the user's language (the API answers in English).
+  const schema = React.useMemo(
+    () => createMonitorFormSchema((key, values) => tValidation(key, values)),
+    [tValidation],
+  )
 
   const form = useForm<MonitorFormInput, unknown, MonitorFormValues>({
-    resolver: zodResolver(monitorFormSchema),
+    resolver: zodResolver(schema),
     defaultValues: initialValues,
     mode: 'onTouched',
   })
@@ -755,20 +760,25 @@ export function MonitorForm({
     type === 'mongodb' ||
     type === 'snmp' ||
     (type === 'mqtt' && mqttCheckType === 'json-query')
-  const registered = React.useMemo(() => new Map(types.map((t) => [t.name, t.label])), [types])
+  const registered = React.useMemo(() => new Set(types.map((info) => info.name)), [types])
 
+  // Labels and descriptions come from the catalogue (`monitors.types`, `monitors.typeGroups`).
   const typeGroups = React.useMemo(
     () =>
       Object.entries(MONITOR_TYPE_GROUPS)
         .map(([key, group]) => ({
           key,
-          label: group.label,
+          label: tMonitors(`typeGroups.${key as MonitorTypeGroup}`),
           types: group.types
-            .filter((t) => types.length === 0 || registered.has(t.name))
-            .map((t) => ({ ...t, label: registered.get(t.name) ?? t.label })),
+            .filter((option) => types.length === 0 || registered.has(option.name))
+            .map((option) => ({
+              name: option.name,
+              label: tMonitors(`types.${option.name}.label`),
+              description: tMonitors(`types.${option.name}.description`),
+            })),
         }))
         .filter((g) => g.types.length > 0),
-    [types, registered],
+    [types, registered, tMonitors],
   )
   const typeDescription = typeGroups
     .flatMap((g) => g.types)
@@ -787,7 +797,7 @@ export function MonitorForm({
               values,
             )
       if (mode === 'create') track('monitor_created', { type: values.type })
-      toast.success(mode === 'create' ? 'Monitor created' : 'Monitor saved')
+      toast.success(mode === 'create' ? t('created') : t('saved'))
       router.push(`/${orgSlug}/monitors/${doc.id}`)
       router.refresh()
     } catch (error) {
@@ -807,15 +817,17 @@ export function MonitorForm({
         for (const issue of issues) {
           form.setError(issue.path as Name, { message: issue.message })
         }
-        toast.error('Please fix the highlighted fields')
+        toast.error(t('fixFields'))
       } else {
-        toast.error(error instanceof Error ? error.message : 'Could not save the monitor')
+        toast.error(error instanceof Error ? error.message : t('saveFailed'))
       }
     }
   }
 
   const timingHint = (seconds: unknown) =>
-    typeof seconds === 'number' && Number.isFinite(seconds) ? humanDuration(seconds) : undefined
+    typeof seconds === 'number' && Number.isFinite(seconds)
+      ? humanDuration(seconds, (unit, count) => tDuration(unit, { count }))
+      : undefined
 
   return (
     <Form {...form}>
@@ -828,8 +840,8 @@ export function MonitorForm({
         {/* General ------------------------------------------------------------------------- */}
         <Card>
           <CardHeader>
-            <CardTitle>General</CardTitle>
-            <CardDescription>What to watch and how it shows up in the list.</CardDescription>
+            <CardTitle>{t('general.title')}</CardTitle>
+            <CardDescription>{t('general.description')}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5">
             <FormField
@@ -837,7 +849,7 @@ export function MonitorForm({
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Monitor type</FormLabel>
+                  <FormLabel>{t('general.type')}</FormLabel>
                   <Select
                     value={field.value}
                     onValueChange={(value) => {
@@ -876,8 +888,8 @@ export function MonitorForm({
             <TextField
               control={control}
               name="name"
-              label="Friendly name"
-              placeholder="Marketing site"
+              label={t('general.name')}
+              placeholder={t('general.namePlaceholder')}
               autoComplete="off"
             />
 
@@ -885,7 +897,7 @@ export function MonitorForm({
               <TextField
                 control={control}
                 name="url"
-                label="URL"
+                label={t('general.url')}
                 type="url"
                 placeholder={
                   isWebSocket ? 'wss://example.com/socket' : 'https://example.com/health'
@@ -899,7 +911,7 @@ export function MonitorForm({
                 <TextField
                   control={control}
                   name="hostname"
-                  label="Hostname"
+                  label={t('general.hostname')}
                   placeholder={type === 'tailscale-ping' ? 'my-node' : 'example.com'}
                   autoComplete="off"
                 />
@@ -907,7 +919,7 @@ export function MonitorForm({
                   <NumberField
                     control={control}
                     name="port"
-                    label={type === 'dns' ? 'Resolver port' : 'Port'}
+                    label={type === 'dns' ? t('general.resolverPort') : t('general.port')}
                     min={1}
                     max={65535}
                   />
@@ -920,14 +932,14 @@ export function MonitorForm({
                 <TextField
                   control={control}
                   name="keyword"
-                  label="Keyword"
-                  description="Searched in the response (case-sensitive)."
+                  label={t('general.keyword')}
+                  description={t('general.keywordDescription')}
                 />
                 <SwitchField
                   control={control}
                   name="invertKeyword"
-                  label="Invert keyword"
-                  description="UP when the keyword is absent."
+                  label={t('general.invertKeyword')}
+                  description={t('general.invertKeywordDescription')}
                 />
               </>
             )}
@@ -939,21 +951,19 @@ export function MonitorForm({
                   name="jsonPath"
                   label={
                     type === 'json-query' || type === 'mqtt'
-                      ? 'JSON query'
-                      : 'JSON query (optional)'
+                      ? t('general.jsonQuery')
+                      : t('general.jsonQueryOptional')
                   }
                   placeholder="$.status"
-                  description={
-                    <>
-                      JSONata expression evaluated against the result, e.g. <code>data[0].ok</code>.
-                    </>
-                  }
+                  description={t.rich('general.jsonQueryDescription', {
+                    code: (chunks) => <code>{chunks}</code>,
+                  })}
                 />
                 <div className="grid gap-5 sm:grid-cols-[10rem_1fr]">
                   <SelectField
                     control={control}
                     name="jsonPathOperator"
-                    label="Condition"
+                    label={t('general.condition')}
                     options={JSON_PATH_OPERATORS.map((op) => ({ value: op, label: op }))}
                   />
                   <TextField
@@ -961,8 +971,8 @@ export function MonitorForm({
                     name="expectedValue"
                     label={
                       type === 'mongodb' || type === 'snmp'
-                        ? 'Expected value (optional)'
-                        : 'Expected value'
+                        ? t('general.expectedValueOptional')
+                        : t('general.expectedValue')
                     }
                   />
                 </div>
@@ -974,14 +984,14 @@ export function MonitorForm({
                 <TextField
                   control={control}
                   name="dnsResolveServer"
-                  label="Resolver server"
+                  label={t('general.resolverServer')}
                   placeholder="1.1.1.1"
-                  description="Comma-separated IPs or hostnames."
+                  description={t('general.resolverServerDescription')}
                 />
                 <SelectField
                   control={control}
                   name="dnsResolveType"
-                  label="Record type"
+                  label={t('general.recordType')}
                   options={DNS_RECORD_TYPES.map((t) => ({ value: t, label: t }))}
                 />
               </div>
@@ -991,11 +1001,11 @@ export function MonitorForm({
               <SelectField
                 control={control}
                 name="manualStatus"
-                label="Status to report"
-                description="Manual monitors are never checked; they show the status you set."
+                label={t('general.manualStatus')}
+                description={t('general.manualStatusDescription')}
                 options={MANUAL_STATUSES.map((s) => ({
                   value: s,
-                  label: s[0].toUpperCase() + s.slice(1),
+                  label: t(`general.manualStatusOption.${s}`),
                 }))}
               />
             )}
@@ -1005,28 +1015,28 @@ export function MonitorForm({
                 <RelationSelectField
                   control={control}
                   name="dockerHost"
-                  label="Docker host"
+                  label={t('general.dockerHost')}
                   noneLabel={null}
                   options={resources.dockerHosts.map((h) => ({ id: h.id, label: h.name }))}
                   description={
-                    resources.dockerHosts.length === 0 ? (
-                      <>
-                        No Docker hosts yet; an admin can add one in{' '}
-                        <Link
-                          href={`/${orgSlug}/settings/docker-hosts`}
-                          className="underline underline-offset-2"
-                        >
-                          settings
-                        </Link>
-                        .
-                      </>
-                    ) : undefined
+                    resources.dockerHosts.length === 0
+                      ? t.rich('general.dockerHostEmpty', {
+                          link: (chunks) => (
+                            <Link
+                              href={`/${orgSlug}/settings/docker-hosts`}
+                              className="underline underline-offset-2"
+                            >
+                              {chunks}
+                            </Link>
+                          ),
+                        })
+                      : undefined
                   }
                 />
                 <TextField
                   control={control}
                   name="dockerContainer"
-                  label="Container name / id"
+                  label={t('general.dockerContainer')}
                   placeholder="my-app"
                   autoComplete="off"
                 />
@@ -1035,8 +1045,7 @@ export function MonitorForm({
 
             {type === 'push' && (
               <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-                A push URL is generated when the monitor is saved. Call it at least every interval;
-                a missed call marks the monitor DOWN.
+                {t('general.push')}
               </p>
             )}
 
@@ -1045,7 +1054,7 @@ export function MonitorForm({
               name="parent"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Monitor group</FormLabel>
+                  <FormLabel>{t('general.group')}</FormLabel>
                   <Select
                     value={
                       field.value === null || field.value === undefined ? NONE : String(field.value)
@@ -1062,7 +1071,7 @@ export function MonitorForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value={NONE}>None</SelectItem>
+                      <SelectItem value={NONE}>{t('none')}</SelectItem>
                       {otherGroups.map((g) => (
                         <SelectItem key={String(g.id)} value={String(g.id)}>
                           {g.name}
@@ -1072,8 +1081,8 @@ export function MonitorForm({
                   </Select>
                   <FormDescription>
                     {otherGroups.length === 0
-                      ? 'Create a Group monitor to nest monitors under it.'
-                      : 'Groups aggregate the status of their children.'}
+                      ? t('general.groupEmpty')
+                      : t('general.groupDescription')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -1083,9 +1092,9 @@ export function MonitorForm({
             <TextareaField
               control={control}
               name="description"
-              label="Description"
+              label={t('general.descriptionLabel')}
               rows={3}
-              placeholder="Shown on the detail page and status pages."
+              placeholder={t('general.descriptionPlaceholder')}
             />
 
             <TagsField control={control} tags={resources.tags} orgSlug={orgSlug} />
@@ -1096,63 +1105,63 @@ export function MonitorForm({
         {type !== 'group' && type !== 'manual' && (
           <Card>
             <CardHeader>
-              <CardTitle>Timing</CardTitle>
-              <CardDescription>
-                How often to check and how patient to be before alerting.
-              </CardDescription>
+              <CardTitle>{t('timing.title')}</CardTitle>
+              <CardDescription>{t('timing.description')}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5 sm:grid-cols-2">
               <NumberField
                 control={control}
                 name="interval"
-                label="Heartbeat interval"
-                unit="seconds"
+                label={t('timing.interval')}
+                unit={t('timing.seconds')}
                 min={20}
                 description={
-                  timingHint(interval) ? `Check every ${timingHint(interval)}` : undefined
+                  timingHint(interval)
+                    ? t('timing.intervalHint', { duration: timingHint(interval) ?? '' })
+                    : undefined
                 }
               />
               <NumberField
                 control={control}
                 name="maxRetries"
-                label="Retries"
+                label={t('timing.retries')}
                 min={0}
-                description="Failed checks before the monitor is marked DOWN."
+                description={t('timing.retriesDescription')}
               />
               <NumberField
                 control={control}
                 name="retryInterval"
-                label="Heartbeat retry interval"
-                unit="seconds"
+                label={t('timing.retryInterval')}
+                unit={t('timing.seconds')}
                 min={20}
                 description={
                   timingHint(retryInterval)
-                    ? `Retry every ${timingHint(retryInterval)} while pending`
+                    ? t('timing.retryIntervalHint', { duration: timingHint(retryInterval) ?? '' })
                     : undefined
                 }
               />
               <NumberField
                 control={control}
                 name="resendInterval"
-                label="Resend notification"
+                label={t('timing.resend')}
                 min={0}
                 description={
                   typeof resendInterval === 'number' && resendInterval > 0
-                    ? `Re-notify every ${resendInterval} consecutive DOWN beats`
-                    : 'Every N consecutive DOWN beats (0 = never)'
+                    ? t('timing.resendHint', { count: resendInterval })
+                    : t('timing.resendDescription')
                 }
               />
               {type !== 'push' && (
                 <NumberField
                   control={control}
                   name="timeout"
-                  label="Request timeout"
-                  unit="seconds"
+                  label={t('timing.timeout')}
+                  unit={t('timing.seconds')}
                   min={0}
                   step={0.1}
                   description={
                     typeof timeout === 'number' && timeout === 0
-                      ? '0 uses 80% of the interval'
+                      ? t('timing.timeoutDefault')
                       : timingHint(timeout)
                   }
                 />
@@ -1165,8 +1174,8 @@ export function MonitorForm({
         {hasConnectionSection(type) && (
           <Card>
             <CardHeader>
-              <CardTitle>Connection</CardTitle>
-              <CardDescription>How to reach the service and what to ask it.</CardDescription>
+              <CardTitle>{t('connection.title')}</CardTitle>
+              <CardDescription>{t('connection.description')}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5">
               {isDatabase && (
@@ -1174,23 +1183,23 @@ export function MonitorForm({
                   <TextField
                     control={control}
                     name="databaseConnectionString"
-                    label="Connection string"
+                    label={t('connection.connectionString')}
                     placeholder={DATABASE_CONNECTION_PLACEHOLDERS[type as string]}
                     autoComplete="off"
-                    description="Credentials are stored with the monitor; use a read-only account."
+                    description={t('connection.connectionStringDescription')}
                   />
                   {type !== 'redis' && (
                     <TextareaField
                       control={control}
                       name="databaseQuery"
-                      label={type === 'mongodb' ? 'Command' : 'Query'}
+                      label={type === 'mongodb' ? t('connection.command') : t('connection.query')}
                       mono
                       rows={3}
                       placeholder={type === 'mongodb' ? '{"ping": 1}' : 'SELECT 1'}
                       description={
                         type === 'mongodb'
-                          ? 'JSON command document run against the database (default {"ping": 1}).'
-                          : 'Statement that must succeed (default SELECT 1).'
+                          ? t('connection.commandDescription', { example: '{"ping": 1}' })
+                          : t('connection.queryDescription')
                       }
                     />
                   )}
@@ -1198,8 +1207,8 @@ export function MonitorForm({
                     <SwitchField
                       control={control}
                       name="ignoreTls"
-                      label="Ignore TLS errors"
-                      description="Accept self-signed certificates on rediss:// connections."
+                      label={t('connection.ignoreTls')}
+                      description={t('connection.redisIgnoreTlsDescription')}
                     />
                   )}
                 </>
@@ -1210,20 +1219,20 @@ export function MonitorForm({
                   <TextField
                     control={control}
                     name="mqttTopic"
-                    label="Topic"
+                    label={t('connection.topic')}
                     placeholder="sensors/+/status"
                   />
                   <div className="grid gap-5 sm:grid-cols-2">
                     <TextField
                       control={control}
                       name="mqttUsername"
-                      label="Username"
+                      label={t('connection.username')}
                       autoComplete="off"
                     />
                     <TextField
                       control={control}
                       name="mqttPassword"
-                      label="Password"
+                      label={t('connection.password')}
                       type="password"
                       autoComplete="new-password"
                     />
@@ -1231,18 +1240,18 @@ export function MonitorForm({
                   <SelectField
                     control={control}
                     name="mqttCheckType"
-                    label="Check type"
-                    options={MQTT_CHECK_TYPES.map((t) => ({
-                      value: t,
-                      label: t === 'keyword' ? 'Keyword' : 'JSON query',
+                    label={t('connection.checkType')}
+                    options={MQTT_CHECK_TYPES.map((checkType) => ({
+                      value: checkType,
+                      label: t(`connection.checkTypeOption.${checkType}`),
                     }))}
                   />
                   {mqttCheckType !== 'json-query' && (
                     <TextField
                       control={control}
                       name="mqttSuccessMessage"
-                      label="Success message"
-                      description="The received message must contain this text (leave empty to accept any message)."
+                      label={t('connection.successMessage')}
+                      description={t('connection.successMessageDescription')}
                     />
                   )}
                 </>
@@ -1253,15 +1262,19 @@ export function MonitorForm({
                   <ListField
                     control={control}
                     name="kafkaProducerBrokers"
-                    label="Brokers"
+                    label={t('connection.brokers')}
                     placeholder={'kafka1:9092\nkafka2:9092'}
-                    description="Bootstrap broker addresses, one per line."
+                    description={t('connection.brokersDescription')}
                   />
-                  <TextField control={control} name="kafkaProducerTopic" label="Topic" />
+                  <TextField
+                    control={control}
+                    name="kafkaProducerTopic"
+                    label={t('connection.topic')}
+                  />
                   <TextareaField
                     control={control}
                     name="kafkaProducerMessage"
-                    label="Message"
+                    label={t('connection.message')}
                     rows={2}
                     placeholder="marmot heartbeat"
                   />
@@ -1269,26 +1282,26 @@ export function MonitorForm({
                     <SwitchField
                       control={control}
                       name="kafkaProducerSsl"
-                      label="Enable SSL"
-                      description="Connect to the brokers over TLS."
+                      label={t('connection.enableSsl')}
+                      description={t('connection.enableSslDescription')}
                     />
                     <SwitchField
                       control={control}
                       name="kafkaProducerAllowAutoTopicCreation"
-                      label="Allow auto topic creation"
-                      description="Create the topic when it does not exist."
+                      label={t('connection.autoTopic')}
+                      description={t('connection.autoTopicDescription')}
                     />
                   </div>
                   <TextareaField
                     control={control}
                     name="kafkaProducerSaslOptions"
-                    label="SASL options"
+                    label={t('connection.saslOptions')}
                     mono
                     rows={3}
                     placeholder={
                       '{\n  "mechanism": "plain",\n  "username": "…",\n  "password": "…"\n}'
                     }
-                    description="JSON object: mechanism (plain, scram-sha-256, scram-sha-512), username, password. Leave empty for no authentication."
+                    description={t('connection.saslOptionsDescription')}
                   />
                 </>
               )}
@@ -1298,35 +1311,35 @@ export function MonitorForm({
                   <TextField
                     control={control}
                     name="grpcUrl"
-                    label="gRPC URL"
+                    label={t('connection.grpcUrl')}
                     placeholder="api.example.com:443"
-                    description="host:port without a scheme."
+                    description={t('connection.grpcUrlDescription')}
                   />
                   <div className="grid gap-5 sm:grid-cols-2">
                     <TextField
                       control={control}
                       name="grpcServiceName"
-                      label="Service name"
+                      label={t('connection.serviceName')}
                       placeholder="health.v1.Health"
                     />
                     <TextField
                       control={control}
                       name="grpcMethod"
-                      label="Method"
+                      label={t('connection.method')}
                       placeholder="check"
-                      description="lowerCamelCase method name of the service."
+                      description={t('connection.methodDescription')}
                     />
                   </div>
                   <SwitchField
                     control={control}
                     name="grpcEnableTls"
-                    label="Enable TLS"
-                    description="Use TLS credentials for the channel."
+                    label={t('connection.enableTls')}
+                    description={t('connection.enableTlsDescription')}
                   />
                   <TextareaField
                     control={control}
                     name="grpcProtobuf"
-                    label="Proto definition"
+                    label={t('connection.protobuf')}
                     mono
                     rows={8}
                     placeholder={
@@ -1336,20 +1349,20 @@ export function MonitorForm({
                   <TextareaField
                     control={control}
                     name="grpcBody"
-                    label="Request body"
+                    label={t('connection.requestBody')}
                     mono
                     rows={3}
                     placeholder={'{\n  "service": "api"\n}'}
-                    description="JSON object passed to the method."
+                    description={t('connection.requestBodyDescription')}
                   />
                   <TextareaField
                     control={control}
                     name="grpcMetadata"
-                    label="Metadata"
+                    label={t('connection.metadata')}
                     mono
                     rows={2}
                     placeholder={'{\n  "authorization": "Bearer …"\n}'}
-                    description="JSON object of request metadata (optional)."
+                    description={t('connection.metadataDescription')}
                   />
                 </>
               )}
@@ -1360,20 +1373,20 @@ export function MonitorForm({
                     <TextField
                       control={control}
                       name="radiusUsername"
-                      label="Username"
+                      label={t('connection.username')}
                       autoComplete="off"
                     />
                     <TextField
                       control={control}
                       name="radiusPassword"
-                      label="Password"
+                      label={t('connection.password')}
                       type="password"
                       autoComplete="new-password"
                     />
                     <TextField
                       control={control}
                       name="radiusSecret"
-                      label="Shared secret"
+                      label={t('connection.sharedSecret')}
                       type="password"
                       autoComplete="off"
                     />
@@ -1382,14 +1395,14 @@ export function MonitorForm({
                     <TextField
                       control={control}
                       name="radiusCalledStationId"
-                      label="Called station id"
-                      description="Identifier of the called device (optional)."
+                      label={t('connection.calledStationId')}
+                      description={t('connection.calledStationIdDescription')}
                     />
                     <TextField
                       control={control}
                       name="radiusCallingStationId"
-                      label="Calling station id"
-                      description="Identifier of the calling device (optional)."
+                      label={t('connection.callingStationId')}
+                      description={t('connection.callingStationIdDescription')}
                     />
                   </div>
                 </>
@@ -1400,19 +1413,19 @@ export function MonitorForm({
                   <TextField
                     control={control}
                     name="snmpOid"
-                    label="OID"
+                    label={t('connection.oid')}
                     placeholder="1.3.6.1.2.1.1.1.0"
                   />
                   <SelectField
                     control={control}
                     name="snmpVersion"
-                    label="Version"
+                    label={t('connection.version')}
                     options={SNMP_VERSIONS.map((v) => ({ value: v, label: `SNMPv${v}` }))}
                   />
                   <TextField
                     control={control}
                     name="snmpCommunity"
-                    label="Community string"
+                    label={t('connection.community')}
                     placeholder="public"
                   />
                 </div>
@@ -1422,12 +1435,12 @@ export function MonitorForm({
                 <SelectField
                   control={control}
                   name="smtpSecurity"
-                  label="Security"
+                  label={t('connection.security')}
                   options={SMTP_SECURITY_MODES.map((m) => ({
                     value: m,
-                    label: SMTP_SECURITY_LABELS[m],
+                    label: t(`connection.smtpSecurity.${m}`),
                   }))}
-                  description="Use SMTPS for port 465; STARTTLS for 25/587."
+                  description={t('connection.securityDescription')}
                 />
               )}
 
@@ -1437,16 +1450,16 @@ export function MonitorForm({
                     <TextField
                       control={control}
                       name="sshUsername"
-                      label="Username"
+                      label={t('connection.username')}
                       autoComplete="off"
                     />
                     <SelectField
                       control={control}
                       name="sshAuthMethod"
-                      label="Authentication"
+                      label={t('connection.authentication')}
                       options={SSH_AUTH_METHODS.map((m) => ({
                         value: m,
-                        label: m === 'privateKey' ? 'Private key' : 'Password',
+                        label: t(`connection.sshAuth.${m}`),
                       }))}
                     />
                   </div>
@@ -1455,24 +1468,24 @@ export function MonitorForm({
                       <TextareaField
                         control={control}
                         name="sshPrivateKey"
-                        label="Private key (PEM)"
+                        label={t('connection.privateKey')}
                         mono
                         rows={5}
                       />
                       <TextField
                         control={control}
                         name="sshPassphrase"
-                        label="Passphrase"
+                        label={t('connection.passphrase')}
                         type="password"
                         autoComplete="off"
-                        description="Only when the key is encrypted."
+                        description={t('connection.passphraseDescription')}
                       />
                     </>
                   ) : (
                     <TextField
                       control={control}
                       name="sshPassword"
-                      label="Password"
+                      label={t('connection.password')}
                       type="password"
                       autoComplete="new-password"
                     />
@@ -1480,9 +1493,9 @@ export function MonitorForm({
                   <TextField
                     control={control}
                     name="sftpPath"
-                    label="Remote path"
+                    label={t('connection.remotePath')}
                     placeholder="/var/backups"
-                    description="Optional path that must exist on the server."
+                    description={t('connection.remotePathDescription')}
                   />
                 </>
               )}
@@ -1492,23 +1505,23 @@ export function MonitorForm({
                   <ListField
                     control={control}
                     name="rabbitmqNodes"
-                    label="Nodes"
+                    label={t('connection.nodes')}
                     placeholder={
                       'https://node1.rabbitmq.example:15672\nhttps://node2.rabbitmq.example:15672'
                     }
-                    description="Management API base URLs, one per line. UP when any node reports no alarms."
+                    description={t('connection.nodesDescription')}
                   />
                   <div className="grid gap-5 sm:grid-cols-2">
                     <TextField
                       control={control}
                       name="rabbitmqUsername"
-                      label="Username"
+                      label={t('connection.username')}
                       autoComplete="off"
                     />
                     <TextField
                       control={control}
                       name="rabbitmqPassword"
-                      label="Password"
+                      label={t('connection.password')}
                       type="password"
                       autoComplete="new-password"
                     />
@@ -1520,40 +1533,38 @@ export function MonitorForm({
                 <>
                   <StatusCodesField
                     control={control}
-                    label="Accepted close codes"
-                    description={
-                      <>
-                        Close codes counted as UP, e.g. <code>1000</code>.
-                      </>
-                    }
+                    label={t('connection.closeCodes')}
+                    description={t.rich('connection.closeCodesDescription', {
+                      code: (chunks) => <code>{chunks}</code>,
+                    })}
                   />
                   <TextareaField
                     control={control}
                     name="headers"
-                    label="Headers"
+                    label={t('connection.headers')}
                     mono
                     placeholder={'{\n  "Origin": "https://example.com"\n}'}
-                    description="JSON object of extra handshake headers."
+                    description={t('connection.wsHeadersDescription')}
                   />
                   <TextField
                     control={control}
                     name="wsSubprotocol"
-                    label="Subprotocols"
+                    label={t('connection.subprotocols')}
                     placeholder="graphql-ws, mqtt"
-                    description="Comma-separated Sec-WebSocket-Protocol values (optional)."
+                    description={t('connection.subprotocolsDescription')}
                   />
                   <div className="grid gap-3 sm:grid-cols-2">
                     <SwitchField
                       control={control}
                       name="wsIgnoreSecWebsocketAcceptHeader"
-                      label="Ignore Sec-WebSocket-Accept"
-                      description="Accept servers that answer without the header."
+                      label={t('connection.ignoreAcceptHeader')}
+                      description={t('connection.ignoreAcceptHeaderDescription')}
                     />
                     <SwitchField
                       control={control}
                       name="ignoreTls"
-                      label="Ignore TLS errors"
-                      description="Accept self-signed or expired certificates."
+                      label={t('connection.ignoreTls')}
+                      description={t('connection.ignoreTlsDescription')}
                     />
                   </div>
                 </>
@@ -1564,36 +1575,33 @@ export function MonitorForm({
                   <TextField
                     control={control}
                     name="game"
-                    label="Game"
+                    label={t('connection.game')}
                     placeholder="minecraft"
-                    description={
-                      <>
-                        GameDig game id, see{' '}
+                    description={t.rich('connection.gameDescription', {
+                      link: (chunks) => (
                         <a
                           className="underline"
                           href="https://github.com/gamedig/node-gamedig/blob/master/GAMES_LIST.md"
                           target="_blank"
                           rel="noreferrer"
                         >
-                          the games list
+                          {chunks}
                         </a>
-                        .
-                      </>
-                    }
+                      ),
+                    })}
                   />
                   <SwitchField
                     control={control}
                     name="gamedigGivenPortOnly"
-                    label="Given port only"
-                    description="Do not probe the other ports the game commonly uses."
+                    label={t('connection.givenPortOnly')}
+                    description={t('connection.givenPortOnlyDescription')}
                   />
                 </>
               )}
 
               {type === 'steam' && (
                 <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-                  The server is looked up through the Steam Web API. A superadmin must set the Steam
-                  API key in the instance settings first.
+                  {t('connection.steam')}
                 </p>
               )}
 
@@ -1602,15 +1610,15 @@ export function MonitorForm({
                   <TextField
                     control={control}
                     name="remoteBrowser"
-                    label="Remote browser URL"
+                    label={t('connection.remoteBrowser')}
                     placeholder="ws://browserless:3000"
-                    description="Playwright-compatible browser server (e.g. browserless or `npx playwright run-server`). Marmot does not launch Chromium itself."
+                    description={t('connection.remoteBrowserDescription')}
                   />
                   <SwitchField
                     control={control}
                     name="ignoreTls"
-                    label="Ignore TLS errors"
-                    description="Accept self-signed or expired certificates."
+                    label={t('connection.ignoreTls')}
+                    description={t('connection.ignoreTlsDescription')}
                   />
                 </>
               )}
@@ -1622,31 +1630,37 @@ export function MonitorForm({
         {isHttp && (
           <Card>
             <CardHeader>
-              <CardTitle>HTTP options</CardTitle>
-              <CardDescription>
-                Request shape and what counts as a healthy response.
-              </CardDescription>
+              <CardTitle>{t('http.title')}</CardTitle>
+              <CardDescription>{t('http.description')}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5">
               <div className="grid gap-5 sm:grid-cols-3">
                 <SelectField
                   control={control}
                   name="method"
-                  label="Method"
+                  label={t('http.method')}
                   options={HTTP_METHODS.map((m) => ({ value: m, label: m }))}
                 />
                 <SelectField
                   control={control}
                   name="httpBodyEncoding"
-                  label="Body encoding"
-                  options={BODY_ENCODINGS.map((e) => ({ value: e, label: ENCODING_LABELS[e] }))}
+                  label={t('http.bodyEncoding')}
+                  options={BODY_ENCODINGS.map((e) => ({
+                    value: e,
+                    label: t(`http.encoding.${e}`),
+                  }))}
                 />
-                <NumberField control={control} name="maxRedirects" label="Max. redirects" min={0} />
+                <NumberField
+                  control={control}
+                  name="maxRedirects"
+                  label={t('http.maxRedirects')}
+                  min={0}
+                />
               </div>
               <TextareaField
                 control={control}
                 name="body"
-                label="Body"
+                label={t('http.body')}
                 mono
                 placeholder={
                   httpBodyEncoding === 'json'
@@ -1659,43 +1673,41 @@ export function MonitorForm({
               <TextareaField
                 control={control}
                 name="headers"
-                label="Headers"
+                label={t('http.headers')}
                 mono
                 placeholder={'{\n  "Authorization": "Token abc"\n}'}
-                description="JSON object of extra request headers."
+                description={t('http.headersDescription')}
               />
               <StatusCodesField control={control} />
               <RelationSelectField
                 control={control}
                 name="proxy"
-                label="Proxy"
-                noneLabel="No proxy (direct connection)"
-                options={resources.proxies.map((p) => ({
-                  id: p.id,
-                  label: `${p.label}${p.isDefault ? ' (default)' : ''}${p.active ? '' : ' (inactive)'}`,
-                }))}
+                label={t('http.proxy')}
+                noneLabel={t('http.noProxy')}
+                options={resources.proxies.map((p) => {
+                  const label = p.isDefault ? t('http.proxyDefault', { label: p.label }) : p.label
+                  return { id: p.id, label: p.active ? label : t('http.proxyInactive', { label }) }
+                })}
                 description={
-                  resources.proxies.length === 0 ? (
-                    <>
-                      No proxies yet; an admin can add one in{' '}
-                      <Link
-                        href={`/${orgSlug}/settings/proxies`}
-                        className="underline underline-offset-2"
-                      >
-                        settings
-                      </Link>
-                      .
-                    </>
-                  ) : (
-                    'Send the request through an HTTP(s) or SOCKS proxy.'
-                  )
+                  resources.proxies.length === 0
+                    ? t.rich('http.proxyEmpty', {
+                        link: (chunks) => (
+                          <Link
+                            href={`/${orgSlug}/settings/proxies`}
+                            className="underline underline-offset-2"
+                          >
+                            {chunks}
+                          </Link>
+                        ),
+                      })
+                    : t('http.proxyDescription')
                 }
               />
               <SwitchField
                 control={control}
                 name="ignoreTls"
-                label="Ignore TLS errors"
-                description="Accept self-signed or expired certificates. Also disables certificate expiry notifications."
+                label={t('http.ignoreTls')}
+                description={t('http.ignoreTlsDescription')}
               />
             </CardContent>
           </Card>
@@ -1705,17 +1717,17 @@ export function MonitorForm({
         {(isHttp || isWebSocket) && (
           <Card>
             <CardHeader>
-              <CardTitle>Authentication</CardTitle>
-              <CardDescription>Credentials sent with every check.</CardDescription>
+              <CardTitle>{t('auth.title')}</CardTitle>
+              <CardDescription>{t('auth.description')}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5">
               <SelectField
                 control={control}
                 name="authMethod"
-                label="Method"
+                label={t('auth.method')}
                 options={(isWebSocket ? WS_AUTH_METHODS : AUTH_METHODS).map((m) => ({
                   value: m,
-                  label: AUTH_LABELS[m],
+                  label: t(`auth.methods.${m}`),
                 }))}
               />
               {(authMethod === 'basic' || authMethod === 'ntlm') && (
@@ -1723,13 +1735,13 @@ export function MonitorForm({
                   <TextField
                     control={control}
                     name="basicAuthUser"
-                    label="Username"
+                    label={t('auth.username')}
                     autoComplete="off"
                   />
                   <TextField
                     control={control}
                     name="basicAuthPass"
-                    label="Password"
+                    label={t('auth.password')}
                     type="password"
                     autoComplete="new-password"
                   />
@@ -1737,18 +1749,24 @@ export function MonitorForm({
               )}
               {authMethod === 'ntlm' && (
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <TextField control={control} name="authDomain" label="Domain" />
-                  <TextField control={control} name="authWorkstation" label="Workstation" />
+                  <TextField control={control} name="authDomain" label={t('auth.domain')} />
+                  <TextField
+                    control={control}
+                    name="authWorkstation"
+                    label={t('auth.workstation')}
+                  />
                 </div>
               )}
               {authMethod === 'bearer' && (
                 <TextField
                   control={control}
                   name="bearerToken"
-                  label="Token"
+                  label={t('auth.token')}
                   type="password"
                   autoComplete="off"
-                  description="Sent as Authorization: Bearer <token>."
+                  description={t('auth.tokenDescription', {
+                    header: 'Authorization: Bearer <token>',
+                  })}
                 />
               )}
               {authMethod === 'oauth2-cc' && (
@@ -1756,16 +1774,16 @@ export function MonitorForm({
                   <TextField
                     control={control}
                     name="oauthTokenUrl"
-                    label="Token URL"
+                    label={t('auth.tokenUrl')}
                     type="url"
                     placeholder="https://auth.example.com/oauth/token"
                   />
                   <div className="grid gap-5 sm:grid-cols-2">
-                    <TextField control={control} name="oauthClientId" label="Client ID" />
+                    <TextField control={control} name="oauthClientId" label={t('auth.clientId')} />
                     <TextField
                       control={control}
                       name="oauthClientSecret"
-                      label="Client secret"
+                      label={t('auth.clientSecret')}
                       type="password"
                       autoComplete="off"
                     />
@@ -1774,17 +1792,17 @@ export function MonitorForm({
                     <TextField
                       control={control}
                       name="oauthScopes"
-                      label="Scopes"
+                      label={t('auth.scopes')}
                       placeholder="read write"
                     />
                     <SelectField
                       control={control}
                       name="oauthAuthMethod"
-                      label="Client authentication"
-                      options={[
-                        { value: 'client_secret_basic', label: 'HTTP Basic (client_secret_basic)' },
-                        { value: 'client_secret_post', label: 'Request body (client_secret_post)' },
-                      ]}
+                      label={t('auth.clientAuthentication')}
+                      options={OAUTH_AUTH_METHODS.map((m) => ({
+                        value: m,
+                        label: t(`auth.clientAuth.${m}`),
+                      }))}
                     />
                   </div>
                 </>
@@ -1794,21 +1812,21 @@ export function MonitorForm({
                   <TextareaField
                     control={control}
                     name="tlsCert"
-                    label="Client certificate (PEM)"
+                    label={t('auth.clientCertificate')}
                     mono
                     rows={5}
                   />
                   <TextareaField
                     control={control}
                     name="tlsKey"
-                    label="Private key (PEM)"
+                    label={t('auth.privateKey')}
                     mono
                     rows={5}
                   />
                   <TextareaField
                     control={control}
                     name="tlsCa"
-                    label="CA certificate (PEM, optional)"
+                    label={t('auth.caCertificate')}
                     mono
                     rows={5}
                   />
@@ -1822,36 +1840,36 @@ export function MonitorForm({
         {type !== 'group' && (
           <Card>
             <CardHeader>
-              <CardTitle>Advanced</CardTitle>
+              <CardTitle>{t('advanced.title')}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3">
               <SwitchField
                 control={control}
                 name="upsideDown"
-                label="Upside down mode"
-                description="Flip the status: a failed check counts as UP and a successful one as DOWN."
+                label={t('advanced.upsideDown')}
+                description={t('advanced.upsideDownDescription')}
               />
               {isHttp && (
                 <SwitchField
                   control={control}
                   name="expiryNotification"
-                  label="Certificate expiry notification"
-                  description="Warn through this monitor's notification channels before the TLS certificate expires (7, 14 and 21 days by default)."
+                  label={t('advanced.certExpiry')}
+                  description={t('advanced.certExpiryDescription')}
                 />
               )}
               {(isHttp || isHost) && (
                 <SwitchField
                   control={control}
                   name="domainExpiryNotification"
-                  label="Domain name expiry notification"
-                  description="Look the registration up via RDAP once a day and warn before the domain expires."
+                  label={t('advanced.domainExpiry')}
+                  description={t('advanced.domainExpiryDescription')}
                 />
               )}
               <SwitchField
                 control={control}
                 name="active"
-                label="Active"
-                description="Paused monitors keep their history but are not checked."
+                label={t('advanced.active')}
+                description={t('advanced.activeDescription')}
               />
             </CardContent>
           </Card>
@@ -1866,12 +1884,12 @@ export function MonitorForm({
                   : `/${orgSlug}/monitors`
               }
             >
-              Cancel
+              {t('cancel')}
             </Link>
           </Button>
           <Button type="submit" disabled={pending} data-testid="monitor-submit">
             {pending && <Loader2 className="animate-spin" />}
-            {mode === 'create' ? 'Create monitor' : 'Save changes'}
+            {mode === 'create' ? t('create') : t('save')}
           </Button>
         </div>
       </form>

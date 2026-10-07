@@ -1,5 +1,8 @@
+import { useTranslations } from 'next-intl'
+
 import { FormPageSkeleton } from '@/components/page-skeletons'
 
 export default function Loading() {
-  return <FormPageSkeleton label="Loading monitor form" />
+  const t = useTranslations('monitors.new')
+  return <FormPageSkeleton label={t('loading')} />
 }

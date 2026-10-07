@@ -1,9 +1,11 @@
 import { ExternalLink, FolderTree } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { CertificatePanel } from '@/components/monitors/certificate-panel'
-import { formatRelative, humanTypeLabel, monitorTarget } from '@/components/monitors/format'
+import { monitorTarget, useMonitorFormat } from '@/components/monitors/format'
 import { HeartbeatBar, type BeatLike } from '@/components/monitors/heartbeat-bar'
 import { ImportantEventsTable } from '@/components/monitors/important-events-table'
 import { MonitorActions } from '@/components/monitors/monitor-actions'
@@ -15,6 +17,7 @@ import { PageHeader } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { env } from '@/env'
+import { timeZoneOrDefault } from '@/i18n/formats'
 import { isHttpMonitorType } from '@/lib/validation/monitor'
 import type { Heartbeat, Monitor } from '@/payload-types'
 import { toRealtimeTags } from '@/server/realtime/serialize'
@@ -45,12 +48,30 @@ const toBeat = (doc: Heartbeat): BeatLike => ({
   msg: doc.msg,
 })
 
+function MonitorTypeBadge({ type }: { type: string }) {
+  const { typeLabel } = useMonitorFormat()
+  return <Badge variant="secondary">{typeLabel(type)}</Badge>
+}
+
+function LastCheck({ at, msg }: { at: string | null | undefined; msg: string | null | undefined }) {
+  const t = useTranslations('monitors.detail')
+  const { relative } = useMonitorFormat()
+  return (
+    <span className="text-xs">
+      {t('checked', { when: relative(at) })}
+      {msg ? ` · ${msg}` : ''}
+    </span>
+  )
+}
+
 export default async function MonitorDetailPage({ params, searchParams }: MonitorDetailPageProps) {
   const { orgSlug, id } = await params
   const { page: rawPage } = await searchParams
   const ctx = await getOrgPageContext(orgSlug, `/${orgSlug}/monitors/${id}`)
   const monitor = await getOrgMonitor(ctx, id, 1)
   const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1)
+  const t = await getTranslations('monitors.detail')
+  const timeZone = timeZoneOrDefault(ctx.org.settings?.timezone)
 
   const { payload } = ctx
   // Access was verified on the monitor; its history is read with the Local API directly.
@@ -92,7 +113,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         eyebrow={
           <span className="flex items-center gap-2">
             <Link href={`/${orgSlug}/monitors`} className="hover:text-foreground">
-              Monitors
+              {t('breadcrumb')}
             </Link>
             {parent && (
               <>
@@ -115,7 +136,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         }
         description={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <Badge variant="secondary">{humanTypeLabel(monitor.type)}</Badge>
+            <MonitorTypeBadge type={monitor.type} />
             {target &&
               (isHttpMonitorType(monitor.type) ? (
                 <a
@@ -133,10 +154,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
                 </span>
               ))}
             <TagList tags={toRealtimeTags(monitor.tags)} />
-            <span className="text-xs">
-              Checked {formatRelative(monitor.status?.lastCheckAt)}
-              {monitor.status?.lastMsg ? ` · ${monitor.status.lastMsg}` : ''}
-            </span>
+            <LastCheck at={monitor.status?.lastCheckAt} msg={monitor.status?.lastMsg} />
           </span>
         }
         actions={
@@ -153,18 +171,18 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
       <section className="flex flex-col gap-6 p-4 sm:p-6 md:p-8">
         {!active && (
           <p className="rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-            This monitor is paused. Resume it to start checking again; history is kept.
+            {t('paused')}
           </p>
         )}
 
         <Card className="gap-3 py-4">
           <CardHeader className="px-4">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Latest heartbeats
+              {t('latestHeartbeats')}
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4">
-            <HeartbeatBar beats={latest.docs.map(toBeat)} />
+            <HeartbeatBar beats={latest.docs.map(toBeat)} timeZone={timeZone} />
           </CardContent>
         </Card>
 
@@ -181,15 +199,17 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         {pushUrl && (
           <Card className="gap-3">
             <CardHeader>
-              <CardTitle className="text-base">Push URL</CardTitle>
+              <CardTitle className="text-base">{t('pushUrl')}</CardTitle>
             </CardHeader>
             <CardContent>
               <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs">
                 {pushUrl}
               </code>
               <p className="mt-2 text-xs text-muted-foreground">
-                Call this URL at least every {monitor.interval} seconds. Optional query parameters:
-                <code> status</code> (up|down), <code>msg</code>, <code>ping</code>.
+                {t.rich('pushHint', {
+                  seconds: monitor.interval,
+                  code: (chunks) => <code>{chunks}</code>,
+                })}
               </p>
             </CardContent>
           </Card>
@@ -206,18 +226,21 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
               totalDocs: events.totalDocs,
             }}
             basePath={`/${orgSlug}/monitors/${monitor.id}`}
+            timeZone={timeZone}
           />
           <div className="flex flex-col gap-6">
             {(isHttpMonitorType(monitor.type) ||
               monitor.certInfo ||
               monitor.domainExpiry ||
-              monitor.domainExpiryNotification) && <CertificatePanel monitor={monitor} />}
+              monitor.domainExpiryNotification) && (
+              <CertificatePanel monitor={monitor} timeZone={timeZone} />
+            )}
             <Card className="gap-3">
               <CardHeader>
-                <CardTitle className="text-base">Description</CardTitle>
+                <CardTitle className="text-base">{t('description')}</CardTitle>
               </CardHeader>
               <CardContent className="text-sm whitespace-pre-wrap text-muted-foreground">
-                {monitor.description || 'No description yet. Add one from Edit.'}
+                {monitor.description || t('noDescription')}
               </CardContent>
             </Card>
           </div>

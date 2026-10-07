@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -49,7 +50,7 @@ function ConfirmBody({
   title,
   description,
   confirmText,
-  confirmLabel = 'Confirm',
+  confirmLabel,
   destructive = false,
   onConfirm,
   children,
@@ -61,6 +62,7 @@ function ConfirmBody({
   setPending: (value: boolean) => void
   close: () => void
 }) {
+  const t = useTranslations('common.confirmDialog')
   const [typed, setTyped] = React.useState('')
   const inputId = React.useId()
   const ready = !confirmText || typed.trim() === confirmText
@@ -84,8 +86,11 @@ function ConfirmBody({
       {confirmText && (
         <div className="grid gap-2">
           <Label htmlFor={inputId}>
-            Type <span className="font-mono font-semibold text-foreground">{confirmText}</span> to
-            confirm
+            {t.rich('typeToConfirm', {
+              value: () => (
+                <span className="font-mono font-semibold text-foreground">{confirmText}</span>
+              ),
+            })}
           </Label>
           <Input
             id={inputId}
@@ -98,14 +103,14 @@ function ConfirmBody({
       )}
       <DialogFooter>
         <Button variant="outline" onClick={close} disabled={pending}>
-          Cancel
+          {t('cancel')}
         </Button>
         <Button
           variant={destructive ? 'destructive' : 'default'}
           onClick={confirm}
           disabled={!ready || pending}
         >
-          {pending ? 'Working…' : confirmLabel}
+          {pending ? t('working') : (confirmLabel ?? t('confirm'))}
         </Button>
       </DialogFooter>
     </>

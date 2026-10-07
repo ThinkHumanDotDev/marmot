@@ -19,10 +19,10 @@ import type { OrgId } from '@/access/permissions'
 import { MARMOT_EXPORT_FORMAT, MARMOT_EXPORT_VERSION } from '@/lib/import-export'
 import {
   defaultMonitorValues,
-  monitorFormSchema,
   monitorToFormValues,
   type MonitorFormValues,
 } from '@/lib/validation/monitor'
+import { monitorFormSchema } from '@/lib/validation/monitor-schema'
 import type { Incident, Monitor, Notification, Organization, StatusPage } from '@/payload-types'
 import { NotificationConfigError, validateNotificationConfig } from '@/server/notifications/send'
 import { relationId } from '@/server/monitors/http'

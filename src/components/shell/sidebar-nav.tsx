@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -15,10 +16,11 @@ interface SidebarNavProps {
 }
 
 export function SidebarNav({ orgSlug, collapsed = false, onNavigate }: SidebarNavProps) {
+  const t = useTranslations('shell.nav')
   const pathname = usePathname()
 
   return (
-    <nav aria-label="Organization" className="flex flex-col gap-0.5">
+    <nav aria-label={t('label')} className="flex flex-col gap-0.5">
       {orgNavigation.map((item) => {
         const href = orgPath(orgSlug, item.segment)
         const active = pathname === href || pathname.startsWith(`${href}/`)
@@ -42,7 +44,7 @@ export function SidebarNav({ orgSlug, collapsed = false, onNavigate }: SidebarNa
               )}
               aria-hidden
             />
-            {!collapsed && <span className="truncate">{item.label}</span>}
+            {!collapsed && <span className="truncate">{t(item.label)}</span>}
           </Link>
         )
 
@@ -50,7 +52,7 @@ export function SidebarNav({ orgSlug, collapsed = false, onNavigate }: SidebarNa
         return (
           <Tooltip key={item.segment}>
             <TooltipTrigger asChild>{link}</TooltipTrigger>
-            <TooltipContent side="right">{item.label}</TooltipContent>
+            <TooltipContent side="right">{t(item.label)}</TooltipContent>
           </Tooltip>
         )
       })}

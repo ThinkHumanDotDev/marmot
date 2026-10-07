@@ -3,6 +3,7 @@
 import { Cookie, LogOut, Monitor, Moon, ShieldCheck, Sun } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -32,6 +33,8 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ user, collapsed = false }: UserMenuProps) {
+  const t = useTranslations('shell.userMenu')
+  const tTheme = useTranslations('shell.theme')
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [signingOut, setSigningOut] = React.useState(false)
@@ -72,7 +75,7 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label={`Account: ${displayName}`}
+        aria-label={t('trigger', { name: displayName })}
         className={cn(
           'flex h-11 w-full items-center gap-2.5 rounded-lg px-2 text-left text-sm outline-none transition-colors',
           'hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring data-[state=open]:bg-sidebar-accent',
@@ -99,16 +102,18 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
           <span className="truncate text-xs font-normal text-muted-foreground">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Theme</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          {tTheme('title')}
+        </DropdownMenuLabel>
         <DropdownMenuRadioGroup value={theme ?? 'system'} onValueChange={chooseTheme}>
           <DropdownMenuRadioItem value="light">
-            <Sun className="size-4" aria-hidden /> Light
+            <Sun className="size-4" aria-hidden /> {tTheme('light')}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="dark">
-            <Moon className="size-4" aria-hidden /> Dark
+            <Moon className="size-4" aria-hidden /> {tTheme('dark')}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="system">
-            <Monitor className="size-4" aria-hidden /> System
+            <Monitor className="size-4" aria-hidden /> {tTheme('system')}
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         {user.superadmin && (
@@ -116,7 +121,7 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href="/admin">
-                <ShieldCheck className="size-4" aria-hidden /> Admin panel
+                <ShieldCheck className="size-4" aria-hidden /> {t('adminPanel')}
               </Link>
             </DropdownMenuItem>
           </>
@@ -125,7 +130,7 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={openPrivacySettings}>
-              <Cookie className="size-4" aria-hidden /> Privacy settings
+              <Cookie className="size-4" aria-hidden /> {t('privacySettings')}
             </DropdownMenuItem>
           </>
         )}
@@ -134,10 +139,10 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
           disabled={signingOut}
           onSelect={(event) => {
             event.preventDefault()
-            toast.promise(signOut(), { loading: 'Signing out…', success: 'Signed out' })
+            toast.promise(signOut(), { loading: t('signingOut'), success: t('signedOut') })
           }}
         >
-          <LogOut className="size-4" aria-hidden /> Sign out
+          <LogOut className="size-4" aria-hidden /> {t('signOut')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
