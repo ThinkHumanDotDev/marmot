@@ -19,6 +19,7 @@
 - [Maintenance](Maintenance.md)
 - [Organizations and members](Organizations-and-Members.md)
 - [Integrations](Integrations.md)
+- [MCP server for AI agents](MCP.md)
 - [Import and export](Import-and-Export.md)
 
 **Change it**

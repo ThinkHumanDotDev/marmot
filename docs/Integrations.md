@@ -10,6 +10,7 @@ README badges, cron jobs and Grafana dashboards keep working after a switch.
 | `GET /api/metrics`                           | API key                                            | Prometheus exposition        |
 | `/api/orgs/:orgId/**`                        | session **or** API key of the org (scoped)         | management API               |
 | `GET /api/openapi.json`, `GET /api/docs`     | public                                             | management API reference     |
+| `POST /api/mcp`, `GET /.well-known/mcp.json` | API key of the org (scoped) / public               | [MCP server](MCP.md)         |
 | `GET/POST /api/orgs/:orgId/api-keys`         | session, `api-key:read` / `api-key:create` (admin) | manage keys                  |
 | `PATCH/DELETE /api/orgs/:orgId/api-keys/:id` | session, `api-key:delete` (admin)                  | disable / re-enable / revoke |
 
@@ -66,8 +67,8 @@ per-organization overrides and collection access apply as for a person with that
 - each key may send `API_KEY_RATE_LIMIT` requests per minute (default 600), of which
   `API_KEY_WRITE_RATE_LIMIT` (default 60) may be writes; above that the API answers `429` with
   `Retry-After` ([Configuration](Configuration.md#authentication));
-- every write is recorded in the audit log as `api_key.write_request` with `actorType: apiKey` and the
-  key's prefix; creating, disabling and revoking keys are recorded as `api_key.created`,
+- every write is recorded in the audit log as `api_key.write_request` with `actorType: apiKey` (or
+  `actorType: mcp` and the tool name when it came through the [MCP server](MCP.md)) and the key's prefix; creating, disabling and revoking keys are recorded as `api_key.created`,
   `api_key.updated` and `api_key.revoked`.
 
 The API is described by an OpenAPI 3.1 document at `/api/openapi.json` (request bodies are generated from
@@ -77,6 +78,9 @@ the same zod schemas the handlers validate with) and browsable at `/api/docs`. E
 
 ```sh
 curl -H "Authorization: Bearer $MARMOT_KEY" https://marmot.example.com/api/orgs/1/monitors
+curl -H "Authorization: Bearer $MARMOT_KEY" 'https://marmot.example.com/api/orgs/1/monitors/7/stats?range=30d'
+curl -H "Authorization: Bearer $MARMOT_KEY" 'https://marmot.example.com/api/orgs/1/monitors/7/heartbeats?limit=20'
+curl -X POST -H "Authorization: Bearer $MARMOT_KEY" https://marmot.example.com/api/orgs/1/monitors/7/check
 curl -X POST -H "Authorization: Bearer $MARMOT_KEY" -H 'content-type: application/json' \
   -d '{"name":"API","type":"http","url":"https://api.example.com/health","interval":60}' \
   https://marmot.example.com/api/orgs/1/monitors

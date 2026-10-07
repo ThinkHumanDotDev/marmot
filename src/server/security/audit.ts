@@ -64,12 +64,19 @@ const relation = (id: OrgId | null | undefined) =>
 /** Who performed an action, as `recordAuditEvent` fields. */
 export interface AuditActorFields {
   actor: OrgId | null
-  metadata: { actorType: 'user' | 'apiKey'; apiKeyId?: string; apiKeyPrefix?: string }
+  metadata: {
+    actorType: 'user' | 'apiKey' | 'mcp'
+    apiKeyId?: string
+    apiKeyPrefix?: string
+    /** MCP tool that made the change (`actorType: 'mcp'`). */
+    tool?: string
+  }
 }
 
 /**
  * `actor` + `metadata.actorType` for the request principal: a user, or an organization API key
- * (`actorType: 'apiKey'`, with the key's id and public prefix, `actor` left empty). Spread it into
+ * (`actorType: 'apiKey'`, with the key's id and public prefix, `actor` left empty; `actorType: 'mcp'`
+ * plus the tool name when the key acts through the MCP endpoint, #119). Spread it into
  * every event recorded on behalf of a request so the log tells automation from people:
  *
  *   const who = auditActorFields(user)
@@ -78,15 +85,17 @@ export interface AuditActorFields {
 export function auditActorFields(user: unknown): AuditActorFields {
   const principal = user as {
     id?: OrgId
-    apiKey?: { id: OrgId; prefix: string } | null
+    apiKey?: { id: OrgId; prefix: string; via?: 'mcp'; tool?: string } | null
   } | null
-  if (principal?.apiKey) {
+  const key = principal?.apiKey
+  if (key) {
     return {
       actor: null,
       metadata: {
-        actorType: 'apiKey',
-        apiKeyId: String(principal.apiKey.id),
-        apiKeyPrefix: principal.apiKey.prefix,
+        actorType: key.via === 'mcp' ? 'mcp' : 'apiKey',
+        apiKeyId: String(key.id),
+        apiKeyPrefix: key.prefix,
+        ...(key.via === 'mcp' && key.tool ? { tool: key.tool } : {}),
       },
     }
   }

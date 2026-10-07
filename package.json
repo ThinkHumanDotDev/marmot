@@ -45,6 +45,7 @@
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
     "@hookform/resolvers": "^5.9.1",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@node-saml/node-saml": "^5.1.0",
     "@payloadcms/db-mongodb": "3.90.2",
     "@payloadcms/db-postgres": "3.90.2",

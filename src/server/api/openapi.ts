@@ -21,6 +21,7 @@ import { z } from 'zod'
 
 import { PERMISSIONS, type Permission, ROLES } from '@/access/permissions'
 import { connectionSchema } from '@/app/api/orgs/[orgId]/sso/connections/route'
+import { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
 import { API_KEY_SCOPES } from '@/lib/api-key-scopes'
 import { COMPONENT_IMPACTS, INCIDENT_STATUSES } from '@/lib/incident-timeline'
 import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
@@ -30,6 +31,7 @@ import { maintenanceFormSchema } from '@/lib/validation/maintenance'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
 import { apiKeyCreateSchema, apiKeyPatchSchema } from '@/server/api-keys/schemas'
 import { API_KEY_FORBIDDEN_SECTIONS, isWriteMethod } from '@/server/auth/request-auth'
+import { STATS_RANGES } from '@/server/stats/uptime-calculator'
 
 /** Version of the management API contract. Breaking changes bump the major version. */
 export const MANAGEMENT_API_VERSION = '1.0.0'
@@ -79,7 +81,7 @@ const componentImpacts = z
   .array(z.object({ component: z.string().describe('Component (group row) id'), impact }))
   .describe('Affected components and their impact')
 
-const incidentUpdateBody = z.object({
+export const incidentUpdateBody = z.object({
   status: z.enum(INCIDENT_STATUSES),
   message: z.string().nullable().optional(),
   components: componentImpacts.optional(),
@@ -87,7 +89,7 @@ const incidentUpdateBody = z.object({
   impact: impact.optional().describe('Incident impact when no component is affected'),
 })
 
-const incidentCreateBody = z.object({
+export const incidentCreateBody = z.object({
   title: z.string().min(1),
   pinned: z.boolean().optional(),
   impact: impact.optional(),
@@ -568,6 +570,65 @@ export const OPERATIONS: OperationSpec[] = [
     summary: 'Resume a monitor',
     tag: 'Monitors',
     permission: 'monitor:update',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/monitors/{id}/check`,
+    operationId: 'checkMonitorNow',
+    summary: 'Run a check now',
+    description:
+      'Queues an immediate check for the worker; the heartbeat arrives like any other. Paused monitors answer `409`.',
+    tag: 'Monitors',
+    permission: 'monitor:update',
+    status: 202,
+    response: { description: '`{ jobId, queuedAt }`', schema: anyObject },
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/monitors/{id}/heartbeats`,
+    operationId: 'listHeartbeats',
+    summary: "A monitor's latest check results",
+    description:
+      'Newest first. Raw beats are kept for 24 hours, status changes (`important`) for `KEEP_DATA_PERIOD_DAYS`.',
+    tag: 'Monitors',
+    permission: 'monitor:read',
+    query: [
+      {
+        name: 'limit',
+        description: 'Number of beats (1–500, default 50)',
+        schema: { type: 'integer', minimum: 1, maximum: 500 },
+      },
+      {
+        name: 'status',
+        description: 'Only beats with this status',
+        schema: { type: 'string', enum: [...HEARTBEAT_STATUSES] },
+      },
+      {
+        name: 'important',
+        description: '`true` for status changes only',
+        schema: { type: 'boolean' },
+      },
+    ],
+    response: { description: '`{ docs }`', schema: anyObject },
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/monitors/{id}/stats`,
+    operationId: 'getMonitorStats',
+    summary: 'Uptime and response time of a monitor',
+    tag: 'Monitors',
+    permission: 'monitor:read',
+    query: [
+      {
+        name: 'range',
+        description: 'Time range (default 24h)',
+        schema: { type: 'string', enum: [...STATS_RANGES] },
+      },
+    ],
+    response: {
+      description: '`{ uptime, avgPing, degraded, range, granularity, buckets }`',
+      schema: anyObject,
+    },
   },
 
   // Notification channels
