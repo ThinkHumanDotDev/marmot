@@ -29,6 +29,7 @@ features whose pull requests are merging alongside this documentation.
 | [Organizations and members](Organizations-and-Members.md) | Roles and permissions, invitations, invite links, ownership transfer, account settings.                                                     |
 | [Integrations](Integrations.md)                           | Status badges, the push endpoint, Prometheus metrics, organization API keys and outbound event webhooks _(landing in the current release)_. |
 | [Import and export](Import-and-Export.md)                 | Importing an Uptime Kuma backup or a Marmot export, and exporting an organization.                                                          |
+| [CLI and monitors as code](CLI.md)                        | The `marmot` command line: status from the terminal, monitors in YAML with plan/apply, GitOps _(landing in the current release)_.           |
 
 ## Change it
 

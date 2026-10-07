@@ -227,6 +227,12 @@ Logos (media uploads) are not exported. Tags, proxies and Docker hosts are not e
 `tags`, `proxy` and `dockerHost` fields hold ids of the exporting organization, so the importer drops tag and
 proxy assignments (noted in the report) and skips `docker` monitors with a reason.
 
+To keep monitor definitions in git instead, export them as a reviewable YAML file with
+`marmot monitors import` and apply changes with `marmot monitors apply` ([CLI and monitors as code](CLI.md));
+`marmot monitors apply` also accepts a Marmot export file, and `marmot import -f file.json` runs this
+importer from the command line. Monitor keys travel with the export; on import a key already used by a
+monitor of the organization is dropped (noted in the report).
+
 > **The export contains secrets.** Notification configs are exported as stored — webhook URLs, bot tokens,
 > SMTP passwords — and monitors carry their basic-auth, bearer, OAuth and mTLS credentials. The download is
 > therefore limited to `organization:update` (admins and owners). Store the file like a password file and

@@ -40,6 +40,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   const values = monitorFormSchema.parse({
     ...monitorToFormValues(source),
     name: `${source.name} (copy)`,
+    // Monitors-as-code keys are unique; the copy is not managed by the source's file.
+    key: null,
     active: false,
   })
 

@@ -480,6 +480,7 @@
     },
     "validation": {
       "nameRequired": "Name is required",
+      "keyInvalid": "Use letters, digits, dots, dashes and underscores, starting and ending with a letter or digit",
       "intervalMin": "At least {min} seconds",
       "statusCodes": "Use status codes or ranges such as 200-299, 304 or 1000",
       "usernameRequired": "Username is required",
@@ -1264,6 +1265,7 @@
       "adminsOnlyDescription": "API keys are managed by admins and owners of this organization.",
       "title": "API keys",
       "description": "Keys authenticate automation against the management API (<code>/api/orgs/…</code>, documented at <code>/api/docs</code>), Prometheus scrapes of <code>/api/metrics</code> and badges of monitors that are not on a public status page. Send them as <code>Authorization: Bearer</code> or <code>X-API-Key</code>.",
+      "organizationId": "Organization id for API URLs and the marmot CLI (<code>MARMOT_ORG</code>): <code>{id}</code>",
       "newKey": "New key",
       "emptyTitle": "No API keys yet",
       "emptyDescription": "Create a key to scrape metrics or embed private badges.",
@@ -4873,6 +4875,7 @@
       "snmpVersionUnsupported": "\"{name}\": SNMP version \"{version}\" is not supported; set to {fallback}",
       "parentNotImported": "\"{name}\": parent group #{parent} was not imported; the monitor is placed at the top level",
       "linksDropped": "{count} monitor → notification {count, plural, one {link} other {links}} dropped because the notification was not imported",
+      "monitorKeyDropped": "\"{name}\": the key \"{key}\" is already used by another monitor; imported without a key",
       "resourcesDropped": "\"{name}\": {resources, select, tags {tags} proxy {proxy} other {tags and proxy}} not imported; assign them again after the import",
       "rowsDropped": "\"{title}\": {count} monitor {count, plural, one {row} other {rows}} dropped because the monitor was not imported",
       "tagsUnsupported": "Tags are not supported yet",
@@ -5103,6 +5106,8 @@
     "checkFailed": "The check could not be run.",
     "monitorForeignReference": "Must belong to the same organization as the monitor.",
     "tagDuplicate": "Each tag may only be added once.",
+    "monitorKeyTaken": "Another monitor of this organization already uses the key “{key}”.",
+    "tagNameTaken": "A tag named “{name}” already exists.",
     "unknownMonitors": "{count, plural, one {Unknown monitor} other {Unknown monitors}}: {ids}",
     "monitorIdsExpected": "Expected '{' monitors: [id, …] '}'",
     "maintenanceNotFound": "Maintenance not found",
@@ -5265,6 +5270,189 @@
       "unsubscribe": "Unsubscribe",
       "welcomeTitle": "Subscribed to {siteName}",
       "welcome": "This channel will receive incident and maintenance updates from {siteName}."
+    }
+  },
+  "cli": {
+    "common": {
+      "error": "Error:",
+      "warning": "Warning:",
+      "unknown": "unknown",
+      "yes": "yes",
+      "no": "no"
+    },
+    "help": {
+      "intro": "marmot {version} — command-line tool for Marmot status monitors",
+      "commands": "Commands:",
+      "globalFlags": "Global flags:",
+      "globals": "--json  --quiet  --no-color  --url URL  --api-key KEY  --org ID  --profile NAME  --help  --version",
+      "more": "Connection: MARMOT_URL, MARMOT_API_KEY and MARMOT_ORG, or marmot login. Documentation: docs/CLI.md.",
+      "usage": "Usage:",
+      "hint": "Run marmot help for the list of commands."
+    },
+    "usage": {
+      "login": "marmot login --url URL --org ID (--api-key KEY | --api-key-stdin) [--profile NAME]",
+      "logout": "marmot logout [--profile NAME]",
+      "config": "marmot config",
+      "status": "marmot status [--fail-on-down]",
+      "check": "marmot check URL|HOST [--type TYPE] [--keyword TEXT] [--method METHOD] [--timeout SECONDS] [--timing]",
+      "monitorsList": "marmot monitors list [--type TYPE] [--active | --paused]",
+      "monitorsInfo": "marmot monitors info KEY|ID",
+      "monitorsLogs": "marmot monitors logs KEY|ID [--limit N] [--important]",
+      "monitorsCheck": "marmot monitors check KEY|ID [--no-wait] [--timing]",
+      "monitorsPause": "marmot monitors pause KEY|ID",
+      "monitorsResume": "marmot monitors resume KEY|ID",
+      "monitorsImport": "marmot monitors import [-o FILE] [--format yaml|json] [--redact-secrets]",
+      "monitorsPlan": "marmot monitors plan -f FILE [--prune] [--exit-code] [--verbose]",
+      "monitorsApply": "marmot monitors apply -f FILE [--dry-run] [--prune] [-y] [--exit-code]",
+      "monitorsSchema": "marmot monitors schema [-o FILE]",
+      "statusPagesList": "marmot status-pages list",
+      "statusPagesInfo": "marmot status-pages info SLUG|ID",
+      "incidentsList": "marmot incidents list --page SLUG|ID [--all]",
+      "incidentsCreate": "marmot incidents create --page SLUG|ID --title TEXT [--status STATUS] [--message TEXT] [--impact IMPACT] [--pinned]",
+      "incidentsUpdate": "marmot incidents update ID --page SLUG|ID [--status STATUS] [--message TEXT] [--resolve] [--title TEXT] [--impact IMPACT] [--pinned]",
+      "maintenanceList": "marmot maintenance list",
+      "maintenanceCreate": "marmot maintenance create (--title TEXT --start DATETIME --end DATETIME [--description TEXT] [--timezone ZONE] | -f FILE) [--monitor KEY|ID]…",
+      "import": "marmot import -f FILE [--dry-run]"
+    },
+    "args": {
+      "monitor": "a monitor key or id",
+      "statusPage": "a status page slug or id",
+      "incident": "an incident id",
+      "target": "a URL or host name"
+    },
+    "columns": {
+      "id": "ID",
+      "key": "KEY",
+      "name": "NAME",
+      "type": "TYPE",
+      "status": "STATUS",
+      "target": "TARGET",
+      "interval": "INTERVAL",
+      "lastCheck": "LAST CHECK",
+      "ping": "PING",
+      "message": "MESSAGE",
+      "parent": "PARENT",
+      "time": "TIME",
+      "slug": "SLUG",
+      "title": "TITLE",
+      "published": "PUBLISHED",
+      "group": "GROUP",
+      "created": "CREATED",
+      "strategy": "STRATEGY",
+      "profile": "PROFILE",
+      "url": "URL",
+      "org": "ORG",
+      "apiKey": "API KEY",
+      "file": "FILE"
+    },
+    "errors": {
+      "notConfigured": "Not connected: missing {missing}. Set MARMOT_URL, MARMOT_API_KEY and MARMOT_ORG, pass --url, --api-key and --org, or run marmot login.",
+      "argumentMissing": "Missing argument: {what}.",
+      "flagMissing": "Missing flag {flag}.",
+      "flagInteger": "{flag} must be a positive number.",
+      "flagNotAccepted": "Not accepted by this command: {flags}.",
+      "unknownCommand": "Unknown command: {command}.",
+      "statusPageNotFound": "No status page with the slug or id “{ref}”.",
+      "fileUnreadable": "Cannot read {file}: {reason}",
+      "formatInvalid": "Unknown format “{format}”: use yaml or json.",
+      "typeInvalid": "Unknown monitor type “{type}”.",
+      "typeNotAdhoc": "Ad-hoc checks need a URL or host type, not “{type}”.",
+      "oneOf": "{flag} must be one of: {values}.",
+      "bodyObject": "The file must contain an object.",
+      "dateTime": "{flag} must be a date and time such as 2026-10-08T02:00.",
+      "notJson": "{file} is not JSON.",
+      "invalidFile": "The file is not valid:",
+      "network": "Could not reach the Marmot instance. Check the URL (MARMOT_URL / --url).",
+      "unauthorized": "The API key was refused. Create a key under Settings → API keys and check MARMOT_API_KEY."
+    },
+    "spec": {
+      "notAnObject": "Expected an object.",
+      "unknownField": "Unknown field.",
+      "version": "Unsupported version; this CLI reads version {version}.",
+      "monitorsList": "monitors must be a list.",
+      "keyRequired": "Every monitor needs a key.",
+      "keyInvalid": "“{key}” is not a valid key: use letters, digits, dots, dashes and underscores, starting and ending with a letter or digit.",
+      "keyDuplicate": "The key “{key}” is already used by monitors[{index}].",
+      "nameRequired": "name is required.",
+      "typeInvalid": "Unknown monitor type.",
+      "namesList": "Expected a list of names.",
+      "tagsList": "Expected a list of tag names or tag: name, value: text entries.",
+      "envMissing": "The environment variable {name} is not set.",
+      "exportFieldsDropped": "“{name}”: {fields} not converted (the export holds ids of the exporting instance)."
+    },
+    "plan": {
+      "create": "create",
+      "update": "update",
+      "delete": "delete",
+      "unchanged": "unchanged",
+      "tag": "create tag {name}",
+      "adopted": "(adopts an existing monitor without a key)",
+      "secretSet": "(sensitive value)",
+      "secretChanged": "(sensitive value changed)",
+      "summary": "Plan: {create} to create, {update} to update, {delete} to delete, {unchanged} unchanged.",
+      "adoptAmbiguous": "{key}: {count} monitors without a key have this name and type; a new one will be created. Set the key on one of them to adopt it.",
+      "orphans": "{count, plural, one {# monitor has a key but is} other {# monitors have a key but are}} not in the file ({keys}); --prune deletes them.",
+      "channelsUnreadable": "This API key cannot list notification channels (read keys act as viewers): channel changes are not shown. Use a write key to apply.",
+      "channelUnknown": "No notification channel named “{name}”.",
+      "parentSelf": "A monitor cannot be its own parent.",
+      "parentUnknown": "No monitor with the key “{key}” in the file or in Marmot.",
+      "parentNotGroup": "The parent “{key}” is not a group monitor."
+    },
+    "apply": {
+      "confirm": "Apply these changes? [y/N]",
+      "confirmNonInteractive": "Not a terminal: pass -y to apply without confirmation.",
+      "cancelled": "Nothing applied.",
+      "progress": "{action, select, create {created} update {updated} other {deleted}} {key}",
+      "done": "Applied: {created} created, {updated} updated, {deleted} deleted.",
+      "failedAt": "{action, select, create {creating} update {updating} other {deleting}} {key}: ",
+      "partial": "Applied before the failure: {created} created, {updated} updated, {deleted} deleted. Run apply again after fixing the problem."
+    },
+    "export": {
+      "written": "Wrote {count, plural, one {# monitor} other {# monitors}} to {file}.",
+      "generatedKeys": "{count, plural, one {# monitor had} other {# monitors had}} no key; keys were derived from the names and are recorded by the first apply.",
+      "secretVariables": "Credentials were replaced with environment variables: {names}"
+    },
+    "monitors": {
+      "none": "No monitors.",
+      "noHeartbeats": "No heartbeats yet.",
+      "paused": "Paused {name}.",
+      "resumed": "Resumed {name}."
+    },
+    "check": {
+      "ping": "{ms} ms",
+      "statusCode": "HTTP {code}",
+      "elapsed": "took {ms} ms",
+      "tls": "TLS certificate valid: {valid}, {days} days left",
+      "queued": "Check of {name} queued; the result arrives as a heartbeat.",
+      "unsupported": "this Marmot version has no on-demand checks"
+    },
+    "status": {
+      "total": "{count, plural, one {# monitor} other {# monitors}}",
+      "allGood": "All monitors are up."
+    },
+    "statusPages": {
+      "none": "No status pages.",
+      "components": "{count, plural, one {# component} other {# components}}"
+    },
+    "incidents": {
+      "none": "No open incidents.",
+      "created": "Created incident {id}: {title}",
+      "updated": "Updated incident {id}.",
+      "nothingToUpdate": "Nothing to update: pass --status, --message, --resolve, --title, --impact or --pinned."
+    },
+    "maintenance": {
+      "none": "No maintenance.",
+      "created": "Scheduled maintenance {id}: {title}"
+    },
+    "import": {
+      "section": "{section}: {create} {dryRun, select, true {would be created} other {created}}, {skipped} skipped"
+    },
+    "login": {
+      "done": "Connected to {url} (organization {org}). Saved profile {profile} to {file}."
+    },
+    "logout": {
+      "done": "Removed profile {profile}.",
+      "none": "No saved profile {profile}."
     }
   }
 }

@@ -353,6 +353,13 @@ export const MAX_INTERVAL_SECONDS = 24 * 60 * 60 * 365
 /** Upper bound of the degraded threshold (10 minutes, well above any check timeout). */
 export const MAX_DEGRADED_AFTER_MS = 600_000
 
+/**
+ * Monitors-as-code key (#116): the stable identifier `marmot monitors apply` maps file entries to
+ * monitors by. Unique per organization; monitors without one are not managed by a file.
+ */
+export const MONITOR_KEY_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/
+export const MONITOR_KEY_MAX_LENGTH = 128
+
 /** HTTP status codes (`200`, `200-299`) and WebSocket close codes (`1000`, `4000-4999`). */
 const STATUS_CODE_PATTERN = /^([1-5]\d{2}|[1-4]\d{3})(-([1-5]\d{2}|[1-4]\d{3}))?$/
 
@@ -444,6 +451,11 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
     .object({
       name: z.string().trim().min(1, message('nameRequired')).max(150),
       type: z.enum(MONITOR_TYPE_NAMES),
+      /** Monitors-as-code key (`MONITOR_KEY_PATTERN`); `null` for monitors managed in the UI. */
+      key: optionalText(MONITOR_KEY_MAX_LENGTH).refine(
+        (value) => value === null || MONITOR_KEY_PATTERN.test(value),
+        message('keyInvalid'),
+      ),
       /** Name on status pages (and, later, subscriber messages) instead of `name`. */
       publicName: optionalText(150),
       description: optionalText(5000),
@@ -853,6 +865,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
   return {
     name: '',
     type,
+    key: null,
     publicName: null,
     description: null,
     parent: null,

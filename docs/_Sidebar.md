@@ -20,6 +20,7 @@
 - [Organizations and members](Organizations-and-Members.md)
 - [Integrations](Integrations.md)
 - [Import and export](Import-and-Export.md)
+- [CLI and monitors as code](CLI.md)
 
 **Change it**
 
