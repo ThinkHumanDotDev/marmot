@@ -24,8 +24,6 @@ interface ConnectedAccountsCardProps {
   returnPath: string
   /** `?error=<code>` from a failed link attempt, already turned into text. */
   error?: string
-  /** Organization time zone the "last used" dates render in. */
-  timeZone: string
 }
 
 /**
@@ -33,16 +31,11 @@ interface ConnectedAccountsCardProps {
  * last way in) and **Link** buttons for the providers this instance offers. Linking is a redirect
  * through the provider (`/api/auth/sso/<id>/login?link=1`), so the list is refreshed on return.
  */
-export function ConnectedAccountsCard({
-  initial,
-  returnPath,
-  error,
-  timeZone,
-}: ConnectedAccountsCardProps) {
+export function ConnectedAccountsCard({ initial, returnPath, error }: ConnectedAccountsCardProps) {
   const t = useTranslations('settings.account.connected')
   const format = useFormatter()
   const formatDate = (value: string | null) =>
-    value ? format.dateTime(new Date(value), 'short', { timeZone }) : '—'
+    value ? format.dateTime(new Date(value), 'short') : '—'
   const router = useRouter()
   const [data, setData] = React.useState(initial)
   const [pending, setPending] = React.useState<string | number | null>(null)

@@ -24,8 +24,6 @@ export interface MembersViewProps {
   invitations: InvitationRow[]
   /** `null` when the viewer may not invite. */
   inviteLink: InviteLink | null
-  /** Organization time zone the invitation expiry dates render in. */
-  timeZone: string
 }
 
 /** Members page body: table of members, pending invitations and the shareable invite link. */
@@ -36,7 +34,6 @@ export function MembersView({
   members,
   invitations,
   inviteLink,
-  timeZone,
 }: MembersViewProps) {
   const t = useTranslations('members.page')
   const [inviteOpen, setInviteOpen] = React.useState(false)
@@ -85,7 +82,6 @@ export function MembersView({
               <PendingInvitations
                 orgId={org.id}
                 invitations={invitations}
-                timeZone={timeZone}
                 onInvite={() => setInviteOpen(true)}
               />
             )}

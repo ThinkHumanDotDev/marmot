@@ -42,8 +42,6 @@ interface ApiKeysViewProps {
   initial: ApiKeyRow[]
   /** `api-key:create` / `api-key:delete` (admins and owners). */
   canManage: boolean
-  /** Organization time zone the expiry dates render in. */
-  timeZone: string
 }
 
 const EXPIRY_OPTIONS = [
@@ -75,12 +73,11 @@ function StatusBadge({ status }: { status: ApiKeyRow['status'] }) {
 }
 
 /** Settings → API keys: list, create (reveals the key once), disable, revoke. */
-export function ApiKeysView({ orgId, initial, canManage, timeZone }: ApiKeysViewProps) {
+export function ApiKeysView({ orgId, initial, canManage }: ApiKeysViewProps) {
   const t = useTranslations('settings.apiKeys')
   const format = useFormatter()
   const relativeTime = useRelativeTime()
-  const formatDate = (iso: string | null) =>
-    iso ? format.dateTime(new Date(iso), 'date', { timeZone }) : '—'
+  const formatDate = (iso: string | null) => (iso ? format.dateTime(new Date(iso), 'date') : '—')
   const [rows, setRows] = React.useState<ApiKeyRow[]>(initial)
   const [createOpen, setCreateOpen] = React.useState(false)
   const [revealed, setRevealed] = React.useState<{ row: ApiKeyRow; key: string } | null>(null)

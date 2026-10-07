@@ -12,7 +12,6 @@ import { requireUser } from '@/lib/auth'
 import { getOrgBySlug } from '@/lib/org'
 import type { ApiKey } from '@/payload-types'
 import { toApiKeyRow } from '@/server/api-keys'
-import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('settings.pageTitles')
@@ -43,7 +42,6 @@ export default async function ApiKeysSettingsPage({
   }
 
   const payload = await getPayload({ config })
-  const timeZone = await getOrganizationTimezone(payload, org.id)
   const { docs } = await payload.find({
     collection: 'api-keys',
     where: { organization: { equals: org.id } },
@@ -59,7 +57,6 @@ export default async function ApiKeysSettingsPage({
       orgId={String(org.id)}
       initial={(docs as ApiKey[]).map((doc) => toApiKeyRow(doc))}
       canManage={isSuperadmin(user) || can(user, org.id, 'api-key:create')}
-      timeZone={timeZone}
     />
   )
 }

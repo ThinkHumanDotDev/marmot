@@ -62,8 +62,6 @@ interface NotificationsViewProps {
   canManage: boolean
   /** Why this user may not turn on the server SMTP settings for a channel, or `null` when they may. */
   serverSmtpRestriction: string | null
-  /** Organization time zone the "last sent" timestamps render in. */
-  timeZone: string
 }
 
 /** "Last sent" as a compact relative time (`5 min ago`). */
@@ -86,7 +84,6 @@ export function NotificationsView({
   providers,
   canManage,
   serverSmtpRestriction,
-  timeZone,
 }: NotificationsViewProps) {
   const t = useTranslations('notifications')
   const locale = useLocale()
@@ -252,7 +249,7 @@ export function NotificationsView({
                         {row.lastSentAt ? (
                           <time
                             dateTime={row.lastSentAt}
-                            title={format.dateTime(new Date(row.lastSentAt), 'short', { timeZone })}
+                            title={format.dateTime(new Date(row.lastSentAt), 'short')}
                           >
                             {relativeTime(row.lastSentAt)}
                           </time>

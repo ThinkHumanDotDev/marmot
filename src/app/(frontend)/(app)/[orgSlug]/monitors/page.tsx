@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 
@@ -12,7 +13,11 @@ import { Button } from '@/components/ui/button'
 import { requireUser } from '@/lib/auth'
 import { loadOrgState } from '@/server/realtime/state'
 
-export const metadata: Metadata = { title: 'Monitors' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('monitors.list')
+  return { title: t('pageTitle') }
+}
+
 export const dynamic = 'force-dynamic'
 
 interface MonitorsPageProps {
@@ -42,6 +47,7 @@ export default async function MonitorsPage({ params }: MonitorsPageProps) {
 
   const canCreate = isSuperadmin(user) || can(user, organization.id, 'monitor:create')
 
+  const t = await getTranslations('monitors.list')
   const initial = await loadOrgState(payload, organization.id, {
     user,
     overrideAccess: false,
@@ -53,15 +59,15 @@ export default async function MonitorsPage({ params }: MonitorsPageProps) {
   return (
     <>
       <PageHeader
-        title="Monitors"
-        description="Everything Marmot is watching for this organization."
+        title={t('title')}
+        description={t('description')}
         actions={
           <>
             <RealtimeIndicator />
             {canCreate && (
               <Button asChild>
                 <Link href={`/${orgSlug}/monitors/new`}>
-                  <Plus /> New monitor
+                  <Plus /> {t('newMonitor')}
                 </Link>
               </Button>
             )}

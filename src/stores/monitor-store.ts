@@ -167,8 +167,17 @@ const EMPTY_BEATS = RingBuffer.create<Heartbeat>(HEARTBEAT_BUFFER_SIZE)
 
 export const selectMonitor = (id: string | number) => (s: MonitorState) => s.monitors[toId(id)]
 
-export const selectMonitorList = (s: MonitorState): MonitorSummary[] =>
-  Object.values(s.monitors).sort((a, b) => a.name.localeCompare(b.name))
+/**
+ * Monitors sorted by name. Pass the active locale (`useLocale()`) so the order follows the
+ * language's collation rules; without one the runtime default is used.
+ */
+export const selectMonitorList = (
+  s: Pick<MonitorState, 'monitors'>,
+  locale?: string,
+): MonitorSummary[] => {
+  const collator = new Intl.Collator(locale)
+  return Object.values(s.monitors).sort((a, b) => collator.compare(a.name, b.name))
+}
 
 export const selectHeartbeats = (id: string | number) => (s: MonitorState) =>
   s.heartbeats[toId(id)] ?? EMPTY_BEATS

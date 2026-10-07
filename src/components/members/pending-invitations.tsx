@@ -29,20 +29,12 @@ interface PendingInvitationsProps {
   orgId: string | number
   invitations: InvitationRow[]
   onInvite: () => void
-  /** Organization time zone the expiry dates render in. */
-  timeZone: string
 }
 
-export function PendingInvitations({
-  orgId,
-  invitations,
-  onInvite,
-  timeZone,
-}: PendingInvitationsProps) {
+export function PendingInvitations({ orgId, invitations, onInvite }: PendingInvitationsProps) {
   const t = useTranslations('members.pending')
   const format = useFormatter()
-  const formatDate = (iso: string | null) =>
-    iso ? format.dateTime(new Date(iso), 'date', { timeZone }) : '—'
+  const formatDate = (iso: string | null) => (iso ? format.dateTime(new Date(iso), 'date') : '—')
   const router = useRouter()
   const [busyId, setBusyId] = React.useState<string | number | null>(null)
 

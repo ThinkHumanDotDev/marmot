@@ -10,7 +10,6 @@ import { requireUser } from '@/lib/auth'
 import { effectiveRole, getOrgBySlug } from '@/lib/org'
 import type { InvitationRow, InviteLink } from '@/lib/org-api'
 import { inviteLinkUrl } from '@/server/invites'
-import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 import { listOrgMembers } from '@/server/members'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -29,10 +28,7 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
   const role = effectiveRole(user, org.id)
   const canInvite = canWithOverrides(user, org, 'member:invite')
 
-  const [members, timeZone] = await Promise.all([
-    listOrgMembers(payload, org.id, { user, overrideAccess: false }),
-    getOrganizationTimezone(payload, org.id),
-  ])
+  const members = await listOrgMembers(payload, org.id, { user, overrideAccess: false })
 
   let invitations: InvitationRow[] = []
   let inviteLink: InviteLink | null = null
@@ -69,7 +65,6 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
       members={members}
       invitations={invitations}
       inviteLink={inviteLink}
-      timeZone={timeZone}
     />
   )
 }

@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
+import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 
-import { StatusDot, statusLabel } from '@/components/status-dot'
+import { StatusDot } from '@/components/status-dot'
 import { cn } from '@/lib/utils'
 import {
   selectHeartbeats,
@@ -26,17 +27,6 @@ export function monitorTarget(monitor: Pick<MonitorSummary, 'type' | 'url' | 'ho
   return null
 }
 
-export function formatUptime(value: number | undefined): string {
-  if (value === undefined || Number.isNaN(value)) return '—'
-  const percent = value * 100
-  return `${percent >= 99.995 ? '100' : percent.toFixed(2)}%`
-}
-
-export function formatPing(ping: number | null | undefined): string {
-  if (ping === null || ping === undefined) return '—'
-  return `${Math.round(ping)} ms`
-}
-
 interface MonitorRowViewProps {
   monitor: MonitorSummary
   beats: readonly Heartbeat[]
@@ -46,6 +36,9 @@ interface MonitorRowViewProps {
 
 /** Presentational row; `MonitorRow` feeds it from the store, the server page from props. */
 export function MonitorRowView({ monitor, beats, uptime24h, href }: MonitorRowViewProps) {
+  const t = useTranslations('monitors')
+  const tStatus = useTranslations('common.status')
+  const format = useFormatter()
   const latest = beats[beats.length - 1]
   const status: MonitorStatusKey = monitor.active ? statusKey(latest?.status) : 'unknown'
   const target = monitorTarget(monitor)
@@ -66,7 +59,7 @@ export function MonitorRowView({ monitor, beats, uptime24h, href }: MonitorRowVi
             <span className="truncate text-sm font-medium">{monitor.name}</span>
             {!monitor.active && (
               <span className="rounded-full border px-1.5 text-[10px] font-medium text-muted-foreground uppercase">
-                Paused
+                {t('list.paused')}
               </span>
             )}
           </div>
@@ -79,14 +72,22 @@ export function MonitorRowView({ monitor, beats, uptime24h, href }: MonitorRowVi
         <div className="col-span-3 md:col-span-1">
           <UptimeBar beats={beats} />
         </div>
-        <div className="hidden text-right text-sm tabular-nums md:block" title="Uptime, last 24 h">
-          {formatUptime(uptime24h)}
+        <div
+          className="hidden text-right text-sm tabular-nums md:block"
+          title={t('format.uptime24hTitle')}
+        >
+          {uptime24h === undefined || Number.isNaN(uptime24h)
+            ? '—'
+            : // Rounded to two decimals, "100%" once it rounds up (99.995% and above).
+              uptime24h >= 0.99995
+              ? format.number(1, 'wholePercent')
+              : format.number(uptime24h, 'percent')}
         </div>
         <div
           className="hidden text-right text-sm text-muted-foreground tabular-nums md:block"
-          title={latest ? `${statusLabel[status]} · latest response time` : undefined}
+          title={latest ? t('format.latestResponseTime', { status: tStatus(status) }) : undefined}
         >
-          {formatPing(latest?.ping)}
+          {latest?.ping == null ? '—' : t('format.ping', { ms: Math.round(latest.ping) })}
         </div>
       </Link>
     </li>

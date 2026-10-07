@@ -16,6 +16,720 @@
       "title": "Page not found",
       "description": "The page you are looking for does not exist or has moved.",
       "backHome": "Back home"
+    },
+    "confirmDialog": {
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "working": "Working…",
+      "typeToConfirm": "Type <value></value> to confirm"
+    },
+    "imageUpload": {
+      "tooLarge": "Please choose an image under 5 MB.",
+      "failed": "Upload failed.",
+      "inputLabel": "Upload {label} image",
+      "uploading": "Uploading…",
+      "replace": "Replace",
+      "upload": "Upload",
+      "remove": "Remove"
+    },
+    "loading": {
+      "default": "Loading",
+      "monitor": "Loading monitor",
+      "settings": "Loading settings"
+    },
+    "beats": {
+      "none": "No checks yet",
+      "summary": "Last {count, plural, one {# check} other {# checks}}: {parts}. Latest: {latest}.",
+      "count": "{count} {status}",
+      "status": {
+        "up": "up",
+        "down": "down",
+        "pending": "pending",
+        "maintenance": "maintenance",
+        "unknown": "unknown"
+      }
+    },
+    "relativeTime": {
+      "never": "never",
+      "justNow": "just now",
+      "minutes": "{count} min ago",
+      "hours": "{count} h ago",
+      "days": "{count} d ago"
+    },
+    "duration": {
+      "day": "{count, plural, one {# day} other {# days}}",
+      "hour": "{count, plural, one {# hour} other {# hours}}",
+      "minute": "{count, plural, one {# minute} other {# minutes}}",
+      "second": "{count, plural, one {# second} other {# seconds}}"
+    }
+  },
+  "shell": {
+    "skipToContent": "Skip to content",
+    "openNavigation": "Open navigation",
+    "home": "Marmot home",
+    "searchAndCommands": "Search and commands",
+    "search": "Search",
+    "searchShortcut": "Search (⌘K)",
+    "searchTooltip": "Search · ⌘K",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
+    "navigationTitle": "Navigation",
+    "navigationDescription": "Organization pages and account",
+    "nav": {
+      "label": "Organization",
+      "monitors": "Monitors",
+      "statusPages": "Status pages",
+      "maintenance": "Maintenance",
+      "notifications": "Notifications",
+      "members": "Members",
+      "settings": "Settings"
+    },
+    "orgSwitcher": {
+      "trigger": "Organization: {name}. Switch organization",
+      "organizations": "Organizations",
+      "newOrganization": "New organization",
+      "role": {
+        "owner": "Owner",
+        "admin": "Admin",
+        "member": "Member",
+        "viewer": "Viewer",
+        "superadmin": "Superadmin"
+      }
+    },
+    "theme": {
+      "title": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "userMenu": {
+      "trigger": "Account: {name}",
+      "adminPanel": "Admin panel",
+      "privacySettings": "Privacy settings",
+      "signOut": "Sign out",
+      "signingOut": "Signing out…",
+      "signedOut": "Signed out"
+    },
+    "palette": {
+      "title": "Command palette",
+      "description": "Jump to a page or monitor, or run an action",
+      "placeholder": "Search pages, monitors, actions…",
+      "inputLabel": "Search commands",
+      "empty": "No results.",
+      "actions": "Actions",
+      "newMonitor": "New monitor",
+      "scheduleMaintenance": "Schedule maintenance",
+      "pauseMonitor": "Pause “{name}”",
+      "resumeMonitor": "Resume “{name}”",
+      "editMonitor": "Edit “{name}”",
+      "switchTheme": "Switch to {theme, select, dark {dark} other {light}} theme",
+      "goTo": "Go to",
+      "shortcut": "Shortcut: G then {key}",
+      "monitors": "Monitors",
+      "paused": "Paused",
+      "statusPages": "Status pages",
+      "openStatusPage": "Open {title}",
+      "editStatusPage": "Edit {title}",
+      "draft": "Draft",
+      "switchOrganization": "Switch organization",
+      "theme": "Theme",
+      "account": "Account",
+      "newOrganization": "New organization",
+      "signOut": "Sign out",
+      "resumed": "Resumed “{name}”",
+      "pausedToast": "Paused “{name}”",
+      "updateFailed": "Could not update the monitor"
+    }
+  },
+  "dashboard": {
+    "onboarding": {
+      "pageTitle": "Create organization",
+      "homeLabel": "Marmot",
+      "firstTitle": "Create your organization",
+      "firstDescription": "Monitors, status pages and teammates live inside an organization. You can rename it later.",
+      "title": "New organization",
+      "description": "Set up another workspace with its own monitors and members.",
+      "signedInAs": "Signed in as {email}",
+      "backTo": "Back to {name}",
+      "nameLabel": "Organization name",
+      "namePlaceholder": "Acme Inc.",
+      "slugLabel": "URL slug",
+      "slugPlaceholder": "acme",
+      "submit": "Create organization",
+      "submitting": "Creating…",
+      "welcome": "Welcome to {name}",
+      "failed": "Could not create the organization."
+    }
+  },
+  "monitors": {
+    "status": {
+      "paused": "Paused",
+      "noData": "No data"
+    },
+    "format": {
+      "ping": "{ms} ms",
+      "latestResponseTime": "{status} · latest response time",
+      "uptime24hTitle": "Uptime, last 24 h"
+    },
+    "list": {
+      "pageTitle": "Monitors",
+      "title": "Monitors",
+      "description": "Everything Marmot is watching for this organization.",
+      "newMonitor": "New monitor",
+      "loading": "Loading monitors",
+      "emptyTitle": "No monitors yet",
+      "emptyDescription": "Add an HTTP, TCP, ping or DNS monitor and Marmot starts checking it right away.",
+      "emptyDescriptionViewer": "Nothing is being monitored in this organization yet. Members can add monitors.",
+      "addFirst": "Add your first monitor",
+      "columns": {
+        "monitor": "Monitor",
+        "lastChecks": "Last {count} checks",
+        "uptime24h": "24h",
+        "ping": "Ping"
+      },
+      "listLabel": "Monitors",
+      "paused": "Paused"
+    },
+    "realtime": {
+      "live": "Live",
+      "connecting": "Connecting…",
+      "reconnecting": "Reconnecting…"
+    },
+    "detail": {
+      "breadcrumb": "Monitors",
+      "checked": "Checked {when}",
+      "paused": "This monitor is paused. Resume it to start checking again; history is kept.",
+      "latestHeartbeats": "Latest heartbeats",
+      "pushUrl": "Push URL",
+      "pushHint": "Call this URL at least every {seconds} seconds. Optional query parameters:<code> status</code> (up|down), <code>msg</code>, <code>ping</code>.",
+      "description": "Description",
+      "noDescription": "No description yet. Add one from Edit."
+    },
+    "new": {
+      "pageTitle": "New monitor",
+      "back": "← Monitors",
+      "title": "New monitor",
+      "description": "Marmot starts checking as soon as you save.",
+      "loading": "Loading monitor form"
+    },
+    "edit": {
+      "pageTitle": "Edit {name}",
+      "title": "Edit monitor",
+      "description": "Changes apply from the next check."
+    },
+    "actions": {
+      "pause": "Pause",
+      "resume": "Resume",
+      "edit": "Edit",
+      "more": "More actions",
+      "clone": "Clone",
+      "delete": "Delete",
+      "resumed": "Monitor resumed",
+      "paused": "Monitor paused",
+      "updateFailed": "Could not update the monitor",
+      "cloned": "Monitor cloned (paused)",
+      "cloneFailed": "Could not clone the monitor",
+      "deleted": "Deleted “{name}”",
+      "deleteFailed": "Could not delete the monitor",
+      "deleteTitle": "Delete “{name}”?",
+      "deleteDescription": "This removes the monitor together with its heartbeats and statistics. Child monitors of a group are kept and detached. This cannot be undone.",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete monitor"
+    },
+    "stats": {
+      "response": "Response",
+      "latestCheck": "Latest check",
+      "avgResponse": "Avg. response",
+      "uptime": "Uptime",
+      "last24Hours": "Last 24 hours",
+      "last30Days": "Last 30 days",
+      "lastYear": "Last year"
+    },
+    "chart": {
+      "title": "Response time",
+      "description": "Average per minute over the last 24 hours, with min–max range.",
+      "empty": "No response-time data yet. The chart fills in as checks complete.",
+      "average": "Avg {ping}",
+      "range": "{min} – {max}",
+      "counts": "{up} up · {down} down"
+    },
+    "events": {
+      "title": "Important events",
+      "description": "Every status change, with the message the check returned.",
+      "empty": "No status changes recorded yet.",
+      "status": "Status",
+      "time": "Time",
+      "message": "Message",
+      "pagination": "Page {page} of {totalPages} · {totalDocs} events",
+      "newer": "Newer",
+      "older": "Older"
+    },
+    "certificate": {
+      "title": "Certificate",
+      "description": "Issuer, validity window and days until expiry of the server certificate.",
+      "valid": "Valid",
+      "invalid": "Invalid",
+      "hostnameMismatch": "Hostname mismatch",
+      "checked": "Checked {when}",
+      "subject": "Subject",
+      "issuer": "Issuer",
+      "validFrom": "Valid from",
+      "validUntil": "Valid until",
+      "expiresIn": "Expires in",
+      "fingerprint": "Fingerprint",
+      "validFor": "Valid for",
+      "error": "Error",
+      "chain": "Chain",
+      "noCommonName": "(no CN)",
+      "emptyHttps": "No certificate captured yet. It appears after the first check of an https:// URL.",
+      "emptyOther": "Certificates are captured for HTTPS monitors.",
+      "tlsIgnored": "TLS errors are ignored for this monitor, so no expiry warnings are sent.",
+      "notificationsOn": "Expiry notifications are switched on for this monitor.",
+      "notificationsOff": "Turn on \"Certificate expiry notification\" in the monitor settings to be warned before it expires.",
+      "domainTitle": "Domain registration",
+      "domain": "Domain",
+      "expiresOn": "Expires on",
+      "domainUnknown": "Unknown (no expiration published)",
+      "domainChecked": "Checked",
+      "domainPending": "The registration is looked up via RDAP on the next check.",
+      "days": "{count, plural, one {# day} other {# days}}",
+      "expiresToday": "expires today",
+      "expiredAgo": "expired {count, plural, one {# day} other {# days}} ago"
+    },
+    "typeGroups": {
+      "general": "General",
+      "passive": "Passive",
+      "specific": "Protocols",
+      "database": "Databases",
+      "game": "Game servers",
+      "special": "Special"
+    },
+    "types": {
+      "http": {
+        "label": "HTTP(s)",
+        "description": "UP when the response status is accepted."
+      },
+      "keyword": {
+        "label": "HTTP(s) - Keyword",
+        "description": "UP when the response body contains (or lacks) a keyword."
+      },
+      "json-query": {
+        "label": "HTTP(s) - Json Query",
+        "description": "UP when a JSONata expression over the JSON response matches."
+      },
+      "real-browser": {
+        "label": "HTTP(s) - Browser Engine (Chrome/Chromium)",
+        "description": "Loads the page in a real Chromium through a remote Playwright browser; UP on a 2xx/3xx navigation."
+      },
+      "port": {
+        "label": "TCP Port",
+        "description": "UP when a TCP connection succeeds."
+      },
+      "ping": {
+        "label": "Ping",
+        "description": "UP when the host answers ICMP echo requests."
+      },
+      "dns": {
+        "label": "DNS",
+        "description": "UP when the resolver returns a record."
+      },
+      "docker": {
+        "label": "Docker Container",
+        "description": "UP when the container is running (and healthy, if it has a health check)."
+      },
+      "push": {
+        "label": "Push",
+        "description": "Your system calls a URL on a schedule; silence means DOWN."
+      },
+      "manual": {
+        "label": "Manual",
+        "description": "Status set by hand, never checked."
+      },
+      "group": {
+        "label": "Group",
+        "description": "Aggregates child monitors: DOWN when any child is down."
+      },
+      "grpc-keyword": {
+        "label": "gRPC(s) - Keyword",
+        "description": "Calls a unary gRPC method and looks for a keyword in the response."
+      },
+      "websocket-upgrade": {
+        "label": "WebSocket Upgrade",
+        "description": "Opens a WebSocket and judges the close code (default 1000)."
+      },
+      "mqtt": {
+        "label": "MQTT",
+        "description": "Subscribes to a topic and checks the first message received."
+      },
+      "kafka-producer": {
+        "label": "Kafka Producer",
+        "description": "Produces a message to a topic; UP when the brokers acknowledge it."
+      },
+      "rabbitmq": {
+        "label": "RabbitMQ",
+        "description": "Queries the management API health check of each node."
+      },
+      "smtp": {
+        "label": "SMTP",
+        "description": "Connects to a mail server and verifies the handshake."
+      },
+      "snmp": {
+        "label": "SNMP",
+        "description": "Reads an OID over SNMP v1/v2c and optionally compares its value."
+      },
+      "ntp": {
+        "label": "NTP",
+        "description": "Queries a time server and checks stratum, offset and dispersion."
+      },
+      "sftp": {
+        "label": "SFTP",
+        "description": "Logs in over SFTP and optionally checks that a path exists."
+      },
+      "radius": {
+        "label": "Radius",
+        "description": "Sends an Access-Request; UP unless the server rejects it."
+      },
+      "tailscale-ping": {
+        "label": "Tailscale Ping",
+        "description": "Runs `tailscale ping` on the worker host."
+      },
+      "mysql": {
+        "label": "MySQL/MariaDB",
+        "description": "Connects and runs a query (default SELECT 1)."
+      },
+      "postgres": {
+        "label": "PostgreSQL",
+        "description": "Connects and runs a query (default SELECT 1)."
+      },
+      "sqlserver": {
+        "label": "Microsoft SQL Server",
+        "description": "Connects and runs a query (default SELECT 1)."
+      },
+      "mongodb": {
+        "label": "MongoDB",
+        "description": "Connects and runs a command (default ping), optionally checking the result."
+      },
+      "redis": {
+        "label": "Redis",
+        "description": "Connects and sends PING."
+      },
+      "steam": {
+        "label": "Steam Game Server",
+        "description": "Looks the server up in the Steam master list (needs a Steam API key)."
+      },
+      "gamedig": {
+        "label": "GameDig",
+        "description": "Queries a game server with the GameDig protocol library."
+      }
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "intervalMin": "At least {min} seconds",
+      "statusCodes": "Use status codes or ranges such as 200-299, 304 or 1000",
+      "usernameRequired": "Username is required",
+      "tokenRequired": "Token is required",
+      "tokenUrlRequired": "Token URL is required",
+      "clientIdRequired": "Client ID is required",
+      "clientSecretRequired": "Client secret is required",
+      "clientCertificateRequired": "Client certificate is required",
+      "privateKeyRequired": "Private key is required",
+      "headersJson": "Headers must be a JSON object, e.g. {example}",
+      "urlRequired": "URL is required",
+      "httpUrl": "Enter an http(s) URL",
+      "bodyJson": "Body must be valid JSON for the JSON encoding",
+      "statusCodeRequired": "Add at least one accepted status code",
+      "remoteBrowserRequired": "Remote browser URL is required",
+      "remoteBrowserUrl": "Enter the ws(s):// URL of a Playwright-compatible browser",
+      "wsUrl": "Enter a ws(s):// URL",
+      "closeCodeRequired": "Add at least one accepted close code",
+      "wsAuthMethod": "WebSocket monitors support none, basic, bearer and mTLS",
+      "keywordRequired": "Keyword is required",
+      "jsonQueryRequired": "JSON query is required",
+      "expectedValueRequired": "Expected value is required",
+      "hostnameRequired": "Hostname is required",
+      "portRequired": "Port is required",
+      "recordTypeRequired": "Record type is required",
+      "manualStatusRequired": "Choose the status to report",
+      "dockerHostRequired": "Choose a Docker host",
+      "containerRequired": "Container name or id is required",
+      "containerInvalid": "Use the container name or id, e.g. my-app or 3f2a…",
+      "tagsUnique": "Each tag may only be added once",
+      "connectionStringRequired": "Connection string is required",
+      "connectionStringScheme": "Use a connection string like {example}",
+      "mongoCommandJson": "The command must be a JSON object, e.g. {example}",
+      "topicRequired": "Topic is required",
+      "brokerRequired": "Add at least one broker",
+      "saslJson": "SASL options must be a JSON object",
+      "grpcUrlRequired": "gRPC URL is required",
+      "protoRequired": "Proto definition is required",
+      "serviceNameRequired": "Service name is required",
+      "methodRequired": "Method is required",
+      "grpcBodyJson": "Body must be a JSON object",
+      "grpcMetadataJson": "Metadata must be a JSON object",
+      "sharedSecretRequired": "Shared secret is required",
+      "oidRequired": "OID is required",
+      "communityRequired": "Community string is required",
+      "sshPrivateKeyRequired": "Private key is required for key-based authentication",
+      "nodeRequired": "Add at least one node URL",
+      "nodeUrl": "Nodes are management API URLs such as https://node1:15672",
+      "gameRequired": "Game is required",
+      "channelsUnique": "Each channel may only be added once"
+    },
+    "form": {
+      "onePerLine": "One per line.",
+      "choose": "Choose…",
+      "none": "None",
+      "statusCodes": {
+        "label": "Accepted status codes",
+        "description": "Codes or ranges counted as UP, e.g. <code>200-299</code>, <code>304</code>.",
+        "remove": "Remove {code}",
+        "add": "Add status code"
+      },
+      "tags": {
+        "label": "Tags",
+        "unknown": "Unknown tag",
+        "remove": "Remove {name}",
+        "removeFallback": "tag",
+        "empty": "No tags yet. <link>Create tags</link> to label monitors.",
+        "tagToAdd": "Tag to add",
+        "chooseTag": "Choose a tag",
+        "allAdded": "All tags added",
+        "valueLabel": "Tag value (optional)",
+        "valuePlaceholder": "Value (optional)",
+        "add": "Add",
+        "description": "Shown in the monitor list and on status pages that enable tags. <link>Manage tags</link>"
+      },
+      "saved": "Monitor saved",
+      "created": "Monitor created",
+      "fixFields": "Please fix the highlighted fields",
+      "saveFailed": "Could not save the monitor",
+      "cancel": "Cancel",
+      "create": "Create monitor",
+      "save": "Save changes",
+      "general": {
+        "title": "General",
+        "description": "What to watch and how it shows up in the list.",
+        "type": "Monitor type",
+        "name": "Friendly name",
+        "namePlaceholder": "Marketing site",
+        "url": "URL",
+        "hostname": "Hostname",
+        "port": "Port",
+        "resolverPort": "Resolver port",
+        "keyword": "Keyword",
+        "keywordDescription": "Searched in the response (case-sensitive).",
+        "invertKeyword": "Invert keyword",
+        "invertKeywordDescription": "UP when the keyword is absent.",
+        "jsonQuery": "JSON query",
+        "jsonQueryOptional": "JSON query (optional)",
+        "jsonQueryDescription": "JSONata expression evaluated against the result, e.g. <code>data[0].ok</code>.",
+        "condition": "Condition",
+        "expectedValue": "Expected value",
+        "expectedValueOptional": "Expected value (optional)",
+        "resolverServer": "Resolver server",
+        "resolverServerDescription": "Comma-separated IPs or hostnames.",
+        "recordType": "Record type",
+        "manualStatus": "Status to report",
+        "manualStatusDescription": "Manual monitors are never checked; they show the status you set.",
+        "manualStatusOption": {
+          "up": "Up",
+          "down": "Down",
+          "pending": "Pending"
+        },
+        "dockerHost": "Docker host",
+        "dockerHostEmpty": "No Docker hosts yet; an admin can add one in <link>settings</link>.",
+        "dockerContainer": "Container name / id",
+        "push": "A push URL is generated when the monitor is saved. Call it at least every interval; a missed call marks the monitor DOWN.",
+        "group": "Monitor group",
+        "groupEmpty": "Create a Group monitor to nest monitors under it.",
+        "groupDescription": "Groups aggregate the status of their children.",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Shown on the detail page and status pages."
+      },
+      "timing": {
+        "title": "Timing",
+        "description": "How often to check and how patient to be before alerting.",
+        "interval": "Heartbeat interval",
+        "seconds": "seconds",
+        "intervalHint": "Check every {duration}",
+        "retries": "Retries",
+        "retriesDescription": "Failed checks before the monitor is marked DOWN.",
+        "retryInterval": "Heartbeat retry interval",
+        "retryIntervalHint": "Retry every {duration} while pending",
+        "resend": "Resend notification",
+        "resendHint": "Re-notify every {count} consecutive DOWN beats",
+        "resendDescription": "Every N consecutive DOWN beats (0 = never)",
+        "timeout": "Request timeout",
+        "timeoutDefault": "0 uses 80% of the interval"
+      },
+      "connection": {
+        "title": "Connection",
+        "description": "How to reach the service and what to ask it.",
+        "connectionString": "Connection string",
+        "connectionStringDescription": "Credentials are stored with the monitor; use a read-only account.",
+        "command": "Command",
+        "query": "Query",
+        "commandDescription": "JSON command document run against the database (default {example}).",
+        "queryDescription": "Statement that must succeed (default SELECT 1).",
+        "ignoreTls": "Ignore TLS errors",
+        "redisIgnoreTlsDescription": "Accept self-signed certificates on rediss:// connections.",
+        "ignoreTlsDescription": "Accept self-signed or expired certificates.",
+        "topic": "Topic",
+        "username": "Username",
+        "password": "Password",
+        "checkType": "Check type",
+        "checkTypeOption": {
+          "keyword": "Keyword",
+          "json-query": "JSON query"
+        },
+        "successMessage": "Success message",
+        "successMessageDescription": "The received message must contain this text (leave empty to accept any message).",
+        "brokers": "Brokers",
+        "brokersDescription": "Bootstrap broker addresses, one per line.",
+        "message": "Message",
+        "enableSsl": "Enable SSL",
+        "enableSslDescription": "Connect to the brokers over TLS.",
+        "autoTopic": "Allow auto topic creation",
+        "autoTopicDescription": "Create the topic when it does not exist.",
+        "saslOptions": "SASL options",
+        "saslOptionsDescription": "JSON object: mechanism (plain, scram-sha-256, scram-sha-512), username, password. Leave empty for no authentication.",
+        "grpcUrl": "gRPC URL",
+        "grpcUrlDescription": "host:port without a scheme.",
+        "serviceName": "Service name",
+        "method": "Method",
+        "methodDescription": "lowerCamelCase method name of the service.",
+        "enableTls": "Enable TLS",
+        "enableTlsDescription": "Use TLS credentials for the channel.",
+        "protobuf": "Proto definition",
+        "requestBody": "Request body",
+        "requestBodyDescription": "JSON object passed to the method.",
+        "metadata": "Metadata",
+        "metadataDescription": "JSON object of request metadata (optional).",
+        "sharedSecret": "Shared secret",
+        "calledStationId": "Called station id",
+        "calledStationIdDescription": "Identifier of the called device (optional).",
+        "callingStationId": "Calling station id",
+        "callingStationIdDescription": "Identifier of the calling device (optional).",
+        "oid": "OID",
+        "version": "Version",
+        "community": "Community string",
+        "security": "Security",
+        "securityDescription": "Use SMTPS for port 465; STARTTLS for 25/587.",
+        "smtpSecurity": {
+          "opportunistic": "STARTTLS if offered",
+          "starttls": "Require STARTTLS",
+          "secure": "SMTPS (implicit TLS)",
+          "nostarttls": "Ignore STARTTLS"
+        },
+        "authentication": "Authentication",
+        "sshAuth": {
+          "password": "Password",
+          "privateKey": "Private key"
+        },
+        "privateKey": "Private key (PEM)",
+        "passphrase": "Passphrase",
+        "passphraseDescription": "Only when the key is encrypted.",
+        "remotePath": "Remote path",
+        "remotePathDescription": "Optional path that must exist on the server.",
+        "nodes": "Nodes",
+        "nodesDescription": "Management API base URLs, one per line. UP when any node reports no alarms.",
+        "closeCodes": "Accepted close codes",
+        "closeCodesDescription": "Close codes counted as UP, e.g. <code>1000</code>.",
+        "headers": "Headers",
+        "wsHeadersDescription": "JSON object of extra handshake headers.",
+        "subprotocols": "Subprotocols",
+        "subprotocolsDescription": "Comma-separated Sec-WebSocket-Protocol values (optional).",
+        "ignoreAcceptHeader": "Ignore Sec-WebSocket-Accept",
+        "ignoreAcceptHeaderDescription": "Accept servers that answer without the header.",
+        "game": "Game",
+        "gameDescription": "GameDig game id, see <link>the games list</link>.",
+        "givenPortOnly": "Given port only",
+        "givenPortOnlyDescription": "Do not probe the other ports the game commonly uses.",
+        "steam": "The server is looked up through the Steam Web API. A superadmin must set the Steam API key in the instance settings first.",
+        "remoteBrowser": "Remote browser URL",
+        "remoteBrowserDescription": "Playwright-compatible browser server (e.g. browserless or `npx playwright run-server`). Marmot does not launch Chromium itself."
+      },
+      "http": {
+        "title": "HTTP options",
+        "description": "Request shape and what counts as a healthy response.",
+        "method": "Method",
+        "bodyEncoding": "Body encoding",
+        "encoding": {
+          "json": "JSON",
+          "form": "Form (x-www-form-urlencoded)",
+          "xml": "XML"
+        },
+        "maxRedirects": "Max. redirects",
+        "body": "Body",
+        "headers": "Headers",
+        "headersDescription": "JSON object of extra request headers.",
+        "proxy": "Proxy",
+        "noProxy": "No proxy (direct connection)",
+        "proxyDefault": "{label} (default)",
+        "proxyInactive": "{label} (inactive)",
+        "proxyEmpty": "No proxies yet; an admin can add one in <link>settings</link>.",
+        "proxyDescription": "Send the request through an HTTP(s) or SOCKS proxy.",
+        "ignoreTls": "Ignore TLS errors",
+        "ignoreTlsDescription": "Accept self-signed or expired certificates. Also disables certificate expiry notifications."
+      },
+      "auth": {
+        "title": "Authentication",
+        "description": "Credentials sent with every check.",
+        "method": "Method",
+        "methods": {
+          "none": "None",
+          "basic": "HTTP Basic",
+          "bearer": "Bearer token",
+          "oauth2-cc": "OAuth2 client credentials",
+          "ntlm": "NTLM",
+          "mtls": "mTLS (client certificate)"
+        },
+        "username": "Username",
+        "password": "Password",
+        "domain": "Domain",
+        "workstation": "Workstation",
+        "token": "Token",
+        "tokenDescription": "Sent as {header}.",
+        "tokenUrl": "Token URL",
+        "clientId": "Client ID",
+        "clientSecret": "Client secret",
+        "scopes": "Scopes",
+        "clientAuthentication": "Client authentication",
+        "clientAuth": {
+          "client_secret_basic": "HTTP Basic (client_secret_basic)",
+          "client_secret_post": "Request body (client_secret_post)"
+        },
+        "clientCertificate": "Client certificate (PEM)",
+        "privateKey": "Private key (PEM)",
+        "caCertificate": "CA certificate (PEM, optional)"
+      },
+      "advanced": {
+        "title": "Advanced",
+        "upsideDown": "Upside down mode",
+        "upsideDownDescription": "Flip the status: a failed check counts as UP and a successful one as DOWN.",
+        "certExpiry": "Certificate expiry notification",
+        "certExpiryDescription": "Warn through this monitor's notification channels before the TLS certificate expires (7, 14 and 21 days by default).",
+        "domainExpiry": "Domain name expiry notification",
+        "domainExpiryDescription": "Look the registration up via RDAP once a day and warn before the domain expires.",
+        "active": "Active",
+        "activeDescription": "Paused monitors keep their history but are not checked."
+      }
+    },
+    "channels": {
+      "title": "Notifications",
+      "description": "Channels alerted when this monitor changes status.",
+      "defaultsHint": "Default channels are selected for new monitors.",
+      "empty": "No notification channels in this organization yet.",
+      "manage": "Manage channels",
+      "toggle": "Alert through {name}",
+      "default": "Default",
+      "paused": "Paused",
+      "none": "No channels attached: status changes of this monitor alert nobody.",
+      "noneEditable": "No channels attached: status changes of this monitor alert nobody. Choose channels under Edit.",
+      "test": "Test",
+      "testLabel": "Send a test message through {name}",
+      "testSent": "Test message sent",
+      "testFailed": "Test failed"
     }
   },
   "auth": {
@@ -949,25 +1663,6 @@
       "failed": "Could not accept the invitation."
     }
   },
-  "onboarding": {
-    "pageTitle": "Create organization",
-    "firstTitle": "Create your organization",
-    "title": "New organization",
-    "firstDescription": "Monitors, status pages and teammates live inside an organization. You can rename it later.",
-    "description": "Set up another workspace with its own monitors and members.",
-    "signedInAs": "Signed in as {email}",
-    "backTo": "Back to {organization}",
-    "form": {
-      "name": "Organization name",
-      "namePlaceholder": "Acme Inc.",
-      "slug": "URL slug",
-      "slugPlaceholder": "acme",
-      "submit": "Create organization",
-      "submitting": "Creating…",
-      "welcome": "Welcome to {organization}",
-      "failed": "Could not create the organization."
-    }
-  },
   "notifications": {
     "page": {
       "pageTitle": "Notifications",
@@ -1682,24 +2377,6 @@
         "nightlyBackup": "Nightly backup"
       },
       "pushHeartbeat": "push heartbeat"
-    }
-  },
-  "monitors": {
-    "channels": {
-      "title": "Notifications",
-      "description": "Channels alerted when this monitor changes status.",
-      "defaultsHint": "Default channels are selected for new monitors.",
-      "empty": "No notification channels in this organization yet.",
-      "manage": "Manage channels",
-      "toggle": "Alert through {name}",
-      "default": "Default",
-      "paused": "Paused",
-      "none": "No channels attached: status changes of this monitor alert nobody.",
-      "noneEditable": "No channels attached: status changes of this monitor alert nobody. Choose channels under Edit.",
-      "test": "Test",
-      "testLabel": "Send a test message through {name}",
-      "testSent": "Test message sent",
-      "testFailed": "Test failed"
     }
   },
   "email": {

@@ -13,7 +13,6 @@ import { toNotificationRow } from '@/components/notifications/types'
 import { PageHeader } from '@/components/page-header'
 import { getUserOrganizations, requireUser } from '@/lib/auth'
 import type { Notification } from '@/payload-types'
-import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 import { getProviderDescriptors, toClientNotification } from '@/server/notifications/api'
 import { serverSmtpRestriction } from '@/server/notifications/server-smtp'
 
@@ -67,7 +66,6 @@ export default async function NotificationsPage({ params }: PageProps) {
   }
 
   const requestUser = { ...user, collection: 'users' as const }
-  const timeZone = await getOrganizationTimezone(payload, orgId)
   const { docs } = await payload.find({
     collection: 'notifications',
     where: { organization: { equals: orgId } },
@@ -87,7 +85,6 @@ export default async function NotificationsPage({ params }: PageProps) {
       providers={getProviderDescriptors()}
       canManage={canManage}
       serverSmtpRestriction={serverSmtpRestriction(user)}
-      timeZone={timeZone}
     />
   )
 }

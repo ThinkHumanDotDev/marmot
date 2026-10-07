@@ -7,7 +7,17 @@
  */
 import { z } from 'zod'
 
+import type { Messages } from '@/i18n/messages'
 import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
+
+/** Key of a validation message under `monitors.validation` in the catalogues. */
+export type MonitorValidationKey = keyof Messages['monitors']['validation']
+
+/** Resolves a validation message (a next-intl translator scoped to `monitors.validation`). */
+export type MonitorValidationMessage = (
+  key: MonitorValidationKey,
+  values?: Record<string, string | number>,
+) => string
 
 export const MONITOR_TYPE_NAMES = [
   // General
@@ -392,340 +402,352 @@ const textList = (max = 500) =>
     .nullish()
     .transform((list) => (list ?? []).filter((v) => v.length > 0))
 
-export const monitorFormSchema = z
-  .object({
-    name: z.string().trim().min(1, 'Name is required').max(150),
-    type: z.enum(MONITOR_TYPE_NAMES),
-    description: optionalText(5000),
-    parent: relationId,
-    weight: nonNegativeInt().default(2000),
-    active: z.boolean().default(true),
-    tags: z.array(tagRow).max(50).default([]),
-    /** Notification channels alerted on important beats (`monitors.notifications`). */
-    notifications: z
-      .array(z.union([z.string().min(1), z.number().int().positive()]))
-      .max(100)
-      .default([]),
+/**
+ * Builds the schema with validation messages from `message`: the form passes its translator so
+ * errors appear in the user's language; the route handlers and imports use the English
+ * `monitorFormSchema` from `./monitor-schema` (kept apart so the catalogue stays out of the client).
+ */
+export function createMonitorFormSchema(message: MonitorValidationMessage) {
+  return z
+    .object({
+      name: z.string().trim().min(1, message('nameRequired')).max(150),
+      type: z.enum(MONITOR_TYPE_NAMES),
+      description: optionalText(5000),
+      parent: relationId,
+      weight: nonNegativeInt().default(2000),
+      active: z.boolean().default(true),
+      tags: z.array(tagRow).max(50).default([]),
+      /** Notification channels alerted on important beats (`monitors.notifications`). */
+      notifications: z
+        .array(z.union([z.string().min(1), z.number().int().positive()]))
+        .max(100)
+        .default([]),
 
-    // Target
-    url: optionalText(2048),
-    hostname: optionalText(253),
-    port: z.number().int().min(1).max(65535).nullish(),
+      // Target
+      url: optionalText(2048),
+      hostname: optionalText(253),
+      port: z.number().int().min(1).max(65535).nullish(),
 
-    // Timing
-    interval: z
-      .number()
-      .int()
-      .min(MIN_INTERVAL_SECONDS, `At least ${MIN_INTERVAL_SECONDS} seconds`)
-      .max(MAX_INTERVAL_SECONDS),
-    retryInterval: z
-      .number()
-      .int()
-      .min(MIN_INTERVAL_SECONDS, `At least ${MIN_INTERVAL_SECONDS} seconds`)
-      .max(MAX_INTERVAL_SECONDS),
-    maxRetries: nonNegativeInt(1000),
-    resendInterval: nonNegativeInt(100_000),
-    timeout: z.number().min(0).max(MAX_INTERVAL_SECONDS),
-    upsideDown: z.boolean().default(false),
+      // Timing
+      interval: z
+        .number()
+        .int()
+        .min(MIN_INTERVAL_SECONDS, message('intervalMin', { min: MIN_INTERVAL_SECONDS }))
+        .max(MAX_INTERVAL_SECONDS),
+      retryInterval: z
+        .number()
+        .int()
+        .min(MIN_INTERVAL_SECONDS, message('intervalMin', { min: MIN_INTERVAL_SECONDS }))
+        .max(MAX_INTERVAL_SECONDS),
+      maxRetries: nonNegativeInt(1000),
+      resendInterval: nonNegativeInt(100_000),
+      timeout: z.number().min(0).max(MAX_INTERVAL_SECONDS),
+      upsideDown: z.boolean().default(false),
 
-    // HTTP
-    method: z.enum(HTTP_METHODS).default('GET'),
-    httpBodyEncoding: z.enum(BODY_ENCODINGS).default('json'),
-    maxRedirects: nonNegativeInt(100).default(10),
-    body: optionalText(100_000),
-    headers: optionalText(20_000),
-    acceptedStatusCodes: z
-      .array(z.string().trim().min(1))
-      .default(['200-299'])
-      .refine((codes) => codes.every(isValidStatusCodeRange), {
-        message: 'Use status codes or ranges such as 200-299, 304 or 1000',
-      }),
-    ignoreTls: z.boolean().default(false),
-    expiryNotification: z.boolean().default(false),
-    proxy: relationId,
-    domainExpiryNotification: z.boolean().default(false),
+      // HTTP
+      method: z.enum(HTTP_METHODS).default('GET'),
+      httpBodyEncoding: z.enum(BODY_ENCODINGS).default('json'),
+      maxRedirects: nonNegativeInt(100).default(10),
+      body: optionalText(100_000),
+      headers: optionalText(20_000),
+      acceptedStatusCodes: z
+        .array(z.string().trim().min(1))
+        .default(['200-299'])
+        .refine((codes) => codes.every(isValidStatusCodeRange), {
+          message: message('statusCodes'),
+        }),
+      ignoreTls: z.boolean().default(false),
+      expiryNotification: z.boolean().default(false),
+      proxy: relationId,
+      domainExpiryNotification: z.boolean().default(false),
 
-    // Keyword / JSON query
-    keyword: optionalText(1000),
-    invertKeyword: z.boolean().default(false),
-    jsonPath: optionalText(2000),
-    jsonPathOperator: z.enum(JSON_PATH_OPERATORS).default('=='),
-    expectedValue: optionalText(2000),
+      // Keyword / JSON query
+      keyword: optionalText(1000),
+      invertKeyword: z.boolean().default(false),
+      jsonPath: optionalText(2000),
+      jsonPathOperator: z.enum(JSON_PATH_OPERATORS).default('=='),
+      expectedValue: optionalText(2000),
 
-    // Authentication
-    authMethod: z.enum(AUTH_METHODS).default('none'),
-    basicAuthUser: optionalText(500),
-    basicAuthPass: optionalText(500),
-    authDomain: optionalText(500),
-    authWorkstation: optionalText(500),
-    bearerToken: optionalText(5000),
-    oauthTokenUrl: optionalText(2048),
-    oauthClientId: optionalText(500),
-    oauthClientSecret: optionalText(2000),
-    oauthScopes: optionalText(2000),
-    oauthAuthMethod: z.enum(OAUTH_AUTH_METHODS).default('client_secret_basic'),
-    tlsCert: optionalText(20_000),
-    tlsKey: optionalText(20_000),
-    tlsCa: optionalText(20_000),
+      // Authentication
+      authMethod: z.enum(AUTH_METHODS).default('none'),
+      basicAuthUser: optionalText(500),
+      basicAuthPass: optionalText(500),
+      authDomain: optionalText(500),
+      authWorkstation: optionalText(500),
+      bearerToken: optionalText(5000),
+      oauthTokenUrl: optionalText(2048),
+      oauthClientId: optionalText(500),
+      oauthClientSecret: optionalText(2000),
+      oauthScopes: optionalText(2000),
+      oauthAuthMethod: z.enum(OAUTH_AUTH_METHODS).default('client_secret_basic'),
+      tlsCert: optionalText(20_000),
+      tlsKey: optionalText(20_000),
+      tlsCa: optionalText(20_000),
 
-    // DNS
-    dnsResolveServer: optionalText(500),
-    dnsResolveType: z.enum(DNS_RECORD_TYPES).default('A'),
+      // DNS
+      dnsResolveServer: optionalText(500),
+      dnsResolveType: z.enum(DNS_RECORD_TYPES).default('A'),
 
-    // Manual
-    manualStatus: z.enum(MANUAL_STATUSES).nullish(),
+      // Manual
+      manualStatus: z.enum(MANUAL_STATUSES).nullish(),
 
-    // Docker
-    dockerHost: relationId,
-    dockerContainer: optionalText(255),
+      // Docker
+      dockerHost: relationId,
+      dockerContainer: optionalText(255),
 
-    // Databases
-    databaseConnectionString: optionalText(2048),
-    databaseQuery: optionalText(20_000),
+      // Databases
+      databaseConnectionString: optionalText(2048),
+      databaseQuery: optionalText(20_000),
 
-    // MQTT
-    mqttTopic: optionalText(1000),
-    mqttUsername: optionalText(500),
-    mqttPassword: optionalText(500),
-    mqttCheckType: z.enum(MQTT_CHECK_TYPES).default('keyword'),
-    mqttSuccessMessage: optionalText(2000),
+      // MQTT
+      mqttTopic: optionalText(1000),
+      mqttUsername: optionalText(500),
+      mqttPassword: optionalText(500),
+      mqttCheckType: z.enum(MQTT_CHECK_TYPES).default('keyword'),
+      mqttSuccessMessage: optionalText(2000),
 
-    // Kafka producer
-    kafkaProducerBrokers: textList(),
-    kafkaProducerTopic: optionalText(500),
-    kafkaProducerMessage: optionalText(20_000),
-    kafkaProducerSsl: z.boolean().default(false),
-    kafkaProducerAllowAutoTopicCreation: z.boolean().default(false),
-    kafkaProducerSaslOptions: optionalText(5000),
+      // Kafka producer
+      kafkaProducerBrokers: textList(),
+      kafkaProducerTopic: optionalText(500),
+      kafkaProducerMessage: optionalText(20_000),
+      kafkaProducerSsl: z.boolean().default(false),
+      kafkaProducerAllowAutoTopicCreation: z.boolean().default(false),
+      kafkaProducerSaslOptions: optionalText(5000),
 
-    // gRPC
-    grpcUrl: optionalText(2048),
-    grpcProtobuf: optionalText(100_000),
-    grpcServiceName: optionalText(500),
-    grpcMethod: optionalText(500),
-    grpcEnableTls: z.boolean().default(false),
-    grpcBody: optionalText(100_000),
-    grpcMetadata: optionalText(20_000),
+      // gRPC
+      grpcUrl: optionalText(2048),
+      grpcProtobuf: optionalText(100_000),
+      grpcServiceName: optionalText(500),
+      grpcMethod: optionalText(500),
+      grpcEnableTls: z.boolean().default(false),
+      grpcBody: optionalText(100_000),
+      grpcMetadata: optionalText(20_000),
 
-    // RADIUS
-    radiusUsername: optionalText(500),
-    radiusPassword: optionalText(500),
-    radiusSecret: optionalText(500),
-    radiusCalledStationId: optionalText(500),
-    radiusCallingStationId: optionalText(500),
+      // RADIUS
+      radiusUsername: optionalText(500),
+      radiusPassword: optionalText(500),
+      radiusSecret: optionalText(500),
+      radiusCalledStationId: optionalText(500),
+      radiusCallingStationId: optionalText(500),
 
-    // SNMP
-    snmpOid: optionalText(500),
-    snmpVersion: z.enum(SNMP_VERSIONS).default('2c'),
-    snmpCommunity: optionalText(500),
+      // SNMP
+      snmpOid: optionalText(500),
+      snmpVersion: z.enum(SNMP_VERSIONS).default('2c'),
+      snmpCommunity: optionalText(500),
 
-    // SMTP
-    smtpSecurity: z.enum(SMTP_SECURITY_MODES).default('opportunistic'),
+      // SMTP
+      smtpSecurity: z.enum(SMTP_SECURITY_MODES).default('opportunistic'),
 
-    // SFTP
-    sshUsername: optionalText(500),
-    sshAuthMethod: z.enum(SSH_AUTH_METHODS).default('password'),
-    sshPassword: optionalText(500),
-    sshPrivateKey: optionalText(20_000),
-    sshPassphrase: optionalText(500),
-    sftpPath: optionalText(2048),
+      // SFTP
+      sshUsername: optionalText(500),
+      sshAuthMethod: z.enum(SSH_AUTH_METHODS).default('password'),
+      sshPassword: optionalText(500),
+      sshPrivateKey: optionalText(20_000),
+      sshPassphrase: optionalText(500),
+      sftpPath: optionalText(2048),
 
-    // RabbitMQ
-    rabbitmqNodes: textList(2048),
-    rabbitmqUsername: optionalText(500),
-    rabbitmqPassword: optionalText(500),
+      // RabbitMQ
+      rabbitmqNodes: textList(2048),
+      rabbitmqUsername: optionalText(500),
+      rabbitmqPassword: optionalText(500),
 
-    // WebSocket
-    wsSubprotocol: optionalText(500),
-    wsIgnoreSecWebsocketAcceptHeader: z.boolean().default(false),
+      // WebSocket
+      wsSubprotocol: optionalText(500),
+      wsIgnoreSecWebsocketAcceptHeader: z.boolean().default(false),
 
-    // Game servers
-    game: optionalText(100),
-    gamedigGivenPortOnly: z.boolean().default(true),
+      // Game servers
+      game: optionalText(100),
+      gamedigGivenPortOnly: z.boolean().default(true),
 
-    // Real browser
-    remoteBrowser: optionalText(2048),
-  })
-  .superRefine((values, ctx) => {
-    const issue = (path: string, message: string) =>
-      ctx.addIssue({ code: 'custom', path: [path], message })
-    const { type } = values
+      // Real browser
+      remoteBrowser: optionalText(2048),
+    })
+    .superRefine((values, ctx) => {
+      const issue = (path: string, message: string) =>
+        ctx.addIssue({ code: 'custom', path: [path], message })
+      const { type } = values
 
-    // Credentials for every URL type (HTTP, WebSocket, browser)
-    const checkAuth = () => {
-      switch (values.authMethod) {
-        case 'basic':
-        case 'ntlm':
-          if (!values.basicAuthUser) issue('basicAuthUser', 'Username is required')
-          break
-        case 'bearer':
-          if (!values.bearerToken) issue('bearerToken', 'Token is required')
-          break
-        case 'oauth2-cc':
-          if (!values.oauthTokenUrl) issue('oauthTokenUrl', 'Token URL is required')
-          if (!values.oauthClientId) issue('oauthClientId', 'Client ID is required')
-          if (!values.oauthClientSecret) issue('oauthClientSecret', 'Client secret is required')
-          break
-        case 'mtls':
-          if (!values.tlsCert) issue('tlsCert', 'Client certificate is required')
-          if (!values.tlsKey) issue('tlsKey', 'Private key is required')
-          break
-      }
-    }
-    const checkHeaders = () => {
-      if (values.headers && !parseHeadersJson(values.headers)) {
-        issue('headers', 'Headers must be a JSON object, e.g. {"X-Token": "abc"}')
-      }
-    }
-
-    if (isHttpMonitorType(type)) {
-      if (!values.url) issue('url', 'URL is required')
-      else if (!/^https?:\/\/\S+$/i.test(values.url)) issue('url', 'Enter an http(s) URL')
-      checkHeaders()
-      if (values.httpBodyEncoding === 'json' && values.body) {
-        try {
-          JSON.parse(values.body)
-        } catch {
-          issue('body', 'Body must be valid JSON for the JSON encoding')
+      // Credentials for every URL type (HTTP, WebSocket, browser)
+      const checkAuth = () => {
+        switch (values.authMethod) {
+          case 'basic':
+          case 'ntlm':
+            if (!values.basicAuthUser) issue('basicAuthUser', message('usernameRequired'))
+            break
+          case 'bearer':
+            if (!values.bearerToken) issue('bearerToken', message('tokenRequired'))
+            break
+          case 'oauth2-cc':
+            if (!values.oauthTokenUrl) issue('oauthTokenUrl', message('tokenUrlRequired'))
+            if (!values.oauthClientId) issue('oauthClientId', message('clientIdRequired'))
+            if (!values.oauthClientSecret)
+              issue('oauthClientSecret', message('clientSecretRequired'))
+            break
+          case 'mtls':
+            if (!values.tlsCert) issue('tlsCert', message('clientCertificateRequired'))
+            if (!values.tlsKey) issue('tlsKey', message('privateKeyRequired'))
+            break
         }
       }
-      if (values.acceptedStatusCodes.length === 0) {
-        issue('acceptedStatusCodes', 'Add at least one accepted status code')
+      const checkHeaders = () => {
+        if (values.headers && !parseHeadersJson(values.headers)) {
+          issue('headers', message('headersJson', { example: '{"X-Token": "abc"}' }))
+        }
       }
-      checkAuth()
-    }
 
-    if (type === 'real-browser') {
-      if (!values.url) issue('url', 'URL is required')
-      else if (!/^https?:\/\/\S+$/i.test(values.url)) issue('url', 'Enter an http(s) URL')
-      if (!values.remoteBrowser) issue('remoteBrowser', 'Remote browser URL is required')
-      else if (!/^wss?:\/\/\S+$/i.test(values.remoteBrowser)) {
-        issue('remoteBrowser', 'Enter the ws(s):// URL of a Playwright-compatible browser')
-      }
-    }
-
-    if (type === 'websocket-upgrade') {
-      if (!values.url) issue('url', 'URL is required')
-      else if (!/^wss?:\/\/\S+$/i.test(values.url)) issue('url', 'Enter a ws(s):// URL')
-      checkHeaders()
-      if (values.acceptedStatusCodes.length === 0) {
-        issue('acceptedStatusCodes', 'Add at least one accepted close code')
-      }
-      if (values.authMethod === 'oauth2-cc' || values.authMethod === 'ntlm') {
-        issue('authMethod', 'WebSocket monitors support none, basic, bearer and mTLS')
-      } else {
+      if (isHttpMonitorType(type)) {
+        if (!values.url) issue('url', message('urlRequired'))
+        else if (!/^https?:\/\/\S+$/i.test(values.url)) issue('url', message('httpUrl'))
+        checkHeaders()
+        if (values.httpBodyEncoding === 'json' && values.body) {
+          try {
+            JSON.parse(values.body)
+          } catch {
+            issue('body', message('bodyJson'))
+          }
+        }
+        if (values.acceptedStatusCodes.length === 0) {
+          issue('acceptedStatusCodes', message('statusCodeRequired'))
+        }
         checkAuth()
       }
-    }
 
-    if (isKeywordMonitorType(type) && !values.keyword) issue('keyword', 'Keyword is required')
-    if (type === 'json-query' || (type === 'mqtt' && values.mqttCheckType === 'json-query')) {
-      if (!values.jsonPath) issue('jsonPath', 'JSON query is required')
-      if (values.expectedValue === null) issue('expectedValue', 'Expected value is required')
-    }
-
-    if (isHostMonitorType(type) && !values.hostname) {
-      issue('hostname', 'Hostname is required')
-    }
-    const portRequired = type === 'port' || type === 'steam' || type === 'gamedig'
-    if (portRequired && (values.port === null || values.port === undefined)) {
-      issue('port', 'Port is required')
-    }
-    if (type === 'dns' && !values.dnsResolveType) {
-      issue('dnsResolveType', 'Record type is required')
-    }
-    if (type === 'manual' && !values.manualStatus) {
-      issue('manualStatus', 'Choose the status to report')
-    }
-    if (values.type === 'docker') {
-      if (values.dockerHost === null) issue('dockerHost', 'Choose a Docker host')
-      if (!values.dockerContainer) issue('dockerContainer', 'Container name or id is required')
-      else if (!DOCKER_CONTAINER_PATTERN.test(values.dockerContainer)) {
-        issue('dockerContainer', 'Use the container name or id, e.g. my-app or 3f2a…')
-      }
-    }
-    const tagIds = values.tags.map((row) => String(row.tag))
-    if (new Set(tagIds).size !== tagIds.length) issue('tags', 'Each tag may only be added once')
-    const channelIds = values.notifications.map(String)
-    if (new Set(channelIds).size !== channelIds.length) {
-      issue('notifications', 'Each channel may only be added once')
-    }
-
-    if (isDatabaseMonitorType(type)) {
-      const conn = values.databaseConnectionString
-      const schemes: Partial<Record<MonitorTypeName, [RegExp, string]>> = {
-        mysql: [/^mysql:\/\//i, 'mysql://user:password@host:3306/database'],
-        postgres: [/^postgres(ql)?:\/\//i, 'postgres://user:password@host:5432/database'],
-        mongodb: [/^mongodb(\+srv)?:\/\//i, 'mongodb://user:password@host:27017/database'],
-        redis: [/^rediss?:\/\//i, 'redis://user:password@host:6379'],
-      }
-      if (!conn) issue('databaseConnectionString', 'Connection string is required')
-      else {
-        const expected = schemes[type]
-        if (expected && !expected[0].test(conn)) {
-          issue('databaseConnectionString', `Use a connection string like ${expected[1]}`)
+      if (type === 'real-browser') {
+        if (!values.url) issue('url', message('urlRequired'))
+        else if (!/^https?:\/\/\S+$/i.test(values.url)) issue('url', message('httpUrl'))
+        if (!values.remoteBrowser) issue('remoteBrowser', message('remoteBrowserRequired'))
+        else if (!/^wss?:\/\/\S+$/i.test(values.remoteBrowser)) {
+          issue('remoteBrowser', message('remoteBrowserUrl'))
         }
       }
-      if (type === 'mongodb' && !isJsonObjectText(values.databaseQuery)) {
-        issue('databaseQuery', 'The command must be a JSON object, e.g. {"ping": 1}')
+
+      if (type === 'websocket-upgrade') {
+        if (!values.url) issue('url', message('urlRequired'))
+        else if (!/^wss?:\/\/\S+$/i.test(values.url)) issue('url', message('wsUrl'))
+        checkHeaders()
+        if (values.acceptedStatusCodes.length === 0) {
+          issue('acceptedStatusCodes', message('closeCodeRequired'))
+        }
+        if (values.authMethod === 'oauth2-cc' || values.authMethod === 'ntlm') {
+          issue('authMethod', message('wsAuthMethod'))
+        } else {
+          checkAuth()
+        }
       }
-    }
 
-    if (type === 'mqtt' && !values.mqttTopic) issue('mqttTopic', 'Topic is required')
-
-    if (type === 'kafka-producer') {
-      if (values.kafkaProducerBrokers.length === 0) {
-        issue('kafkaProducerBrokers', 'Add at least one broker')
+      if (isKeywordMonitorType(type) && !values.keyword)
+        issue('keyword', message('keywordRequired'))
+      if (type === 'json-query' || (type === 'mqtt' && values.mqttCheckType === 'json-query')) {
+        if (!values.jsonPath) issue('jsonPath', message('jsonQueryRequired'))
+        if (values.expectedValue === null) issue('expectedValue', message('expectedValueRequired'))
       }
-      if (!values.kafkaProducerTopic) issue('kafkaProducerTopic', 'Topic is required')
-      if (!isJsonObjectText(values.kafkaProducerSaslOptions)) {
-        issue('kafkaProducerSaslOptions', 'SASL options must be a JSON object')
+
+      if (isHostMonitorType(type) && !values.hostname) {
+        issue('hostname', message('hostnameRequired'))
       }
-    }
-
-    if (type === 'grpc-keyword') {
-      if (!values.grpcUrl) issue('grpcUrl', 'gRPC URL is required')
-      if (!values.grpcProtobuf) issue('grpcProtobuf', 'Proto definition is required')
-      if (!values.grpcServiceName) issue('grpcServiceName', 'Service name is required')
-      if (!values.grpcMethod) issue('grpcMethod', 'Method is required')
-      if (!isJsonObjectText(values.grpcBody)) issue('grpcBody', 'Body must be a JSON object')
-      if (!isJsonObjectText(values.grpcMetadata)) {
-        issue('grpcMetadata', 'Metadata must be a JSON object')
+      const portRequired = type === 'port' || type === 'steam' || type === 'gamedig'
+      if (portRequired && (values.port === null || values.port === undefined)) {
+        issue('port', message('portRequired'))
       }
-    }
-
-    if (type === 'radius') {
-      if (!values.radiusUsername) issue('radiusUsername', 'Username is required')
-      if (!values.radiusSecret) issue('radiusSecret', 'Shared secret is required')
-    }
-
-    if (type === 'snmp') {
-      if (!values.snmpOid) issue('snmpOid', 'OID is required')
-      if (!values.snmpCommunity) issue('snmpCommunity', 'Community string is required')
-    }
-
-    if (type === 'sftp') {
-      if (!values.sshUsername) issue('sshUsername', 'Username is required')
-      if (values.sshAuthMethod === 'privateKey' && !values.sshPrivateKey) {
-        issue('sshPrivateKey', 'Private key is required for key-based authentication')
+      if (type === 'dns' && !values.dnsResolveType) {
+        issue('dnsResolveType', message('recordTypeRequired'))
       }
-    }
-
-    if (type === 'rabbitmq') {
-      if (values.rabbitmqNodes.length === 0) issue('rabbitmqNodes', 'Add at least one node URL')
-      else if (values.rabbitmqNodes.some((node) => !/^https?:\/\/\S+$/i.test(node))) {
-        issue('rabbitmqNodes', 'Nodes are management API URLs such as https://node1:15672')
+      if (type === 'manual' && !values.manualStatus) {
+        issue('manualStatus', message('manualStatusRequired'))
       }
-      if (!values.rabbitmqUsername) issue('rabbitmqUsername', 'Username is required')
-    }
+      if (values.type === 'docker') {
+        if (values.dockerHost === null) issue('dockerHost', message('dockerHostRequired'))
+        if (!values.dockerContainer) issue('dockerContainer', message('containerRequired'))
+        else if (!DOCKER_CONTAINER_PATTERN.test(values.dockerContainer)) {
+          issue('dockerContainer', message('containerInvalid'))
+        }
+      }
+      const tagIds = values.tags.map((row) => String(row.tag))
+      if (new Set(tagIds).size !== tagIds.length) issue('tags', message('tagsUnique'))
+      const channelIds = values.notifications.map(String)
+      if (new Set(channelIds).size !== channelIds.length) {
+        issue('notifications', message('channelsUnique'))
+      }
 
-    if (type === 'gamedig' && !values.game) issue('game', 'Game is required')
-  })
+      if (isDatabaseMonitorType(type)) {
+        const conn = values.databaseConnectionString
+        const schemes: Partial<Record<MonitorTypeName, [RegExp, string]>> = {
+          mysql: [/^mysql:\/\//i, 'mysql://user:password@host:3306/database'],
+          postgres: [/^postgres(ql)?:\/\//i, 'postgres://user:password@host:5432/database'],
+          mongodb: [/^mongodb(\+srv)?:\/\//i, 'mongodb://user:password@host:27017/database'],
+          redis: [/^rediss?:\/\//i, 'redis://user:password@host:6379'],
+        }
+        if (!conn) issue('databaseConnectionString', message('connectionStringRequired'))
+        else {
+          const expected = schemes[type]
+          if (expected && !expected[0].test(conn)) {
+            issue(
+              'databaseConnectionString',
+              message('connectionStringScheme', { example: expected[1] }),
+            )
+          }
+        }
+        if (type === 'mongodb' && !isJsonObjectText(values.databaseQuery)) {
+          issue('databaseQuery', message('mongoCommandJson', { example: '{"ping": 1}' }))
+        }
+      }
+
+      if (type === 'mqtt' && !values.mqttTopic) issue('mqttTopic', message('topicRequired'))
+
+      if (type === 'kafka-producer') {
+        if (values.kafkaProducerBrokers.length === 0) {
+          issue('kafkaProducerBrokers', message('brokerRequired'))
+        }
+        if (!values.kafkaProducerTopic) issue('kafkaProducerTopic', message('topicRequired'))
+        if (!isJsonObjectText(values.kafkaProducerSaslOptions)) {
+          issue('kafkaProducerSaslOptions', message('saslJson'))
+        }
+      }
+
+      if (type === 'grpc-keyword') {
+        if (!values.grpcUrl) issue('grpcUrl', message('grpcUrlRequired'))
+        if (!values.grpcProtobuf) issue('grpcProtobuf', message('protoRequired'))
+        if (!values.grpcServiceName) issue('grpcServiceName', message('serviceNameRequired'))
+        if (!values.grpcMethod) issue('grpcMethod', message('methodRequired'))
+        if (!isJsonObjectText(values.grpcBody)) issue('grpcBody', message('grpcBodyJson'))
+        if (!isJsonObjectText(values.grpcMetadata)) {
+          issue('grpcMetadata', message('grpcMetadataJson'))
+        }
+      }
+
+      if (type === 'radius') {
+        if (!values.radiusUsername) issue('radiusUsername', message('usernameRequired'))
+        if (!values.radiusSecret) issue('radiusSecret', message('sharedSecretRequired'))
+      }
+
+      if (type === 'snmp') {
+        if (!values.snmpOid) issue('snmpOid', message('oidRequired'))
+        if (!values.snmpCommunity) issue('snmpCommunity', message('communityRequired'))
+      }
+
+      if (type === 'sftp') {
+        if (!values.sshUsername) issue('sshUsername', message('usernameRequired'))
+        if (values.sshAuthMethod === 'privateKey' && !values.sshPrivateKey) {
+          issue('sshPrivateKey', message('sshPrivateKeyRequired'))
+        }
+      }
+
+      if (type === 'rabbitmq') {
+        if (values.rabbitmqNodes.length === 0) issue('rabbitmqNodes', message('nodeRequired'))
+        else if (values.rabbitmqNodes.some((node) => !/^https?:\/\/\S+$/i.test(node))) {
+          issue('rabbitmqNodes', message('nodeUrl'))
+        }
+        if (!values.rabbitmqUsername) issue('rabbitmqUsername', message('usernameRequired'))
+      }
+
+      if (type === 'gamedig' && !values.game) issue('game', message('gameRequired'))
+    })
+}
 
 /** Validated form values (what the route handlers receive). */
-export type MonitorFormValues = z.output<typeof monitorFormSchema>
+export type MonitorFormValues = z.output<ReturnType<typeof createMonitorFormSchema>>
 /** Raw form values before coercion/defaults (what react-hook-form holds). */
-export type MonitorFormInput = z.input<typeof monitorFormSchema>
+export type MonitorFormInput = z.input<ReturnType<typeof createMonitorFormSchema>>
 
 /** Connection string placeholder per database type (also the form's starting value). */
 export const DATABASE_CONNECTION_PLACEHOLDERS: Record<string, string> = {
@@ -890,11 +912,22 @@ export function monitorToFormValues(doc: MonitorLike): MonitorFormValues {
   return out as MonitorFormValues
 }
 
-/** Seconds → "1 minute 30 seconds" style hint shown under interval inputs. */
-export function humanDuration(totalSeconds: number | string | null | undefined): string {
+export type DurationUnit = 'day' | 'hour' | 'minute' | 'second'
+
+const englishDurationUnit = (unit: DurationUnit, count: number): string =>
+  `${count} ${unit}${count === 1 ? '' : 's'}`
+
+/**
+ * Seconds → "1 minute 30 seconds" style hint shown under interval inputs. `unit` renders one
+ * part; the form passes its translator (`common.duration`), the default is English.
+ */
+export function humanDuration(
+  totalSeconds: number | string | null | undefined,
+  unit: (unit: DurationUnit, count: number) => string = englishDurationUnit,
+): string {
   const seconds = Number(totalSeconds)
   if (!Number.isFinite(seconds) || seconds < 0) return ''
-  const units: [number, string][] = [
+  const units: [number, DurationUnit][] = [
     [86400, 'day'],
     [3600, 'hour'],
     [60, 'minute'],
@@ -902,12 +935,12 @@ export function humanDuration(totalSeconds: number | string | null | undefined):
   ]
   const parts: string[] = []
   let rest = Math.round(seconds)
-  for (const [size, label] of units) {
+  for (const [size, name] of units) {
     const n = Math.floor(rest / size)
     if (n > 0) {
-      parts.push(`${n} ${label}${n === 1 ? '' : 's'}`)
+      parts.push(unit(name, n))
       rest -= n * size
     }
   }
-  return parts.length ? parts.join(' ') : '0 seconds'
+  return parts.length ? parts.join(' ') : unit('second', 0)
 }

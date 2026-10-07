@@ -1,7 +1,8 @@
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
-import { monitorFormSchema, monitorToFormValues } from '@/lib/validation/monitor'
+import { monitorToFormValues } from '@/lib/validation/monitor'
+import { monitorFormSchema } from '@/lib/validation/monitor-schema'
 import {
   authenticate,
   authorize,

@@ -19,7 +19,6 @@ import { requireUser } from '@/lib/auth'
 import { getOrgBySlug } from '@/lib/org'
 import type { Media } from '@/payload-types'
 import { listConnectedAccounts } from '@/server/accounts'
-import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 import { soleOwnerships } from '@/server/members'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -42,11 +41,10 @@ export default async function AccountSettingsPage({
   if (!org) notFound()
 
   const payload = await getPayload({ config })
-  const [blocking, twoFactor, connected, timeZone] = await Promise.all([
+  const [blocking, twoFactor, connected] = await Promise.all([
     soleOwnerships(payload, user),
     getTwoFactorStatus(payload, user.id),
     listConnectedAccounts(payload, user),
-    getOrganizationTimezone(payload, org.id),
   ])
   const avatarUrl =
     user.avatar && typeof user.avatar === 'object' ? ((user.avatar as Media).url ?? null) : null
@@ -61,9 +59,8 @@ export default async function AccountSettingsPage({
         initial={connected}
         returnPath={`/${orgSlug}/settings/account`}
         error={ssoErrorMessage(error)}
-        timeZone={timeZone}
       />
-      <TwoFactorCard status={twoFactor} hasPassword={passwordAccount} timeZone={timeZone} />
+      <TwoFactorCard status={twoFactor} hasPassword={passwordAccount} />
       {passwordAccount && <ChangePasswordForm />}
       <DeleteAccountCard email={user.email} soleOwnerOf={blocking.map((o) => o.name)} />
     </>

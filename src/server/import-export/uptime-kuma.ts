@@ -27,7 +27,6 @@ import {
   JSON_PATH_OPERATORS,
   MIN_INTERVAL_SECONDS,
   MONITOR_TYPE_NAMES,
-  monitorFormSchema,
   MQTT_CHECK_TYPES,
   OAUTH_AUTH_METHODS,
   SMTP_SECURITY_MODES,
@@ -35,6 +34,7 @@ import {
   type MonitorFormInput,
   type MonitorTypeName,
 } from '@/lib/validation/monitor'
+import { monitorFormSchema } from '@/lib/validation/monitor-schema'
 import { NotificationConfigError, validateNotificationConfig } from '@/server/notifications/send'
 
 import { mapKumaNotificationConfig } from './kuma-notifications'

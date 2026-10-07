@@ -32,8 +32,6 @@ interface TwoFactorCardProps {
   status: TwoFactorStatus
   /** SSO accounts have no Marmot password; the password prompts are skipped for them. */
   hasPassword: boolean
-  /** Organization time zone the "enabled on" date renders in. */
-  timeZone: string
 }
 
 type Flow = 'idle' | 'setup' | 'backup-codes' | 'regenerate' | 'disable'
@@ -45,7 +43,7 @@ const message = (error: unknown, fallback: string) =>
  * Account security: enable TOTP (QR code → confirm code → backup codes shown once), regenerate
  * backup codes and disable with password + code. All calls go to `/api/account/2fa/*`.
  */
-export function TwoFactorCard({ status, hasPassword, timeZone }: TwoFactorCardProps) {
+export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
   const t = useTranslations('settings.account.twoFactor')
   const format = useFormatter()
   const router = useRouter()
@@ -183,7 +181,7 @@ export function TwoFactorCard({ status, hasPassword, timeZone }: TwoFactorCardPr
       {status.enabled && status.verifiedAt && (
         <CardContent className="pt-6 text-sm text-muted-foreground">
           {t('enabledOn', {
-            date: format.dateTime(new Date(status.verifiedAt), 'date', { timeZone }),
+            date: format.dateTime(new Date(status.verifiedAt), 'date'),
           })}
           {!hasPassword && ` ${t('ssoNote')}`}
         </CardContent>

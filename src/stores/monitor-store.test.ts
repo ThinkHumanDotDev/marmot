@@ -48,6 +48,16 @@ describe('useMonitorStore', () => {
     expect(selectMonitorList(state).map((m) => m.name)).toEqual(['Alpha', 'Zeta'])
   })
 
+  it('sorts the list with the collation of the given locale', () => {
+    useMonitorStore
+      .getState()
+      .setMonitors([monitor('1', 'Zeta'), monitor('2', 'Äpfel'), monitor('3', 'Alpha')])
+    const state = useMonitorStore.getState()
+    // German files "Ä" with "A"; Swedish sorts it after "Z".
+    expect(selectMonitorList(state, 'de').map((m) => m.name)).toEqual(['Alpha', 'Äpfel', 'Zeta'])
+    expect(selectMonitorList(state, 'sv').map((m) => m.name)).toEqual(['Alpha', 'Zeta', 'Äpfel'])
+  })
+
   it('keeps a bounded heartbeat ring buffer per monitor', () => {
     const { setMonitors, pushHeartbeat } = useMonitorStore.getState()
     setMonitors([monitor('1', 'API')])
