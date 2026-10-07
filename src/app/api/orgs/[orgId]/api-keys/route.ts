@@ -9,7 +9,6 @@ import {
   resolveOrgRequest,
 } from '@/server/notifications/api'
 import { errorText } from '@/server/request-locale'
-import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,15 +74,10 @@ export async function POST(request: Request, { params }: RouteContext) {
         createdBy: ctx.user.id as ApiKey['createdBy'],
       },
       depth: 0,
+      // `user` names the actor in the audit log; access is still bypassed (see above).
+      user: ctx.user,
       overrideAccess: true,
     })) as ApiKey
-    await recordRequestAuditEvent(ctx.payload, request, {
-      action: 'api_key.created',
-      actor: ctx.user.id,
-      organization: ctx.orgId,
-      target: auditTarget('api-keys', doc.id),
-      metadata: { name: doc.name, prefix: doc.prefix, scope: parsed.data.scope, expiresAt },
-    })
     return Response.json({ doc: toApiKeyRow(doc), key: generated.key }, { status: 201 })
   } catch (error) {
     return jsonError(errorStatus(error), errorMessage(error, request))

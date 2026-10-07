@@ -24,8 +24,12 @@ export const PATCH = withErrors(async (request: Request, { params }: RouteContex
   await recordRequestAuditEvent(payload, request, {
     action: 'member.role_changed',
     actor: user.id,
+    actorLabel: user.email,
     organization: parseId(payload, orgId),
     target: auditTarget('users', member.id),
+    entityType: 'member',
+    entityId: member.id,
+    entityLabel: member.email ?? null,
     metadata: { role: member.role },
   })
   return Response.json({ member })
@@ -47,8 +51,11 @@ export const DELETE = withErrors(async (request: Request, { params }: RouteConte
   await recordRequestAuditEvent(payload, request, {
     action: 'member.removed',
     actor: user.id,
+    actorLabel: user.email,
     organization: parseId(payload, orgId),
     target: auditTarget('users', result.removed),
+    entityType: 'member',
+    entityId: result.removed,
     metadata: { self: result.self },
   })
   return Response.json(result)

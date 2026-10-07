@@ -11,6 +11,7 @@ import { acceptInvitation } from '@/collections/Invitations'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import type { Invitation, User } from '@/payload-types'
+import { recordUserAuditEvent } from '@/server/security/audit'
 import { isConnectionMeta } from '@/server/sso/connections'
 import { isVerifiedDomainOf } from '@/server/sso/domains'
 
@@ -119,7 +120,11 @@ export const userResolution: UserResolutionOptions = {
     }
   },
 
-  afterLogin: async ({ payload, user, provider }) => {
+  afterLogin: async ({ payload, user, provider, request, created, linked }) => {
+    await recordUserAuditEvent(payload, request, user, 'auth.sso_login', {
+      organization: isConnectionMeta(provider.meta) ? provider.meta.organization : null,
+      metadata: { provider: provider.id, created, linked },
+    })
     if (!isConnectionMeta(provider.meta)) return
     const { organization, defaultRole } = provider.meta
     const current = await payload.findByID({

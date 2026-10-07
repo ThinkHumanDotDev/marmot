@@ -165,6 +165,44 @@ const dockerTestBody = z.object({
   url: z.string().optional(),
 })
 
+const incidentNoteBody = z.object({ note: z.string().max(2000).optional() })
+const publishIncidentBody = z.object({
+  statusPageId: id,
+  title: z.string().optional(),
+  message: z.string().optional(),
+  status: z.enum(INCIDENT_STATUSES).optional(),
+  impact: impact.optional(),
+})
+const notificationPreviewBody = z.object({
+  notificationId: id.optional(),
+  type: z.string().optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
+  event: z.string().optional().describe('Sample event, `down` by default'),
+})
+const checkQuery: QueryParam[] = [
+  {
+    name: 'wait',
+    description: '`false` answers `202 { jobId }` at once instead of waiting for the result',
+    schema: { type: 'string', enum: ['true', 'false'] },
+  },
+  {
+    name: 'record',
+    description: '`false` runs the check without storing a heartbeat',
+    schema: { type: 'string', enum: ['true', 'false'] },
+  },
+]
+const auditQuery: QueryParam[] = [
+  'actorType',
+  'actorId',
+  'entityType',
+  'entityId',
+  'action',
+  'from',
+  'to',
+  'page',
+  'limit',
+].map((name) => ({ name, description: `Filter: \`${name}\``, schema: { type: 'string' } }))
+
 const roleBody = z.object({ role: z.enum(ROLES) })
 const inviteLinkBody = z.object({ role: z.enum(ROLES).optional() })
 const transferBody = z.object({ userId: id })
@@ -267,6 +305,27 @@ export const OPERATIONS: OperationSpec[] = [
     response: { description: '`{ deleted }`', schema: anyObject },
   },
 
+  // Audit log (signed-in admins only)
+  {
+    method: 'GET',
+    path: `${ORG}/audit-logs`,
+    operationId: 'listAuditLog',
+    summary: "The organization's audit log, newest first",
+    tag: 'Audit log',
+    permission: 'audit-log:read',
+    query: auditQuery,
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/audit-logs/export`,
+    operationId: 'exportAuditLog',
+    summary: 'The filtered audit log as CSV',
+    tag: 'Audit log',
+    permission: 'audit-log:read',
+    query: auditQuery,
+    response: { description: 'CSV', contentType: 'text/csv', schema: { type: 'string' } },
+  },
+
   // Billing
   {
     method: 'GET',
@@ -292,6 +351,20 @@ export const OPERATIONS: OperationSpec[] = [
     summary: 'Open the Stripe Billing Portal',
     tag: 'Billing',
     permission: 'organization:update',
+  },
+
+  // On-demand checks
+  {
+    method: 'POST',
+    path: `${ORG}/checks`,
+    operationId: 'runAdhocCheck',
+    summary: 'Run a check of an unsaved monitor configuration',
+    description:
+      'Nothing is stored. Push, group and manual monitors cannot be tested (400); 504 when no result arrives in time. Shares the per-organization on-demand budget (`ON_DEMAND_CHECKS_PER_MINUTE`).',
+    tag: 'Monitors',
+    permission: 'monitor:update',
+    body: { schema: monitorFormSchema },
+    response: { description: 'Check result', schema: anyObject },
   },
 
   // Docker hosts
@@ -486,6 +559,63 @@ export const OPERATIONS: OperationSpec[] = [
     permission: 'maintenance:update',
   },
 
+  // Monitor incidents
+  {
+    method: 'GET',
+    path: `${ORG}/monitor-incidents`,
+    operationId: 'listMonitorIncidents',
+    summary: 'Monitor incidents with MTTA/MTTR statistics',
+    tag: 'Monitor incidents',
+    permission: 'monitor-incident:read',
+    query: [
+      {
+        name: 'status',
+        description: 'active, all, open, acknowledged or resolved',
+        schema: { type: 'string' },
+      },
+      { name: 'monitor', description: 'Monitor id', schema: { type: 'string' } },
+      { name: 'range', description: '24h, 7d, 30d, 90d or all', schema: { type: 'string' } },
+      { name: 'page', description: 'Page number', schema: { type: 'integer' } },
+      { name: 'limit', description: 'At most 100', schema: { type: 'integer' } },
+    ],
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/monitor-incidents/{id}`,
+    operationId: 'getMonitorIncident',
+    summary: 'A monitor incident with its timeline',
+    tag: 'Monitor incidents',
+    permission: 'monitor-incident:read',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/monitor-incidents/{id}/acknowledge`,
+    operationId: 'acknowledgeMonitorIncident',
+    summary: 'Acknowledge an incident',
+    tag: 'Monitor incidents',
+    permission: 'monitor-incident:acknowledge',
+    body: { schema: incidentNoteBody, required: false },
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/monitor-incidents/{id}/resolve`,
+    operationId: 'resolveMonitorIncident',
+    summary: 'Resolve an incident by hand',
+    tag: 'Monitor incidents',
+    permission: 'monitor-incident:resolve',
+    body: { schema: incidentNoteBody, required: false },
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/monitor-incidents/{id}/publish`,
+    operationId: 'publishMonitorIncident',
+    summary: 'Publish an incident on a status page',
+    tag: 'Monitor incidents',
+    permission: 'status-page:update',
+    body: { schema: publishIncidentBody },
+    status: 201,
+  },
+
   // Monitors
   {
     method: 'GET',
@@ -543,6 +673,21 @@ export const OPERATIONS: OperationSpec[] = [
     summary: 'Delete a monitor with its heartbeats and statistics',
     tag: 'Monitors',
     permission: 'monitor:delete',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/monitors/{id}/check`,
+    operationId: 'checkMonitorNow',
+    summary: 'Run the monitor check now',
+    description:
+      'Stores a heartbeat with `trigger: manual` unless `record=false`. Paused and push monitors answer 409; rate limited per organization (`ON_DEMAND_CHECKS_PER_MINUTE`).',
+    tag: 'Monitors',
+    permission: 'monitor:update',
+    query: checkQuery,
+    response: {
+      description: 'Check result (202 `{ jobId }` with `wait=false`)',
+      schema: anyObject,
+    },
   },
   {
     method: 'POST',
@@ -631,6 +776,15 @@ export const OPERATIONS: OperationSpec[] = [
     summary: 'Notification providers and their settings forms',
     tag: 'Notifications',
     permission: 'notification:read',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/notifications/preview`,
+    operationId: 'previewNotification',
+    summary: 'Render message templates against sample data (nothing is sent)',
+    tag: 'Notifications',
+    permission: 'notification:read',
+    body: { schema: notificationPreviewBody },
   },
   {
     method: 'POST',

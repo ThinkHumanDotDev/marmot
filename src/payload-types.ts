@@ -81,6 +81,8 @@ export interface Config {
     'docker-hosts': DockerHost;
     'notification-sent-history': NotificationSentHistory;
     heartbeats: Heartbeat;
+    'monitor-incidents': MonitorIncident;
+    'push-events': PushEvent;
     'stat-minutely': StatMinutely;
     'stat-hourly': StatHourly;
     'stat-daily': StatDaily;
@@ -116,6 +118,8 @@ export interface Config {
     'docker-hosts': DockerHostsSelect<false> | DockerHostsSelect<true>;
     'notification-sent-history': NotificationSentHistorySelect<false> | NotificationSentHistorySelect<true>;
     heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
+    'monitor-incidents': MonitorIncidentsSelect<false> | MonitorIncidentsSelect<true>;
+    'push-events': PushEventsSelect<false> | PushEventsSelect<true>;
     'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
     'stat-hourly': StatHourlySelect<false> | StatHourlySelect<true>;
     'stat-daily': StatDailySelect<false> | StatDailySelect<true>;
@@ -421,6 +425,9 @@ export interface Monitor {
   resendInterval: number;
   timeout: number;
   degradedAfter?: number | null;
+  successThreshold?: number | null;
+  reminderBackoff?: ('none' | 'linear' | 'exponential') | null;
+  maxReminders?: number | null;
   upsideDown?: boolean | null;
   method?: ('GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS') | null;
   httpBodyEncoding?: ('json' | 'form' | 'xml') | null;
@@ -454,6 +461,27 @@ export interface Monitor {
   jsonPath?: string | null;
   jsonPathOperator?: ('==' | '!=' | '<' | '>' | '<=' | '>=' | 'contains') | null;
   expectedValue?: string | null;
+  assertions?:
+    | {
+        kind: 'status' | 'header' | 'textBody' | 'jsonBody' | 'dnsRecord';
+        target?: string | null;
+        comparator:
+          | 'eq'
+          | 'not_eq'
+          | 'gt'
+          | 'gte'
+          | 'lt'
+          | 'lte'
+          | 'contains'
+          | 'not_contains'
+          | 'empty'
+          | 'not_empty'
+          | 'matches'
+          | 'not_matches';
+        value?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   authMethod?: ('none' | 'basic' | 'bearer' | 'oauth2-cc' | 'ntlm' | 'mtls') | null;
   basicAuthUser?: string | null;
   basicAuthPass?: string | null;
@@ -471,6 +499,11 @@ export interface Monitor {
   dnsResolveServer?: string | null;
   dnsResolveType?: ('A' | 'AAAA' | 'CAA' | 'CNAME' | 'MX' | 'NS' | 'PTR' | 'SOA' | 'SRV' | 'TXT') | null;
   pushToken?: string | null;
+  pushSchedule?: ('interval' | 'cron') | null;
+  pushCron?: string | null;
+  pushTimezone?: string | null;
+  pushGrace?: number | null;
+  pushMaxDuration?: number | null;
   manualStatus?: ('up' | 'down' | 'pending') | null;
   databaseConnectionString?: string | null;
   databaseQuery?: string | null;
@@ -523,7 +556,18 @@ export interface Monitor {
     retries?: number | null;
     downCount?: number | null;
     settledStatus?: ('up' | 'down' | 'pending' | 'maintenance' | 'degraded') | null;
+    recoveries?: number | null;
     lastPushAt?: string | null;
+    lastPushStatus?: ('up' | 'down') | null;
+    pushRuns?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
   };
   updatedAt: string;
   createdAt: string;
@@ -558,6 +602,8 @@ export interface Notification {
     | number
     | boolean
     | null;
+  events?:
+    ('down' | 'up' | 'degraded' | 'reminder' | 'certificate' | 'maintenance' | 'acknowledged' | 'resolved')[] | null;
   isDefault?: boolean | null;
   applyExisting?: boolean | null;
   active?: boolean | null;
@@ -624,81 +670,96 @@ export interface Heartbeat {
   ping?: number | null;
   duration?: number | null;
   important?: boolean | null;
+  trigger?: 'manual' | null;
+  assertions?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   retries?: number | null;
   downCount?: number | null;
   time: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "stat-minutely".
+ * via the `definition` "monitor-incidents".
  */
-export interface StatMinutely {
+export interface MonitorIncident {
   id: number;
-  monitor: number | Monitor;
   organization: number | Organization;
-  timestamp: number;
-  up: number;
-  down: number;
-  ping?: number | null;
-  pingMin?: number | null;
-  pingMax?: number | null;
-  extras?:
+  monitor: number | Monitor;
+  status: 'open' | 'acknowledged' | 'resolved';
+  openKey?: string | null;
+  cause?: string | null;
+  startedAt: string;
+  acknowledgedAt?: string | null;
+  resolvedAt?: string | null;
+  acknowledgedBy?: (number | null) | User;
+  acknowledgedVia?: ('dashboard' | 'api' | 'link') | null;
+  resolvedBy?: (number | null) | User;
+  autoResolved?: boolean | null;
+  remindersSent?: number | null;
+  lastReminderAt?: string | null;
+  statusPageIncident?: (number | null) | Incident;
+  timeline?:
     | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
+        type: 'opened' | 'maintenance' | 'acknowledged' | 'resolved' | 'published';
+        at: string;
+        by?: (number | null) | User;
+        via?: ('dashboard' | 'api' | 'link') | null;
+        message?: string | null;
+        id?: string | null;
+      }[]
     | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "stat-hourly".
+ * via the `definition` "incidents".
  */
-export interface StatHourly {
+export interface Incident {
   id: number;
-  monitor: number | Monitor;
   organization: number | Organization;
-  timestamp: number;
-  up: number;
-  down: number;
-  ping?: number | null;
-  pingMin?: number | null;
-  pingMax?: number | null;
-  extras?:
+  statusPage: number | StatusPage;
+  title: string;
+  publicId?: string | null;
+  status?: ('investigating' | 'identified' | 'monitoring' | 'resolved') | null;
+  impact?: ('operational' | 'degraded_performance' | 'partial_outage' | 'major_outage') | null;
+  updates?:
     | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
+        status: 'investigating' | 'identified' | 'monitoring' | 'resolved';
+        postedAt: string;
+        editedAt?: string | null;
+        message?: string | null;
+        components?:
+          | {
+              component: string;
+              impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
     | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "stat-daily".
- */
-export interface StatDaily {
-  id: number;
-  monitor: number | Monitor;
-  organization: number | Organization;
-  timestamp: number;
-  up: number;
-  down: number;
-  ping?: number | null;
-  pingMin?: number | null;
-  pingMax?: number | null;
-  extras?:
+  affectedComponents?:
     | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
+        component: string;
+        impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
+        id?: string | null;
+      }[]
     | null;
+  pinned?: boolean | null;
+  active?: boolean | null;
+  resolvedAt?: string | null;
+  content?: string | null;
+  style?: ('info' | 'warning' | 'danger' | 'primary') | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -831,6 +892,97 @@ export interface StatusPage {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "push-events".
+ */
+export interface PushEvent {
+  id: number;
+  monitor: number | Monitor;
+  organization?: (number | null) | Organization;
+  kind: 'success' | 'fail' | 'start' | 'log';
+  source?: ('http' | 'email') | null;
+  msg?: string | null;
+  body?: string | null;
+  bodyTruncated?: boolean | null;
+  rid?: string | null;
+  exitCode?: number | null;
+  duration?: number | null;
+  method?: string | null;
+  time: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-minutely".
+ */
+export interface StatMinutely {
+  id: number;
+  monitor: number | Monitor;
+  organization: number | Organization;
+  timestamp: number;
+  up: number;
+  down: number;
+  ping?: number | null;
+  pingMin?: number | null;
+  pingMax?: number | null;
+  extras?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-hourly".
+ */
+export interface StatHourly {
+  id: number;
+  monitor: number | Monitor;
+  organization: number | Organization;
+  timestamp: number;
+  up: number;
+  down: number;
+  ping?: number | null;
+  pingMin?: number | null;
+  pingMax?: number | null;
+  extras?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-daily".
+ */
+export interface StatDaily {
+  id: number;
+  monitor: number | Monitor;
+  organization: number | Organization;
+  timestamp: number;
+  up: number;
+  down: number;
+  ping?: number | null;
+  pingMin?: number | null;
+  pingMax?: number | null;
+  extras?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "status-page-viewers".
  */
 export interface StatusPageViewer {
@@ -840,49 +992,6 @@ export interface StatusPageViewer {
   email: string;
   status: 'active' | 'revoked';
   lastSeenAt?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "incidents".
- */
-export interface Incident {
-  id: number;
-  organization: number | Organization;
-  statusPage: number | StatusPage;
-  title: string;
-  publicId?: string | null;
-  status?: ('investigating' | 'identified' | 'monitoring' | 'resolved') | null;
-  impact?: ('operational' | 'degraded_performance' | 'partial_outage' | 'major_outage') | null;
-  updates?:
-    | {
-        status: 'investigating' | 'identified' | 'monitoring' | 'resolved';
-        postedAt: string;
-        editedAt?: string | null;
-        message?: string | null;
-        components?:
-          | {
-              component: string;
-              impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
-              id?: string | null;
-            }[]
-          | null;
-        id?: string | null;
-      }[]
-    | null;
-  affectedComponents?:
-    | {
-        component: string;
-        impact: 'operational' | 'degraded_performance' | 'partial_outage' | 'major_outage';
-        id?: string | null;
-      }[]
-    | null;
-  pinned?: boolean | null;
-  active?: boolean | null;
-  resolvedAt?: string | null;
-  content?: string | null;
-  style?: ('info' | 'warning' | 'danger' | 'primary') | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1132,9 +1241,42 @@ export interface ApiKey {
 export interface AuditLog {
   id: number;
   action: string;
+  actorType?: ('user' | 'apiKey' | 'mcp' | 'system') | null;
   actor?: (number | null) | User;
+  actorRef?: string | null;
+  actorLabel?: string | null;
   organization?: (number | null) | Organization;
   target?: string | null;
+  entityType?: string | null;
+  entityId?: string | null;
+  entityLabel?: string | null;
+  changedFields?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  before?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  after?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   ip?: string | null;
   userAgent?: string | null;
   metadata?:
@@ -1228,6 +1370,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'heartbeats';
         value: number | Heartbeat;
+      } | null)
+    | ({
+        relationTo: 'monitor-incidents';
+        value: number | MonitorIncident;
+      } | null)
+    | ({
+        relationTo: 'push-events';
+        value: number | PushEvent;
       } | null)
     | ({
         relationTo: 'stat-minutely';
@@ -1513,6 +1663,9 @@ export interface MonitorsSelect<T extends boolean = true> {
   resendInterval?: T;
   timeout?: T;
   degradedAfter?: T;
+  successThreshold?: T;
+  reminderBackoff?: T;
+  maxReminders?: T;
   upsideDown?: T;
   method?: T;
   httpBodyEncoding?: T;
@@ -1530,6 +1683,15 @@ export interface MonitorsSelect<T extends boolean = true> {
   jsonPath?: T;
   jsonPathOperator?: T;
   expectedValue?: T;
+  assertions?:
+    | T
+    | {
+        kind?: T;
+        target?: T;
+        comparator?: T;
+        value?: T;
+        id?: T;
+      };
   authMethod?: T;
   basicAuthUser?: T;
   basicAuthPass?: T;
@@ -1547,6 +1709,11 @@ export interface MonitorsSelect<T extends boolean = true> {
   dnsResolveServer?: T;
   dnsResolveType?: T;
   pushToken?: T;
+  pushSchedule?: T;
+  pushCron?: T;
+  pushTimezone?: T;
+  pushGrace?: T;
+  pushMaxDuration?: T;
   manualStatus?: T;
   databaseConnectionString?: T;
   databaseQuery?: T;
@@ -1601,7 +1768,10 @@ export interface MonitorsSelect<T extends boolean = true> {
         retries?: T;
         downCount?: T;
         settledStatus?: T;
+        recoveries?: T;
         lastPushAt?: T;
+        lastPushStatus?: T;
+        pushRuns?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -1615,6 +1785,7 @@ export interface NotificationsSelect<T extends boolean = true> {
   name?: T;
   type?: T;
   config?: T;
+  events?: T;
   isDefault?: T;
   applyExisting?: T;
   active?: T;
@@ -1688,8 +1859,61 @@ export interface HeartbeatsSelect<T extends boolean = true> {
   ping?: T;
   duration?: T;
   important?: T;
+  trigger?: T;
+  assertions?: T;
   retries?: T;
   downCount?: T;
+  time?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "monitor-incidents_select".
+ */
+export interface MonitorIncidentsSelect<T extends boolean = true> {
+  organization?: T;
+  monitor?: T;
+  status?: T;
+  openKey?: T;
+  cause?: T;
+  startedAt?: T;
+  acknowledgedAt?: T;
+  resolvedAt?: T;
+  acknowledgedBy?: T;
+  acknowledgedVia?: T;
+  resolvedBy?: T;
+  autoResolved?: T;
+  remindersSent?: T;
+  lastReminderAt?: T;
+  statusPageIncident?: T;
+  timeline?:
+    | T
+    | {
+        type?: T;
+        at?: T;
+        by?: T;
+        via?: T;
+        message?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "push-events_select".
+ */
+export interface PushEventsSelect<T extends boolean = true> {
+  monitor?: T;
+  organization?: T;
+  kind?: T;
+  source?: T;
+  msg?: T;
+  body?: T;
+  bodyTruncated?: T;
+  rid?: T;
+  exitCode?: T;
+  duration?: T;
+  method?: T;
   time?: T;
 }
 /**
@@ -2083,9 +2307,18 @@ export interface ApiKeysSelect<T extends boolean = true> {
  */
 export interface AuditLogsSelect<T extends boolean = true> {
   action?: T;
+  actorType?: T;
   actor?: T;
+  actorRef?: T;
+  actorLabel?: T;
   organization?: T;
   target?: T;
+  entityType?: T;
+  entityId?: T;
+  entityLabel?: T;
+  changedFields?: T;
+  before?: T;
+  after?: T;
   ip?: T;
   userAgent?: T;
   metadata?: T;

@@ -1,7 +1,9 @@
 import type { z } from 'zod'
 
 import type { Locale } from '@/i18n/locales'
+import type { ChannelEvent } from '@/lib/notification-events'
 import type { Heartbeat, Monitor } from '@/payload-types'
+import type { TemplateOrganization } from '@/server/notifications/message'
 
 /**
  * Notification provider interface, mirroring Uptime Kuma's `NotificationProvider` base class.
@@ -29,6 +31,13 @@ export interface NotificationFieldMeta {
   multiline?: boolean
   /** Labels for enum values (defaults to the raw value). */
   options?: Record<string, string>
+  /**
+   * The value is a Liquid message template (#150): checked when the channel is saved and shown in
+   * the form's preview. `html` renders with HTML escaping.
+   */
+  template?: 'text' | 'html'
+  /** A boolean config key that switches this `text` template to HTML (SMTP's `htmlBody`). */
+  templateHtmlWhen?: string
 }
 
 export interface NotificationSendContext {
@@ -46,6 +55,25 @@ export interface NotificationSendContext {
    * Optional so a context without it (tests, older callers) renders English.
    */
   locale?: Locale
+  /**
+   * Why the channel is told (#126): `down`, `up`, `degraded`, `reminder`, `certificate`,
+   * `maintenance`; null/absent when unknown. Pass the whole context as `extras` to
+   * `renderMessageTemplate` so templates can use `{{ event }}`, `{{ downtime }}` and the rest.
+   */
+  event?: ChannelEvent | null
+  /** How long the monitor was DOWN, on `up` (recovery) notifications; null when unknown. */
+  downtimeSeconds?: number | null
+  /** The channel's organization (name, slug, logo) for templates and the default email. */
+  organization?: TemplateOrganization | null
+  /** The organization's time zone (IANA) for dates in templates; UTC when absent. */
+  timeZone?: string
+}
+
+/** A rendered notification email: subject, HTML part (null for plain-text only) and text part. */
+export interface NotificationEmail {
+  subject: string
+  html: string | null
+  text: string
 }
 
 export interface NotificationProvider {
@@ -64,6 +92,11 @@ export interface NotificationProvider {
   readonly configSchema: z.ZodTypeAny
   /** Labels, placeholders and secrecy per config key. */
   readonly fieldMeta?: Record<string, NotificationFieldMeta>
+  /**
+   * Email providers: the email `send` delivers for `ctx`, so the channel form can preview it
+   * without sending anything.
+   */
+  renderEmail?(ctx: NotificationSendContext): NotificationEmail
   /**
    * Deliver the message. Resolve with a short success string, throw on failure.
    */

@@ -53,6 +53,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         name: input.name,
         type: input.type,
         config: input.config ?? {},
+        ...(input.events ? { events: input.events } : {}),
         isDefault: input.isDefault ?? false,
         applyExisting: input.applyExisting ?? false,
         active: input.active ?? true,

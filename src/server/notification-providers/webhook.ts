@@ -32,10 +32,11 @@ export const webhookFieldMeta: Record<keyof WebhookConfig, NotificationFieldMeta
     },
   },
   customBody: {
+    template: 'text',
     label: 'Custom body',
     multiline: true,
     description:
-      'Sent verbatim after {{ }} substitution, e.g. {"text": "{{ msg }}"}. Set Content-Type in the headers below.',
+      'Liquid template sent as the body, e.g. {"text": {{ msg | json }}}. Set Content-Type in the headers below.',
   },
   additionalHeaders: {
     label: 'Additional headers (JSON)',
@@ -50,7 +51,8 @@ registerNotificationProvider({
   group: 'generic',
   configSchema: webhookConfigSchema,
   fieldMeta: webhookFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat, locale }) {
+  async send(ctx) {
+    const { config: raw, message, monitor, heartbeat, locale } = ctx
     const config = webhookConfigSchema.parse(raw)
     const headers = parseHeadersJson(config.additionalHeaders)
     const data = { heartbeat, monitor, msg: message }
@@ -78,6 +80,7 @@ registerNotificationProvider({
         monitor,
         heartbeat,
         locale,
+        ctx,
       )
       await httpRequest(config.url, {
         method: config.method,

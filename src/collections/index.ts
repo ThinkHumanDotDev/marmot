@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { ApiKeys } from './ApiKeys'
+import { withAuditHooks } from './audit'
 import { AuthAccounts } from './AuthAccounts'
 import { DockerHosts } from './DockerHosts'
 import { AuditLogs } from './AuditLogs'
@@ -10,11 +11,13 @@ import { Invitations } from './Invitations'
 import { Maintenance } from './Maintenance'
 import { MaintenanceOccurrences } from './MaintenanceOccurrences'
 import { Media } from './Media'
+import { MonitorIncidents } from './MonitorIncidents'
 import { Monitors } from './Monitors'
 import { Notifications } from './Notifications'
 import { NotificationSentHistory } from './NotificationSentHistory'
 import { Organizations } from './Organizations'
 import { Proxies } from './Proxies'
+import { PushEvents } from './PushEvents'
 import { SsoConnections } from './SsoConnections'
 import { SsoDomains } from './SsoDomains'
 import { StatDaily } from './StatDaily'
@@ -30,8 +33,8 @@ import { Templates } from './Templates'
 import { Users } from './Users'
 
 /**
- * Registry of every Payload collection. Add new collections here (one import + one entry).
- * Keep the order stable: it drives the admin sidebar.
+ * Registry of every Payload collection. Add new collections here (one import + one entry) and
+ * decide whether it is audited (`./audit.ts`). Keep the order stable: it drives the admin sidebar.
  */
 export const collections: CollectionConfig[] = [
   Users,
@@ -48,6 +51,8 @@ export const collections: CollectionConfig[] = [
   DockerHosts,
   NotificationSentHistory,
   Heartbeats,
+  MonitorIncidents,
+  PushEvents,
   StatMinutely,
   StatHourly,
   StatDaily,
@@ -62,4 +67,4 @@ export const collections: CollectionConfig[] = [
   Templates,
   ApiKeys,
   AuditLogs,
-]
+].map(withAuditHooks)

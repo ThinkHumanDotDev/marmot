@@ -3,6 +3,7 @@ import { resolveRequestLocale } from '@/i18n/resolve'
 import { toLocale } from '@/i18n/translator'
 import { SLUG_ERROR_KEYS, type SlugMessage } from '@/lib/reserved-slugs'
 import type { User } from '@/payload-types'
+import { bindAuditRequest } from '@/server/audit/context'
 import { LocalizedAPIError, translateError, type ErrorKey, type ErrorValues } from '@/server/errors'
 
 /**
@@ -17,9 +18,15 @@ type LocaleSource = Pick<User, 'language'>
 
 const requestUsers = new WeakMap<Request, LocaleSource>()
 
-/** Records the authenticated user of `request` for `requestLocale`. */
+/**
+ * Records the authenticated user of `request` for `requestLocale`, and binds the request's headers
+ * to the user object so audit rows written by Local API calls made as this user carry the client's
+ * IP address and user agent (`src/server/audit/context.ts`).
+ */
 export function rememberRequestUser(request: Request, user: LocaleSource | null | undefined) {
-  if (user) requestUsers.set(request, user)
+  if (!user) return
+  requestUsers.set(request, user)
+  bindAuditRequest(user, request)
 }
 
 /**

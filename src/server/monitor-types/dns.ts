@@ -1,13 +1,22 @@
 /**
  * DNS monitor: resolves `hostname` with the configured resolver(s) and reports the records.
  * Ported from Uptime Kuma 2.5.5 `server/monitor-types/dns.js` — Copyright (c) 2021 Louis Lam,
- * MIT License. See THIRD_PARTY_NOTICES.md. (Condition evaluation is left to the conditions issue.)
+ * MIT License. See THIRD_PARTY_NOTICES.md. Record checks use Marmot's assertions (#96) instead of
+ * Uptime Kuma's condition builder.
  */
 import { Resolver } from 'node:dns/promises'
 import net from 'node:net'
 
+import { normalizeAssertions } from '@/lib/validation/assertions'
 import { assertHostsAllowed } from '@/server/security/outbound-guard'
 
+import {
+  describeAssertionResult,
+  dnsRecordStrings,
+  evaluateDnsAssertions,
+  passedSuffix,
+  type DnsRecordSets,
+} from './assertions'
 import { registerMonitorType } from './registry'
 
 export type DnsRecordType =
@@ -132,7 +141,41 @@ registerMonitorType({
     const dnsRes = await dnsResolve(hostname, servers, port, rrtype, timeoutMs)
     ctx.heartbeat.ping = Date.now() - startTime
 
-    ctx.heartbeat.msg = formatDnsResult(rrtype, dnsRes)
+    const msg = formatDnsResult(rrtype, dnsRes)
+
+    const assertions = normalizeAssertions(ctx.monitor.assertions).filter(
+      (a) => a.kind === 'dnsRecord',
+    )
+    if (assertions.length > 0) {
+      // The monitor's own record type is already resolved; other types named by assertions are
+      // looked up with the same resolvers. "No such record" counts as an empty set.
+      const recordSets: DnsRecordSets = new Map([[rrtype, dnsRecordStrings(rrtype, dnsRes)]])
+      const extraTypes = new Set(
+        assertions.map((a) => (a.target?.trim() || rrtype).toUpperCase() as DnsRecordType),
+      )
+      for (const type of extraTypes) {
+        if (recordSets.has(type)) continue
+        try {
+          const res = await dnsResolve(hostname, servers, port, type, timeoutMs)
+          recordSets.set(type, dnsRecordStrings(type, res))
+        } catch (err) {
+          const code = (err as NodeJS.ErrnoException).code
+          recordSets.set(
+            type,
+            code === 'ENODATA' || code === 'ENOTFOUND'
+              ? []
+              : new Error(`lookup failed: ${err instanceof Error ? err.message : String(err)}`),
+          )
+        }
+      }
+      const results = evaluateDnsAssertions(assertions, recordSets, rrtype)
+      ctx.assertions = results
+      const failed = results.find((r) => !r.passed)
+      if (failed) throw new Error(describeAssertionResult(failed))
+      ctx.heartbeat.msg = msg + passedSuffix(results)
+    } else {
+      ctx.heartbeat.msg = msg
+    }
     ctx.heartbeat.status = 'up'
   },
 })

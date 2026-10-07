@@ -3,15 +3,16 @@
 Marmot's machine-facing endpoints live under `src/app/api/` and mirror Uptime Kuma's, so existing
 README badges, cron jobs and Grafana dashboards keep working after a switch.
 
-| Endpoint                                     | Auth                                               | Purpose                      |
-| -------------------------------------------- | -------------------------------------------------- | ---------------------------- |
-| `GET /api/badge/:monitorId/<type>[/<range>]` | public status page **or** API key of the org       | shields.io-style SVG badges  |
-| `ALL /api/push/:token?status=&msg=&ping=`    | the monitor's push token                           | heartbeat for push monitors  |
-| `GET /api/metrics`                           | API key                                            | Prometheus exposition        |
-| `/api/orgs/:orgId/**`                        | session **or** API key of the org (scoped)         | management API               |
-| `GET /api/openapi.json`, `GET /api/docs`     | public                                             | management API reference     |
-| `GET/POST /api/orgs/:orgId/api-keys`         | session, `api-key:read` / `api-key:create` (admin) | manage keys                  |
-| `PATCH/DELETE /api/orgs/:orgId/api-keys/:id` | session, `api-key:delete` (admin)                  | disable / re-enable / revoke |
+| Endpoint                                     | Auth                                               | Purpose                                           |
+| -------------------------------------------- | -------------------------------------------------- | ------------------------------------------------- |
+| `GET /api/badge/:monitorId/<type>[/<range>]` | public status page **or** API key of the org       | shields.io-style SVG badges                       |
+| `ALL /api/push/:token[/<signal>]`            | the monitor's push token                           | heartbeat for push monitors                       |
+| `GET /api/metrics`                           | API key                                            | Prometheus exposition                             |
+| `/api/orgs/:orgId/**`                        | session **or** API key of the org (scoped)         | management API                                    |
+| `GET /api/openapi.json`, `GET /api/docs`     | public                                             | management API reference                          |
+| `GET/POST /api/orgs/:orgId/api-keys`         | session, `api-key:read` / `api-key:create` (admin) | manage keys                                       |
+| `PATCH/DELETE /api/orgs/:orgId/api-keys/:id` | session, `api-key:delete` (admin)                  | disable / re-enable / revoke                      |
+| `GET /api/orgs/:orgId/audit-logs[/export]`   | session, `audit-log:read` (admin)                  | [audit log](Security.md#audit-log) as JSON or CSV |
 
 ## API keys
 
@@ -61,14 +62,18 @@ per-organization overrides and collection access apply as for a person with that
 
 - a key of another organization gets `403`; an unknown, disabled or expired key `401`;
 - `read` keys get `403` on anything but `GET`/`HEAD`/`OPTIONS`;
-- keys never reach member, invitation, invite-link, API key, SSO, billing, permission or ownership routes
+- keys never reach member, invitation, invite-link, API key, audit log, SSO, billing, permission or ownership routes
   (`403`), whatever the organization's permission overrides say;
 - each key may send `API_KEY_RATE_LIMIT` requests per minute (default 600), of which
   `API_KEY_WRITE_RATE_LIMIT` (default 60) may be writes; above that the API answers `429` with
   `Retry-After` ([Configuration](Configuration.md#authentication));
-- every write is recorded in the audit log as `api_key.write_request` with `actorType: apiKey` and the
-  key's prefix; creating, disabling and revoking keys are recorded as `api_key.created`,
-  `api_key.updated` and `api_key.revoked`.
+- changes made with a key appear in the [audit log](Security.md#audit-log) like any other
+  (`monitor.created`, `incident.updated`, …) with actor type `apiKey` and the key's name, so automation
+  is told apart from people; the key's own life cycle is `api_key.created`, `api_key.enabled`,
+  `api_key.disabled` and `api_key.revoked`;
+- on-demand checks (`POST …/monitors/:id/check`, `POST …/checks`) need a `write` key and share the
+  organization's `ON_DEMAND_CHECKS_PER_MINUTE` budget; monitor-incident acknowledgements and resolutions
+  made with a key are recorded with source `api`.
 
 The API is described by an OpenAPI 3.1 document at `/api/openapi.json` (request bodies are generated from
 the same zod schemas the handlers validate with) and browsable at `/api/docs`. Each operation carries
@@ -134,19 +139,51 @@ any HTTP method:
 curl "https://marmot.example.com/api/push/<token>?status=up&msg=OK&ping=12"
 ```
 
-| Query    | Values                | Default |
-| -------- | --------------------- | ------- |
-| `status` | `up`, `down`          | `up`    |
-| `msg`    | free text (250 chars) | `OK`    |
-| `ping`   | milliseconds, 0…10^11 | none    |
+| Path                       | Signal                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| `/api/push/:token`         | success (`status=down` reports a failure, as in Uptime Kuma)                   |
+| `/api/push/:token/start`   | a run started: it must finish within the grace period                          |
+| `/api/push/:token/fail`    | explicit failure                                                               |
+| `/api/push/:token/log`     | record an event (message and body) without changing the status                 |
+| `/api/push/:token/<0-255>` | exit code: `0` is a success, anything else a failure (message `Exit code <n>`) |
 
-The response is `{ "ok": true }`; unknown or paused tokens return `404 { ok: false, msg }`, an invalid
-ping `400`. The call records a heartbeat through the engine (`recordExternalBeat` in
-`src/server/engine/worker.ts`): maintenance windows, retries (`maxRetries` → PENDING) and `upsideDown`
+| Query    | Values                                                | Default                                   |
+| -------- | ----------------------------------------------------- | ----------------------------------------- |
+| `status` | `up`, `down` (bare token URL only)                    | `up`                                      |
+| `msg`    | free text (250 chars)                                 | `OK` (`Failure reported` for `/fail`)     |
+| `ping`   | milliseconds, 0…10^11                                 | the duration of the paired run, if any    |
+| `rid`    | run id (UUID or up to 64 letters, digits, `-` or `_`) | none: pairs with the latest anonymous run |
+
+The response is `{ "ok": true }` with a `Ping-Body-Limit: 10000` header; unknown or paused tokens and
+unknown signals return `404 { ok: false, msg }`, an invalid ping or `rid` `400`. The first 10 000 bytes of a
+request body (POST, PUT, …) are stored with the signal, so a job can send its output:
+
+```bash
+# report start, exit code, duration and the last 10 000 bytes of output
+url="https://marmot.example.com/api/push/<token>"
+curl -fsS -m 10 --retry 5 -o /dev/null "$url/start"
+output="$(/usr/local/bin/backup.sh 2>&1)"; code=$?
+printf '%s' "$output" | tail -c 10000 | curl -fsS -m 10 --retry 5 -o /dev/null --data-binary @- "$url/$code"
+```
+
+The monitor page shows the same as copy-ready curl, bash-wrapper and crontab snippets, the schedule in
+plain language ("Every day at 02:00 · Europe/Berlin"), the next expected ping and the **Ping log** (the
+newest 100 signals with their output).
+
+**What a signal does.** Successes and failures record a heartbeat through the engine (`recordExternalBeat`
+in `src/server/engine/worker.ts`): maintenance windows, retries (`maxRetries` → PENDING) and `upsideDown`
 apply exactly as for polled checks, the monitor's `status.lastPushAt` is stamped, and the stats, realtime
-and notification listeners fire, so dashboards update live and channels are notified on transitions. The
-periodic push check in the worker only turns the monitor DOWN when no push arrived within
-`interval + 10 %`.
+and notification listeners fire, so dashboards update live and channels are notified on transitions. A
+`start` opens a run (`status.pushRuns`); the success or failure that closes it (same `rid`, otherwise the
+latest run) stores the run's duration as the heartbeat's `ping`, so the response-time chart shows job
+durations. A run longer than `pushMaxDuration` is reported DOWN. `log` only adds to the ping log.
+
+**When a ping is late.** The periodic push check in the worker turns the monitor DOWN when the next ping is
+overdue: `interval + grace` after the last success or failure, or, for cron schedules, the next occurrence
+of the cron expression (in the schedule's time zone, DST-aware) plus grace. A started run that does not
+finish within the grace period, or a reported failure, keeps it DOWN until the next success. Without a
+configured grace the window is `interval + 10 %`, as before. See
+[Monitor types](Monitor-Types.md#push-schedules-and-signals) for the fields and the exact rules.
 
 ## Prometheus metrics
 
@@ -167,13 +204,14 @@ scrape_configs:
       credentials: mk_… # or basic_auth: { username: marmot, password: mk_… }
 ```
 
-| Metric                        | Labels            | Value                                                        |
-| ----------------------------- | ----------------- | ------------------------------------------------------------ |
-| `monitor_status`              | common            | `1` up, `0` down, `2` pending, `3` maintenance, `4` degraded |
-| `monitor_response_time`       | common            | last ping in ms (`-1` when the beat had no ping)             |
-| `monitor_uptime_ratio`        | common + `window` | `0.0…1.0` over `24h` and `30d`                               |
-| `monitor_cert_days_remaining` | common            | from `monitors.certInfo` (only when present)                 |
-| `monitor_cert_is_valid`       | common            | `1` / `0`, from `monitors.certInfo`                          |
+| Metric                        | Labels            | Value                                                                                                            |
+| ----------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `monitor_status`              | common            | `1` up, `0` down, `2` pending, `3` maintenance, `4` degraded                                                     |
+| `monitor_response_time`       | common            | last ping in ms (`-1` when the beat had no ping)                                                                 |
+| `monitor_uptime_ratio`        | common + `window` | `0.0…1.0` over `24h` and `30d`                                                                                   |
+| `monitor_cert_days_remaining` | common            | from `monitors.certInfo` (only when present)                                                                     |
+| `monitor_cert_is_valid`       | common            | `1` / `0`, from `monitors.certInfo`                                                                              |
+| `marmot_checker_online`       | `location`        | `1` online, `0` offline ([self connectivity check](Configuration.md#self-connectivity-check), only when enabled) |
 
 Common labels: `monitor_id`, `monitor_name`, `monitor_type`, `monitor_url`, `monitor_hostname`,
 `monitor_port` (empty string when a monitor has no such field). Names and labels match Uptime Kuma's
