@@ -11,6 +11,7 @@ import { ImportantEventsTable } from '@/components/monitors/important-events-tab
 import { MonitorActions } from '@/components/monitors/monitor-actions'
 import { MonitorChannelsCard } from '@/components/monitors/monitor-channels-card'
 import { ResponseTimeChart } from '@/components/monitors/response-time-chart'
+import { PushEventsTable, PushPanel } from '@/components/monitors/push-panel'
 import { MonitorStatusBadge } from '@/components/monitors/status-badge'
 import { TagList } from '@/components/monitors/tag-chip'
 import { UptimeCards } from '@/components/monitors/uptime-cards'
@@ -20,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { env } from '@/env'
 import { timeZoneOrDefault } from '@/i18n/formats'
 import { isHttpMonitorType } from '@/lib/validation/monitor'
-import type { Heartbeat, Monitor } from '@/payload-types'
+import type { Heartbeat, Monitor, PushEvent } from '@/payload-types'
 import { toRealtimeTags } from '@/server/realtime/serialize'
 import { getMonitorChannels, getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
 import { getStats, getUptime } from '@/server/stats/uptime-calculator'
@@ -76,7 +77,9 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
 
   const { payload } = ctx
   // Access was verified on the monitor; its history is read with the Local API directly.
-  const [stats24h, uptime30d, uptime1y, latest, events, channels] = await Promise.all([
+  const now = new Date()
+  const isPush = monitor.type === 'push'
+  const [stats24h, uptime30d, uptime1y, latest, events, channels, pushEvents] = await Promise.all([
     getStats(payload, monitor.id, '24h'),
     getUptime(payload, monitor.id, '30d'),
     getUptime(payload, monitor.id, '1y'),
@@ -97,6 +100,16 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
       depth: 0,
     }),
     getMonitorChannels(ctx, monitor),
+    isPush
+      ? payload.find({
+          collection: 'push-events',
+          where: { monitor: { equals: monitor.id } },
+          sort: '-time',
+          limit: 20,
+          depth: 0,
+          pagination: false,
+        })
+      : null,
   ])
 
   const hasHistory = latest.docs.length > 0 || stats24h.buckets.length > 0
@@ -106,7 +119,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const active = monitor.active !== false
   const pushUrl =
     monitor.type === 'push' && monitor.pushToken
-      ? `${env.NEXT_PUBLIC_SERVER_URL.replace(/\/$/, '')}/api/push/${monitor.pushToken}?status=up&msg=OK&ping=`
+      ? `${env.NEXT_PUBLIC_SERVER_URL.replace(/\/$/, '')}/api/push/${monitor.pushToken}`
       : null
 
   return (
@@ -198,38 +211,26 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
           }}
         />
 
-        {pushUrl && (
-          <Card className="gap-3">
-            <CardHeader>
-              <CardTitle className="text-base">{t('pushUrl')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs">
-                {pushUrl}
-              </code>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {t.rich('pushHint', {
-                  seconds: monitor.interval,
-                  code: (chunks) => <code>{chunks}</code>,
-                })}
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        {pushUrl && <PushPanel monitor={monitor} pushUrl={pushUrl} timeZone={timeZone} now={now} />}
 
         <ResponseTimeChart buckets={stats24h.buckets} />
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-          <ImportantEventsTable
-            events={{
-              docs: events.docs.map(toBeat),
-              page: events.page ?? page,
-              totalPages: events.totalPages,
-              totalDocs: events.totalDocs,
-            }}
-            basePath={`/${orgSlug}/monitors/${monitor.id}`}
-            timeZone={timeZone}
-          />
+          <div className="flex min-w-0 flex-col gap-6">
+            <ImportantEventsTable
+              events={{
+                docs: events.docs.map(toBeat),
+                page: events.page ?? page,
+                totalPages: events.totalPages,
+                totalDocs: events.totalDocs,
+              }}
+              basePath={`/${orgSlug}/monitors/${monitor.id}`}
+              timeZone={timeZone}
+            />
+            {pushEvents && (
+              <PushEventsTable events={pushEvents.docs as PushEvent[]} timeZone={timeZone} />
+            )}
+          </div>
           <div className="flex flex-col gap-6">
             {(isHttpMonitorType(monitor.type) ||
               monitor.certInfo ||

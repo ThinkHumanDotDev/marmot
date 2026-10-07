@@ -1,5 +1,7 @@
 /**
- * Push monitors: `ALL /api/push/:token?status=up|down&msg=&ping=`.
+ * Push monitors: `ALL /api/push/:token?status=up|down&msg=&ping=` and the signal paths
+ * `/api/push/:token/start|fail|log|<exitCode>` (`./http.ts`), applied by `ingestPushSignal`
+ * (`./signals.ts`).
  *
  * The web process records the beat synchronously through the engine (`recordExternalBeat`), so the
  * same heartbeat listeners that run in the worker — stats rollups, realtime emitter, notification
@@ -14,36 +16,15 @@ import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
 import type { Heartbeat, Monitor } from '@/payload-types'
-import { recordExternalBeat } from '@/server/engine/worker'
-import { registerNotificationListener } from '@/server/notifications'
-import { registerRealtimeListener } from '@/server/realtime/listener'
-import { registerStatsListener } from '@/server/stats'
+import { ensureBeatPipeline } from './pipeline'
+import { ingestPushSignal, type PushSignalInput } from './signals'
 
 const log = childLogger('push')
 
 /** Kuma: 100 billion ms (~3.17 years) fits every column type it supports. */
 export const MAX_PING_MS = 100_000_000_000
 
-let pipelineReady = false
-
-/**
- * Register the heartbeat listeners once per process. The worker registers the same set at boot;
- * calling this there is harmless (each listener guards against double registration or is cheap).
- */
-export function ensureBeatPipeline(payload: Payload): void {
-  if (pipelineReady) return
-  pipelineReady = true
-  void registerStatsListener(payload).catch((err: unknown) =>
-    log.error({ err }, 'failed to register the stats listener'),
-  )
-  registerRealtimeListener()
-  registerNotificationListener(payload)
-}
-
-/** Tests: forget that the pipeline was registered (listeners themselves are cleared elsewhere). */
-export function resetBeatPipeline(): void {
-  pipelineReady = false
-}
+export { ensureBeatPipeline, resetBeatPipeline } from './pipeline'
 
 export interface PushQuery {
   status?: string | null
@@ -96,6 +77,7 @@ export async function handlePush(
   payload: Payload,
   token: string,
   query: PushQuery,
+  extra: Omit<PushSignalInput, 'kind' | 'msg' | 'ping'> = {},
 ): Promise<PushOutcome> {
   const parsed = parsePushQuery(query)
   if ('error' in parsed) return { ok: false, status: 400, msg: parsed.error }
@@ -104,7 +86,14 @@ export async function handlePush(
   if (!monitor) return { ok: false, status: 404, msg: 'Monitor not found or not active.' }
 
   ensureBeatPipeline(payload)
-  const { heartbeat, monitor: updated } = await recordExternalBeat(payload, monitor, parsed)
-  log.debug({ monitorId: monitor.id, status: heartbeat.status }, 'push received')
-  return { ok: true, heartbeat, monitor: updated }
+  const result = await ingestPushSignal(payload, monitor, {
+    ...extra,
+    kind: parsed.status === 'up' ? 'success' : 'fail',
+    msg: parsed.msg,
+    ping: parsed.ping,
+  })
+  log.debug({ monitorId: monitor.id, status: result.heartbeat?.status }, 'push received')
+  return { ok: true, heartbeat: result.heartbeat!, monitor: result.monitor }
 }
+
+export { ingestPushSignal, prunePushEvents, type PushSignalInput } from './signals'

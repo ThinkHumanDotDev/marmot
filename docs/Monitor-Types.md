@@ -21,7 +21,7 @@ not repeated below.
 | `port`              | TCP Port                                   | `hostname`, `port`                                                                                                                                                                                       | —                                    |
 | `ping`              | Ping                                       | `hostname`                                                                                                                                                                                               | system `ping` binary                 |
 | `dns`               | DNS                                        | `hostname`, `port` (53), `dnsResolveServer`, `dnsResolveType`                                                                                                                                            | —                                    |
-| `push`              | Push                                       | `pushToken` (generated); the client calls `/api/push/<token>`                                                                                                                                            | —                                    |
+| `push`              | Push                                       | `pushToken` (generated), `pushSchedule` interval \| cron, `pushCron`, `pushTimezone`, `pushGrace`, `pushMaxDuration`; the client calls `/api/push/<token>[/start\|/fail\|/log\|/<code>]` (see below)     | —                                    |
 | `manual`            | Manual                                     | `manualStatus`                                                                                                                                                                                           | —                                    |
 | `group`             | Group                                      | children via `parent`                                                                                                                                                                                    | —                                    |
 | `grpc-keyword`      | gRPC(s) - Keyword                          | `grpcUrl`, `grpcProtobuf`, `grpcServiceName`, `grpcMethod`, `grpcEnableTls`, `grpcBody`, `grpcMetadata`, `keyword`, `invertKeyword`                                                                      | `@grpc/grpc-js`, `protobufjs`        |
@@ -79,3 +79,31 @@ check })`. Load heavy clients with `loadOptionalDriver(() => import('<pkg>'), '<
    optional drivers, the missing-driver message) and add the row above.
 6. When porting from Uptime Kuma, keep the attribution header and list the file in
    `THIRD_PARTY_NOTICES.md`.
+
+## Push schedules and signals
+
+A push monitor is passive: the job it watches calls `/api/push/<token>` (see
+[Integrations](Integrations.md#push-monitors) for the full endpoint reference). The worker's periodic
+check (`src/server/monitor-types/push.ts`, rules in `evaluatePush()` in `src/lib/push-schedule.ts`) only
+decides whether the next ping is overdue.
+
+| Field             | Meaning                                                                                                                                                                                                        |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pushSchedule`    | `interval` (default): a ping is due `interval` seconds after the previous one. `cron`: due at the next occurrence of `pushCron` after the previous ping.                                                       |
+| `pushCron`        | Five-field cron expression (`0 2 * * *`), evaluated with [croner](https://github.com/Hexagon/croner). DST-aware: a skipped wall-clock time runs at the first valid instant after it, a repeated one runs once. |
+| `pushTimezone`    | IANA zone of the cron expression; `SAME_AS_SERVER` (default) uses the organization's time zone (`settings.timezone`).                                                                                          |
+| `pushGrace`       | Seconds a ping may be late, and a started run may take, before the monitor goes DOWN. Empty: 10 % of the interval (at least 1 s), as before; 60 s for cron schedules.                                          |
+| `pushMaxDuration` | Optional. A run (from `/start` to its success) that takes longer is reported DOWN, as soon as it is exceeded.                                                                                                  |
+
+Cron monitors are checked every minute whatever `interval` says (`PUSH_CRON_CHECK_SECONDS`); until the
+first ping they are PENDING, and DOWN once the first occurrence after the monitor's creation plus grace has
+passed. Interval monitors without any ping are DOWN on their first check, as before.
+
+The check decides, in this order: an open run past its grace period or `pushMaxDuration` → DOWN; the last
+signal was a failure → DOWN until the next success; a run in progress → UP ("Running for …"); the next
+expected ping plus grace has passed → DOWN ("No heartbeat in the time window"); otherwise UP.
+
+Every signal is kept in the `push-events` collection (the monitor page's **Ping log**): kind, message, the
+first 10 000 bytes of the request body, run id, exit code and run duration. The newest 100 entries per
+monitor are kept; they are deleted with the monitor. Signals are applied by `ingestPushSignal()`
+(`src/server/push/signals.ts`), which any transport (HTTP today, e-mail later) calls.

@@ -26,6 +26,9 @@ export const adminTranslations = {
       labels: {
         tcpPort: 'TCP Port',
         push: 'Push',
+        pushSchedule: 'Push schedule',
+        pushScheduleInterval: 'Interval',
+        pushScheduleCron: 'Cron expression',
         group: 'Group',
         manual: 'Manual',
         dockerContainer: 'Docker Container',
@@ -127,6 +130,15 @@ export const adminTranslations = {
         durationDescription: 'Seconds since the previous heartbeat of this monitor.',
         importantDescription: 'True when the status changed compared to the previous heartbeat.',
       },
+      pushEvents: {
+        description:
+          'Signals received by push monitors (success, fail, start, log) with their message and captured request body. The newest 100 per monitor are kept.',
+        kindDescription: 'success, fail, start or log.',
+        sourceDescription: 'How the signal arrived (http).',
+        bodyDescription: 'First 10 000 bytes of the request body (the job output).',
+        ridDescription: 'Run id pairing a start with its success or failure.',
+        durationDescription: 'Run duration in milliseconds (start to success/failure).',
+      },
       incidents: {
         organizationDescription: 'Derived from the status page.',
         contentDescription: 'Markdown: paragraphs, **bold**, _italics_, `code` and links.',
@@ -185,7 +197,20 @@ export const adminTranslations = {
       },
       monitors: {
         statusDescription: 'Maintained by the worker. Mirrors the latest heartbeat.',
-        lastPushAtDescription: 'Push monitors: time of the last call to the push endpoint.',
+        lastPushAtDescription:
+          'Push monitors: time of the last success or failure reported to the push endpoint.',
+        lastPushStatusDescription: 'Push monitors: outcome of that last success or failure.',
+        pushRunsDescription:
+          'Push monitors: runs announced with /start that have not reported success or failure yet.',
+        pushScheduleDescription:
+          'When pings are expected: every interval, or at the times of a cron expression.',
+        pushCronDescription: 'Five-field cron expression, e.g. 0 2 * * * for 02:00 every day.',
+        pushTimezoneDescription:
+          "IANA time zone of the cron expression. SAME_AS_SERVER uses the organization's time zone.",
+        pushGraceDescription:
+          'Seconds a ping may be late (and a started run may take) before the monitor goes DOWN. Empty: 10 % of the interval, 60 s for cron.',
+        pushMaxDurationDescription:
+          'Optional: runs (from /start to success) longer than this many seconds are reported DOWN.',
         activeDescription: 'Paused monitors are not checked.',
         parentDescription: 'Group this monitor belongs to.',
         publicNameDescription: 'Name shown on status pages instead of the monitor name.',

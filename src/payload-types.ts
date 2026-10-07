@@ -81,6 +81,7 @@ export interface Config {
     'docker-hosts': DockerHost;
     'notification-sent-history': NotificationSentHistory;
     heartbeats: Heartbeat;
+    'push-events': PushEvent;
     'stat-minutely': StatMinutely;
     'stat-hourly': StatHourly;
     'stat-daily': StatDaily;
@@ -112,6 +113,7 @@ export interface Config {
     'docker-hosts': DockerHostsSelect<false> | DockerHostsSelect<true>;
     'notification-sent-history': NotificationSentHistorySelect<false> | NotificationSentHistorySelect<true>;
     heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
+    'push-events': PushEventsSelect<false> | PushEventsSelect<true>;
     'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
     'stat-hourly': StatHourlySelect<false> | StatHourlySelect<true>;
     'stat-daily': StatDailySelect<false> | StatDailySelect<true>;
@@ -462,6 +464,11 @@ export interface Monitor {
   dnsResolveServer?: string | null;
   dnsResolveType?: ('A' | 'AAAA' | 'CAA' | 'CNAME' | 'MX' | 'NS' | 'PTR' | 'SOA' | 'SRV' | 'TXT') | null;
   pushToken?: string | null;
+  pushSchedule?: ('interval' | 'cron') | null;
+  pushCron?: string | null;
+  pushTimezone?: string | null;
+  pushGrace?: number | null;
+  pushMaxDuration?: number | null;
   manualStatus?: ('up' | 'down' | 'pending') | null;
   databaseConnectionString?: string | null;
   databaseQuery?: string | null;
@@ -514,6 +521,16 @@ export interface Monitor {
     retries?: number | null;
     downCount?: number | null;
     lastPushAt?: string | null;
+    lastPushStatus?: ('up' | 'down') | null;
+    pushRuns?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
   };
   updatedAt: string;
   createdAt: string;
@@ -616,6 +633,25 @@ export interface Heartbeat {
   important?: boolean | null;
   retries?: number | null;
   downCount?: number | null;
+  time: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "push-events".
+ */
+export interface PushEvent {
+  id: number;
+  monitor: number | Monitor;
+  organization?: (number | null) | Organization;
+  kind: 'success' | 'fail' | 'start' | 'log';
+  source?: ('http' | 'email') | null;
+  msg?: string | null;
+  body?: string | null;
+  bodyTruncated?: boolean | null;
+  rid?: string | null;
+  exitCode?: number | null;
+  duration?: number | null;
+  method?: string | null;
   time: string;
 }
 /**
@@ -1081,6 +1117,10 @@ export interface PayloadLockedDocument {
         value: number | Heartbeat;
       } | null)
     | ({
+        relationTo: 'push-events';
+        value: number | PushEvent;
+      } | null)
+    | ({
         relationTo: 'stat-minutely';
         value: number | StatMinutely;
       } | null)
@@ -1381,6 +1421,11 @@ export interface MonitorsSelect<T extends boolean = true> {
   dnsResolveServer?: T;
   dnsResolveType?: T;
   pushToken?: T;
+  pushSchedule?: T;
+  pushCron?: T;
+  pushTimezone?: T;
+  pushGrace?: T;
+  pushMaxDuration?: T;
   manualStatus?: T;
   databaseConnectionString?: T;
   databaseQuery?: T;
@@ -1435,6 +1480,8 @@ export interface MonitorsSelect<T extends boolean = true> {
         retries?: T;
         downCount?: T;
         lastPushAt?: T;
+        lastPushStatus?: T;
+        pushRuns?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -1523,6 +1570,24 @@ export interface HeartbeatsSelect<T extends boolean = true> {
   important?: T;
   retries?: T;
   downCount?: T;
+  time?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "push-events_select".
+ */
+export interface PushEventsSelect<T extends boolean = true> {
+  monitor?: T;
+  organization?: T;
+  kind?: T;
+  source?: T;
+  msg?: T;
+  body?: T;
+  bodyTruncated?: T;
+  rid?: T;
+  exitCode?: T;
+  duration?: T;
+  method?: T;
   time?: T;
 }
 /**

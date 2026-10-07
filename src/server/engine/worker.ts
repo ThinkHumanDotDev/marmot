@@ -285,14 +285,15 @@ export interface ExternalBeatInput {
 /**
  * Record a beat reported from outside the worker (the push endpoint). Maintenance windows,
  * retries/PENDING and `upsideDown` apply exactly as for polled checks; the monitor's
- * `status.lastPushAt` is stamped so the periodic push check knows the heartbeat arrived.
+ * `status.lastPushAt` is stamped so the periodic push check knows the heartbeat arrived (plus any
+ * `statusPatch`, e.g. the push run bookkeeping).
  * Port of the `/api/push/:pushToken` handler in Uptime Kuma 2.5.5 `server/routers/api-router.js`.
  */
 export async function recordExternalBeat(
   payload: Payload,
   monitor: Monitor,
   input: ExternalBeatInput,
-  options: Omit<RecordBeatOptions, 'statusPatch'> = {},
+  options: RecordBeatOptions = {},
 ): Promise<RecordBeatResult> {
   const now = options.now ?? new Date()
   const msg = input.msg?.trim() || 'OK'
@@ -306,7 +307,7 @@ export async function recordExternalBeat(
   return recordBeat(payload, monitor, result, {
     ...options,
     now,
-    statusPatch: { lastPushAt: now.toISOString() },
+    statusPatch: { lastPushAt: now.toISOString(), ...options.statusPatch },
   })
 }
 

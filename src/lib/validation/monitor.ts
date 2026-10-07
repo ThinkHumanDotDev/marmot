@@ -9,6 +9,8 @@ import { z } from 'zod'
 
 import type { Messages } from '@/i18n/messages'
 import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
+import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
+import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
 /** Key of a validation message under `monitors.validation` in the catalogues. */
 export type MonitorValidationKey = keyof Messages['monitors']['validation']
@@ -490,6 +492,19 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       dnsResolveServer: optionalText(500),
       dnsResolveType: z.enum(DNS_RECORD_TYPES).default('A'),
 
+      // Push schedule
+      pushSchedule: z.enum(PUSH_SCHEDULE_TYPES).default('interval'),
+      pushCron: optionalText(200),
+      pushTimezone: z
+        .string()
+        .trim()
+        .max(100)
+        .nullish()
+        .transform((v) => v || SAME_AS_SERVER)
+        .refine(isValidTimezone, message('timezoneInvalid')),
+      pushGrace: z.number().int().min(0).max(MAX_PUSH_SECONDS).nullish().default(null),
+      pushMaxDuration: z.number().int().min(1).max(MAX_PUSH_SECONDS).nullish().default(null),
+
       // Manual
       manualStatus: z.enum(MANUAL_STATUSES).nullish(),
 
@@ -653,6 +668,10 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       }
       if (type === 'dns' && !values.dnsResolveType) {
         issue('dnsResolveType', message('recordTypeRequired'))
+      }
+      if (type === 'push' && values.pushSchedule === 'cron') {
+        if (!values.pushCron) issue('pushCron', message('cronRequired'))
+        else if (!isValidCronPattern(values.pushCron)) issue('pushCron', message('cronInvalid'))
       }
       if (type === 'manual' && !values.manualStatus) {
         issue('manualStatus', message('manualStatusRequired'))
@@ -819,6 +838,11 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     tlsCa: null,
     dnsResolveServer: type === 'dns' ? '1.1.1.1' : null,
     dnsResolveType: 'A',
+    pushSchedule: 'interval',
+    pushCron: null,
+    pushTimezone: SAME_AS_SERVER,
+    pushGrace: null,
+    pushMaxDuration: null,
     manualStatus: type === 'manual' ? 'up' : null,
     dockerHost: null,
     dockerContainer: null,

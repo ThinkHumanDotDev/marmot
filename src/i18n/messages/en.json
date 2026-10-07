@@ -200,8 +200,6 @@
       "checked": "Checked {when}",
       "paused": "This monitor is paused. Resume it to start checking again; history is kept.",
       "latestHeartbeats": "Latest heartbeats",
-      "pushUrl": "Push URL",
-      "pushHint": "Call this URL at least every {seconds} seconds. Optional query parameters:<code> status</code> (up|down), <code>msg</code>, <code>ping</code>.",
       "description": "Description",
       "noDescription": "No description yet. Add one from Edit."
     },
@@ -473,7 +471,10 @@
       "nodeRequired": "Add at least one node URL",
       "nodeUrl": "Nodes are management API URLs such as https://node1:15672",
       "gameRequired": "Game is required",
-      "channelsUnique": "Each channel may only be added once"
+      "channelsUnique": "Each channel may only be added once",
+      "cronRequired": "Cron expression is required",
+      "cronInvalid": "Not a valid cron expression, e.g. 0 2 * * * for 02:00 every day",
+      "timezoneInvalid": "Unknown time zone, e.g. Europe/Berlin"
     },
     "form": {
       "onePerLine": "One per line.",
@@ -539,7 +540,7 @@
         "dockerHost": "Docker host",
         "dockerHostEmpty": "No Docker hosts yet; an admin can add one in <link>settings</link>.",
         "dockerContainer": "Container name / id",
-        "push": "A push URL is generated when the monitor is saved. Call it at least every interval; a missed call marks the monitor DOWN.",
+        "push": "A push URL is generated when the monitor is saved. Call it on the schedule below; a late ping or a reported failure marks the monitor DOWN.",
         "group": "Monitor group",
         "groupEmpty": "Create a Group monitor to nest monitors under it.",
         "groupDescription": "Groups aggregate the status of their children.",
@@ -715,6 +716,23 @@
         "domainExpiryDescription": "Look the registration up via RDAP once a day and warn before the domain expires.",
         "active": "Active",
         "activeDescription": "Paused monitors keep their history but are not checked."
+      },
+      "push": {
+        "title": "Schedule",
+        "description": "When your job is expected to call the push URL, and how late it may be.",
+        "schedule": "Expect a ping",
+        "scheduleInterval": "Every interval",
+        "scheduleCron": "On a cron schedule",
+        "cron": "Cron expression",
+        "cronHint": "Five fields: minute, hour, day of month, month, day of week.",
+        "cronPreview": "{schedule}. Next: {runs}",
+        "cronChecked": "Checked every minute.",
+        "timezone": "Time zone",
+        "timezoneDefault": "Organization time zone ({zone})",
+        "grace": "Grace period",
+        "graceDescription": "How late a ping may be, and how long a started run may take, before the monitor goes DOWN. Empty: automatic (10 % of the interval, 1 minute for cron).",
+        "maxDuration": "Maximum run duration",
+        "maxDurationDescription": "Optional. Runs (from /start to success) that take longer are reported DOWN."
       }
     },
     "channels": {
@@ -732,6 +750,66 @@
       "testLabel": "Send a test message through {name}",
       "testSent": "Test message sent",
       "testFailed": "Test failed"
+    },
+    "push": {
+      "schedule": {
+        "interval": "Every {duration}",
+        "cron": "{schedule} · {timeZone}",
+        "cronRaw": "Cron {pattern}",
+        "everyMinute": "Every minute",
+        "everyMinutes": "Every {minutes} minutes",
+        "hourly": "Every hour at minute {minute}",
+        "everyHours": "Every {hours} hours at minute {minute}",
+        "daily": "Every day at {time}",
+        "weekly": "Every {weekdays} at {time}",
+        "monthly": "On day {day} of every month at {time}"
+      },
+      "panel": {
+        "title": "Push",
+        "description": "Your job calls these URLs. Marmot alerts when a ping is late, a run fails or a started run does not finish in time.",
+        "schedule": "Schedule",
+        "grace": "Grace period",
+        "graceAutomatic": "{duration} (automatic)",
+        "maxDuration": "Maximum run duration",
+        "noMaxDuration": "Not set",
+        "lastPing": "Last ping",
+        "never": "Never",
+        "nextExpected": "Next ping expected",
+        "nextExpectedValue": "By {when}",
+        "overdue": "Overdue since {when}",
+        "running": "{count, plural, one {Run in progress since {since}} other {# runs in progress, oldest since {since}}}",
+        "signals": "Append <code>/start</code> when the job starts and <code>/fail</code> or the exit code (<code>/0</code>, <code>/1</code>, …) when it ends; <code>/log</code> records output without changing the status. Add <code>?rid=…</code> to pair overlapping runs. The first 10 000 bytes of a request body are kept in the ping log.",
+        "tabs": {
+          "url": "URL",
+          "curl": "curl",
+          "wrapper": "Bash wrapper",
+          "crontab": "crontab"
+        },
+        "wrapperHint": "Save as marmot-run.sh, make it executable and put it in front of your command: it reports the start, the exit code, the duration and the last 10 000 bytes of output.",
+        "crontabHint": "Runs your command through the wrapper on this monitor's schedule.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copyFailed": "Could not copy to the clipboard",
+        "runs": "Runs in progress"
+      },
+      "events": {
+        "title": "Ping log",
+        "description": "The latest signals with their message and captured output (the newest {count} are kept).",
+        "empty": "No pings received yet.",
+        "time": "Time",
+        "kind": "Signal",
+        "message": "Message",
+        "duration": "Run duration",
+        "kinds": {
+          "success": "Success",
+          "fail": "Failure",
+          "start": "Start",
+          "log": "Log"
+        },
+        "exitCode": "Exit code {code}",
+        "output": "Output",
+        "truncated": "Truncated to the first 10 000 bytes."
+      }
     }
   },
   "auth": {

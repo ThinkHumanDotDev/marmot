@@ -11,18 +11,18 @@ see them, members and above can create, edit, pause and delete them
 
 The type decides what a check does and which fields the form shows. The built-in set on `main`:
 
-| Group   | Type                 | UP when                                                                      |
-| ------- | -------------------- | ---------------------------------------------------------------------------- |
-| General | HTTP(s)              | the response status is in `acceptedStatusCodes` (default `200-299`)          |
-| General | HTTP(s) - Keyword    | the response body contains the keyword (or lacks it with `invertKeyword`)    |
-| General | HTTP(s) - Json Query | a JSONata expression over the JSON response compares as expected             |
-| General | TCP Port             | a TCP connection to `hostname:port` succeeds                                 |
-| General | Ping                 | the host answers ICMP echo requests                                          |
-| General | DNS                  | the resolver returns a record of `dnsResolveType` for `hostname`             |
-| Passive | Push                 | your system called `/api/push/<token>` within the interval (plus 10 % grace) |
-| Passive | Manual               | you set the status by hand; nothing is checked                               |
-| Special | Group                | every child monitor is UP                                                    |
-| Special | Docker Container     | the container is running (and healthy, when it has a health check)           |
+| Group   | Type                 | UP when                                                                           |
+| ------- | -------------------- | --------------------------------------------------------------------------------- |
+| General | HTTP(s)              | the response status is in `acceptedStatusCodes` (default `200-299`)               |
+| General | HTTP(s) - Keyword    | the response body contains the keyword (or lacks it with `invertKeyword`)         |
+| General | HTTP(s) - Json Query | a JSONata expression over the JSON response compares as expected                  |
+| General | TCP Port             | a TCP connection to `hostname:port` succeeds                                      |
+| General | Ping                 | the host answers ICMP echo requests                                               |
+| General | DNS                  | the resolver returns a record of `dnsResolveType` for `hostname`                  |
+| Passive | Push                 | your system called `/api/push/<token>` on schedule (interval or cron, plus grace) |
+| Passive | Manual               | you set the status by hand; nothing is checked                                    |
+| Special | Group                | every child monitor is UP                                                         |
+| Special | Docker Container     | the container is running (and healthy, when it has a health check)                |
 
 HTTP monitors also support request method and body, extra headers, redirects, `ignoreTls`, basic/bearer/
 OAuth2 client-credentials/NTLM/mTLS authentication and certificate-expiry alerts. The extended set adds gRPC, WebSocket, MQTT, Kafka, RabbitMQ, SMTP, SNMP, NTP, SFTP, RADIUS, Tailscale
@@ -87,18 +87,27 @@ detaches its children instead of deleting them.
 ## Push monitors
 
 A push monitor is checked by **your** system: cron jobs, backup scripts, IoT devices, anything that can make
-an HTTP request. Create a monitor of type _Push_; Marmot generates a `pushToken` and shows the URL to call.
-The worker's periodic check only verifies that a push arrived within `interval` plus a 10 % grace period and
-marks the monitor DOWN otherwise; `maxRetries` and `upsideDown` apply as usual.
+an HTTP request. Create a monitor of type _Push_; Marmot generates a `pushToken` and shows the URL to call,
+with copy-ready curl, bash-wrapper and crontab snippets.
+
+Pings are expected either every `interval` or on a **cron schedule** ("0 2 * * *" in Europe/Berlin, the
+organization's time zone by default), with a **grace period** for late pings. Jobs can report more than
+"I'm alive": `/start` when they begin (a run that does not finish within the grace period goes DOWN),
+`/fail` or their exit code when they end, `/log` for intermediate output, and the output itself as the
+request body (the first 10 000 bytes are kept in the ping log). The time from start to success is recorded
+as the heartbeat's ping, so the response-time chart shows how long the job took; an optional maximum run
+duration reports slow runs. `maxRetries` and `upsideDown` apply as usual.
 
 ```bash
 # at the end of your job
 curl -fsS "https://status.example.com/api/push/<token>?status=up&msg=OK&ping=12"
+# or: report start, outcome and duration
+curl -fsS "https://status.example.com/api/push/<token>/start"
+/usr/local/bin/backup.sh; curl -fsS "https://status.example.com/api/push/<token>/$?"
 ```
 
-The endpoint accepts `GET` or any other method, `status=up|down`, a free-text `msg` and an optional `ping`
-in ms; every call records a heartbeat and stamps `lastPushAt`. See [Integrations](Integrations.md) for
-the full reference, badges and API keys.
+See [Integrations](Integrations.md#push-monitors) for the endpoint reference and
+[Monitor types](Monitor-Types.md#push-schedules-and-signals) for the scheduling rules.
 
 ## Public name
 
