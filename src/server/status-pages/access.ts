@@ -41,8 +41,11 @@ import type { StatusPage } from '@/payload-types'
 /** The fields of a page the access check reads (load the page with `overrideAccess: true`). */
 export type AccessPage = Pick<
   StatusPage,
-  'id' | 'access' | 'passwordHash' | 'allowedEmailDomains' | 'allowedIpRanges'
->
+  'access' | 'passwordHash' | 'allowedEmailDomains' | 'allowedIpRanges'
+> & {
+  /** Numbers on Postgres, strings on MongoDB. */
+  id: string | number
+}
 
 /** What the check looks at: headers (cookies, client address) and, optionally, the query string. */
 export interface AccessRequest {

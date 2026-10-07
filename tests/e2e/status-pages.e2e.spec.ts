@@ -11,6 +11,8 @@ const publishedSlug = `e2e-status-${run}`
 const draftSlug = `e2e-draft-${run}`
 const protectedSlug = `e2e-protected-${run}`
 const protectedPassword = 'e2e page password'
+const teamSlug = `e2e-team-${run}`
+const officeSlug = `e2e-office-${run}`
 
 const created: { collection: string; id: DocId }[] = []
 
@@ -93,6 +95,31 @@ test.describe('Status pages', () => {
         access: 'password',
         password: protectedPassword,
         groups: [{ name: 'Internal services', monitors: [{ monitor: monitor.id }] }],
+      }),
+    )
+    track(
+      'status-pages',
+      await adminApi.create('status-pages', {
+        organization: org.id,
+        title: 'E2E Team Status',
+        slug: teamSlug,
+        published: true,
+        access: 'email-domain',
+        allowedEmailDomains: [{ domain: 'example.com' }],
+        groups: [{ name: 'Team services', monitors: [{ monitor: monitor.id }] }],
+      }),
+    )
+    track(
+      'status-pages',
+      await adminApi.create('status-pages', {
+        organization: org.id,
+        title: 'E2E Office Status',
+        slug: officeSlug,
+        published: true,
+        access: 'ip-allowlist',
+        // Documentation range: no test client comes from there.
+        allowedIpRanges: [{ cidr: '192.0.2.0/24' }],
+        groups: [{ name: 'Office services', monitors: [{ monitor: monitor.id }] }],
       }),
     )
   })
@@ -179,5 +206,41 @@ test.describe('Status pages', () => {
     expect(api.status()).toBe(200)
     expect(api.headers()['cache-control']).toBe('private, no-store')
     expect((await page.request.get(`/status/${protectedSlug}/rss`)).status()).toBe(200)
+  })
+
+  test('email-domain page: email form, then the same "check your inbox" for any address', async ({
+    page,
+    request,
+  }) => {
+    expect((await request.get(`/api/status-pages/${teamSlug}/public`)).status()).toBe(401)
+
+    await page.goto(`/status/${teamSlug}`)
+    await expect(page).toHaveURL(new RegExp(`/status/${teamSlug}/login$`))
+    await expect(page.getByRole('heading', { level: 1, name: 'E2E Team Status' })).toBeVisible()
+    await expect(page.getByText('Team services')).toHaveCount(0)
+
+    await page.getByLabel('Email address').fill(`someone-${run}@not-allowed.example.org`)
+    await page.getByRole('button', { name: 'Email me a sign-in link' }).click()
+    await expect(page).toHaveURL(new RegExp(`/status/${teamSlug}/login\\?sent=1$`))
+    await expect(page.getByText(/a sign-in link is on its way/)).toBeVisible()
+
+    // A link that was never issued does not sign anyone in.
+    await page.goto(`/status/${teamSlug}/login?token=${'x'.repeat(43)}`)
+    await page.getByRole('button', { name: 'Continue to the status page' }).click()
+    await expect(page.getByText(/invalid, has expired or was already used/)).toBeVisible()
+  })
+
+  test('IP allow-listed page: restricted screen and 403 outside the ranges', async ({
+    page,
+    request,
+  }) => {
+    expect((await request.get(`/api/status-pages/${officeSlug}/public`)).status()).toBe(403)
+    expect((await request.get(`/status/${officeSlug}/rss`)).status()).toBe(403)
+
+    await page.goto(`/status/${officeSlug}`)
+    await expect(page.getByRole('heading', { level: 1, name: 'E2E Office Status' })).toBeVisible()
+    await expect(page.getByText(/only available from approved networks/)).toBeVisible()
+    await expect(page.getByText('Office services')).toHaveCount(0)
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
   })
 })

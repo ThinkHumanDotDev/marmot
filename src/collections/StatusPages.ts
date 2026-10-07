@@ -14,6 +14,7 @@ import { adminT } from '@/i18n/admin'
 import { defaultLocale, localeNames, locales } from '@/i18n/locales'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { STATUS_PAGE_ACCESS_MODES } from '@/lib/status-page-access'
+import { normalizeHostname, validateHostname } from '@/lib/status-page-hostnames'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 import { applyAccessPassword } from '@/server/status-pages/access-password'
 import { applyAccessRestrictions } from '@/server/status-pages/access-restrictions'
@@ -27,24 +28,7 @@ export type StatusPageTheme = (typeof STATUS_PAGE_THEMES)[number]
 export const STATUS_PAGE_LANGUAGE_AUTO = 'auto' as const
 export type StatusPageLanguage = typeof STATUS_PAGE_LANGUAGE_AUTO | (typeof locales)[number]
 
-/** RFC 1123 hostname: labels of letters, digits and hyphens joined by dots; no scheme, no port. */
-export const HOSTNAME_PATTERN =
-  /^(?=.{1,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(?:\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/
-
-export const normalizeHostname = (value: string): string =>
-  value
-    .trim()
-    .toLowerCase()
-    .replace(/^https?:\/\//, '')
-    .replace(/[/:].*$/, '')
-
-export function validateHostname(value: unknown): true | string {
-  if (typeof value !== 'string' || value.length === 0) return 'Hostname is required.'
-  if (!HOSTNAME_PATTERN.test(value)) {
-    return 'Enter a bare hostname such as status.example.com (no scheme, path or port).'
-  }
-  return true
-}
+export { HOSTNAME_PATTERN, normalizeHostname, validateHostname } from '@/lib/status-page-hostnames'
 
 /**
  * Members (and anyone with `status-page:read` in one of their organizations) see every page of
