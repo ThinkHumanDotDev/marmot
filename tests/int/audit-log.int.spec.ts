@@ -252,21 +252,33 @@ describe('audit log', () => {
     try {
       const before = (await rowsFor('monitor', monitor.id)).length
       const req = await createLocalReq({ user: await asRequestUser(owner.user) }, payload)
+      // `null` when the adapter has no transactions: MongoDB without a replica set (the Mongo
+      // adapter switches them off when the connection URL names no `replicaSet`, as in CI).
       const transactionID = await payload.db.beginTransaction()
       if (transactionID) req.transactionID = transactionID
       await payload.update({
         collection: 'monitors',
         id: monitor.id,
-        data: { name: 'Never saved' },
+        data: { name: 'Uncommitted name' },
         req,
         depth: 0,
       })
-      expect(seen).toEqual([])
-      if (!transactionID) return // MongoDB without a replica set: no transactions to roll back.
-      await payload.db.rollbackTransaction(transactionID)
-      expect((await rowsFor('monitor', monitor.id)).length).toBe(before)
-      expect(seen).toEqual([])
 
+      if (transactionID) {
+        // Queued until the commit; a rollback drops both the row and the event.
+        expect(seen).toEqual([])
+        await payload.db.rollbackTransaction(transactionID)
+        expect((await rowsFor('monitor', monitor.id)).length).toBe(before)
+        expect(seen).toEqual([])
+      } else {
+        // Without a transaction the write is final at once, so the row exists and is published
+        // immediately: there is no commit to wait for and nothing can roll it back.
+        expect((await rowsFor('monitor', monitor.id)).length).toBe(before + 1)
+        expect(seen.map((event) => event.action)).toEqual(['monitor.updated'])
+        seen.length = 0
+      }
+
+      // A committed change (Payload's own transaction, or none) is published exactly once.
       await payload.update({
         collection: 'monitors',
         id: monitor.id,

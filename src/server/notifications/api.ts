@@ -7,6 +7,7 @@ import config from '@payload-config'
 import { defaultLocale, type Locale } from '@/i18n/locales'
 import { canInOrg } from '@/access/overrides'
 import { can, isSuperadmin, type OrgId, type Permission } from '@/access/permissions'
+import { normalizeChannelEvents } from '@/lib/notification-events'
 import type { Notification, User } from '@/payload-types'
 import {
   describeNotificationProviders,
@@ -135,7 +136,10 @@ export function errorStatus(error: unknown, fallback = 400): number {
 
 /** Fields a client may set; everything else (`lastSentAt`, `organization`, …) is server-owned. */
 export type NotificationInput = Partial<
-  Pick<Notification, 'name' | 'type' | 'config' | 'isDefault' | 'applyExisting' | 'active'>
+  Pick<
+    Notification,
+    'name' | 'type' | 'config' | 'events' | 'isDefault' | 'applyExisting' | 'active'
+  >
 >
 
 export function pickInput(body: Record<string, unknown>): NotificationInput {
@@ -143,6 +147,8 @@ export function pickInput(body: Record<string, unknown>): NotificationInput {
   if (typeof body.name === 'string') input.name = body.name.trim()
   if (typeof body.type === 'string') input.type = body.type
   if (body.config !== undefined) input.config = body.config as Notification['config']
+  // Unknown names are dropped and an empty list means the defaults (`normalizeChannelEvents`).
+  if (Array.isArray(body.events)) input.events = normalizeChannelEvents(body.events)
   if (typeof body.isDefault === 'boolean') input.isDefault = body.isDefault
   if (typeof body.applyExisting === 'boolean') input.applyExisting = body.applyExisting
   if (typeof body.active === 'boolean') input.active = body.active

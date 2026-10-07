@@ -52,7 +52,13 @@ export interface AuditEvent {
 /** `collection:id` label used in `target`. */
 export const auditTarget = (collection: string, id: OrgId): string => `${collection}:${String(id)}`
 
-const relation = (id: OrgId | null | undefined) => (id === undefined || id === null ? null : id)
+/** Relationship value for the adapter: numeric-string ids become numbers where ids are numbers. */
+const relation = (payload: Payload, id: OrgId | null | undefined): OrgId | null => {
+  if (id === undefined || id === null) return null
+  return typeof id === 'string' && payload.db.defaultIDType === 'number' && /^\d+$/.test(id)
+    ? Number(id)
+    : id
+}
 
 const relationString = (value: unknown): string | null => {
   if (value === null || value === undefined) return null
@@ -113,8 +119,8 @@ export async function recordAuditEvent(payload: Payload, event: AuditEvent): Pro
         actorType,
         actorRef: rest.actorId ?? (rest.actor ? String(rest.actor) : null),
         actorLabel: rest.actorLabel ?? null,
-        actor: (actorType === 'user' ? relation(rest.actor) : null) as never,
-        organization: relation(rest.organization) as never,
+        actor: (actorType === 'user' ? relation(payload, rest.actor) : null) as never,
+        organization: relation(payload, rest.organization) as never,
         target:
           rest.target ??
           (rest.entityType && entityId !== null ? `${rest.entityType}:${String(entityId)}` : null),

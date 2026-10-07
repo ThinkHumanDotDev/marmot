@@ -2,19 +2,35 @@ import { UnrecoverableError, type Job, type Worker } from 'bullmq'
 import type { Payload } from 'payload'
 
 import { env } from '@/env'
+import type { Locale } from '@/i18n/locales'
 import { childLogger } from '@/lib/logger'
 import type { Heartbeat, Monitor, Notification } from '@/payload-types'
 import { QUEUE_NAMES } from '@/server/engine/names'
 import { createWorker, type QueueFactoryOptions } from '@/server/engine/queues'
-import type { NotificationJobData } from './dispatch'
+import { channelAcceptsEvent, type NotificationJobData } from './dispatch'
+import { recoveryDowntimeSeconds } from './downtime'
+import {
+  buildMaintenanceMessage,
+  MAINTENANCE_NOTIFICATION_JOB_NAME,
+  docIdFromString,
+  type MaintenanceNotificationJobData,
+} from './maintenance'
 import { buildDefaultMessage } from './message'
-import { getChannelLocale, sendNotification } from './send'
+import { getChannelOrganization, sendNotification } from './send'
 import { ServerSmtpSendError } from './server-smtp'
 import {
   isSubscriberJobName,
   type SubscriberJobData,
 } from '@/server/status-pages/subscribers/queue'
 import { processSubscriberJob } from '@/server/status-pages/subscribers/worker'
+import { ackLinkUrl } from '@/server/incidents/ack-link'
+import {
+  isIncidentJobName,
+  processIncidentNotificationJob,
+  type IncidentNotificationJobData,
+} from '@/server/incidents/notify'
+import { findOpenIncident } from '@/server/incidents/store'
+import { serverTranslator } from '@/server/i18n'
 import { processWebhookDeliveryJob } from '@/server/webhooks/deliver'
 import { isWebhookJobName, type WebhookDeliveryJobData } from '@/server/webhooks/queue'
 
@@ -61,6 +77,28 @@ async function recordOutcome(
 }
 
 /**
+ * A DOWN message (first alert or reminder) of a monitor whose incident nobody acknowledged yet ends
+ * with a signed acknowledge link (`src/server/incidents/ack-link.ts`); otherwise nothing.
+ */
+async function ackLinkLine(
+  payload: Payload,
+  monitor: Monitor,
+  heartbeat: Heartbeat,
+  locale: Locale,
+): Promise<string> {
+  if (heartbeat.status !== 'down') return ''
+  try {
+    const incident = await findOpenIncident(payload, monitor.id)
+    if (!incident || incident.status !== 'open') return ''
+    const url = ackLinkUrl(incident.id)
+    return `\n${serverTranslator(locale)('notifications.messages.incident.ackLink', { url })}`
+  } catch (err) {
+    log.warn({ err, monitorId: monitor.id }, 'failed to build the acknowledge link')
+    return ''
+  }
+}
+
+/**
  * Job processor: load channel + monitor + heartbeat, render the message, call the provider and
  * store the outcome on the channel. Throws on delivery failure so BullMQ retries, except for
  * deliveries refused by the server-SMTP rules (retrying would only repeat the refusal). Exported so
@@ -71,6 +109,7 @@ export async function processNotificationJob(
   job: NotificationJobLike,
 ): Promise<ProcessNotificationResult> {
   const { notificationId, monitorId, heartbeatId } = job.data
+  const event = job.data.notificationEvent ?? null
 
   const notification = (await findOrNull(() =>
     payload.findByID({
@@ -82,6 +121,10 @@ export async function processNotificationJob(
   )) as Notification | null
   if (!notification) return { outcome: 'skipped', reason: 'notification-not-found' }
   if (!notification.active) return { outcome: 'skipped', reason: 'inactive' }
+  // The selection may have changed since the job was enqueued (retries, a busy queue).
+  if (!channelAcceptsEvent(notification, event)) {
+    return { outcome: 'skipped', reason: 'event-filtered' }
+  }
 
   const monitor = (await findOrNull(() =>
     payload.findByID({ collection: 'monitors', id: monitorId, depth: 0, overrideAccess: true }),
@@ -93,18 +136,33 @@ export async function processNotificationJob(
   )) as Heartbeat | null
   if (!heartbeat) return { outcome: 'skipped', reason: 'heartbeat-not-found' }
 
-  const locale = await getChannelLocale(payload, notification)
-  const message = buildDefaultMessage(monitor, heartbeat, locale)
+  const channelOrganization = await getChannelOrganization(payload, notification)
+  const { locale } = channelOrganization
+  const downtimeSeconds =
+    event === 'up' ? await findOrNull(() => recoveryDowntimeSeconds(payload, heartbeat)) : null
+  const message =
+    buildDefaultMessage(monitor, heartbeat, locale, { event, downtimeSeconds }) +
+    (await ackLinkLine(payload, monitor, heartbeat, locale))
   try {
     const result = await sendNotification(payload, notification, {
       message,
       monitor,
       heartbeat,
+      event,
+      downtimeSeconds,
       locale,
+      channelOrganization,
     })
     await recordOutcome(payload, notification, { ok: true })
     log.info(
-      { notificationId, type: notification.type, monitorId, heartbeatId, status: heartbeat.status },
+      {
+        notificationId,
+        type: notification.type,
+        monitorId,
+        heartbeatId,
+        status: heartbeat.status,
+        event,
+      },
       'notification sent',
     )
     return { outcome: 'sent', result }
@@ -120,14 +178,80 @@ export async function processNotificationJob(
   }
 }
 
+/**
+ * Job processor for `notify-maintenance` (a maintenance window started or ended): one message to
+ * one channel, listing the window's monitors that use the channel. Same retry and outcome rules
+ * as `processNotificationJob`.
+ */
+export async function processMaintenanceNotificationJob(
+  payload: Payload,
+  job: Pick<Job<MaintenanceNotificationJobData>, 'data'> &
+    Partial<Pick<Job, 'id' | 'attemptsMade'>>,
+): Promise<ProcessNotificationResult> {
+  const { notificationId, monitorIds, type, title } = job.data
+  const notification = (await findOrNull(() =>
+    payload.findByID({
+      collection: 'notifications',
+      id: notificationId,
+      depth: 0,
+      overrideAccess: true,
+    }),
+  )) as Notification | null
+  if (!notification) return { outcome: 'skipped', reason: 'notification-not-found' }
+  if (!notification.active) return { outcome: 'skipped', reason: 'inactive' }
+  if (!channelAcceptsEvent(notification, 'maintenance')) {
+    return { outcome: 'skipped', reason: 'event-filtered' }
+  }
+
+  const { docs } = await payload.find({
+    collection: 'monitors',
+    where: { id: { in: monitorIds.map((id) => docIdFromString(payload, id)) } },
+    depth: 0,
+    limit: 0,
+    pagination: false,
+    overrideAccess: true,
+    select: { name: true },
+  })
+  const names = (docs as Pick<Monitor, 'id' | 'name'>[]).map((doc) => doc.name)
+  if (names.length === 0) return { outcome: 'skipped', reason: 'monitor-not-found' }
+
+  const channelOrganization = await getChannelOrganization(payload, notification)
+  const { locale } = channelOrganization
+  const collator = new Intl.Collator(locale)
+  const message = buildMaintenanceMessage(type, title, names.sort(collator.compare), locale)
+  try {
+    const result = await sendNotification(payload, notification, {
+      message,
+      monitor: null,
+      heartbeat: null,
+      event: 'maintenance',
+      locale,
+      channelOrganization,
+    })
+    await recordOutcome(payload, notification, { ok: true })
+    log.info({ notificationId, type: notification.type, maintenance: type }, 'notification sent')
+    return { outcome: 'sent', result }
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err)
+    await recordOutcome(payload, notification, { ok: false, error })
+    log.error(
+      { err, notificationId, type: notification.type, attempt: job.attemptsMade },
+      'maintenance notification failed',
+    )
+    if (err instanceof ServerSmtpSendError) throw new UnrecoverableError(error)
+    throw err
+  }
+}
+
 export interface StartNotificationWorkerOptions extends QueueFactoryOptions {
   concurrency?: number
 }
 
 /**
- * Start the BullMQ worker consuming the notifications queue: monitor alerts (`notify`), status
- * page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`) and outbound webhook deliveries
- * (`webhook-delivery`).
+ * Start the BullMQ worker consuming the notifications queue: monitor alerts (`notify`), maintenance
+ * windows (`notify-maintenance`), incident acknowledgements and resolutions (`incident-notify`) ,
+ * status page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`) and outbound webhook
+ * deliveries (`webhook-delivery`).
  */
 export function startNotificationWorker(
   payload: Payload,
@@ -140,6 +264,21 @@ export function startNotificationWorker(
       // Subscriber jobs share the queue; their data has another shape.
       if (isSubscriberJobName(job.name)) {
         await processSubscriberJob(payload, job as unknown as Job<SubscriberJobData>)
+        return
+      }
+      if (job.name === MAINTENANCE_NOTIFICATION_JOB_NAME) {
+        await processMaintenanceNotificationJob(
+          payload,
+          job as unknown as Job<MaintenanceNotificationJobData>,
+        )
+        return
+      }
+      // Incident acknowledgements and resolutions (#100).
+      if (isIncidentJobName(job.name)) {
+        await processIncidentNotificationJob(
+          payload,
+          job as unknown as Job<IncidentNotificationJobData>,
+        )
         return
       }
       if (isWebhookJobName(job.name)) {

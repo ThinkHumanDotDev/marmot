@@ -1,13 +1,13 @@
 /**
- * The `{{ path }}` placeholder renderer shared by notification message templates
- * (`src/server/notifications/message.ts`) and incident / maintenance templates
- * (`src/lib/templates.ts`).
+ * The `{{ path }}` placeholder renderer of incident / maintenance templates (`src/lib/templates.ts`).
  *
- * Deliberately tiny and safe: a placeholder is a plain dotted identifier path (`{{ monitor.name }}`),
+ * Deliberately tiny and safe: a placeholder is a plain dotted identifier path (`{{ name }}`),
  * resolved by a callback against plain data. There are no expressions, filters or code, so a
- * template can never execute anything or reach outside the values it is given. Liquid templates
- * (#150) will replace this module; callers only depend on `renderPlaceholders` and
- * `findPlaceholders`.
+ * template can never execute anything or reach outside the values it is given. Unlike Liquid it
+ * leaves unknown placeholders in the text (`{{ eta }}` for the author to fill in), which is why
+ * these templates stay on it. Notification message templates render with sandboxed Liquid
+ * (`src/server/notifications/liquid.ts`, #150), whose output for plain `{{ path }}` templates is the
+ * same.
  *
  * Client-safe: no server-only imports.
  */

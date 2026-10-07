@@ -34,6 +34,7 @@ export type AuditResourceType = (typeof AUDIT_RESOURCE_TYPES)[number]
 export const AUDIT_ENTITY_TYPES = [
   ...AUDIT_RESOURCE_TYPES,
   'maintenance_occurrence',
+  'monitor_incident',
   'member',
   'user',
   'instance_settings',
@@ -68,6 +69,9 @@ export const SPECIAL_ACTIONS = [
   'maintenance.paused',
   'maintenance.resumed',
   'maintenance_occurrence.updated',
+  'monitor_incident.acknowledged',
+  'monitor_incident.resolved',
+  'monitor_incident.published',
   'notification.enabled',
   'notification.disabled',
   'api_key.enabled',

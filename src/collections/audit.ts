@@ -111,6 +111,9 @@ export const NOT_AUDITED: Partial<Record<CollectionSlug, string>> = {
   'webhook-deliveries': 'delivery log',
   'maintenance-occurrences':
     'generated from the maintenance schedule; posted updates are audited as maintenance_occurrence.updated',
+  'monitor-incidents':
+    'opened and resolved by the engine; member actions are audited as monitor_incident.acknowledged|resolved|published',
+  'push-events': 'push monitor signal log (high volume)',
   'audit-logs': 'the audit log itself',
 }
 

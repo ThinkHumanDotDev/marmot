@@ -56,10 +56,13 @@ The `audit-logs` collection is append-only: rows are written by the server (`rec
   keys, SSO connections and domains, invitations and the organization itself (`<entity>.created|updated|deleted`),
   with named verbs where they say more: `monitor.paused/resumed/cloned`, `maintenance.paused/resumed`,
   `notification.enabled/disabled`, `api_key.enabled/disabled/revoked`, `maintenance_occurrence.updated`.
+- Member actions on monitor incidents: `monitor_incident.acknowledged` (also through the signed link of a
+  notification; the system is the actor when the clicker is not a signed-in member), `.resolved` and
+  `.published` (the status page incident it creates is recorded as `incident.created`).
 - Imports (`import.completed`, one row per import) and instance settings (`instance_settings.updated`).
 
 `src/collections/audit.ts` lists every collection as audited or deliberately not audited (heartbeats,
-rollups, delivery logs …); a test fails when a new collection is in neither list. Writes that only touch
+rollups, delivery logs, push events, the engine's monitor incident rows …); a test fails when a new collection is in neither list. Writes that only touch
 caches the worker maintains (monitor status, certificate info, `lastSentAt`) are not recorded.
 
 **Each row** names the actor (`actorType` user, apiKey, mcp or system, `actorId`, and the email or key name

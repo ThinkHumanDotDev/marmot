@@ -142,7 +142,15 @@ export function NotificationsView({
     setBusyId(row.id)
     try {
       const result = await notificationsApi.test(orgId, { notificationId: row.id })
-      toast.success(t('test.sent'), { description: result.result })
+      const sent = result.events ?? []
+      toast.success(t('test.sent'), {
+        description: sent.length
+          ? t('test.sentSamples', {
+              count: sent.length,
+              events: sent.map((event) => t(`events.${event}.label`)).join(', '),
+            })
+          : result.result,
+      })
     } catch (error) {
       const details = error instanceof ApiError ? (error.details as { error?: string }) : null
       toast.error(t('test.failed'), {
@@ -202,6 +210,7 @@ export function NotificationsView({
                 <TableRow>
                   <TableHead>{t('list.columns.name')}</TableHead>
                   <TableHead>{t('list.columns.provider')}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t('list.columns.events')}</TableHead>
                   <TableHead className="hidden sm:table-cell">
                     {t('list.columns.lastSent')}
                   </TableHead>
@@ -244,6 +253,18 @@ export function NotificationsView({
                             {t(`groups.${descriptor.group}`)}
                           </span>
                         )}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <ul
+                          aria-label={t('list.eventsLabel', { name: row.name })}
+                          className="flex flex-wrap gap-1"
+                        >
+                          {row.events.map((event) => (
+                            <li key={event}>
+                              <Badge variant="outline">{t(`events.${event}.label`)}</Badge>
+                            </li>
+                          ))}
+                        </ul>
                       </TableCell>
                       <TableCell className="hidden text-muted-foreground sm:table-cell">
                         {row.lastSentAt ? (
