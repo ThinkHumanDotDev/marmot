@@ -9,6 +9,7 @@ import {
   type MaintenanceWindow,
 } from './status'
 import { getOrganizationTimezone } from './timezone'
+import { defaultLocale, type Locale } from '@/i18n/locales'
 
 export type { MaintenanceWindow }
 
@@ -113,6 +114,8 @@ export interface ListOptions {
   user?: Parameters<Payload['find']>[0]['user']
   overrideAccess?: boolean
   now?: Date
+  /** Locale for ordering titles (the viewer's language; the default locale for broadcasts). */
+  locale?: Locale
 }
 
 /** Sort: running first, then scheduled by next start, then the rest by title. */
@@ -124,14 +127,18 @@ const ORDER: Record<MaintenanceStatus, number> = {
   ended: 4,
 }
 
-export function sortSummaries(items: MaintenanceSummary[]): MaintenanceSummary[] {
+export function sortSummaries(
+  items: MaintenanceSummary[],
+  locale: Locale = defaultLocale,
+): MaintenanceSummary[] {
+  const collator = new Intl.Collator(locale)
   return [...items].sort((a, b) => {
     const byStatus = ORDER[a.status] - ORDER[b.status]
     if (byStatus !== 0) return byStatus
     const aStart = a.current?.start ?? a.next?.start ?? ''
     const bStart = b.current?.start ?? b.next?.start ?? ''
     if (aStart !== bStart) return aStart < bStart ? -1 : 1
-    return a.title.localeCompare(b.title)
+    return collator.compare(a.title, b.title)
   })
 }
 
@@ -155,5 +162,5 @@ export async function listOrgMaintenance(
   const items = await Promise.all(
     (docs as Maintenance[]).map((doc) => summarizeMaintenance(payload, doc, now)),
   )
-  return sortSummaries(items)
+  return sortSummaries(items, options.locale)
 }

@@ -11,6 +11,7 @@ import {
   resolveOrgRequest,
   type OrgRequestContext,
 } from '@/server/notifications/api'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,10 +44,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
   const body = await readJson(request)
   const parsed = patchSchema.safeParse(body)
-  if (!parsed.success) return jsonError(400, 'active (boolean) is required')
+  if (!parsed.success) return jsonError(400, errorText(request, 'activeRequired'))
 
   const existing = await loadOrgApiKey(ctx, id)
-  if (!existing) return jsonError(404, 'API key not found')
+  if (!existing) return jsonError(404, errorText(request, 'apiKeyNotFound'))
 
   try {
     const doc = (await ctx.payload.update({
@@ -59,7 +60,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     })) as ApiKey
     return Response.json({ doc: toApiKeyRow(doc) })
   } catch (error) {
-    return jsonError(errorStatus(error), errorMessage(error))
+    return jsonError(errorStatus(error), errorMessage(error, request))
   }
 }
 
@@ -70,7 +71,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const existing = await loadOrgApiKey(ctx, id)
-  if (!existing) return jsonError(404, 'API key not found')
+  if (!existing) return jsonError(404, errorText(request, 'apiKeyNotFound'))
 
   try {
     await ctx.payload.delete({
@@ -82,6 +83,6 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     })
     return Response.json({ deleted: String(existing.id) })
   } catch (error) {
-    return jsonError(errorStatus(error), errorMessage(error))
+    return jsonError(errorStatus(error), errorMessage(error, request))
   }
 }

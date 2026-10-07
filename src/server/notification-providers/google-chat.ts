@@ -5,7 +5,11 @@
  */
 import { z } from 'zod'
 
-import { formatHeartbeatTime, renderMessageTemplate } from '@/server/notifications/message'
+import {
+  formatHeartbeatTime,
+  providerText,
+  renderMessageTemplate,
+} from '@/server/notifications/message'
 import { extractAddress, OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -82,20 +86,27 @@ registerNotificationProvider({
       return OK_MESSAGE
     }
 
-    let title = 'Marmot Alert'
+    const p = providerText(locale)
+    let title = p('alert')
     if (monitor && heartbeat) {
       title =
         heartbeat.status === 'up'
-          ? `✅ ${monitor.name} is back online`
-          : `🔴 ${monitor.name} went down`
+          ? `✅ ${p('backOnline', { name: monitor.name })}`
+          : `🔴 ${p('wentDown', { name: monitor.name })}`
     }
 
-    const widgets: unknown[] = [{ textParagraph: { text: `<b>Message:</b>\n${message}` } }]
+    const widgets: unknown[] = [
+      { textParagraph: { text: `<b>${p('messageField')}:</b>\n${message}` } },
+    ]
     if (heartbeat) {
-      widgets.push({ textParagraph: { text: `<b>Time:</b>\n${formatHeartbeatTime(heartbeat)}` } })
+      widgets.push({
+        textParagraph: { text: `<b>${p('time')}:</b>\n${formatHeartbeatTime(heartbeat)}` },
+      })
     }
     const address = extractAddress(monitor)
-    if (address) widgets.push({ textParagraph: { text: `<b>Address:</b>\n${address}` } })
+    if (address) {
+      widgets.push({ textParagraph: { text: `<b>${p('address')}:</b>\n${address}` } })
+    }
 
     await postWithRetry(
       config.webhookUrl,

@@ -5,7 +5,7 @@
  */
 import { z } from 'zod'
 
-import { formatHeartbeatTime } from '@/server/notifications/message'
+import { formatHeartbeatTime, providerText } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -25,11 +25,11 @@ export const feishuFieldMeta: Record<keyof FeishuConfig, NotificationFieldMeta> 
   },
 }
 
-const cardContent = (heartbeat: Heartbeat) =>
+const cardContent = (heartbeat: Heartbeat, p: ReturnType<typeof providerText>) =>
   [
-    `**Message**: ${heartbeat.msg ?? ''}`,
-    `**Ping**: ${heartbeat.ping == null ? 'N/A' : `${heartbeat.ping} ms`}`,
-    `**Time**: ${formatHeartbeatTime(heartbeat)}`,
+    `**${p('messageField')}**: ${heartbeat.msg ?? ''}`,
+    `**${p('ping')}**: ${heartbeat.ping == null ? 'N/A' : `${heartbeat.ping} ms`}`,
+    `**${p('time')}**: ${formatHeartbeatTime(heartbeat)}`,
   ].join('\n')
 
 registerNotificationProvider({
@@ -39,8 +39,9 @@ registerNotificationProvider({
   docsUrl: 'https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot',
   configSchema: feishuConfigSchema,
   fieldMeta: feishuFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = feishuConfigSchema.parse(raw)
+    const p = providerText(locale)
 
     if (!heartbeat || !monitor) {
       await postJson(config.webhookUrl, { msg_type: 'text', content: { text: message } })
@@ -55,11 +56,11 @@ registerNotificationProvider({
         header: {
           title: {
             tag: 'plain_text',
-            content: `Marmot Alert: [${down ? 'Down' : 'UP'}] ${monitor.name}`,
+            content: p('statusTitle', { status: heartbeat.status, name: monitor.name }),
           },
           template: down ? 'red' : 'green',
         },
-        elements: [{ tag: 'div', text: { tag: 'lark_md', content: cardContent(heartbeat) } }],
+        elements: [{ tag: 'div', text: { tag: 'lark_md', content: cardContent(heartbeat, p) } }],
       },
     })
     return OK_MESSAGE

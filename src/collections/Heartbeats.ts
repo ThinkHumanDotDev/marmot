@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 
 /**
  * One row per check result. Written exclusively by the worker (Local API, `overrideAccess: true`).
@@ -11,7 +11,7 @@ export const HEARTBEAT_STATUSES = ['up', 'down', 'pending', 'maintenance'] as co
 export const Heartbeats: CollectionConfig = {
   slug: 'heartbeats',
   admin: {
-    group: 'Monitoring',
+    group: adminGroup('monitoring'),
     defaultColumns: ['monitor', 'status', 'msg', 'ping', 'time'],
   },
   // TODO(#1): scope reads to the user's organizations once RBAC lands.

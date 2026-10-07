@@ -2,6 +2,7 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { getStats, isStatsRange, STATS_RANGES } from '@/server/stats/uptime-calculator'
+import { errorText, rememberRequestUser } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,15 +22,16 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   if (!isStatsRange(range)) {
     return Response.json(
-      { error: `Invalid range; expected one of ${STATS_RANGES.join(', ')}` },
+      { error: errorText(request, 'statsRangeInvalid', { ranges: STATS_RANGES.join(', ') }) },
       { status: 400 },
     )
   }
 
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: request.headers })
+  rememberRequestUser(request, user)
   if (!user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    return Response.json({ error: errorText(request, 'unauthenticated') }, { status: 401 })
   }
 
   // Postgres/SQLite use numeric ids, MongoDB uses strings.
@@ -44,7 +46,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       depth: 0,
     })
   } catch {
-    return Response.json({ error: 'Monitor not found' }, { status: 404 })
+    return Response.json({ error: errorText(request, 'monitorNotFound') }, { status: 404 })
   }
 
   const stats = await getStats(payload, monitorId, range)

@@ -4,6 +4,9 @@
  * file's bytes (the browser-supplied type is ignored) and SVGs are rebuilt by the allowlist
  * sanitiser before they are stored in `media`.
  */
+import { defaultLocale, type Locale } from '@/i18n/locales'
+import { translateError } from '@/server/errors'
+import { errorText, requestLocale } from '@/server/request-locale'
 import { sanitizeSvg, SvgRejectedError } from './svg'
 import {
   authenticate,
@@ -30,19 +33,17 @@ const MIME: Record<ImageType, string> = {
 
 export const ASSET_RULES: Record<
   StatusPageAssetKind,
-  { maxBytes: number; types: readonly ImageType[]; label: string }
+  { maxBytes: number; types: readonly ImageType[] }
 > = {
   logo: {
     maxBytes: 2 * 1024 * 1024,
     types: ['png', 'jpeg', 'gif', 'webp', 'avif', 'svg'],
-    label: 'Logo',
   },
   logoDark: {
     maxBytes: 2 * 1024 * 1024,
     types: ['png', 'jpeg', 'gif', 'webp', 'avif', 'svg'],
-    label: 'Dark logo',
   },
-  favicon: { maxBytes: 100 * 1024, types: ['png', 'ico', 'svg'], label: 'Favicon' },
+  favicon: { maxBytes: 100 * 1024, types: ['png', 'ico', 'svg'] },
 }
 
 const startsWith = (buf: Buffer, bytes: number[], offset = 0) =>
@@ -88,28 +89,37 @@ const humanSize = (bytes: number) =>
 
 export type PreparedAsset = { data: Buffer; mimetype: string; name: string; size: number }
 
-/** Validates and (for SVG) sanitises an upload, or returns an error message. */
+/** Validates and (for SVG) sanitises an upload, or returns an error message in `locale`. */
 export async function prepareAsset(
   kind: StatusPageAssetKind,
   file: File,
+  locale: Locale = defaultLocale,
 ): Promise<{ ok: true; asset: PreparedAsset } | { ok: false; error: string }> {
   const rules = ASSET_RULES[kind]
   if (file.size > rules.maxBytes) {
-    return { ok: false, error: `${rules.label} must be ${humanSize(rules.maxBytes)} or smaller` }
+    return {
+      ok: false,
+      error: translateError(locale, 'assetTooLarge', { kind, size: humanSize(rules.maxBytes) }),
+    }
   }
   let data: Buffer = Buffer.from(await file.arrayBuffer())
   const type = sniffImageType(data)
   if (!type || !rules.types.includes(type)) {
     return {
       ok: false,
-      error: `${rules.label} must be one of: ${rules.types.map((t) => t.toUpperCase()).join(', ')}`,
+      error: translateError(locale, 'assetType', {
+        kind,
+        types: rules.types.map((t) => t.toUpperCase()).join(', '),
+      }),
     }
   }
   if (type === 'svg') {
     try {
       data = Buffer.from(sanitizeSvg(data.toString('utf8')), 'utf8')
     } catch (error) {
-      if (error instanceof SvgRejectedError) return { ok: false, error: error.message }
+      if (error instanceof SvgRejectedError) {
+        return { ok: false, error: translateError(locale, 'svgRejected', { reason: error.reason }) }
+      }
       throw error
     }
   }
@@ -164,18 +174,18 @@ export function uploadAssetHandler(kind: StatusPageAssetKind) {
 
     try {
       const page = await loadOrgStatusPage(auth.ctx, orgId, id, 0)
-      if (!page) return jsonError('Status page not found', 404)
+      if (!page) return jsonError(errorText(request, 'statusPageNotFound'), 404)
 
       let form: FormData
       try {
         form = await request.formData()
       } catch {
-        return jsonError('Expected a multipart "file" field', 400)
+        return jsonError(errorText(request, 'logoFileRequired'), 400)
       }
       const file = form.get('file')
-      if (!(file instanceof File)) return jsonError('Expected a multipart "file" field', 400)
+      if (!(file instanceof File)) return jsonError(errorText(request, 'logoFileRequired'), 400)
 
-      const prepared = await prepareAsset(kind, file)
+      const prepared = await prepareAsset(kind, file, requestLocale(request))
       if (!prepared.ok) return jsonError(prepared.error, 400)
 
       const media = await payload.create({
@@ -195,7 +205,7 @@ export function uploadAssetHandler(kind: StatusPageAssetKind) {
         throw error
       }
     } catch (error) {
-      return errorResponse(error)
+      return errorResponse(error, request)
     }
   }
 }
@@ -209,10 +219,10 @@ export function removeAssetHandler(kind: StatusPageAssetKind) {
 
     try {
       const page = await loadOrgStatusPage(auth.ctx, orgId, id, 0)
-      if (!page) return jsonError('Status page not found', 404)
+      if (!page) return jsonError(errorText(request, 'statusPageNotFound'), 404)
       return Response.json({ doc: await setAsset(auth.ctx, page.id, kind, null) })
     } catch (error) {
-      return errorResponse(error)
+      return errorResponse(error, request)
     }
   }
 }

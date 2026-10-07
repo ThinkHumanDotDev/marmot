@@ -1,7 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 
 /** Clients never write audit rows; `recordAuditEvent` does, server-side with `overrideAccess`. */
 const serverOnly = () => false
@@ -16,7 +16,7 @@ export const AuditLogs: CollectionConfig = {
   slug: 'audit-logs',
   admin: {
     useAsTitle: 'action',
-    group: 'Access',
+    group: adminGroup('access'),
     defaultColumns: ['action', 'actor', 'organization', 'target', 'ip', 'createdAt'],
     description: adminT('marmot:auditLogs:description'),
   },

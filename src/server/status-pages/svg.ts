@@ -9,8 +9,11 @@
  */
 
 export class SvgRejectedError extends Error {
+  /** Parser diagnostic (English, technical); the user-facing prefix is `errors.svgRejected`. */
+  readonly reason: string
   constructor(reason: string) {
     super(`SVG rejected: ${reason}`)
+    this.reason = reason
     this.name = 'SvgRejectedError'
   }
 }

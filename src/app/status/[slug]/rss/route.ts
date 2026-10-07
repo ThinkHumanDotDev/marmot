@@ -11,6 +11,7 @@ import {
 import { findPublishedStatusPage } from '@/server/status-pages/public'
 import { buildStatusPageRss } from '@/server/status-pages/rss'
 import { statusPageUrlFor } from '@/server/status-pages/urls'
+import { requestLocale } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +28,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   if (!page) return new Response('Not found', { status: 404 })
 
   const access = await checkStatusPageAccess(payload, page, accessRequestFrom(request))
-  if (!access.allowed) return accessDeniedResponse(access, 'text')
+  if (!access.allowed) return accessDeniedResponse(access, 'text', requestLocale(request))
 
   const locale = resolveStatusPageLocale(page, request.headers)
   const xml = await buildStatusPageRss(payload, page, statusPageUrlFor(page, request), locale)

@@ -5,6 +5,7 @@ import { toDomainRow } from '@/server/sso/domain-rows'
 import { verifyDomain } from '@/server/sso/domains'
 
 import { loadOrgDomain } from '../route'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
 
   const existing = await loadOrgDomain(ctx, id)
-  if (!existing) return jsonError(404, 'Domain not found')
+  if (!existing) return jsonError(404, errorText(request, 'domainNotFound'))
   if (existing.verifiedAt) return Response.json({ doc: toDomainRow(existing), verified: true })
 
   const result = await verifyDomain(ctx.payload, existing)

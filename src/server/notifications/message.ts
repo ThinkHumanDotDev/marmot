@@ -8,6 +8,7 @@
  * organization's language; the English catalogue reproduces Kuma's text byte for byte.
  */
 import { defaultLocale, type Locale } from '@/i18n/locales'
+import type { Messages } from '@/i18n/messages'
 import type { Heartbeat, Monitor } from '@/payload-types'
 import { serverTranslator } from '@/server/i18n'
 import { extractAddress } from '@/server/notification-providers/http'
@@ -24,6 +25,30 @@ export function statusLabel(
   locale: Locale = defaultLocale,
 ): string {
   return serverTranslator(locale)(`notifications.messages.status.${status ?? 'test'}`)
+}
+
+type ProviderTextKey = keyof Messages['notifications']['messages']['providers']
+
+/**
+ * Wording of provider-specific payloads (embed titles, field names, card headings) in `locale`:
+ * `notifications.messages.providers.*`. Product names, identifiers (`source`, `alias`, dedup keys)
+ * and payload keys are not messages. The English catalogue reproduces the ported text byte for
+ * byte, so English payloads are unchanged.
+ */
+export function providerText(locale: Locale = defaultLocale) {
+  const t = serverTranslator(locale) as unknown as (
+    key: string,
+    values?: Record<string, string | number>,
+  ) => string
+  return (key: ProviderTextKey, values?: Record<string, string | number>) =>
+    t(`notifications.messages.providers.${key}`, values)
+}
+
+/** `Time: <heartbeat time>` in `locale` (`notifications.messages.timeLine`). */
+export function timeLine(heartbeat: Heartbeat | null, locale: Locale = defaultLocale): string {
+  return serverTranslator(locale)('notifications.messages.timeLine', {
+    time: formatHeartbeatTime(heartbeat),
+  })
 }
 
 /** `[name] [🔴 Down] msg` — what every provider sends unless it formats richer content. */

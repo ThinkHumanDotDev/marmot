@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -39,11 +40,14 @@ registerNotificationProvider({
   docsUrl: 'https://sct.ftqq.com/',
   configSchema: serverchanConfigSchema,
   fieldMeta: serverchanFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = serverchanConfigSchema.parse(raw)
-    let title = 'Marmot Message'
-    if (monitor && heartbeat?.status === 'up') title = `Marmot Monitor Up ${monitor.name}`
-    else if (monitor && heartbeat?.status === 'down') title = `Marmot Monitor Down ${monitor.name}`
+    const p = providerText(locale)
+    let title = p('message')
+    if (monitor && heartbeat?.status === 'up') title = p('monitorUpNamed', { name: monitor.name })
+    else if (monitor && heartbeat?.status === 'down') {
+      title = p('monitorDownNamed', { name: monitor.name })
+    }
 
     await postJson(serverchanUrl(config.sendKey), { title, desp: message })
     return OK_MESSAGE

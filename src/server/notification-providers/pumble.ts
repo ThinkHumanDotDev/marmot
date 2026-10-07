@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 
+import { providerText } from '@/server/notifications/message'
 import { OK_MESSAGE, postJson } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -30,12 +31,13 @@ registerNotificationProvider({
   docsUrl: 'https://pumble.com/help/integrations/add-pumble-apps/incoming-webhooks-for-pumble/',
   configSchema: pumbleConfigSchema,
   fieldMeta: pumbleFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = pumbleConfigSchema.parse(raw)
+    const p = providerText(locale)
 
     if (!heartbeat || !monitor) {
       await postJson(config.webhookUrl, {
-        attachments: [{ title: 'Marmot Alert', text: message, color: '#5BDD8B' }],
+        attachments: [{ title: p('alert'), text: message, color: '#5BDD8B' }],
       })
       return OK_MESSAGE
     }
@@ -44,7 +46,7 @@ registerNotificationProvider({
     await postJson(config.webhookUrl, {
       attachments: [
         {
-          title: `${monitor.name} is ${up ? 'up' : 'down'}`,
+          title: up ? p('isUp', { name: monitor.name }) : p('isDown', { name: monitor.name }),
           text: heartbeat.msg ?? '',
           color: up ? '#5BDD8B' : '#DC3645',
         },

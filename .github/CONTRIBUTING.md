@@ -101,7 +101,12 @@ One file plus registry lines; see [docs/Monitors.md](../docs/Monitors.md) for th
 3. Add `import './<name>'` to `src/server/notification-providers/index.ts`.
 4. Add a payload test to `src/server/notification-providers/providers.test.ts` (or `providers-2.test.ts`)
    and a row to the table in `docs/Notifications.md`.
-5. Ported from Uptime Kuma? Attribution header + `THIRD_PARTY_NOTICES.md` entry.
+5. Add the provider's form text to `src/i18n/messages/en.json` under `notifications.providers.<name>`
+   (label, and per field its label, description, prose placeholders and option labels, the same English
+   as `fieldMeta`); `descriptors-i18n.test.ts` fails until every field is there. Words in the payload
+   (titles, field names) come from `providerText(locale)` (`notifications.messages.providers.*`), with
+   `locale` from the send context.
+6. Ported from Uptime Kuma? Attribution header + `THIRD_PARTY_NOTICES.md` entry.
 
 ## Documentation
 

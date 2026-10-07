@@ -35,6 +35,6 @@ export async function GET(request: Request, { params }: RouteContext) {
       },
     })
   } catch (error) {
-    return payloadError(error)
+    return payloadError(error, request)
   }
 }

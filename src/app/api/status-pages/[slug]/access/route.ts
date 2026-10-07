@@ -12,6 +12,7 @@ import {
 } from '@/server/status-pages/access'
 import { findPublishedStatusPage } from '@/server/status-pages/public'
 import { requestHostname, statusPageBasePath } from '@/server/status-pages/urls'
+import { errorText, requestLocale } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,7 +61,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { slug } = await params
   if (crossSite(request)) {
     return Response.json(
-      { error: 'Cross-site request refused' },
+      { error: errorText(request, 'crossSiteRefused') },
       { status: 403, headers: protectedHeaders() },
     )
   }
@@ -71,7 +72,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if (!page) {
     return Response.json(
-      { error: 'Status page not found' },
+      { error: errorText(request, 'statusPageNotFound') },
       { status: 404, headers: protectedHeaders() },
     )
   }
@@ -89,7 +90,8 @@ export async function POST(request: Request, { params }: RouteContext) {
     : { ok: false, reason: 'invalid-password' }
 
   if (!attempt.ok) {
-    if (!body.form) return accessDeniedResponse({ allowed: false, ...attempt })
+    if (!body.form)
+      return accessDeniedResponse({ allowed: false, ...attempt }, 'json', requestLocale(request))
     const error = attempt.reason === 'rate-limited' ? 'rate-limited' : 'invalid'
     const retry: Record<string, string> = attempt.retryAfterSeconds
       ? { 'Retry-After': String(attempt.retryAfterSeconds) }

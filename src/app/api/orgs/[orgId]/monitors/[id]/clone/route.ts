@@ -11,6 +11,7 @@ import {
   parseId,
   payloadError,
 } from '@/server/monitors/http'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,7 +34,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (forbidden) return forbidden
 
   const source = await loadOrgMonitor(payload, auth.user, orgId, id)
-  if (!source) return jsonError(404, 'Monitor not found')
+  if (!source) return jsonError(404, errorText(request, 'monitorNotFound'))
 
   const values = monitorFormSchema.parse({
     ...monitorToFormValues(source),
@@ -53,6 +54,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     })
     return Response.json(doc, { status: 201 })
   } catch (error) {
-    return payloadError(error)
+    return payloadError(error, request)
   }
 }

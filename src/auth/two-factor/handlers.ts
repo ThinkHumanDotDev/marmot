@@ -15,6 +15,7 @@ import { childLogger } from '@/lib/logger'
 import { loginLimiter } from '@/server/security/auth-hooks'
 import { createRateLimiter, tooManyRequests, type RateLimiter } from '@/server/security/rate-limit'
 import { requestMeta } from '@/server/security/request'
+import { errorMessageFor, errorText } from '@/server/request-locale'
 import type { User } from '@/payload-types'
 
 import {
@@ -96,14 +97,14 @@ async function limitAttempt(
 ): Promise<Response | null> {
   const { ip } = await requestMeta(payload, request)
   const decision = await limiter.consume(ip ? `ip:${ip}` : `account:${account}`)
-  return decision.allowed ? null : tooManyRequests(decision)
+  return decision.allowed ? null : tooManyRequests(decision, request)
 }
 
 /** `POST /api/auth/login` */
 export async function handlePasswordLogin(request: Request): Promise<Response> {
   const { email, password } = await readBody(request)
   if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password) {
-    return jsonError('Enter your email address and password.', 400)
+    return jsonError(errorText(request, 'enterEmailAndPassword'), 400)
   }
 
   const payload = await getPayload({ config })
@@ -126,15 +127,15 @@ export async function handlePasswordLogin(request: Request): Promise<Response> {
   } catch (error) {
     const status = apiErrorStatus(error)
     if (status === 401 || status === 400) {
-      return jsonError('Incorrect email or password.', 401)
+      return jsonError(errorText(request, 'invalidCredentials'), 401)
     }
     if (status === 403 && error instanceof Error) {
       // A policy refusal (for example single sign-on is enforced for the account's domain): the
       // message tells the user what to do instead and carries no credential information.
-      return jsonError(error.message, 403)
+      return jsonError(errorMessageFor(request, error, 'forbidden'), 403)
     }
     log.error({ err: error instanceof Error ? error.message : String(error) }, 'login failed')
-    return jsonError('Could not sign in.', 500)
+    return jsonError(errorText(request, 'signInFailed'), 500)
   }
 
   if (user.twoFactorEnabled === true) {
@@ -187,11 +188,11 @@ export async function handleTwoFactorLogin(request: Request): Promise<Response> 
     (typeof body.challenge === 'string' ? body.challenge : undefined)
   const challenge = await openChallenge(sealed, env.PAYLOAD_SECRET)
   if (!challenge) {
-    return jsonError('Your sign-in attempt expired. Enter your password again.', 401, [clear])
+    return jsonError(errorText(request, 'signInExpired'), 401, [clear])
   }
 
   const code = typeof body.code === 'string' ? body.code.trim() : ''
-  if (!code) return jsonError('Enter the code from your authenticator app.', 400)
+  if (!code) return jsonError(errorText(request, 'enterTotpCode'), 400)
 
   const payload = await getPayload({ config })
   const limited = await limitAttempt(twoFactorLimiter, payload, request, challenge.userId)
@@ -205,17 +206,19 @@ export async function handleTwoFactorLogin(request: Request): Promise<Response> 
     const attempts = challenge.attempts + 1
     if (attempts >= TWO_FACTOR_MAX_ATTEMPTS) {
       log.warn({ user: userId }, 'two-factor challenge exhausted')
-      return jsonError('Too many incorrect codes. Enter your password again.', 429, [clear])
+      return jsonError(errorText(request, 'tooManyCodes'), 429, [clear])
     }
     const resealed = await sealChallenge({ userId: challenge.userId, attempts }, env.PAYLOAD_SECRET)
-    return jsonError('That code is not valid.', 401, [challengeCookie(resealed, { secure })])
+    return jsonError(errorText(request, 'invalidCode'), 401, [
+      challengeCookie(resealed, { secure }),
+    ])
   }
 
   let session
   try {
     session = await createPayloadSessionCookie({ payload, userId })
   } catch {
-    return jsonError('Your sign-in attempt expired. Enter your password again.', 401, [clear])
+    return jsonError(errorText(request, 'signInExpired'), 401, [clear])
   }
   const user = await payload.findByID({
     collection: 'users',

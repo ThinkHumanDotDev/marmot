@@ -56,19 +56,51 @@ export const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
 
 export const isReservedSlug = (slug: string): boolean => RESERVED_SLUGS.has(slug.toLowerCase())
 
-/** Returns `true` when valid, otherwise a human-readable error message (Payload `validate` shape). */
-export function validateOrganizationSlug(value: unknown): true | string {
-  if (typeof value !== 'string' || value.length === 0) {
-    return 'Slug is required.'
-  }
-  if (value.length < 2) {
-    return 'Slug must be at least 2 characters.'
-  }
-  if (!SLUG_PATTERN.test(value)) {
-    return 'Slug may only contain lowercase letters, numbers and hyphens, and cannot start or end with a hyphen.'
-  }
-  if (isReservedSlug(value)) {
-    return `"${value}" is reserved. Please choose another slug.`
-  }
-  return true
+/** Why a slug is refused. */
+export type SlugProblem = 'required' | 'tooShort' | 'pattern' | 'reserved'
+
+/** `null` when `value` is a valid organization slug, otherwise what is wrong with it. */
+export function organizationSlugProblem(value: unknown): SlugProblem | null {
+  if (typeof value !== 'string' || value.length === 0) return 'required'
+  if (value.length < 2) return 'tooShort'
+  if (!SLUG_PATTERN.test(value)) return 'pattern'
+  if (isReservedSlug(value)) return 'reserved'
+  return null
 }
+
+/**
+ * Renders a slug problem. The English default is what the API answers; the UI passes its
+ * translator (`errors.slugRequired`, `errors.slugTooShort`, … in `src/i18n/messages/en.json`, which
+ * carry the same text), server code `slugMessageIn(locale)` from `src/server/request-locale.ts`.
+ */
+export type SlugMessage = (problem: SlugProblem, slug: string) => string
+
+export const englishSlugMessage: SlugMessage = (problem, slug) => {
+  switch (problem) {
+    case 'required':
+      return 'Slug is required.'
+    case 'tooShort':
+      return 'Slug must be at least 2 characters.'
+    case 'pattern':
+      return 'Slug may only contain lowercase letters, numbers and hyphens, and cannot start or end with a hyphen.'
+    case 'reserved':
+      return `"${slug}" is reserved. Please choose another slug.`
+  }
+}
+
+/** Returns `true` when valid, otherwise a human-readable error message (Payload `validate` shape). */
+export function validateOrganizationSlug(
+  value: unknown,
+  message: SlugMessage = englishSlugMessage,
+): true | string {
+  const problem = organizationSlugProblem(value)
+  return problem ? message(problem, typeof value === 'string' ? value : '') : true
+}
+
+/** `errors.*` key of each slug problem. */
+export const SLUG_ERROR_KEYS = {
+  required: 'slugRequired',
+  tooShort: 'slugTooShort',
+  pattern: 'slugPattern',
+  reserved: 'slugReserved',
+} as const satisfies Record<SlugProblem, string>

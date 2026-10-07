@@ -5,7 +5,7 @@ import { TAG_COLOR_PATTERN, TAG_COLORS } from '@/lib/monitor-resources'
 import type { Monitor } from '@/payload-types'
 
 import { relId } from './shared'
-import { adminT } from '@/i18n/admin'
+import { adminGroup, adminT } from '@/i18n/admin'
 
 /**
  * `monitors.tags[].tag` is required, so a deleted tag must first be removed from every monitor that
@@ -43,7 +43,7 @@ export const Tags: CollectionConfig = {
   slug: 'tags',
   admin: {
     useAsTitle: 'name',
-    group: 'Monitoring',
+    group: adminGroup('monitoring'),
     defaultColumns: ['name', 'color', 'organization'],
   },
   // Viewers read (tags show up wherever monitors do), members write.

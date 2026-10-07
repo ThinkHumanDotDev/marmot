@@ -9,6 +9,7 @@ import {
 } from '@/server/status-pages/http'
 
 import type { Incident } from '@/payload-types'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +24,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   try {
     const page = await loadOrgStatusPage(auth.ctx, orgId, id, 0)
-    if (!page) return jsonError('Status page not found', 404)
+    if (!page) return jsonError(errorText(request, 'statusPageNotFound'), 404)
 
     const result = await payload.find({
       collection: 'incidents',
@@ -36,7 +37,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     })
     return Response.json(result)
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }
 
@@ -48,11 +49,11 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { orgId, id } = await params
 
   const body = await readJson(request)
-  if (!body) return jsonError('Invalid JSON body', 400)
+  if (!body) return jsonError(errorText(request, 'invalidJsonBody'), 400)
 
   try {
     const page = await loadOrgStatusPage(auth.ctx, orgId, id, 0)
-    if (!page) return jsonError('Status page not found', 404)
+    if (!page) return jsonError(errorText(request, 'statusPageNotFound'), 404)
 
     const doc = await payload.create({
       collection: 'incidents',
@@ -70,6 +71,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     })
     return Response.json({ doc }, { status: 201 })
   } catch (error) {
-    return errorResponse(error)
+    return errorResponse(error, request)
   }
 }

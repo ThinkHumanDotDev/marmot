@@ -11,6 +11,7 @@ import {
   readJson,
   validationError,
 } from '@/server/monitors/http'
+import { errorText } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,9 +33,10 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (forbidden) return forbidden
 
   const body = await readJson(request)
-  if (!body || typeof body !== 'object') return jsonError(400, 'Expected a JSON body')
+  if (!body || typeof body !== 'object')
+    return jsonError(400, errorText(request, 'expectedJsonBody'))
   const parsed = monitorFormSchema.safeParse(body)
-  if (!parsed.success) return validationError(parsed.error)
+  if (!parsed.success) return validationError(parsed.error, request)
 
   try {
     const doc = await payload.create({
@@ -53,6 +55,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     })
     return Response.json(doc, { status: 201 })
   } catch (error) {
-    return payloadError(error)
+    return payloadError(error, request)
   }
 }
