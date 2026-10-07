@@ -48,9 +48,14 @@ export const TOKEN_CSS_VARIABLES: Record<ThemeColorToken, readonly string[]> = {
   muted: ['--muted', '--secondary', '--accent'],
   mutedForeground: ['--muted-foreground'],
   border: ['--border', '--input'],
-  // Status colours: "up", "degraded" (pending), "maintenance" and "down".
+  // Status colours: "up", "warning" (pending and degraded), "maintenance" and "down".
   success: ['--status-up', '--status-up-text'],
-  warning: ['--status-pending', '--status-pending-text'],
+  warning: [
+    '--status-pending',
+    '--status-pending-text',
+    '--status-degraded',
+    '--status-degraded-text',
+  ],
   info: ['--status-maintenance', '--status-maintenance-text'],
   destructive: ['--status-down', '--status-down-text', '--destructive'],
   chart1: ['--chart-1'],

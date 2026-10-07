@@ -195,6 +195,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             uptime1y: hasHistory ? uptime1y : null,
             avgPing24h: stats24h.avgPing,
             lastPing: monitor.status?.lastPing ?? null,
+            degraded24h: stats24h.degraded,
           }}
         />
 

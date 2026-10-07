@@ -22,13 +22,14 @@ export const MONITOR_LABELS = [
 ] as const
 export type MonitorLabel = (typeof MONITOR_LABELS)[number]
 
-/** Kuma's status numbers: 1 UP, 0 DOWN, 2 PENDING, 3 MAINTENANCE. */
+/** Kuma's status numbers: 1 UP, 0 DOWN, 2 PENDING, 3 MAINTENANCE; Marmot adds 4 DEGRADED (#93). */
 export const STATUS_VALUES: Record<NonNullable<Monitor['status']>['lastStatus'] & string, number> =
   {
     up: 1,
     down: 0,
     pending: 2,
     maintenance: 3,
+    degraded: 4,
   }
 
 export const UPTIME_WINDOWS: readonly StatsRange[] = ['24h', '30d']
@@ -87,7 +88,7 @@ export function buildRegistry(source: MetricsSource): Registry {
 
   const status = new Gauge({
     name: 'monitor_status',
-    help: 'Monitor Status (1 = UP, 0= DOWN, 2= PENDING, 3= MAINTENANCE)',
+    help: 'Monitor Status (1 = UP, 0= DOWN, 2= PENDING, 3= MAINTENANCE, 4= DEGRADED)',
     labelNames,
     registers: [registry],
   })

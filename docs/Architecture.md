@@ -27,12 +27,15 @@ state machine (`src/server/engine/beat.ts`, ported from Uptime Kuma's `Monitor.b
 
 ```
 maintenance?  → MAINTENANCE
-check ok      → UP
+check ok      → ping > degradedAfter ? DEGRADED : UP
 check failed  → retries < maxretries ? PENDING (scheduler switched to retryInterval) : DOWN
-upsideDown    → flip UP/DOWN
+upsideDown    → flip UP/DOWN (the degraded threshold does not apply)
 ```
 
-Important beats (status transitions) trigger notifications; `resendInterval` re-notifies while down.
+Important beats (status transitions) trigger notifications; `resendInterval` re-notifies while down. Each
+notifying beat carries a `notificationEvent` (`down`, `up`, `degraded`, `reminder`) that the dispatcher
+filters channels on. `status.settledStatus` remembers the last non-PENDING status so that leaving a retry
+streak (DEGRADED → PENDING → UP) is still recognised as a transition.
 
 After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
 `lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`) and calls every listener registered with
@@ -51,7 +54,8 @@ second of the bucket start (minute / hour / UTC day), guarded by a unique compou
 | `stat-daily`    | 1 day  | `KEEP_DATA_PERIOD_DAYS` | `1y`   |
 
 Each row stores `up`, `down`, `ping` (average of UP beats), `pingMin`, `pingMax` and an `extras` JSON with
-`maintenance` (beats during maintenance, also counted as `up`) and `pingCount` (weight of `ping`). `pending`
+`maintenance` (beats during maintenance, also counted as `up`), `degraded` (slow successful checks, also
+counted as `up`, their ping included) and `pingCount` (weight of `ping`). `pending`
 beats count as `down`. The maths is a port of Uptime Kuma's `UptimeCalculator`
 (`src/server/stats/uptime-calculator.ts`): the worker's heartbeat listener calls
 `recordHeartbeat(payload, { monitorId, organizationId, status, ping, time })`, which reads the three current
@@ -188,8 +192,8 @@ After every write the `afterChange` hook calls `emitIncidentUpdatePosted()`
 
 The public payload (`buildPublicStatusPageData`) maps each monitor to the worst impact of the active
 incidents naming it and computes `overall` from both: a `major_outage` component counts as down, a
-degraded or partial one as not fully up, and incidents without components raise the page to `partial` or
-`down`. See [Status pages](Status-Pages.md) for the routes and payload.
+partial one as not fully up, a degraded one (incident impact or degraded monitor, `effectiveImpact()`) as
+degraded, and incidents without components raise the page to `degraded`, `partial` or `down`. See [Status pages](Status-Pages.md) for the routes and payload.
 
 ## Realtime
 

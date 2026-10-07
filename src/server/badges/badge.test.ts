@@ -19,6 +19,7 @@ describe('badge builder', () => {
       ['down', 'Down', badgeConstants.defaultDownColor],
       ['pending', 'Pending', badgeConstants.defaultPendingColor],
       ['maintenance', 'Maintenance', badgeConstants.defaultMaintenanceColor],
+      ['degraded', 'Degraded', badgeConstants.defaultWarnColor],
     ] as const)('renders %s with the default label and colour', (status, message, color) => {
       expect(buildBadge('status', { status }, {})).toEqual({
         style: 'flat',

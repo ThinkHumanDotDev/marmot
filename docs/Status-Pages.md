@@ -63,15 +63,15 @@ components (rows of the page's groups, by component id — see [Components](#com
 | Impact                 | Shown as             | Counts for the page's overall status as |
 | ---------------------- | -------------------- | --------------------------------------- |
 | `operational`          | Operational          | the component's own status              |
-| `degraded_performance` | Degraded performance | not fully up (→ partially degraded)     |
+| `degraded_performance` | Degraded performance | degraded (→ degraded performance)       |
 | `partial_outage`       | Partial outage       | not fully up (→ partially degraded)     |
 | `major_outage`         | Major outage         | down                                    |
 
 - Components left out of an update keep their last impact. A `resolved` update resets them all to
   operational; posting another update afterwards reopens the incident.
 - The incident's indicator is the worst current impact. An incident that names no component carries a
-  declared impact (for page-wide notices); `degraded_performance`/`partial_outage` make the page
-  "partially degraded", `major_outage` makes it "major outage".
+  declared impact (for page-wide notices); `degraded_performance` makes the page "degraded
+  performance", `partial_outage` "partially degraded" and `major_outage` "major outage".
 - Posted updates are history. Their text can be corrected later — the update is then shown as _edited_ —
   but status, time and impacts stay as posted. Updates may be back-dated, not post-dated.
 - Only components of the incident's page can be affected, each once per update. Components removed
@@ -110,12 +110,18 @@ a `monitor` component with values shown, every group starts expanded).
   `degraded_performance`, `partial_outage` or `major_outage`; see [Incident timeline](#incident-timeline)).
   While an incident is active, each affected component reports the worst impact of all active incidents
   (`impact` in the JSON, a label on the page), and the page's overall status counts it.
+- **Degraded monitors** (a successful check slower than the monitor's `degradedAfter`, see
+  [Monitors → Degraded](Monitors.md#degraded)) keep `status: "degraded"` in the JSON and read as
+  `degraded_performance` everywhere else: the "Degraded performance" label on the row, the overall status
+  and the badge (`effectiveImpact()` in `src/lib/status-page-components.ts`). Incident impacts stay in
+  `impact`; a worse incident impact wins.
 - **Static component status** comes only from incidents and maintenance: a non-operational impact maps to
-  `pending` (degraded / partial outage) or `down` (major outage); otherwise a running
+  `degraded` (degraded performance), `pending` (partial outage) or `down` (major outage); otherwise a running
   [maintenance window](Maintenance.md) attached to the page shows `maintenance`; otherwise `up`. Monitor
   components keep their monitor's status and show the impact next to it.
 - **Groups** render as collapsible sections; `defaultOpen: false` starts them closed. The header shows the
-  worst status of the group's components (`down` > `pending` > `maintenance` > `up` > `unknown`).
+  worst status of the group's components (`down` > `pending` > `degraded` > `maintenance` > `up` >
+  `unknown`).
 - **Values**: when `showValues` is off (page or component), the public JSON omits `uptime24h`/`uptime30d`
   and the beats carry no `ping`; the page renders neither.
 
@@ -179,7 +185,7 @@ in the IP allow-list (403 otherwise).
     "footerText": null,
     "googleAnalyticsId": null,
   },
-  "overall": "up", // up | partial | down | maintenance | unknown (monitors and active incident impacts)
+  "overall": "up", // up | degraded | partial | down | maintenance | unknown (monitors and active incident impacts)
   "groups": [
     {
       "name": "Core",
@@ -340,7 +346,7 @@ domain the same badge is served at `https://status.example.com/badge.svg`.
 | State                   | Colour    | When                                                                                       |
 | ----------------------- | --------- | ------------------------------------------------------------------------------------------ |
 | All systems operational | `#66c20a` | Every checked monitor is up.                                                               |
-| Degraded performance    | `#eed202` | An active incident marks a component as degraded performance.                              |
+| Degraded performance    | `#eed202` | A monitor is degraded, or an active incident marks a component as degraded performance.    |
 | Partial outage          | `#f8a306` | Some monitors are down, or an incident marks a component as a partial outage.              |
 | Major outage            | `#c2290a` | All monitors are down, or an incident marks a component as a major outage.                 |
 | Under maintenance       | `#1747f5` | A monitor is in maintenance, or a maintenance window attached to the page is running.      |
@@ -500,18 +506,18 @@ needed.
 }
 ```
 
-| Token                                                      | CSS variables                                                         |
-| ---------------------------------------------------------- | --------------------------------------------------------------------- |
-| `background`                                               | `--background`                                                        |
-| `foreground`                                               | `--foreground`, `--card-foreground`, `--popover-foreground`, …        |
-| `card`                                                     | `--card`, `--popover`                                                 |
-| `primary`, `primaryForeground`                             | `--primary`, `--ring`; `--primary-foreground`                         |
-| `muted`, `mutedForeground`                                 | `--muted`, `--secondary`, `--accent`; `--muted-foreground`            |
-| `border`                                                   | `--border`, `--input`                                                 |
-| `success` (up), `warning` (degraded), `info` (maintenance) | `--status-up`, `--status-pending`, `--status-maintenance` (+ `-text`) |
-| `destructive` (down)                                       | `--status-down`, `--status-down-text`, `--destructive`                |
-| `chart1` … `chart5`                                        | `--chart-1` … `--chart-5`                                             |
-| `radius` (both modes)                                      | `--radius`: `0`, up to `2rem` or up to `32px`                         |
+| Token                                                               | CSS variables                                                                              |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `background`                                                        | `--background`                                                                             |
+| `foreground`                                                        | `--foreground`, `--card-foreground`, `--popover-foreground`, …                             |
+| `card`                                                              | `--card`, `--popover`                                                                      |
+| `primary`, `primaryForeground`                                      | `--primary`, `--ring`; `--primary-foreground`                                              |
+| `muted`, `mutedForeground`                                          | `--muted`, `--secondary`, `--accent`; `--muted-foreground`                                 |
+| `border`                                                            | `--border`, `--input`                                                                      |
+| `success` (up), `warning` (pending, degraded), `info` (maintenance) | `--status-up`, `--status-pending`, `--status-degraded`, `--status-maintenance` (+ `-text`) |
+| `destructive` (down)                                                | `--status-down`, `--status-down-text`, `--destructive`                                     |
+| `chart1` … `chart5`                                                 | `--chart-1` … `--chart-5`                                                                  |
+| `radius` (both modes)                                               | `--radius`: `0`, up to `2rem` or up to `32px`                                              |
 
 Colours must be hex (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`), `rgb()`/`rgba()`, `hsl()`/`hsla()` or
 `oklch()` with plain numbers; named colours, `var()`, `calc()`, `url()` and anything else are rejected

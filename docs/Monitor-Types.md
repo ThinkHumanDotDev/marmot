@@ -10,7 +10,8 @@ imported lazily inside `check()`, so the worker starts without them; a monitor w
 goes DOWN with the message `The "<pkg>" package is not installed. Install <pkg> to use the <type> monitor`.
 The Docker image installs all of them. Shared fields (`interval`, `retryInterval`, `maxRetries`,
 `resendInterval`, `timeout`, `upsideDown`, `active`, `parent`, `description`) apply to every type and are
-not repeated below.
+not repeated below. `degradedAfter` (ms, [Monitors → Degraded](Monitors.md#degraded)) applies to HTTP(s),
+keyword, JSON query, TCP port, ping, DNS and gRPC monitors.
 
 | Type                | Label                                      | Fields                                                                                                                                                                                                   | Driver / requirement                 |
 | ------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |

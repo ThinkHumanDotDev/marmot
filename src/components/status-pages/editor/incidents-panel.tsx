@@ -48,7 +48,7 @@ export interface IncidentComponentOption {
 
 export const impactBadge: Record<ComponentImpact, string> = {
   operational: 'bg-status-up/15',
-  degraded_performance: 'bg-status-pending/20',
+  degraded_performance: 'bg-status-degraded/20',
   partial_outage: 'bg-status-pending/35',
   major_outage: 'bg-status-down/20',
 }

@@ -31,8 +31,9 @@ channels (`notification:read`, secrets masked); admins and owners create, edit, 
 ## Pipeline
 
 ```
-check worker ─▶ heartbeat (notify=true) ─▶ enqueueNotificationsForHeartbeat()
-   ─▶ BullMQ queue `marmot:notifications`, one job per active attached channel
+check worker ─▶ heartbeat (notify=true, notificationEvent) ─▶ enqueueNotificationsForHeartbeat()
+   ─▶ channelAcceptsEvent(channel, event) filters the active attached channels
+   ─▶ BullMQ queue `marmot:notifications`, one job per remaining channel
       job id `notif:<notificationId>:<heartbeatId>` (dedupes repeated events), 3 attempts, exponential backoff 5s
    ─▶ startNotificationWorker() ─▶ processNotificationJob() ─▶ sendNotification() ─▶ provider.send()
    ─▶ `notifications.lastSentAt` / `lastError` updated on the channel
@@ -42,7 +43,22 @@ The state machine decides when a beat notifies (`notify`): status transitions
 (`isImportantForNotification`) plus the `resendInterval` tick while DOWN. The first beat only notifies when
 it is DOWN. Everything runs in the worker process (`src/worker.ts`).
 
-The default message is `[monitor name] [✅ Up|🔴 Down|⚠️ Pending|🔧 Maintenance] <heartbeat message>`.
+Each notifying beat carries a **notification event** (`notificationEvent` on the heartbeat event and the
+job data; `notificationEventFor()` in `src/server/engine/beat.ts`):
+
+| Event      | When                                                                                    |
+| ---------- | --------------------------------------------------------------------------------------- |
+| `down`     | the monitor went DOWN (from UP, DEGRADED, PENDING or MAINTENANCE, or on its first beat) |
+| `up`       | it recovered from DOWN, to UP or to DEGRADED                                            |
+| `degraded` | it became DEGRADED (from UP, after retries or after maintenance) or went back to UP     |
+| `reminder` | the `resendInterval` repeat while still DOWN                                            |
+
+Channels receive `down`, `up` and `reminder` (`DEFAULT_NOTIFICATION_EVENTS`, the behaviour from before the
+degraded state); `degraded` is opt-in. `channelAcceptsEvent()` in `src/server/notifications/dispatch.ts` is
+the single filter point; until per-channel event selection lands (#126) no channel opts in, so degraded
+transitions are recorded and shown but not sent.
+
+The default message is `[monitor name] [✅ Up|🔴 Down|⚠️ Pending|🔧 Maintenance|🐢 Degraded] <heartbeat message>`.
 The status labels, the test message and the certificate/domain expiry warnings are written in the
 organization's language (`organizations.settings.language`, English by default); the bracketed layout
 and the `{{ status }}` template variable follow it, and so do provider-specific titles and field names

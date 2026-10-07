@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
 import type { Monitor, Notification } from '@/payload-types'
+import type { NotificationEvent } from '@/server/engine/beat'
 import type { HeartbeatEvent } from '@/server/engine/hooks'
 import { QUEUE_NAMES } from '@/server/engine/names'
 import { createQueue, type QueueFactoryOptions } from '@/server/engine/queues'
@@ -17,6 +18,28 @@ export interface NotificationJobData {
   monitorId: string
   heartbeatId: string
   organizationId: string | null
+  /** Why the channel is notified (absent on jobs enqueued before the field existed). */
+  notificationEvent?: NotificationEvent | null
+}
+
+/**
+ * Events every channel receives: the behaviour from before the degraded state. `degraded` is
+ * opt-in; until per-channel event filters land (#126) no channel opts in, so degraded transitions
+ * are recorded and shown everywhere but not sent.
+ */
+export const DEFAULT_NOTIFICATION_EVENTS: readonly NotificationEvent[] = ['down', 'up', 'reminder']
+
+/**
+ * Does `channel` want notifications for `event`? The single filter point of the dispatcher: #126
+ * replaces the default set with the channel's own selection. A beat without an event (callers from
+ * before the field existed) goes to every channel, as before.
+ */
+export function channelAcceptsEvent(
+  _channel: Pick<Notification, 'id'>,
+  event: NotificationEvent | null | undefined,
+): boolean {
+  if (!event) return true
+  return DEFAULT_NOTIFICATION_EVENTS.includes(event)
 }
 
 export type NotificationsQueue = Queue<NotificationJobData, void, typeof NOTIFICATION_JOB_NAME>
@@ -86,7 +109,7 @@ export interface EnqueueOptions extends QueueFactoryOptions {
 }
 
 export interface EnqueueResult {
-  /** Channels considered (active + attached). */
+  /** Channels considered (active + attached + accepting the beat's event). */
   channels: number
   /** Jobs that were actually new (not deduped). */
   enqueued: number
@@ -98,11 +121,15 @@ export interface EnqueueResult {
  * heartbeat (the job id dedupes).
  */
 export async function enqueueNotificationsForHeartbeat(
-  event: Pick<HeartbeatEvent, 'payload' | 'monitor' | 'heartbeat' | 'organizationId'>,
+  event: Pick<HeartbeatEvent, 'payload' | 'monitor' | 'heartbeat' | 'organizationId'> &
+    Partial<Pick<HeartbeatEvent, 'notificationEvent'>>,
   options: EnqueueOptions = {},
 ): Promise<EnqueueResult> {
   const { payload, monitor, heartbeat } = event
-  const channels = await getMonitorNotifications(payload, monitor)
+  const notificationEvent = event.notificationEvent ?? null
+  const channels = (await getMonitorNotifications(payload, monitor)).filter((channel) =>
+    channelAcceptsEvent(channel, notificationEvent),
+  )
   if (channels.length === 0) return { channels: 0, enqueued: 0 }
 
   const queue = options.queue ?? getNotificationsQueue()
@@ -127,6 +154,7 @@ export async function enqueueNotificationsForHeartbeat(
           monitorId: String(monitor.id),
           heartbeatId: String(heartbeat.id),
           organizationId,
+          ...(notificationEvent ? { notificationEvent } : {}),
         },
         opts: { ...NOTIFICATION_JOB_OPTIONS, jobId: notificationJobId(channel.id, heartbeat.id) },
       })),
@@ -135,7 +163,13 @@ export async function enqueueNotificationsForHeartbeat(
   const enqueued = fresh.length
 
   log.debug(
-    { monitorId: monitor.id, heartbeatId: heartbeat.id, channels: channels.length, enqueued },
+    {
+      monitorId: monitor.id,
+      heartbeatId: heartbeat.id,
+      notificationEvent,
+      channels: channels.length,
+      enqueued,
+    },
     'notification jobs enqueued',
   )
   return { channels: channels.length, enqueued }
