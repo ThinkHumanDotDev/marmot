@@ -11,8 +11,9 @@ import {
 } from '@/access/permissions'
 import { validatePermissionOverrides } from '@/collections/Organizations'
 import {
+  forbidden,
   getRequestContext,
-  jsonError,
+  localizedError,
   parseId,
   readJson,
   unauthorized,
@@ -29,10 +30,10 @@ type RouteContext = { params: Promise<{ orgId: string }> }
  */
 export const GET = withErrors(async (request: Request, { params }: RouteContext) => {
   const { payload, user } = await getRequestContext(request)
-  if (!user) return unauthorized()
+  if (!user) return unauthorized(request)
   const orgId = parseId(payload, (await params).orgId)
   const role = getUserRole(user, orgId)
-  if (!role && !isSuperadmin(user)) return jsonError('Forbidden', 403)
+  if (!role && !isSuperadmin(user)) return forbidden(request)
 
   const overrides = await loadOrgPermissionOverrides(payload, orgId)
   return Response.json({
@@ -50,10 +51,10 @@ export const GET = withErrors(async (request: Request, { params }: RouteContext)
  */
 export const PUT = withErrors(async (request: Request, { params }: RouteContext) => {
   const { payload, user } = await getRequestContext(request)
-  if (!user) return unauthorized()
+  if (!user) return unauthorized(request)
   const orgId = parseId(payload, (await params).orgId)
   if (!isSuperadmin(user) && getUserRole(user, orgId) !== 'owner') {
-    return jsonError('Only owners can change permissions.', 403)
+    return localizedError(request, 'onlyOwnersChangePermissions', 403)
   }
 
   const body = await readJson<{ overrides?: unknown }>(request)

@@ -50,7 +50,7 @@ registerNotificationProvider({
   group: 'generic',
   configSchema: webhookConfigSchema,
   fieldMeta: webhookFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = webhookConfigSchema.parse(raw)
     const headers = parseHeadersJson(config.additionalHeaders)
     const data = { heartbeat, monitor, msg: message }
@@ -72,7 +72,13 @@ registerNotificationProvider({
     }
 
     if (config.contentType === 'custom') {
-      const body = renderMessageTemplate(config.customBody ?? '', message, monitor, heartbeat)
+      const body = renderMessageTemplate(
+        config.customBody ?? '',
+        message,
+        monitor,
+        heartbeat,
+        locale,
+      )
       await httpRequest(config.url, {
         method: config.method,
         headers: { 'Content-Type': 'text/plain; charset=utf-8', ...headers },

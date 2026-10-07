@@ -156,6 +156,34 @@ key fails `pnpm typecheck`, and `tests/int/i18n.int.spec.ts` checks that every c
    (`createMaintenanceFormSchema(messages)`): the handlers use the English defaults, the form passes
    `t(…)` values built in a `useMemo`.
 
+### Server-side strings
+
+Text the server sends on behalf of an organization (emails, notification bodies, expiry warnings) is
+written in the organization's `settings.language`, falling back to `en`; the recipient is often not a
+Marmot user. `src/server/i18n.ts` has the helpers:
+
+- `getOrganizationI18n(payload, orgOrId)` → `{ locale, timeZone }` (never throws; English/UTC when the
+  organization is missing), `serverTranslator(locale)` (memoised `getTranslator`) and
+  `organizationFormatter(i18n)` for dates in the organization's time zone.
+- Notifications: `sendNotification` resolves the channel organization's language once and passes it
+  to the provider as `ctx.locale`. Providers hand it to the shared builders
+  (`statusLabel(status, locale)`, `renderMessageTemplate(…, locale)`). The `[name] [status] msg`
+  shape and `formatHeartbeatTime` stay as they are (Kuma's wire format); only the words come from
+  `notifications.messages.*`.
+- Emails: `email.*` (invitation, SMTP test). HTML bodies use `t.markup` with escaped values.
+- API errors: `throw apiError('memberNotFound', 404)` (`src/server/errors.ts`) instead of
+  `new APIError('Member not found.', 404)`. It is still an `APIError` with the English message, so
+  Payload REST, logs and tests see the same thing; `withErrors` re-renders it in the request locale
+  (user `language` → cookie → `Accept-Language`). Return-style helpers: `unauthorized(request)`,
+  `forbidden(request)`, `localizedError(request, key, status)`. The key is the stable identifier.
+
+The English catalogue reproduces the previous hard-coded text byte for byte; keep it that way when
+moving more strings (provider payload tests and `tests/int/i18n-server.int.spec.ts` check it).
+
+Payload admin labels and descriptions use `adminT('marmot:<collection>:<field>Description')` with the
+text in `src/i18n/admin.ts` (Payload's own `{{var}}` placeholders, not ICU). Function descriptions are
+not emitted into `src/payload-types.ts`, so the generated types carry no field JSDoc.
+
 ### Locale resolution
 
 User preference (`users.language`) → `marmot-locale` cookie (signed-out pages; the language picker sets

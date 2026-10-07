@@ -33,7 +33,7 @@ registerNotificationProvider({
   docsUrl: 'https://docs.pushbullet.com/#create-push',
   configSchema: pushbulletConfigSchema,
   fieldMeta: pushbulletFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = pushbulletConfigSchema.parse(raw)
     const headers = { 'Access-Token': config.accessToken }
 
@@ -51,7 +51,7 @@ registerNotificationProvider({
       {
         type: 'note',
         title: `Marmot Alert: ${monitor.name}`,
-        body: `[${statusLabel(heartbeat.status)}] ${heartbeat.msg ?? ''}\nTime: ${formatHeartbeatTime(heartbeat)}`,
+        body: `[${statusLabel(heartbeat.status, locale)}] ${heartbeat.msg ?? ''}\nTime: ${formatHeartbeatTime(heartbeat)}`,
       },
       headers,
     )

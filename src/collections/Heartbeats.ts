@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { adminT } from '@/i18n/admin'
 
 /**
  * One row per check result. Written exclusively by the worker (Local API, `overrideAccess: true`).
@@ -35,7 +36,7 @@ export const Heartbeats: CollectionConfig = {
       type: 'relationship',
       relationTo: 'organizations',
       index: true,
-      admin: { description: 'Denormalised from the monitor for org-scoped queries.' },
+      admin: { description: adminT('marmot:heartbeats:organizationDescription') },
     },
     {
       name: 'status',
@@ -47,19 +48,19 @@ export const Heartbeats: CollectionConfig = {
     {
       name: 'ping',
       type: 'number',
-      admin: { description: 'Response time in milliseconds (null when not measured).' },
+      admin: { description: adminT('marmot:heartbeats:pingDescription') },
     },
     {
       name: 'duration',
       type: 'number',
-      admin: { description: 'Seconds since the previous heartbeat of this monitor.' },
+      admin: { description: adminT('marmot:heartbeats:durationDescription') },
     },
     {
       name: 'important',
       type: 'checkbox',
       defaultValue: false,
       index: true,
-      admin: { description: 'True when the status changed compared to the previous heartbeat.' },
+      admin: { description: adminT('marmot:heartbeats:importantDescription') },
     },
     { name: 'retries', type: 'number', defaultValue: 0 },
     { name: 'downCount', type: 'number', defaultValue: 0 },

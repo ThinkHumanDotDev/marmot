@@ -14,7 +14,9 @@
 import { X509Certificate } from 'node:crypto'
 import tls from 'node:tls'
 
+import { defaultLocale, type Locale } from '@/i18n/locales'
 import { childLogger } from '@/lib/logger'
+import { serverTranslator } from '@/server/i18n'
 import { certificateChain, type CertificateInfo, type TlsInfo } from '@/server/engine/tls'
 import { sortedThresholds, type SentHistoryStore } from './expiry-history'
 
@@ -38,6 +40,8 @@ export interface NotifyCertExpiryOptions {
   notifyDays: readonly number[]
   history: SentHistoryStore
   send: ExpirySender
+  /** Language of the warning (the monitor organization's `settings.language`). */
+  locale?: Locale
   /** SHA-256 fingerprints to treat as trusted roots (defaults to the system trust store). */
   knownRoots?: ReadonlySet<string>
 }
@@ -62,8 +66,19 @@ export function systemRootFingerprints(): ReadonlySet<string> {
 export function certExpiryMessage(
   monitor: { name: string; url?: string | null },
   cert: Pick<CertificateInfo, 'certType' | 'subjectCN' | 'daysRemaining'>,
+  locale: Locale = defaultLocale,
 ): string {
-  return `[${monitor.name}][${monitor.url ?? ''}] ${cert.certType} certificate ${cert.subjectCN ?? '(no CN)'} will expire in ${cert.daysRemaining} days`
+  const t = serverTranslator(locale)
+  return t('notifications.messages.certificateExpiry', {
+    name: monitor.name,
+    address: monitor.url ?? '',
+    // `server`, `intermediate CA`, … are identifiers shared with Kuma; kept as is in every language.
+    certType: cert.certType,
+    commonName: cert.subjectCN ?? t('notifications.messages.noCommonName'),
+    // `count` picks the plural form; `days` is printed as is (no digit grouping, like before).
+    count: cert.daysRemaining,
+    days: String(cert.daysRemaining),
+  })
 }
 
 /**
@@ -96,7 +111,7 @@ export async function notifyCertExpiry(
         log.debug({ monitorId: monitor.id, targetDays }, 'certificate warning already sent')
         continue
       }
-      const message = certExpiryMessage(monitor, cert)
+      const message = certExpiryMessage(monitor, cert, options.locale)
       log.info(
         { monitorId: monitor.id, cn: cert.subjectCN, days: cert.daysRemaining, targetDays },
         'sending certificate expiry warning',

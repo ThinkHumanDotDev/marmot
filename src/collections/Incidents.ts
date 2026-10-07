@@ -8,6 +8,7 @@ import {
 import { orgScoped } from '@/access/org-scoped'
 
 import type { Incident } from '@/payload-types'
+import { adminT } from '@/i18n/admin'
 
 export const INCIDENT_STYLES = ['info', 'warning', 'danger', 'primary'] as const
 export type IncidentStyle = (typeof INCIDENT_STYLES)[number]
@@ -90,7 +91,10 @@ export const Incidents: CollectionConfig = {
       relationTo: 'organizations',
       required: true,
       index: true,
-      admin: { position: 'sidebar', description: 'Derived from the status page.' },
+      admin: {
+        position: 'sidebar',
+        description: adminT('marmot:incidents:organizationDescription'),
+      },
     },
     {
       name: 'statusPage',
@@ -107,7 +111,7 @@ export const Incidents: CollectionConfig = {
     {
       name: 'content',
       type: 'textarea',
-      admin: { description: 'Markdown: paragraphs, **bold**, _italics_, `code` and links.' },
+      admin: { description: adminT('marmot:incidents:contentDescription') },
     },
     {
       name: 'style',
@@ -122,14 +126,14 @@ export const Incidents: CollectionConfig = {
           name: 'pinned',
           type: 'checkbox',
           defaultValue: true,
-          admin: { description: 'Pinned incidents are shown above the monitor groups.' },
+          admin: { description: adminT('marmot:incidents:pinnedDescription') },
         },
         {
           name: 'active',
           type: 'checkbox',
           defaultValue: true,
           index: true,
-          admin: { description: 'Uncheck to resolve the incident.' },
+          admin: { description: adminT('marmot:incidents:activeDescription') },
         },
       ],
     },

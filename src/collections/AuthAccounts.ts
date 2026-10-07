@@ -2,6 +2,7 @@ import { linkedAccountsCollection } from '@thinkhuman/payload-plugin-auth'
 import type { Access } from 'payload'
 
 import { isSuperadmin, type UserLike } from '@/access/permissions'
+import { adminT } from '@/i18n/admin'
 
 export const AUTH_ACCOUNTS_SLUG = 'auth-accounts' as const
 
@@ -27,6 +28,6 @@ export const AuthAccounts = linkedAccountsCollection({
     group: 'Access',
     useAsTitle: 'providerAccountId',
     defaultColumns: ['provider', 'providerAccountId', 'user', 'email', 'lastLoginAt'],
-    description: 'Single sign-on identities linked to users. Managed by the login flows.',
+    description: adminT('marmot:authAccounts:description'),
   },
 })

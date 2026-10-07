@@ -3,6 +3,7 @@ import crypto from 'node:crypto'
 import type { CollectionBeforeValidateHook, CollectionConfig, FieldAccess } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
+import { adminT } from '@/i18n/admin'
 
 export const SSO_DOMAINS_SLUG = 'sso-domains' as const
 
@@ -101,7 +102,10 @@ export const SsoDomains: CollectionConfig = {
       type: 'text',
       required: true,
       access: { read: managerRead, create: () => false, update: () => false },
-      admin: { readOnly: true, description: 'Value of the DNS TXT record that proves ownership.' },
+      admin: {
+        readOnly: true,
+        description: adminT('marmot:ssoDomains:verificationTokenDescription'),
+      },
     },
     {
       name: 'verifiedAt',

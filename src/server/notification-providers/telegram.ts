@@ -66,7 +66,7 @@ registerNotificationProvider({
   docsUrl: 'https://core.telegram.org/bots#how-do-i-create-a-bot',
   configSchema: telegramConfigSchema,
   fieldMeta: telegramFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat }) {
+  async send({ config: raw, message, monitor, heartbeat, locale }) {
     const config = telegramConfigSchema.parse(raw)
     const params: Record<string, unknown> = {
       chat_id: config.chatId,
@@ -105,6 +105,7 @@ registerNotificationProvider({
         msg,
         monitorForTemplate,
         heartbeatForTemplate,
+        locale,
       )
       if (config.templateParseMode !== 'plain') params.parse_mode = config.templateParseMode
     }

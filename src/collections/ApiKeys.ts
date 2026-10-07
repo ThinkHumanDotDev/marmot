@@ -1,6 +1,7 @@
 import type { CollectionConfig, FieldAccess } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
+import { adminT } from '@/i18n/admin'
 
 /**
  * Organization API keys (`api-key:*` permissions, admin and owner only). A key authenticates
@@ -48,7 +49,7 @@ export const ApiKeys: CollectionConfig = {
       unique: true,
       index: true,
       access: { read: serverOnly, create: serverOnly, update: serverOnly },
-      admin: { hidden: true, description: 'SHA-256 of the plaintext key.' },
+      admin: { hidden: true, description: adminT('marmot:apiKeys:keyHashDescription') },
     },
     {
       name: 'prefix',
@@ -56,14 +57,14 @@ export const ApiKeys: CollectionConfig = {
       required: true,
       index: true,
       access: { create: serverOnly, update: serverOnly },
-      admin: { readOnly: true, description: 'Public identifier shown in the UI (mk_<prefix>).' },
+      admin: { readOnly: true, description: adminT('marmot:apiKeys:prefixDescription') },
     },
     {
       name: 'active',
       type: 'checkbox',
       defaultValue: true,
       index: true,
-      admin: { position: 'sidebar', description: 'Disabled keys are rejected.' },
+      admin: { position: 'sidebar', description: adminT('marmot:apiKeys:activeDescription') },
     },
     {
       name: 'expiresAt',
@@ -71,7 +72,7 @@ export const ApiKeys: CollectionConfig = {
       admin: {
         position: 'sidebar',
         date: { pickerAppearance: 'dayAndTime' },
-        description: 'Leave empty for a key that never expires.',
+        description: adminT('marmot:apiKeys:expiresAtDescription'),
       },
     },
     {

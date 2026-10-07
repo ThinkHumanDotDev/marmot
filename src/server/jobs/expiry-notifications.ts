@@ -11,9 +11,11 @@
  */
 import type { Payload } from 'payload'
 
+import type { Locale } from '@/i18n/locales'
 import { childLogger } from '@/lib/logger'
 import type { Monitor, Notification } from '@/payload-types'
 import { registerHeartbeatListener, type HeartbeatEvent } from '@/server/engine/hooks'
+import { getOrganizationI18n } from '@/server/i18n'
 import { getMonitorNotifications, sendNotification } from '@/server/notifications'
 import { getInstanceSettings } from '@/server/settings'
 import { notifyCertExpiry, type CertExpiryNotice, type ExpirySender } from './cert-expiry'
@@ -35,17 +37,22 @@ const log = childLogger('expiry')
 type ExpiryEvent = Pick<HeartbeatEvent, 'monitor' | 'heartbeat' | 'organizationId'> &
   Partial<Pick<HeartbeatEvent, 'tlsInfo' | 'certChanged'>>
 
-/** Sender that fans one message out to the given channels; `true` when any delivery succeeded. */
+/**
+ * Sender that fans one message out to the given channels; `true` when any delivery succeeded.
+ * `locale` is the language the message was rendered in (the channels share the monitor's
+ * organization), handed to the providers for any text they add.
+ */
 export function createChannelSender(
   payload: Payload,
   monitor: Monitor,
   channels: Notification[],
+  locale?: Locale,
 ): ExpirySender {
   return async (message) => {
     let sent = false
     for (const channel of channels) {
       try {
-        await sendNotification(payload, channel, { message, monitor, heartbeat: null })
+        await sendNotification(payload, channel, { message, monitor, heartbeat: null, locale })
         sent = true
       } catch (err) {
         log.error(
@@ -86,12 +93,14 @@ export async function processCertExpiry(
   const channels = await getMonitorNotifications(payload, monitor)
   if (channels.length === 0) return []
   const { tlsExpiryNotifyDays } = await getInstanceSettings(payload)
+  const { locale } = await getOrganizationI18n(payload, event.organizationId)
   return notifyCertExpiry({
     monitor,
     tlsInfo,
     notifyDays: tlsExpiryNotifyDays,
     history,
-    send: createChannelSender(payload, monitor, channels),
+    send: createChannelSender(payload, monitor, channels, locale),
+    locale,
   })
 }
 
@@ -156,13 +165,15 @@ export async function processDomainExpiry(
   const channels = await getMonitorNotifications(payload, monitor)
   if (channels.length === 0) return { info, notice: null }
   const { domainExpiryNotifyDays } = await getInstanceSettings(payload)
+  const { locale } = await getOrganizationI18n(payload, event.organizationId)
   const notice = await notifyDomainExpiry({
     monitor,
     info,
     notifyDays: domainExpiryNotifyDays,
     history,
-    send: createChannelSender(payload, monitor, channels),
+    send: createChannelSender(payload, monitor, channels, locale),
     now,
+    locale,
   })
   return { info, notice }
 }
