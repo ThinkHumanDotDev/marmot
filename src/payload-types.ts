@@ -946,6 +946,15 @@ export interface StatMinutely {
     | number
     | boolean
     | null;
+  latencyHistogram?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -970,6 +979,15 @@ export interface StatHourly {
     | number
     | boolean
     | null;
+  latencyHistogram?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -986,6 +1004,15 @@ export interface StatDaily {
   pingMin?: number | null;
   pingMax?: number | null;
   extras?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  latencyHistogram?:
     | {
         [k: string]: unknown;
       }
@@ -2042,6 +2069,7 @@ export interface StatMinutelySelect<T extends boolean = true> {
   pingMin?: T;
   pingMax?: T;
   extras?: T;
+  latencyHistogram?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2057,6 +2085,7 @@ export interface StatHourlySelect<T extends boolean = true> {
   pingMin?: T;
   pingMax?: T;
   extras?: T;
+  latencyHistogram?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2072,6 +2101,7 @@ export interface StatDailySelect<T extends boolean = true> {
   pingMin?: T;
   pingMax?: T;
   extras?: T;
+  latencyHistogram?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

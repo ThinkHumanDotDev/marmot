@@ -22,14 +22,20 @@ import type { Payload, RequiredDataFromCollectionSlug, Where } from 'payload'
 import type { StatCollectionSlug } from '@/collections/StatFields'
 import { childLogger } from '@/lib/logger'
 
+import { addSample, parseHistogram, type LatencyHistogram } from './latency-histogram'
+
 const log = childLogger('stats')
 
 export type HeartbeatStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded'
 export type FlatStatus = 'up' | 'down'
 export type Granularity = 'minute' | 'hour' | 'day'
-export type StatsRange = '24h' | '30d' | '1y'
+/**
+ * `24h`, `30d` and `1y` are the original windows (uptime cards, badges, metrics); `1d` … `90d` are
+ * the chart periods of the monitor detail page (#95). `24h` and `1d` cover the same window.
+ */
+export type StatsRange = '24h' | '1d' | '7d' | '14d' | '30d' | '90d' | '1y'
 
-export const STATS_RANGES: readonly StatsRange[] = ['24h', '30d', '1y']
+export const STATS_RANGES: readonly StatsRange[] = ['24h', '1d', '7d', '14d', '30d', '90d', '1y']
 
 export const isStatsRange = (value: unknown): value is StatsRange =>
   typeof value === 'string' && (STATS_RANGES as readonly string[]).includes(value)
@@ -48,10 +54,17 @@ export type RangeSpec = {
   collection: StatCollectionSlug
 }
 
-/** Which aggregate backs which range — minutely for 24h, hourly for 30d, daily for 1y. */
+/**
+ * Which aggregate backs which range: the finest one whose retention still covers the window —
+ * minutely up to a day, hourly up to 30 days (its retention), daily beyond.
+ */
 export const RANGE_SPECS: Record<StatsRange, RangeSpec> = {
   '24h': { granularity: 'minute', buckets: 24 * 60, collection: 'stat-minutely' },
+  '1d': { granularity: 'minute', buckets: 24 * 60, collection: 'stat-minutely' },
+  '7d': { granularity: 'hour', buckets: 7 * 24, collection: 'stat-hourly' },
+  '14d': { granularity: 'hour', buckets: 14 * 24, collection: 'stat-hourly' },
   '30d': { granularity: 'hour', buckets: 30 * 24, collection: 'stat-hourly' },
+  '90d': { granularity: 'day', buckets: 90, collection: 'stat-daily' },
   '1y': { granularity: 'day', buckets: 365, collection: 'stat-daily' },
 }
 
@@ -72,6 +85,8 @@ export type BucketData = {
   pingMin: number | null
   pingMax: number | null
   extras: BucketExtras
+  /** Response-time histogram of the pinged beats (`latency-histogram.ts`); null before the first. */
+  latencyHistogram?: LatencyHistogram | null
 }
 
 export type BucketExtras = {
@@ -148,6 +163,7 @@ export const emptyBucket = (): BucketData => ({
   pingMin: null,
   pingMax: null,
   extras: {},
+  latencyHistogram: null,
 })
 
 const isUsablePing = (ping: unknown): ping is number =>
@@ -187,6 +203,7 @@ export function applyBeat(
         next.pingMax = Math.max(next.pingMax ?? ping, ping)
       }
       next.extras.pingCount = count
+      next.latencyHistogram = addSample(bucket.latencyHistogram ?? null, ping)
     }
   } else {
     next.down += 1
@@ -265,6 +282,7 @@ type RawStatRow = {
   pingMin?: number | null
   pingMax?: number | null
   extras?: unknown
+  latencyHistogram?: unknown
 }
 
 const normalizeExtras = (extras: unknown): BucketExtras =>
@@ -279,6 +297,7 @@ const toBucket = (row: RawStatRow): StatRow => ({
   pingMin: row.pingMin ?? null,
   pingMax: row.pingMax ?? null,
   extras: normalizeExtras(row.extras),
+  latencyHistogram: parseHistogram(row.latencyHistogram),
 })
 
 const bucketToData = (bucket: BucketData) => ({
@@ -288,6 +307,7 @@ const bucketToData = (bucket: BucketData) => ({
   pingMin: bucket.pingMin,
   pingMax: bucket.pingMax,
   extras: Object.keys(bucket.extras).length > 0 ? bucket.extras : null,
+  latencyHistogram: bucket.latencyHistogram ?? null,
 })
 
 async function findBucket(

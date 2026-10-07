@@ -214,14 +214,20 @@ scrape_configs:
       credentials: mk_… # or basic_auth: { username: marmot, password: mk_… }
 ```
 
-| Metric                        | Labels            | Value                                                                                                            |
-| ----------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `monitor_status`              | common            | `1` up, `0` down, `2` pending, `3` maintenance, `4` degraded                                                     |
-| `monitor_response_time`       | common            | last ping in ms (`-1` when the beat had no ping)                                                                 |
-| `monitor_uptime_ratio`        | common + `window` | `0.0…1.0` over `24h` and `30d`                                                                                   |
-| `monitor_cert_days_remaining` | common            | from `monitors.certInfo` (only when present)                                                                     |
-| `monitor_cert_is_valid`       | common            | `1` / `0`, from `monitors.certInfo`                                                                              |
-| `marmot_checker_online`       | `location`        | `1` online, `0` offline ([self connectivity check](Configuration.md#self-connectivity-check), only when enabled) |
+| Metric                           | Labels                         | Value                                                                                                                   |
+| -------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `monitor_status`                 | common                         | `1` up, `0` down, `2` pending, `3` maintenance, `4` degraded                                                            |
+| `monitor_response_time`          | common                         | last ping in ms (`-1` when the beat had no ping)                                                                        |
+| `monitor_uptime_ratio`           | common + `window`              | `0.0…1.0` over `24h` and `30d`                                                                                          |
+| `monitor_cert_days_remaining`    | common                         | from `monitors.certInfo` (only when present)                                                                            |
+| `monitor_cert_is_valid`          | common                         | `1` / `0`, from `monitors.certInfo`                                                                                     |
+| `marmot_checker_online`          | `location`                     | `1` online, `0` offline ([self connectivity check](Configuration.md#self-connectivity-check), only when enabled)        |
+| `monitor_response_time_quantile` | common + `window` + `quantile` | response time (ms) at `quantile` `0.5`, `0.75`, `0.9`, `0.95`, `0.99` over `24h` and `30d`; only with `?quantiles=true` |
+
+`monitor_response_time_quantile` is opt-in because it reads every monitor's latency histograms on each
+scrape: add `params: { quantiles: ['true'] }` to the scrape config (or call `/api/metrics?quantiles=true`).
+The values are estimated from the stat rollups' histograms and stay within one histogram bucket (about
+±19 %) of the exact percentile.
 
 Common labels: `monitor_id`, `monitor_name`, `monitor_type`, `monitor_url`, `monitor_hostname`,
 `monitor_port` (empty string when a monitor has no such field). Names and labels match Uptime Kuma's

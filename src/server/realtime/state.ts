@@ -140,10 +140,10 @@ export async function loadOrgState(
     if (importantLimit > 0) state.importantHeartbeats[monitor.id] = important
     state.uptime[monitor.id] = {}
     state.avgPing[monitor.id] = {}
-    for (const result of stats) {
-      state.uptime[monitor.id][result.range] = result.uptime
-      state.avgPing[monitor.id][result.range] = result.avgPing
-    }
+    ranges.forEach((range, index) => {
+      state.uptime[monitor.id][range] = stats[index].uptime
+      state.avgPing[monitor.id][range] = stats[index].avgPing
+    })
   })
 
   return state
