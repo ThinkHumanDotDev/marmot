@@ -16,6 +16,18 @@ const withImpacts = (...impacts: (ComponentImpact | null)[]): BadgeStateInput['g
 ]
 
 describe('statusPageBadgeState', () => {
+  it('raises the badge to the declared impact of incidents naming no component', () => {
+    const incident = { active: true, impact: 'degraded_performance' as const, components: [] }
+    expect(statusPageBadgeState(input({ incidents: [incident] }))).toBe('degraded')
+    expect(statusPageBadgeState(input({ incidents: [{ ...incident, active: false }] }))).toBe(
+      'operational',
+    )
+    // Incidents with components count through the components' impact instead.
+    expect(statusPageBadgeState(input({ incidents: [{ ...incident, components: [{}] }] }))).toBe(
+      'operational',
+    )
+  })
+
   it.each([
     ['up', 'operational'],
     ['partial', 'partial'],

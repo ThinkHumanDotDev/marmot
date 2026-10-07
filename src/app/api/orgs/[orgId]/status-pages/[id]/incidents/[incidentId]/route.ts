@@ -1,14 +1,12 @@
 import {
   authenticate,
-  coerceId,
   errorResponse,
   INCIDENT_WRITABLE_FIELDS,
   jsonError,
-  loadOrgStatusPage,
   pick,
   readJson,
-  type Authenticated,
 } from '@/server/status-pages/http'
+import { loadOrgIncident as loadIncident } from '@/server/status-pages/incident-updates'
 
 import type { Incident } from '@/payload-types'
 import { errorText } from '@/server/request-locale'
@@ -17,31 +15,23 @@ export const dynamic = 'force-dynamic'
 
 type RouteContext = { params: Promise<{ orgId: string; id: string; incidentId: string }> }
 
-async function loadIncident(
-  ctx: Authenticated,
-  orgId: string,
-  pageId: string,
-  incidentId: string,
-): Promise<Incident | null> {
-  const page = await loadOrgStatusPage(ctx, orgId, pageId, 0)
-  if (!page) return null
-  const { docs } = await ctx.payload.find({
-    collection: 'incidents',
-    where: {
-      and: [
-        { id: { equals: coerceId(ctx.payload, incidentId) } },
-        { statusPage: { equals: page.id } },
-      ],
-    },
-    limit: 1,
-    depth: 0,
-    user: ctx.user,
-    overrideAccess: false,
-  })
-  return docs[0] ?? null
+/** GET /api/orgs/:orgId/status-pages/:id/incidents/:incidentId — one incident with its timeline. */
+export async function GET(request: Request, { params }: RouteContext) {
+  const auth = await authenticate(request)
+  if (!auth.ok) return auth.response
+  const { orgId, id, incidentId } = await params
+
+  try {
+    const doc = await loadIncident(auth.ctx, orgId, id, incidentId)
+    if (!doc) return jsonError(errorText(request, 'incidentNotFound'), 404)
+    return Response.json({ doc })
+  } catch (error) {
+    return errorResponse(error, request)
+  }
 }
 
-/** PATCH /api/orgs/:orgId/status-pages/:id/incidents/:incidentId — edit, pin or resolve. */
+/** PATCH /api/orgs/:orgId/status-pages/:id/incidents/:incidentId — rename, pin, set the declared
+ * impact, or resolve/reopen via `active` (which posts a timeline update). */
 export async function PATCH(request: Request, { params }: RouteContext) {
   const auth = await authenticate(request)
   if (!auth.ok) return auth.response

@@ -106,12 +106,29 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'groups',
 ] as const
 
-export const INCIDENT_WRITABLE_FIELDS = [
+/**
+ * Fields a client may send when opening an incident. `content`/`style` (pre-timeline clients) and
+ * `affectedComponents` become the first update.
+ */
+export const INCIDENT_CREATE_FIELDS = [
   'title',
+  'pinned',
+  'impact',
   'content',
   'style',
+  'affectedComponents',
+] as const
+
+/**
+ * Fields a client may patch on an incident. The timeline is changed through the updates routes;
+ * `active` and `affectedComponents` are still accepted and post an update (`resolved` /
+ * `investigating`, or the changed impacts with the current status).
+ */
+export const INCIDENT_WRITABLE_FIELDS = [
+  'title',
   'pinned',
   'active',
+  'impact',
   'affectedComponents',
 ] as const
 

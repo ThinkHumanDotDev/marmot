@@ -39,14 +39,50 @@ Two org-scoped collections (`src/collections/StatusPages.ts`, `src/collections/I
 | `domains[].hostname`                                 | Custom hostnames (see below). Unique across all pages.                         |
 | `groups[]`                                           | `name`, `defaultOpen` + `monitors[]` (components, see below), in order.        |
 
-| `incidents` field            | Notes                                                                                              |
-| ---------------------------- | -------------------------------------------------------------------------------------------------- |
-| `statusPage`, `organization` | The organization is derived from the page in a `beforeChange` hook.                                |
-| `title`, `content`           | `content` is Markdown (paragraphs, `**bold**`, `_italics_`, `` `code` ``, links, `-` lists).       |
-| `style`                      | `info`, `warning`, `danger` or `primary` (card colour).                                            |
-| `pinned`                     | Pinned incidents render above the monitor groups.                                                  |
-| `active`, `resolvedAt`       | Setting `active: false` stamps `resolvedAt` and unpins.                                            |
-| `affectedComponents[]`       | `{ component, impact }`: component row id of the page and its impact while the incident is active. |
+| `incidents` field            | Notes                                                                                                       |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `statusPage`, `organization` | The organization is derived from the page in a `beforeChange` hook.                                         |
+| `title`                      | Shown on the card.                                                                                          |
+| `updates[]`                  | The timeline: `status`, `message` (Markdown), `postedAt`, `editedAt`, `components[] { component, impact }`. |
+| `status`                     | Derived: status of the latest update (`investigating`, `identified`, `monitoring`, `resolved`).             |
+| `impact`                     | Derived: worst current component impact; set directly for incidents that name no component.                 |
+| `affectedComponents[]`       | Current `{ component, impact }` per component named by any update (derived; editing it posts an update).    |
+| `pinned`                     | Pinned incidents render above the monitor groups; resolving unpins.                                         |
+| `active`, `resolvedAt`       | Derived from the timeline. Setting `active: false` posts a `resolved` update (and `true` reopens).          |
+| `content`, `style`           | Legacy (pre-timeline). Still accepted on create and turned into the first update.                           |
+
+### Incident timeline
+
+An incident is a list of updates. Each update has a status — **investigating → identified → monitoring →
+resolved** — a Markdown message, the time it was posted and, optionally, the impact it declares on page
+components (rows of the page's groups, by component id — see [Components](#components)):
+
+| Impact                 | Shown as             | Counts for the page's overall status as |
+| ---------------------- | -------------------- | --------------------------------------- |
+| `operational`          | Operational          | the component's own status              |
+| `degraded_performance` | Degraded performance | not fully up (→ partially degraded)     |
+| `partial_outage`       | Partial outage       | not fully up (→ partially degraded)     |
+| `major_outage`         | Major outage         | down                                    |
+
+- Components left out of an update keep their last impact. A `resolved` update resets them all to
+  operational; posting another update afterwards reopens the incident.
+- The incident's indicator is the worst current impact. An incident that names no component carries a
+  declared impact (for page-wide notices); `degraded_performance`/`partial_outage` make the page
+  "partially degraded", `major_outage` makes it "major outage".
+- Posted updates are history. Their text can be corrected later — the update is then shown as _edited_ —
+  but status, time and impacts stay as posted. Updates may be back-dated, not post-dated.
+- Only components of the incident's page can be affected, each once per update. Components removed
+  from the page later stay in the history and are ignored publicly.
+- `affectedComponents` is the incident's current state, kept in sync with the timeline. Clients that
+  write it directly (the Payload admin, API clients of the component model) post an update with the changed
+  impacts and the current status; components they drop go back to operational.
+- Incidents created before the timeline existed migrate without data loss: they read as one update with
+  their old text and `affectedComponents`, posted when they were created (or when they were resolved), and
+  their `style` maps to an
+  impact (`info`/`primary` → operational, `warning` → degraded performance, `danger` → major outage). The
+  update is stored on the incident's next write; no migration job is needed on either database.
+- Every new update is announced through `onIncidentUpdatePosted()`
+  (`src/server/status-pages/incident-events.ts`), the hook subscriber notifications build on.
 
 ### Components
 
@@ -67,9 +103,10 @@ a `monitor` component with values shown, every group starts expanded).
 - **Display name**: component `name` → the monitor's `publicName` (Monitor form → _Public name_) → the
   monitor's `name`. The internal monitor name never reaches the public page, its JSON or the RSS feed when a
   public name is set.
-- **Impact**: incidents list the components they affect with an impact of `operational`,
-  `degraded_performance`, `partial_outage` or `major_outage`. While an incident is active, each affected
-  component reports the worst impact of all active incidents (`impact` in the JSON, a label on the page).
+- **Impact**: incident updates set the impact of the components they affect (`operational`,
+  `degraded_performance`, `partial_outage` or `major_outage`; see [Incident timeline](#incident-timeline)).
+  While an incident is active, each affected component reports the worst impact of all active incidents
+  (`impact` in the JSON, a label on the page), and the page's overall status counts it.
 - **Static component status** comes only from incidents and maintenance: a non-operational impact maps to
   `pending` (degraded / partial outage) or `down` (major outage); otherwise a running
   [maintenance window](Maintenance.md) attached to the page shows `maintenance`; otherwise `up`. Monitor
@@ -95,16 +132,16 @@ monitors that belong to another organization and hostnames already claimed by an
 All of these are anonymous and return 404 for unknown or unpublished slugs. For password-protected
 pages they also need the page's access cookie or `?pw=` (see below), and answer 401 otherwise.
 
-| Route                                        | Returns                                                               |
-| -------------------------------------------- | --------------------------------------------------------------------- |
-| `GET /status/:slug`                          | Server-rendered page (OpenGraph meta, manifest link, RSS alternate).  |
-| `GET /api/status-pages/:slug/public`         | JSON (below); `Cache-Control: public, max-age=30`.                    |
-| `GET /status/:slug/rss`                      | RSS 2.0: incidents (active and resolved) and monitors currently down. |
-| `GET /status/:slug/manifest.json`            | Web app manifest.                                                     |
-| `GET /status/:slug/badge.svg`                | Overall status badge ([below](#status-badge)).                        |
-| `GET /api/status-pages/resolve-domain?host=` | `{ slug }` for a custom hostname (used by the proxy).                 |
-| `GET /status/:slug/login`                    | Password form of a protected page.                                    |
-| `POST /api/status-pages/:slug/access`        | Checks the page password and sets the access cookie.                  |
+| Route                                        | Returns                                                              |
+| -------------------------------------------- | -------------------------------------------------------------------- |
+| `GET /status/:slug`                          | Server-rendered page (OpenGraph meta, manifest link, RSS alternate). |
+| `GET /api/status-pages/:slug/public`         | JSON (below); `Cache-Control: public, max-age=30`.                   |
+| `GET /status/:slug/rss`                      | RSS 2.0: one item per incident update and monitors currently down.   |
+| `GET /status/:slug/manifest.json`            | Web app manifest.                                                    |
+| `GET /status/:slug/badge.svg`                | Overall status badge ([below](#status-badge)).                       |
+| `GET /api/status-pages/resolve-domain?host=` | `{ slug }` for a custom hostname (used by the proxy).                |
+| `GET /status/:slug/login`                    | Password form of a protected page.                                   |
+| `POST /api/status-pages/:slug/access`        | Checks the page password and sets the access cookie.                 |
 
 ```jsonc
 {
@@ -130,7 +167,7 @@ pages they also need the page's access cookie or `?pw=` (see below), and answer 
     "footerText": null,
     "googleAnalyticsId": null,
   },
-  "overall": "up", // up | partial | down | maintenance | unknown
+  "overall": "up", // up | partial | down | maintenance | unknown (monitors and active incident impacts)
   "groups": [
     {
       "name": "Core",
@@ -166,11 +203,36 @@ pages they also need the page's access cookie or `?pw=` (see below), and answer 
     },
   ],
   "incidents": [
+    // active incidents, pinned first, newest first
     {
       "id": "3",
-      "title": "…",
-      "content": "…",
-      "style": "warning",
+      "title": "API errors",
+      "status": "identified", // investigating | identified | monitoring | resolved
+      "impact": "major_outage", // operational | degraded_performance | partial_outage | major_outage
+      "components": [{ "id": "6702f1c4e1b2a3d4e5f60718", "name": "API", "impact": "major_outage" }], // current, visible components only
+      "updates": [
+        // newest first
+        {
+          "id": "6703f0c1a2b3c4d5e6f70812",
+          "status": "identified",
+          "message": "A bad deploy; rolling back.",
+          "postedAt": "2026-10-05T03:10:00.000Z",
+          "editedAt": null,
+          "components": [], // impacts this update set
+        },
+        {
+          "id": "6703f0c1a2b3c4d5e6f70811",
+          "status": "investigating",
+          "message": "We are looking into errors.",
+          "postedAt": "2026-10-05T03:00:00.000Z",
+          "editedAt": null,
+          "components": [
+            { "id": "6702f1c4e1b2a3d4e5f60718", "name": "API", "impact": "major_outage" },
+          ],
+        },
+      ],
+      "content": "A bad deploy; rolling back.", // latest message (pre-timeline clients)
+      "style": "danger", // card colour derived from impact (pre-timeline clients)
       "pinned": true,
       "active": true,
       "createdAt": "…",
@@ -240,8 +302,18 @@ with `overrideAccess: false`, so the collections' access rules decide what each 
 | `POST`/`DELETE …/:id/logo`                               | Upload (multipart `file`) / remove logo      |
 | `POST`/`DELETE …/:id/logo-dark`                          | Upload / remove the dark-mode logo           |
 | `POST`/`DELETE …/:id/favicon`                            | Upload / remove the favicon                  |
-| `GET`/`POST …/:id/incidents`                             | List / post incident                         |
-| `PATCH`/`DELETE …/:id/incidents/:incidentId`             | Edit, pin, resolve / delete                  |
+| `GET`/`POST …/:id/incidents`                             | List / open incident (first update)          |
+| `GET`/`PATCH`/`DELETE …/:id/incidents/:incidentId`       | Read / rename, pin, resolve / delete         |
+| `GET`/`POST …/incidents/:incidentId/updates`             | Timeline (oldest first) / post an update     |
+| `PATCH …/incidents/:incidentId/updates/:updateId`        | Edit an update's text (`{ message }`)        |
+
+Opening an incident: `POST …/incidents` with
+`{ title, pinned?, status?, message?, components?: [{ component, impact }], impact? }` (`status` defaults to
+`investigating`; `impact` is the declared impact when no component is named). Pre-timeline clients may
+still send `{ title, content, style, affectedComponents }`. Posting an update: `POST …/updates` with
+`{ status, message?, components?, postedAt?, impact? }`; it returns `201 { doc, update }`. Invalid statuses
+or impacts, components that are not on the page and future `postedAt` values are refused with `400`;
+viewers get `403`. The Payload REST API (`/api/incidents`) applies the same hooks.
 
 ## Status badge
 
@@ -259,8 +331,10 @@ domain the same badge is served at `https://status.example.com/badge.svg`.
 | Under maintenance       | `#1747f5` | A monitor is in maintenance, or a maintenance window attached to the page is running.      |
 | Unknown                 | `#999`    | No monitor has been checked yet, the page is not published, or the visitor may not see it. |
 
-The state is computed from the same data as the page (`overall` in the public JSON, see
-`statusPageBadgeState()` in `src/server/status-pages/badge.ts`); when several apply, the most severe wins
+The state is computed from the same data as the page (the components' statuses, the incident impacts and
+the running maintenance, see `badgeInput()` / `statusPageBadgeState()` in
+`src/server/status-pages/badge.ts`); an active incident that names no component counts with its declared
+impact. When several apply, the most severe wins
 (major > partial > degraded > maintenance > operational > unknown). A static component with an impact
 also changes its own status (amber or red), which counts towards `overall` exactly as on the page. Only the state is rendered: never
 monitor names, uptime or response times, whatever the page's display settings.
@@ -451,6 +525,11 @@ With another proxy (nginx, Traefik, Cloudflare), terminate TLS there, forward th
 
 ## Testing
 
+- `tests/int/incident-timeline.int.spec.ts` — the investigating → identified → monitoring → resolved flow
+  through the REST routes, per-component impact in the public payload and overall status, RSS items per
+  update, edited text, validation and roles, declared impacts, legacy migration and the update event.
+- `src/lib/incident-timeline.test.ts` — the timeline rules (impact carry-over, resolve reset, ordering,
+  style mapping).
 - `tests/int/status-page-components.int.spec.ts` — static components driven by incident impact and
   maintenance, public names, collapsible group status, `showValues` stripping the JSON, validation and the
   component helpers.
@@ -468,7 +547,8 @@ With another proxy (nginx, Traefik, Cloudflare), terminate TLS there, forward th
   (renderers) and `src/lib/status-page-badge.test.ts` (embed snippets) are the unit tests.
 - `src/lib/markdown.test.ts` — the Markdown subset and its HTML escaping.
 - `tests/e2e/status-pages.e2e.spec.ts` — seeds an organization, monitor and published page through the
-  Local API, visits `/status/<slug>` anonymously, checks title, group, monitor link, incident and the
+  Local API, visits `/status/<slug>` anonymously, checks title, group, monitor link, incident (including a
+  timeline with a major outage until it is resolved) and the
   public API / RSS / manifest; unpublished slugs return 404.
 - `tests/int/status-page-access.int.spec.ts` — password protection: hashing and field access, 401 on the
   JSON endpoint, RSS, manifest and badges without access, login (JSON and form, cross-site refusal),

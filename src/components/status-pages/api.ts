@@ -3,6 +3,7 @@
  * with the user's session; the server enforces organization scoping and role permissions.
  */
 import { api } from '@/lib/api'
+import type { ComponentImpact, IncidentStatus } from '@/lib/incident-timeline'
 import type { Incident, Monitor, StatusPage } from '@/payload-types'
 
 export type OrgId = string | number
@@ -54,8 +55,27 @@ export type StatusPagePatch = Partial<
 }
 
 export type IncidentPatch = Partial<
-  Pick<Incident, 'title' | 'content' | 'style' | 'pinned' | 'active' | 'affectedComponents'>
+  Pick<Incident, 'title' | 'pinned' | 'active' | 'impact' | 'affectedComponents'>
 >
+
+export type IncidentUpdateRow = NonNullable<Incident['updates']>[number]
+
+/**
+ * A new timeline entry. `components` are component ids (group row ids); components left out keep
+ * their impact. `impact` is for incidents without components.
+ */
+export interface IncidentUpdateDraft {
+  status: IncidentStatus
+  message?: string
+  components?: { component: string; impact: ComponentImpact }[]
+  impact?: ComponentImpact
+  postedAt?: string
+}
+
+export type IncidentOpenDraft = Omit<IncidentUpdateDraft, 'postedAt'> & {
+  title: string
+  pinned?: boolean
+}
 
 export type StatusPageAssetKind = 'logo' | 'logoDark' | 'favicon'
 
@@ -95,11 +115,8 @@ export const statusPagesApi = {
   incidents: {
     list: (orgId: OrgId, id: OrgId) =>
       api.get<{ docs: Incident[] }>(`${base(orgId)}/${id}/incidents`),
-    create: (orgId: OrgId, id: OrgId, data: IncidentPatch & { title: string }) =>
-      api.post<{ doc: Incident }>(
-        `${base(orgId)}/${id}/incidents`,
-        data as Record<string, unknown>,
-      ),
+    create: (orgId: OrgId, id: OrgId, data: IncidentOpenDraft) =>
+      api.post<{ doc: Incident }>(`${base(orgId)}/${id}/incidents`, { ...data }),
     update: (orgId: OrgId, id: OrgId, incidentId: OrgId, data: IncidentPatch) =>
       api.patch<{ doc: Incident }>(
         `${base(orgId)}/${id}/incidents/${incidentId}`,
@@ -107,6 +124,16 @@ export const statusPagesApi = {
       ),
     remove: (orgId: OrgId, id: OrgId, incidentId: OrgId) =>
       api.delete<{ ok: true }>(`${base(orgId)}/${id}/incidents/${incidentId}`),
+    postUpdate: (orgId: OrgId, id: OrgId, incidentId: OrgId, data: IncidentUpdateDraft) =>
+      api.post<{ doc: Incident; update: IncidentUpdateRow }>(
+        `${base(orgId)}/${id}/incidents/${incidentId}/updates`,
+        { ...data },
+      ),
+    editUpdate: (orgId: OrgId, id: OrgId, incidentId: OrgId, updateId: string, message: string) =>
+      api.patch<{ doc: Incident; update: IncidentUpdateRow }>(
+        `${base(orgId)}/${id}/incidents/${incidentId}/updates/${encodeURIComponent(updateId)}`,
+        { message },
+      ),
   },
 }
 

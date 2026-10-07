@@ -13,13 +13,20 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { track } from '@/lib/analytics'
+import { componentDisplayName } from '@/lib/status-page-components'
 import type { Incident, StatusPage } from '@/payload-types'
 
-import { publicStatusPagePath, statusPagesApi, type MonitorOption, type OrgId } from '../api'
+import {
+  publicStatusPagePath,
+  relationId,
+  statusPagesApi,
+  type MonitorOption,
+  type OrgId,
+} from '../api'
 import { AccessPanel } from './access-panel'
 import { DomainsPanel } from './domains-panel'
 import { GroupsEditor } from './groups-editor'
-import { IncidentsPanel } from './incidents-panel'
+import { IncidentsPanel, type IncidentComponentOption } from './incidents-panel'
 import { SettingsForm } from './settings-form'
 import { SharePanel } from './share-panel'
 import { ThemeEditor } from './theme-editor'
@@ -34,6 +41,20 @@ export interface EditorProps {
   canDelete: boolean
   /** Organization time zone the incident timestamps render in. */
   timeZone: string
+}
+
+/** The page's components (group rows, by row id) in display order: what an incident can affect. */
+function pageComponents(page: StatusPage, monitors: MonitorOption[]): IncidentComponentOption[] {
+  const byId = new Map(monitors.map((m) => [String(m.id), m]))
+  return (page.groups ?? []).flatMap((group) =>
+    (group.monitors ?? []).flatMap((row) => {
+      if (!row.id) return []
+      const monitor =
+        row.type === 'static' || row.monitor == null ? null : byId.get(relationId(row.monitor))
+      const name = componentDisplayName(row.name, monitor) || `${group.name} #${row.id.slice(-4)}`
+      return [{ id: row.id, name }]
+    }),
+  )
 }
 
 export function StatusPageEditor({
@@ -51,6 +72,7 @@ export function StatusPageEditor({
   const [page, setPage] = React.useState(initialPage)
   const [publishing, setPublishing] = React.useState(false)
   const publicHref = publicStatusPagePath(page.slug)
+  const incidentComponents = React.useMemo(() => pageComponents(page, monitors), [page, monitors])
 
   async function togglePublished(next: boolean) {
     setPublishing(true)
@@ -153,10 +175,9 @@ export function StatusPageEditor({
               orgId={orgId}
               pageId={page.id}
               initialIncidents={initialIncidents}
+              components={incidentComponents}
               timeZone={timeZone}
               canEdit={canEdit}
-              page={page}
-              monitors={monitors}
             />
           </TabsContent>
           <TabsContent value="domains" className="pt-6">

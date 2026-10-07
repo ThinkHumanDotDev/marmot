@@ -2825,6 +2825,23 @@
         "partial_outage": "Partial outage",
         "major_outage": "Major outage"
       },
+      "incidents": {
+        "status": {
+          "investigating": "Investigating",
+          "identified": "Identified",
+          "monitoring": "Monitoring",
+          "resolved": "Resolved"
+        },
+        "feedTitle": "[{status}] {title}",
+        "affected": "Affected: {components}",
+        "affectedLabel": "Affected components",
+        "componentImpact": "{name} ({impact})",
+        "latestUpdate": "Latest update",
+        "showTimeline": "Show all {count, plural, one {# update} other {# updates}}",
+        "timelineLabel": "Updates for {title}",
+        "edited": "edited",
+        "editedAt": "Edited {time}"
+      },
       "maintenance": {
         "state": {
           "scheduled": "Scheduled",
@@ -2868,7 +2885,6 @@
     "rss": {
       "title": "{title} status",
       "description": "Current status: {status}",
-      "resolved": "[Resolved] {title}",
       "monitorDown": "{name} is down",
       "monitorDownSince": "{name} has been down since {since}.",
       "monitorDownDescription": "{name} is down."
@@ -3024,63 +3040,75 @@
     },
     "incidents": {
       "title": "Incidents",
-      "description": "Announcements shown on the public page and in its RSS feed.",
-      "post": "Post incident",
+      "description": "Post incidents and follow them up with updates. Visitors see the latest update and the full timeline.",
+      "post": "New incident",
       "empty": "No incidents. Post one when something needs explaining.",
       "resolvedHeading": "Resolved",
-      "styles": {
-        "info": "info",
-        "warning": "warning",
-        "danger": "danger",
-        "primary": "primary"
-      },
       "pinnedBadge": "Pinned",
-      "resolvedBadge": "Resolved",
-      "resolvedAt": " · resolved {time}",
-      "edit": "Edit",
       "pin": "Pin",
       "unpin": "Unpin",
-      "resolve": "Resolve",
-      "reopen": "Reopen",
       "delete": "Delete",
       "confirmDelete": "Delete incident \"{title}\"?",
       "posted": "Incident posted",
-      "updated": "Incident updated",
       "pinned": "Pinned",
       "unpinned": "Unpinned",
       "resolved": "Incident resolved",
       "reopened": "Incident reopened",
       "deleted": "Incident deleted",
-      "saveFailed": "Could not save incident",
       "updateFailed": "Could not update incident",
       "deleteFailed": "Could not delete incident",
-      "dialog": {
-        "postTitle": "Post incident",
-        "editTitle": "Edit incident",
-        "description": "Markdown is supported: paragraphs, **bold**, _italics_, `code`, links and lists.",
-        "title": "Title",
-        "details": "Details",
-        "style": "Style",
-        "pinToTop": "Pin to top",
-        "cancel": "Cancel",
-        "post": "Post",
-        "save": "Save",
-        "saving": "Saving…"
+      "resolvedAt": " · resolved {time}",
+      "openedAt": "Opened {time}",
+      "rename": "Rename",
+      "renamed": "Incident renamed",
+      "saveFailed": "Could not save incident",
+      "timeline": "Timeline",
+      "showTimeline": "Show timeline ({count})",
+      "hideTimeline": "Hide timeline",
+      "edited": "edited",
+      "editedTitle": "Edited {time}",
+      "editUpdate": "Edit update text",
+      "saveUpdate": "Save",
+      "cancel": "Cancel",
+      "updateEdited": "Update edited",
+      "noMessage": "No message.",
+      "composer": {
+        "title": "Post update",
+        "status": "Status",
+        "message": "Message",
+        "messagePlaceholder": "What changed? Markdown is supported.",
+        "post": "Post update",
+        "posting": "Posting…",
+        "posted": "Update posted",
+        "failed": "Could not post update",
+        "resolveHint": "Resolving resets every affected component to operational."
       },
       "components": {
-        "label": "Affected components",
-        "hint": "Components show this impact on the public page while the incident is active.",
+        "title": "Affected components",
+        "hint": "Components you leave unchanged keep their current impact.",
+        "add": "Add component",
+        "addPlaceholder": "Add a component…",
         "none": "Add components to the page's groups first.",
-        "add": "Add affected component…",
         "remove": "Remove {name}",
-        "impact": "Impact of {name}",
         "unknown": "Removed component",
-        "impacts": {
-          "operational": "Operational",
-          "degraded_performance": "Degraded performance",
-          "partial_outage": "Partial outage",
-          "major_outage": "Major outage"
-        }
+        "overallImpact": "Impact",
+        "overallImpactHint": "No component selected: this impact applies to the whole page.",
+        "impact": "Impact of {name}"
+      },
+      "newDialog": {
+        "title": "New incident",
+        "description": "Opens an incident with its first update. Markdown is supported: paragraphs, **bold**, _italics_, `code`, links and lists.",
+        "titleLabel": "Title",
+        "pinToTop": "Pin to top",
+        "cancel": "Cancel",
+        "submit": "Open incident",
+        "saving": "Saving…"
+      },
+      "renameDialog": {
+        "title": "Rename incident",
+        "titleLabel": "Title",
+        "cancel": "Cancel",
+        "save": "Save"
       }
     },
     "domains": {
@@ -3873,6 +3901,13 @@
     "serverSmtpRestrictedOff": "Sending through the server SMTP settings is turned off on this instance.",
     "serverSmtpRestrictedSuperadmin": "Only an instance superadmin can turn on the server SMTP settings for a channel.",
     "incidentComponentsInvalid": "Each affected component must be listed once and belong to the status page.",
+    "incidentComponentsShape": "components must be an array of { component, impact }.",
+    "incidentUpdateStatusInvalid": "status must be investigating, identified, monitoring or resolved.",
+    "incidentImpactInvalid": "impact must be operational, degraded_performance, partial_outage or major_outage.",
+    "incidentPostedAtInvalid": "postedAt must be an ISO date.",
+    "incidentPostedAtFuture": "Updates cannot be posted in the future.",
+    "incidentMessageInvalid": "message must be a string.",
+    "incidentUpdateNotFound": "Update not found",
     "httpUrlRequired": "Enter an http(s) URL.",
     "contactUrlInvalid": "Enter an http(s) URL or a mailto: address.",
     "componentMonitorRequired": "Pick a monitor for this component.",

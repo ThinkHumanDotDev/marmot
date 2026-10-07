@@ -18,6 +18,7 @@ import type {
   PublicConfig,
   PublicGroup,
   PublicIncident,
+  PublicIncidentUpdate,
   PublicMonitor,
   PublicStatusPageData,
 } from '@/server/status-pages/public'
@@ -114,34 +115,121 @@ export function StatusPageLogo({
   return img((logo ?? logoDark)!)
 }
 
-export function IncidentCard({ incident }: { incident: PublicIncident }) {
-  const format = useFormatter()
-  return (
-    <article
-      data-incident-style={incident.style}
-      className={cn('rounded-xl border px-5 py-4', incidentStyles[incident.style])}
-    >
-      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3 className="text-base font-semibold">{incident.title}</h3>
-        <time dateTime={incident.updatedAt} className="text-xs text-muted-foreground">
-          {format.dateTime(new Date(incident.updatedAt), 'short')}
-        </time>
-      </header>
-      {incident.content && (
-        <div
-          className="prose-sm mt-2 max-w-none text-sm leading-relaxed [&_a]:underline [&_code]:rounded [&_code]:bg-background/60 [&_code]:px-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5"
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(incident.content) }}
-        />
-      )}
-    </article>
-  )
-}
+const MARKDOWN_CLASS =
+  'prose-sm max-w-none text-sm leading-relaxed [&_a]:underline [&_code]:rounded [&_code]:bg-background/60 [&_code]:px-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5'
 
-const impactStyles: Record<ComponentImpact, string> = {
+/** Badge colours per component impact (incident cards and component rows). */
+export const impactStyles: Record<ComponentImpact, string> = {
   operational: 'border-status-up/40 text-status-up',
   degraded_performance: 'border-status-pending/50 text-status-pending',
   partial_outage: 'border-status-pending/50 text-status-pending',
   major_outage: 'border-status-down/40 text-status-down',
+}
+
+export function ImpactBadge({ impact, name }: { impact: ComponentImpact; name?: string }) {
+  const t = useTranslations('statusPages.public')
+  const label = t(`impact.${impact}`)
+  return (
+    <span
+      data-impact={impact}
+      className={cn(
+        'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap',
+        impactStyles[impact],
+      )}
+    >
+      {name ? t('incidents.componentImpact', { name, impact: label }) : label}
+    </span>
+  )
+}
+
+function IncidentUpdateEntry({ update }: { update: PublicIncidentUpdate }) {
+  const t = useTranslations('statusPages.public.incidents')
+  const format = useFormatter()
+  return (
+    <div data-update-status={update.status}>
+      <p className="flex flex-wrap items-baseline gap-x-2 text-xs">
+        <span className="font-semibold">{t(`status.${update.status}`)}</span>
+        <time dateTime={update.postedAt} className="text-muted-foreground">
+          {format.dateTime(new Date(update.postedAt), 'short')}
+        </time>
+        {update.editedAt && (
+          <span
+            className="text-muted-foreground italic"
+            title={t('editedAt', { time: format.dateTime(new Date(update.editedAt), 'short') })}
+          >
+            ({t('edited')})
+          </span>
+        )}
+      </p>
+      {update.message && (
+        <div
+          className={cn('mt-1', MARKDOWN_CLASS)}
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(update.message) }}
+        />
+      )}
+      {update.components.length > 0 && (
+        <p className="mt-1.5 flex flex-wrap gap-1">
+          {update.components.map((c) => (
+            <ImpactBadge key={c.id} impact={c.impact} name={c.name} />
+          ))}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * An incident: title, current status and impact, the latest update inline and the rest of the
+ * timeline (newest first) behind a disclosure.
+ */
+export function IncidentCard({ incident }: { incident: PublicIncident }) {
+  const t = useTranslations('statusPages.public.incidents')
+  const [latest, ...earlier] = incident.updates
+  const impacted = incident.components.filter((c) => c.impact !== 'operational')
+  return (
+    <article
+      data-incident-style={incident.style}
+      data-incident-status={incident.status}
+      data-incident-impact={incident.impact}
+      className={cn('rounded-xl border px-5 py-4', incidentStyles[incident.style])}
+    >
+      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h3 className="text-base font-semibold">{incident.title}</h3>
+        {incident.active && incident.impact !== 'operational' && (
+          <ImpactBadge impact={incident.impact} />
+        )}
+      </header>
+      {impacted.length > 0 && (
+        <p className="mt-2 flex flex-wrap gap-1" aria-label={t('affectedLabel')}>
+          {impacted.map((c) => (
+            <ImpactBadge key={c.id} impact={c.impact} name={c.name} />
+          ))}
+        </p>
+      )}
+      {latest && (
+        <section className="mt-3" aria-label={t('latestUpdate')}>
+          <IncidentUpdateEntry update={latest} />
+        </section>
+      )}
+      {earlier.length > 0 && (
+        <details className="group mt-3">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
+            {t('showTimeline', { count: incident.updates.length })}
+          </summary>
+          <ol
+            className="mt-3 flex flex-col gap-3 border-l pl-4"
+            aria-label={t('timelineLabel', { title: incident.title })}
+          >
+            {earlier.map((update) => (
+              <li key={update.id}>
+                <IncidentUpdateEntry update={update} />
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
+    </article>
+  )
 }
 
 /** Public component description, revealed on hover or focus of the info icon. */
@@ -192,6 +280,7 @@ function MonitorRow({ monitor }: { monitor: PublicMonitor }) {
       data-component-id={monitor.componentId ?? undefined}
       data-component-type={monitor.type}
       data-component-status={monitor.status}
+      data-monitor-impact={impact ?? undefined}
       className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 py-3 sm:grid-cols-[auto_minmax(0,14rem)_minmax(0,1fr)_auto]"
     >
       <StatusDot status={monitor.status} />
