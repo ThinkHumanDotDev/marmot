@@ -21,16 +21,16 @@ import {
   ROLES,
 } from '@/access/permissions'
 import { adminT } from '@/i18n/admin'
-import { defaultLocale, localeNames, locales } from '@/i18n/locales'
+import { defaultLocale, localeNames, locales, type Locale } from '@/i18n/locales'
 import { PLANS, SUBSCRIPTION_STATUSES } from '@/lib/entitlements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 import { captureServerEvent, hashAnalyticsId } from '@/server/analytics'
 
-import type { Organization, User } from '@/payload-types'
-import { slugMessageIn, userLocale } from '@/server/request-locale'
-import { defaultLocale, type Locale } from '@/i18n/locales'
 import { translateError, type ErrorKey, type ErrorValues } from '@/server/errors'
+import { slugMessageIn, userLocale } from '@/server/request-locale'
+
+import type { Organization, User } from '@/payload-types'
 
 export { PLANS, type Plan } from '@/lib/entitlements'
 

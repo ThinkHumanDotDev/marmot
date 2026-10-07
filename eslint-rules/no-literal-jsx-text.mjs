@@ -50,6 +50,7 @@ export function isTechnical(text) {
   return words.every((word) => /[-_:/$#@0-9]|\w\.\w/.test(word))
 }
 
+/** @type {import('eslint').Rule.RuleModule} */
 export default {
   meta: {
     type: 'suggestion',
