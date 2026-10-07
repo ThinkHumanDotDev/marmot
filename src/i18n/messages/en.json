@@ -2904,13 +2904,6 @@
         "major_outage": "Major outage",
         "under_maintenance": "Under maintenance"
       },
-      "maintenanceStatus": {
-        "scheduled": "Scheduled",
-        "in_progress": "In progress",
-        "completed": "Completed",
-        "cancelled": "Cancelled"
-      },
-      "maintenanceBody": "Scheduled maintenance: {title}",
       "calendarName": "{title} maintenance",
       "markdown": {
         "currentStatus": "Current status",
@@ -2941,7 +2934,7 @@
           "status": "overall indicator (none, minor, major or critical) and its description",
           "components": "every component and its status",
           "incidents": "the 50 most recent incidents with all their updates",
-          "scheduled-maintenances": "maintenance windows of the last 30 and the next 90 days"
+          "scheduled-maintenances": "maintenance occurrences, upcoming and from the last 30 days, with their updates"
         },
         "atom": "Atom 1.0 feed, one entry per incident update",
         "jsonFeed": "JSON Feed 1.1, one item per incident update",

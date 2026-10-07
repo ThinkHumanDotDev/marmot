@@ -102,7 +102,7 @@ export async function renderPageMarkdown({
   const names = componentNamesOf(groups)
   const active = incidents.map((incident) => toPublicIncident(incident, names))
   const overall = pageOverallStatus(groups, active)
-  const maintenance = announcedMaintenance(events, now)
+  const maintenance = await announcedMaintenance(payload, page, events, now)
 
   const out: string[] = [`# ${escapeMarkdown(page.title)}`, '']
   if (page.description?.trim()) out.push(page.description.trim(), '')
@@ -152,23 +152,31 @@ export async function renderPageMarkdown({
     out.push(escapeMarkdown(t('statusPages.machine.markdown.noMaintenance')), '')
   }
   for (const event of maintenance) {
-    const when =
-      event.start && event.end
-        ? t('statusPages.machine.markdown.window', {
-            start: time(event.start),
-            end: time(event.end),
-          })
-        : t('statusPages.machine.markdown.untilFurtherNotice')
+    const when = event.end
+      ? t('statusPages.machine.markdown.window', {
+          start: time(event.start),
+          end: time(event.end),
+        })
+      : t('statusPages.machine.markdown.untilFurtherNotice')
     out.push(
       `### ${escapeMarkdown(event.title)}`,
       '',
       `- ${escapeMarkdown(t('statusPages.machine.markdown.status'))}: ${escapeMarkdown(
-        t(`statusPages.machine.maintenanceStatus.${event.status}`),
+        t(`statusPages.public.maintenance.state.${event.state}`),
       )}`,
       `- ${escapeMarkdown(t('statusPages.machine.markdown.when'))}: ${escapeMarkdown(when)}`,
       '',
     )
     if (event.description) out.push(event.description, '')
+    for (const update of event.updates.slice().reverse()) {
+      out.push(
+        `#### ${escapeMarkdown(t(`statusPages.public.maintenance.state.${update.status}`))} · ${time(update.postedAt)}`,
+        '',
+        update.message.trim() ||
+          escapeMarkdown(t(`statusPages.public.maintenance.defaultMessage.${update.status}`)),
+        '',
+      )
+    }
   }
 
   out.push(

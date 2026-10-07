@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import { customDomainSuffix, markdownAliasRewrite } from '@/proxy'
-import { maintenanceWindowsBetween } from '@/server/maintenance/status'
 
 import { statusSince } from './feed'
 import { escapeIcalText, foldLine, icalDate } from './ical'
-import { announcedMaintenance, type MaintenanceEvent } from './maintenance-events'
+import { eventSequence, isCancelledEvent } from './maintenance-events'
 import { escapeMarkdown } from './markdown-output'
 import { componentStatus, impactIndicator, pageStatus, type SpComponent } from './statuspage'
 import { incidentPermalink, statusPageLinks } from './urls'
@@ -31,60 +30,19 @@ describe('iCalendar helpers', () => {
   })
 })
 
-describe('maintenance windows', () => {
-  const from = new Date('2026-10-01T00:00:00Z')
-  const to = new Date('2026-10-08T00:00:00Z')
-
-  it('lists every daily occurrence in a range, including one already running', () => {
-    const windows = maintenanceWindowsBetween(
-      {
-        strategy: 'recurring-interval',
-        intervalDay: 1,
-        timeRange: { start: '23:00', end: '01:00' },
-        timezone: 'UTC',
-        dateRange: { start: '2026-09-01T00:00', end: null },
-      },
-      from,
-      to,
-    )
-    expect(windows[0]).toEqual({
-      start: '2026-09-30T23:00:00.000Z',
-      end: '2026-10-01T01:00:00.000Z',
-    })
-    expect(windows).toHaveLength(8)
+describe('maintenance events', () => {
+  it('treats cancelled occurrences and unfinished ones of paused maintenance as cancelled', () => {
+    expect(isCancelledEvent({ state: 'cancelled', paused: false })).toBe(true)
+    expect(isCancelledEvent({ state: 'scheduled', paused: true })).toBe(true)
+    expect(isCancelledEvent({ state: 'in-progress', paused: true })).toBe(true)
+    expect(isCancelledEvent({ state: 'completed', paused: true })).toBe(false)
+    expect(isCancelledEvent({ state: 'scheduled', paused: false })).toBe(false)
   })
 
-  it('returns the single window only when it overlaps, and nothing for manual', () => {
-    const single = {
-      strategy: 'single',
-      timezone: 'UTC',
-      dateRange: { start: '2026-10-03T10:00', end: '2026-10-03T12:00' },
-    }
-    expect(maintenanceWindowsBetween(single, from, to)).toHaveLength(1)
-    expect(maintenanceWindowsBetween(single, to, new Date('2026-11-01T00:00:00Z'))).toEqual([])
-    expect(maintenanceWindowsBetween({ strategy: 'manual' }, from, to)).toEqual([])
-  })
-
-  it('announces running windows and the next window of each maintenance', () => {
-    const base = {
-      title: 't',
-      description: null,
-      timezone: 'UTC',
-      monitorIds: [],
-      createdAt: '2026-01-01T00:00:00Z',
-      updatedAt: '2026-01-01T00:00:00Z',
-      sequence: 0,
-      end: null,
-    }
-    const events: MaintenanceEvent[] = [
-      { ...base, id: 'a-1', maintenanceId: 'a', status: 'in_progress', start: '2026-10-01T00:00Z' },
-      { ...base, id: 'a-2', maintenanceId: 'a', status: 'scheduled', start: '2026-10-02T00:00Z' },
-      { ...base, id: 'b-1', maintenanceId: 'b', status: 'scheduled', start: '2026-10-03T00:00Z' },
-      { ...base, id: 'b-2', maintenanceId: 'b', status: 'scheduled', start: '2026-10-04T00:00Z' },
-      { ...base, id: 'c', maintenanceId: 'c', status: 'scheduled', start: '2026-12-01T00:00Z' },
-    ]
-    const shown = announcedMaintenance(events, new Date('2026-10-01T01:00:00Z'))
-    expect(shown.map((e) => e.id)).toEqual(['a-1', 'b-1'])
+  it('derives a SEQUENCE that grows with every change', () => {
+    expect(eventSequence('2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z')).toBe(0)
+    expect(eventSequence('2026-10-01T00:00:00Z', '2026-10-01T00:01:30Z')).toBe(90)
+    expect(eventSequence('nope', '2026-10-01T00:00:00Z')).toBe(0)
   })
 })
 

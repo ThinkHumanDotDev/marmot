@@ -10,7 +10,8 @@
  * - incidents: one per Marmot incident; every timeline update becomes an `incident_updates` entry with
  *   `affected_components` (old → new status). `impact` is the peak impact (`none`, `minor`, `major`,
  *   `critical`).
- * - scheduled maintenances: one per maintenance window (`scheduled`, `in_progress`, `completed`).
+ * - scheduled maintenances: one per maintenance occurrence (#154) with its update timeline
+ *   (`scheduled`, `in_progress`, `verifying`, `completed`).
  *
  * Bodies contain no "now" timestamps so their `ETag`s stay stable while nothing changes.
  */
@@ -30,6 +31,7 @@ import type { Incident, StatusPage } from '@/payload-types'
 import { findFeedIncidents, statusSince } from './feed'
 import {
   announcedMaintenance,
+  isCancelledEvent,
   listMaintenanceEvents,
   type MaintenanceEvent,
 } from './maintenance-events'
@@ -325,12 +327,21 @@ export function toSpIncident(incident: Incident, ctx: StatuspageContext): SpInci
   }
 }
 
-const MAINTENANCE_STATUS: Record<MaintenanceEvent['status'], SpMaintenanceStatus> = {
+const MAINTENANCE_STATUS: Record<
+  Exclude<MaintenanceEvent['state'], 'cancelled'>,
+  SpMaintenanceStatus
+> = {
   scheduled: 'scheduled',
-  in_progress: 'in_progress',
+  'in-progress': 'in_progress',
+  verifying: 'verifying',
   completed: 'completed',
-  cancelled: 'completed',
 }
+
+/** Statuspage has no cancelled maintenance (it deletes them): cancelled and paused ones are left out. */
+export const listedInStatuspage = (event: MaintenanceEvent): boolean => !isCancelledEvent(event)
+
+const spMaintenanceStatus = (state: MaintenanceEvent['state']): SpMaintenanceStatus =>
+  state === 'cancelled' ? 'completed' : MAINTENANCE_STATUS[state]
 
 export function toSpMaintenance(
   event: MaintenanceEvent,
@@ -338,10 +349,8 @@ export function toSpMaintenance(
 ): SpScheduledMaintenance {
   const t = getTranslator(ctx.locale)
   const monitors = new Set(event.monitorIds)
-  const status = MAINTENANCE_STATUS[event.status]
-  // Manual maintenance has no window: it runs from its last change until switched off.
-  const start = iso(event.start ?? event.updatedAt)
-  const end = event.end ? iso(event.end) : null
+  const status = spMaintenanceStatus(event.state)
+  const start = iso(event.start)
   const childIds = new Set(
     ctx.groups.flatMap((g) =>
       g.monitors
@@ -349,36 +358,42 @@ export function toSpMaintenance(
         .map((m) => m.componentId ?? m.id),
     ),
   )
+  const verifying = event.updates.find((u) => u.status === 'verifying')
+  const updates = event.updates.length
+    ? event.updates
+    : [{ id: 'planned', status: event.state, message: '', postedAt: event.createdAt }]
   return {
     id: event.id,
     name: event.title,
     status,
     created_at: iso(event.createdAt),
     updated_at: iso(event.updatedAt),
-    monitoring_at: null,
-    resolved_at: status === 'completed' ? end : null,
+    monitoring_at: verifying ? iso(verifying.postedAt) : null,
+    resolved_at: event.completedAt ? iso(event.completedAt) : null,
     impact: 'maintenance',
     shortlink: ctx.links.page,
-    started_at: start,
+    started_at: iso(event.startedAt ?? event.start),
     page_id: String(ctx.page.id),
-    incident_updates: [
-      {
-        id: `${event.id}-update`,
-        status,
-        body: event.description ?? t('statusPages.machine.maintenanceBody', { title: event.title }),
+    incident_updates: updates
+      .map((update) => ({
+        id: `${event.id}-${update.id}`,
+        status: spMaintenanceStatus(update.status),
+        body:
+          update.message.trim() ||
+          t(`statusPages.public.maintenance.defaultMessage.${update.status}`),
         incident_id: event.id,
-        created_at: iso(event.updatedAt),
-        updated_at: iso(event.updatedAt),
-        display_at: start,
+        created_at: iso(update.postedAt),
+        updated_at: iso(update.postedAt),
+        display_at: iso(update.postedAt),
         affected_components: null,
         deliver_notifications: true,
         custom_tweet: null,
         tweet_id: null,
-      },
-    ],
+      }))
+      .reverse(),
     components: ctx.components.filter((c) => childIds.has(c.id)),
     scheduled_for: start,
-    scheduled_until: end,
+    scheduled_until: event.end ? iso(event.end) : null,
   }
 }
 
@@ -458,7 +473,7 @@ export async function buildSummary(input: StatuspageInput): Promise<SpSummary> {
   ])
   const ctx = await loadContext(input, active)
   const incidents = active.map((incident) => toSpIncident(incident, ctx))
-  const announced = announcedMaintenance(events, now)
+  const announced = await announcedMaintenance(input.payload, input.page, events, now)
   const activeImpacts = active.map((incident) => incidentTimeline(incident).state.impact)
   return {
     page: spPage(
@@ -474,7 +489,7 @@ export async function buildSummary(input: StatuspageInput): Promise<SpSummary> {
       ctx.components,
       activeImpacts,
       input.locale,
-      announced.some((m) => m.status === 'in_progress'),
+      announced.some((m) => m.state === 'in-progress' || m.state === 'verifying'),
     ),
   }
 }
@@ -512,7 +527,10 @@ export async function buildIncidents(
   }
 }
 
-/** Maintenance windows of the last 30 and next 90 days, newest first. */
+/**
+ * Maintenance occurrences: every unfinished one and those of the last 30 days, newest first
+ * (cancelled and paused ones left out).
+ */
 export async function buildScheduledMaintenances(
   input: StatuspageInput,
 ): Promise<{ page: SpPage; scheduled_maintenances: SpScheduledMaintenance[] }> {
@@ -525,7 +543,7 @@ export async function buildScheduledMaintenances(
   return {
     page: spPage(ctx, ...events.map((m) => m.updatedAt)),
     scheduled_maintenances: events
-      .slice()
+      .filter(listedInStatuspage)
       .reverse()
       .map((event) => toSpMaintenance(event, ctx)),
   }

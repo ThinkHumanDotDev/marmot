@@ -1,14 +1,15 @@
 /**
- * iCalendar (RFC 5545) feed of a status page's maintenance windows: recent and upcoming
- * occurrences (`./maintenance-events`), one `VEVENT` per window with a stable `UID`, a `SEQUENCE`
- * that grows with every edit of the maintenance, and `STATUS:CANCELLED` for upcoming windows of a
- * paused maintenance. Manual maintenance has no window and is left out.
+ * iCalendar (RFC 5545) feed of a status page's maintenance: one `VEVENT` per persisted occurrence
+ * (`./maintenance-events`) with a stable `UID` (the occurrence id), a `SEQUENCE` that grows with every
+ * change of the occurrence or its maintenance, and `STATUS:CANCELLED` for cancelled occurrences and
+ * unfinished ones of a paused maintenance. A manual maintenance's occurrence has no planned end and
+ * appears once it is completed.
  */
 import { getTranslator } from '@/i18n/translator'
 import type { Locale } from '@/i18n/locales'
 import type { StatusPage } from '@/payload-types'
 
-import type { MaintenanceEvent } from './maintenance-events'
+import { isCancelledEvent, type MaintenanceEvent } from './maintenance-events'
 import { serverUrl } from './urls'
 
 /** How often calendar clients should refresh (`X-PUBLISHED-TTL`, `REFRESH-INTERVAL`). */
@@ -90,19 +91,20 @@ export function renderMaintenanceCalendar({
   ]
 
   for (const event of events) {
-    if (!event.start || !event.end) continue
+    const end = event.end ?? event.completedAt
+    if (!end) continue
     lines.push(
       'BEGIN:VEVENT',
-      `UID:maintenance-${event.id}@${host}`,
+      `UID:maintenance-occurrence-${event.id}@${host}`,
       `DTSTAMP:${icalDate(event.updatedAt)}`,
       `CREATED:${icalDate(event.createdAt)}`,
       `LAST-MODIFIED:${icalDate(event.updatedAt)}`,
       `SEQUENCE:${event.sequence}`,
       `DTSTART:${icalDate(event.start)}`,
-      `DTEND:${icalDate(event.end)}`,
+      `DTEND:${icalDate(end)}`,
       `SUMMARY:${escapeIcalText(event.title)}`,
       ...(event.description ? [`DESCRIPTION:${escapeIcalText(event.description)}`] : []),
-      `STATUS:${event.status === 'cancelled' ? 'CANCELLED' : 'CONFIRMED'}`,
+      `STATUS:${isCancelledEvent(event) ? 'CANCELLED' : 'CONFIRMED'}`,
       'TRANSP:TRANSPARENT',
       `URL:${pageUrl}`,
       'END:VEVENT',

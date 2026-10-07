@@ -131,7 +131,7 @@ export function buildOpenApiDocument(
       ),
       '/api/v2/scheduled-maintenances.json': get(
         'getScheduledMaintenances',
-        'Maintenance windows of the last 30 and next 90 days, newest first.',
+        'Maintenance occurrences: unfinished ones and those of the last 30 days, newest first.',
         ok('Scheduled maintenances', 'application/json', {
           type: 'object',
           required: ['page', 'scheduled_maintenances'],

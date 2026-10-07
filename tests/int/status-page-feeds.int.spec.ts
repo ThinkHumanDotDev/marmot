@@ -29,7 +29,15 @@ import type {
   SpScheduledMaintenance,
   SpSummary,
 } from '@/server/status-pages/statuspage'
-import type { Incident, Monitor, Organization, StatusPage } from '@/payload-types'
+import type {
+  Incident,
+  Maintenance,
+  MaintenanceOccurrence,
+  Monitor,
+  Organization,
+  StatusPage,
+} from '@/payload-types'
+import { postOccurrenceUpdate } from '@/server/maintenance'
 
 let payload: Payload
 
@@ -124,6 +132,17 @@ let resolvedIncident: Incident
 let foreignIncident: Incident
 
 const host = () => `feeds-${run}.example.com`
+
+async function occurrencesOf(maintenanceId: string | number): Promise<MaintenanceOccurrence[]> {
+  const { docs } = await payload.find({
+    collection: 'maintenance-occurrences',
+    where: { maintenance: { equals: maintenanceId } },
+    sort: 'start',
+    depth: 0,
+    pagination: false,
+  })
+  return docs as MaintenanceOccurrence[]
+}
 
 describe('status page feeds and machine-readable outputs', () => {
   beforeAll(async () => {
@@ -279,24 +298,57 @@ describe('status page feeds and machine-readable outputs', () => {
       } as never,
       overrideAccess: true,
     })
-    await payload.create({
+    // Cancelled occurrence (#154): announced in the calendar as cancelled, absent from the JSON.
+    const toCancel = (await payload.create({
       collection: 'maintenance',
       data: {
         organization: org.id,
-        title: 'Paused window',
+        title: 'Cancelled window',
         strategy: 'single',
-        active: false,
+        active: true,
         timezone: 'UTC',
+        reminders: [],
         dateRange: { start: minutes(48 * 60), end: minutes(48 * 60 + 30) },
         statusPages: [page.id],
       } as never,
       overrideAccess: true,
+    })) as Maintenance
+    const [planned] = await occurrencesOf(toCancel.id)
+    await postOccurrenceUpdate(payload, toCancel, planned, {
+      status: 'cancelled',
+      message: 'Not needed after all.',
+    })
+
+    // Running occurrence, moved on to verifying.
+    const running = (await payload.create({
+      collection: 'maintenance',
+      data: {
+        organization: org.id,
+        title: 'Network work',
+        strategy: 'single',
+        active: true,
+        timezone: 'UTC',
+        reminders: [],
+        dateRange: { start: minutes(-30), end: minutes(30) },
+        statusPages: [page.id],
+      } as never,
+      overrideAccess: true,
+    })) as Maintenance
+    let [current] = await occurrencesOf(running.id)
+    if (current.state === 'scheduled') {
+      await postOccurrenceUpdate(payload, running, current, { status: 'in-progress' })
+      ;[current] = await occurrencesOf(running.id)
+    }
+    await postOccurrenceUpdate(payload, running, current, {
+      status: 'verifying',
+      message: 'Checking the links.',
     })
   })
 
   afterAll(async () => {
     if (org?.id) {
       const where = { organization: { equals: org.id } }
+      await payload.delete({ collection: 'maintenance-occurrences', where })
       await payload.delete({ collection: 'maintenance', where })
       await payload.delete({ collection: 'incidents', where })
       await payload.delete({ collection: 'status-pages', where })
@@ -379,16 +431,19 @@ describe('status page feeds and machine-readable outputs', () => {
         expect(line).not.toMatch(/\n|\r/)
       }
       expect(ics).toContain('X-PUBLISHED-TTL:PT1H')
-      expect((ics.match(/BEGIN:VEVENT/g) ?? []).length).toBe(2)
-      expect((ics.match(/END:VEVENT/g) ?? []).length).toBe(2)
+      expect((ics.match(/BEGIN:VEVENT/g) ?? []).length).toBe(3)
+      expect((ics.match(/END:VEVENT/g) ?? []).length).toBe(3)
       expect(ics).toContain('SUMMARY:Database upgrade')
       expect(ics).toContain('DESCRIPTION:Short\\, planned\\; downtime.')
       expect(ics).toContain('STATUS:CONFIRMED')
-      expect(ics).toContain('SUMMARY:Paused window')
-      expect(ics).toContain('STATUS:CANCELLED')
+      expect(ics).toContain('SUMMARY:Network work')
+      const cancelled = ics.slice(ics.indexOf('SUMMARY:Cancelled window'))
+      expect(cancelled.slice(0, cancelled.indexOf('END:VEVENT'))).toContain('STATUS:CANCELLED')
+      expect((ics.match(/STATUS:CANCELLED/g) ?? []).length).toBe(1)
       expect(ics).toMatch(/SEQUENCE:\d+/)
       const uids = [...ics.matchAll(/UID:(.+)/g)].map((m) => m[1])
-      expect(new Set(uids).size).toBe(2)
+      expect(new Set(uids).size).toBe(3)
+      expect(uids.every((uid) => uid.startsWith('maintenance-occurrence-'))).toBe(true)
 
       const again = await (await get(icsRoute, page.slug, '/maintenance.ics')).text()
       expect(again).toBe(ics)
@@ -449,13 +504,20 @@ describe('status page feeds and machine-readable outputs', () => {
       ])
       expect(incident.components.map((c) => c.id)).toEqual([apiC, staticC])
 
-      expect(summary.scheduled_maintenances).toHaveLength(1)
-      expect(summary.scheduled_maintenances[0]).toMatchObject({
-        name: 'Database upgrade',
-        status: 'scheduled',
-        impact: 'maintenance',
+      // Running first, then upcoming; the cancelled occurrence is left out.
+      expect(summary.scheduled_maintenances.map((m) => [m.name, m.status])).toEqual([
+        ['Network work', 'verifying'],
+        ['Database upgrade', 'scheduled'],
+      ])
+      const [work, upgrade] = summary.scheduled_maintenances
+      expect(upgrade).toMatchObject({ impact: 'maintenance', scheduled_until: expect.any(String) })
+      expect(upgrade.components.map((c) => c.id)).toEqual([apiC])
+      expect(work.monitoring_at).not.toBeNull()
+      expect(work.incident_updates[0]).toMatchObject({
+        status: 'verifying',
+        body: 'Checking the links.',
       })
-      expect(summary.scheduled_maintenances[0].components.map((c) => c.id)).toEqual([apiC])
+      expect(work.incident_updates.length).toBeGreaterThanOrEqual(2)
 
       expect(summary.status).toEqual({ indicator: 'critical', description: 'Major System Outage' })
     })
@@ -495,7 +557,10 @@ describe('status page feeds and machine-readable outputs', () => {
     it('serves scheduled-maintenances.json without paused windows', async () => {
       const res = await get(maintenancesRoute, page.slug, '/api/v2/scheduled-maintenances.json')
       const body = (await res.json()) as { scheduled_maintenances: SpScheduledMaintenance[] }
-      expect(body.scheduled_maintenances.map((m) => m.name)).toEqual(['Database upgrade'])
+      expect(body.scheduled_maintenances.map((m) => m.name)).toEqual([
+        'Database upgrade',
+        'Network work',
+      ])
       expectShape(body.scheduled_maintenances, fixture.scheduled_maintenances)
     })
 
@@ -533,6 +598,10 @@ describe('status page feeds and machine-readable outputs', () => {
       expect(md).toContain('A bad deploy.')
       expect(md).not.toContain('Slow')
       expect(md).toContain('### Database upgrade')
+      expect(md).toContain('### Network work')
+      expect(md).toContain('- Status: Verifying')
+      expect(md).toContain('Checking the links.')
+      expect(md).not.toContain('Cancelled window')
       expect(md).toContain(`(${BASE}/status/${page.slug}/api/v2/summary.json)`)
     })
 

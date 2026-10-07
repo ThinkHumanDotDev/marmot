@@ -139,7 +139,7 @@ pages they also need the page's access cookie or `?pw=` (see below), and answer 
 | `GET /status/:slug/rss`                              | RSS 2.0: one item per incident update and monitors currently down.                                  |
 | `GET /status/:slug/feed/atom`                        | Atom 1.0, the same items ([Feeds and machine-readable output](#feeds-and-machine-readable-output)). |
 | `GET /status/:slug/feed/json`                        | JSON Feed 1.1, the same items.                                                                      |
-| `GET /status/:slug/maintenance.ics`                  | iCalendar feed of recent and upcoming maintenance windows.                                          |
+| `GET /status/:slug/maintenance.ics`                  | iCalendar feed of recent and upcoming maintenance occurrences.                                      |
 | `GET /status/:slug/api/v2/summary.json` (and others) | Statuspage-compatible JSON.                                                                         |
 | `GET /status/:slug.md`, `…/incidents/:id.md`         | The page or one incident as Markdown.                                                               |
 | `GET /status/:slug/llms.txt`                         | Describes the page and links every endpoint above.                                                  |
@@ -300,7 +300,7 @@ agents. All of them hang off the page URL (`/status/<slug>`, or the root of a cu
 | `/api/v2/status.json`                    | Statuspage v2: page and status indicator                                            |
 | `/api/v2/components.json`                | Statuspage v2: page and components                                                  |
 | `/api/v2/incidents.json`                 | Statuspage v2: the 50 most recent incidents                                         |
-| `/api/v2/scheduled-maintenances.json`    | Statuspage v2: maintenance windows of the last 30 and next 90 days, newest first    |
+| `/api/v2/scheduled-maintenances.json`    | Statuspage v2: maintenance occurrences, unfinished and of the last 30 days          |
 | `.md` (`/status/<slug>.md`), `/index.md` | Markdown: status, components, ongoing incidents, maintenance                        |
 | `/incidents/<id>.md`                     | Markdown: one incident and its whole timeline                                       |
 | `/llms.txt`                              | [llms.txt](https://llmstxt.org): what the page is and links to everything above     |
@@ -314,13 +314,14 @@ server host and the page creation date, so they are the same on the main host an
 edited update keeps its id and moves its `updated` / `date_modified`. The opening update carries the
 incident title, later ones `[Status] Title`.
 
-**iCalendar.** One `VEVENT` per maintenance window (recurring maintenance yields one per occurrence)
-from 30 days ago to 90 days ahead, at most 100 per maintenance. `UID` is
-`maintenance-<id>[-<start, unix seconds>]@<server host>` and stays stable; `SEQUENCE` is the number of
-seconds between the maintenance's creation and its last edit, so it grows with every edit. Upcoming
-windows of a paused maintenance are sent as `STATUS:CANCELLED` so subscribed calendars drop them.
-Manual maintenance has no window and is left out. Lines are folded at 75 octets; `X-PUBLISHED-TTL` and
-`REFRESH-INTERVAL` ask clients to refresh hourly.
+**iCalendar.** One `VEVENT` per [maintenance occurrence](Maintenance.md) (the persisted windows of
+#154): every unfinished occurrence, plus those that started or finished in the last 30 days. `UID` is
+`maintenance-occurrence-<occurrence id>@<server host>` and stays stable; `SEQUENCE` is the number of
+seconds between the occurrence's creation and the last change of the occurrence or its maintenance, so it
+grows with every edit and state change. Cancelled occurrences, and unfinished occurrences of a paused
+maintenance, are sent as `STATUS:CANCELLED` so subscribed calendars drop them. A manual maintenance's
+run has no planned end and appears once it is completed. Lines are folded at 75 octets;
+`X-PUBLISHED-TTL` and `REFRESH-INTERVAL` ask clients to refresh hourly.
 
 **Statuspage-compatible JSON.** Field names and enum values follow the public Atlassian Statuspage v2
 API (`src/server/status-pages/statuspage.ts`), so existing clients and aggregators can point at
@@ -337,17 +338,22 @@ API (`src/server/status-pages/statuspage.ts`), so existing clients and aggregato
   resolved incident keeps it. Every update becomes an `incident_updates` entry (newest first, `body` in
   Markdown) with `affected_components` listing `old_status` → `new_status`; a resolving update lists the
   components it returned to `operational`. `shortlink` is the incident permalink.
-- **Scheduled maintenances**: one per window with `impact: "maintenance"`, `status` `scheduled`,
-  `in_progress` or `completed`, `scheduled_for` / `scheduled_until`, and the components of the monitors
-  it covers. `summary.json` lists running windows and the next window of each maintenance within 7 days
-  (what the page shows). Manual maintenance is `in_progress` with `scheduled_for` set to its last change
-  and no `scheduled_until`. Paused maintenance is left out.
+- **Scheduled maintenances**: one per maintenance occurrence with `impact: "maintenance"`, `status`
+  `scheduled`, `in_progress`, `verifying` or `completed` (the occurrence state), `scheduled_for` /
+  `scheduled_until` (the planned window; no end for manual maintenance), `started_at` / `resolved_at`
+  (when it actually started and completed), `monitoring_at` (first `verifying` update), and the
+  components of the monitors it covers. The occurrence's update timeline becomes `incident_updates`
+  (newest first; automatic transitions without text get the default message). Statuspage has no
+  cancelled maintenance, so cancelled occurrences and unfinished ones of a paused maintenance are left
+  out. `summary.json` lists what the page announces and is not finished (running occurrences and the
+  next one of each maintenance within 7 days); `scheduled-maintenances.json` lists every unfinished
+  occurrence and those of the last 30 days, newest first.
 - **Status**: `indicator` is the worst of the active incidents' impacts and the components: `minor` for
   degraded performance, `major` for a partial outage or some components down, `critical` when every
   component is down. The `description` is Statuspage's (`All Systems Operational`, `Minor Service
 Outage`, `Partial System Outage`, `Major System Outage`, `Service Under Maintenance` while maintenance
   runs and nothing is wrong), in the page's language.
-- Not mapped: `postmortem` status, `verifying` maintenance status, subscriptions and the
+- Not mapped: `postmortem` status, subscriptions and the
   `unresolved` / `upcoming` / `active` sub-resources.
 
 **Markdown and `llms.txt`.** `/status/<slug>.md` is rewritten by `src/proxy.ts` to `/status/<slug>/index.md`
@@ -630,7 +636,7 @@ With another proxy (nginx, Traefik, Cloudflare), terminate TLS there, forward th
   unique ids, permalinks), the iCalendar feed (folding, UIDs, cancelled windows), the Statuspage JSON
   checked against a Statuspage `summary.json` fixture (`tests/fixtures/statuspage/summary.json`),
   Markdown, `llms.txt`, OpenAPI, ETag/304, CORS, problem details, password protection and custom-domain
-  links. `src/server/status-pages/machine-formats.test.ts` covers line folding, maintenance windows,
+  links. `src/server/status-pages/machine-formats.test.ts` covers line folding, cancelled maintenance events,
   the Statuspage status mapping and the proxy rewrites.
 
 - `tests/int/incident-timeline.int.spec.ts` — the investigating → identified → monitoring → resolved flow
