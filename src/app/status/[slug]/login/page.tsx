@@ -8,6 +8,7 @@ import type * as React from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getStatusPageLocale } from '@/i18n/server'
+import { isEventsReturnPath } from '@/lib/status-page-events'
 import { STATUS_PAGE_MAGIC_LINK_TTL_MINUTES } from '@/lib/status-page-access'
 import { isProtectedPage } from '@/server/status-pages/access'
 import { MAGIC_LINK_TOKEN_PARAM } from '@/server/status-pages/magic-link'
@@ -19,7 +20,7 @@ export const dynamic = 'force-dynamic'
 
 type PageProps = {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ error?: string; sent?: string; token?: string }>
+  searchParams: Promise<{ error?: string; sent?: string; token?: string; next?: string }>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -66,7 +67,12 @@ export default async function StatusPageLogin({ params, searchParams }: PageProp
   if (!page) notFound()
 
   const base = statusPageBasePath(page, await headers())
-  if (!isProtectedPage(page) || (await loadPageAccess(slug))?.allowed) redirect(base || '/')
+  // Where to go after signing in: the history or a permalink (#107), else the page itself.
+  const next = isEventsReturnPath(query.next) ? query.next : null
+  if (!isProtectedPage(page) || (await loadPageAccess(slug))?.allowed) {
+    redirect(next ? `${base}${next}` : base || '/')
+  }
+  const nextField = next ? <input type="hidden" name="next" value={next} /> : null
 
   const locale = await getStatusPageLocale(page)
   const t = await getTranslations({ locale, namespace: 'statusPages.access' })
@@ -98,6 +104,7 @@ export default async function StatusPageLogin({ params, searchParams }: PageProp
       content = (
         <form method="post" action={action} className="flex flex-col gap-3">
           <input type="hidden" name={MAGIC_LINK_TOKEN_PARAM} value={token} />
+          {nextField}
           <Button type="submit" className="mt-1" autoFocus>
             {t('emailDomain.confirm')}
           </Button>
@@ -146,6 +153,7 @@ export default async function StatusPageLogin({ params, searchParams }: PageProp
     description = t('description')
     content = (
       <form method="post" action={action} className="flex flex-col gap-3">
+        {nextField}
         {message && <Alert>{message}</Alert>}
         <label htmlFor="status-page-password" className="text-sm font-medium">
           {t('password')}

@@ -11,7 +11,10 @@ import type { Payload } from 'payload'
 import type { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
 import type { StatusPageLanguage, StatusPageTheme } from '@/collections/StatusPages'
 import { defaultLocale } from '@/i18n/locales'
+import { statusPageTimeZone } from '@/i18n/resolve'
+import { DEFAULT_PAST_INCIDENTS_DAYS, MAX_PAST_INCIDENTS_DAYS } from '@/lib/status-page-events'
 import { getThemePreset } from '@/lib/status-page-themes'
+import { offeredChannels, type SubscriberChannel } from '@/lib/status-page-subscribers'
 import {
   incidentTimeline,
   legacyStyleFromImpact,
@@ -32,6 +35,8 @@ import {
   type PublicMaintenance,
 } from '@/server/maintenance/status-page'
 import { populateMonitorTags, toRealtimeTags } from '@/server/realtime/serialize'
+import { pastIncidentDays, type PublicIncidentDay } from '@/server/status-pages/event-summary'
+import { publicIdOf } from '@/server/status-pages/public-ids'
 import { getUptime } from '@/server/stats/uptime-calculator'
 
 import type { Incident, Media, Monitor, StatusPage } from '@/payload-types'
@@ -113,6 +118,8 @@ export interface PublicIncidentUpdate {
 
 export interface PublicIncident {
   id: string
+  /** Short id of the permalink (`<page>/events/incident/<publicId>`). */
+  publicId: string
   title: string
   /** Status of the latest update. */
   status: IncidentStatus
@@ -128,6 +135,8 @@ export interface PublicIncident {
   style: LegacyIncidentStyle
   pinned: boolean
   active: boolean
+  /** When the first update was posted (the start of the incident). */
+  startedAt: string
   createdAt: string
   updatedAt: string
   resolvedAt: string | null
@@ -164,6 +173,8 @@ export interface PublicConfig {
   customCSS: string | null
   footerText: string | null
   googleAnalyticsId: string | null
+  /** Channels visitors may subscribe with (#104); empty when subscriptions are off. */
+  subscriptionChannels: SubscriberChannel[]
 }
 
 export interface PublicStatusPageData {
@@ -177,6 +188,13 @@ export interface PublicStatusPageData {
    * then upcoming, then those finished within `maintenanceVisibilityHours`.
    */
   maintenance: PublicMaintenance[]
+  /** The page's `pastIncidentsDays` (0 when the list is off). */
+  pastIncidentsDays: number
+  /**
+   * Incidents started in each of the last `pastIncidentsDays` days (in the organization's time
+   * zone), newest day first; quiet days have no incidents.
+   */
+  pastIncidents: PublicIncidentDay[]
   /** ISO timestamp of when this payload was built. */
   generatedAt: string
 }
@@ -233,6 +251,7 @@ export function toPublicConfig(page: StatusPage): PublicConfig {
     customCSS: page.customCSS ?? null,
     footerText: page.footerText ?? null,
     googleAnalyticsId: page.googleAnalyticsId ?? null,
+    subscriptionChannels: offeredChannels(page.subscriptions),
   }
 }
 
@@ -253,6 +272,7 @@ export function toPublicIncident(
   const newestFirst = updates.slice().reverse()
   return {
     id: String(incident.id),
+    publicId: publicIdOf('incidents', incident),
     title: incident.title,
     status: state.status,
     impact: state.impact,
@@ -269,6 +289,7 @@ export function toPublicIncident(
     style: legacyStyleFromImpact(state.impact),
     pinned: Boolean(incident.pinned),
     active: state.active,
+    startedAt: updates[0]?.postedAt || incident.createdAt,
     createdAt: incident.createdAt,
     updatedAt: incident.updatedAt,
     resolvedAt: state.resolvedAt ?? incident.resolvedAt ?? null,
@@ -575,11 +596,16 @@ export async function buildPublicStatusPageData(
   payload: Payload,
   page: StatusPage,
 ): Promise<PublicStatusPageData> {
-  const [incidents, maintenance] = await Promise.all([
+  const now = new Date()
+  const timeZone = statusPageTimeZone(page)
+  const pastDays = pastIncidentsDaysOf(page)
+  const [incidents, maintenance, recent] = await Promise.all([
     findActiveIncidents(payload, page.id),
     getActiveMaintenanceForStatusPage(payload, page.id, {
+      now,
       visibilityHours: page.maintenanceVisibilityHours,
     }),
+    findRecentIncidents(payload, page.id, pastDays, now),
   ])
   const groups = await buildPublicGroups(payload, page, { incidents, maintenance })
 
@@ -592,6 +618,49 @@ export async function buildPublicStatusPageData(
     groups,
     incidents: publicIncidents,
     maintenance,
-    generatedAt: new Date().toISOString(),
+    pastIncidentsDays: pastDays,
+    pastIncidents:
+      pastDays > 0
+        ? pastIncidentDays(
+            recent.map((incident) => toPublicIncident(incident, names)),
+            pastDays,
+            timeZone,
+            now,
+          )
+        : [],
+    generatedAt: now.toISOString(),
   }
+}
+
+/** The page's `pastIncidentsDays`, clamped (default 7). */
+export const pastIncidentsDaysOf = (page: Pick<StatusPage, 'pastIncidentsDays'>): number =>
+  Math.min(
+    MAX_PAST_INCIDENTS_DAYS,
+    Math.max(0, Math.floor(page.pastIncidentsDays ?? DEFAULT_PAST_INCIDENTS_DAYS)),
+  )
+
+/** Most incidents the main page lists over its past days. */
+export const MAX_PAST_INCIDENTS = 200
+
+/**
+ * Incidents of a page created within the last `days` days (plus one, so the oldest day is
+ * complete in every time zone), newest first. The caller groups them by the day they started.
+ */
+export async function findRecentIncidents(
+  payload: Payload,
+  pageId: string | number,
+  days: number,
+  now = new Date(),
+): Promise<Incident[]> {
+  if (days <= 0) return []
+  const since = new Date(now.getTime() - (days + 1) * 24 * 60 * 60_000).toISOString()
+  const { docs } = await payload.find({
+    collection: 'incidents',
+    where: { and: [{ statusPage: { equals: pageId } }, { createdAt: { greater_than: since } }] },
+    sort: '-createdAt',
+    limit: MAX_PAST_INCIDENTS,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return docs
 }

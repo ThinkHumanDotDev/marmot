@@ -1339,7 +1339,8 @@
         "dockerHost": "Docker hosts",
         "apiKey": "API keys",
         "auditLog": "Audit log",
-        "sso": "Single sign-on"
+        "sso": "Single sign-on",
+        "subscriber": "Status page subscribers"
       },
       "actions": {
         "read": "View",
@@ -1349,7 +1350,8 @@
         "invite": "Invite",
         "remove": "Remove",
         "updateRole": "Change roles",
-        "manage": "Manage"
+        "manage": "Manage",
+        "send": "Send"
       },
       "custom": "Custom",
       "fixed": "(fixed)",
@@ -2957,7 +2959,9 @@
         "groups": "Groups & monitors",
         "incidents": "Incidents",
         "domains": "Domains",
-        "share": "Share"
+        "share": "Share",
+        "subscribers": "Subscribers",
+        "notifications": "Notifications"
       }
     },
     "settings": {
@@ -3008,7 +3012,9 @@
         "homepageUrlHint": "The logo and title link here.",
         "contactUrl": "Contact URL",
         "contactUrlHint": "Shown as a “Contact us” button. An https:// URL or mailto: address."
-      }
+      },
+      "pastIncidentsDays": "Past incidents shown (days)",
+      "pastIncidentsDaysHint": "Incidents of the last days are listed by day below the components; 0 hides the list. All of them stay on the history page."
     },
     "groups": {
       "title": "Groups & monitors",
@@ -3399,6 +3405,276 @@
       "copied": "Copied",
       "copyFailed": "Could not copy to the clipboard",
       "altText": "{title} status"
+    },
+    "events": {
+      "viewHistory": "View history",
+      "historyHeading": "History",
+      "historyDescription": "Incidents and maintenance windows, newest first.",
+      "backToStatus": "Back to the current status",
+      "currentStatus": "Current status",
+      "pastIncidents": "Past incidents",
+      "noIncidentsReported": "No incidents reported.",
+      "empty": "Nothing has been reported yet.",
+      "emptyFiltered": "No incidents or maintenance windows match these filters.",
+      "eventCount": "{count, plural, =0 {No events} one {# event} other {# events}}",
+      "filters": {
+        "label": "Filter the history",
+        "type": "Type",
+        "allTypes": "All types",
+        "incidents": "Incidents",
+        "maintenance": "Maintenance",
+        "component": "Component",
+        "allComponents": "All components",
+        "month": "Month",
+        "allMonths": "All months",
+        "apply": "Apply",
+        "reset": "Reset"
+      },
+      "pagination": {
+        "label": "History pages",
+        "newer": "Newer",
+        "older": "Older",
+        "page": "Page {page} of {total}"
+      },
+      "kind": {
+        "incident": "Incident",
+        "maintenance": "Maintenance"
+      },
+      "ongoing": "Ongoing",
+      "lasted": "Lasted {duration}",
+      "affects": "Affects {components}",
+      "status": "Status",
+      "started": "Started",
+      "resolved": "Resolved",
+      "ended": "Ended",
+      "cancelled": "Cancelled",
+      "duration": "Duration",
+      "notApplicable": "Not applicable",
+      "impact": "Impact",
+      "affectedComponents": "Affected components",
+      "noComponents": "None named",
+      "updates": "Updates",
+      "planned": "Planned window: {window}",
+      "copyLink": "Copy link",
+      "copied": "Link copied",
+      "copyFailed": "Could not copy"
+    },
+    "seo": {
+      "historyTitle": "History · {siteName}",
+      "historyDescription": "Incidents and maintenance windows of {siteName}, {dateRange}.",
+      "historyDescriptionEmpty": "Incidents and maintenance windows of {siteName}.",
+      "incidentTitle": "{title} · {siteName}",
+      "incidentDescription": "Incident on {siteName}: {status}, {dateRange}.",
+      "maintenanceTitle": "{title} · {siteName}",
+      "maintenanceDescription": "Maintenance on {siteName}: {status}, {dateRange}."
+    },
+    "subscribe": {
+      "button": "Subscribe",
+      "title": "Get updates",
+      "description": "Receive a message when an incident or maintenance affects {title}.",
+      "channel": "Notify me by",
+      "channels": {
+        "email": "Email",
+        "sms": "SMS",
+        "webhook": "Webhook",
+        "slack": "Slack"
+      },
+      "target": {
+        "email": "Email address",
+        "sms": "Mobile number",
+        "webhook": "Webhook URL",
+        "slack": "Slack incoming-webhook URL"
+      },
+      "placeholder": {
+        "email": "you@example.com",
+        "sms": "+15551234567",
+        "webhook": "https://example.com/hooks/status",
+        "slack": "https://hooks.slack.com/services/…"
+      },
+      "smsHint": "International format with country code. Message and data rates may apply; reply STOP to unsubscribe.",
+      "webhookHint": "Receives signed JSON (X-Marmot-Signature). The first request carries the signing secret.",
+      "components": "Components",
+      "allComponents": "All components",
+      "someComponents": "Only the components I choose",
+      "submit": "Subscribe",
+      "submitting": "Subscribing…",
+      "checkEmail": "Check your inbox: we sent a link to confirm the subscription.",
+      "done": "Subscribed. The first message is on its way with links to manage the subscription.",
+      "code": "Code from the SMS",
+      "codeHint": "We sent a {length}-digit code to {target}.",
+      "verify": "Confirm",
+      "verifying": "Checking…",
+      "verified": "Subscribed. You will receive updates by SMS.",
+      "manageLink": "Manage subscription",
+      "failed": "Could not subscribe. Try again later.",
+      "close": "Close"
+    },
+    "subscription": {
+      "metaTitle": "Subscription · {title}",
+      "notFound": "This link is invalid or the subscription has ended.",
+      "backToPage": "Back to {title}",
+      "confirmTitle": "Confirm your subscription",
+      "confirmDescription": "Confirm to receive incident and maintenance updates from {title} at {target}.",
+      "confirm": "Confirm subscription",
+      "confirmed": "Subscription confirmed.",
+      "manageTitle": "Your subscription",
+      "manageDescription": "Updates from {title} go to {target} ({channel}).",
+      "pending": "Not confirmed yet: follow the link in the confirmation message first.",
+      "components": "Components you follow",
+      "allComponents": "All components",
+      "someComponents": "Only these components",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved.",
+      "saveFailed": "Could not save. Try again.",
+      "unsubscribeTitle": "Unsubscribe",
+      "unsubscribeDescription": "Stop receiving updates from {title} at {target}?",
+      "unsubscribe": "Unsubscribe",
+      "unsubscribed": "You are unsubscribed and will not receive further updates from {title}."
+    },
+    "subscribers": {
+      "settings": {
+        "title": "Subscriptions",
+        "description": "Let visitors subscribe to incident and maintenance announcements. Raw monitor alerts are never sent to subscribers.",
+        "enabled": "Show a Subscribe button on the page",
+        "channels": "Channels visitors can choose",
+        "deliveryMode": "Sending",
+        "modes": {
+          "review": {
+            "label": "Review before sending",
+            "hint": "Each incident or maintenance update creates a draft in Notifications; an admin sends or discards it."
+          },
+          "auto": {
+            "label": "Send automatically",
+            "hint": "Announcements go out as soon as they are published."
+          }
+        },
+        "smsChannel": "SMS sender",
+        "smsChannelNone": "No Twilio channel",
+        "smsChannelHint": "SMS use the credentials of a Twilio notification channel of this organization. To handle STOP replies, point the number's incoming-message webhook at this server's URL followed by {url}.",
+        "smsNoChannels": "Create a Twilio notification channel first to offer SMS.",
+        "smsMaxSegments": "Maximum SMS segments",
+        "smsTemplates": "SMS templates",
+        "smsTemplatesHint": "Leave empty for the default text. Placeholders: {placeholders}.",
+        "templates": {
+          "incidentOpened": "New incident",
+          "incidentUpdated": "Incident update",
+          "maintenanceScheduled": "New maintenance",
+          "maintenanceUpdated": "Maintenance update"
+        },
+        "save": "Save",
+        "saving": "Saving…",
+        "saved": "Subscription settings saved",
+        "saveFailed": "Could not save the settings."
+      },
+      "list": {
+        "title": "Subscribers",
+        "description": "{count, plural, =0 {No confirmed subscribers yet.} one {# confirmed subscriber} other {# confirmed subscribers}}",
+        "search": "Search addresses",
+        "empty": "No subscribers yet.",
+        "loadFailed": "Could not load subscribers.",
+        "columns": {
+          "target": "Address",
+          "channel": "Channel",
+          "components": "Components",
+          "status": "Status",
+          "added": "Added"
+        },
+        "allComponents": "All",
+        "componentCount": "{count, plural, one {# component} other {# components}}",
+        "confirmed": "Confirmed",
+        "pending": "Unconfirmed",
+        "sources": {
+          "self_signup": "Signed up",
+          "added_by_owner": "Added",
+          "import": "Imported"
+        },
+        "lastError": "Last delivery failed: {error}",
+        "remove": "Remove",
+        "removeConfirm": "Remove {target}? They will not receive further updates.",
+        "removed": "Subscriber removed",
+        "removeFailed": "Could not remove the subscriber.",
+        "previous": "Previous",
+        "next": "Next",
+        "pageOf": "Page {page} of {total}",
+        "export": "Export CSV",
+        "import": "Import CSV",
+        "importDone": "{created, plural, one {# subscriber imported} other {# subscribers imported}}, {skipped} skipped",
+        "importFailed": "Could not import the file.",
+        "importHint": "Columns: channel, target and optionally components (component ids separated by ;). Imported subscribers are confirmed at once."
+      },
+      "add": {
+        "title": "Add a subscriber",
+        "description": "Subscribers you add are confirmed at once, for example a customer's webhook.",
+        "channel": "Channel",
+        "target": "Address",
+        "components": "Components",
+        "allComponents": "Leave every box unchecked to follow all components.",
+        "header": "Header",
+        "headerName": "Header name",
+        "headerValue": "Header value",
+        "addHeader": "Add header",
+        "removeHeader": "Remove header",
+        "submit": "Add subscriber",
+        "submitting": "Adding…",
+        "added": "Subscriber added",
+        "addFailed": "Could not add the subscriber.",
+        "secretTitle": "Signing secret",
+        "secretHint": "Deliveries are signed with this secret in X-Marmot-Signature. It was also sent in the first request."
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Announcements to subscribers, created from incident updates and maintenance events.",
+        "empty": "Nothing announced yet. Incident and maintenance updates appear here.",
+        "loadFailed": "Could not load notifications.",
+        "events": {
+          "incident_opened": "New incident",
+          "incident_updated": "Incident update",
+          "incident_resolved": "Incident resolved",
+          "maintenance_scheduled": "Maintenance scheduled",
+          "maintenance_reminder": "Maintenance reminder",
+          "maintenance_started": "Maintenance started",
+          "maintenance_updated": "Maintenance update",
+          "maintenance_completed": "Maintenance completed",
+          "maintenance_cancelled": "Maintenance cancelled"
+        },
+        "states": {
+          "pending_review": "Awaiting review",
+          "sending": "Sending",
+          "sent": "Sent",
+          "partially_failed": "Partly failed",
+          "failed": "Failed",
+          "discarded": "Discarded"
+        },
+        "recipients": "Recipients",
+        "recipientsByChannel": "{channel}: {count}",
+        "recipientTotal": "{count, plural, one {# recipient} other {# recipients}}",
+        "smsUnavailable": "This page has no SMS sender: SMS deliveries will fail.",
+        "emailPreview": "Email",
+        "smsPreview": "SMS",
+        "smsSegments": "{count, plural, one {# segment} other {# segments}}",
+        "deliveries": "Deliveries",
+        "deliveryCounts": "{sent} sent, {failed} failed, {pending} pending, {skipped} skipped",
+        "deliveryStates": {
+          "queued": "Queued",
+          "retrying": "Retrying",
+          "sent": "Sent",
+          "failed": "Failed",
+          "skipped": "Skipped"
+        },
+        "attempts": "{count, plural, one {# attempt} other {# attempts}}",
+        "send": "Send now",
+        "sending": "Sending…",
+        "discard": "Discard",
+        "retry": "Retry failed",
+        "sendConfirm": "Send this announcement to {count, plural, one {# subscriber} other {# subscribers}}?",
+        "actionDone": "Done",
+        "actionFailed": "Could not update the notification.",
+        "noPermission": "Only admins can send or discard notifications.",
+        "refresh": "Refresh",
+        "created": "Created {time}",
+        "listMeta": "{event} · {time}"
+      }
     }
   },
   "maintenance": {
@@ -3822,6 +4098,43 @@
       "link": "Sign in: {url}",
       "expires": "The link works once and expires in {minutes} minutes.",
       "ignore": "If you did not ask for it, you can ignore this email."
+    },
+    "subscriptions": {
+      "headline": {
+        "incident_opened": "New incident",
+        "incident_updated": "Incident update",
+        "incident_resolved": "Resolved",
+        "maintenance_scheduled": "Scheduled maintenance",
+        "maintenance_reminder": "Upcoming maintenance",
+        "maintenance_started": "Maintenance started",
+        "maintenance_updated": "Maintenance update",
+        "maintenance_completed": "Maintenance completed",
+        "maintenance_cancelled": "Maintenance cancelled"
+      },
+      "subject": "[{siteName}] {headline}: {title}",
+      "status": "Status: {status}",
+      "affected": "Affected: {components}",
+      "window": "Window: {period}",
+      "starts": "Starts: {start}",
+      "viewPage": "View on the status page",
+      "viewPageLink": "Details: {url}",
+      "footer": "You receive this email because you subscribed to updates from {siteName}.",
+      "manage": "Manage subscription",
+      "manageLink": "Manage subscription: {url}",
+      "unsubscribe": "Unsubscribe",
+      "unsubscribeLink": "Unsubscribe: {url}",
+      "confirm": {
+        "subject": "Confirm your subscription to {siteName}",
+        "intro": "Someone, hopefully you, asked to receive incident and maintenance updates from <strong>{siteName}</strong> at this address.",
+        "button": "Confirm subscription",
+        "link": "Confirm your subscription: {url}",
+        "ignore": "If you did not ask for this, ignore this email: you will not receive anything else."
+      },
+      "already": {
+        "subject": "Your subscription to {siteName}",
+        "intro": "This address already receives updates from <strong>{siteName}</strong>. You can change the components you follow or unsubscribe at any time.",
+        "ignore": "If you did not ask for this email, you can ignore it."
+      }
     }
   },
   "errors": {
@@ -3990,6 +4303,7 @@
     "statusPagePasswordTooShort": "The password must be at least {min} characters.",
     "statusPagePasswordTooLong": "The password must be at most {max} characters.",
     "statusPagePasswordRequired": "Set a password to protect this page.",
+    "statusPageEventNotFound": "Incident or maintenance window not found",
     "statusPageIpNotAllowed": "This status page is not available from your network.",
     "statusPageLinkInvalid": "This sign-in link is invalid, expired or already used.",
     "invalidEmailAddress": "Enter a valid email address.",
@@ -4000,6 +4314,36 @@
     "statusPageIpRangesRequired": "Add at least one IP range to restrict this page.",
     "statusPageIpRangesTooMany": "List at most {max} IP ranges.",
     "statusPageViewerNotFound": "Visitor not found.",
-    "statusPageViewerStatusInvalid": "The status must be \"active\" or \"revoked\"."
+    "statusPageViewerStatusInvalid": "The status must be \"active\" or \"revoked\".",
+    "subscriberStatusPageRequired": "A subscriber needs a status page, and cannot move to another one.",
+    "subscriberTargetInvalid": "Enter a valid email address, phone number in international format (+15551234567), webhook URL or Slack incoming-webhook URL.",
+    "subscriberComponentsInvalid": "Choose components of this status page.",
+    "subscriberDuplicate": "This address is already subscribed to the page.",
+    "subscriberHeadersInvalid": "Custom headers are for webhook subscribers only (at most 10, valid names, no Host, Content-Type or X-Marmot- headers).",
+    "smsChannelInvalid": "Choose a Twilio notification channel of this organization.",
+    "subscriptionsUnavailable": "This status page does not offer subscriptions.",
+    "subscriptionChannelUnavailable": "This status page does not offer subscriptions on that channel.",
+    "subscriptionCodeInvalid": "The code is wrong or has expired. Request a new one.",
+    "subscriptionNotFound": "This subscription link is invalid or the subscription has ended.",
+    "subscriberNotFound": "Subscriber not found.",
+    "subscriberNotificationNotFound": "Notification not found.",
+    "subscriberNotificationState": "This notification cannot be {action, select, send {sent} discard {discarded} retry {retried} other {changed}} in its current state.",
+    "subscriberImportInvalid": "Upload a CSV file with the columns channel, target and (optionally) components."
+  },
+  "subscriberMessages": {
+    "sms": {
+      "incidentOpened": "[{siteName}] New incident: {title} ({status}). {message} {url}",
+      "incidentUpdated": "[{siteName}] {title}: {status}. {message} {url}",
+      "maintenanceScheduled": "[{siteName}] Scheduled maintenance: {title} ({start}). {message} {url}",
+      "maintenanceUpdated": "[{siteName}] Maintenance {title}: {status}. {message} {url}",
+      "code": "{code} is your code to receive updates from {siteName}. It expires in {minutes} minutes."
+    },
+    "chat": {
+      "viewPage": "View status page",
+      "manage": "Manage subscription",
+      "unsubscribe": "Unsubscribe",
+      "welcomeTitle": "Subscribed to {siteName}",
+      "welcome": "This channel will receive incident and maintenance updates from {siteName}."
+    }
   }
 }
