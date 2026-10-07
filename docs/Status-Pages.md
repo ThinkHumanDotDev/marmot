@@ -131,15 +131,22 @@ monitors that belong to another organization and hostnames already claimed by an
 All of these are anonymous and return 404 for unknown or unpublished slugs. For password-protected
 pages they also need the page's access cookie or `?pw=` (see below), and answer 401 otherwise.
 
-| Route                                        | Returns                                                              |
-| -------------------------------------------- | -------------------------------------------------------------------- |
-| `GET /status/:slug`                          | Server-rendered page (OpenGraph meta, manifest link, RSS alternate). |
-| `GET /api/status-pages/:slug/public`         | JSON (below); `Cache-Control: public, max-age=30`.                   |
-| `GET /status/:slug/rss`                      | RSS 2.0: one item per incident update and monitors currently down.   |
-| `GET /status/:slug/manifest.json`            | Web app manifest.                                                    |
-| `GET /api/status-pages/resolve-domain?host=` | `{ slug }` for a custom hostname (used by the proxy).                |
-| `GET /status/:slug/login`                    | Password form of a protected page.                                   |
-| `POST /api/status-pages/:slug/access`        | Checks the page password and sets the access cookie.                 |
+| Route                                                | Returns                                                                                             |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `GET /status/:slug`                                  | Server-rendered page (OpenGraph meta, manifest link, feed alternates).                              |
+| `GET /api/status-pages/:slug/public`                 | JSON (below); `Cache-Control: public, max-age=30`.                                                  |
+| `GET /status/:slug/rss`                              | RSS 2.0: one item per incident update and monitors currently down.                                  |
+| `GET /status/:slug/feed/atom`                        | Atom 1.0, the same items ([Feeds and machine-readable output](#feeds-and-machine-readable-output)). |
+| `GET /status/:slug/feed/json`                        | JSON Feed 1.1, the same items.                                                                      |
+| `GET /status/:slug/maintenance.ics`                  | iCalendar feed of recent and upcoming maintenance windows.                                          |
+| `GET /status/:slug/api/v2/summary.json` (and others) | Statuspage-compatible JSON.                                                                         |
+| `GET /status/:slug.md`, `…/incidents/:id.md`         | The page or one incident as Markdown.                                                               |
+| `GET /status/:slug/llms.txt`                         | Describes the page and links every endpoint above.                                                  |
+| `GET /status/:slug/api/openapi.json`                 | OpenAPI 3.1 description of the read-only endpoints.                                                 |
+| `GET /status/:slug/manifest.json`                    | Web app manifest.                                                                                   |
+| `GET /api/status-pages/resolve-domain?host=`         | `{ slug }` for a custom hostname (used by the proxy).                                               |
+| `GET /status/:slug/login`                            | Password form of a protected page.                                                                  |
+| `POST /api/status-pages/:slug/access`                | Checks the page password and sets the access cookie.                                                |
 
 ```jsonc
 {
@@ -260,6 +267,96 @@ are dropped from the groups. The page is rendered on the server from the same da
 `autoRefreshInterval > 0`, the client component re-fetches the JSON on that interval (polling only; the
 realtime socket is not used on public pages).
 
+## Feeds and machine-readable output
+
+Every page publishes the same information in formats for feed readers, calendars, dashboards and LLM
+agents. All of them hang off the page URL (`/status/<slug>`, or the root of a custom domain) and the page
+`<head>` advertises the RSS, Atom, JSON Feed, iCalendar and Markdown versions as
+`<link rel="alternate">`.
+
+| Path below the page                      | Format                                                                              |
+| ---------------------------------------- | ----------------------------------------------------------------------------------- |
+| `/rss`, `/feed/atom`, `/feed/json`       | RSS 2.0, Atom 1.0 (RFC 4287), JSON Feed 1.1                                         |
+| `/maintenance.ics`                       | iCalendar (RFC 5545)                                                                |
+| `/api/v2/summary.json`                   | Statuspage v2: page, components, unresolved incidents, upcoming maintenance, status |
+| `/api/v2/status.json`                    | Statuspage v2: page and status indicator                                            |
+| `/api/v2/components.json`                | Statuspage v2: page and components                                                  |
+| `/api/v2/incidents.json`                 | Statuspage v2: the 50 most recent incidents                                         |
+| `/api/v2/scheduled-maintenances.json`    | Statuspage v2: maintenance windows of the last 30 and next 90 days, newest first    |
+| `.md` (`/status/<slug>.md`), `/index.md` | Markdown: status, components, ongoing incidents, maintenance                        |
+| `/incidents/<id>.md`                     | Markdown: one incident and its whole timeline                                       |
+| `/llms.txt`                              | [llms.txt](https://llmstxt.org): what the page is and links to everything above     |
+| `/api/openapi.json`                      | OpenAPI 3.1 description of these endpoints                                          |
+
+**Feeds.** RSS, Atom and JSON Feed render one shared model (`src/server/status-pages/feed.ts`): one item
+per incident update, newest first, linked to the incident permalink (`/status/<slug>/incidents/<id>`;
+`incidentPermalink()` in `src/server/status-pages/urls.ts`), plus one item per monitor that is currently
+down (identified by the start of its down streak). Atom and JSON Feed ids are `tag:` URIs built from the
+server host and the page creation date, so they are the same on the main host and a custom domain; an
+edited update keeps its id and moves its `updated` / `date_modified`. The opening update carries the
+incident title, later ones `[Status] Title`.
+
+**iCalendar.** One `VEVENT` per maintenance window (recurring maintenance yields one per occurrence)
+from 30 days ago to 90 days ahead, at most 100 per maintenance. `UID` is
+`maintenance-<id>[-<start, unix seconds>]@<server host>` and stays stable; `SEQUENCE` is the number of
+seconds between the maintenance's creation and its last edit, so it grows with every edit. Upcoming
+windows of a paused maintenance are sent as `STATUS:CANCELLED` so subscribed calendars drop them.
+Manual maintenance has no window and is left out. Lines are folded at 75 octets; `X-PUBLISHED-TTL` and
+`REFRESH-INTERVAL` ask clients to refresh hourly.
+
+**Statuspage-compatible JSON.** Field names and enum values follow the public Atlassian Statuspage v2
+API (`src/server/status-pages/statuspage.ts`), so existing clients and aggregators can point at
+`https://<host>/status/<slug>` (or the custom domain) as if it were a Statuspage page:
+
+- **Components**: each page group becomes a `group: true` component whose `components` lists its rows;
+  every row becomes a component with `group_id`. Ids are the stable component ids. `status` is the worse
+  of the monitor state (`down` → `major_outage`, `pending` → `degraded_performance`, `maintenance` →
+  `under_maintenance`) and the active incident impact (`degraded_performance`, `partial_outage`,
+  `major_outage`). Static components follow their incidents and maintenance.
+- **Incidents**: `status` is the incident status (`investigating`, `identified`, `monitoring`,
+  `resolved`); `impact` is the peak impact over the timeline (`operational` → `none`,
+  `degraded_performance` → `minor`, `partial_outage` → `major`, `major_outage` → `critical`), so a
+  resolved incident keeps it. Every update becomes an `incident_updates` entry (newest first, `body` in
+  Markdown) with `affected_components` listing `old_status` → `new_status`; a resolving update lists the
+  components it returned to `operational`. `shortlink` is the incident permalink.
+- **Scheduled maintenances**: one per window with `impact: "maintenance"`, `status` `scheduled`,
+  `in_progress` or `completed`, `scheduled_for` / `scheduled_until`, and the components of the monitors
+  it covers. `summary.json` lists running windows and the next window of each maintenance within 7 days
+  (what the page shows). Manual maintenance is `in_progress` with `scheduled_for` set to its last change
+  and no `scheduled_until`. Paused maintenance is left out.
+- **Status**: `indicator` is the worst of the active incidents' impacts and the components: `minor` for
+  degraded performance, `major` for a partial outage or some components down, `critical` when every
+  component is down. The `description` is Statuspage's (`All Systems Operational`, `Minor Service
+Outage`, `Partial System Outage`, `Major System Outage`, `Service Under Maintenance` while maintenance
+  runs and nothing is wrong), in the page's language.
+- Not mapped: `postmortem` status, `verifying` maintenance status, subscriptions and the
+  `unresolved` / `upcoming` / `active` sub-resources.
+
+**Markdown and `llms.txt`.** `/status/<slug>.md` is rewritten by `src/proxy.ts` to `/status/<slug>/index.md`
+(also reachable directly) and `/status/<slug>/incidents/<id>.md` to an internal route, so the incident
+permalink pages own `/incidents/<id>`. Text is rendered in the page language with times in the
+organization's zone; incident and maintenance text is the author's Markdown, passed through.
+
+### Public API conventions
+
+These endpoints (and `/rss`) are a **stability contract**: fields are only added, never renamed or
+removed; a breaking change ships under a new version prefix (`/api/v3/…`) while the old one keeps
+working. The OpenAPI document at `/api/openapi.json` describes them (`src/server/status-pages/openapi.ts`).
+
+- **Access**: every endpoint runs `checkStatusPageAccess`; password-protected pages need the access cookie
+  or `?pw=<password>`. Without access they answer `401` (`429` while rate limited).
+- **Caching**: `Cache-Control: public, max-age=N, stale-while-revalidate=N` where `N` is the page's
+  auto-refresh interval clamped to 30–300 seconds (300 when the page does not refresh);
+  `private, no-store` plus `X-Robots-Tag: noindex` for protected pages. `Vary: Accept-Language, Cookie`
+  because `auto`-language pages follow the visitor.
+- **Validation**: a weak `ETag` of the body; `If-None-Match` with a matching tag returns `304`. Bodies
+  contain no "generated at" timestamps, so the tag only changes when the data does.
+- **CORS**: `Access-Control-Allow-Origin: *` with `ETag` exposed; `OPTIONS` answers the preflight that
+  `If-None-Match` triggers.
+- **Errors**: RFC 9457 `application/problem+json` with `type: about:blank`, the HTTP status phrase as
+  `title`, a localised `detail` and a `code` (`not-found`, `login-required`, `invalid-password`,
+  `rate-limited`).
+
 ## Builder
 
 `/{orgSlug}/status-pages` lists the organization's pages; `/{orgSlug}/status-pages/{id}` edits one with
@@ -311,14 +408,16 @@ published pages; signed-in members still preview their pages from the builder.
   (default 30) days. The token embeds a keyed fingerprint of the password hash, so **changing the
   password signs every visitor out**. The cookie path is `/` because the page, its API, feed and badges
   live under different paths; the name and the signed page id keep it to one page.
-- Feed readers and scripts can pass the password as `?pw=<password>` to the JSON endpoint, the RSS feed,
-  `manifest.json` and badge URLs. **This puts the password in URLs, browser history, proxy and server
+- Feed readers and scripts can pass the password as `?pw=<password>` to the JSON endpoint, the feeds,
+  the calendar, the Statuspage JSON, Markdown, `llms.txt`, `manifest.json` and badge URLs. **This puts the password in URLs, browser history, proxy and server
   logs**; prefer the cookie (JSON login) where the client can keep one.
 - Every public surface checks access through `checkStatusPageAccess`
   (`src/server/status-pages/access.ts`): the HTML page (cookie only), `/api/status-pages/:slug/public`,
-  `/rss`, `manifest.json` (linked with `crossorigin="use-credentials"`), badges of monitors that only
-  appear on protected pages, and all of these on custom domains. Without access the machine endpoints
-  answer `401` with `{ "error", "code": "login-required" | "invalid-password" }`.
+  `/rss` and the other [machine-readable endpoints](#feeds-and-machine-readable-output), `manifest.json`
+  (linked with `crossorigin="use-credentials"`), badges of monitors that only appear on protected pages,
+  and all of these on custom domains. Without access the machine endpoints answer `401`: the JSON
+  endpoint with `{ "error", "code": "login-required" | "invalid-password" }`, the feeds and other
+  machine-readable endpoints with problem details carrying the same `code`.
 - Responses of protected pages carry `Cache-Control: private, no-store` and `X-Robots-Tag: noindex`;
   protected pages are always `noindex`, whatever `searchEngineIndex` says. Without access, the page's
   metadata reveals only its title.
@@ -403,13 +502,15 @@ real state.
 ## Custom domains
 
 A page can be served at the root of its own hostnames (`domains[].hostname`). `src/proxy.ts` (the
-Next.js 16 proxy, formerly middleware) runs for `/`, `/rss`, `/manifest.json` and `/login` only:
+Next.js 16 proxy, formerly middleware) runs for the page's public paths only: `/`, `/rss`,
+`/manifest.json`, `/login`, `/feed/atom`, `/feed/json`, `/maintenance.ics`, `/api/v2/*.json`,
+`/api/openapi.json`, `/index.md`, `/llms.txt` and `/incidents/<id>[.md]`:
 
 1. It reads the visitor's host (`X-Forwarded-Host`, then `Host`) and ignores requests for Marmot's own
    hostname (`NEXT_PUBLIC_SERVER_URL`) or `localhost`.
 2. It asks `GET /api/status-pages/resolve-domain?host=<host>` on the same origin (the response is cached
    for 60 s) and, when a published page lists that host, rewrites the request to
-   `/status/<slug>[/rss|/manifest.json|/login]`.
+   `/status/<slug>/<path>`.
 3. Any failure (lookup error, invalid host, no match) falls through to normal routing, so the proxy can
    never take the main site down.
 
@@ -462,6 +563,13 @@ With another proxy (nginx, Traefik, Cloudflare), terminate TLS there, forward th
 `X-Forwarded-Host`) and point the hostname at the same upstream as the main site.
 
 ## Testing
+
+- `tests/int/status-page-feeds.int.spec.ts` — Atom, JSON Feed and RSS items (well-formed XML, stable
+  unique ids, permalinks), the iCalendar feed (folding, UIDs, cancelled windows), the Statuspage JSON
+  checked against a Statuspage `summary.json` fixture (`tests/fixtures/statuspage/summary.json`),
+  Markdown, `llms.txt`, OpenAPI, ETag/304, CORS, problem details, password protection and custom-domain
+  links. `src/server/status-pages/machine-formats.test.ts` covers line folding, maintenance windows,
+  the Statuspage status mapping and the proxy rewrites.
 
 - `tests/int/incident-timeline.int.spec.ts` — the investigating → identified → monitoring → resolved flow
   through the REST routes, per-component impact in the public payload and overall status, RSS items per

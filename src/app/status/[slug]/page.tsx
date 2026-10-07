@@ -53,7 +53,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ...(restricted ? {} : { manifest: `${statusPagePath(page.slug)}/manifest.json` }),
     alternates: {
       canonical: url,
-      types: { 'application/rss+xml': `${statusPagePath(page.slug)}/rss` },
+      // Feed discovery (RSS, Atom, JSON Feed, the maintenance calendar and Markdown).
+      types: {
+        'application/rss+xml': `${statusPagePath(page.slug)}/rss`,
+        'application/atom+xml': `${statusPagePath(page.slug)}/feed/atom`,
+        'application/feed+json': `${statusPagePath(page.slug)}/feed/json`,
+        'text/calendar': `${statusPagePath(page.slug)}/maintenance.ics`,
+        'text/markdown': `${statusPagePath(page.slug)}.md`,
+      },
     },
     openGraph: {
       type: 'website',
