@@ -171,7 +171,10 @@ export interface PublicStatusPageData {
   groups: PublicGroup[]
   /** Active incidents, newest first (pinned ones first). */
   incidents: PublicIncident[]
-  /** Running and upcoming maintenance windows attached to this page, running ones first. */
+  /**
+   * Maintenance occurrences announced on this page with their update timelines: running first,
+   * then upcoming, then those finished within `maintenanceVisibilityHours`.
+   */
   maintenance: PublicMaintenance[]
   /** ISO timestamp of when this payload was built. */
   generatedAt: string
@@ -561,7 +564,9 @@ export async function buildPublicStatusPageData(
 ): Promise<PublicStatusPageData> {
   const [incidents, maintenance] = await Promise.all([
     findActiveIncidents(payload, page.id),
-    getActiveMaintenanceForStatusPage(payload, page.id),
+    getActiveMaintenanceForStatusPage(payload, page.id, {
+      visibilityHours: page.maintenanceVisibilityHours,
+    }),
   ])
   const groups = await buildPublicGroups(payload, page, { incidents, maintenance })
 

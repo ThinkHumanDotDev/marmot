@@ -20,6 +20,10 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { defaultLocale, hasMultipleLocales, localeNames, locales } from '@/i18n/locales'
+import {
+  DEFAULT_MAINTENANCE_VISIBILITY_HOURS,
+  MAX_MAINTENANCE_VISIBILITY_HOURS,
+} from '@/lib/maintenance-announcements'
 import type { StatusPage } from '@/payload-types'
 
 import { statusPagesApi, type OrgId, type StatusPagePatch } from '../api'
@@ -39,6 +43,7 @@ type Values = Required<
     | 'showPoweredBy'
     | 'showValues'
     | 'autoRefreshInterval'
+    | 'maintenanceVisibilityHours'
     | 'footerText'
     | 'customCSS'
     | 'googleAnalyticsId'
@@ -58,6 +63,8 @@ const fromPage = (page: StatusPage): Values => ({
   showPoweredBy: page.showPoweredBy !== false,
   showValues: page.showValues !== false,
   autoRefreshInterval: page.autoRefreshInterval ?? 300,
+  maintenanceVisibilityHours:
+    page.maintenanceVisibilityHours ?? DEFAULT_MAINTENANCE_VISIBILITY_HOURS,
   footerText: page.footerText ?? '',
   customCSS: page.customCSS ?? '',
   googleAnalyticsId: page.googleAnalyticsId ?? '',
@@ -106,6 +113,7 @@ export function SettingsForm({
 }) {
   const t = useTranslations('statusPages.editor')
   const ts = useTranslations('statusPages.settings')
+  const tm = useTranslations('maintenance.announcements')
   const router = useRouter()
   const [values, setValues] = React.useState<Values>(() => fromPage(page))
   const [saving, setSaving] = React.useState(false)
@@ -279,6 +287,39 @@ export function SettingsForm({
                   value={values.autoRefreshInterval ?? 0}
                   onChange={(e) => set('autoRefreshInterval', Math.max(0, Number(e.target.value)))}
                 />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="maintenanceVisibilityHours">{tm('pageVisibility')}</Label>
+                <div className="relative">
+                  <Input
+                    id="maintenanceVisibilityHours"
+                    type="number"
+                    min={0}
+                    max={MAX_MAINTENANCE_VISIBILITY_HOURS}
+                    step={1}
+                    disabled={!canEdit}
+                    className="pr-10"
+                    aria-describedby="maintenanceVisibilityHoursHint"
+                    value={
+                      values.maintenanceVisibilityHours ?? DEFAULT_MAINTENANCE_VISIBILITY_HOURS
+                    }
+                    onChange={(e) =>
+                      set(
+                        'maintenanceVisibilityHours',
+                        Math.min(
+                          MAX_MAINTENANCE_VISIBILITY_HOURS,
+                          Math.max(0, Math.floor(Number(e.target.value) || 0)),
+                        ),
+                      )
+                    }
+                  />
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
+                    {tm('hoursUnit')}
+                  </span>
+                </div>
+                <p id="maintenanceVisibilityHoursHint" className="text-xs text-muted-foreground">
+                  {tm('pageVisibilityHint')}
+                </p>
               </div>
             </div>
             <div className="grid gap-2">
