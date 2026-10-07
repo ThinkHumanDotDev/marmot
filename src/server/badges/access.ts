@@ -1,17 +1,17 @@
 /**
  * Who may see a monitor's badge. Badges are embedded in READMEs and dashboards without a session,
  * so the rule is: the monitor appears on a published public status page, or on a published
- * protected page the visitor has access to (its access cookie, or `?pw=`), or the request carries
- * an API key of the monitor's organization. Everything else is a 404 so that badge URLs do not
- * reveal which monitor ids exist.
+ * protected page the visitor has access to (its access cookie, `?pw=`, or an allowed client IP),
+ * or the request carries an API key of the monitor's organization. Everything else is a 404 so
+ * that badge URLs do not reveal which monitor ids exist.
  */
 import type { CollectionSlug, Payload } from 'payload'
 
 import type { Monitor } from '@/payload-types'
 import { authenticateApiKey } from '@/server/api-keys'
 import {
-  type AccessPage,
   accessRequestFrom,
+  type AccessPage,
   checkStatusPageAccess,
   isProtectedPage,
 } from '@/server/status-pages/access'
@@ -46,12 +46,12 @@ async function publishedPagesWithMonitor(
     limit: 50,
     pagination: false,
     overrideAccess: true,
-    select: { access: true, passwordHash: true },
+    select: { access: true, passwordHash: true, allowedEmailDomains: true, allowedIpRanges: true },
   })
   return docs as unknown as AccessPage[]
 }
 
-/** `true` when a published, public (not password-protected) status page lists the monitor. */
+/** `true` when a published, public (unprotected) status page lists the monitor. */
 export async function isMonitorOnPublishedStatusPage(
   payload: Payload,
   monitorId: string | number,
@@ -61,8 +61,8 @@ export async function isMonitorOnPublishedStatusPage(
 }
 
 /**
- * `public`: the monitor is on a public page. `status-page`: on a password-protected page the
- * visitor may view (the response must stay private). `api-key`: an API key of the organization.
+ * `public`: the monitor is on a public page. `status-page`: on a protected page the visitor may
+ * view (the response must stay private). `api-key`: an API key of the organization.
  */
 export type BadgeAccess = 'public' | 'status-page' | 'api-key' | null
 

@@ -36,7 +36,8 @@ Next.js route handlers do not see the TCP peer address, so Marmot learns the cli
 is on. Enable it when Marmot runs behind Caddy (the compose stack), nginx, Traefik or a cloud load balancer
 that overwrites those headers. Leave it off when clients connect directly: anyone could otherwise pick their
 own rate-limit bucket. Without a trusted address, login and password-reset limits fall back to the targeted
-account (per e-mail) and the OIDC endpoints are not limited.
+account (per e-mail) and the OIDC endpoints are not limited. Status pages with an
+[IP allow-list](Status-Pages.md#ip-allow-list) admit nobody without a trusted address.
 
 ## Hardening checklist
 
