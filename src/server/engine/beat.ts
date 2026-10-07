@@ -11,6 +11,7 @@
  * persists what comes out. That keeps the transition rules unit-testable without Redis or a database.
  */
 import { degradedThresholdMs } from '@/lib/monitor-degraded'
+import type { AssertionResult } from '@/lib/validation/assertions'
 import type { HeartbeatStatus } from '@/server/monitor-types/types'
 import type { TlsInfo } from './tls'
 
@@ -64,6 +65,8 @@ export interface CheckResult {
   underMaintenance?: boolean
   /** TLS certificate captured by the check (HTTPS / TLS types), whatever the outcome. */
   tlsInfo?: TlsInfo | null
+  /** Per-assertion results of the check (HTTP / DNS assertions), whatever the outcome. */
+  assertions?: AssertionResult[] | null
   /**
    * The outbound address guard refused the target: always DOWN, without retries or upside-down
    * flipping (the verdict does not depend on the target's state).

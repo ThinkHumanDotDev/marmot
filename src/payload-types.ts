@@ -454,6 +454,27 @@ export interface Monitor {
   jsonPath?: string | null;
   jsonPathOperator?: ('==' | '!=' | '<' | '>' | '<=' | '>=' | 'contains') | null;
   expectedValue?: string | null;
+  assertions?:
+    | {
+        kind: 'status' | 'header' | 'textBody' | 'jsonBody' | 'dnsRecord';
+        target?: string | null;
+        comparator:
+          | 'eq'
+          | 'not_eq'
+          | 'gt'
+          | 'gte'
+          | 'lt'
+          | 'lte'
+          | 'contains'
+          | 'not_contains'
+          | 'empty'
+          | 'not_empty'
+          | 'matches'
+          | 'not_matches';
+        value?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   authMethod?: ('none' | 'basic' | 'bearer' | 'oauth2-cc' | 'ntlm' | 'mtls') | null;
   basicAuthUser?: string | null;
   basicAuthPass?: string | null;
@@ -625,6 +646,15 @@ export interface Heartbeat {
   ping?: number | null;
   duration?: number | null;
   important?: boolean | null;
+  assertions?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   retries?: number | null;
   downCount?: number | null;
   time: string;
@@ -1530,6 +1560,15 @@ export interface MonitorsSelect<T extends boolean = true> {
   jsonPath?: T;
   jsonPathOperator?: T;
   expectedValue?: T;
+  assertions?:
+    | T
+    | {
+        kind?: T;
+        target?: T;
+        comparator?: T;
+        value?: T;
+        id?: T;
+      };
   authMethod?: T;
   basicAuthUser?: T;
   basicAuthPass?: T;
@@ -1689,6 +1728,7 @@ export interface HeartbeatsSelect<T extends boolean = true> {
   ping?: T;
   duration?: T;
   important?: T;
+  assertions?: T;
   retries?: T;
   downCount?: T;
   time?: T;

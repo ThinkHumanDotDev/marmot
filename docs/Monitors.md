@@ -29,6 +29,10 @@ OAuth2 client-credentials/NTLM/mTLS authentication and certificate-expiry alerts
 ping, MySQL/MariaDB, PostgreSQL, SQL Server, MongoDB, Redis, Steam and GameDig checks plus a remote-browser
 HTTP check; every field of every type is listed in [Monitor types](Monitor-Types.md).
 
+HTTP(s), Keyword, Json Query and DNS monitors take **assertions** on top of their own condition: status
+code, header, body text and JSON checks, or DNS record checks, all of which must pass. See
+[Monitor types → Assertions](Monitor-Types.md#assertions).
+
 Marmot's type set follows Uptime Kuma's, so a monitor you know from there behaves the same here (the check
 code is in many cases a direct port, see `THIRD_PARTY_NOTICES.md`).
 

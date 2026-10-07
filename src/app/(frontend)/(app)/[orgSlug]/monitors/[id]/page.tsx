@@ -4,6 +4,10 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { getTranslations } from 'next-intl/server'
 
+import {
+  AssertionResultsCard,
+  parseAssertionResults,
+} from '@/components/monitors/assertion-results-card'
 import { CertificatePanel } from '@/components/monitors/certificate-panel'
 import { monitorTarget, useMonitorFormat } from '@/components/monitors/format'
 import { HeartbeatBar, type BeatLike } from '@/components/monitors/heartbeat-bar'
@@ -100,6 +104,11 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   ])
 
   const hasHistory = latest.docs.length > 0 || stats24h.buckets.length > 0
+  // Per-assertion results of the last check (HTTP and DNS monitors). A lone accepted-status-code
+  // row (a plain HTTP monitor) adds nothing the status line does not already say.
+  const assertionResults = parseAssertionResults(latest.docs[0]?.assertions)
+  const showAssertions =
+    assertionResults.length > 1 || assertionResults.some((result) => !result.legacy)
   const parent =
     monitor.parent && typeof monitor.parent === 'object' ? (monitor.parent as Monitor) : null
   const target = monitorTarget(monitor)
@@ -217,6 +226,8 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             </CardContent>
           </Card>
         )}
+
+        {showAssertions && <AssertionResultsCard results={assertionResults} />}
 
         <ResponseTimeChart buckets={stats24h.buckets} />
 
