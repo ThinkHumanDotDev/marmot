@@ -1,0 +1,133 @@
+{
+  "page": {
+    "id": "kctbh9vrtdwd",
+    "name": "Example",
+    "url": "https://status.example.com",
+    "time_zone": "Etc/UTC",
+    "updated_at": "2026-10-01T12:34:56.789Z"
+  },
+  "components": [
+    {
+      "id": "b13yz5g2cw10",
+      "name": "Core",
+      "status": "partial_outage",
+      "created_at": "2014-05-03T01:22:07.274Z",
+      "updated_at": "2014-05-14T20:34:43.340Z",
+      "position": 1,
+      "description": null,
+      "showcase": false,
+      "start_date": null,
+      "group_id": null,
+      "page_id": "kctbh9vrtdwd",
+      "group": true,
+      "only_show_if_degraded": false,
+      "components": ["8l4ygp009s5s"]
+    },
+    {
+      "id": "8l4ygp009s5s",
+      "name": "API",
+      "status": "partial_outage",
+      "created_at": "2014-05-03T01:22:07.286Z",
+      "updated_at": "2014-05-14T20:34:44.470Z",
+      "position": 2,
+      "description": "The public API",
+      "showcase": true,
+      "start_date": null,
+      "group_id": "b13yz5g2cw10",
+      "page_id": "kctbh9vrtdwd",
+      "group": false,
+      "only_show_if_degraded": false
+    }
+  ],
+  "incidents": [
+    {
+      "id": "p31zjtct2jer",
+      "name": "Elevated error rates",
+      "status": "identified",
+      "created_at": "2014-05-14T14:22:39.441Z",
+      "updated_at": "2014-05-14T20:34:44.452Z",
+      "monitoring_at": null,
+      "resolved_at": null,
+      "impact": "major",
+      "shortlink": "http://stspg.io/xxxx",
+      "started_at": "2014-05-14T14:22:39.441Z",
+      "page_id": "kctbh9vrtdwd",
+      "incident_updates": [
+        {
+          "id": "h0q7gqd3w9ty",
+          "status": "identified",
+          "body": "We found the cause.",
+          "incident_id": "p31zjtct2jer",
+          "created_at": "2014-05-14T14:22:40.301Z",
+          "updated_at": "2014-05-14T14:22:40.301Z",
+          "display_at": "2014-05-14T14:22:40.301Z",
+          "affected_components": [
+            {
+              "code": "8l4ygp009s5s",
+              "name": "API",
+              "old_status": "operational",
+              "new_status": "partial_outage"
+            }
+          ],
+          "deliver_notifications": true,
+          "custom_tweet": null,
+          "tweet_id": null
+        }
+      ],
+      "components": [
+        {
+          "id": "8l4ygp009s5s",
+          "name": "API",
+          "status": "partial_outage",
+          "created_at": "2014-05-03T01:22:07.286Z",
+          "updated_at": "2014-05-14T20:34:44.470Z",
+          "position": 2,
+          "description": "The public API",
+          "showcase": true,
+          "start_date": null,
+          "group_id": "b13yz5g2cw10",
+          "page_id": "kctbh9vrtdwd",
+          "group": false,
+          "only_show_if_degraded": false
+        }
+      ]
+    }
+  ],
+  "scheduled_maintenances": [
+    {
+      "id": "w1zdr745wmfy",
+      "name": "Database upgrade",
+      "status": "scheduled",
+      "created_at": "2014-05-14T14:24:40.430Z",
+      "updated_at": "2014-05-14T14:24:40.430Z",
+      "monitoring_at": null,
+      "resolved_at": null,
+      "impact": "maintenance",
+      "shortlink": "http://stspg.io/yyyy",
+      "started_at": "2014-05-14T14:24:40.430Z",
+      "page_id": "kctbh9vrtdwd",
+      "incident_updates": [
+        {
+          "id": "qq0vx910b3qj",
+          "status": "scheduled",
+          "body": "We will be performing scheduled maintenance.",
+          "incident_id": "w1zdr745wmfy",
+          "created_at": "2014-05-14T14:24:41.913Z",
+          "updated_at": "2014-05-14T14:24:41.913Z",
+          "display_at": "2014-05-14T14:24:41.913Z",
+          "affected_components": null,
+          "deliver_notifications": true,
+          "custom_tweet": null,
+          "tweet_id": null
+        }
+      ],
+      "components": [],
+      "scheduled_for": "2014-05-17T22:00:00.000Z",
+      "scheduled_until": "2014-05-17T23:00:00.000Z"
+    }
+  ],
+  "status": {
+    "indicator": "major",
+    "description": "Partial System Outage"
+  }
+}
