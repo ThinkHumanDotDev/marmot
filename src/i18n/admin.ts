@@ -216,6 +216,9 @@ export const adminTranslations = {
       statusPages: {
         slugDescription: 'Public URL: /status/<slug>. Lowercase letters, numbers, hyphens.',
         publishedDescription: 'Unpublished pages return 404 to visitors.',
+        accessDescription: 'password: visitors must enter the page password first.',
+        passwordDescription:
+          'Set or change the page password. Changing it signs every visitor out.',
         autoRefreshIntervalDescription:
           'Seconds between client refreshes; 0 disables auto refresh.',
         customCSSDescription: 'Injected into the public page as a <style> tag.',

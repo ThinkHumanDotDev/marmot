@@ -4822,6 +4822,20 @@
           "notNull": false,
           "default": false
         },
+        "access": {
+          "name": "access",
+          "type": "enum_status_pages_access",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'public'"
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "search_engine_index": {
           "name": "search_engine_index",
           "type": "boolean",
@@ -8384,6 +8398,14 @@
         "en"
       ]
     },
+    "public.enum_status_pages_access": {
+      "name": "enum_status_pages_access",
+      "schema": "public",
+      "values": [
+        "public",
+        "password"
+      ]
+    },
     "public.enum_incidents_updates_components_impact": {
       "name": "enum_incidents_updates_components_impact",
       "schema": "public",
@@ -8540,6 +8562,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "de479588-15dd-41d8-85b5-4675461b3db1",
+  "id": "a0b5bdc1-dd0c-4695-8f6a-0d0ef4de3aa0",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

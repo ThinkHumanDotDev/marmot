@@ -747,6 +747,9 @@ export interface StatusPage {
   favicon?: (number | null) | Media;
   language?: ('auto' | 'en') | null;
   published?: boolean | null;
+  access?: ('public' | 'password') | null;
+  password?: string | null;
+  passwordHash?: string | null;
   searchEngineIndex?: boolean | null;
   showTags?: boolean | null;
   showCertificateExpiry?: boolean | null;
@@ -1518,6 +1521,9 @@ export interface StatusPagesSelect<T extends boolean = true> {
   favicon?: T;
   language?: T;
   published?: T;
+  access?: T;
+  password?: T;
+  passwordHash?: T;
   searchEngineIndex?: T;
   showTags?: T;
   showCertificateExpiry?: T;

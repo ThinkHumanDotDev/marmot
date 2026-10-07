@@ -23,7 +23,8 @@ import * as migration_20261006_144923_add_enforce_sso from './20261006_144923_ad
 import * as migration_20261006_212748_add_language_fields from './20261006_212748_add_language_fields';
 import * as migration_20261007_021706_status_page_components from './20261007_021706_status_page_components';
 import * as migration_20261007_031019_status_page_themes from './20261007_031019_status_page_themes';
-import * as migration_20261007_035645_incident_timeline from './20261007_035645_incident_timeline';
+import * as migration_20261007_034435_status_page_access from './20261007_034435_status_page_access';
+import * as migration_20261007_060327_incident_timeline from './20261007_060327_incident_timeline';
 
 export const migrations = [
   {
@@ -152,8 +153,13 @@ export const migrations = [
     name: '20261007_031019_status_page_themes',
   },
   {
-    up: migration_20261007_035645_incident_timeline.up,
-    down: migration_20261007_035645_incident_timeline.down,
-    name: '20261007_035645_incident_timeline'
+    up: migration_20261007_034435_status_page_access.up,
+    down: migration_20261007_034435_status_page_access.down,
+    name: '20261007_034435_status_page_access',
+  },
+  {
+    up: migration_20261007_060327_incident_timeline.up,
+    down: migration_20261007_060327_incident_timeline.down,
+    name: '20261007_060327_incident_timeline'
   },
 ];

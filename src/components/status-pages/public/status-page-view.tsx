@@ -490,6 +490,8 @@ export function StatusPageView({ slug, initial }: StatusPageViewProps) {
           cache: 'no-store',
           headers: { Accept: 'application/json' },
         })
+        // Access revoked (password changed, cookie expired): the server sends the login form.
+        if (res.status === 401) return window.location.reload()
         if (res.ok && !cancelled) setData((await res.json()) as PublicStatusPageData)
       } catch {
         // keep showing the last good payload

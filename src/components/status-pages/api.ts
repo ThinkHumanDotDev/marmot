@@ -46,8 +46,12 @@ export type StatusPagePatch = Partial<
     | 'googleAnalyticsId'
     | 'domains'
     | 'groups'
+    | 'access'
   >
->
+> & {
+  /** New page password (write-only; never returned). */
+  password?: string
+}
 
 export type IncidentPatch = Partial<
   Pick<Incident, 'title' | 'pinned' | 'active' | 'impact' | 'affectedComponents'>
