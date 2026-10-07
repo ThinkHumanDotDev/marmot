@@ -1,7 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, Plus, X } from 'lucide-react'
+import { FlaskConical, Loader2, Plus, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useFormatter, useTimeZone, useTranslations } from 'next-intl'
@@ -35,6 +35,8 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { track } from '@/lib/analytics'
 import { api, ApiError } from '@/lib/api'
+import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
+import { supportsAdhocTest, type OnDemandCheckResult } from '@/lib/on-demand-check'
 import {
   AUTH_METHODS,
   BODY_ENCODINGS,
@@ -65,12 +67,16 @@ import {
   type MonitorFormValues,
   type MonitorTypeName,
 } from '@/lib/validation/monitor'
+import { supportsAssertions } from '@/lib/validation/assertions'
 import type { MonitorFormResources } from '@/server/monitors/page-data'
 
 import { TimezoneSelect } from '@/components/settings/timezone-select'
 import { isValidCronPattern, nextCronRuns } from '@/lib/push-schedule'
 import { SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
+import { AssertionsField } from './assertions-field'
+import { useElapsedSeconds } from './check-now'
+import { CheckResultView } from './check-result'
 import { NotificationPicker } from './notification-picker'
 import { pushScheduleZone, usePushScheduleText } from './push-schedule'
 import { TagChip } from './tag-chip'
@@ -115,6 +121,25 @@ type Name = FieldPath<MonitorFormInput>
 type FormControlType = Control<MonitorFormInput, unknown, MonitorFormValues>
 
 const NONE = '__none__'
+
+/** Field issues of a 400 answer (`{ errors: [{ data: { issues } }] }`), or none. */
+function responseIssues(error: unknown): { path: string; message: string }[] {
+  if (
+    !(error instanceof ApiError) ||
+    !error.details ||
+    typeof error.details !== 'object' ||
+    !('errors' in error.details)
+  ) {
+    return []
+  }
+  return (
+    (
+      error.details as {
+        errors?: { data?: { issues?: { path: string; message: string }[] } }[]
+      }
+    ).errors?.[0]?.data?.issues ?? []
+  )
+}
 
 /** WebSocket upgrades carry credentials only as headers or client certificates. */
 const WS_AUTH_METHODS = AUTH_METHODS.filter((m) => m !== 'oauth2-cc' && m !== 'ntlm')
@@ -755,6 +780,7 @@ export function MonitorForm({
     pushSchedule,
     pushCron,
     pushTimezone,
+    dnsResolveType,
   ] = useWatch({
     control,
     name: [
@@ -770,6 +796,7 @@ export function MonitorForm({
       'pushSchedule',
       'pushCron',
       'pushTimezone',
+      'dnsResolveType',
     ],
   })
   const orgTimeZone = useTimeZone() ?? 'UTC'
@@ -826,8 +853,10 @@ export function MonitorForm({
     setPending(true)
     // Without the picker a new monitor gets the organization's default channels (server side).
     let values: Partial<MonitorFormValues> = formValues
+    // Rows left over from a type that has assertions are dropped with the type.
+    if (!supportsAssertions(formValues.type)) values = { ...values, assertions: [] }
     if (mode === 'create' && !canPickChannels) {
-      const { notifications: _omit, ...rest } = formValues
+      const { notifications: _omit, ...rest } = values
       values = rest
     }
     try {
@@ -844,17 +873,7 @@ export function MonitorForm({
       router.refresh()
     } catch (error) {
       setPending(false)
-      const issues =
-        error instanceof ApiError &&
-        error.details &&
-        typeof error.details === 'object' &&
-        'errors' in error.details
-          ? ((
-              error.details as {
-                errors?: { data?: { issues?: { path: string; message: string }[] } }[]
-              }
-            ).errors?.[0]?.data?.issues ?? [])
-          : []
+      const issues = responseIssues(error)
       if (issues.length) {
         for (const issue of issues) {
           form.setError(issue.path as Name, { message: issue.message })
@@ -863,6 +882,30 @@ export function MonitorForm({
       } else {
         toast.error(error instanceof Error ? error.message : t('saveFailed'))
       }
+    }
+  }
+
+  // "Test": run the unsaved configuration on the worker (`POST /api/orgs/:orgId/checks`).
+  const tCheck = useTranslations('monitors.check')
+  const [testStartedAt, setTestStartedAt] = React.useState<number | null>(null)
+  const [testResult, setTestResult] = React.useState<OnDemandCheckResult | null>(null)
+  const testing = testStartedAt !== null
+  const testSeconds = useElapsedSeconds(testStartedAt)
+  const canTest = supportsAdhocTest(type)
+
+  async function runTest(formValues: MonitorFormValues) {
+    setTestStartedAt(Date.now())
+    setTestResult(null)
+    try {
+      setTestResult(await api.post<OnDemandCheckResult>(`/api/orgs/${orgId}/checks`, formValues))
+    } catch (error) {
+      const issues = responseIssues(error)
+      for (const issue of issues) form.setError(issue.path as Name, { message: issue.message })
+      toast.error(
+        issues.length ? t('fixFields') : error instanceof Error ? error.message : tCheck('failed'),
+      )
+    } finally {
+      setTestStartedAt(null)
     }
   }
 
@@ -1310,6 +1353,17 @@ export function MonitorForm({
                       ? t('timing.timeoutDefault')
                       : timingHint(timeout)
                   }
+                />
+              )}
+              {supportsDegradedThreshold(type) && (
+                <NumberField
+                  control={control}
+                  name="degradedAfter"
+                  label={t('timing.degradedAfter')}
+                  unit={t('timing.milliseconds')}
+                  min={0}
+                  step={1}
+                  description={t('timing.degradedAfterDescription')}
                 />
               )}
             </CardContent>
@@ -1862,6 +1916,26 @@ export function MonitorForm({
           </Card>
         )}
 
+        {/* Assertions ---------------------------------------------------------------------- */}
+        {supportsAssertions(type) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('assertions.title')}</CardTitle>
+              <CardDescription>
+                {type === 'dns' ? t('assertions.descriptionDns') : t('assertions.description')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AssertionsField
+                control={control}
+                setValue={setValue}
+                monitorType={type}
+                dnsRecordType={dnsResolveType}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Authentication ------------------------------------------------------------------ */}
         {(isHttp || isWebSocket) && (
           <Card>
@@ -2042,7 +2116,39 @@ export function MonitorForm({
           </Card>
         )}
 
+        {(testing || testResult) && (
+          <Card data-testid="monitor-test-panel" aria-live="polite">
+            <CardHeader>
+              <CardTitle>{tCheck('testTitle')}</CardTitle>
+              <CardDescription>{tCheck('testDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {testing ? (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  {tCheck('testRunning', { seconds: testSeconds })}
+                </p>
+              ) : (
+                testResult && <CheckResultView result={testResult} />
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <div className="flex items-center justify-end gap-2">
+          {canTest && (
+            <Button
+              type="button"
+              variant="outline"
+              className="mr-auto"
+              disabled={pending || testing}
+              onClick={() => void form.handleSubmit(runTest, () => toast.error(t('fixFields')))()}
+              data-testid="monitor-test"
+            >
+              {testing ? <Loader2 className="animate-spin" aria-hidden /> : <FlaskConical />}
+              {testing ? tCheck('testing', { seconds: testSeconds }) : tCheck('test')}
+            </Button>
+          )}
           <Button variant="ghost" asChild disabled={pending}>
             <Link
               href={

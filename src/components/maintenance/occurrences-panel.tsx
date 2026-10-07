@@ -7,6 +7,11 @@ import { toast } from 'sonner'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { StatusDot } from '@/components/status-dot'
+import {
+  PlaceholderNotice,
+  TemplatePicker,
+  useTemplateDate,
+} from '@/components/templates/template-picker'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,6 +23,12 @@ import {
   type OccurrenceState,
 } from '@/lib/maintenance-announcements'
 import { renderMarkdown } from '@/lib/markdown'
+import {
+  fillPlaceholder,
+  findPlaceholders,
+  renderTemplateText,
+  type TemplateRow,
+} from '@/lib/templates'
 import { cn } from '@/lib/utils'
 import type { MonitorStatusKey } from '@/stores/monitor-store'
 
@@ -74,18 +85,30 @@ const ACTIONS: Record<
   cancelled: [],
 }
 
+/** "Use template" for maintenance updates: the templates and the values of their variables. */
+export interface MaintenanceTemplateContext {
+  /** `maintenance-update` templates of the organization. */
+  templates: TemplateRow[]
+  organization: string
+  maintenance: string
+}
+
 function OccurrenceCard({
   item,
   timeZone,
   canEdit,
+  templateContext,
   onPost,
 }: {
   item: OccurrenceSummary
   timeZone: string
   canEdit: boolean
+  templateContext?: MaintenanceTemplateContext
   onPost: (item: OccurrenceSummary, status: OccurrenceState, message: string) => Promise<boolean>
 }) {
   const t = useTranslations('maintenance.announcements.panel')
+  const tTemplates = useTranslations('templates.picker')
+  const templateDate = useTemplateDate()
   const tState = useTranslations('maintenance.announcements.state')
   const tDefault = useTranslations('maintenance.announcements.defaultMessage')
   const format = useFormatter()
@@ -98,7 +121,25 @@ function OccurrenceCard({
     ? format.dateTimeRange(start, new Date(item.end), 'zoned', { timeZone })
     : t('openEnded', { start: format.dateTime(start, 'zoned', { timeZone }) })
 
+  const unfilled = findPlaceholders(message)
+  const templates = templateContext?.templates ?? []
+  const idPrefix = `occurrence-${item.id}`
+
+  function applyTemplate(template: TemplateRow) {
+    setMessage(
+      renderTemplateText(template.body, 'maintenance-update', {
+        organization: templateContext?.organization,
+        maintenance: templateContext?.maintenance,
+        start: format.dateTime(start, 'zoned', { timeZone }),
+        end: item.end ? format.dateTime(new Date(item.end), 'zoned', { timeZone }) : null,
+        date: templateDate,
+      }),
+    )
+    toast.success(tTemplates('applied', { name: template.name }))
+  }
+
   async function post(status: OccurrenceState, note = false) {
+    if (unfilled.length > 0) return
     if (note && !message.trim()) {
       toast.error(t('messageRequired'))
       return
@@ -134,7 +175,7 @@ function OccurrenceCard({
                 type="button"
                 size="sm"
                 variant={action.primary ? 'default' : 'outline'}
-                disabled={pending !== null}
+                disabled={pending !== null || unfilled.length > 0}
                 data-testid={`occurrence-${action.key}`}
                 onClick={() =>
                   action.to === 'cancelled' ? setConfirmCancel(true) : void post(action.to)
@@ -150,22 +191,37 @@ function OccurrenceCard({
 
       {canEdit && (
         <div className="grid gap-2">
-          <Label htmlFor={`occurrence-message-${item.id}`}>{t('messageLabel')}</Label>
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <Label htmlFor={`occurrence-message-${item.id}`}>{t('messageLabel')}</Label>
+            {templates.length > 0 && (
+              <TemplatePicker
+                id={`${idPrefix}-template`}
+                templates={templates}
+                onApply={applyTemplate}
+              />
+            )}
+          </div>
           <Textarea
             id={`occurrence-message-${item.id}`}
             rows={2}
             maxLength={MAX_UPDATE_MESSAGE_LENGTH}
             placeholder={t('messagePlaceholder')}
             value={message}
+            aria-invalid={unfilled.length > 0 || undefined}
             onChange={(e) => setMessage(e.target.value)}
             data-testid="occurrence-message"
+          />
+          <PlaceholderNotice
+            idPrefix={idPrefix}
+            names={unfilled}
+            onFill={(name, value) => setMessage((text) => fillPlaceholder(text, name, value))}
           />
           <div className="flex justify-end">
             <Button
               type="button"
               size="sm"
               variant="secondary"
-              disabled={pending !== null || !message.trim()}
+              disabled={pending !== null || !message.trim() || unfilled.length > 0}
               onClick={() => void post(item.state, true)}
               data-testid="occurrence-post"
             >
@@ -237,6 +293,7 @@ export function OccurrencesPanel({
   initial,
   timeZone,
   canEdit,
+  templateContext,
 }: {
   orgId: string | number
   maintenanceId: string
@@ -244,6 +301,8 @@ export function OccurrencesPanel({
   /** IANA zone the maintenance is planned in. */
   timeZone: string
   canEdit: boolean
+  /** Maintenance update templates offered by "Use template". */
+  templateContext?: MaintenanceTemplateContext
 }) {
   const t = useTranslations('maintenance.announcements.panel')
   const [items, setItems] = React.useState(initial)
@@ -297,6 +356,7 @@ export function OccurrencesPanel({
               item={item}
               timeZone={timeZone}
               canEdit={canEdit}
+              templateContext={templateContext}
               onPost={onPost}
             />
           ))

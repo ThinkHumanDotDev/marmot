@@ -11,7 +11,10 @@ import type { Payload } from 'payload'
 import type { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
 import type { StatusPageLanguage, StatusPageTheme } from '@/collections/StatusPages'
 import { defaultLocale } from '@/i18n/locales'
+import { statusPageTimeZone } from '@/i18n/resolve'
+import { DEFAULT_PAST_INCIDENTS_DAYS, MAX_PAST_INCIDENTS_DAYS } from '@/lib/status-page-events'
 import { getThemePreset } from '@/lib/status-page-themes'
+import { offeredChannels, type SubscriberChannel } from '@/lib/status-page-subscribers'
 import {
   incidentTimeline,
   legacyStyleFromImpact,
@@ -20,6 +23,7 @@ import {
 } from '@/lib/incident-timeline'
 import {
   componentDisplayName,
+  effectiveImpact,
   staticComponentStatus,
   worstImpact,
   worstStatus,
@@ -31,13 +35,15 @@ import {
   type PublicMaintenance,
 } from '@/server/maintenance/status-page'
 import { populateMonitorTags, toRealtimeTags } from '@/server/realtime/serialize'
+import { pastIncidentDays, type PublicIncidentDay } from '@/server/status-pages/event-summary'
+import { publicIdOf } from '@/server/status-pages/public-ids'
 import { getUptime } from '@/server/stats/uptime-calculator'
 
 import type { Incident, Media, Monitor, StatusPage } from '@/payload-types'
 
 export type BeatStatus = (typeof HEARTBEAT_STATUSES)[number]
 export type MonitorPublicStatus = BeatStatus | 'unknown'
-export type OverallStatus = 'up' | 'partial' | 'down' | 'maintenance' | 'unknown'
+export type OverallStatus = 'up' | 'degraded' | 'partial' | 'down' | 'maintenance' | 'unknown'
 
 export const BEATS_PER_MONITOR = 50
 
@@ -112,6 +118,8 @@ export interface PublicIncidentUpdate {
 
 export interface PublicIncident {
   id: string
+  /** Short id of the permalink (`<page>/events/incident/<publicId>`). */
+  publicId: string
   title: string
   /** Status of the latest update. */
   status: IncidentStatus
@@ -127,6 +135,8 @@ export interface PublicIncident {
   style: LegacyIncidentStyle
   pinned: boolean
   active: boolean
+  /** When the first update was posted (the start of the incident). */
+  startedAt: string
   createdAt: string
   updatedAt: string
   resolvedAt: string | null
@@ -163,6 +173,8 @@ export interface PublicConfig {
   customCSS: string | null
   footerText: string | null
   googleAnalyticsId: string | null
+  /** Channels visitors may subscribe with (#104); empty when subscriptions are off. */
+  subscriptionChannels: SubscriberChannel[]
 }
 
 export interface PublicStatusPageData {
@@ -176,6 +188,13 @@ export interface PublicStatusPageData {
    * then upcoming, then those finished within `maintenanceVisibilityHours`.
    */
   maintenance: PublicMaintenance[]
+  /** The page's `pastIncidentsDays` (0 when the list is off). */
+  pastIncidentsDays: number
+  /**
+   * Incidents started in each of the last `pastIncidentsDays` days (in the organization's time
+   * zone), newest day first; quiet days have no incidents.
+   */
+  pastIncidents: PublicIncidentDay[]
   /** ISO timestamp of when this payload was built. */
   generatedAt: string
 }
@@ -232,6 +251,7 @@ export function toPublicConfig(page: StatusPage): PublicConfig {
     customCSS: page.customCSS ?? null,
     footerText: page.footerText ?? null,
     googleAnalyticsId: page.googleAnalyticsId ?? null,
+    subscriptionChannels: offeredChannels(page.subscriptions),
   }
 }
 
@@ -252,6 +272,7 @@ export function toPublicIncident(
   const newestFirst = updates.slice().reverse()
   return {
     id: String(incident.id),
+    publicId: publicIdOf('incidents', incident),
     title: incident.title,
     status: state.status,
     impact: state.impact,
@@ -268,6 +289,7 @@ export function toPublicIncident(
     style: legacyStyleFromImpact(state.impact),
     pinned: Boolean(incident.pinned),
     active: state.active,
+    startedAt: updates[0]?.postedAt || incident.createdAt,
     createdAt: incident.createdAt,
     updatedAt: incident.updatedAt,
     resolvedAt: state.resolvedAt ?? incident.resolvedAt ?? null,
@@ -286,15 +308,16 @@ const OVERALL_RANK: Record<OverallStatus, number> = {
   unknown: 0,
   up: 1,
   maintenance: 2,
-  partial: 3,
-  down: 4,
+  degraded: 3,
+  partial: 4,
+  down: 5,
 }
 
 /**
  * Overall page state from component statuses *and* active incident impacts: a component with a
- * `major_outage` counts as down and one with a degraded or partial impact as not fully up (then
- * Uptime Kuma's rule applies); active incidents that name no component raise the page to
- * `partial` (degraded / partial outage) or `down` (major outage).
+ * `major_outage` counts as down, one with a partial outage as not fully up and one with degraded
+ * performance (an incident or its degraded monitor) as degraded (then `overallStatus` applies);
+ * active incidents that name no component raise the page to `degraded`, `partial` or `down`.
  */
 export function pageOverallStatus(
   groups: readonly PublicGroup[],
@@ -303,7 +326,11 @@ export function pageOverallStatus(
   const statuses = groups.flatMap((group) =>
     group.monitors.map((row): MonitorPublicStatus => {
       if (row.impact === 'major_outage') return 'down'
-      if (row.impact && row.impact !== 'operational' && row.status === 'up') return 'pending'
+      const working = row.status === 'up' || row.status === 'degraded'
+      if (row.impact === 'partial_outage' && working) return 'pending'
+      if (effectiveImpact(row.status, row.impact) === 'degraded_performance' && working) {
+        return 'degraded'
+      }
       return row.status
     }),
   )
@@ -311,7 +338,12 @@ export function pageOverallStatus(
   for (const incident of incidents) {
     if (!incident.active || incident.impact === 'operational') continue
     if (incident.components.length > 0) continue
-    const fromIncident: OverallStatus = incident.impact === 'major_outage' ? 'down' : 'partial'
+    const fromIncident: OverallStatus =
+      incident.impact === 'major_outage'
+        ? 'down'
+        : incident.impact === 'degraded_performance'
+          ? 'degraded'
+          : 'partial'
     if (OVERALL_RANK[fromIncident] > OVERALL_RANK[overall]) overall = fromIncident
   }
   return overall
@@ -320,14 +352,16 @@ export function pageOverallStatus(
 /**
  * Overall page state from the monitors' last statuses (Uptime Kuma `StatusPage.overallStatus`):
  * any monitor in maintenance → `maintenance`; all up → `up`; some up → `partial`; none up → `down`.
- * Monitors that were never checked are ignored; no checked monitors → `unknown`.
+ * Degraded monitors (#93) count as up for that rule, and all up with at least one degraded is
+ * `degraded` ("Degraded performance"). Monitors that were never checked are ignored; no checked
+ * monitors → `unknown`.
  */
 export function overallStatus(statuses: readonly MonitorPublicStatus[]): OverallStatus {
   const known = statuses.filter((s) => s !== 'unknown')
   if (known.length === 0) return 'unknown'
   if (known.includes('maintenance')) return 'maintenance'
-  const ups = known.filter((s) => s === 'up').length
-  if (ups === known.length) return 'up'
+  const ups = known.filter((s) => s === 'up' || s === 'degraded').length
+  if (ups === known.length) return known.includes('degraded') ? 'degraded' : 'up'
   if (ups === 0) return 'down'
   return 'partial'
 }
@@ -562,11 +596,16 @@ export async function buildPublicStatusPageData(
   payload: Payload,
   page: StatusPage,
 ): Promise<PublicStatusPageData> {
-  const [incidents, maintenance] = await Promise.all([
+  const now = new Date()
+  const timeZone = statusPageTimeZone(page)
+  const pastDays = pastIncidentsDaysOf(page)
+  const [incidents, maintenance, recent] = await Promise.all([
     findActiveIncidents(payload, page.id),
     getActiveMaintenanceForStatusPage(payload, page.id, {
+      now,
       visibilityHours: page.maintenanceVisibilityHours,
     }),
+    findRecentIncidents(payload, page.id, pastDays, now),
   ])
   const groups = await buildPublicGroups(payload, page, { incidents, maintenance })
 
@@ -579,6 +618,49 @@ export async function buildPublicStatusPageData(
     groups,
     incidents: publicIncidents,
     maintenance,
-    generatedAt: new Date().toISOString(),
+    pastIncidentsDays: pastDays,
+    pastIncidents:
+      pastDays > 0
+        ? pastIncidentDays(
+            recent.map((incident) => toPublicIncident(incident, names)),
+            pastDays,
+            timeZone,
+            now,
+          )
+        : [],
+    generatedAt: now.toISOString(),
   }
+}
+
+/** The page's `pastIncidentsDays`, clamped (default 7). */
+export const pastIncidentsDaysOf = (page: Pick<StatusPage, 'pastIncidentsDays'>): number =>
+  Math.min(
+    MAX_PAST_INCIDENTS_DAYS,
+    Math.max(0, Math.floor(page.pastIncidentsDays ?? DEFAULT_PAST_INCIDENTS_DAYS)),
+  )
+
+/** Most incidents the main page lists over its past days. */
+export const MAX_PAST_INCIDENTS = 200
+
+/**
+ * Incidents of a page created within the last `days` days (plus one, so the oldest day is
+ * complete in every time zone), newest first. The caller groups them by the day they started.
+ */
+export async function findRecentIncidents(
+  payload: Payload,
+  pageId: string | number,
+  days: number,
+  now = new Date(),
+): Promise<Incident[]> {
+  if (days <= 0) return []
+  const since = new Date(now.getTime() - (days + 1) * 24 * 60 * 60_000).toISOString()
+  const { docs } = await payload.find({
+    collection: 'incidents',
+    where: { and: [{ statusPage: { equals: pageId } }, { createdAt: { greater_than: since } }] },
+    sort: '-createdAt',
+    limit: MAX_PAST_INCIDENTS,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return docs
 }

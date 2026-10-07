@@ -2084,39 +2084,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "push_schedule": {
-          "name": "push_schedule",
-          "type": "enum_monitors_push_schedule",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'interval'"
-        },
-        "push_cron": {
-          "name": "push_cron",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "push_timezone": {
-          "name": "push_timezone",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'SAME_AS_SERVER'"
-        },
-        "push_grace": {
-          "name": "push_grace",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "push_max_duration": {
-          "name": "push_max_duration",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
         "manual_status": {
           "name": "manual_status",
           "type": "enum_monitors_manual_status",
@@ -2426,19 +2393,6 @@
         "status_last_push_at": {
           "name": "status_last_push_at",
           "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status_last_push_status": {
-          "name": "status_last_push_status",
-          "type": "enum_monitors_status_last_push_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status_push_runs": {
-          "name": "status_push_runs",
-          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
@@ -3919,195 +3873,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.push_events": {
-      "name": "push_events",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "monitor_id": {
-          "name": "monitor_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "enum_push_events_kind",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
-          "type": "enum_push_events_source",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'http'"
-        },
-        "msg": {
-          "name": "msg",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "body": {
-          "name": "body",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "body_truncated": {
-          "name": "body_truncated",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "rid": {
-          "name": "rid",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "exit_code": {
-          "name": "exit_code",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "duration": {
-          "name": "duration",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "method": {
-          "name": "method",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "time": {
-          "name": "time",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "push_events_monitor_idx": {
-          "name": "push_events_monitor_idx",
-          "columns": [
-            {
-              "expression": "monitor_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "push_events_organization_idx": {
-          "name": "push_events_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "push_events_time_idx": {
-          "name": "push_events_time_idx",
-          "columns": [
-            {
-              "expression": "time",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitor_time_1_idx": {
-          "name": "monitor_time_1_idx",
-          "columns": [
-            {
-              "expression": "monitor_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "time",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "push_events_monitor_id_monitors_id_fk": {
-          "name": "push_events_monitor_id_monitors_id_fk",
-          "tableFrom": "push_events",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "monitor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "push_events_organization_id_organizations_id_fk": {
-          "name": "push_events_organization_id_organizations_id_fk",
-          "tableFrom": "push_events",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.stat_minutely": {
       "name": "stat_minutely",
       "schema": "",
@@ -4785,6 +4550,89 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.status_pages_subscriptions_channels": {
+      "name": "status_pages_subscriptions_channels",
+      "schema": "",
+      "columns": {
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "enum_status_pages_subscriptions_channels",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "status_pages_subscriptions_channels_order_idx": {
+          "name": "status_pages_subscriptions_channels_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_pages_subscriptions_channels_parent_idx": {
+          "name": "status_pages_subscriptions_channels_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "status_pages_subscriptions_channels_parent_fk": {
+          "name": "status_pages_subscriptions_channels_parent_fk",
+          "tableFrom": "status_pages_subscriptions_channels",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.status_pages_domains": {
       "name": "status_pages_domains",
       "schema": "",
@@ -5290,6 +5138,13 @@
           "notNull": false,
           "default": 24
         },
+        "past_incidents_days": {
+          "name": "past_incidents_days",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 7
+        },
         "footer_text": {
           "name": "footer_text",
           "type": "varchar",
@@ -5304,6 +5159,58 @@
         },
         "google_analytics_id": {
           "name": "google_analytics_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscriptions_enabled": {
+          "name": "subscriptions_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "subscriptions_delivery_mode": {
+          "name": "subscriptions_delivery_mode",
+          "type": "enum_status_pages_subscriptions_delivery_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'review'"
+        },
+        "subscriptions_sms_channel_id": {
+          "name": "subscriptions_sms_channel_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscriptions_sms_max_segments": {
+          "name": "subscriptions_sms_max_segments",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 2
+        },
+        "subscriptions_sms_templates_incident_opened": {
+          "name": "subscriptions_sms_templates_incident_opened",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscriptions_sms_templates_incident_updated": {
+          "name": "subscriptions_sms_templates_incident_updated",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscriptions_sms_templates_maintenance_scheduled": {
+          "name": "subscriptions_sms_templates_maintenance_scheduled",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscriptions_sms_templates_maintenance_updated": {
+          "name": "subscriptions_sms_templates_maintenance_updated",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
@@ -5414,6 +5321,21 @@
           "method": "btree",
           "with": {}
         },
+        "status_pages_subscriptions_subscriptions_sms_channel_idx": {
+          "name": "status_pages_subscriptions_subscriptions_sms_channel_idx",
+          "columns": [
+            {
+              "expression": "subscriptions_sms_channel_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "status_pages_updated_at_idx": {
           "name": "status_pages_updated_at_idx",
           "columns": [
@@ -5512,6 +5434,19 @@
           "tableTo": "media",
           "columnsFrom": [
             "favicon_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "status_pages_subscriptions_sms_channel_id_notifications_id_fk": {
+          "name": "status_pages_subscriptions_sms_channel_id_notifications_id_fk",
+          "tableFrom": "status_pages",
+          "tableTo": "notifications",
+          "columnsFrom": [
+            "subscriptions_sms_channel_id"
           ],
           "columnsTo": [
             "id"
@@ -6010,6 +5945,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "public_id": {
+          "name": "public_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "status": {
           "name": "status",
           "type": "enum_incidents_status",
@@ -6094,6 +6035,21 @@
           "columns": [
             {
               "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "incidents_public_id_idx": {
+          "name": "incidents_public_id_idx",
+          "columns": [
+            {
+              "expression": "public_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -6212,6 +6168,1346 @@
           "tableTo": "status_pages",
           "columnsFrom": [
             "status_page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.status_page_subscribers_headers": {
+      "name": "status_page_subscribers_headers",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "value": {
+          "name": "value",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "status_page_subscribers_headers_order_idx": {
+          "name": "status_page_subscribers_headers_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_subscribers_headers_parent_id_idx": {
+          "name": "status_page_subscribers_headers_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "status_page_subscribers_headers_parent_id_fk": {
+          "name": "status_page_subscribers_headers_parent_id_fk",
+          "tableFrom": "status_page_subscribers_headers",
+          "tableTo": "status_page_subscribers",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.status_page_subscribers": {
+      "name": "status_page_subscribers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status_page_id": {
+          "name": "status_page_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channel": {
+          "name": "channel",
+          "type": "enum_status_page_subscribers_channel",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target": {
+          "name": "target",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "enum_status_page_subscribers_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'self_signup'"
+        },
+        "confirmed_at": {
+          "name": "confirmed_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locale": {
+          "name": "locale",
+          "type": "enum_status_page_subscribers_locale",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token": {
+          "name": "token",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "secret": {
+          "name": "secret",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verification_code_hash": {
+          "name": "verification_code_hash",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verification_expires_at": {
+          "name": "verification_expires_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verification_attempts": {
+          "name": "verification_attempts",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "verification_sent_at": {
+          "name": "verification_sent_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_delivered_at": {
+          "name": "last_delivered_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "status_page_subscribers_organization_idx": {
+          "name": "status_page_subscribers_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_subscribers_status_page_idx": {
+          "name": "status_page_subscribers_status_page_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_subscribers_target_idx": {
+          "name": "status_page_subscribers_target_idx",
+          "columns": [
+            {
+              "expression": "target",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_subscribers_confirmed_at_idx": {
+          "name": "status_page_subscribers_confirmed_at_idx",
+          "columns": [
+            {
+              "expression": "confirmed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_subscribers_token_idx": {
+          "name": "status_page_subscribers_token_idx",
+          "columns": [
+            {
+              "expression": "token",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_subscribers_updated_at_idx": {
+          "name": "status_page_subscribers_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_subscribers_created_at_idx": {
+          "name": "status_page_subscribers_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "statusPage_channel_target_idx": {
+          "name": "statusPage_channel_target_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "channel",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "target",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "statusPage_confirmedAt_idx": {
+          "name": "statusPage_confirmedAt_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "confirmed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "status_page_subscribers_organization_id_organizations_id_fk": {
+          "name": "status_page_subscribers_organization_id_organizations_id_fk",
+          "tableFrom": "status_page_subscribers",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "status_page_subscribers_status_page_id_status_pages_id_fk": {
+          "name": "status_page_subscribers_status_page_id_status_pages_id_fk",
+          "tableFrom": "status_page_subscribers",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "status_page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.status_page_subscribers_texts": {
+      "name": "status_page_subscribers_texts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "status_page_subscribers_texts_order_parent": {
+          "name": "status_page_subscribers_texts_order_parent",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "status_page_subscribers_texts_parent_fk": {
+          "name": "status_page_subscribers_texts_parent_fk",
+          "tableFrom": "status_page_subscribers_texts",
+          "tableTo": "status_page_subscribers",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.subscriber_notifications_channels": {
+      "name": "subscriber_notifications_channels",
+      "schema": "",
+      "columns": {
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "enum_subscriber_notifications_channels",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "subscriber_notifications_channels_order_idx": {
+          "name": "subscriber_notifications_channels_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_notifications_channels_parent_idx": {
+          "name": "subscriber_notifications_channels_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "subscriber_notifications_channels_parent_fk": {
+          "name": "subscriber_notifications_channels_parent_fk",
+          "tableFrom": "subscriber_notifications_channels",
+          "tableTo": "subscriber_notifications",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.subscriber_notifications": {
+      "name": "subscriber_notifications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status_page_id": {
+          "name": "status_page_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dedupe_key": {
+          "name": "dedupe_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event": {
+          "name": "event",
+          "type": "enum_subscriber_notifications_event",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "enum_subscriber_notifications_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending_review'"
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "message": {
+          "name": "message",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "window_start": {
+          "name": "window_start",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "window_end": {
+          "name": "window_end",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "window_reminder_minutes": {
+          "name": "window_reminder_minutes",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "incident_id": {
+          "name": "incident_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "incident_update_id": {
+          "name": "incident_update_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "maintenance_id": {
+          "name": "maintenance_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurrence_id": {
+          "name": "occurrence_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_public_id": {
+          "name": "event_public_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recipient_count": {
+          "name": "recipient_count",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sending_started_at": {
+          "name": "sending_started_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_by_id": {
+          "name": "approved_by_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discarded_by_id": {
+          "name": "discarded_by_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discarded_at": {
+          "name": "discarded_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "subscriber_notifications_organization_idx": {
+          "name": "subscriber_notifications_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_notifications_status_page_idx": {
+          "name": "subscriber_notifications_status_page_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_notifications_dedupe_key_idx": {
+          "name": "subscriber_notifications_dedupe_key_idx",
+          "columns": [
+            {
+              "expression": "dedupe_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_notifications_state_idx": {
+          "name": "subscriber_notifications_state_idx",
+          "columns": [
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_notifications_incident_idx": {
+          "name": "subscriber_notifications_incident_idx",
+          "columns": [
+            {
+              "expression": "incident_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_notifications_maintenance_idx": {
+          "name": "subscriber_notifications_maintenance_idx",
+          "columns": [
+            {
+              "expression": "maintenance_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_notifications_occurrence_idx": {
+          "name": "subscriber_notifications_occurrence_idx",
+          "columns": [
+            {
+              "expression": "occurrence_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_notifications_approved_by_idx": {
+          "name": "subscriber_notifications_approved_by_idx",
+          "columns": [
+            {
+              "expression": "approved_by_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_notifications_discarded_by_idx": {
+          "name": "subscriber_notifications_discarded_by_idx",
+          "columns": [
+            {
+              "expression": "discarded_by_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_notifications_updated_at_idx": {
+          "name": "subscriber_notifications_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_notifications_created_at_idx": {
+          "name": "subscriber_notifications_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "statusPage_state_idx": {
+          "name": "statusPage_state_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "subscriber_notifications_organization_id_organizations_id_fk": {
+          "name": "subscriber_notifications_organization_id_organizations_id_fk",
+          "tableFrom": "subscriber_notifications",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "subscriber_notifications_status_page_id_status_pages_id_fk": {
+          "name": "subscriber_notifications_status_page_id_status_pages_id_fk",
+          "tableFrom": "subscriber_notifications",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "status_page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "subscriber_notifications_incident_id_incidents_id_fk": {
+          "name": "subscriber_notifications_incident_id_incidents_id_fk",
+          "tableFrom": "subscriber_notifications",
+          "tableTo": "incidents",
+          "columnsFrom": [
+            "incident_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "subscriber_notifications_maintenance_id_maintenance_id_fk": {
+          "name": "subscriber_notifications_maintenance_id_maintenance_id_fk",
+          "tableFrom": "subscriber_notifications",
+          "tableTo": "maintenance",
+          "columnsFrom": [
+            "maintenance_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "subscriber_notifications_occurrence_id_maintenance_occurrences_id_fk": {
+          "name": "subscriber_notifications_occurrence_id_maintenance_occurrences_id_fk",
+          "tableFrom": "subscriber_notifications",
+          "tableTo": "maintenance_occurrences",
+          "columnsFrom": [
+            "occurrence_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "subscriber_notifications_approved_by_id_users_id_fk": {
+          "name": "subscriber_notifications_approved_by_id_users_id_fk",
+          "tableFrom": "subscriber_notifications",
+          "tableTo": "users",
+          "columnsFrom": [
+            "approved_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "subscriber_notifications_discarded_by_id_users_id_fk": {
+          "name": "subscriber_notifications_discarded_by_id_users_id_fk",
+          "tableFrom": "subscriber_notifications",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discarded_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.subscriber_notifications_texts": {
+      "name": "subscriber_notifications_texts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "subscriber_notifications_texts_order_parent": {
+          "name": "subscriber_notifications_texts_order_parent",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "subscriber_notifications_texts_parent_fk": {
+          "name": "subscriber_notifications_texts_parent_fk",
+          "tableFrom": "subscriber_notifications_texts",
+          "tableTo": "subscriber_notifications",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.subscriber_deliveries": {
+      "name": "subscriber_deliveries",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notification_id": {
+          "name": "notification_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subscriber_id": {
+          "name": "subscriber_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channel": {
+          "name": "channel",
+          "type": "enum_subscriber_deliveries_channel",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "enum_subscriber_deliveries_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'queued'"
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "error": {
+          "name": "error",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "subscriber_deliveries_organization_idx": {
+          "name": "subscriber_deliveries_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_deliveries_notification_idx": {
+          "name": "subscriber_deliveries_notification_idx",
+          "columns": [
+            {
+              "expression": "notification_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_deliveries_subscriber_idx": {
+          "name": "subscriber_deliveries_subscriber_idx",
+          "columns": [
+            {
+              "expression": "subscriber_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_deliveries_updated_at_idx": {
+          "name": "subscriber_deliveries_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "subscriber_deliveries_created_at_idx": {
+          "name": "subscriber_deliveries_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notification_subscriber_idx": {
+          "name": "notification_subscriber_idx",
+          "columns": [
+            {
+              "expression": "notification_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "subscriber_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notification_state_idx": {
+          "name": "notification_state_idx",
+          "columns": [
+            {
+              "expression": "notification_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "subscriber_deliveries_organization_id_organizations_id_fk": {
+          "name": "subscriber_deliveries_organization_id_organizations_id_fk",
+          "tableFrom": "subscriber_deliveries",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "subscriber_deliveries_notification_id_subscriber_notifications_id_fk": {
+          "name": "subscriber_deliveries_notification_id_subscriber_notifications_id_fk",
+          "tableFrom": "subscriber_deliveries",
+          "tableTo": "subscriber_notifications",
+          "columnsFrom": [
+            "notification_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "subscriber_deliveries_subscriber_id_status_page_subscribers_id_fk": {
+          "name": "subscriber_deliveries_subscriber_id_status_page_subscribers_id_fk",
+          "tableFrom": "subscriber_deliveries",
+          "tableTo": "status_page_subscribers",
+          "columnsFrom": [
+            "subscriber_id"
           ],
           "columnsTo": [
             "id"
@@ -7093,6 +8389,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "public_id": {
+          "name": "public_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "start": {
           "name": "start",
           "type": "timestamp(3) with time zone",
@@ -7167,6 +8469,21 @@
           "columns": [
             {
               "expression": "maintenance_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "maintenance_occurrences_public_id_idx": {
+          "name": "maintenance_occurrences_public_id_idx",
+          "columns": [
+            {
+              "expression": "public_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7972,12 +9289,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "push_events_id": {
-          "name": "push_events_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "stat_minutely_id": {
           "name": "stat_minutely_id",
           "type": "integer",
@@ -8010,6 +9321,24 @@
         },
         "incidents_id": {
           "name": "incidents_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_page_subscribers_id": {
+          "name": "status_page_subscribers_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscriber_notifications_id": {
+          "name": "subscriber_notifications_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscriber_deliveries_id": {
+          "name": "subscriber_deliveries_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -8295,21 +9624,6 @@
           "method": "btree",
           "with": {}
         },
-        "payload_locked_documents_rels_push_events_id_idx": {
-          "name": "payload_locked_documents_rels_push_events_id_idx",
-          "columns": [
-            {
-              "expression": "push_events_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "payload_locked_documents_rels_stat_minutely_id_idx": {
           "name": "payload_locked_documents_rels_stat_minutely_id_idx",
           "columns": [
@@ -8390,6 +9704,51 @@
           "columns": [
             {
               "expression": "incidents_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_status_page_subscribers_id_idx": {
+          "name": "payload_locked_documents_rels_status_page_subscribers_id_idx",
+          "columns": [
+            {
+              "expression": "status_page_subscribers_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_subscriber_notifications_i_idx": {
+          "name": "payload_locked_documents_rels_subscriber_notifications_i_idx",
+          "columns": [
+            {
+              "expression": "subscriber_notifications_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_subscriber_deliveries_id_idx": {
+          "name": "payload_locked_documents_rels_subscriber_deliveries_id_idx",
+          "columns": [
+            {
+              "expression": "subscriber_deliveries_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -8657,19 +10016,6 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "payload_locked_documents_rels_push_events_fk": {
-          "name": "payload_locked_documents_rels_push_events_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "push_events",
-          "columnsFrom": [
-            "push_events_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "payload_locked_documents_rels_stat_minutely_fk": {
           "name": "payload_locked_documents_rels_stat_minutely_fk",
           "tableFrom": "payload_locked_documents_rels",
@@ -8741,6 +10087,45 @@
           "tableTo": "incidents",
           "columnsFrom": [
             "incidents_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_status_page_subscribers_fk": {
+          "name": "payload_locked_documents_rels_status_page_subscribers_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "status_page_subscribers",
+          "columnsFrom": [
+            "status_page_subscribers_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_subscriber_notifications_fk": {
+          "name": "payload_locked_documents_rels_subscriber_notifications_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "subscriber_notifications",
+          "columnsFrom": [
+            "subscriber_notifications_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_subscriber_deliveries_fk": {
+          "name": "payload_locked_documents_rels_subscriber_deliveries_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "subscriber_deliveries",
+          "columnsFrom": [
+            "subscriber_deliveries_id"
           ],
           "columnsTo": [
             "id"
@@ -9488,14 +10873,6 @@
         "TXT"
       ]
     },
-    "public.enum_monitors_push_schedule": {
-      "name": "enum_monitors_push_schedule",
-      "schema": "public",
-      "values": [
-        "interval",
-        "cron"
-      ]
-    },
     "public.enum_monitors_manual_status": {
       "name": "enum_monitors_manual_status",
       "schema": "public",
@@ -9549,14 +10926,6 @@
         "maintenance"
       ]
     },
-    "public.enum_monitors_status_last_push_status": {
-      "name": "enum_monitors_status_last_push_status",
-      "schema": "public",
-      "values": [
-        "up",
-        "down"
-      ]
-    },
     "public.enum_proxies_protocol": {
       "name": "enum_proxies_protocol",
       "schema": "public",
@@ -9595,22 +10964,14 @@
         "maintenance"
       ]
     },
-    "public.enum_push_events_kind": {
-      "name": "enum_push_events_kind",
+    "public.enum_status_pages_subscriptions_channels": {
+      "name": "enum_status_pages_subscriptions_channels",
       "schema": "public",
       "values": [
-        "success",
-        "fail",
-        "start",
-        "log"
-      ]
-    },
-    "public.enum_push_events_source": {
-      "name": "enum_push_events_source",
-      "schema": "public",
-      "values": [
-        "http",
-        "email"
+        "email",
+        "sms",
+        "webhook",
+        "slack"
       ]
     },
     "public.enum_status_pages_groups_monitors_type": {
@@ -9646,6 +11007,14 @@
         "password",
         "email-domain",
         "ip-allowlist"
+      ]
+    },
+    "public.enum_status_pages_subscriptions_delivery_mode": {
+      "name": "enum_status_pages_subscriptions_delivery_mode",
+      "schema": "public",
+      "values": [
+        "review",
+        "auto"
       ]
     },
     "public.enum_status_page_viewers_status": {
@@ -9714,6 +11083,90 @@
         "warning",
         "danger",
         "primary"
+      ]
+    },
+    "public.enum_status_page_subscribers_channel": {
+      "name": "enum_status_page_subscribers_channel",
+      "schema": "public",
+      "values": [
+        "email",
+        "sms",
+        "webhook",
+        "slack"
+      ]
+    },
+    "public.enum_status_page_subscribers_source": {
+      "name": "enum_status_page_subscribers_source",
+      "schema": "public",
+      "values": [
+        "self_signup",
+        "added_by_owner",
+        "import"
+      ]
+    },
+    "public.enum_status_page_subscribers_locale": {
+      "name": "enum_status_page_subscribers_locale",
+      "schema": "public",
+      "values": [
+        "en"
+      ]
+    },
+    "public.enum_subscriber_notifications_channels": {
+      "name": "enum_subscriber_notifications_channels",
+      "schema": "public",
+      "values": [
+        "email",
+        "sms",
+        "webhook",
+        "slack"
+      ]
+    },
+    "public.enum_subscriber_notifications_event": {
+      "name": "enum_subscriber_notifications_event",
+      "schema": "public",
+      "values": [
+        "incident_opened",
+        "incident_updated",
+        "incident_resolved",
+        "maintenance_scheduled",
+        "maintenance_reminder",
+        "maintenance_started",
+        "maintenance_updated",
+        "maintenance_completed",
+        "maintenance_cancelled"
+      ]
+    },
+    "public.enum_subscriber_notifications_state": {
+      "name": "enum_subscriber_notifications_state",
+      "schema": "public",
+      "values": [
+        "pending_review",
+        "sending",
+        "sent",
+        "partially_failed",
+        "failed",
+        "discarded"
+      ]
+    },
+    "public.enum_subscriber_deliveries_channel": {
+      "name": "enum_subscriber_deliveries_channel",
+      "schema": "public",
+      "values": [
+        "email",
+        "sms",
+        "webhook",
+        "slack"
+      ]
+    },
+    "public.enum_subscriber_deliveries_state": {
+      "name": "enum_subscriber_deliveries_state",
+      "schema": "public",
+      "values": [
+        "queued",
+        "retrying",
+        "sent",
+        "failed",
+        "skipped"
       ]
     },
     "public.enum_maintenance_weekdays": {
@@ -9864,6 +11317,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "3e1c3ec5-99c7-460d-99a3-73d08d496d9a",
+  "id": "3b9d5082-f796-4200-b373-86dab35bdb27",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

@@ -65,17 +65,17 @@ for README badges). Everything else — unknown ids, monitors of other organizat
 
 **Query parameters** (all optional, same names as Uptime Kuma):
 
-| Parameter                                                  | Badges                                         | Default                                                                                     |
-| ---------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `style`                                                    | all                                            | `flat` (`plastic`, `flat-square`, `for-the-badge`, `social`)                                |
-| `label`                                                    | all                                            | `Status`, `Uptime (24h)`, `Avg. Ping (24h)`, `Avg. Response (24h)`, `Cert Exp.`, `Response` |
-| `labelPrefix`, `labelSuffix`                               | uptime, ping, avg-response, cert-exp, response | —                                                                                           |
-| `prefix`, `suffix`                                         | uptime, ping, avg-response, cert-exp, response | suffix `%`, `ms`, ` days`                                                                   |
-| `color`, `labelColor`                                      | uptime, ping, avg-response, response           | uptime: red→green by ratio; others `blue`                                                   |
-| `upLabel`, `downLabel`, `pendingLabel`, `maintenanceLabel` | status                                         | `Up`, `Down`, `Pending`, `Maintenance`                                                      |
-| `upColor`, `downColor`, `pendingColor`, `maintenanceColor` | status (`upColor`/`downColor` also cert-exp)   | `#66c20a`, `#c2290a`, `#f8a306`, `#1747f5`                                                  |
-| `warnColor`, `warnDays`, `downDays`                        | cert-exp                                       | `#eed202`, `14`, `7`                                                                        |
-| `date`                                                     | cert-exp                                       | show the expiry date instead of remaining days                                              |
+| Parameter                                                                   | Badges                                         | Default                                                                                     |
+| --------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `style`                                                                     | all                                            | `flat` (`plastic`, `flat-square`, `for-the-badge`, `social`)                                |
+| `label`                                                                     | all                                            | `Status`, `Uptime (24h)`, `Avg. Ping (24h)`, `Avg. Response (24h)`, `Cert Exp.`, `Response` |
+| `labelPrefix`, `labelSuffix`                                                | uptime, ping, avg-response, cert-exp, response | —                                                                                           |
+| `prefix`, `suffix`                                                          | uptime, ping, avg-response, cert-exp, response | suffix `%`, `ms`, ` days`                                                                   |
+| `color`, `labelColor`                                                       | uptime, ping, avg-response, response           | uptime: red→green by ratio; others `blue`                                                   |
+| `upLabel`, `downLabel`, `pendingLabel`, `maintenanceLabel`, `degradedLabel` | status                                         | `Up`, `Down`, `Pending`, `Maintenance`, `Degraded`                                          |
+| `upColor`, `downColor`, `pendingColor`, `maintenanceColor`, `degradedColor` | status (`upColor`/`downColor` also cert-exp)   | `#66c20a`, `#c2290a`, `#f8a306`, `#1747f5`, `#eed202`                                       |
+| `warnColor`, `warnDays`, `downDays`                                         | cert-exp                                       | `#eed202`, `14`, `7`                                                                        |
+| `date`                                                                      | cert-exp                                       | show the expiry date instead of remaining days                                              |
 
 Uptime and ping figures come from the stats rollups (`getUptime` / `getAvgPing`, see
 [Architecture](Architecture.md)), `status` and `response` from the monitor's cached last heartbeat, `cert-exp`
@@ -156,15 +156,18 @@ scrape_configs:
       credentials: mk_… # or basic_auth: { username: marmot, password: mk_… }
 ```
 
-| Metric                        | Labels            | Value                                            |
-| ----------------------------- | ----------------- | ------------------------------------------------ |
-| `monitor_status`              | common            | `1` up, `0` down, `2` pending, `3` maintenance   |
-| `monitor_response_time`       | common            | last ping in ms (`-1` when the beat had no ping) |
-| `monitor_uptime_ratio`        | common + `window` | `0.0…1.0` over `24h` and `30d`                   |
-| `monitor_cert_days_remaining` | common            | from `monitors.certInfo` (only when present)     |
-| `monitor_cert_is_valid`       | common            | `1` / `0`, from `monitors.certInfo`              |
+| Metric                        | Labels            | Value                                                        |
+| ----------------------------- | ----------------- | ------------------------------------------------------------ |
+| `monitor_status`              | common            | `1` up, `0` down, `2` pending, `3` maintenance, `4` degraded |
+| `monitor_response_time`       | common            | last ping in ms (`-1` when the beat had no ping)             |
+| `monitor_uptime_ratio`        | common + `window` | `0.0…1.0` over `24h` and `30d`                               |
+| `monitor_cert_days_remaining` | common            | from `monitors.certInfo` (only when present)                 |
+| `monitor_cert_is_valid`       | common            | `1` / `0`, from `monitors.certInfo`                          |
 
 Common labels: `monitor_id`, `monitor_name`, `monitor_type`, `monitor_url`, `monitor_hostname`,
 `monitor_port` (empty string when a monitor has no such field). Names and labels match Uptime Kuma's
-`server/prometheus.js`; monitors without a heartbeat yet have no `monitor_status` sample. Without a valid
+`server/prometheus.js`; `4` (degraded: a successful check slower than the monitor's `degradedAfter`) is a
+Marmot addition, so alert rules written for Kuma that test `monitor_status == 1` should use
+`monitor_status == 1 or monitor_status == 4` to keep treating slow checks as up. Monitors without a heartbeat
+yet have no `monitor_status` sample. Without a valid
 key the endpoint answers `401` with a `WWW-Authenticate` header.

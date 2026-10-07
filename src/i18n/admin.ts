@@ -43,6 +43,7 @@ export const adminTranslations = {
         httpOptions: 'HTTP options',
         keyword: 'Keyword',
         jsonQuery: 'JSON query',
+        assertions: 'Assertions',
         authentication: 'Authentication',
         none: 'None',
         bearerToken: 'Bearer token',
@@ -129,6 +130,9 @@ export const adminTranslations = {
         pingDescription: 'Response time in milliseconds (null when not measured).',
         durationDescription: 'Seconds since the previous heartbeat of this monitor.',
         importantDescription: 'True when the status changed compared to the previous heartbeat.',
+        triggerDescription:
+          'What started the check: "manual" for Check now; empty for scheduled checks and pushes.',
+        assertionsDescription: 'Per-assertion results of this check (HTTP and DNS monitors).',
       },
       pushEvents: {
         description:
@@ -141,6 +145,8 @@ export const adminTranslations = {
       },
       incidents: {
         organizationDescription: 'Derived from the status page.',
+        publicIdDescription:
+          'Short id of the public permalink (/events/incident/<id>). Assigned automatically.',
         contentDescription: 'Markdown: paragraphs, **bold**, _italics_, `code` and links.',
         pinnedDescription: 'Pinned incidents are shown above the monitor groups.',
         activeDescription:
@@ -191,6 +197,8 @@ export const adminTranslations = {
         description:
           'Concrete windows of maintenances with their state and public update timeline. Managed by the server.',
         startDescription: 'Planned start of this window.',
+        publicIdDescription:
+          'Short id of the public permalink (/events/maintenance/<id>). Assigned automatically.',
         endDescription: 'Planned end; empty for manual maintenances.',
         remindersSentDescription: 'Reminder offsets (minutes) already sent or skipped.',
         updatesDescription: 'Public timeline: one entry per state change or posted update.',
@@ -225,6 +233,10 @@ export const adminTranslations = {
         maxRetriesDescription: 'Retries before the monitor is marked DOWN.',
         resendIntervalDescription: 'Re-notify every N consecutive DOWN beats (0 = never).',
         timeoutDescription: 'Request timeout in seconds (0 = 80% of the interval).',
+        degradedAfterDescription:
+          'Response time in ms above which a successful check is marked DEGRADED (empty or 0 = off).',
+        settledStatusDescription:
+          'Last status other than pending (decides transitions after retries).',
         upsideDownDescription: 'Flip status: a failed check counts as UP and vice versa.',
         headersDescription: 'JSON object of extra request headers.',
         acceptedStatusCodesDescription: 'Status codes or ranges counted as UP, e.g. 200-299, 304.',
@@ -237,6 +249,10 @@ export const adminTranslations = {
         domainExpiryDescription: 'Maintained by the worker: cached RDAP domain expiry lookup.',
         invertKeywordDescription: 'UP when the keyword is absent.',
         jsonPathDescription: 'JSONata expression, e.g. `$.status` or `data[0].ok`.',
+        assertionsDescription:
+          'All must pass. HTTP monitors: status, header, textBody, jsonBody; DNS monitors: dnsRecord. At most 10 per kind.',
+        assertionTargetDescription:
+          'Header name, JSONata expression (jsonBody) or record type (dnsRecord).',
         dnsResolveServerDescription: 'Comma-separated resolver IPs or hostnames.',
         pushTokenDescription:
           'Generated automatically. Call /api/push/<token> to report a heartbeat.',
@@ -274,6 +290,8 @@ export const adminTranslations = {
         activeDescription: 'Inactive channels are never sent to.',
         lastSentAtDescription: 'Maintained by the worker.',
         lastErrorDescription: 'Last delivery error; cleared on the next success.',
+        eventsDescription:
+          'Events this channel is told about. Leave empty for the defaults (down, recovery, reminders, certificate and domain expiry).',
       },
       organizations: {
         slugDescription: 'Lowercase letters, numbers and hyphens. Used in URLs.',
@@ -355,6 +373,8 @@ export const adminTranslations = {
         customUrlDescription: 'Link visitors to this URL instead.',
         maintenanceVisibilityHoursDescription:
           'Hours a completed or cancelled maintenance window stays on the page.',
+        pastIncidentsDaysDescription:
+          'Days of past incidents listed on the page, grouped by day (0 hides the list). Older ones are on the history page.',
         homepageUrlDescription: 'Where the logo and title link to (http or https).',
         contactUrlDescription:
           'Contact link in the page header: an http(s) URL or mailto: address.',
@@ -378,9 +398,40 @@ export const adminTranslations = {
         bannerTextDescription: 'Replaces the automatic overall-status headline when set.',
         logoDarkDescription: 'Shown instead of the logo in dark mode.',
         faviconDescription: 'PNG, ICO or SVG; falls back to the logo.',
+        subscriptionsEnabledDescription:
+          'Show a Subscribe button and send incident and maintenance announcements to subscribers.',
+        deliveryModeDescription:
+          'review: every announcement waits as a draft until someone sends it; auto: sent at once.',
+        subscriptionChannelsDescription: 'Channels visitors may subscribe with.',
+        smsChannelDescription: 'Twilio notification channel whose credentials send the SMS.',
+        smsMaxSegmentsDescription: 'Longer SMS are shortened to fit this many segments.',
+        smsTemplatesDescription:
+          'Optional SMS templates with {{ siteName }} {{ title }} {{ status }} {{ message }} {{ url }}.',
+      },
+      subscribers: {
+        targetDescription: 'Email address, phone number (E.164), webhook URL or Slack webhook URL.',
+        componentsDescription: 'Component ids of the page; empty means every component.',
+        confirmedAtDescription: 'Unconfirmed self sign-ups receive nothing.',
+        localeDescription: 'Language of the messages.',
+        secretDescription: 'Signs every webhook delivery (X-Marmot-Signature).',
+      },
+      subscriberNotifications: {
+        windowDescription: 'Maintenance window of the announcement.',
+        channelsDescription: 'Channels the announcement went out on.',
       },
       tags: {
         colorDescription: 'Hex colour of the chip, e.g. #2563EB.',
+      },
+      templates: {
+        kindDescription:
+          'incident pre-fills a new incident, incident-update the incident update composer, maintenance the maintenance form, maintenance-update the maintenance update composer.',
+        bodyDescription:
+          'Markdown with placeholders in double braces (page, components, eta, …). Unfilled placeholders block publishing.',
+        statusPageDescription:
+          'Status page the default components belong to. Empty: the template is offered on every page.',
+        componentsDescription: 'Default affected components (group row ids of the status page).',
+        impactDescription: 'Overall impact when the template names no component.',
+        durationDescription: 'Maintenance: default window length in minutes.',
       },
       users: {
         superadminDescription:

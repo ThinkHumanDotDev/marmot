@@ -71,9 +71,11 @@ Uploads (organization logos, status-page logos) go to local disk unless `S3_BUCK
 
 ## Email
 
-Marmot sends invitations and password-reset mail through the Payload email adapter. Without `SMTP_HOST` the
-messages are written to the web process log instead of being sent, which is enough to copy an invitation
-link during evaluation. The `smtp` notification provider can reuse these settings (**Use the server SMTP
+Marmot sends invitations, password-reset mail and [status page subscriber](Status-Pages.md#subscribers)
+emails (confirmations and announcements, sent by the worker) through the Payload email adapter, over a
+pooled SMTP connection (at most five at a time per process). Without `SMTP_HOST` the messages are written
+to the process log instead of being sent, which is enough to copy an invitation link during evaluation.
+Subscriber SMS use a Twilio notification channel chosen per page, so they need no variable either. The `smtp` notification provider can reuse these settings (**Use the server SMTP
 settings**); the last two variables decide who may do that and how much mail it may send.
 
 | Variable                         | Default                     | Read by     | Description                                                                                                                                                                                                          |
@@ -116,6 +118,7 @@ Full setup guide with provider walkthroughs: [Single sign-on](Single-Sign-On.md)
 | -------------------------------- | ------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `KEEP_DATA_PERIOD_DAYS`          | `365`   | web, worker | Default for the `keepDataPeriodDays` instance setting: how long daily aggregates and important heartbeats are kept. Raw heartbeats live 24 h, minutely buckets 24 h, hourly 30 d.                                                   |
 | `WORKER_CONCURRENCY`             | `10`    | worker      | Parallel checks (and notification deliveries) per worker process. Scale out with more worker replicas rather than very high values.                                                                                                 |
+| `ON_DEMAND_CHECKS_PER_MINUTE`    | `30`    | web         | On-demand checks per organization and minute: **Check now**, the monitor form's **Test** and their API (`POST /api/orgs/:orgId/monitors/:id/check`, `POST /api/orgs/:orgId/checks`). Further requests get `429`.                    |
 | `DOCKER_SOCKET_ENABLED`          | `true`  | web, worker | Allow `socket` Docker hosts, which talk to the Docker daemon of the worker's own host. Set `false` on shared installs where users must not reach the local daemon.                                                                  |
 | `MARMOT_DISABLE_ENGINE_HOOKS`    | `false` | web         | Skip the BullMQ scheduler sync in the `monitors` collection hooks. Only for tests that run without Redis; the Vitest setup sets it.                                                                                                 |
 | `MONITOR_DENY_PRIVATE_ADDRESSES` | `false` | web, worker | Refuse monitor checks and notification deliveries to private, loopback, link-local, CGNAT, multicast and container-network addresses (see below). Turn on when people you do not trust can create monitors, e.g. with open sign-up. |

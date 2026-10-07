@@ -12,6 +12,8 @@ import { adminI18n } from './i18n/admin'
 import { getPlugins } from './plugins'
 import { getEmailAdapter } from './server/email/adapter'
 import { allowedOrigins } from './server/security/origins'
+import { registerMaintenanceChannelListener } from './server/notifications/maintenance'
+import { registerSubscriberListeners } from './server/status-pages/subscribers/events'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -52,5 +54,12 @@ export default buildConfig({
   },
   sharp,
   plugins: getPlugins(),
+  // Incident updates and maintenance events become status page subscriber notifications (#104),
+  // in every process: incidents are posted by the web process, maintenance moves in both. Maintenance
+  // starts and ends also reach channels that opted into the `maintenance` event (#126).
+  onInit: () => {
+    registerSubscriberListeners()
+    registerMaintenanceChannelListener()
+  },
   telemetry: false,
 })

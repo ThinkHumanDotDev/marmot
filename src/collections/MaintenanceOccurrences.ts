@@ -9,6 +9,7 @@ import {
 } from '@/lib/maintenance-announcements'
 import type { MaintenanceOccurrence } from '@/payload-types'
 import { userErrorText } from '@/server/request-locale'
+import { assignPublicId } from '@/server/status-pages/public-ids'
 
 const relId = (value: unknown): string | number | null => {
   if (typeof value === 'string' || typeof value === 'number') return value
@@ -85,6 +86,18 @@ export const MaintenanceOccurrences: CollectionConfig = {
       relationTo: 'maintenance',
       required: true,
       index: true,
+    },
+    {
+      // Short id of the public permalink (#107); assigned by the hook, never by clients.
+      name: 'publicId',
+      type: 'text',
+      index: true,
+      hooks: { beforeChange: [assignPublicId('maintenance-occurrences')] },
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: adminT('marmot:maintenanceOccurrences:publicIdDescription'),
+      },
     },
     {
       type: 'row',

@@ -5,6 +5,11 @@ import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
+import {
+  PlaceholderNotice,
+  TemplatePicker,
+  useTemplateDate,
+} from '@/components/templates/template-picker'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -35,6 +40,15 @@ import {
   type TimelineUpdate,
 } from '@/lib/incident-timeline'
 import { renderMarkdown } from '@/lib/markdown'
+import {
+  fillPlaceholder,
+  findPlaceholders,
+  renderTemplateText,
+  templateImpacts,
+  type TemplateKind,
+  type TemplateRow,
+  type TemplateValues,
+} from '@/lib/templates'
 import { cn } from '@/lib/utils'
 import type { Incident } from '@/payload-types'
 
@@ -48,7 +62,7 @@ export interface IncidentComponentOption {
 
 export const impactBadge: Record<ComponentImpact, string> = {
   operational: 'bg-status-up/15',
-  degraded_performance: 'bg-status-pending/20',
+  degraded_performance: 'bg-status-degraded/20',
   partial_outage: 'bg-status-pending/35',
   major_outage: 'bg-status-down/20',
 }
@@ -66,6 +80,36 @@ type ImpactMap = Record<string, ComponentImpact>
 const MARKDOWN_CLASS =
   'max-w-none text-sm leading-relaxed [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5'
 
+/** What templates need to know about the page they are applied on. */
+export interface TemplateContext {
+  /** Templates offered on this page (`templatesFor`), every kind. */
+  templates: TemplateRow[]
+  organization: string
+  page: string
+}
+
+/**
+ * Fills a template's variables for this page: `components` lists the names of `componentIds`.
+ * Returns a renderer for the template's texts.
+ */
+function useTemplateRenderer(context: TemplateContext, options: IncidentComponentOption[]) {
+  const format = useFormatter()
+  const date = useTemplateDate()
+  return (kind: TemplateKind, componentIds: string[], extra: TemplateValues = {}) => {
+    const names = componentIds.map((id) => options.find((o) => o.id === id)?.name ?? '')
+    const list = format.list(names.filter(Boolean), { type: 'conjunction' })
+    const values: TemplateValues = {
+      organization: context.organization,
+      page: context.page,
+      components: list,
+      component: list,
+      date,
+      ...extra,
+    }
+    return (text: string) => renderTemplateText(text, kind, values)
+  }
+}
+
 function useLabels() {
   const t = useTranslations('statusPages.public')
   return {
@@ -79,7 +123,7 @@ function useLabels() {
  * the page's components and removed; `locked` rows (current impacts of the incident) can be changed
  * but not removed, since leaving a component out of an update keeps its impact anyway.
  */
-function ComponentImpactEditor({
+export function ComponentImpactEditor({
   idPrefix,
   options,
   value,
@@ -221,13 +265,17 @@ function ImpactSelect({
 function UpdateComposer({
   incident,
   options,
+  templateContext,
   onPost,
 }: {
   incident: Incident
   options: IncidentComponentOption[]
+  templateContext: TemplateContext
   onPost: (data: IncidentUpdateDraft) => Promise<boolean>
 }) {
   const t = useTranslations('statusPages.incidents')
+  const tTemplates = useTranslations('templates.picker')
+  const renderer = useTemplateRenderer(templateContext, options)
   const { state } = incidentTimeline(incident)
   // The parent remounts the composer (via `key`) when the current impacts change.
   const current = Object.fromEntries(
@@ -239,9 +287,29 @@ function UpdateComposer({
   const [declared, setDeclared] = React.useState<ComponentImpact>(state.impact)
   const [pending, setPending] = React.useState(false)
   const idPrefix = `incident-${incident.id}-composer`
+  const unfilled = findPlaceholders(message)
+  const updateTemplates = templateContext.templates.filter((tpl) => tpl.kind === 'incident-update')
+
+  function applyTemplate(template: TemplateRow) {
+    const fromTemplate = templateImpacts(
+      template,
+      options.map((o) => o.id),
+    )
+    const next = { ...impacts, ...fromTemplate }
+    const affected = Object.entries(next)
+      .filter(([, impact]) => impact !== 'operational')
+      .map(([id]) => id)
+    const render = renderer('incident-update', affected, { incident: incident.title })
+    setMessage(render(template.body))
+    if (template.status) setStatus(template.status)
+    setImpacts(next)
+    if (template.impact) setDeclared(template.impact)
+    toast.success(tTemplates('applied', { name: template.name }))
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
+    if (unfilled.length > 0) return
     setPending(true)
     // Send only what changed: components left out keep their impact.
     const components = Object.entries(impacts)
@@ -273,6 +341,16 @@ function UpdateComposer({
           <Label htmlFor={`${idPrefix}-status`}>{t('composer.status')}</Label>
           <StatusSelect id={`${idPrefix}-status`} value={status} onChange={setStatus} />
         </div>
+        {updateTemplates.length > 0 && (
+          <div className="grid gap-1.5 sm:ml-auto">
+            <Label htmlFor={`${idPrefix}-template`}>{tTemplates('label')}</Label>
+            <TemplatePicker
+              id={`${idPrefix}-template`}
+              templates={updateTemplates}
+              onApply={applyTemplate}
+            />
+          </div>
+        )}
         {status === 'resolved' && (
           <p className="pb-2 text-xs text-muted-foreground">{t('composer.resolveHint')}</p>
         )}
@@ -283,10 +361,16 @@ function UpdateComposer({
           id={`${idPrefix}-message`}
           rows={3}
           value={message}
+          aria-invalid={unfilled.length > 0 || undefined}
           placeholder={t('composer.messagePlaceholder')}
           onChange={(e) => setMessage(e.target.value)}
         />
       </div>
+      <PlaceholderNotice
+        idPrefix={idPrefix}
+        names={unfilled}
+        onFill={(name, value) => setMessage((text) => fillPlaceholder(text, name, value))}
+      />
       {status !== 'resolved' && (
         <div className="grid gap-1.5">
           <Label>{t('components.title')}</Label>
@@ -308,7 +392,7 @@ function UpdateComposer({
         </div>
       )}
       <div className="flex justify-end">
-        <Button type="submit" size="sm" disabled={pending}>
+        <Button type="submit" size="sm" disabled={pending || unfilled.length > 0}>
           {pending ? t('composer.posting') : t('composer.post')}
         </Button>
       </div>
@@ -428,6 +512,7 @@ function IncidentItem({
   timeZone,
   orgId,
   pageId,
+  templateContext,
   onSaved,
   onRename,
   onRemove,
@@ -438,6 +523,7 @@ function IncidentItem({
   timeZone: string
   orgId: OrgId
   pageId: OrgId
+  templateContext: TemplateContext
   onSaved: (doc: Incident) => void
   onRename: (incident: Incident) => void
   onRemove: (incident: Incident) => void
@@ -591,6 +677,7 @@ function IncidentItem({
               key={`${state.status}|${state.components.map((c) => `${c.component}:${c.impact}`).join(',')}`}
               incident={incident}
               options={options}
+              templateContext={templateContext}
               onPost={postUpdate}
             />
           )}
@@ -639,6 +726,7 @@ export function IncidentsPanel({
   components,
   canEdit,
   timeZone,
+  templateContext,
 }: {
   orgId: OrgId
   pageId: OrgId
@@ -648,8 +736,13 @@ export function IncidentsPanel({
   canEdit: boolean
   /** Organization time zone the timestamps render in. */
   timeZone: string
+  /** Templates offered on this page and the values their variables take. */
+  templateContext: TemplateContext
 }) {
   const t = useTranslations('statusPages.incidents')
+  const tTemplates = useTranslations('templates.picker')
+  const renderer = useTemplateRenderer(templateContext, components)
+  const incidentTemplates = templateContext.templates.filter((tpl) => tpl.kind === 'incident')
   const [incidents, setIncidents] = React.useState(initialIncidents)
   const [creating, setCreating] = React.useState(false)
   const [draft, setDraft] = React.useState<NewDraft>(emptyDraft)
@@ -666,8 +759,32 @@ export function IncidentsPanel({
       return next
     })
 
+  const unfilledTitle = findPlaceholders(draft.title)
+  const unfilled = findPlaceholders(draft.title, draft.message)
+
+  function applyTemplate(template: TemplateRow) {
+    const impacts =
+      template.components.length > 0
+        ? templateImpacts(
+            template,
+            components.map((c) => c.id),
+          )
+        : draft.impacts
+    const render = renderer('incident', Object.keys(impacts))
+    setDraft({
+      ...draft,
+      title: template.title ? render(template.title) : draft.title,
+      status: template.status ?? draft.status,
+      message: render(template.body),
+      impacts,
+      impact: template.impact ?? draft.impact,
+    })
+    toast.success(tTemplates('applied', { name: template.name }))
+  }
+
   async function create(event: React.FormEvent) {
     event.preventDefault()
+    if (unfilled.length > 0) return
     setPending(true)
     try {
       const componentless = Object.keys(draft.impacts).length === 0
@@ -734,6 +851,7 @@ export function IncidentsPanel({
       timeZone={timeZone}
       orgId={orgId}
       pageId={pageId}
+      templateContext={templateContext}
       onSaved={upsert}
       onRename={(i) => {
         setRenameTitle(i.title)
@@ -788,6 +906,16 @@ export function IncidentsPanel({
               <DialogTitle>{t('newDialog.title')}</DialogTitle>
               <DialogDescription>{t('newDialog.description')}</DialogDescription>
             </DialogHeader>
+            {incidentTemplates.length > 0 && (
+              <div className="grid gap-2">
+                <Label htmlFor="incident-template">{tTemplates('label')}</Label>
+                <TemplatePicker
+                  id="incident-template"
+                  templates={incidentTemplates}
+                  onApply={applyTemplate}
+                />
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="incident-title">{t('newDialog.titleLabel')}</Label>
               <Input
@@ -795,6 +923,7 @@ export function IncidentsPanel({
                 value={draft.title}
                 required
                 autoFocus
+                aria-invalid={unfilledTitle.length > 0 || undefined}
                 onChange={(e) => setDraft({ ...draft, title: e.target.value })}
               />
             </div>
@@ -812,10 +941,22 @@ export function IncidentsPanel({
                 id="incident-message"
                 rows={4}
                 value={draft.message}
+                aria-invalid={findPlaceholders(draft.message).length > 0 || undefined}
                 placeholder={t('composer.messagePlaceholder')}
                 onChange={(e) => setDraft({ ...draft, message: e.target.value })}
               />
             </div>
+            <PlaceholderNotice
+              idPrefix="incident-new"
+              names={unfilled}
+              onFill={(name, value) =>
+                setDraft((current) => ({
+                  ...current,
+                  title: fillPlaceholder(current.title, name, value),
+                  message: fillPlaceholder(current.message, name, value),
+                }))
+              }
+            />
             <div className="grid gap-2">
               <Label>{t('components.title')}</Label>
               <ComponentImpactEditor
@@ -850,7 +991,10 @@ export function IncidentsPanel({
               <Button type="button" variant="ghost" onClick={() => setCreating(false)}>
                 {t('newDialog.cancel')}
               </Button>
-              <Button type="submit" disabled={pending || !draft.title.trim()}>
+              <Button
+                type="submit"
+                disabled={pending || !draft.title.trim() || unfilled.length > 0}
+              >
                 {pending ? t('newDialog.saving') : t('newDialog.submit')}
               </Button>
             </DialogFooter>

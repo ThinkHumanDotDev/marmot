@@ -27,12 +27,24 @@ state machine (`src/server/engine/beat.ts`, ported from Uptime Kuma's `Monitor.b
 
 ```
 maintenance?  → MAINTENANCE
-check ok      → UP
+check ok      → ping > degradedAfter ? DEGRADED : UP
 check failed  → retries < maxretries ? PENDING (scheduler switched to retryInterval) : DOWN
-upsideDown    → flip UP/DOWN
+upsideDown    → flip UP/DOWN (the degraded threshold does not apply)
 ```
 
-Important beats (status transitions) trigger notifications; `resendInterval` re-notifies while down.
+Important beats (status transitions) trigger notifications; `resendInterval` re-notifies while down. Each
+notifying beat carries a `notificationEvent` (`down`, `up`, `degraded`, `reminder`) that the dispatcher
+filters channels on. `status.settledStatus` remembers the last non-PENDING status so that leaving a retry
+streak (DEGRADED → PENDING → UP) is still recognised as a transition.
+
+On-demand checks (`src/server/engine/on-demand.ts`, worker side in `on-demand-jobs.ts`) use the same queue:
+`POST /api/orgs/:orgId/monitors/:id/check` adds a `manual-check` job (LIFO, deduplicated per monitor while
+one is pending) and `POST /api/orgs/:orgId/checks` an `adhoc-check` job carrying unsaved form values. The
+web process waits for the job's return value through BullMQ `QueueEvents`, so it never connects to a
+target itself; the worker runs `runCheck()` (timeout, proxy, outbound guard) and either records the beat
+through the state machine with `heartbeats.trigger = 'manual'` or, for dry runs and ad-hoc checks, only
+returns the result. Jobs carry a deadline and are dropped when the worker picks them up after nobody waits
+any more. A per-organization limiter (`ON_DEMAND_CHECKS_PER_MINUTE`) bounds both routes.
 
 After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
 `lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`) and calls every listener registered with
@@ -51,7 +63,8 @@ second of the bucket start (minute / hour / UTC day), guarded by a unique compou
 | `stat-daily`    | 1 day  | `KEEP_DATA_PERIOD_DAYS` | `1y`   |
 
 Each row stores `up`, `down`, `ping` (average of UP beats), `pingMin`, `pingMax` and an `extras` JSON with
-`maintenance` (beats during maintenance, also counted as `up`) and `pingCount` (weight of `ping`). `pending`
+`maintenance` (beats during maintenance, also counted as `up`), `degraded` (slow successful checks, also
+counted as `up`, their ping included) and `pingCount` (weight of `ping`). `pending`
 beats count as `down`. The maths is a port of Uptime Kuma's `UptimeCalculator`
 (`src/server/stats/uptime-calculator.ts`): the worker's heartbeat listener calls
 `recordHeartbeat(payload, { monitorId, organizationId, status, ping, time })`, which reads the three current
@@ -68,9 +81,9 @@ non-important heartbeats older than 24 h.
 ## Notifications
 
 `notifications` documents (org-scoped: `name`, `type` = provider slug, `config` validated against the
-provider's zod schema, `isDefault`, `active`, `lastSentAt`, `lastError`) are attached to monitors through
+provider's zod schema, `events` filter, `isDefault`, `active`, `lastSentAt`, `lastError`) are attached to monitors through
 `monitors.notifications`. When a beat has `notify = true` the worker's heartbeat listener enqueues one BullMQ
-job per active attached channel on `marmot:notifications` (job id `notif:<channel>:<heartbeat>` dedupes, 3
+job per active attached channel that selected the beat's event on `marmot:notifications` (job id `notif:<channel>:<heartbeat>` dedupes, 3
 attempts with exponential backoff); the notification worker renders `[name] [🔴 Down] msg`, calls the
 provider's `send()` and records the outcome on the channel. Providers self-register in
 `src/server/notification-providers/`; see [Notifications](Notifications.md).
@@ -183,13 +196,30 @@ never diverges from the timeline.
 
 After every write the `afterChange` hook calls `emitIncidentUpdatePosted()`
 (`src/server/status-pages/incident-events.ts`) once per new update, with `kind` `opened`, `updated`,
-`resolved` or `reopened`. That is the extension point for subscriber notifications (#104): register with
-`onIncidentUpdatePosted(listener)`; nothing listens yet. Lazily migrated updates are not announced.
+`resolved` or `reopened`. That is the extension point for subscriber notifications (#104): listeners register with
+`onIncidentUpdatePosted(listener)` and get the write's `req` to defer work until the commit. Lazily
+migrated updates are not announced.
+
+### Status page subscribers
+
+`registerSubscriberListeners()` (`src/server/status-pages/subscribers/events.ts`) runs from Payload's
+`onInit`, so every process listens: incident updates (`onIncidentUpdatePosted`, deferred with
+`afterCommit`) and maintenance events (`registerMaintenanceEventListener`) become
+`subscriber-notifications` documents through `createNotificationBatch()`, deduplicated by a unique
+`dedupeKey` (`incident:<page>:<incident>:<update>`, `maintenance:<page>:<occurrence>:<type>:<update|reminder>`).
+In `review` mode they wait as `pending_review`; sending (or `auto` mode) enqueues a `subscriber-fanout` job
+on `marmot:notifications`, which the notification worker routes by job name: the fan-out creates one
+`subscriber-deliveries` row per matching confirmed subscriber and one `subscriber-delivery` job each
+(job ids `spn-<notification>-<round>`, `spd-<delivery>-<round>`; five attempts, jittered exponential
+backoff). Deliveries render per channel (`content.ts`, emails in `src/server/email/subscriber-emails.ts`)
+and send through the Payload email adapter, the Twilio provider, or a signed webhook
+(`src/server/webhooks/signature.ts`); the last delivery to finish sets the notification's final state.
+Retention deletes delivery rows after 90 days and unconfirmed self sign-ups after 72 hours.
 
 The public payload (`buildPublicStatusPageData`) maps each monitor to the worst impact of the active
 incidents naming it and computes `overall` from both: a `major_outage` component counts as down, a
-degraded or partial one as not fully up, and incidents without components raise the page to `partial` or
-`down`. See [Status pages](Status-Pages.md) for the routes and payload.
+partial one as not fully up, a degraded one (incident impact or degraded monitor, `effectiveImpact()`) as
+degraded, and incidents without components raise the page to `degraded`, `partial` or `down`. See [Status pages](Status-Pages.md) for the routes and payload.
 
 ## Realtime
 
@@ -323,8 +353,12 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `notification:create`, `notification:update`, `notification:delete` |        |        |   ✓   |   ✓   |
 | `status-page:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
 | `status-page:create`, `status-page:update`, `status-page:delete`    |        |   ✓    |   ✓   |   ✓   |
+| `subscriber:read`, `subscriber:manage`                              |        |   ✓    |   ✓   |   ✓   |
+| `subscriber:send`                                                   |        |        |   ✓   |   ✓   |
 | `maintenance:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
 | `maintenance:create`, `maintenance:update`, `maintenance:delete`    |        |   ✓    |   ✓   |   ✓   |
+| `template:read`                                                     |   ✓    |   ✓    |   ✓   |   ✓   |
+| `template:create`, `template:update`, `template:delete`             |        |   ✓    |   ✓   |   ✓   |
 | `tag:read`                                                          |   ✓    |   ✓    |   ✓   |   ✓   |
 | `tag:create`, `tag:update`, `tag:delete`                            |        |   ✓    |   ✓   |   ✓   |
 | `proxy:read` (password only with `proxy:update`)                    |        |   ✓    |   ✓   |   ✓   |

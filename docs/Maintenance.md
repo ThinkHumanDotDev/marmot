@@ -80,7 +80,7 @@ Attaching a status page to a window makes the page announce it; it does not put 
 maintenance (list them under **Monitors** for that). Public pages render, in a **maintenance** block above
 the monitor groups, the running occurrences, the next occurrence of each maintenance when it starts within
 seven days, and completed or cancelled occurrences for the page's `maintenanceVisibilityHours` (default 24,
-set under the page's settings; afterwards they belong to the history page). Each card shows the title,
+set under the page's settings; afterwards they are on the [history page](Status-Pages.md#history-and-permalinks)). Each card shows the title,
 description, state, the time range in the visitor's local time and the update timeline. The public JSON
 (`GET /api/status-pages/:slug/public`) exposes them in its `maintenance` array, running windows first
 ([Status pages](Status-Pages.md)); everything is read from the persisted occurrences. The page's overall status becomes `maintenance` when its monitors report
@@ -92,7 +92,9 @@ maintenance and nothing else is down.
 occurrence. With no windows yet, the empty state offers **Schedule maintenance** to members who may create
 one; the same action is in the page header and in the command palette (⌘K / Ctrl+K). The form covers title,
 description, strategy, date and time range, interval/weekdays/days of month or cron and duration, timezone,
-and pickers for the affected monitors and status pages. A window can be paused (`inactive`) and resumed,
+and pickers for the affected monitors and status pages. **Use template** pre-fills the title, description
+and duration from a maintenance [template](Status-Pages.md#templates), and the update composer of each
+window offers `maintenance-update` templates. A window can be paused (`inactive`) and resumed,
 edited while it runs, or deleted, after which affected monitors resume normal checks on their next run.
 
 Times in the list are shown in the zone each window is evaluated in (with the zone name), and the cron

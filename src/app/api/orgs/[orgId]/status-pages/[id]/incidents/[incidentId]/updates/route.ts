@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const body = await readJson(request)
   if (!body) return jsonError(errorText(request, 'invalidJsonBody'), 400)
   const parsed = parseUpdateInput(body)
-  if (!parsed.ok) return jsonError(errorText(request, parsed.error), 400)
+  if (!parsed.ok) return jsonError(errorText(request, parsed.error, parsed.values), 400)
 
   try {
     const incident = await loadOrgIncident(auth.ctx, orgId, id, incidentId)

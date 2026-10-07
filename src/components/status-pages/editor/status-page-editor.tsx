@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { track } from '@/lib/analytics'
 import { componentDisplayName } from '@/lib/status-page-components'
+import type { TemplateRow } from '@/lib/templates'
 import type { Incident, StatusPage } from '@/payload-types'
 
 import {
@@ -27,8 +28,10 @@ import { AccessPanel } from './access-panel'
 import { DomainsPanel } from './domains-panel'
 import { GroupsEditor } from './groups-editor'
 import { IncidentsPanel, type IncidentComponentOption } from './incidents-panel'
+import { NotificationsPanel } from './notifications-panel'
 import { SettingsForm } from './settings-form'
 import { SharePanel } from './share-panel'
+import { SubscribersPanel, type SmsChannelOption } from './subscribers-panel'
 import { ThemeEditor } from './theme-editor'
 
 export interface EditorProps {
@@ -41,6 +44,16 @@ export interface EditorProps {
   canDelete: boolean
   /** Organization time zone the incident timestamps render in. */
   timeZone: string
+  /** Name of the organization (`{{ organization }}` in templates). */
+  orgName: string
+  /** Incident templates of the organization (all pages, all kinds). */
+  templates: TemplateRow[]
+  /** `subscriber:read`, `subscriber:manage` and `subscriber:send` in the organization. */
+  canReadSubscribers: boolean
+  canManageSubscribers: boolean
+  canSendNotifications: boolean
+  /** Twilio channels of the organization (SMS sender of subscriptions). */
+  smsChannels: SmsChannelOption[]
   /** Instance setting `trustProxy` (the IP allow-list needs client addresses). */
   trustProxy: boolean
 }
@@ -68,6 +81,12 @@ export function StatusPageEditor({
   canEdit,
   canDelete,
   timeZone,
+  orgName,
+  templates,
+  canReadSubscribers,
+  canManageSubscribers,
+  canSendNotifications,
+  smsChannels,
   trustProxy,
 }: EditorProps) {
   const t = useTranslations('statusPages.editorPage')
@@ -76,6 +95,16 @@ export function StatusPageEditor({
   const [publishing, setPublishing] = React.useState(false)
   const publicHref = publicStatusPagePath(page.slug)
   const incidentComponents = React.useMemo(() => pageComponents(page, monitors), [page, monitors])
+  const templateContext = React.useMemo(
+    () => ({
+      templates: templates.filter(
+        (template) => template.statusPage === null || template.statusPage === String(page.id),
+      ),
+      organization: orgName,
+      page: page.title,
+    }),
+    [templates, orgName, page.id, page.title],
+  )
 
   async function togglePublished(next: boolean) {
     setPublishing(true)
@@ -147,6 +176,10 @@ export function StatusPageEditor({
             <TabsTrigger value="theme">{t('tabs.theme')}</TabsTrigger>
             <TabsTrigger value="groups">{t('tabs.groups')}</TabsTrigger>
             <TabsTrigger value="incidents">{t('tabs.incidents')}</TabsTrigger>
+            <TabsTrigger value="subscribers">{t('tabs.subscribers')}</TabsTrigger>
+            {canReadSubscribers && (
+              <TabsTrigger value="notifications">{t('tabs.notifications')}</TabsTrigger>
+            )}
             <TabsTrigger value="domains">{t('tabs.domains')}</TabsTrigger>
             <TabsTrigger value="access">{ta('tab')}</TabsTrigger>
             <TabsTrigger value="share">{t('tabs.share')}</TabsTrigger>
@@ -179,10 +212,28 @@ export function StatusPageEditor({
               pageId={page.id}
               initialIncidents={initialIncidents}
               components={incidentComponents}
+              templateContext={templateContext}
               timeZone={timeZone}
               canEdit={canEdit}
             />
           </TabsContent>
+          <TabsContent value="subscribers" className="pt-6">
+            <SubscribersPanel
+              orgId={orgId}
+              page={page}
+              onSaved={setPage}
+              canEdit={canEdit}
+              canRead={canReadSubscribers}
+              canManage={canManageSubscribers}
+              smsChannels={smsChannels}
+              components={incidentComponents}
+            />
+          </TabsContent>
+          {canReadSubscribers && (
+            <TabsContent value="notifications" className="pt-6">
+              <NotificationsPanel orgId={orgId} pageId={page.id} canSend={canSendNotifications} />
+            </TabsContent>
+          )}
           <TabsContent value="domains" className="pt-6">
             <DomainsPanel orgId={orgId} page={page} onSaved={setPage} canEdit={canEdit} />
           </TabsContent>

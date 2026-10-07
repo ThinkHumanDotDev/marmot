@@ -6,8 +6,9 @@
  * - refreshes the cached RDAP lookup when it is stale and runs the domain thresholds when
  *   `domainExpiryNotification` is on (`domain-expiry.ts`).
  *
- * Messages go straight through `sendNotification` to the monitor's active channels, like Uptime
- * Kuma, because the heartbeat queue renders status messages only.
+ * Messages go straight through `sendNotification` to the monitor's active channels that accept the
+ * `certificate` event (#126), like Uptime Kuma, because the heartbeat queue renders status messages
+ * only.
  */
 import type { Payload } from 'payload'
 
@@ -16,7 +17,11 @@ import { childLogger } from '@/lib/logger'
 import type { Monitor, Notification } from '@/payload-types'
 import { registerHeartbeatListener, type HeartbeatEvent } from '@/server/engine/hooks'
 import { getOrganizationI18n } from '@/server/i18n'
-import { getMonitorNotifications, sendNotification } from '@/server/notifications'
+import {
+  channelsAcceptingEvent,
+  getMonitorNotifications,
+  sendNotification,
+} from '@/server/notifications'
 import { getInstanceSettings } from '@/server/settings'
 import { notifyCertExpiry, type CertExpiryNotice, type ExpirySender } from './cert-expiry'
 import {
@@ -52,7 +57,13 @@ export function createChannelSender(
     let sent = false
     for (const channel of channels) {
       try {
-        await sendNotification(payload, channel, { message, monitor, heartbeat: null, locale })
+        await sendNotification(payload, channel, {
+          message,
+          monitor,
+          heartbeat: null,
+          event: 'certificate',
+          locale,
+        })
         sent = true
       } catch (err) {
         log.error(
@@ -90,7 +101,11 @@ export async function processCertExpiry(
   }
   if (!monitor.expiryNotification || monitor.ignoreTls) return []
 
-  const channels = await getMonitorNotifications(payload, monitor)
+  // Certificate and domain warnings are the `certificate` event of the channel filters (#126).
+  const channels = channelsAcceptingEvent(
+    await getMonitorNotifications(payload, monitor),
+    'certificate',
+  )
   if (channels.length === 0) return []
   const { tlsExpiryNotifyDays } = await getInstanceSettings(payload)
   const { locale } = await getOrganizationI18n(payload, event.organizationId)
@@ -162,7 +177,11 @@ export async function processDomainExpiry(
   }
 
   if (!info?.expiresAt) return { info, notice: null }
-  const channels = await getMonitorNotifications(payload, monitor)
+  // Certificate and domain warnings are the `certificate` event of the channel filters (#126).
+  const channels = channelsAcceptingEvent(
+    await getMonitorNotifications(payload, monitor),
+    'certificate',
+  )
   if (channels.length === 0) return { info, notice: null }
   const { domainExpiryNotifyDays } = await getInstanceSettings(payload)
   const { locale } = await getOrganizationI18n(payload, event.organizationId)

@@ -5,26 +5,34 @@ import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import { BeatBar } from '@/components/status-pages/beat-bar'
+import { PastIncidents } from '@/components/status-pages/public/event-list'
 import { MaintenanceCard } from '@/components/status-pages/public/maintenance-card'
 import { StatusDot } from '@/components/status-dot'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import type { ComponentImpact } from '@/lib/status-page-components'
 import { renderMarkdown } from '@/lib/markdown'
+import { effectiveImpact } from '@/lib/status-page-components'
+import { EVENTS_PATH, eventPath, type EventKind } from '@/lib/status-page-events'
 import { cn } from '@/lib/utils'
 
+import { SubscribeDialog } from './subscribe-dialog'
+import { ImpactBadge, IncidentUpdateEntry, impactStyles, StatusPageLogo } from './parts'
 import { ThemeToggle } from './theme-toggle'
+
+export { ImpactBadge, IncidentUpdateEntry, impactStyles, StatusPageLogo }
 import type {
   OverallStatus,
-  PublicConfig,
   PublicGroup,
   PublicIncident,
-  PublicIncidentUpdate,
   PublicMonitor,
   PublicStatusPageData,
 } from '@/server/status-pages/public'
 
 const overallStyles: Record<OverallStatus, { dot: string; banner: string }> = {
   up: { dot: 'bg-status-up', banner: 'border-status-up/40 bg-status-up/10' },
+  degraded: {
+    dot: 'bg-status-degraded',
+    banner: 'border-status-degraded/50 bg-status-degraded/10',
+  },
   partial: { dot: 'bg-status-pending', banner: 'border-status-pending/50 bg-status-pending/10' },
   down: { dot: 'bg-status-down', banner: 'border-status-down/40 bg-status-down/10' },
   maintenance: {
@@ -79,110 +87,10 @@ export function OverallBanner({ status, text }: { status: OverallStatus; text?: 
 }
 
 /**
- * Light and dark logos, swapped by the `dark` class (CSS only, so it follows the visitor toggle
- * without re-rendering). With a single logo it is shown in both modes.
- */
-export function StatusPageLogo({
-  config,
-  alt = '',
-  className,
-}: {
-  config: Pick<PublicConfig, 'logo' | 'logoDark'>
-  alt?: string
-  className?: string
-}) {
-  const { logo, logoDark } = config
-  if (!logo && !logoDark) return null
-  const img = (src: string, extra?: string, mode?: 'light' | 'dark') => (
-    // eslint-disable-next-line @next/next/no-img-element -- user upload, arbitrary size
-    <img
-      src={src}
-      alt={alt}
-      data-logo={mode}
-      className={cn('size-14 shrink-0 rounded-lg object-contain', className, extra)}
-      width={56}
-      height={56}
-    />
-  )
-  if (logo && logoDark) {
-    return (
-      <>
-        {img(logo, 'dark:hidden', 'light')}
-        {img(logoDark, 'hidden dark:block', 'dark')}
-      </>
-    )
-  }
-  return img((logo ?? logoDark)!)
-}
-
-const MARKDOWN_CLASS =
-  'prose-sm max-w-none text-sm leading-relaxed [&_a]:underline [&_code]:rounded [&_code]:bg-background/60 [&_code]:px-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5'
-
-/** Badge colours per component impact (incident cards and component rows). */
-export const impactStyles: Record<ComponentImpact, string> = {
-  operational: 'border-status-up/40 text-status-up',
-  degraded_performance: 'border-status-pending/50 text-status-pending',
-  partial_outage: 'border-status-pending/50 text-status-pending',
-  major_outage: 'border-status-down/40 text-status-down',
-}
-
-export function ImpactBadge({ impact, name }: { impact: ComponentImpact; name?: string }) {
-  const t = useTranslations('statusPages.public')
-  const label = t(`impact.${impact}`)
-  return (
-    <span
-      data-impact={impact}
-      className={cn(
-        'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap',
-        impactStyles[impact],
-      )}
-    >
-      {name ? t('incidents.componentImpact', { name, impact: label }) : label}
-    </span>
-  )
-}
-
-function IncidentUpdateEntry({ update }: { update: PublicIncidentUpdate }) {
-  const t = useTranslations('statusPages.public.incidents')
-  const format = useFormatter()
-  return (
-    <div data-update-status={update.status}>
-      <p className="flex flex-wrap items-baseline gap-x-2 text-xs">
-        <span className="font-semibold">{t(`status.${update.status}`)}</span>
-        <time dateTime={update.postedAt} className="text-muted-foreground">
-          {format.dateTime(new Date(update.postedAt), 'short')}
-        </time>
-        {update.editedAt && (
-          <span
-            className="text-muted-foreground italic"
-            title={t('editedAt', { time: format.dateTime(new Date(update.editedAt), 'short') })}
-          >
-            ({t('edited')})
-          </span>
-        )}
-      </p>
-      {update.message && (
-        <div
-          className={cn('mt-1', MARKDOWN_CLASS)}
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(update.message) }}
-        />
-      )}
-      {update.components.length > 0 && (
-        <p className="mt-1.5 flex flex-wrap gap-1">
-          {update.components.map((c) => (
-            <ImpactBadge key={c.id} impact={c.impact} name={c.name} />
-          ))}
-        </p>
-      )}
-    </div>
-  )
-}
-
-/**
  * An incident: title, current status and impact, the latest update inline and the rest of the
  * timeline (newest first) behind a disclosure.
  */
-export function IncidentCard({ incident }: { incident: PublicIncident }) {
+export function IncidentCard({ incident, href }: { incident: PublicIncident; href?: string }) {
   const t = useTranslations('statusPages.public.incidents')
   const [latest, ...earlier] = incident.updates
   const impacted = incident.components.filter((c) => c.impact !== 'operational')
@@ -194,7 +102,15 @@ export function IncidentCard({ incident }: { incident: PublicIncident }) {
       className={cn('rounded-xl border px-5 py-4', incidentStyles[incident.style])}
     >
       <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3 className="text-base font-semibold">{incident.title}</h3>
+        <h3 className="text-base font-semibold">
+          {href ? (
+            <a href={href} className="underline-offset-4 hover:underline" data-permalink>
+              {incident.title}
+            </a>
+          ) : (
+            incident.title
+          )}
+        </h3>
         {incident.active && incident.impact !== 'operational' && (
           <ImpactBadge impact={incident.impact} />
         )}
@@ -270,7 +186,9 @@ function MonitorRow({ monitor }: { monitor: PublicMonitor }) {
     <span className="font-medium">{monitor.name}</span>
   )
   const isStatic = monitor.type === 'static'
-  const impact = monitor.impact && monitor.impact !== 'operational' ? monitor.impact : null
+  // A degraded monitor reads as "Degraded performance" like an incident with that impact.
+  const shown = effectiveImpact(monitor.status, monitor.impact)
+  const impact = shown && shown !== 'operational' ? shown : null
   const showValues =
     monitor.showValues && monitor.uptime24h !== undefined && monitor.uptime30d !== undefined
 
@@ -420,13 +338,18 @@ function GroupSection({ group }: { group: PublicGroup }) {
 interface StatusPageViewProps {
   slug: string
   initial: PublicStatusPageData
+  /**
+   * Path of the page as the visitor sees it (`/status/<slug>`, or `''` on a custom domain); links
+   * to the history and permalinks start with it.
+   */
+  basePath?: string
 }
 
 /**
  * The whole public status page. Server-rendered with `initial`, then — when the page's
  * `autoRefreshInterval` is non-zero — re-fetched from the public API on that interval.
  */
-export function StatusPageView({ slug, initial }: StatusPageViewProps) {
+export function StatusPageView({ slug, initial, basePath }: StatusPageViewProps) {
   const t = useTranslations('statusPages')
   const format = useFormatter()
   const [data, setData] = React.useState(initial)
@@ -465,6 +388,8 @@ export function StatusPageView({ slug, initial }: StatusPageViewProps) {
   const pinned = incidents.filter((i) => i.pinned)
   const others = incidents.filter((i) => !i.pinned)
   const feedHref = `/status/${encodeURIComponent(slug)}/rss`
+  const base = basePath ?? `/status/${encodeURIComponent(slug)}`
+  const link = (kind: EventKind, publicId: string) => `${base}${eventPath(kind, publicId)}`
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -514,6 +439,14 @@ export function StatusPageView({ slug, initial }: StatusPageViewProps) {
               {t('public.contact')}
             </a>
           )}
+          {config.subscriptionChannels.length > 0 && (
+            <SubscribeDialog
+              slug={slug}
+              title={config.title}
+              channels={config.subscriptionChannels}
+              groups={groups}
+            />
+          )}
           {config.theme === 'auto' && <ThemeToggle className="shrink-0" />}
         </header>
 
@@ -522,7 +455,11 @@ export function StatusPageView({ slug, initial }: StatusPageViewProps) {
         {maintenance.length > 0 && (
           <section aria-label={t('sections.maintenance')} className="flex flex-col gap-3">
             {maintenance.map((item) => (
-              <MaintenanceCard key={item.id} item={item} />
+              <MaintenanceCard
+                key={item.id}
+                item={item}
+                href={link('maintenance', item.publicId)}
+              />
             ))}
           </section>
         )}
@@ -530,7 +467,11 @@ export function StatusPageView({ slug, initial }: StatusPageViewProps) {
         {pinned.length > 0 && (
           <section aria-label={t('sections.incidents')} className="flex flex-col gap-3">
             {pinned.map((incident) => (
-              <IncidentCard key={incident.id} incident={incident} />
+              <IncidentCard
+                key={incident.id}
+                incident={incident}
+                href={link('incident', incident.publicId)}
+              />
             ))}
           </section>
         )}
@@ -553,10 +494,20 @@ export function StatusPageView({ slug, initial }: StatusPageViewProps) {
               {t('sections.ongoingIncidents')}
             </h2>
             {others.map((incident) => (
-              <IncidentCard key={incident.id} incident={incident} />
+              <IncidentCard
+                key={incident.id}
+                incident={incident}
+                href={link('incident', incident.publicId)}
+              />
             ))}
           </section>
         )}
+
+        <PastIncidents
+          days={data.pastIncidentsDays > 0 ? data.pastIncidents : []}
+          historyHref={`${base}${EVENTS_PATH}`}
+          basePath={base}
+        />
 
         <footer className="flex flex-col gap-3 border-t pt-6 text-xs text-muted-foreground">
           {config.footerText && (

@@ -47,7 +47,7 @@ export const telegramFieldMeta: Record<keyof TelegramConfig, NotificationFieldMe
   },
   protectContent: { label: 'Protect content', description: 'Prevent forwarding and saving.' },
   useTemplate: { label: 'Use a custom message template' },
-  template: { label: 'Message template', multiline: true },
+  template: { template: 'text', label: 'Message template', multiline: true },
   templateParseMode: {
     label: 'Template parse mode',
     options: { plain: 'Plain text', HTML: 'HTML', MarkdownV2: 'MarkdownV2' },
@@ -66,7 +66,8 @@ registerNotificationProvider({
   docsUrl: 'https://core.telegram.org/bots#how-do-i-create-a-bot',
   configSchema: telegramConfigSchema,
   fieldMeta: telegramFieldMeta,
-  async send({ config: raw, message, monitor, heartbeat, locale }) {
+  async send(ctx) {
+    const { config: raw, message, monitor, heartbeat, locale } = ctx
     const config = telegramConfigSchema.parse(raw)
     const params: Record<string, unknown> = {
       chat_id: config.chatId,
@@ -106,6 +107,7 @@ registerNotificationProvider({
         monitorForTemplate,
         heartbeatForTemplate,
         locale,
+        ctx,
       )
       if (config.templateParseMode !== 'plain') params.parse_mode = config.templateParseMode
     }

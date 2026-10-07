@@ -39,7 +39,7 @@ export const orgRoom = (organizationId: string | number) => `org:${organizationI
 /** Ids travel as strings: Postgres uses numbers, MongoDB strings; the client never cares. */
 export type RealtimeId = string
 
-export type RealtimeHeartbeatStatus = 'up' | 'down' | 'pending' | 'maintenance'
+export type RealtimeHeartbeatStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded'
 
 export type RealtimeRange = '24h' | '30d' | '1y'
 

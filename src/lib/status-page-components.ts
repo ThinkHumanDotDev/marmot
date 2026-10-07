@@ -24,7 +24,7 @@ export const COMPONENT_IMPACTS = [
 export type ComponentImpact = (typeof COMPONENT_IMPACTS)[number]
 
 /** Same vocabulary as `HEARTBEAT_STATUSES` plus `unknown` (never checked / no data). */
-export type ComponentStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'unknown'
+export type ComponentStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded' | 'unknown'
 
 const impactRank = (impact: ComponentImpact): number => COMPONENT_IMPACTS.indexOf(impact)
 
@@ -40,11 +40,29 @@ export function worstImpact(
   return worst
 }
 
-/** Dot colour of an impact: major outage → down, degraded / partial → pending (amber), else up. */
-export function impactToStatus(impact: ComponentImpact | null): 'up' | 'pending' | 'down' {
+/**
+ * Dot colour of an impact: major outage → down, partial outage → pending (amber), degraded
+ * performance → degraded (the monitor state of the same name), else up.
+ */
+export function impactToStatus(
+  impact: ComponentImpact | null,
+): 'up' | 'degraded' | 'pending' | 'down' {
   if (impact === 'major_outage') return 'down'
-  if (impact === 'partial_outage' || impact === 'degraded_performance') return 'pending'
+  if (impact === 'partial_outage') return 'pending'
+  if (impact === 'degraded_performance') return 'degraded'
   return 'up'
+}
+
+/**
+ * Impact a component shows: the worst impact of the active incidents naming it, raised to
+ * `degraded_performance` while its monitor is degraded (#93). One rule for the page, the overall
+ * state and the badge, so a slow monitor reads as "Degraded performance" everywhere.
+ */
+export function effectiveImpact(
+  status: ComponentStatus,
+  impact: ComponentImpact | null | undefined,
+): ComponentImpact | null {
+  return worstImpact([impact, status === 'degraded' ? 'degraded_performance' : null])
 }
 
 /**
@@ -64,11 +82,15 @@ const STATUS_SEVERITY: Record<ComponentStatus, number> = {
   unknown: 0,
   up: 1,
   maintenance: 2,
-  pending: 3,
-  down: 4,
+  degraded: 3,
+  pending: 4,
+  down: 5,
 }
 
-/** Worst status of a set (the collapsed group header): down > pending > maintenance > up > unknown. */
+/**
+ * Worst status of a set (the collapsed group header):
+ * down > pending > degraded > maintenance > up > unknown.
+ */
 export function worstStatus(statuses: readonly ComponentStatus[]): ComponentStatus {
   let worst: ComponentStatus = 'unknown'
   for (const status of statuses) {

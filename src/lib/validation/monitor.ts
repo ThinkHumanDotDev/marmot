@@ -12,6 +12,17 @@ import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
 import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
+import {
+  ASSERTION_COMPARATORS,
+  ASSERTION_KINDS,
+  assertionProblems,
+  MAX_ASSERTION_TARGET_LENGTH,
+  MAX_ASSERTION_VALUE_LENGTH,
+  MAX_ASSERTIONS_PER_KIND,
+  normalizeAssertions,
+  supportsAssertions,
+} from './assertions'
+
 /** Key of a validation message under `monitors.validation` in the catalogues. */
 export type MonitorValidationKey = keyof Messages['monitors']['validation']
 
@@ -334,6 +345,8 @@ export const SSH_AUTH_METHODS = ['password', 'privateKey'] as const
 /** Uptime Kuma's UI minimum for `interval` and `retryInterval`. */
 export const MIN_INTERVAL_SECONDS = 20
 export const MAX_INTERVAL_SECONDS = 24 * 60 * 60 * 365
+/** Upper bound of the degraded threshold (10 minutes, well above any check timeout). */
+export const MAX_DEGRADED_AFTER_MS = 600_000
 
 /** HTTP status codes (`200`, `200-299`) and WebSocket close codes (`1000`, `4000-4999`). */
 const STATUS_CODE_PATTERN = /^([1-5]\d{2}|[1-4]\d{3})(-([1-5]\d{2}|[1-4]\d{3}))?$/
@@ -395,6 +408,18 @@ const tagRow = z.object({
   value: optionalText(200),
 })
 
+/** `monitors.assertions` row (see `./assertions.ts`); the value is kept verbatim (no trimming). */
+const assertionRow = z.object({
+  kind: z.enum(ASSERTION_KINDS),
+  target: optionalText(MAX_ASSERTION_TARGET_LENGTH),
+  comparator: z.enum(ASSERTION_COMPARATORS),
+  value: z
+    .string()
+    .max(MAX_ASSERTION_VALUE_LENGTH)
+    .nullish()
+    .transform((v) => (v ? v : null)),
+})
+
 const nonNegativeInt = (max = 1_000_000) => z.number().int().min(0).max(max)
 
 /** List of non-empty strings (brokers, nodes); blanks are dropped. */
@@ -446,6 +471,15 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       maxRetries: nonNegativeInt(1000),
       resendInterval: nonNegativeInt(100_000),
       timeout: z.number().min(0).max(MAX_INTERVAL_SECONDS),
+      /** Response time (ms) above which a successful check is DEGRADED; empty or 0 = off (#93). */
+      // `null` (not `undefined`) when cleared, so a PATCH really removes the stored value.
+      degradedAfter: z
+        .number()
+        .int()
+        .min(0)
+        .max(MAX_DEGRADED_AFTER_MS)
+        .nullish()
+        .transform((value) => value ?? null),
       upsideDown: z.boolean().default(false),
 
       // HTTP
@@ -471,6 +505,12 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       jsonPath: optionalText(2000),
       jsonPathOperator: z.enum(JSON_PATH_OPERATORS).default('=='),
       expectedValue: optionalText(2000),
+
+      // Assertions (HTTP family and DNS): all must pass
+      assertions: z
+        .array(assertionRow)
+        .max(ASSERTION_KINDS.length * MAX_ASSERTIONS_PER_KIND)
+        .default([]),
 
       // Authentication
       authMethod: z.enum(AUTH_METHODS).default('none'),
@@ -652,6 +692,19 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         }
       }
 
+      if (supportsAssertions(type)) {
+        for (const problem of assertionProblems(values.assertions, type)) {
+          ctx.addIssue({
+            code: 'custom',
+            path:
+              problem.index === null
+                ? ['assertions']
+                : ['assertions', problem.index, problem.field ?? 'kind'],
+            message: message(problem.key, problem.values),
+          })
+        }
+      }
+
       if (isKeywordMonitorType(type) && !values.keyword)
         issue('keyword', message('keywordRequired'))
       if (type === 'json-query' || (type === 'mqtt' && values.mqttCheckType === 'json-query')) {
@@ -806,6 +859,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     maxRetries: 0,
     resendInterval: 0,
     timeout: 48,
+    degradedAfter: null,
     upsideDown: false,
     method: 'GET',
     httpBodyEncoding: 'json',
@@ -822,6 +876,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     jsonPath: null,
     jsonPathOperator: '==',
     expectedValue: null,
+    assertions: [],
     authMethod: 'none',
     basicAuthUser: null,
     basicAuthPass: null,
@@ -930,9 +985,13 @@ export function monitorToFormValues(doc: MonitorLike): MonitorFormValues {
       })
     : []
 
-  const out: Record<string, unknown> = { ...base, ...relations, tags, notifications }
+  // Stored rows carry Payload's row `id`; the form and exports use the bare shape.
+  const assertions = normalizeAssertions(doc.assertions)
+
+  const out: Record<string, unknown> = { ...base, ...relations, tags, notifications, assertions }
   for (const key of Object.keys(base) as (keyof MonitorFormValues)[]) {
-    if (key in relations || key === 'tags' || key === 'notifications') continue
+    if (key in relations || key === 'tags' || key === 'notifications' || key === 'assertions')
+      continue
     const value = doc[key]
     if (value !== undefined && value !== null) out[key] = value
   }

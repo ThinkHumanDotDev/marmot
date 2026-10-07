@@ -9,7 +9,9 @@ export const PERMISSION_RESOURCE_KEYS = {
   monitor: 'monitor',
   notification: 'notification',
   'status-page': 'statusPage',
+  subscriber: 'subscriber',
   maintenance: 'maintenance',
+  template: 'template',
   tag: 'tag',
   proxy: 'proxy',
   'docker-host': 'dockerHost',
@@ -27,6 +29,7 @@ export const PERMISSION_ACTION_KEYS = {
   remove: 'remove',
   'update-role': 'updateRole',
   manage: 'manage',
+  send: 'send',
 } as const
 
 export type PermissionResourceKey =

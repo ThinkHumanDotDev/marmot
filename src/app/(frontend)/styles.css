@@ -59,10 +59,12 @@
   --status-down: oklch(0.6 0.21 27);
   --status-pending: oklch(0.78 0.16 80);
   --status-maintenance: oklch(0.62 0.14 250);
+  --status-degraded: oklch(0.68 0.17 55);
   --status-up-text: oklch(0.5 0.13 150);
   --status-down-text: oklch(0.53 0.2 27);
   --status-pending-text: oklch(0.52 0.11 70);
   --status-maintenance-text: oklch(0.5 0.13 250);
+  --status-degraded-text: oklch(0.52 0.14 50);
 
   /* Charts (sequential accent ramp) */
   --chart-1: oklch(0.64 0.19 42);
@@ -110,10 +112,12 @@
   --status-down: oklch(0.68 0.19 25);
   --status-pending: oklch(0.82 0.15 85);
   --status-maintenance: oklch(0.7 0.12 250);
+  --status-degraded: oklch(0.76 0.16 60);
   --status-up-text: oklch(0.74 0.16 150);
   --status-down-text: oklch(0.72 0.17 25);
   --status-pending-text: oklch(0.82 0.15 85);
   --status-maintenance-text: oklch(0.74 0.11 250);
+  --status-degraded-text: oklch(0.79 0.15 60);
 
   --chart-1: oklch(0.72 0.17 45);
   --chart-2: oklch(0.78 0.13 60);
@@ -169,10 +173,12 @@
   --color-status-down: var(--status-down);
   --color-status-pending: var(--status-pending);
   --color-status-maintenance: var(--status-maintenance);
+  --color-status-degraded: var(--status-degraded);
   --color-status-up-text: var(--status-up-text);
   --color-status-down-text: var(--status-down-text);
   --color-status-pending-text: var(--status-pending-text);
   --color-status-maintenance-text: var(--status-maintenance-text);
+  --color-status-degraded-text: var(--status-degraded-text);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);

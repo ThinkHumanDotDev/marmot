@@ -62,10 +62,12 @@ export interface BadgeParams {
   downLabel?: string
   pendingLabel?: string
   maintenanceLabel?: string
+  degradedLabel?: string
   upColor?: string
   downColor?: string
   pendingColor?: string
   maintenanceColor?: string
+  degradedColor?: string
   warnColor?: string
   warnDays?: string
   downDays?: string
@@ -82,7 +84,7 @@ export interface BadgeFormat {
   style?: BadgeStyle
 }
 
-export type BadgeStatus = 'up' | 'down' | 'pending' | 'maintenance'
+export type BadgeStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded'
 
 /** Data the route resolves before rendering; every field is optional so "N/A" paths are easy. */
 export interface BadgeData {
@@ -121,10 +123,12 @@ export function badgeParamsFromSearch(search: URLSearchParams): BadgeParams {
     'downLabel',
     'pendingLabel',
     'maintenanceLabel',
+    'degradedLabel',
     'upColor',
     'downColor',
     'pendingColor',
     'maintenanceColor',
+    'degradedColor',
     'warnColor',
     'warnDays',
     'downDays',
@@ -226,16 +230,20 @@ export function buildBadge(type: BadgeType, data: BadgeData, params: BadgeParams
         downLabel = 'Down',
         pendingLabel = 'Pending',
         maintenanceLabel = 'Maintenance',
+        degradedLabel = 'Degraded',
         upColor = badgeConstants.defaultUpColor,
         downColor = badgeConstants.defaultDownColor,
         pendingColor = badgeConstants.defaultPendingColor,
         maintenanceColor = badgeConstants.defaultMaintenanceColor,
+        // Marmot addition (#93): same yellow as the status page badge's "Degraded performance".
+        degradedColor = badgeConstants.defaultWarnColor,
       } = params
       const byStatus: Record<BadgeStatus, { message: string; color: string }> = {
         up: { message: upLabel, color: upColor },
         down: { message: downLabel, color: downColor },
         pending: { message: pendingLabel, color: pendingColor },
         maintenance: { message: maintenanceLabel, color: maintenanceColor },
+        degraded: { message: degradedLabel, color: degradedColor },
       }
       const match = data.status ? byStatus[data.status] : undefined
       if (!match) return { ...naBadge(style), label }
