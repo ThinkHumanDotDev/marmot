@@ -16,6 +16,7 @@ import { track } from '@/lib/analytics'
 import type { Incident, StatusPage } from '@/payload-types'
 
 import { publicStatusPagePath, statusPagesApi, type MonitorOption, type OrgId } from '../api'
+import { AccessPanel } from './access-panel'
 import { DomainsPanel } from './domains-panel'
 import { GroupsEditor } from './groups-editor'
 import { IncidentsPanel } from './incidents-panel'
@@ -45,6 +46,7 @@ export function StatusPageEditor({
   timeZone,
 }: EditorProps) {
   const t = useTranslations('statusPages.editorPage')
+  const ta = useTranslations('statusPages.access.editor')
   const [page, setPage] = React.useState(initialPage)
   const [publishing, setPublishing] = React.useState(false)
   const publicHref = publicStatusPagePath(page.slug)
@@ -120,6 +122,7 @@ export function StatusPageEditor({
             <TabsTrigger value="groups">{t('tabs.groups')}</TabsTrigger>
             <TabsTrigger value="incidents">{t('tabs.incidents')}</TabsTrigger>
             <TabsTrigger value="domains">{t('tabs.domains')}</TabsTrigger>
+            <TabsTrigger value="access">{ta('tab')}</TabsTrigger>
           </TabsList>
           <TabsContent value="settings" className="pt-6">
             <SettingsForm
@@ -156,6 +159,9 @@ export function StatusPageEditor({
           </TabsContent>
           <TabsContent value="domains" className="pt-6">
             <DomainsPanel orgId={orgId} page={page} onSaved={setPage} canEdit={canEdit} />
+          </TabsContent>
+          <TabsContent value="access" className="pt-6">
+            <AccessPanel orgId={orgId} page={page} onSaved={setPage} canEdit={canEdit} />
           </TabsContent>
         </Tabs>
       </section>

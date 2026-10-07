@@ -10,19 +10,21 @@ import { NextResponse, type NextRequest } from 'next/server'
  *   https://status.example.com/              → /status/<slug>
  *   https://status.example.com/rss           → /status/<slug>/rss
  *   https://status.example.com/manifest.json → /status/<slug>/manifest.json
+ *   https://status.example.com/login         → /status/<slug>/login (password-protected pages)
  *
  * Everything else (the app, API, admin) is untouched, and any failure falls through to the normal
  * routing so a broken lookup can never take the main site down. See docs/Status-Pages.md.
  */
 
 export const config = {
-  matcher: ['/', '/rss', '/manifest.json'],
+  matcher: ['/', '/rss', '/manifest.json', '/login'],
 }
 
 const REWRITES: Record<string, string> = {
   '/': '',
   '/rss': '/rss',
   '/manifest.json': '/manifest.json',
+  '/login': '/login',
 }
 
 const HOSTNAME = /^(?=.{1,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(?:\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/

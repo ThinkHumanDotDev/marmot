@@ -92,6 +92,9 @@ const schema = z.object({
   // Skip the Redis side effects of the `monitors` hooks (tests without Redis).
   MARMOT_DISABLE_ENGINE_HOOKS: booleanish.default(false),
 
+  // Lifetime of the cookie a visitor gets after entering a status page password.
+  STATUS_PAGE_SESSION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+
   // Marketing landing page at `/` for signed-out visitors (hosted instance). Off on self-host:
   // `/` then routes straight to the setup wizard or the login page.
   LANDING_PAGE_ENABLED: booleanish.default(false),

@@ -1,19 +1,32 @@
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
+import {
+  accessCacheControl,
+  accessDeniedResponse,
+  accessRequestFrom,
+  checkStatusPageAccess,
+} from '@/server/status-pages/access'
 import { findPublishedStatusPage, toPublicConfig } from '@/server/status-pages/public'
 import { statusPagePath } from '@/server/status-pages/urls'
+import { requestLocale } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
 
 type RouteContext = { params: Promise<{ slug: string }> }
 
-/** GET /status/:slug/manifest.json — web app manifest so the page can be installed. */
-export async function GET(_request: Request, { params }: RouteContext) {
+/**
+ * GET /status/:slug/manifest.json — web app manifest so the page can be installed. Password-protected
+ * pages need the access cookie (the page links it with `crossorigin="use-credentials"`) or `?pw=`.
+ */
+export async function GET(request: Request, { params }: RouteContext) {
   const { slug } = await params
   const payload = await getPayload({ config })
   const page = await findPublishedStatusPage(payload, slug)
   if (!page) return Response.json({ error: 'Not found' }, { status: 404 })
+
+  const access = await checkStatusPageAccess(payload, page, accessRequestFrom(request))
+  if (!access.allowed) return accessDeniedResponse(access, 'json', requestLocale(request))
 
   const { title, description } = toPublicConfig(page)
   const media = [page.logo, page.favicon].flatMap((doc) =>
@@ -39,7 +52,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     {
       headers: {
         'Content-Type': 'application/manifest+json; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600',
+        'Cache-Control': accessCacheControl(access, 'public, max-age=3600'),
       },
     },
   )
