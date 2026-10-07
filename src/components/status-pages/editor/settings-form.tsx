@@ -24,6 +24,7 @@ import {
   DEFAULT_MAINTENANCE_VISIBILITY_HOURS,
   MAX_MAINTENANCE_VISIBILITY_HOURS,
 } from '@/lib/maintenance-announcements'
+import { DEFAULT_PAST_INCIDENTS_DAYS, MAX_PAST_INCIDENTS_DAYS } from '@/lib/status-page-events'
 import type { StatusPage } from '@/payload-types'
 
 import { statusPagesApi, type OrgId, type StatusPagePatch } from '../api'
@@ -44,6 +45,7 @@ type Values = Required<
     | 'showValues'
     | 'autoRefreshInterval'
     | 'maintenanceVisibilityHours'
+    | 'pastIncidentsDays'
     | 'footerText'
     | 'customCSS'
     | 'googleAnalyticsId'
@@ -65,6 +67,7 @@ const fromPage = (page: StatusPage): Values => ({
   autoRefreshInterval: page.autoRefreshInterval ?? 300,
   maintenanceVisibilityHours:
     page.maintenanceVisibilityHours ?? DEFAULT_MAINTENANCE_VISIBILITY_HOURS,
+  pastIncidentsDays: page.pastIncidentsDays ?? DEFAULT_PAST_INCIDENTS_DAYS,
   footerText: page.footerText ?? '',
   customCSS: page.customCSS ?? '',
   googleAnalyticsId: page.googleAnalyticsId ?? '',
@@ -319,6 +322,31 @@ export function SettingsForm({
                 </div>
                 <p id="maintenanceVisibilityHoursHint" className="text-xs text-muted-foreground">
                   {tm('pageVisibilityHint')}
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="pastIncidentsDays">{ts('pastIncidentsDays')}</Label>
+                <Input
+                  id="pastIncidentsDays"
+                  type="number"
+                  min={0}
+                  max={MAX_PAST_INCIDENTS_DAYS}
+                  step={1}
+                  disabled={!canEdit}
+                  aria-describedby="pastIncidentsDaysHint"
+                  value={values.pastIncidentsDays ?? DEFAULT_PAST_INCIDENTS_DAYS}
+                  onChange={(e) =>
+                    set(
+                      'pastIncidentsDays',
+                      Math.min(
+                        MAX_PAST_INCIDENTS_DAYS,
+                        Math.max(0, Math.floor(Number(e.target.value) || 0)),
+                      ),
+                    )
+                  }
+                />
+                <p id="pastIncidentsDaysHint" className="text-xs text-muted-foreground">
+                  {ts('pastIncidentsDaysHint')}
                 </p>
               </div>
             </div>

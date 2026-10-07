@@ -8,6 +8,7 @@ import type { Payload } from 'payload'
 
 import { getStaticFormatter, getTranslator } from '@/i18n/translator'
 import { renderMarkdown } from '@/lib/markdown'
+import { eventPath } from '@/lib/status-page-events'
 import type { Locale } from '@/i18n/locales'
 import { resolveStatusPageLocale, statusPageTimeZone } from '@/i18n/resolve'
 import type { Incident, StatusPage } from '@/payload-types'
@@ -104,8 +105,8 @@ export async function findFeedIncidents(
 type Translator = ReturnType<typeof getTranslator>
 
 /**
- * One item per update: the opening update carries the incident title, later ones are prefixed with
- * their status (`[Resolved] Database failover`). The description is the update's Markdown plus the
+ * One item per update, linking to the incident's permalink: the opening update carries the incident
+ * title, later ones are prefixed with their status (`[Resolved] Database failover`). The description is the update's Markdown plus the
  * components it affected.
  */
 export function incidentUpdateItems(
@@ -136,7 +137,7 @@ export function incidentUpdateItems(
         (affected
           ? `<p>${escapeXml(t('statusPages.public.incidents.affected', { components: affected }))}</p>`
           : ''),
-      link: pageUrl,
+      link: `${pageUrl}${eventPath('incident', incident.publicId)}`,
       guid: `incident-${incident.id}-${update.id}`,
       pubDate: new Date(update.postedAt),
     }
