@@ -841,7 +841,975 @@
       "label": "Language",
       "saved": "Language updated",
       "failed": "Could not save your language."
+    },
+    "header": {
+      "title": "Settings",
+      "description": "Your account, this organization, who has access and shared monitor resources."
+    },
+    "tabs": {
+      "label": "Settings sections",
+      "account": "Account",
+      "organization": "Organization",
+      "members": "Members",
+      "tags": "Tags",
+      "proxies": "Proxies",
+      "dockerHosts": "Docker hosts",
+      "apiKeys": "API keys",
+      "importExport": "Import / Export",
+      "billing": "Billing",
+      "permissions": "Permissions",
+      "security": "Security",
+      "notifications": "Notifications",
+      "instance": "Instance"
+    },
+    "pageTitles": {
+      "account": "Account settings",
+      "organization": "Organization settings",
+      "tags": "Tags",
+      "proxies": "Proxies",
+      "dockerHosts": "Docker hosts",
+      "apiKeys": "API keys",
+      "importExport": "Import / Export",
+      "billing": "Billing",
+      "permissions": "Permissions",
+      "security": "Security settings",
+      "notifications": "Notification settings",
+      "instance": "Instance settings"
+    },
+    "account": {
+      "profile": {
+        "title": "Profile",
+        "description": "How teammates see you across organizations.",
+        "avatar": "Avatar",
+        "name": "Name",
+        "email": "Email",
+        "emailHint": "Used to sign in and for notifications and invitations.",
+        "save": "Save changes",
+        "saving": "Saving…",
+        "saved": "Profile updated",
+        "saveFailed": "Could not update your profile.",
+        "avatarUpdated": "Avatar updated",
+        "avatarRemoved": "Avatar removed",
+        "avatarFailed": "Could not update your avatar."
+      },
+      "appearance": {
+        "title": "Appearance",
+        "description": "Your theme is saved to your account and applied on every device you sign in on.",
+        "label": "Theme",
+        "failed": "Could not save your preference.",
+        "options": {
+          "system": {
+            "label": "System",
+            "hint": "Follow your device setting."
+          },
+          "light": {
+            "label": "Light",
+            "hint": "Always use the light theme."
+          },
+          "dark": {
+            "label": "Dark",
+            "hint": "Always use the dark theme."
+          }
+        }
+      },
+      "password": {
+        "title": "Password",
+        "description": "Choose a strong password you do not use elsewhere.",
+        "current": "Current password",
+        "new": "New password",
+        "confirm": "Confirm new password",
+        "submit": "Change password",
+        "submitting": "Changing…",
+        "changed": "Password changed",
+        "failed": "Could not change your password.",
+        "currentRequired": "Enter your current password"
+      },
+      "connected": {
+        "title": "Connected accounts",
+        "description": "Sign in with these identities as well as your password. An identity can only be linked to one Marmot account.",
+        "empty": "No identities linked yet.",
+        "identity": "{identity} · last used {lastUsed}",
+        "onlyWayIn": "This is the only way to sign in to your account. Set a password or link another account first.",
+        "unlink": "Unlink",
+        "link": "Link {provider}",
+        "unlinked": "{provider} unlinked",
+        "unlinkFailed": "Could not unlink the account.",
+        "confirmTitle": "Unlink {provider}?",
+        "confirmDescription": "You will no longer be able to sign in with this identity. You can link it again later."
+      },
+      "delete": {
+        "title": "Delete account",
+        "description": "Permanently removes your account and all of your memberships. There is no undo.",
+        "blocked": "You are the only owner of {organizations}. Transfer ownership or delete {count, plural, one {it} other {them}} first.",
+        "button": "Delete my account",
+        "confirmTitle": "Delete your account?",
+        "confirmDescription": "You will be signed out immediately and your data cannot be recovered.",
+        "confirm": "Delete account",
+        "deleted": "Your account has been deleted",
+        "failed": "Could not delete your account."
+      },
+      "twoFactor": {
+        "title": "Two-factor authentication",
+        "on": "On",
+        "off": "Off",
+        "enabledDescription": "Signing in requires a code from your authenticator app. {count, plural, one {# backup code} other {# backup codes}} left.",
+        "disabledDescription": "Add a second step to your sign-in with an authenticator app (TOTP).",
+        "enabledOn": "Enabled on {date}.",
+        "ssoNote": "Your account signs in with single sign-on; the code is asked after the provider login.",
+        "newBackupCodes": "New backup codes",
+        "disable": "Disable",
+        "enable": "Enable two-factor authentication",
+        "cancel": "Cancel",
+        "password": "Password",
+        "code": "Authentication code",
+        "setupFailed": "Could not start the setup.",
+        "enabledToast": "Two-factor authentication enabled",
+        "invalidCode": "That code is not valid.",
+        "regenerated": "New backup codes generated",
+        "regenerateFailed": "Could not regenerate the backup codes.",
+        "disabledToast": "Two-factor authentication disabled",
+        "disableFailed": "Could not disable two-factor authentication.",
+        "copied": "Backup codes copied",
+        "copyFailed": "Could not copy. Select the codes and copy them manually.",
+        "setup": {
+          "title": "Set up two-factor authentication",
+          "scan": "Scan the QR code with your authenticator app, then enter the code it shows.",
+          "confirmPassword": "Confirm your password to start.",
+          "newSecret": "A new secret will be generated for your authenticator app.",
+          "qrAlt": "QR code for your authenticator app",
+          "manualKey": "Can't scan? Enter this key manually: <key></key>",
+          "verifying": "Verifying…",
+          "turnOn": "Turn on",
+          "preparing": "Preparing…",
+          "continue": "Continue"
+        },
+        "backupCodes": {
+          "title": "Save your backup codes",
+          "description": "Each code signs you in once if you lose access to your authenticator app. They are shown only now; store them somewhere safe.",
+          "copy": "Copy",
+          "done": "I saved them"
+        },
+        "regenerate": {
+          "title": "Generate new backup codes",
+          "description": "Your current backup codes stop working. Enter a code from your authenticator app to continue.",
+          "submit": "Generate",
+          "submitting": "Generating…"
+        },
+        "disableDialog": {
+          "title": "Disable two-factor authentication",
+          "descriptionPassword": "Your account will be protected by your password only. Confirm with your password and a current code (or a backup code).",
+          "descriptionSso": "Your account will be protected by single sign-on only. Confirm with a current code (or a backup code).",
+          "codeLabel": "Authentication or backup code",
+          "submitting": "Disabling…"
+        }
+      }
+    },
+    "apiKeys": {
+      "adminsOnlyTitle": "Admins only",
+      "adminsOnlyDescription": "API keys are managed by admins and owners of this organization.",
+      "title": "API keys",
+      "description": "Keys authenticate Prometheus scrapes of <code>/api/metrics</code> and badges of monitors that are not on a public status page. Send them as <code>Authorization: Bearer</code> or <code>X-API-Key</code>.",
+      "newKey": "New key",
+      "emptyTitle": "No API keys yet",
+      "emptyDescription": "Create a key to scrape metrics or embed private badges.",
+      "emptyReadOnly": "Admins of this organization can create API keys.",
+      "columns": {
+        "name": "Name",
+        "key": "Key",
+        "status": "Status",
+        "expires": "Expires",
+        "lastUsed": "Last used"
+      },
+      "status": {
+        "active": "Active",
+        "expired": "Expired",
+        "disabled": "Disabled"
+      },
+      "lastUsed": {
+        "never": "Never",
+        "justNow": "Just now",
+        "minutes": "{count} min ago",
+        "hours": "{count} h ago",
+        "days": "{count} d ago"
+      },
+      "enableKey": "Enable key",
+      "disableKey": "Disable key",
+      "revokeLabel": "Revoke {name}",
+      "enabled": "API key enabled",
+      "disabled": "API key disabled",
+      "updateFailed": "Could not update the key",
+      "revoked": "API key revoked",
+      "revokeFailed": "Could not revoke the key",
+      "revokeTitle": "Revoke “{name}”?",
+      "revokeDescription": "Anything still using this key will get 401 responses immediately. This cannot be undone.",
+      "revoke": "Revoke key",
+      "cancel": "Cancel",
+      "create": {
+        "title": "New API key",
+        "description": "Give the key a name you will recognise in this list, for example the system that will use it.",
+        "name": "Name",
+        "namePlaceholder": "Prometheus",
+        "expiry": "Expiry",
+        "expiryOptions": {
+          "never": "Never expires",
+          "30": "30 days",
+          "90": "90 days",
+          "365": "1 year"
+        },
+        "cancel": "Cancel",
+        "submit": "Create key",
+        "failed": "Could not create the key"
+      },
+      "reveal": {
+        "title": "Copy your new API key",
+        "description": "This is the only time the key for “{name}” is shown. Store it somewhere safe; if you lose it, revoke it and create a new one.",
+        "keyLabel": "API key",
+        "copyLabel": "Copy API key",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copyFailed": "Copy failed. Select the key and copy it manually.",
+        "done": "Done"
+      }
+    },
+    "billing": {
+      "currentPlan": "Current plan",
+      "lapsed": "Your {plan} subscription has lapsed, so the {effectivePlan} limits apply.",
+      "limitsApply": "Limits apply to new monitors, members and status pages.",
+      "status": {
+        "none": "No subscription",
+        "trialing": "Trial",
+        "active": "Active",
+        "past_due": "Payment past due",
+        "canceled": "Canceled",
+        "unpaid": "Unpaid"
+      },
+      "usage": {
+        "monitors": "Monitors",
+        "members": "Members",
+        "statusPages": "Status pages"
+      },
+      "usageLabel": "{label} usage",
+      "minInterval": "Minimum interval",
+      "seconds": "{seconds}s",
+      "retention": "Data retention",
+      "unlimited": "Unlimited",
+      "days": "{days} days",
+      "customDomains": "Custom domains",
+      "included": "Included",
+      "notIncluded": "Not included",
+      "redirecting": "Redirecting…",
+      "upgrade": "Upgrade to {plan}",
+      "manage": "Manage billing",
+      "stripeMissing": "Stripe is not configured on this instance, so plans can only be changed by an instance administrator.",
+      "checkoutSuccess": "Thanks! Your plan updates as soon as Stripe confirms the payment.",
+      "checkoutCanceled": "Checkout canceled. Your plan is unchanged.",
+      "failed": "Something went wrong"
+    },
+    "defaultChannels": {
+      "title": "Default notification channels",
+      "description": "Default channels are attached to every new monitor automatically. Existing monitors keep their own selection.",
+      "readOnly": "Notification channels are visible to members and managed by admins of this organization.",
+      "empty": "This organization has no notification channels yet.",
+      "addChannel": "Add a channel",
+      "paused": "Paused",
+      "toggleLabel": "Default for new monitors: {name}",
+      "nowDefault": "{name} is now a default channel",
+      "noLongerDefault": "{name} is no longer a default",
+      "failed": "Could not update the channel."
+    },
+    "dockerHosts": {
+      "membersOnlyTitle": "Members only",
+      "membersOnlyDescription": "Docker hosts are visible to members and managed by admins of this organization.",
+      "title": "Docker hosts",
+      "description": "Docker daemons that Docker Container monitors query, through the worker's unix socket or a TCP endpoint.",
+      "new": "New Docker host",
+      "emptyTitle": "No Docker hosts",
+      "emptyDescription": "Add a Docker host, then create a Docker Container monitor.",
+      "emptyReadOnly": "Admins of this organization can add Docker hosts.",
+      "badge": {
+        "tcp": "TCP",
+        "socket": "Socket"
+      },
+      "testLabel": "Test {name}",
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "confirmDeleteTitle": "Delete Docker host “{name}”?",
+      "confirmDeleteDescription": "Docker Container monitors using it go DOWN until another host is selected.",
+      "confirmDelete": "Delete host",
+      "deleted": "Docker host deleted",
+      "deleteFailed": "Could not delete the host",
+      "test": {
+        "connected": "Connected to the Docker daemon",
+        "containers": "{count, plural, one {# container} other {# containers}} on this host.",
+        "failed": "Connection failed"
+      },
+      "form": {
+        "newTitle": "New Docker host",
+        "editTitle": "Edit Docker host",
+        "description": "Socket paths are resolved on the worker; mount the socket into its container.",
+        "name": "Name",
+        "namePlaceholder": "Production host",
+        "connectionType": "Connection type",
+        "socket": "Socket",
+        "tcp": "TCP / HTTP",
+        "socketPath": "Socket path",
+        "url": "Daemon URL",
+        "urlHint": "<code>tcp://</code> and <code>http://</code> are plain text; <code>https://</code> uses TLS.",
+        "test": "Test connection",
+        "cancel": "Cancel",
+        "save": "Save",
+        "create": "Create host",
+        "saved": "Docker host saved",
+        "created": "Docker host created",
+        "failed": "Could not save the Docker host"
+      }
+    },
+    "instance": {
+      "privateAddressWarning": {
+        "title": "Open sign-up without the private-address guard",
+        "description": "Anyone can create an account, and every member can create monitors and notification channels. Those connect from the worker, which can reach private, loopback and container-network addresses. Set <code>MONITOR_DENY_PRIVATE_ADDRESSES=true</code> (with <code>MONITOR_ALLOW_CIDRS</code> for subnets you do want to monitor) or turn sign-up off. See the hardening checklist in docs/Security.md."
+      },
+      "title": "Instance settings",
+      "description": "Apply to every organization on this install. Environment variables provide the defaults; values saved here take precedence.",
+      "baseUrl": "Public base URL",
+      "baseUrlHint": "Used in notification links, status page URLs and emails.",
+      "allowSignup": "Allow sign-up",
+      "allowSignupHint": "Anyone can create an account. When off, only invited people can join.",
+      "entryPage": "Entry page",
+      "entryPageDashboard": "Dashboard",
+      "entryPageStatusPage": "Status page",
+      "entryPageHint": "What visitors of the root URL see.",
+      "tlsExpiryDays": "TLS expiry notifications (days)",
+      "domainExpiryDays": "Domain expiry notifications (days)",
+      "retention": "Data retention (days)",
+      "retentionHint": "Daily aggregates and important heartbeats older than this are pruned. 0 keeps everything.",
+      "trustProxy": "Trust proxy headers",
+      "trustProxyHint": "Use X-Forwarded-* from your reverse proxy to determine client IPs.",
+      "thirdParty": "Third-party API keys",
+      "steamApiKey": "Steam Web API key",
+      "steamApiKeyHint": "For Steam Game Server monitors.",
+      "globalpingApiToken": "Globalping API token",
+      "globalpingApiTokenHint": "For remote ping and HTTP checks.",
+      "secretSaved": "Saved",
+      "secretNotSet": "Not set",
+      "discard": "Discard",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "saved": "Instance settings saved",
+      "failed": "Could not save the settings.",
+      "errors": {
+        "expiryDays": "Expiry notification days must be positive whole numbers.",
+        "retention": "Retention must be a whole number of days (0 disables pruning).",
+        "baseUrl": "Enter a valid public URL, e.g. https://status.example.com."
+      },
+      "smtp": {
+        "title": "Email (SMTP)",
+        "configured": "Configured",
+        "notConfigured": "Not configured",
+        "configuredDescription": "Sending through <host></host> as <from></from>. Set via <code>SMTP_*</code> and <code>EMAIL_FROM</code>.",
+        "notConfiguredDescription": "Set <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASSWORD</code> and <code>EMAIL_FROM</code> and restart to send invitations, password resets and email notifications. Until then mail is logged to the console.",
+        "recipient": "Send a test email to",
+        "send": "Send test email",
+        "sending": "Sending…",
+        "sent": "Test email sent to {to}",
+        "failed": "Could not send the test email."
+      }
+    },
+    "organization": {
+      "form": {
+        "title": "Organization",
+        "description": "How this organization appears across Marmot.",
+        "readOnly": "Only admins and owners can change these settings.",
+        "logo": "Logo",
+        "name": "Name",
+        "slug": "Slug",
+        "timezone": "Time zone",
+        "timezoneHint": "Used for maintenance windows, reports and status page times.",
+        "save": "Save changes",
+        "saving": "Saving…",
+        "saved": "Organization updated",
+        "saveFailed": "Could not save the organization.",
+        "logoUpdated": "Logo updated",
+        "logoRemoved": "Logo removed",
+        "logoFailed": "Could not update the logo."
+      },
+      "danger": {
+        "title": "Danger zone",
+        "description": "These actions are permanent or hard to undo.",
+        "transferTitle": "Transfer ownership",
+        "transferDescription": "Make another member the owner. You stay in the organization as an admin.",
+        "transfer": "Transfer",
+        "leaveTitle": "Leave organization",
+        "leaveDescription": "You will lose access until someone invites you again.",
+        "leaveLastOwner": "You are the only owner. Transfer ownership before leaving.",
+        "leave": "Leave",
+        "deleteTitle": "Delete organization",
+        "deleteDescription": "Removes every monitor, status page and member. There is no undo.",
+        "delete": "Delete",
+        "nothing": "Nothing to do here for your role.",
+        "transferConfirmTitle": "Transfer ownership of {organization}",
+        "transferConfirmDescription": "The new owner gets full control, including deleting the organization. You become an admin.",
+        "newOwner": "New owner",
+        "chooseMember": "Choose a member",
+        "leaveConfirmTitle": "Leave {organization}?",
+        "leaveConfirmDescription": "You will be signed out of this organization and lose access to its monitors.",
+        "deleteConfirmTitle": "Delete {organization}?",
+        "deleteConfirmDescription": "All monitors, heartbeats, status pages, invitations and memberships will be deleted permanently.",
+        "theMember": "The member",
+        "transferred": "{member} now owns {organization}",
+        "transferFailed": "Could not transfer ownership.",
+        "left": "You left {organization}",
+        "leaveFailed": "Could not leave the organization.",
+        "deleted": "{organization} deleted",
+        "deleteFailed": "Could not delete the organization."
+      }
+    },
+    "slug": {
+      "checking": "Checking",
+      "available": "Available",
+      "unavailable": "Unavailable",
+      "availableHint": "This slug is available.",
+      "hint": "Lowercase letters, numbers and hyphens. Used in URLs.",
+      "notAvailable": "This slug is not available."
+    },
+    "timezone": {
+      "label": "Time zone",
+      "placeholder": "Select a time zone"
+    },
+    "permissions": {
+      "title": "Permissions",
+      "description": "The minimum role needed for each action. Roles above the minimum are always allowed.",
+      "readOnly": "Only owners can change permissions. Roles above the minimum are always allowed.",
+      "columns": {
+        "action": "Action",
+        "minimumRole": "Minimum role",
+        "default": "Default"
+      },
+      "resources": {
+        "organization": "Organization",
+        "member": "Members",
+        "monitor": "Monitors",
+        "notification": "Notifications",
+        "statusPage": "Status pages",
+        "maintenance": "Maintenance",
+        "tag": "Tags",
+        "proxy": "Proxies",
+        "dockerHost": "Docker hosts",
+        "apiKey": "API keys",
+        "auditLog": "Audit log",
+        "sso": "Single sign-on"
+      },
+      "actions": {
+        "read": "View",
+        "create": "Create",
+        "update": "Edit",
+        "delete": "Delete",
+        "invite": "Invite",
+        "remove": "Remove",
+        "updateRole": "Change roles",
+        "manage": "Manage"
+      },
+      "custom": "Custom",
+      "fixed": "(fixed)",
+      "minimumRoleFor": "Minimum role for {permission}",
+      "reset": "Reset to defaults",
+      "discard": "Discard",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "saved": "Permissions updated",
+      "failed": "Could not save permissions."
+    },
+    "proxies": {
+      "membersOnlyTitle": "Members only",
+      "membersOnlyDescription": "Proxies are visible to members and managed by admins of this organization.",
+      "title": "Proxies",
+      "description": "HTTP(s) and SOCKS proxies that HTTP monitors can send their requests through. The default proxy is preselected for new HTTP monitors.",
+      "new": "New proxy",
+      "emptyTitle": "No proxies",
+      "emptyDescription": "Add a proxy, then pick it in the HTTP options of a monitor.",
+      "emptyReadOnly": "Admins of this organization can add proxies.",
+      "badge": {
+        "default": "Default",
+        "auth": "Auth",
+        "inactive": "Inactive"
+      },
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "confirmDeleteTitle": "Delete proxy {name}?",
+      "confirmDeleteDescription": "Monitors using it fall back to direct connections. This cannot be undone.",
+      "confirmDelete": "Delete proxy",
+      "deleted": "Proxy deleted",
+      "deleteFailed": "Could not delete the proxy",
+      "form": {
+        "newTitle": "New proxy",
+        "editTitle": "Edit proxy",
+        "description": "SOCKS v4 and v5 resolve hostnames locally; SOCKS v5 (remote DNS) lets the proxy resolve them.",
+        "protocol": "Protocol",
+        "protocols": {
+          "http": "HTTP",
+          "https": "HTTPS",
+          "socks": "SOCKS (v5, remote DNS)",
+          "socks5": "SOCKS v5",
+          "socks5h": "SOCKS v5 (remote DNS)",
+          "socks4": "SOCKS v4"
+        },
+        "host": "Host",
+        "hostPlaceholder": "proxy.example.com",
+        "port": "Port",
+        "auth": "Authentication",
+        "authHint": "The proxy requires a username and password.",
+        "username": "Username",
+        "password": "Password",
+        "active": "Active",
+        "activeHint": "Inactive proxies are skipped: monitors connect directly.",
+        "default": "Default",
+        "defaultHint": "Preselect this proxy for new HTTP monitors.",
+        "cancel": "Cancel",
+        "save": "Save",
+        "create": "Create proxy",
+        "saved": "Proxy saved",
+        "created": "Proxy created",
+        "failed": "Could not save the proxy"
+      }
+    },
+    "tags": {
+      "title": "Tags",
+      "description": "Label monitors (optionally with a value such as <code>env: prod</code>). Tags show up in the monitor list and, when enabled, on status pages.",
+      "new": "New tag",
+      "emptyTitle": "No tags yet",
+      "emptyDescription": "Create tags here, then add them to monitors in the monitor form.",
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "confirmDeleteTitle": "Delete tag “{name}”?",
+      "confirmDeleteDescription": "The tag is removed from every monitor that carries it. This cannot be undone.",
+      "confirmDelete": "Delete tag",
+      "deleted": "Tag deleted",
+      "deleteFailed": "Could not delete the tag",
+      "colors": {
+        "grey": "Grey",
+        "red": "Red",
+        "orange": "Orange",
+        "green": "Green",
+        "blue": "Blue",
+        "indigo": "Indigo",
+        "purple": "Purple",
+        "pink": "Pink"
+      },
+      "form": {
+        "newTitle": "New tag",
+        "editTitle": "Edit tag",
+        "description": "Names are unique within the organization.",
+        "name": "Name",
+        "colour": "Colour",
+        "preview": "Preview",
+        "cancel": "Cancel",
+        "save": "Save",
+        "create": "Create tag",
+        "saved": "Tag saved",
+        "created": "Tag created",
+        "failed": "Could not save the tag"
+      }
+    },
+    "sso": {
+      "adminsOnlyTitle": "Admins only",
+      "adminsOnlyDescription": "Single sign-on is managed by owners of this organization; admins can view it.",
+      "copyLabel": "Copy {label}",
+      "copyFailed": "Could not copy",
+      "protocols": {
+        "oidc": "OpenID Connect",
+        "saml": "SAML 2.0"
+      },
+      "roles": {
+        "admin": "admin",
+        "member": "member",
+        "viewer": "viewer"
+      },
+      "connections": {
+        "title": "Single sign-on",
+        "description": "Let members sign in through your identity provider (OpenID Connect or SAML 2.0). People who sign in this way join this organization automatically. Shareable sign-in link: <link></link>",
+        "new": "New connection",
+        "emptyTitle": "No connections yet",
+        "emptyDescription": "Connect Okta, Entra ID, Keycloak, Google Workspace or any OIDC/SAML provider.",
+        "emptyReadOnly": "Owners of this organization can set up single sign-on.",
+        "columns": {
+          "name": "Name",
+          "type": "Type",
+          "provisioning": "Provisioning",
+          "enabled": "Enabled"
+        },
+        "joinAs": "Join as {role, select, owner {owner} admin {admin} member {member} viewer {viewer} other {{role}}}",
+        "existingOnly": "Existing users only",
+        "enabledLabel": "{name} enabled",
+        "deleteLabel": "Delete {name}",
+        "saved": "Connection saved",
+        "created": "Connection created",
+        "saveFailed": "Could not save the connection.",
+        "enabledToast": "Connection enabled",
+        "disabledToast": "Connection disabled",
+        "updateFailed": "Could not update the connection.",
+        "deleted": "Connection deleted",
+        "deleteFailed": "Could not delete the connection.",
+        "confirmDeleteTitle": "Delete {name}?",
+        "confirmDeleteDescription": "Members will no longer be able to sign in through this connection. Linked identities stay on their accounts.",
+        "confirmDelete": "Delete"
+      },
+      "domains": {
+        "title": "Verified domains",
+        "description": "People who enter an email on a verified domain on the SSO sign-in page are sent to your connections. Prove ownership with a DNS TXT record; a domain can belong to one organization.",
+        "domain": "Domain",
+        "domainPlaceholder": "example.com",
+        "add": "Add domain",
+        "empty": "No domains yet.",
+        "verified": "Verified",
+        "pending": "Pending",
+        "verify": "Verify",
+        "removeLabel": "Remove {domain}",
+        "recordName": "TXT record name",
+        "recordValue": "TXT record value",
+        "added": "Add the TXT record for {domain}, then verify it",
+        "addFailed": "Could not add the domain.",
+        "verifiedToast": "{domain} verified",
+        "notVerified": "Not verified yet",
+        "verifyFailed": "Could not verify the domain.",
+        "removed": "Domain removed",
+        "removeFailed": "Could not remove the domain.",
+        "confirmRemoveTitle": "Remove {domain}?",
+        "confirmRemoveDescription": "Emails on this domain will no longer be routed to your connections.",
+        "confirmRemove": "Remove"
+      },
+      "enforcement": {
+        "title": "Require single sign-on",
+        "description": "Refuse password logins for members whose email is on a verified domain. Owners keep a break-glass password login, which is recorded in the audit log.",
+        "on": "Members on your verified domains must sign in through a connection.",
+        "off": "Members may still sign in with a password.",
+        "unavailable": "Verify a domain and enable a connection first.",
+        "enabled": "Single sign-on is now required",
+        "disabled": "Password login allowed again",
+        "failed": "Could not change enforcement."
+      },
+      "form": {
+        "newTitle": "New connection",
+        "editTitle": "Edit {name}",
+        "samlDescription": "Register the service-provider details below at your identity provider, then paste what it gives you back.",
+        "oidcDescription": "Register the redirect URI below at your identity provider as a confidential web client.",
+        "name": "Name",
+        "namePlaceholder": "Okta",
+        "slug": "Slug",
+        "slugPlaceholder": "acme-okta",
+        "protocol": "Protocol",
+        "defaultRole": "Default role for new members",
+        "issuerUrl": "Issuer URL",
+        "issuerUrlPlaceholder": "https://acme.okta.com",
+        "clientId": "Client id",
+        "clientSecret": "Client secret",
+        "unchanged": "Unchanged",
+        "scopes": "Scopes",
+        "redirectUri": "Redirect URI",
+        "spEntityId": "SP entity id / metadata URL",
+        "acsUrl": "Assertion consumer service URL (ACS)",
+        "metadataUrl": "Import from IdP metadata URL (optional)",
+        "metadataUrlPlaceholder": "https://idp.example.com/metadata",
+        "import": "Import",
+        "metadataImported": "Identity provider settings imported",
+        "metadataFailed": "Could not read the metadata.",
+        "idpEntryPoint": "IdP single sign-on URL",
+        "idpEntityId": "IdP entity id (issuer)",
+        "idpCert": "IdP signing certificate",
+        "wantAssertionsSigned": "Require signed assertions",
+        "allowIdpInitiated": "Allow IdP-initiated login",
+        "autoProvision": "Create accounts on first login",
+        "autoProvisionHint": "Off: only existing Marmot users can sign in through this connection.",
+        "cancel": "Cancel",
+        "save": "Save",
+        "create": "Create",
+        "saving": "Saving…"
+      }
     }
+  },
+  "members": {
+    "roles": {
+      "label": "Role",
+      "owner": {
+        "label": "Owner",
+        "description": "Full control, including billing and deleting the organization."
+      },
+      "admin": {
+        "label": "Admin",
+        "description": "Manage members, notifications and settings."
+      },
+      "member": {
+        "label": "Member",
+        "description": "Create and edit monitors, status pages and maintenance."
+      },
+      "viewer": {
+        "label": "Viewer",
+        "description": "Read-only access."
+      }
+    },
+    "page": {
+      "pageTitle": "Members",
+      "loading": "Loading members",
+      "title": "Members",
+      "description": "People in {organization} and what they can do.",
+      "invite": "Invite member",
+      "emptyTitle": "It is just you so far",
+      "emptyDescription": "Invite teammates to share monitors, status pages and on-call notifications.",
+      "inviteTeam": "Invite your team"
+    },
+    "table": {
+      "columns": {
+        "member": "Member",
+        "role": "Role",
+        "actions": "Actions"
+      },
+      "you": "You",
+      "roleOf": "Role of {member}",
+      "actionsFor": "Actions for {member}",
+      "remove": "Remove from organization",
+      "roleChanged": "{member} is now {role, select, owner {owner} admin {admin} member {member} viewer {viewer} other {{role}}}",
+      "roleFailed": "Could not change the role.",
+      "removed": "Removed {member}",
+      "removeFailed": "Could not remove the member.",
+      "confirmRemoveTitle": "Remove {member}?",
+      "confirmRemoveDescription": "They will lose access to {organization} immediately. You can invite them again later.",
+      "confirmRemove": "Remove member"
+    },
+    "invite": {
+      "title": "Invite to {organization}",
+      "description": "They will receive an email with a link that is valid for seven days.",
+      "email": "Email",
+      "emailPlaceholder": "teammate@example.com",
+      "role": "Role",
+      "roleLabel": "Invited role",
+      "cancel": "Cancel",
+      "send": "Send invitation",
+      "sending": "Sending…",
+      "sent": "Invitation sent to {email}",
+      "failed": "Could not send the invitation."
+    },
+    "inviteLink": {
+      "title": "Invite link",
+      "description": "Anyone with this link can join as the selected role. Regenerate it to invalidate links you have already shared.",
+      "none": "No active invite link",
+      "copyLabel": "Copy invite link",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Copy failed. Select the link and copy it manually.",
+      "joinsAs": "Joins as",
+      "roleLabel": "Invite link role",
+      "regenerate": "Regenerate",
+      "create": "Create link",
+      "disable": "Disable",
+      "regenerated": "Invite link regenerated",
+      "created": "Invite link created",
+      "updateFailed": "Could not update the invite link.",
+      "disabled": "Invite link disabled",
+      "disableFailed": "Could not disable the invite link."
+    },
+    "pending": {
+      "title": "Pending invitations",
+      "description": "Invitations expire after seven days. Resend to extend them.",
+      "empty": "No pending invitations.",
+      "invite": "Invite someone",
+      "columns": {
+        "email": "Email",
+        "role": "Role",
+        "expires": "Expires",
+        "actions": "Actions"
+      },
+      "actionsFor": "Actions for invitation to {email}",
+      "resend": "Resend email",
+      "revoke": "Revoke",
+      "resent": "Invitation re-sent to {email}",
+      "revoked": "Invitation to {email} revoked",
+      "failed": "Something went wrong."
+    }
+  },
+  "invite": {
+    "pageTitle": "Invitation",
+    "goHome": "Go to Marmot",
+    "invalid": {
+      "title": "This invite link is not valid",
+      "description": "It may have been revoked or mistyped. Ask the person who invited you for a new link."
+    },
+    "accepted": {
+      "title": "Invitation already used",
+      "description": "This invitation has already been accepted. Sign in to continue."
+    },
+    "revoked": {
+      "title": "Invitation revoked",
+      "description": "This invitation was withdrawn. Ask an admin to invite you again."
+    },
+    "expired": {
+      "title": "Invitation expired",
+      "description": "Invitations are valid for seven days. Ask an admin to resend it."
+    },
+    "signedOut": {
+      "title": "Join {organization}",
+      "invited": "You have been invited to join {organization} as {role, select, owner {owner} admin {admin} member {member} other {viewer}}.",
+      "link": "You have been given a link to join {organization} as {role, select, owner {owner} admin {admin} member {member} other {viewer}}.",
+      "signIn": "Sign in to accept",
+      "signUp": "Create an account",
+      "footer": "Sent through Marmot"
+    },
+    "accept": {
+      "join": "Join {organization}",
+      "joining": "Joining {organization}…",
+      "alreadyMember": "You are already a member of {organization}.",
+      "joinAs": "You will join as {role, select, owner {owner} admin {admin} member {member} other {viewer}}, signed in as {email}.",
+      "emailMismatch": "This invitation was sent to <invited></invited>, but you are signed in as <current></current>. You can still accept it with this account.",
+      "submit": "Accept invitation",
+      "open": "Open organization",
+      "retry": "Try again",
+      "notNow": "Not now",
+      "failed": "Could not accept the invitation."
+    }
+  },
+  "notifications": {
+    "page": {
+      "pageTitle": "Notifications",
+      "loading": "Loading notification channels",
+      "title": "Notifications",
+      "description": "Where Marmot tells you when something changes.",
+      "membersOnlyTitle": "Members only",
+      "membersOnlyDescription": "Notification channels are visible to members and managed by admins of this organization."
+    },
+    "groups": {
+      "chat": "Chat",
+      "push": "Push",
+      "email": "Email",
+      "generic": "Generic"
+    },
+    "lastSent": {
+      "justNow": "just now",
+      "minutes": "{count} min ago",
+      "hours": "{count} h ago",
+      "days": "{count} d ago"
+    },
+    "list": {
+      "new": "New channel",
+      "emptyTitle": "No notification channels",
+      "emptyDescription": "Connect email, Slack, Discord, webhooks and more; then attach channels to monitors.",
+      "columns": {
+        "name": "Name",
+        "provider": "Provider",
+        "lastSent": "Last sent",
+        "active": "Active",
+        "actions": "Actions"
+      },
+      "default": "Default",
+      "error": "Error",
+      "activeLabel": "{name} active",
+      "actionsFor": "Actions for {name}",
+      "edit": "Edit",
+      "sendTest": "Send test",
+      "delete": "Delete",
+      "enabled": "Channel enabled",
+      "paused": "Channel paused",
+      "updateFailed": "Could not update the channel",
+      "deleted": "Channel deleted",
+      "deleteFailed": "Could not delete the channel",
+      "confirmDeleteTitle": "Delete “{name}”?",
+      "confirmDeleteDescription": "Monitors using this channel stop alerting through it. This cannot be undone.",
+      "confirmDelete": "Delete channel",
+      "cancel": "Cancel"
+    },
+    "test": {
+      "sent": "Test message sent",
+      "failed": "Test failed"
+    },
+    "dialog": {
+      "newTitle": "New notification channel",
+      "editTitle": "Edit channel",
+      "newDescription": "Pick a provider, fill in its settings and send yourself a test message.",
+      "editDescription": "Change where this channel delivers alerts.",
+      "provider": "Provider",
+      "providerPlaceholder": "Choose a provider",
+      "setupGuide": "Setup guide",
+      "name": "Friendly name",
+      "namePlaceholder": "{provider} alerts",
+      "namePlaceholderGeneric": "Alerts",
+      "nameRequired": "Give the channel a name",
+      "noProviders": "No providers are registered.",
+      "isDefault": "Default channel",
+      "isDefaultHint": "Attach to every monitor created from now on.",
+      "applyExisting": "Apply to all existing monitors",
+      "applyExistingHint": "On save, attach this channel to every monitor in the organization.",
+      "active": "Active",
+      "activeHint": "Inactive channels stay attached but are never sent to.",
+      "sendTest": "Send test",
+      "cancel": "Cancel",
+      "save": "Save changes",
+      "create": "Create channel",
+      "updated": "Channel updated",
+      "created": "Channel created",
+      "failed": "Something went wrong."
+    },
+    "field": {
+      "required": "{label} is required",
+      "selectPlaceholder": "Select…",
+      "optional": "(optional)"
+    },
+    "monitors": {
+      "action": "Monitors",
+      "title": "Monitors using “{name}”",
+      "description": "Monitors that alert through this channel. Changes apply from their next status change.",
+      "search": "Search monitors",
+      "empty": "No monitors in this organization yet.",
+      "noMatch": "No monitors match your search.",
+      "selected": "{count, plural, one {# monitor selected} other {# monitors selected}}",
+      "selectAll": "Select all",
+      "clear": "Clear",
+      "toggle": "Alert {name} through this channel",
+      "paused": "Paused",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Monitors updated",
+      "loadFailed": "Could not load the monitors",
+      "saveFailed": "Could not update the monitors"
+    },
+    "messages": {
+      "status": {
+        "up": "✅ Up",
+        "down": "🔴 Down",
+        "pending": "⚠️ Pending",
+        "maintenance": "🔧 Maintenance",
+        "test": "⚠️ Test"
+      },
+      "noMessage": "N/A",
+      "testNotification": "Test notification",
+      "testConfigured": "\"{channel}\" is configured correctly.",
+      "testing": "Testing",
+      "monitorNameUnavailable": "Monitor Name not available",
+      "timeLine": "Time: {time}",
+      "certificateExpiry": "[{name}][{address}] {certType} certificate {commonName} will expire in {count, plural, other {{days} days}}",
+      "noCommonName": "(no CN)",
+      "domainExpiry": "[{name}][{address}] Domain name {domain} will expire in {count, plural, other {{days} days}}"
+    }
+  },
+  "consent": {
+    "privacyPolicy": "What is collected",
+    "banner": {
+      "title": "Help improve Marmot",
+      "description": "The operator of this instance has enabled anonymous usage analytics. With your permission Marmot records which features are used, never emails, names, monitor targets or page addresses. You can change your choice at any time from the account menu."
+    },
+    "dialog": {
+      "title": "Privacy settings",
+      "description": "Choose whether this browser may send anonymous usage analytics. Nothing is sent until you allow it."
+    },
+    "types": {
+      "necessary": {
+        "title": "Essential",
+        "description": "Signing in, remembering your theme and sidebar, and storing this consent choice. Always on."
+      },
+      "measurement": {
+        "title": "Usage analytics",
+        "description": "Anonymous product events (for example \"monitor created\") and route-level pageviews, tied to a hashed account id. Sent through this instance to PostHog."
+      }
+    },
+    "acceptAll": "Allow analytics",
+    "rejectAll": "Decline",
+    "customize": "Preferences"
   },
   "statusPages": {
     "overall": {
@@ -1457,44 +2425,6 @@
         "nightlyBackup": "Nightly backup"
       },
       "pushHeartbeat": "push heartbeat"
-    }
-  },
-  "notifications": {
-    "monitors": {
-      "action": "Monitors",
-      "title": "Monitors using “{name}”",
-      "description": "Monitors that alert through this channel. Changes apply from their next status change.",
-      "search": "Search monitors",
-      "empty": "No monitors in this organization yet.",
-      "noMatch": "No monitors match your search.",
-      "selected": "{count, plural, one {# monitor selected} other {# monitors selected}}",
-      "selectAll": "Select all",
-      "clear": "Clear",
-      "toggle": "Alert {name} through this channel",
-      "paused": "Paused",
-      "cancel": "Cancel",
-      "save": "Save",
-      "saved": "Monitors updated",
-      "loadFailed": "Could not load the monitors",
-      "saveFailed": "Could not update the monitors"
-    },
-    "messages": {
-      "status": {
-        "up": "✅ Up",
-        "down": "🔴 Down",
-        "pending": "⚠️ Pending",
-        "maintenance": "🔧 Maintenance",
-        "test": "⚠️ Test"
-      },
-      "noMessage": "N/A",
-      "testNotification": "Test notification",
-      "testConfigured": "\"{channel}\" is configured correctly.",
-      "testing": "Testing",
-      "monitorNameUnavailable": "Monitor Name not available",
-      "timeLine": "Time: {time}",
-      "certificateExpiry": "[{name}][{address}] {certType} certificate {commonName} will expire in {count, plural, other {{days} days}}",
-      "noCommonName": "(no CN)",
-      "domainExpiry": "[{name}][{address}] Domain name {domain} will expire in {count, plural, other {{days} days}}"
     }
   },
   "email": {

@@ -1,6 +1,7 @@
 'use client'
 
 import { Container, Loader2, Pencil, PlugZap, Plus, Trash2 } from 'lucide-react'
+import { useLocale, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -42,28 +43,36 @@ interface DockerHostsSettingsProps {
   canManage: boolean
 }
 
-const byName = (a: DockerHostRow, b: DockerHostRow) => a.name.localeCompare(b.name)
+const byName = (locale: string) => (a: DockerHostRow, b: DockerHostRow) =>
+  a.name.localeCompare(b.name, locale)
 
 const target = (row: Pick<DockerHostRow, 'connectionType' | 'socketPath' | 'url'>) =>
   row.connectionType === 'tcp' ? (row.url ?? '') : (row.socketPath ?? '')
 
 /** Test outcome → toast. */
-async function runTest(orgId: string, body: Parameters<typeof dockerHostsApi.test>[1]) {
-  try {
-    const result = await dockerHostsApi.test(orgId, body)
-    toast.success('Connected to the Docker daemon', {
-      description: `${result.containers} container${result.containers === 1 ? '' : 's'} on this host.`,
-    })
-  } catch (error) {
-    const details = error instanceof ApiError ? (error.details as { error?: string } | null) : null
-    toast.error('Connection failed', {
-      description: details?.error ?? (error instanceof Error ? error.message : undefined),
-    })
+function useRunTest() {
+  const t = useTranslations('settings.dockerHosts.test')
+  return async (orgId: string, body: Parameters<typeof dockerHostsApi.test>[1]) => {
+    try {
+      const result = await dockerHostsApi.test(orgId, body)
+      toast.success(t('connected'), {
+        description: t('containers', { count: result.containers }),
+      })
+    } catch (error) {
+      const details =
+        error instanceof ApiError ? (error.details as { error?: string } | null) : null
+      toast.error(t('failed'), {
+        description: details?.error ?? (error instanceof Error ? error.message : undefined),
+      })
+    }
   }
 }
 
 export function DockerHostsSettings({ orgId, initial, canManage }: DockerHostsSettingsProps) {
-  const [rows, setRows] = React.useState<DockerHostRow[]>(() => [...initial].sort(byName))
+  const t = useTranslations('settings.dockerHosts')
+  const locale = useLocale()
+  const runTest = useRunTest()
+  const [rows, setRows] = React.useState<DockerHostRow[]>(() => [...initial].sort(byName(locale)))
   const [editing, setEditing] = React.useState<DockerHostRow | 'new' | null>(null)
   const [deleting, setDeleting] = React.useState<DockerHostRow | null>(null)
   const [testingId, setTestingId] = React.useState<string | null>(null)
@@ -73,22 +82,19 @@ export function DockerHostsSettings({ orgId, initial, canManage }: DockerHostsSe
       (current.some((r) => r.id === row.id)
         ? current.map((r) => (r.id === row.id ? row : r))
         : [...current, row]
-      ).sort(byName),
+      ).sort(byName(locale)),
     )
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div className="space-y-1.5">
-          <CardTitle>Docker hosts</CardTitle>
-          <CardDescription>
-            Docker daemons that Docker Container monitors query, through the worker&apos;s unix
-            socket or a TCP endpoint.
-          </CardDescription>
+          <CardTitle>{t('title')}</CardTitle>
+          <CardDescription>{t('description')}</CardDescription>
         </div>
         {canManage && (
           <Button size="sm" onClick={() => setEditing('new')} data-testid="docker-host-new">
-            <Plus /> New Docker host
+            <Plus /> {t('new')}
           </Button>
         )}
       </CardHeader>
@@ -96,12 +102,8 @@ export function DockerHostsSettings({ orgId, initial, canManage }: DockerHostsSe
         {rows.length === 0 ? (
           <EmptyState
             icon={Container}
-            title="No Docker hosts"
-            description={
-              canManage
-                ? 'Add a Docker host, then create a Docker Container monitor.'
-                : 'Admins of this organization can add Docker hosts.'
-            }
+            title={t('emptyTitle')}
+            description={canManage ? t('emptyDescription') : t('emptyReadOnly')}
           />
         ) : (
           <ul className="divide-y rounded-lg border">
@@ -111,7 +113,7 @@ export function DockerHostsSettings({ orgId, initial, canManage }: DockerHostsSe
                   <span className="flex items-center gap-2 text-sm font-medium">
                     {row.name}
                     <Badge variant="outline">
-                      {row.connectionType === 'tcp' ? 'TCP' : 'Socket'}
+                      {row.connectionType === 'tcp' ? t('badge.tcp') : t('badge.socket')}
                     </Badge>
                   </span>
                   <span className="truncate font-mono text-xs text-muted-foreground">
@@ -123,7 +125,7 @@ export function DockerHostsSettings({ orgId, initial, canManage }: DockerHostsSe
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Test ${row.name}`}
+                      aria-label={t('testLabel', { name: row.name })}
                       disabled={testingId === row.id}
                       onClick={async () => {
                         setTestingId(row.id)
@@ -136,7 +138,7 @@ export function DockerHostsSettings({ orgId, initial, canManage }: DockerHostsSe
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Edit ${row.name}`}
+                      aria-label={t('editLabel', { name: row.name })}
                       onClick={() => setEditing(row)}
                     >
                       <Pencil />
@@ -144,7 +146,7 @@ export function DockerHostsSettings({ orgId, initial, canManage }: DockerHostsSe
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Delete ${row.name}`}
+                      aria-label={t('deleteLabel', { name: row.name })}
                       onClick={() => setDeleting(row)}
                     >
                       <Trash2 />
@@ -173,19 +175,19 @@ export function DockerHostsSettings({ orgId, initial, canManage }: DockerHostsSe
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
-        title={`Delete Docker host “${deleting?.name ?? ''}”?`}
-        description="Docker Container monitors using it go DOWN until another host is selected."
-        confirmLabel="Delete host"
+        title={t('confirmDeleteTitle', { name: deleting?.name ?? '' })}
+        description={t('confirmDeleteDescription')}
+        confirmLabel={t('confirmDelete')}
         destructive
         onConfirm={async () => {
           if (!deleting) return
           try {
             await dockerHostsApi.remove(deleting.id)
             setRows((current) => current.filter((r) => r.id !== deleting.id))
-            toast.success('Docker host deleted')
+            toast.success(t('deleted'))
             setDeleting(null)
           } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Could not delete the host')
+            toast.error(error instanceof Error ? error.message : t('deleteFailed'))
           }
         }}
       />
@@ -218,6 +220,8 @@ function DockerHostForm({
   onOpenChange: (open: boolean) => void
   onSaved: (row: DockerHostRow) => void
 }) {
+  const t = useTranslations('settings.dockerHosts.form')
+  const runTest = useRunTest()
   const [name, setName] = React.useState(host?.name ?? '')
   const [connectionType, setConnectionType] = React.useState<DockerConnectionType>(
     host?.connectionType ?? 'socket',
@@ -247,10 +251,10 @@ function DockerHostForm({
       const row = host
         ? await dockerHostsApi.update(host.id, data)
         : await dockerHostsApi.create(orgId, data)
-      toast.success(host ? 'Docker host saved' : 'Docker host created')
+      toast.success(host ? t('saved') : t('created'))
       onSaved(row)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not save the Docker host')
+      toast.error(error instanceof Error ? error.message : t('failed'))
     } finally {
       setSaving(false)
     }
@@ -260,23 +264,21 @@ function DockerHostForm({
     <>
       <form onSubmit={save} className="grid gap-5">
         <DialogHeader>
-          <DialogTitle>{host ? 'Edit Docker host' : 'New Docker host'}</DialogTitle>
-          <DialogDescription>
-            Socket paths are resolved on the worker; mount the socket into its container.
-          </DialogDescription>
+          <DialogTitle>{host ? t('editTitle') : t('newTitle')}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">
-          <Label htmlFor="docker-name">Name</Label>
+          <Label htmlFor="docker-name">{t('name')}</Label>
           <Input
             id="docker-name"
             value={name}
-            placeholder="Production host"
+            placeholder={t('namePlaceholder')}
             autoComplete="off"
             onChange={(e) => setName(e.target.value)}
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="docker-type">Connection type</Label>
+          <Label htmlFor="docker-type">{t('connectionType')}</Label>
           <Select
             value={connectionType}
             onValueChange={(v) => setConnectionType(v as DockerConnectionType)}
@@ -285,14 +287,14 @@ function DockerHostForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="socket">Socket</SelectItem>
-              <SelectItem value="tcp">TCP / HTTP</SelectItem>
+              <SelectItem value="socket">{t('socket')}</SelectItem>
+              <SelectItem value="tcp">{t('tcp')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         {connectionType === 'socket' ? (
           <div className="grid gap-2">
-            <Label htmlFor="docker-socket">Socket path</Label>
+            <Label htmlFor="docker-socket">{t('socketPath')}</Label>
             <Input
               id="docker-socket"
               className="font-mono"
@@ -302,7 +304,7 @@ function DockerHostForm({
           </div>
         ) : (
           <div className="grid gap-2">
-            <Label htmlFor="docker-url">Daemon URL</Label>
+            <Label htmlFor="docker-url">{t('url')}</Label>
             <Input
               id="docker-url"
               className="font-mono"
@@ -311,8 +313,7 @@ function DockerHostForm({
               onChange={(e) => setUrl(e.target.value)}
             />
             <p className="text-sm text-muted-foreground">
-              <code>tcp://</code> and <code>http://</code> are plain text; <code>https://</code>{' '}
-              uses TLS.
+              {t.rich('urlHint', { code: (chunks) => <code>{chunks}</code> })}
             </p>
           </div>
         )}
@@ -328,15 +329,15 @@ function DockerHostForm({
             }}
           >
             {testing ? <Loader2 className="animate-spin" /> : <PlugZap />}
-            Test connection
+            {t('test')}
           </Button>
           <span className="flex gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={!canSave}>
               {saving && <Loader2 className="animate-spin" />}
-              {host ? 'Save' : 'Create host'}
+              {host ? t('save') : t('create')}
             </Button>
           </span>
         </DialogFooter>

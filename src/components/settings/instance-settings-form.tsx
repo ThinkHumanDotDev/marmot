@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -72,6 +73,7 @@ function parseDays(input: string): number[] | null {
  * key shows as set, and leaving the field blank keeps it.
  */
 export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
+  const t = useTranslations('settings.instance')
   const router = useRouter()
   const [form, setForm] = React.useState<FormState>(() => toForm(settings))
   const [pending, setPending] = React.useState(false)
@@ -86,18 +88,18 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
     const domain = parseDays(form.domainExpiryNotifyDays)
     const keep = Number(form.keepDataPeriodDays)
     if (!tls || !domain) {
-      toast.error('Expiry notification days must be positive whole numbers.')
+      toast.error(t('errors.expiryDays'))
       return
     }
     if (!Number.isInteger(keep) || keep < 0) {
-      toast.error('Retention must be a whole number of days (0 disables pruning).')
+      toast.error(t('errors.retention'))
       return
     }
     let baseUrl = form.primaryBaseUrl.trim()
     try {
       baseUrl = new URL(baseUrl).origin + new URL(baseUrl).pathname.replace(/\/$/, '')
     } catch {
-      toast.error('Enter a valid public URL, e.g. https://status.example.com.')
+      toast.error(t('errors.baseUrl'))
       return
     }
 
@@ -115,10 +117,10 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
     setPending(true)
     try {
       await instanceApi.update(data)
-      toast.success('Instance settings saved')
+      toast.success(t('saved'))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not save the settings.')
+      toast.error(error instanceof Error ? error.message : t('failed'))
     } finally {
       setPending(false)
     }
@@ -128,15 +130,12 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
     <Card>
       <form onSubmit={save}>
         <CardHeader>
-          <CardTitle>Instance settings</CardTitle>
-          <CardDescription>
-            Apply to every organization on this install. Environment variables provide the defaults;
-            values saved here take precedence.
-          </CardDescription>
+          <CardTitle>{t('title')}</CardTitle>
+          <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6 pt-6">
           <div className="grid gap-2">
-            <Label htmlFor={field('primaryBaseUrl')}>Public base URL</Label>
+            <Label htmlFor={field('primaryBaseUrl')}>{t('baseUrl')}</Label>
             <Input
               id={field('primaryBaseUrl')}
               type="url"
@@ -145,21 +144,19 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
               placeholder="https://status.example.com"
               required
             />
-            <p className="text-xs text-muted-foreground">
-              Used in notification links, status page URLs and emails.
-            </p>
+            <p className="text-xs text-muted-foreground">{t('baseUrlHint')}</p>
           </div>
 
           <ToggleRow
             id={field('allowSignup')}
-            label="Allow sign-up"
-            hint="Anyone can create an account. When off, only invited people can join."
+            label={t('allowSignup')}
+            hint={t('allowSignupHint')}
             checked={form.allowSignup}
             onChange={(v) => set('allowSignup', v)}
           />
 
           <div className="grid gap-2">
-            <Label htmlFor={field('entryPage')}>Entry page</Label>
+            <Label htmlFor={field('entryPage')}>{t('entryPage')}</Label>
             <Select
               value={form.entryPage}
               onValueChange={(v) => set('entryPage', v as FormState['entryPage'])}
@@ -168,16 +165,16 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="dashboard">Dashboard</SelectItem>
-                <SelectItem value="status-page">Status page</SelectItem>
+                <SelectItem value="dashboard">{t('entryPageDashboard')}</SelectItem>
+                <SelectItem value="status-page">{t('entryPageStatusPage')}</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">What visitors of the root URL see.</p>
+            <p className="text-xs text-muted-foreground">{t('entryPageHint')}</p>
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor={field('tlsExpiryNotifyDays')}>TLS expiry notifications (days)</Label>
+              <Label htmlFor={field('tlsExpiryNotifyDays')}>{t('tlsExpiryDays')}</Label>
               <Input
                 id={field('tlsExpiryNotifyDays')}
                 value={form.tlsExpiryNotifyDays}
@@ -186,9 +183,7 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor={field('domainExpiryNotifyDays')}>
-                Domain expiry notifications (days)
-              </Label>
+              <Label htmlFor={field('domainExpiryNotifyDays')}>{t('domainExpiryDays')}</Label>
               <Input
                 id={field('domainExpiryNotifyDays')}
                 value={form.domainExpiryNotifyDays}
@@ -199,7 +194,7 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor={field('keepDataPeriodDays')}>Data retention (days)</Label>
+            <Label htmlFor={field('keepDataPeriodDays')}>{t('retention')}</Label>
             <Input
               id={field('keepDataPeriodDays')}
               type="number"
@@ -209,45 +204,42 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
               value={form.keepDataPeriodDays}
               onChange={(e) => set('keepDataPeriodDays', e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">
-              Daily aggregates and important heartbeats older than this are pruned. 0 keeps
-              everything.
-            </p>
+            <p className="text-xs text-muted-foreground">{t('retentionHint')}</p>
           </div>
 
           <ToggleRow
             id={field('trustProxy')}
-            label="Trust proxy headers"
-            hint="Use X-Forwarded-* from your reverse proxy to determine client IPs."
+            label={t('trustProxy')}
+            hint={t('trustProxyHint')}
             checked={form.trustProxy}
             onChange={(v) => set('trustProxy', v)}
           />
 
           <fieldset className="grid gap-5 rounded-lg border p-4">
-            <legend className="px-1 text-sm font-medium">Third-party API keys</legend>
+            <legend className="px-1 text-sm font-medium">{t('thirdParty')}</legend>
             <div className="grid gap-2">
-              <Label htmlFor={field('steamApiKey')}>Steam Web API key</Label>
+              <Label htmlFor={field('steamApiKey')}>{t('steamApiKey')}</Label>
               <Input
                 id={field('steamApiKey')}
                 type="password"
                 autoComplete="off"
                 value={form.steamApiKey}
                 onChange={(e) => set('steamApiKey', e.target.value)}
-                placeholder={settings.steamApiKey ? 'Saved' : 'Not set'}
+                placeholder={settings.steamApiKey ? t('secretSaved') : t('secretNotSet')}
               />
-              <p className="text-xs text-muted-foreground">For Steam Game Server monitors.</p>
+              <p className="text-xs text-muted-foreground">{t('steamApiKeyHint')}</p>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor={field('globalpingApiToken')}>Globalping API token</Label>
+              <Label htmlFor={field('globalpingApiToken')}>{t('globalpingApiToken')}</Label>
               <Input
                 id={field('globalpingApiToken')}
                 type="password"
                 autoComplete="off"
                 value={form.globalpingApiToken}
                 onChange={(e) => set('globalpingApiToken', e.target.value)}
-                placeholder={settings.globalpingApiToken ? 'Saved' : 'Not set'}
+                placeholder={settings.globalpingApiToken ? t('secretSaved') : t('secretNotSet')}
               />
-              <p className="text-xs text-muted-foreground">For remote ping and HTTP checks.</p>
+              <p className="text-xs text-muted-foreground">{t('globalpingApiTokenHint')}</p>
             </div>
           </fieldset>
         </CardContent>
@@ -258,10 +250,10 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
             onClick={() => setForm(toForm(settings))}
             disabled={pending}
           >
-            Discard
+            {t('discard')}
           </Button>
           <Button type="submit" disabled={pending}>
-            {pending ? 'Saving…' : 'Save changes'}
+            {pending ? t('saving') : t('save')}
           </Button>
         </CardFooter>
       </form>

@@ -2,6 +2,7 @@
 
 import { Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -17,6 +18,8 @@ interface DeleteAccountCardProps {
 }
 
 export function DeleteAccountCard({ email, soleOwnerOf }: DeleteAccountCardProps) {
+  const t = useTranslations('settings.account.delete')
+  const format = useFormatter()
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const blocked = soleOwnerOf.length > 0
@@ -24,38 +27,39 @@ export function DeleteAccountCard({ email, soleOwnerOf }: DeleteAccountCardProps
   async function remove() {
     try {
       await accountApi.remove(email)
-      toast.success('Your account has been deleted')
+      toast.success(t('deleted'))
       router.replace('/login')
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not delete your account.')
+      toast.error(error instanceof Error ? error.message : t('failed'))
     }
   }
 
   return (
     <Card className="border-destructive/40">
       <CardHeader>
-        <CardTitle className="text-destructive">Delete account</CardTitle>
+        <CardTitle className="text-destructive">{t('title')}</CardTitle>
         <CardDescription>
           {blocked
-            ? `You are the only owner of ${soleOwnerOf.join(', ')}. Transfer ownership or delete ${
-                soleOwnerOf.length === 1 ? 'it' : 'them'
-              } first.`
-            : 'Permanently removes your account and all of your memberships. There is no undo.'}
+            ? t('blocked', {
+                organizations: format.list(soleOwnerOf, { type: 'unit', style: 'short' }),
+                count: soleOwnerOf.length,
+              })
+            : t('description')}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Button variant="destructive" onClick={() => setOpen(true)} disabled={blocked}>
-          <Trash2 /> Delete my account
+          <Trash2 /> {t('button')}
         </Button>
       </CardContent>
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title="Delete your account?"
-        description="You will be signed out immediately and your data cannot be recovered."
+        title={t('confirmTitle')}
+        description={t('confirmDescription')}
         confirmText={email}
-        confirmLabel="Delete account"
+        confirmLabel={t('confirm')}
         destructive
         onConfirm={remove}
       />

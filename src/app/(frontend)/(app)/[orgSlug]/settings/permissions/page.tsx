@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 
 import {
   effectivePermissions,
@@ -13,7 +14,10 @@ import { PermissionsTable } from '@/components/settings/permissions-table'
 import { requireUser } from '@/lib/auth'
 import { getOrgBySlug } from '@/lib/org'
 
-export const metadata: Metadata = { title: 'Permissions' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pageTitles')
+  return { title: t('permissions') }
+}
 export const dynamic = 'force-dynamic'
 
 export default async function PermissionsSettingsPage({

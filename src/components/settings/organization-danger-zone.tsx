@@ -2,6 +2,7 @@
 
 import { ArrowRightLeft, LogOut, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -49,6 +50,7 @@ function Row({
 
 /** Transfer ownership, leave, delete. Each action is confirmed in a dialog. */
 export function OrganizationDangerZone({ org, role, currentUserId, members }: DangerZoneProps) {
+  const t = useTranslations('settings.organization.danger')
   const router = useRouter()
   const [dialog, setDialog] = React.useState<'transfer' | 'leave' | 'delete' | null>(null)
   const [transferTo, setTransferTo] = React.useState<string>('')
@@ -64,99 +66,92 @@ export function OrganizationDangerZone({ org, role, currentUserId, members }: Da
     try {
       await orgApi.transferOwnership(org.id, transferTo)
       const target = candidates.find((m) => String(m.id) === transferTo)
-      toast.success(`${target?.name || target?.email || 'The member'} now owns ${org.name}`)
+      toast.success(
+        t('transferred', {
+          member: target?.name || target?.email || t('theMember'),
+          organization: org.name,
+        }),
+      )
       setDialog(null)
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not transfer ownership.')
+      toast.error(error instanceof Error ? error.message : t('transferFailed'))
     }
   }
 
   async function leave() {
     try {
       await orgApi.removeMember(org.id, currentUserId)
-      toast.success(`You left ${org.name}`)
+      toast.success(t('left', { organization: org.name }))
       router.replace('/')
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not leave the organization.')
+      toast.error(error instanceof Error ? error.message : t('leaveFailed'))
     }
   }
 
   async function remove() {
     try {
       await orgApi.remove(org.id)
-      toast.success(`${org.name} deleted`)
+      toast.success(t('deleted', { organization: org.name }))
       router.replace('/')
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not delete the organization.')
+      toast.error(error instanceof Error ? error.message : t('deleteFailed'))
     }
   }
 
   return (
     <Card className="border-destructive/40">
       <CardHeader>
-        <CardTitle className="text-destructive">Danger zone</CardTitle>
-        <CardDescription>These actions are permanent or hard to undo.</CardDescription>
+        <CardTitle className="text-destructive">{t('title')}</CardTitle>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="divide-y">
         {isOwner && (
-          <Row
-            title="Transfer ownership"
-            description="Make another member the owner. You stay in the organization as an admin."
-          >
+          <Row title={t('transferTitle')} description={t('transferDescription')}>
             <Button
               variant="outline"
               onClick={() => setDialog('transfer')}
               disabled={candidates.length === 0}
             >
-              <ArrowRightLeft /> Transfer
+              <ArrowRightLeft /> {t('transfer')}
             </Button>
           </Row>
         )}
         {isMember && (
           <Row
-            title="Leave organization"
-            description={
-              lastOwner
-                ? 'You are the only owner. Transfer ownership before leaving.'
-                : 'You will lose access until someone invites you again.'
-            }
+            title={t('leaveTitle')}
+            description={lastOwner ? t('leaveLastOwner') : t('leaveDescription')}
           >
             <Button variant="outline" onClick={() => setDialog('leave')} disabled={lastOwner}>
-              <LogOut /> Leave
+              <LogOut /> {t('leave')}
             </Button>
           </Row>
         )}
         {isOwner && (
-          <Row
-            title="Delete organization"
-            description="Removes every monitor, status page and member. There is no undo."
-          >
+          <Row title={t('deleteTitle')} description={t('deleteDescription')}>
             <Button variant="destructive" onClick={() => setDialog('delete')}>
-              <Trash2 /> Delete
+              <Trash2 /> {t('delete')}
             </Button>
           </Row>
         )}
-        {!isOwner && !isMember && (
-          <p className="text-sm text-muted-foreground">Nothing to do here for your role.</p>
-        )}
+        {!isOwner && !isMember && <p className="text-sm text-muted-foreground">{t('nothing')}</p>}
       </CardContent>
 
       <ConfirmDialog
         open={dialog === 'transfer'}
         onOpenChange={(open) => !open && setDialog(null)}
-        title={`Transfer ownership of ${org.name}`}
-        description="The new owner gets full control, including deleting the organization. You become an admin."
-        confirmLabel="Transfer ownership"
+        title={t('transferConfirmTitle', { organization: org.name })}
+        description={t('transferConfirmDescription')}
+        confirmLabel={t('transferTitle')}
         onConfirm={transfer}
       >
         <div className="grid gap-2">
-          <Label>New owner</Label>
+          <Label>{t('newOwner')}</Label>
           <Select value={transferTo} onValueChange={setTransferTo}>
-            <SelectTrigger className="w-full" aria-label="New owner">
-              <SelectValue placeholder="Choose a member" />
+            <SelectTrigger className="w-full" aria-label={t('newOwner')}>
+              <SelectValue placeholder={t('chooseMember')} />
             </SelectTrigger>
             <SelectContent position="popper">
               {candidates.map((m) => (
@@ -172,9 +167,9 @@ export function OrganizationDangerZone({ org, role, currentUserId, members }: Da
       <ConfirmDialog
         open={dialog === 'leave'}
         onOpenChange={(open) => !open && setDialog(null)}
-        title={`Leave ${org.name}?`}
-        description="You will be signed out of this organization and lose access to its monitors."
-        confirmLabel="Leave organization"
+        title={t('leaveConfirmTitle', { organization: org.name })}
+        description={t('leaveConfirmDescription')}
+        confirmLabel={t('leaveTitle')}
         destructive
         onConfirm={leave}
       />
@@ -182,10 +177,10 @@ export function OrganizationDangerZone({ org, role, currentUserId, members }: Da
       <ConfirmDialog
         open={dialog === 'delete'}
         onOpenChange={(open) => !open && setDialog(null)}
-        title={`Delete ${org.name}?`}
-        description="All monitors, heartbeats, status pages, invitations and memberships will be deleted permanently."
+        title={t('deleteConfirmTitle', { organization: org.name })}
+        description={t('deleteConfirmDescription')}
         confirmText={org.slug}
-        confirmLabel="Delete organization"
+        confirmLabel={t('deleteTitle')}
         destructive
         onConfirm={remove}
       />

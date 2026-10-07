@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
@@ -11,7 +12,10 @@ import type { InvitationRow, InviteLink } from '@/lib/org-api'
 import { inviteLinkUrl } from '@/server/invites'
 import { listOrgMembers } from '@/server/members'
 
-export const metadata: Metadata = { title: 'Members' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('members.page')
+  return { title: t('pageTitle') }
+}
 export const dynamic = 'force-dynamic'
 
 export default async function MembersPage({ params }: { params: Promise<{ orgSlug: string }> }) {

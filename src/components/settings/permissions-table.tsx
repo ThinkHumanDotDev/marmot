@@ -1,12 +1,12 @@
 'use client'
 
 import { RotateCcw } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
 import type { Permission, Role } from '@/access/permissions'
 import { RoleSelect } from '@/components/members/role-select'
-import { ROLE_LABELS } from '@/components/members/role-badge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -27,32 +27,11 @@ import {
 } from '@/components/ui/table'
 import { permissionsApi, type PermissionsResponse } from '@/lib/org-api'
 
+import { actionKey, resourceKey } from './permission-labels'
+
 interface PermissionsTableProps {
   orgId: string | number
   initial: PermissionsResponse
-}
-
-const RESOURCE_LABELS: Record<string, string> = {
-  organization: 'Organization',
-  member: 'Members',
-  monitor: 'Monitors',
-  notification: 'Notifications',
-  'status-page': 'Status pages',
-  maintenance: 'Maintenance',
-  'api-key': 'API keys',
-  'audit-log': 'Audit log',
-  sso: 'Single sign-on',
-}
-
-const ACTION_LABELS: Record<string, string> = {
-  read: 'View',
-  create: 'Create',
-  update: 'Edit',
-  delete: 'Delete',
-  invite: 'Invite',
-  remove: 'Remove',
-  'update-role': 'Change roles',
-  manage: 'Manage',
 }
 
 const ALL_ROLES: Role[] = ['owner', 'admin', 'member', 'viewer']
@@ -68,6 +47,16 @@ const split = (permission: Permission) => {
  * the defaults through `PUT /api/orgs/:orgId/permissions`.
  */
 export function PermissionsTable({ orgId, initial }: PermissionsTableProps) {
+  const t = useTranslations('settings.permissions')
+  const tr = useTranslations('members.roles')
+  const resourceLabel = (resource: string) => {
+    const key = resourceKey(resource)
+    return key ? t(`resources.${key}`) : resource
+  }
+  const actionLabel = (action: string) => {
+    const key = actionKey(action)
+    return key ? t(`actions.${key}`) : action
+  }
   const [saved, setSaved] = React.useState(initial)
   const [draft, setDraft] = React.useState<Record<Permission, Role>>(initial.effective)
   const [pending, setPending] = React.useState(false)
@@ -89,9 +78,9 @@ export function PermissionsTable({ orgId, initial }: PermissionsTableProps) {
       const result = await permissionsApi.update(orgId, overrides)
       setSaved(result)
       setDraft(result.effective)
-      toast.success('Permissions updated')
+      toast.success(t('saved'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not save permissions.')
+      toast.error(error instanceof Error ? error.message : t('failed'))
     } finally {
       setPending(false)
     }
@@ -109,21 +98,17 @@ export function PermissionsTable({ orgId, initial }: PermissionsTableProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Permissions</CardTitle>
-        <CardDescription>
-          {canEdit
-            ? 'The minimum role needed for each action. Roles above the minimum are always allowed.'
-            : 'Only owners can change permissions. Roles above the minimum are always allowed.'}
-        </CardDescription>
+        <CardTitle>{t('title')}</CardTitle>
+        <CardDescription>{canEdit ? t('description') : t('readOnly')}</CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
         <div className="rounded-xl border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Action</TableHead>
-                <TableHead className="w-44">Minimum role</TableHead>
-                <TableHead className="w-28">Default</TableHead>
+                <TableHead>{t('columns.action')}</TableHead>
+                <TableHead className="w-44">{t('columns.minimumRole')}</TableHead>
+                <TableHead className="w-28">{t('columns.default')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -131,7 +116,7 @@ export function PermissionsTable({ orgId, initial }: PermissionsTableProps) {
                 <React.Fragment key={resource}>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
                     <TableCell colSpan={3} className="py-2 text-xs font-semibold uppercase">
-                      {RESOURCE_LABELS[resource] ?? resource}
+                      {resourceLabel(resource)}
                     </TableCell>
                   </TableRow>
                   {list.map((permission) => {
@@ -142,9 +127,9 @@ export function PermissionsTable({ orgId, initial }: PermissionsTableProps) {
                       <TableRow key={permission}>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <span>{ACTION_LABELS[action] ?? action}</span>
+                            <span>{actionLabel(action)}</span>
                             <code className="text-xs text-muted-foreground">{permission}</code>
-                            {changed && <Badge variant="secondary">Custom</Badge>}
+                            {changed && <Badge variant="secondary">{t('custom')}</Badge>}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -154,12 +139,12 @@ export function PermissionsTable({ orgId, initial }: PermissionsTableProps) {
                             options={ALL_ROLES}
                             disabled={!canEdit || locked || pending}
                             size="sm"
-                            aria-label={`Minimum role for ${permission}`}
+                            aria-label={t('minimumRoleFor', { permission })}
                           />
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {ROLE_LABELS[saved.defaults[permission]]}
-                          {locked && <span className="ml-1 text-xs">(fixed)</span>}
+                          {tr(`${saved.defaults[permission]}.label`)}
+                          {locked && <span className="ml-1 text-xs">{t('fixed')}</span>}
                         </TableCell>
                       </TableRow>
                     )
@@ -177,7 +162,7 @@ export function PermissionsTable({ orgId, initial }: PermissionsTableProps) {
             onClick={() => save({})}
             disabled={pending || (!customised && !dirty)}
           >
-            <RotateCcw aria-hidden /> Reset to defaults
+            <RotateCcw aria-hidden /> {t('reset')}
           </Button>
           <div className="flex gap-2">
             <Button
@@ -185,10 +170,10 @@ export function PermissionsTable({ orgId, initial }: PermissionsTableProps) {
               onClick={() => setDraft(saved.effective)}
               disabled={pending || !dirty}
             >
-              Discard
+              {t('discard')}
             </Button>
             <Button onClick={saveDraft} disabled={pending || !dirty}>
-              {pending ? 'Saving…' : 'Save changes'}
+              {pending ? t('saving') : t('save')}
             </Button>
           </div>
         </CardFooter>
