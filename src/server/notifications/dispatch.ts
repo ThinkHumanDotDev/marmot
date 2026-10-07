@@ -2,6 +2,11 @@ import type { JobsOptions, Queue } from 'bullmq'
 import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
+import {
+  DEFAULT_CHANNEL_EVENTS,
+  normalizeChannelEvents,
+  type ChannelEvent,
+} from '@/lib/notification-events'
 import type { Monitor, Notification } from '@/payload-types'
 import type { NotificationEvent } from '@/server/engine/beat'
 import type { HeartbeatEvent } from '@/server/engine/hooks'
@@ -22,25 +27,31 @@ export interface NotificationJobData {
   notificationEvent?: NotificationEvent | null
 }
 
-/**
- * Events every channel receives: the behaviour from before the degraded state. `degraded` is
- * opt-in; until per-channel event filters land (#126) no channel opts in, so degraded transitions
- * are recorded and shown everywhere but not sent.
- */
-export const DEFAULT_NOTIFICATION_EVENTS: readonly NotificationEvent[] = ['down', 'up', 'reminder']
+/** Events a channel gets when it never chose any (re-exported for callers of the dispatcher). */
+export const DEFAULT_NOTIFICATION_EVENTS: readonly ChannelEvent[] = DEFAULT_CHANNEL_EVENTS
 
 /**
- * Does `channel` want notifications for `event`? The single filter point of the dispatcher: #126
- * replaces the default set with the channel's own selection. A beat without an event (callers from
- * before the field existed) goes to every channel, as before.
+ * Does `channel` want notifications for `event`? The single filter point for every channel
+ * notification (heartbeat jobs, expiry warnings, maintenance windows, test samples): the channel's
+ * own `events` selection, or `DEFAULT_CHANNEL_EVENTS` when it has none. A beat without an event
+ * (callers from before the field existed) goes to every channel, as before.
+ *
+ * Extension point for multi-location monitoring (#92): location-specific rules (e.g. "only when
+ * every location agrees") belong here, next to the event check, so every caller inherits them.
  */
 export function channelAcceptsEvent(
-  _channel: Pick<Notification, 'id'>,
-  event: NotificationEvent | null | undefined,
+  channel: Pick<Notification, 'events'>,
+  event: ChannelEvent | null | undefined,
 ): boolean {
   if (!event) return true
-  return DEFAULT_NOTIFICATION_EVENTS.includes(event)
+  return normalizeChannelEvents(channel.events).includes(event)
 }
+
+/** `channels` that accept `event` (see `channelAcceptsEvent`). */
+export const channelsAcceptingEvent = <T extends Pick<Notification, 'events'>>(
+  channels: readonly T[],
+  event: ChannelEvent | null | undefined,
+): T[] => channels.filter((channel) => channelAcceptsEvent(channel, event))
 
 export type NotificationsQueue = Queue<NotificationJobData, void, typeof NOTIFICATION_JOB_NAME>
 
@@ -127,8 +138,9 @@ export async function enqueueNotificationsForHeartbeat(
 ): Promise<EnqueueResult> {
   const { payload, monitor, heartbeat } = event
   const notificationEvent = event.notificationEvent ?? null
-  const channels = (await getMonitorNotifications(payload, monitor)).filter((channel) =>
-    channelAcceptsEvent(channel, notificationEvent),
+  const channels = channelsAcceptingEvent(
+    await getMonitorNotifications(payload, monitor),
+    notificationEvent,
   )
   if (channels.length === 0) return { channels: 0, enqueued: 0 }
 

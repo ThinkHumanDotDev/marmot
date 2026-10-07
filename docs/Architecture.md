@@ -16,7 +16,7 @@ Shared infrastructure: the Payload database (Postgres by default, MongoDB suppor
 Payload does not poll anything by itself. On `monitors` `afterChange`/`afterDelete` hooks the web process
 calls `syncMonitor(monitor)` / `removeMonitorSchedule(id)` (`src/server/engine/scheduler.ts`), which upserts
 or removes a BullMQ **job scheduler** named `monitor:<id>` with `every = interval * 1000` (`retryInterval`
-while the monitor is PENDING). Both run, together with the `updateMonitorIntoList` / `deleteMonitorFromList` realtime emits,
+while the monitor is PENDING; every 60 s for push monitors on a cron schedule). Both run, together with the `updateMonitorIntoList` / `deleteMonitorFromList` realtime emits,
 only **after the operation's transaction commits** (`afterCommit()` in `src/db/after-commit.ts`, which hooks
 the adapter's `commitTransaction` / `rollbackTransaction`; without a transaction they run at once). Otherwise an
 idle worker could run the new scheduler's first job before the monitor row is visible, take the "monitor not
@@ -30,6 +30,7 @@ maintenance?  → MAINTENANCE
 check ok      → ping > degradedAfter ? DEGRADED : UP
 check failed  → retries < maxretries ? PENDING (scheduler switched to retryInterval) : DOWN
 upsideDown    → flip UP/DOWN (the degraded threshold does not apply)
+was DOWN, ok  → successThreshold reached ? UP : PENDING "Recovering n/N" (applyRecoveryThreshold)
 ```
 
 Important beats (status transitions) trigger notifications; `resendInterval` re-notifies while down. Each
@@ -37,8 +38,34 @@ notifying beat carries a `notificationEvent` (`down`, `up`, `degraded`, `reminde
 filters channels on. `status.settledStatus` remembers the last non-PENDING status so that leaving a retry
 streak (DEGRADED → PENDING → UP) is still recognised as a transition.
 
+Reminders are spaced by the reminder policy (`reminderBackoff`, `maxReminders`). The recovery threshold
+(#147) is applied after the ported rules: during a recovery streak the previous status counts as DOWN, so its
+PENDING beats are silent, a failure returns to DOWN without notifying, and the beat that completes it is DOWN → UP.
+
+On-demand checks (`src/server/engine/on-demand.ts`, worker side in `on-demand-jobs.ts`) use the same queue:
+`POST /api/orgs/:orgId/monitors/:id/check` adds a `manual-check` job (LIFO, deduplicated per monitor while
+one is pending) and `POST /api/orgs/:orgId/checks` an `adhoc-check` job carrying unsaved form values. The
+web process waits for the job's return value through BullMQ `QueueEvents`, so it never connects to a
+target itself; the worker runs `runCheck()` (timeout, proxy, outbound guard) and either records the beat
+through the state machine with `heartbeats.trigger = 'manual'` or, for dry runs and ad-hoc checks, only
+returns the result. Jobs carry a deadline and are dropped when the worker picks them up after nobody waits
+any more. A per-organization limiter (`ON_DEMAND_CHECKS_PER_MINUTE`) bounds both routes.
+
+**Self connectivity check** (`src/server/engine/connectivity.ts`, opt-in with `CONNECTIVITY_CHECK_ENABLED`).
+The worker keeps a cached verdict per location (`ConnectivityMonitor`, probed every
+`CONNECTIVITY_CHECK_INTERVAL` seconds by a timer and again when a check fails on a verdict older than 10 s).
+`processCheckJob` runs the check through `guardAgainstOfflineChecker`: while offline, monitors that need the
+internet (`monitorNeedsInternet`) get a `checkerOffline` result, which the state machine turns into a silent
+PENDING `checker offline` beat (`holdBeatWhileCheckerOffline` in `beat.ts`); `recordBeat` keeps the cached
+`lastStatus`, and listeners see `event.checkerOffline` (the stats listener skips it). The worker wiring
+(`connectivity-runtime.ts`) publishes each verdict to Redis (`marmot:connectivity:status:<location>:<worker>`,
+read by `/api/health`, `/api/metrics` and the UI banner through `connectivity-state.ts`), broadcasts the
+`checkerStatus` realtime event, sends one offline / back-online notice per outage (claimed in Redis so one
+replica sends it) and re-enqueues the held monitors when connectivity returns. `connectivityLocationOf()` is
+the hook for multi-location checks (#92): every location will run its own monitor.
+
 After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
-`lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`) and calls every listener registered with
+`lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`, `recoveries`) and calls every listener registered with
 `registerHeartbeatListener()` (`src/server/engine/hooks.ts`); stats, realtime and notifications plug in there.
 
 ## Time-series storage
@@ -72,9 +99,9 @@ non-important heartbeats older than 24 h.
 ## Notifications
 
 `notifications` documents (org-scoped: `name`, `type` = provider slug, `config` validated against the
-provider's zod schema, `isDefault`, `active`, `lastSentAt`, `lastError`) are attached to monitors through
+provider's zod schema, `events` filter, `isDefault`, `active`, `lastSentAt`, `lastError`) are attached to monitors through
 `monitors.notifications`. When a beat has `notify = true` the worker's heartbeat listener enqueues one BullMQ
-job per active attached channel on `marmot:notifications` (job id `notif:<channel>:<heartbeat>` dedupes, 3
+job per active attached channel that selected the beat's event on `marmot:notifications` (job id `notif:<channel>:<heartbeat>` dedupes, 3
 attempts with exponential backoff); the notification worker renders `[name] [🔴 Down] msg`, calls the
 provider's `send()` and records the outcome on the channel. Providers self-register in
 `src/server/notification-providers/`; see [Notifications](Notifications.md).
@@ -161,6 +188,28 @@ Routes: `GET/POST /api/orgs/:orgId/maintenance`, `GET/PATCH/DELETE .../:id`, `PO
 (`maintenance:*` permissions, zod schema shared with the form in `src/lib/validation/maintenance.ts`). UI:
 `/[orgSlug]/maintenance` (live list), `/new`, `/[id]/edit`.
 
+## Monitor incidents
+
+`monitor-incidents` (#100) is the on-call record of an outage, separate from the public status-page
+`incidents` below: `monitor`, `status` (`open → acknowledged → resolved`), `cause` (first DOWN message),
+`startedAt`, `acknowledgedAt`/`acknowledgedBy`/`acknowledgedVia`, `resolvedAt`/`resolvedBy`/`autoResolved`,
+`remindersSent`/`lastReminderAt`, `statusPageIncident` (link to a published status-page incident) and a
+`timeline[] { type, at, by, via, message }` array, written atomically with the state like the status-page
+timeline. Only the server writes it (Local API with `overrideAccess`; collection create/update/delete are
+superadmin-only); members act through the route handlers. A unique `openKey` (`open:<monitor>` while
+unresolved, `resolved:<uuid>` afterwards, set by a `beforeChange` hook) allows one unresolved incident per
+monitor on both databases, so two racing DOWN beats cannot open two.
+
+The engine side lives in one place, `registerIncidentListener()` (`src/server/incidents/listener.ts`),
+registered by the worker and the push pipeline **before** the notification listener. Its heartbeat listener
+applies `incidentActionForBeat()` (`src/lib/monitor-incidents.ts`) to important beats: DOWN opens, MAINTENANCE
+adds a note, a working status (UP, and DEGRADED once #93 lands) resolves automatically. Its notification gate
+runs the pluggable reminder policy on resend-interval reminders (default: none while acknowledged). Every
+change is published as the realtime `monitorIncident` event (`MonitorIncidentSummary`). Acknowledge and manual
+resolve enqueue `incident-notify` jobs on `marmot:notifications` (events `acknowledged`, `resolved`), and the
+notification worker appends a signed acknowledge link (`src/server/incidents/ack-link.ts`) to DOWN messages of
+an unacknowledged incident. See [Monitors](Monitors.md#incidents) and [Notifications](Notifications.md).
+
 ## Status page incidents
 
 An incident (`src/collections/Incidents.ts`) is a title plus a **timeline** of updates stored as an array
@@ -218,7 +267,7 @@ The realtime process (`src/realtime.ts` → `createRealtimeServer()` in `src/ser
 a socket.io server on `REALTIME_PORT` with `@socket.io/redis-adapter`, so several replicas can run. Web and
 worker never hold sockets: they publish with `@socket.io/redis-emitter` through the helpers in
 `src/server/realtime/emitter.ts` (`emitHeartbeat`, `emitMonitorUpdated`, `emitMonitorDeleted`, `emitUptime`,
-`emitAvgPing`, `emitMaintenanceList`, `emitNotificationList`, `emitCertInfo`). The emitter connects to Redis
+`emitAvgPing`, `emitMaintenanceList`, `emitNotificationList`, `emitCertInfo`, `emitMonitorIncident`). The emitter connects to Redis
 lazily and swallows (logs) failures, so a Redis outage degrades live updates but never breaks a request or a
 check.
 
@@ -340,6 +389,8 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `member:invite`, `member:remove`, `member:update-role`              |        |        |   ✓   |   ✓   |
 | `monitor:read`                                                      |   ✓    |   ✓    |   ✓   |   ✓   |
 | `monitor:create`, `monitor:update`, `monitor:delete`                |        |   ✓    |   ✓   |   ✓   |
+| `monitor-incident:read`                                             |   ✓    |   ✓    |   ✓   |   ✓   |
+| `monitor-incident:acknowledge`, `monitor-incident:resolve`          |        |   ✓    |   ✓   |   ✓   |
 | `notification:read`                                                 |        |   ✓    |   ✓   |   ✓   |
 | `notification:create`, `notification:update`, `notification:delete` |        |        |   ✓   |   ✓   |
 | `status-page:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |

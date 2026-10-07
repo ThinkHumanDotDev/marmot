@@ -33,6 +33,11 @@ export const PERMISSIONS = {
   'monitor:update': 'member',
   'monitor:delete': 'member',
 
+  // Monitor incidents (#100): everyone sees outages; members acknowledge and resolve them.
+  'monitor-incident:read': 'viewer',
+  'monitor-incident:acknowledge': 'member',
+  'monitor-incident:resolve': 'member',
+
   'notification:read': 'member',
   'notification:create': 'admin',
   'notification:update': 'admin',

@@ -114,16 +114,47 @@ Full setup guide with provider walkthroughs: [Single sign-on](Single-Sign-On.md)
 
 ## Monitoring
 
-| Variable                         | Default | Read by     | Description                                                                                                                                                                                                                         |
-| -------------------------------- | ------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `KEEP_DATA_PERIOD_DAYS`          | `365`   | web, worker | Default for the `keepDataPeriodDays` instance setting: how long daily aggregates and important heartbeats are kept. Raw heartbeats live 24 h, minutely buckets 24 h, hourly 30 d.                                                   |
-| `AUDIT_LOG_RETENTION_DAYS`       | `365`   | worker      | Days the [audit log](Security.md#audit-log) keeps its rows; the hourly retention job deletes older ones. `0` keeps them forever.                                                                                                    |
-| `WORKER_CONCURRENCY`             | `10`    | worker      | Parallel checks (and notification deliveries) per worker process. Scale out with more worker replicas rather than very high values.                                                                                                 |
-| `DOCKER_SOCKET_ENABLED`          | `true`  | web, worker | Allow `socket` Docker hosts, which talk to the Docker daemon of the worker's own host. Set `false` on shared installs where users must not reach the local daemon.                                                                  |
-| `MARMOT_DISABLE_ENGINE_HOOKS`    | `false` | web         | Skip the BullMQ scheduler sync in the `monitors` collection hooks. Only for tests that run without Redis; the Vitest setup sets it.                                                                                                 |
-| `MONITOR_DENY_PRIVATE_ADDRESSES` | `false` | web, worker | Refuse monitor checks and notification deliveries to private, loopback, link-local, CGNAT, multicast and container-network addresses (see below). Turn on when people you do not trust can create monitors, e.g. with open sign-up. |
-| `MONITOR_DENY_CIDRS`             | —       | web, worker | Comma-separated CIDRs that are always refused, guard on or off (e.g. `203.0.113.0/24, 2001:db8::/32`). Wins over `MONITOR_ALLOW_CIDRS`.                                                                                             |
-| `MONITOR_ALLOW_CIDRS`            | —       | web, worker | Comma-separated CIDRs exempt from the private-address deny list, for internal subnets you do want to monitor (e.g. `10.20.0.0/16`).                                                                                                 |
+| Variable                             | Default                                                       | Read by     | Description                                                                                                                                                                                                                         |
+| ------------------------------------ | ------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KEEP_DATA_PERIOD_DAYS`              | `365`                                                         | web, worker | Default for the `keepDataPeriodDays` instance setting: how long daily aggregates and important heartbeats are kept. Raw heartbeats live 24 h, minutely buckets 24 h, hourly 30 d.                                                   |
+| `AUDIT_LOG_RETENTION_DAYS`           | `365`                                                         | worker      | Days the [audit log](Security.md#audit-log) keeps its rows; the hourly retention job deletes older ones. `0` keeps them forever.                                                                                                    |
+| `WORKER_CONCURRENCY`                 | `10`                                                          | worker      | Parallel checks (and notification deliveries) per worker process. Scale out with more worker replicas rather than very high values.                                                                                                 |
+| `ON_DEMAND_CHECKS_PER_MINUTE`        | `30`                                                          | web         | On-demand checks per organization and minute: **Check now**, the monitor form's **Test** and their API (`POST /api/orgs/:orgId/monitors/:id/check`, `POST /api/orgs/:orgId/checks`). Further requests get `429`.                    |
+| `CONNECTIVITY_CHECK_ENABLED`         | `false`                                                       | worker      | [Self connectivity check](#self-connectivity-check): hold checks of external targets while the worker itself is offline instead of reporting them DOWN.                                                                             |
+| `CONNECTIVITY_CHECK_TARGETS`         | `1.1.1.1:53, 8.8.8.8:53, https://www.google.com/generate_204` | worker      | Probe targets, comma-separated: `host:port` (TCP connect, `[v6]:port` for IPv6) or an `http(s)://` URL (any HTTP response counts). Use your own when these are blocked.                                                             |
+| `CONNECTIVITY_CHECK_MODE`            | `any`                                                         | worker      | `any`: online when at least one target answers; `all`: every target must answer.                                                                                                                                                    |
+| `CONNECTIVITY_CHECK_INTERVAL`        | `30`                                                          | worker      | Seconds between probes (5–3600); the verdict is cached for this long.                                                                                                                                                               |
+| `CONNECTIVITY_CHECK_TIMEOUT`         | `5`                                                           | worker      | Seconds each target gets to answer (1–60).                                                                                                                                                                                          |
+| `CONNECTIVITY_CHECK_NOTIFY_EMAIL`    | `true`                                                        | worker      | Email the "checker offline" / "back online" notices to every instance superadmin (needs `SMTP_HOST`).                                                                                                                               |
+| `CONNECTIVITY_CHECK_NOTIFICATION_ID` | —                                                             | worker      | Id of a notification channel that also receives the notices (any provider, e.g. a Telegram bot on a mobile network).                                                                                                                |
+| `DOCKER_SOCKET_ENABLED`              | `true`                                                        | web, worker | Allow `socket` Docker hosts, which talk to the Docker daemon of the worker's own host. Set `false` on shared installs where users must not reach the local daemon.                                                                  |
+| `MARMOT_DISABLE_ENGINE_HOOKS`        | `false`                                                       | web         | Skip the BullMQ scheduler sync in the `monitors` collection hooks. Only for tests that run without Redis; the Vitest setup sets it.                                                                                                 |
+| `MONITOR_DENY_PRIVATE_ADDRESSES`     | `false`                                                       | web, worker | Refuse monitor checks and notification deliveries to private, loopback, link-local, CGNAT, multicast and container-network addresses (see below). Turn on when people you do not trust can create monitors, e.g. with open sign-up. |
+| `MONITOR_DENY_CIDRS`                 | —                                                             | web, worker | Comma-separated CIDRs that are always refused, guard on or off (e.g. `203.0.113.0/24, 2001:db8::/32`). Wins over `MONITOR_ALLOW_CIDRS`.                                                                                             |
+| `MONITOR_ALLOW_CIDRS`                | —                                                             | web, worker | Comma-separated CIDRs exempt from the private-address deny list, for internal subnets you do want to monitor (e.g. `10.20.0.0/16`).                                                                                                 |
+
+### Self connectivity check
+
+When the worker's own uplink or DNS fails, every external monitor would go DOWN at once and every channel
+would be flooded, although only Marmot's connectivity is down. With `CONNECTIVITY_CHECK_ENABLED=true` the
+worker probes `CONNECTIVITY_CHECK_TARGETS` every `CONNECTIVITY_CHECK_INTERVAL` seconds (and again whenever a
+check fails and the last probe is older than 10 s). While the probes fail (per `CONNECTIVITY_CHECK_MODE`):
+
+- checks of external targets are skipped and recorded as PENDING heartbeats with the message
+  `checker offline`. They send no notifications, are left out of the uptime statistics, and leave the
+  monitor's status as it was, so the first check after the outage is judged against the status from before;
+- monitors whose targets are all private or local keep running: IP addresses in the private ranges listed
+  under [Private-address guard](#private-address-guard), `localhost`, single-label names, `.local`, `.lan`,
+  `.internal`, `.home.arpa` and `.localdomain` names, names that resolve only to private addresses,
+  database sockets, Docker socket hosts and groups. Push monitors are held (pushes cannot arrive either);
+- one "checker offline" notice goes to the instance superadmins by email and/or to the channel
+  `CONNECTIVITY_CHECK_NOTIFICATION_ID`, and one "back online" notice when the probes succeed again
+  (notices that cannot be delivered while offline are retried after every probe). With several worker
+  replicas only one of them sends the notices of an outage;
+- the Marmot UI shows a "Checker offline" banner, `GET /api/health` reports `checker.status = offline`
+  and `/api/metrics` exposes `marmot_checker_online 0`.
+
+When connectivity returns, the held monitors are checked again at once. The check is off by default.
 
 ### Private-address guard
 
