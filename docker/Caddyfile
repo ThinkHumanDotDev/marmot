@@ -7,6 +7,9 @@
 #
 # SITE_ADDRESS is derived from DOMAIN by docker-compose.yml; when running Caddy by hand set it directly
 # (e.g. SITE_ADDRESS=status.example.com or SITE_ADDRESS=:80).
+#
+# WEB_UPSTREAM and REALTIME_UPSTREAM (host:port) default to the compose service names; platforms with other
+# private hostnames override them (deploy/railway/edge sets web.railway.internal:3000 and so on).
 {
 	# Empty when ACME_EMAIL is unset; Caddy then registers with the CA without a contact address.
 	email "{$ACME_EMAIL}"
@@ -24,7 +27,7 @@
 	# reverse_proxy passes Upgrade/Connection headers through by default.
 	@realtime path /socket.io/*
 	handle @realtime {
-		reverse_proxy realtime:3001 {
+		reverse_proxy {$REALTIME_UPSTREAM:realtime:3001} {
 			# Keep established websockets open for a while across config reloads.
 			stream_close_delay 5m
 		}
@@ -32,6 +35,6 @@
 
 	# Everything else: Next.js + Payload (UI, admin, REST/GraphQL, badges, push, health).
 	handle {
-		reverse_proxy web:3000
+		reverse_proxy {$WEB_UPSTREAM:web:3000}
 	}
 }
