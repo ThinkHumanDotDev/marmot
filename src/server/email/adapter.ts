@@ -20,7 +20,10 @@ export function getEmailAdapter() {
     defaultFromName,
     // Build the transport ourselves: since nodemailer 10 the adapter's `transportOptions` type
     // (SMTPConnection.Options) no longer declares `auth`, though createTransport accepts it.
+    // Pooled: status page announcements send many messages in a row (bounded by `maxConnections`).
     transport: nodemailer.createTransport({
+      pool: true,
+      maxConnections: 5,
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_SECURE,
