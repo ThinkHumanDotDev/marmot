@@ -45,6 +45,7 @@ jobs:
         continue-on-error: true
       - run: pnpm format
       - run: pnpm lint
+      - run: pnpm check:railway
       - run: pnpm generate:types
         env:
           DATABASE_ADAPTER: sqlite
@@ -194,6 +195,20 @@ jobs:
           validate -e SITE_ADDRESS=:80 -e ACME_EMAIL=
           validate -e SITE_ADDRESS=status.example.com -e ACME_EMAIL=
           validate -e SITE_ADDRESS=status.example.com -e ACME_EMAIL=ops@example.com
+      - name: Validate Railway edge and Redis images
+        run: |
+          docker build -q -f deploy/railway/edge/Dockerfile -t marmot-railway-edge:ci .
+          docker run --rm marmot-railway-edge:ci caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          docker run --rm marmot-railway-edge:ci caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile \
+            | grep -q 'web.railway.internal:3000'
+          docker build -q -f deploy/railway/redis/Dockerfile -t marmot-railway-redis:ci .
+          docker run -d --name railway-redis -e REDIS_PASSWORD=ci marmot-railway-redis:ci
+          for i in $(seq 1 20); do
+            docker exec railway-redis redis-cli -a ci --no-auth-warning ping 2>/dev/null | grep -q PONG && break
+            sleep 1
+          done
+          docker exec railway-redis redis-cli -a ci --no-auth-warning config get maxmemory-policy | grep -qx noeviction
+          docker rm -f railway-redis
       - uses: docker/build-push-action@v7
         with:
           context: .
