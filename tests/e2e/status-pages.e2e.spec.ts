@@ -9,6 +9,8 @@ const run = runId()
 const monitorUrl = targetUrl('/')
 const publishedSlug = `e2e-status-${run}`
 const draftSlug = `e2e-draft-${run}`
+const protectedSlug = `e2e-protected-${run}`
+const protectedPassword = 'e2e page password'
 
 const created: { collection: string; id: DocId }[] = []
 
@@ -86,6 +88,20 @@ test.describe('Status pages', () => {
         published: false,
       }),
     )
+
+    track(
+      'status-pages',
+      await adminApi.create('status-pages', {
+        organization: org.id,
+        title: 'E2E Internal Status',
+        slug: protectedSlug,
+        description: 'Only for the team.',
+        published: true,
+        access: 'password',
+        password: protectedPassword,
+        groups: [{ name: 'Internal services', monitors: [{ monitor: monitor.id }] }],
+      }),
+    )
   })
 
   test.afterAll(async ({ adminApi }) => {
@@ -146,5 +162,36 @@ test.describe('Status pages', () => {
     expect(api.status()).toBe(404)
     const missing = await request.get(`/status/does-not-exist-${run}/rss`)
     expect(missing.status()).toBe(404)
+  })
+
+  test('password-protected page: login form, then the page and its feeds', async ({
+    page,
+    request,
+  }) => {
+    // Anonymous machine clients get 401 everywhere.
+    expect((await request.get(`/api/status-pages/${protectedSlug}/public`)).status()).toBe(401)
+    expect((await request.get(`/status/${protectedSlug}/rss`)).status()).toBe(401)
+
+    await page.goto(`/status/${protectedSlug}`)
+    await expect(page).toHaveURL(new RegExp(`/status/${protectedSlug}/login$`))
+    await expect(page.getByRole('heading', { level: 1, name: 'E2E Internal Status' })).toBeVisible()
+    await expect(page.getByText('Only for the team.')).toHaveCount(0)
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+
+    await page.getByLabel('Password').fill('not the password')
+    await page.getByRole('button', { name: 'View status page' }).click()
+    await expect(page.getByText('That password is not correct.')).toBeVisible()
+
+    await page.getByLabel('Password').fill(protectedPassword)
+    await page.getByRole('button', { name: 'View status page' }).click()
+    await expect(page).toHaveURL(new RegExp(`/status/${protectedSlug}$`))
+    await expect(page.getByRole('heading', { level: 2, name: 'Internal services' })).toBeVisible()
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+
+    // The browser context now carries the access cookie for the API and the feed.
+    const api = await page.request.get(`/api/status-pages/${protectedSlug}/public`)
+    expect(api.status()).toBe(200)
+    expect(api.headers()['cache-control']).toBe('private, no-store')
+    expect((await page.request.get(`/status/${protectedSlug}/rss`)).status()).toBe(200)
   })
 })

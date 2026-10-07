@@ -66,7 +66,8 @@ export async function serveBadge(
     .catch(() => null)) as Monitor | null
   if (!monitor) return jsonError(404, 'Monitor not found')
 
-  if (!(await badgeAccess(payload, monitor, request))) return jsonError(404, 'Monitor not found')
+  const access = await badgeAccess(payload, monitor, request)
+  if (!access) return jsonError(404, 'Monitor not found')
 
   const data: BadgeData = { range: range ?? undefined }
   switch (type) {
@@ -90,5 +91,10 @@ export async function serveBadge(
 
   const params = badgeParamsFromSearch(new URL(request.url).searchParams)
   const svg = renderBadge(buildBadge(type, data, params))
-  return new Response(svg, { status: 200, headers: BADGE_HEADERS })
+  // Badges served through a password-protected status page must not land in shared caches.
+  const headers =
+    access === 'status-page'
+      ? { ...BADGE_HEADERS, 'Cache-Control': 'private, no-store' }
+      : BADGE_HEADERS
+  return new Response(svg, { status: 200, headers })
 }
