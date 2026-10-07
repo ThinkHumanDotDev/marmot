@@ -9,6 +9,9 @@
  */
 import jsonata from 'jsonata'
 
+import { assertConnectionTargetsAllowed } from '@/server/security/connection-hosts'
+import { guardedLookup, outboundGuardActive } from '@/server/security/outbound-guard'
+
 import { registerMonitorType } from './registry'
 import {
   checkTimeoutMs,
@@ -16,6 +19,7 @@ import {
   loadOptionalDriver,
   parseJsonObject,
   requireField,
+  responseExcerpt,
   withAbort,
 } from './util'
 
@@ -31,10 +35,16 @@ registerMonitorType({
     const { MongoClient } = await loadOptionalDriver(() => import('mongodb'), 'mongodb', 'MongoDB')
     const timeout = checkTimeoutMs(ctx.monitor)
 
+    // Outbound address guard: the seed list, SRV targets and SOCKS proxy host are pre-checked,
+    // and every connection to a named host resolves through `guardedLookup` at connect time.
+    // Residual: replica-set members advertised by the server as IP literals are connected without
+    // a lookup (Node skips it for literals), so they are not vetted.
+    await assertConnectionTargetsAllowed(connectionString)
     const client = new MongoClient(connectionString, {
       serverSelectionTimeoutMS: timeout,
       connectTimeoutMS: timeout,
       socketTimeoutMS: timeout,
+      ...(outboundGuardActive() ? { lookup: guardedLookup as never } : {}),
     })
     const startTime = Date.now()
     let result: unknown
@@ -71,7 +81,7 @@ registerMonitorType({
         ctx.heartbeat.msg = 'Command executed successfully and expected value was found'
       } else {
         throw new Error(
-          `Query executed, but value is not equal to expected value, value was: [${JSON.stringify(result)}]`,
+          `Query executed, but value is not equal to expected value, value was: [${responseExcerpt(JSON.stringify(result))}]`,
         )
       }
     }

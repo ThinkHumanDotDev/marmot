@@ -1,20 +1,22 @@
 # Security
 
 What Marmot does to protect an instance, and what the operator has to provide. Report vulnerabilities as
-described in [SECURITY.md](../SECURITY.md).
+described in [SECURITY.md](../.github/SECURITY.md).
 
 ## Built in
 
-| Area                 | Behaviour                                                                                                                                                                                                                                                                                                               |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Admin panel          | `/admin` (Payload) is reachable by **superadmins only** (`users.access.admin`). Everyone else uses the Marmot UI; the "Admin panel" menu entry is hidden for them.                                                                                                                                                      |
-| Organizations        | Every collection is scoped to the user's organizations through role-based access (`src/access`). Server code that acts for a user passes `overrideAccess: false`.                                                                                                                                                       |
-| CORS / CSRF          | Only `NEXT_PUBLIC_SERVER_URL` and the origins in `ADDITIONAL_ORIGINS` may use the auth cookie against the API. Other origins get no session.                                                                                                                                                                            |
-| Rate limiting        | Redis-backed (`rate-limiter-flexible`): password login 10/min per client with a 5-minute block, password reset 5 per 15 min, SSO login, callback and lookup 20/min. Responses carry `Retry-After`, `X-RateLimit-Limit` and `X-RateLimit-Remaining`. Fails open if Redis is down (one warning is logged).                |
-| Audit log            | `audit-logs` collection: logins (success, failure, rate-limited), member role changes and removals, invitations created/accepted, organizations updated/deleted, with actor, IP and user agent. Readable by organization admins (their organization) and superadmins; never writable by clients; pruned after 365 days. |
-| Security headers     | `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, a restrictive `Permissions-Policy`, `X-Frame-Options: DENY` everywhere except public status pages (`/status/*`, which may be embedded), and HSTS when the public URL is https.                                                   |
-| Secrets in the model | Invitation tokens, invite-link tokens and SSO identifiers (`auth-accounts` rows) are write-protected; API responses only expose them to roles that need them.                                                                                                                                                           |
-| Dependencies         | CI runs `pnpm audit --prod --audit-level=high` (advisory) on every push; Dependabot keeps Payload, Next.js and the rest current.                                                                                                                                                                                        |
+| Area                 | Behaviour                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin panel          | `/admin` (Payload) is reachable by **superadmins only** (`users.access.admin`). Everyone else uses the Marmot UI; the "Admin panel" menu entry is hidden for them.                                                                                                                                                                                                                          |
+| Organizations        | Every collection is scoped to the user's organizations through role-based access (`src/access`). Server code that acts for a user passes `overrideAccess: false`.                                                                                                                                                                                                                           |
+| CORS / CSRF          | Only `NEXT_PUBLIC_SERVER_URL` and the origins in `ADDITIONAL_ORIGINS` may use the auth cookie against the API. Other origins get no session.                                                                                                                                                                                                                                                |
+| Rate limiting        | Redis-backed (`rate-limiter-flexible`): password login 10/min per client with a 5-minute block, password reset 5 per 15 min, SSO login, callback and lookup 20/min. Responses carry `Retry-After`, `X-RateLimit-Limit` and `X-RateLimit-Remaining`. Fails open if Redis is down (one warning is logged).                                                                                    |
+| Audit log            | `audit-logs` collection: logins (success, failure, rate-limited), member role changes and removals, invitations created/accepted, organizations updated/deleted, with actor, IP and user agent. Readable by organization admins (their organization) and superadmins; never writable by clients; pruned after 365 days.                                                                     |
+| Security headers     | `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, a restrictive `Permissions-Policy`, `X-Frame-Options: DENY` everywhere except public status pages (`/status/*`, which may be embedded), and HSTS when the public URL is https.                                                                                                                       |
+| Secrets in the model | Invitation tokens, invite-link tokens and SSO identifiers (`auth-accounts` rows) are write-protected; API responses only expose them to roles that need them.                                                                                                                                                                                                                               |
+| Outbound guard       | With `MONITOR_DENY_PRIVATE_ADDRESSES=true`, monitor checks and notification deliveries are refused when the target resolves to a private, loopback, link-local, CGNAT or container-network address. The check runs after DNS resolution and at connect time (each redirect hop included); host-local types are refused. Details in [Configuration](Configuration.md#private-address-guard). |
+| Response excerpts    | Heartbeat and notification messages quote at most about 200 characters of a monitored response (JSON query values, keyword misses, MQTT payloads, error bodies).                                                                                                                                                                                                                            |
+| Dependencies         | CI runs `pnpm audit --prod --audit-level=high` (advisory) on every push; Dependabot keeps Payload, Next.js and the rest current.                                                                                                                                                                                                                                                            |
 
 ### Accepted dependency advisories
 
@@ -47,11 +49,21 @@ account (per e-mail) and the OIDC endpoints are not limited.
    from the internet; `REALTIME_PORT` is proxied under `/socket.io`.
 5. **Disable open signup** (`DISABLE_SIGNUP=true` or the `allowSignup` instance setting) and invite people
    instead; use single sign-on (`OIDC_*`) where you can.
-6. **Limit superadmins.** They bypass organization access and can open `/admin`; give the flag to operators
+6. **Deny private addresses when untrusted people can create monitors.** Every member can point monitors
+   and notification channels at any host, and the worker connects from inside your network (cloud
+   metadata at `169.254.169.254`, the bundled Postgres and Redis, the Docker host, your tailnet). Set
+   `MONITOR_DENY_PRIVATE_ADDRESSES=true` on instances with open sign-up or members you do not control,
+   list internal subnets you do want monitored in `MONITOR_ALLOW_CIDRS`, and add anything else to
+   `MONITOR_DENY_CIDRS`. The Instance settings page warns while sign-up is open and the guard is off.
+7. **Limit superadmins.** They bypass organization access and can open `/admin`; give the flag to operators
    only, and review `audit-logs` for `auth.login_failed` bursts and `auth.break_glass` entries (owner password
    logins while an organization enforces single sign-on).
-7. **Restrict CORS.** Add only the origins you control to `ADDITIONAL_ORIGINS`.
-8. **Back up and update.** Follow [Deployment](Deployment.md) for backups, pin `MARMOT_VERSION` and apply
+8. **Restrict CORS.** Add only the origins you control to `ADDITIONAL_ORIGINS`.
+9. **Back up and update.** Follow [Deployment](Deployment.md) for backups, pin `MARMOT_VERSION` and apply
    releases promptly; watch the CI dependency audit output after upgrading your fork.
-9. **Protect Redis.** Rate limiting and queues live there; use `requirepass`/ACLs and
-   `maxmemory-policy noeviction`.
+10. **Protect Redis.** Rate limiting and queues live there; use `requirepass`/ACLs and
+    `maxmemory-policy noeviction`.
+11. **Limit who can send through your mail server.** Keep `NOTIFICATIONS_SERVER_SMTP=superadmin` (the
+    default) or set `off`, so only operators can point notification channels at the `SMTP_*` settings; keep
+    `NOTIFICATIONS_SERVER_SMTP_RATE` low. After upgrading, review the channels that already use the server
+    settings ([Deployment](Deployment.md#upgrading)).

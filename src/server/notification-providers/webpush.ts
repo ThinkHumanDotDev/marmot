@@ -7,9 +7,16 @@
  * Marmot stores the key pair and the subscription JSON on the channel so no extra settings or
  * service worker are needed; generate keys with `npx web-push generate-vapid-keys`.
  */
+import { Agent as HttpsAgent } from 'node:https'
+
 import webpush, { type PushSubscription } from 'web-push'
 import { z } from 'zod'
 
+import {
+  guardedLookup,
+  literalTargetDenial,
+  outboundGuardActive,
+} from '@/server/security/outbound-guard'
 import { OK_MESSAGE } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -69,6 +76,15 @@ registerNotificationProvider({
     const subscription = parsePushSubscription(config.subscription)
     const payload = JSON.stringify({ title: config.title || 'Marmot', body: message })
 
+    // The endpoint comes from the subscription (user input): with the outbound address guard on,
+    // literal hosts are checked here and names by the agent's lookup at connect time.
+    let agent: HttpsAgent | undefined
+    if (outboundGuardActive()) {
+      const denial = literalTargetDenial(new URL(subscription.endpoint).hostname)
+      if (denial) throw new Error(denial)
+      agent = new HttpsAgent({ lookup: guardedLookup as never })
+    }
+
     try {
       await webpush.sendNotification(subscription, payload, {
         vapidDetails: {
@@ -76,12 +92,17 @@ registerNotificationProvider({
           publicKey: config.vapidPublicKey,
           privateKey: config.vapidPrivateKey,
         },
+        ...(agent ? { agent } : {}),
       })
     } catch (error) {
       const status = (error as { statusCode?: number }).statusCode
       const body = (error as { body?: string }).body
       const msg = error instanceof Error ? error.message : String(error)
-      throw new Error(status ? `Web Push failed (HTTP ${status})${body ? ` ${body}` : ''}` : msg)
+      throw new Error(
+        status ? `Web Push failed (HTTP ${status})${body ? ` ${body.slice(0, 200)}` : ''}` : msg,
+      )
+    } finally {
+      agent?.destroy()
     }
     return OK_MESSAGE
   },

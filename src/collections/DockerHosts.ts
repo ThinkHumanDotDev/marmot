@@ -8,6 +8,12 @@ import {
   DOCKER_URL_PATTERN,
 } from '@/lib/monitor-resources'
 import type { DockerHost } from '@/payload-types'
+import {
+  blockedLocalError,
+  hostLocalChecksRefused,
+  literalTargetDenial,
+} from '@/server/security/outbound-guard'
+import { looseHost } from '@/server/security/monitor-targets'
 
 import { detachMonitorRelation } from './shared'
 
@@ -30,6 +36,9 @@ const validateConnection: CollectionBeforeValidateHook<DockerHost> = ({ data, or
         'Socket connections are disabled on this instance (DOCKER_SOCKET_ENABLED).',
       )
     }
+    if (hostLocalChecksRefused()) {
+      fail('connectionType', blockedLocalError('A Docker socket host').message)
+    }
     const socketPath = (data.socketPath ?? originalDoc?.socketPath ?? '').trim()
     if (!socketPath.startsWith('/')) fail('socketPath', 'Enter an absolute socket path.')
     data.socketPath = socketPath
@@ -39,6 +48,8 @@ const validateConnection: CollectionBeforeValidateHook<DockerHost> = ({ data, or
     if (!DOCKER_URL_PATTERN.test(url)) {
       fail('url', 'Enter the daemon URL, e.g. tcp://docker.example.com:2375.')
     }
+    const denial = literalTargetDenial(looseHost(url))
+    if (denial) fail('url', denial)
     data.url = url
     data.socketPath = null
   }

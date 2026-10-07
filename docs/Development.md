@@ -2,7 +2,7 @@
 
 Marmot is one TypeScript codebase (Payload CMS 3 + Next.js, pnpm) that runs as three processes. This page
 gets you from a clone to a running stack and through the test, migration and build workflows. Project
-conventions live in [`CONTRIBUTING.md`](../CONTRIBUTING.md) and `.claude/skills/marmot-conventions/SKILL.md`.
+conventions live in [`CONTRIBUTING.md`](../.github/CONTRIBUTING.md) and `.claude/skills/marmot-conventions/SKILL.md`.
 
 ## Prerequisites
 
@@ -111,6 +111,63 @@ pnpm test:e2e                                # starts `pnpm dev:web` for you
 Integration tests for behaviour that matters (access control, state machines, rollups, provider payloads,
 route handlers). E2E only for critical user paths. No snapshot tests, no tests of trivial getters.
 
+## Localisation
+
+User-facing text goes through [next-intl](https://next-intl.dev) in "without i18n routing" mode: URLs
+carry no locale prefix, the language comes from the signed-in user. Everything lives in `src/i18n/`:
+
+| File                      | Role                                                                                                                                    |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `locales.ts`              | `locales`, `defaultLocale`, `localeNames` (each language in its own language) and the pure resolver. The only list of languages.        |
+| `messages/<locale>.json`  | One catalogue per language, namespaced by area (`common`, `auth`, `settings`, `statusPages`, …). English is the reference.              |
+| `messages/index.ts`       | Static map of catalogues (no computed `import()`, so the worker bundle can include it).                                                 |
+| `formats.ts`              | Named date and number formats (`short`, `zoned`, `percent`, …) and the default time zone.                                               |
+| `request.ts`, `server.ts` | next-intl request config; locale of the current request (`getRequestLocale`, `getStatusPageLocale`).                                    |
+| `resolve.ts`              | Locale and time zone of a request or a status page from plain `Headers`; usable in route handlers and tests.                            |
+| `translator.ts`           | `getTranslator(locale)` / `getStaticFormatter(locale, timeZone)` for code outside React (RSS, emails, notification bodies, the worker). |
+| `admin.ts`                | Payload admin languages and the `marmot:` translations used for collection labels (`adminT('marmot:language')`).                        |
+
+Keys are type-checked: `src/types/next-intl.d.ts` derives them from `en.json`, so a missing or misspelt
+key fails `pnpm typecheck`, and `tests/int/i18n.int.spec.ts` checks that every catalogue has the same keys.
+
+### Adding a string
+
+1. Add the key to `src/i18n/messages/en.json` under the namespace of the area (`statusPages.footer.rss`).
+   Use camelCase leaves, name the key after its meaning rather than its English text, and keep whole
+   sentences in one message (translators need the full sentence to reorder it).
+2. Use it:
+   - server components and `generateMetadata`: `const t = await getTranslations('statusPages.footer')`,
+     then `t('rss')`;
+   - client islands and shared components: `const t = useTranslations('statusPages.footer')`;
+   - outside React (route handlers, worker): `getTranslator(locale)('statusPages.footer.rss')`.
+3. Values are ICU messages: `{name}` placeholders, plurals
+   `"{count, plural, one {# check} other {# checks}}"`, selects `"{status, select, up {…} other {…}}"`, and
+   rich text `"No account yet? <link>Create one</link>"` rendered with
+   `t.rich('noAccount', { link: (chunks) => <Link …>{chunks}</Link> })`.
+4. Dates and numbers never go through `toLocaleString()`: use `useFormatter()` / `getFormatter()` with a
+   named format (`format.dateTime(date, 'short')`, `format.number(fraction, 'percent')`). The request config
+   renders in UTC, public status pages in the organization's `settings.timezone`; passing the zone explicitly
+   is what keeps the server HTML and the client hydration identical.
+5. Stable identifiers stay untranslated: monitor type slugs, status enum values, webhook payload keys, log
+   lines and the `code` of API errors. Only their display labels are messages.
+
+### Locale resolution
+
+User preference (`users.language`) → `marmot-locale` cookie (signed-out pages; the language picker sets
+it) → `Accept-Language` matched by base language → `defaultLocale`. Public status pages use their own
+`language` setting, or follow the visitor when it is `auto`. `<html lang>` always reflects the result.
+
+### Adding a language
+
+1. Copy `src/i18n/messages/en.json` to `<locale>.json` and translate it (same keys; the catalogue format
+   is plain nested JSON with ICU messages, which Crowdin, Weblate and Lingo.dev all handle).
+2. Register it in `src/i18n/messages/index.ts` and append the locale to `locales` and `localeNames` in
+   `src/i18n/locales.ts`. The language picker in **Settings → Account** and the status page builder
+   appear automatically once more than one locale exists.
+3. For the Payload admin, add the matching pack from `@payloadcms/translations/languages/<locale>` and
+   translate the `marmot:` keys in `src/i18n/admin.ts`.
+4. Run `pnpm check`: the typecheck and the catalogue test fail on missing keys.
+
 ## Migrations
 
 Postgres uses Payload migrations in `src/migrations/postgres` (chained in `index.ts`); MongoDB needs none
@@ -163,6 +220,7 @@ src/server/stats/                uptime calculator and rollups
 src/server/realtime/             socket.io event names, emitter helpers, server auth
 src/server/status-pages/         public payload, RSS, route helpers
 src/app/(frontend)/              Marmot UI (App Router)
+src/i18n/                        locales, message catalogues, formats, request locale (next-intl)
 src/app/api/                     route handlers (org-scoped and public)
 src/components/                  UI; shadcn primitives under components/ui
 src/stores/                      Zustand stores fed by the socket client
@@ -171,4 +229,4 @@ docker/                          Dockerfile, compose files, Caddyfile, entrypoin
 ```
 
 Extension points (adding a monitor type or a notification provider) are described in
-[`CONTRIBUTING.md`](../CONTRIBUTING.md); the data flow is in [Architecture](Architecture.md).
+[`CONTRIBUTING.md`](../.github/CONTRIBUTING.md); the data flow is in [Architecture](Architecture.md).

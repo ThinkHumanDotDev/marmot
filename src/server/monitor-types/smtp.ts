@@ -10,6 +10,8 @@ import nodemailer from 'nodemailer'
 
 import type { Monitor } from '@/payload-types'
 
+import { resolveGuardedTarget } from '@/server/security/outbound-guard'
+
 import { registerMonitorType } from './registry'
 import { checkTimeoutMs, errorMessage, requireHostname, withAbort } from './util'
 
@@ -42,9 +44,15 @@ registerMonitorType({
   label: 'SMTP',
   group: 'specific',
   async check(ctx) {
-    const transporter = nodemailer.createTransport(
-      smtpTransportOptions(ctx.monitor, checkTimeoutMs(ctx.monitor)),
-    )
+    const options: ReturnType<typeof smtpTransportOptions> & { servername?: string } =
+      smtpTransportOptions(ctx.monitor, checkTimeoutMs(ctx.monitor))
+    // Outbound address guard: connect to the vetted address, verify TLS against the name.
+    const vetted = await resolveGuardedTarget(options.host)
+    if (vetted && vetted.address !== options.host) {
+      options.servername = options.host
+      options.host = vetted.address
+    }
+    const transporter = nodemailer.createTransport(options)
     const startTime = Date.now()
     try {
       await withAbort(transporter.verify(), ctx.signal, () => transporter.close())

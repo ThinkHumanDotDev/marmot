@@ -10,6 +10,8 @@ import type { ConnectOptions } from 'ssh2-sftp-client'
 
 import type { Monitor } from '@/payload-types'
 
+import { resolveGuardedTarget } from '@/server/security/outbound-guard'
+
 import { registerMonitorType } from './registry'
 import {
   checkTimeoutMs,
@@ -94,6 +96,9 @@ registerMonitorType({
       'ssh2-sftp-client',
       'SFTP',
     )
+    // Outbound address guard: SSH connects to the vetted address (no TLS name to keep).
+    const vetted = await resolveGuardedTarget(host)
+    if (vetted) options.host = vetted.address
     const sftp = new SftpClient()
     let connected = false
     const startTime = Date.now()

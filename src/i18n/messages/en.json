@@ -1,0 +1,265 @@
+{
+  "metadata": {
+    "description": "Self-hosted status monitor for teams."
+  },
+  "common": {
+    "appName": "Marmot",
+    "tagline": "Marmot · self-hosted status monitoring",
+    "status": {
+      "up": "Up",
+      "down": "Down",
+      "pending": "Pending",
+      "maintenance": "Maintenance",
+      "unknown": "Unknown"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "description": "The page you are looking for does not exist or has moved.",
+      "backHome": "Back home"
+    }
+  },
+  "auth": {
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "Ada Lovelace",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "passwordHint": "At least 8 characters.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "forgotPassword": "Forgot password?"
+    },
+    "validation": {
+      "nameRequired": "Enter your name",
+      "email": "Enter a valid email address",
+      "passwordRequired": "Enter your password",
+      "passwordMin": "Use at least 8 characters",
+      "passwordsMismatch": "Passwords do not match",
+      "code": "Enter the 6-digit code or a backup code",
+      "organizationNameRequired": "Enter an organization name",
+      "slugInvalid": "Invalid slug."
+    },
+    "login": {
+      "pageTitle": "Sign in",
+      "title": "Sign in to Marmot",
+      "description": "Welcome back. Enter your credentials to continue.",
+      "noAccount": "No account yet? <link>Create one</link>",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "invalidCredentials": "Incorrect email or password.",
+      "failed": "Could not sign in.",
+      "twoFactor": {
+        "authenticatorHint": "Enter the 6-digit code from your authenticator app to finish signing in.",
+        "backupHint": "Enter one of the backup codes you saved when you set up two-factor authentication.",
+        "codeLabel": "Authentication code",
+        "backupCodeLabel": "Backup code",
+        "verify": "Verify",
+        "verifying": "Verifying…",
+        "useAuthenticator": "Use your authenticator app",
+        "useBackupCode": "Use a backup code",
+        "back": "Back",
+        "passwordAgain": "Enter your password again.",
+        "invalidCode": "That code is not valid."
+      }
+    },
+    "sso": {
+      "continueWith": "Continue with {provider}",
+      "orPassword": "or sign in with your password"
+    },
+    "signup": {
+      "pageTitle": "Create account",
+      "title": "Create your account",
+      "description": "Set up Marmot for your team in a minute.",
+      "haveAccount": "Already have an account? <link>Sign in</link>",
+      "submit": "Create account",
+      "submitting": "Creating account…",
+      "welcome": "Welcome to Marmot",
+      "failed": "Could not create your account."
+    },
+    "forgotPassword": {
+      "pageTitle": "Reset password",
+      "title": "Forgot your password?",
+      "description": "Enter your email and we will send you a link to reset it.",
+      "backToSignIn": "Back to sign in",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "sent": "If an account exists for <email></email>, a reset link is on its way. It expires in one hour."
+    },
+    "resetPassword": {
+      "pageTitle": "Choose a new password",
+      "title": "Choose a new password",
+      "description": "You will be signed in once the password is updated.",
+      "missingTitle": "Reset link missing",
+      "missingDescription": "This page needs the token from your reset email. Open the link in the email, or request a new one.",
+      "requestNew": "Request a new link",
+      "backToSignIn": "Back to sign in",
+      "submit": "Set new password",
+      "submitting": "Updating…",
+      "updated": "Password updated",
+      "failed": "This reset link is invalid or has expired. Request a new one."
+    },
+    "setup": {
+      "pageTitle": "Set up Marmot",
+      "title": "Welcome to Marmot",
+      "description": "Create the administrator account and your first organization to finish installing.",
+      "adminSection": "Administrator account",
+      "organizationSection": "Organization",
+      "organizationName": "Organization name",
+      "organizationNamePlaceholder": "Acme Inc.",
+      "slug": "URL slug",
+      "slugPlaceholder": "acme",
+      "slugHint": "Lowercase letters, numbers and hyphens. Your dashboard lives at /{slug}.",
+      "slugExample": "your-org",
+      "submit": "Create admin account",
+      "submitting": "Setting up…",
+      "ready": "Marmot is ready",
+      "alreadyDone": "Setup has already been completed. Please sign in.",
+      "failed": "Could not complete setup."
+    }
+  },
+  "settings": {
+    "language": {
+      "title": "Language",
+      "description": "Marmot shows the interface, emails and notifications in this language on every device you sign in on.",
+      "label": "Language",
+      "saved": "Language updated",
+      "failed": "Could not save your language."
+    }
+  },
+  "statusPages": {
+    "overall": {
+      "up": "All systems operational",
+      "partial": "Partially degraded service",
+      "down": "Major outage",
+      "maintenance": "Under maintenance",
+      "unknown": "No data yet"
+    },
+    "notFound": {
+      "pageTitle": "Status page not found",
+      "title": "Status page not found",
+      "description": "This status page does not exist or has not been published."
+    },
+    "sections": {
+      "maintenance": "Maintenance",
+      "incidents": "Incidents",
+      "services": "Services",
+      "otherIncidents": "Other incidents",
+      "ongoingIncidents": "Ongoing incidents"
+    },
+    "maintenance": {
+      "inProgress": "Maintenance in progress",
+      "scheduled": "Scheduled maintenance",
+      "from": "from {start}"
+    },
+    "monitors": {
+      "empty": "No monitors have been added to this page yet.",
+      "emptyGroup": "No monitors in this group.",
+      "uptime24h": "Uptime 24h",
+      "uptime30d": "Uptime 30d",
+      "window24h": "24h",
+      "window30d": "30d"
+    },
+    "beats": {
+      "none": "No checks yet",
+      "summary": "Last {count, plural, one {# check} other {# checks}}: {parts}. Latest: {latest}.",
+      "count": "{count} {status}",
+      "status": {
+        "up": "up",
+        "down": "down",
+        "pending": "pending",
+        "maintenance": "maintenance",
+        "unknown": "unknown"
+      },
+      "ping": "{ms} ms"
+    },
+    "footer": {
+      "refreshing": "Refreshing…",
+      "updated": "Updated {time}",
+      "refreshEvery": "refreshes every {seconds}s",
+      "rss": "RSS",
+      "poweredBy": "Powered by Marmot"
+    },
+    "rss": {
+      "title": "{title} status",
+      "description": "Current status: {status}",
+      "resolved": "[Resolved] {title}",
+      "monitorDown": "{name} is down",
+      "monitorDownSince": "{name} has been down since {since}.",
+      "monitorDownDescription": "{name} is down."
+    },
+    "editor": {
+      "language": "Language",
+      "languageAuto": "Follow the visitor's browser"
+    }
+  },
+  "landing": {
+    "homeLabel": "Marmot home",
+    "nav": {
+      "features": "Features",
+      "selfHost": "Self-host",
+      "signIn": "Sign in",
+      "getStarted": "Get started"
+    },
+    "hero": {
+      "eyebrow": "Uptime monitoring for teams",
+      "title": "Know it’s down before your users do.",
+      "description": "Marmot watches your websites, APIs and servers, alerts the right people the moment something breaks and keeps your customers informed with public status pages.",
+      "startMonitoring": "Start monitoring",
+      "signIn": "Sign in",
+      "runItYourself": "Run it yourself"
+    },
+    "features": {
+      "title": "Everything Uptime Kuma does, built for a team",
+      "description": "The monitors and notifications you already know, with organizations, roles and an API on top.",
+      "monitorTypes": {
+        "title": "30+ monitor types",
+        "body": "HTTP and keywords, TCP, ping, DNS, Docker, databases, MQTT, gRPC, push heartbeats and more."
+      },
+      "notifications": {
+        "title": "40+ notification providers",
+        "body": "Slack, Discord, Teams, email, ntfy, webhooks and the rest of the Uptime Kuma catalogue."
+      },
+      "statusPages": {
+        "title": "Public status pages",
+        "body": "Branded pages on your own domain with incidents, RSS and per-group uptime."
+      },
+      "maintenance": {
+        "title": "Maintenance windows",
+        "body": "Schedule one-off or recurring windows so planned work never pages anyone."
+      },
+      "organizations": {
+        "title": "Organizations and roles",
+        "body": "Invite your team, separate environments by organization and control who can change what."
+      },
+      "live": {
+        "title": "Live by default",
+        "body": "Heartbeats stream to the dashboard as they happen; no refresh button, no polling."
+      }
+    },
+    "selfHost": {
+      "title": "Open source. Self-host it any time.",
+      "description": "Marmot is AGPL-3.0 software. Run the same image on your own server with Postgres or MongoDB and Redis, and keep every check and every heartbeat on infrastructure you control.",
+      "gettingStarted": "Getting started guide",
+      "viewOnGitHub": "View on GitHub",
+      "commandComment": "# one Docker image, automatic HTTPS"
+    },
+    "footer": {
+      "tagline": "Marmot · status monitoring for teams",
+      "docs": "Docs",
+      "github": "GitHub",
+      "signIn": "Sign in"
+    },
+    "preview": {
+      "title": "Monitors",
+      "live": "Live",
+      "monitors": {
+        "marketingSite": "Marketing site",
+        "publicApi": "Public API",
+        "postgresPrimary": "Postgres primary",
+        "nightlyBackup": "Nightly backup"
+      },
+      "pushHeartbeat": "push heartbeat"
+    }
+  }
+}

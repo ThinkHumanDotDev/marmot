@@ -5,6 +5,8 @@
  */
 import net from 'node:net'
 
+import { resolveGuardedTarget } from '@/server/security/outbound-guard'
+
 import { registerMonitorType } from './registry'
 
 /** Connect once and resolve with the time to connect in ms. */
@@ -36,9 +38,11 @@ registerMonitorType({
     if (!hostname || !port) {
       throw new Error('Hostname and port are required')
     }
+    // Outbound address guard: connect to the vetted address (null when the guard is off).
+    const vetted = await resolveGuardedTarget(hostname)
     let ms: number
     try {
-      ms = await tcping(hostname, port, ctx.signal)
+      ms = await tcping(vetted?.address ?? hostname, port, ctx.signal)
     } catch (err) {
       throw new Error(
         `Connection failed${err instanceof Error && err.message ? `: ${err.message}` : ''}`,

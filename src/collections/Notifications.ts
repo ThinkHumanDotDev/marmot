@@ -1,19 +1,26 @@
 import {
+  APIError,
   ValidationError,
   type CollectionAfterChangeHook,
   type CollectionBeforeChangeHook,
   type CollectionBeforeValidateHook,
   type CollectionConfig,
+  type FieldHook,
   type Payload,
   type PayloadRequest,
 } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
-import type { OrgId } from '@/access/permissions'
+import type { OrgId, UserLike } from '@/access/permissions'
 import { childLogger } from '@/lib/logger'
 import type { Monitor, Notification } from '@/payload-types'
 import { getNotificationProvider } from '@/server/notification-providers'
-import { NotificationConfigError, validateNotificationConfig } from '@/server/notifications/send'
+import {
+  normalizeNotificationConfig,
+  NotificationConfigError,
+  validateNotificationConfig,
+} from '@/server/notifications/send'
+import { checkServerSmtpChange } from '@/server/notifications/server-smtp'
 
 const log = childLogger('notifications')
 
@@ -55,6 +62,44 @@ const validateProviderConfig: CollectionBeforeValidateHook<Notification> = ({
     throw error
   }
   return data
+}
+
+/**
+ * `NOTIFICATIONS_SERVER_SMTP`: only allowed users may set up a channel that sends through the
+ * server SMTP settings (403), and such a channel has a recipient cap (400). A field hook rather
+ * than a collection hook because only field hooks learn whether access control is overridden:
+ * trusted server code (`overrideAccess: true`) is exempt from the superadmin rule, never from `off`.
+ * Runs before `validateProviderConfig`; both configs are normalised with the provider schema so a
+ * re-submitted form compares equal to the stored channel.
+ */
+const enforceServerSmtpPolicy: FieldHook<Notification> = ({
+  data,
+  originalDoc,
+  operation,
+  overrideAccess,
+  req,
+  value,
+}) => {
+  if (operation !== 'create' && operation !== 'update') return value
+  const type = data?.type ?? originalDoc?.type
+  const refusal = checkServerSmtpChange({
+    operation,
+    type,
+    config: normalizeNotificationConfig(
+      type,
+      data?.config !== undefined ? data.config : originalDoc?.config,
+    ),
+    originalType: originalDoc?.type,
+    originalConfig: normalizeNotificationConfig(originalDoc?.type, originalDoc?.config),
+    user: req.user as UserLike | null | undefined,
+    overrideAccess,
+  })
+  if (!refusal) return value
+  if (refusal.status === 403) throw new APIError(refusal.message, 403, null, true)
+  throw new ValidationError({
+    collection: 'notifications',
+    errors: [{ message: refusal.message, path: refusal.path }],
+  })
 }
 
 /** Reset the delivery error whenever a user edits the channel (not on worker outcome writes). */
@@ -235,6 +280,7 @@ export const Notifications: CollectionConfig = {
       type: 'json',
       required: true,
       defaultValue: {},
+      hooks: { beforeValidate: [enforceServerSmtpPolicy] },
       admin: { description: 'Provider-specific settings; validated against the provider schema.' },
     },
     {

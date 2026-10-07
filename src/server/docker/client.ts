@@ -10,6 +10,7 @@ import { Agent, request } from 'undici'
 
 import { env } from '@/env'
 import type { DockerHost } from '@/payload-types'
+import { assertHostLocalAllowed, guardedAgent } from '@/server/security/outbound-guard'
 
 export type DockerHostConfig = Pick<DockerHost, 'connectionType' | 'socketPath' | 'url'>
 
@@ -42,11 +43,14 @@ export async function dockerRequest<T>(
   if (host.connectionType === 'tcp') {
     if (!host.url) throw new Error('The Docker host has no URL')
     origin = patchDockerURL(host.url).replace(/\/+$/, '')
-    agent = new Agent({ connect: { rejectUnauthorized: true, maxCachedSessions: 0 } })
+    // The daemon URL is user input: connections pass the outbound address guard.
+    agent = guardedAgent({ rejectUnauthorized: true, maxCachedSessions: 0 })
   } else {
     if (!env.DOCKER_SOCKET_ENABLED) {
       throw new Error('Socket Docker hosts are disabled on this instance (DOCKER_SOCKET_ENABLED)')
     }
+    // The worker's own daemon is host-local: refused while private addresses are denied.
+    assertHostLocalAllowed('A Docker socket host')
     if (!host.socketPath) throw new Error('The Docker host has no socket path')
     origin = 'http://localhost'
     agent = new Agent({ connect: { socketPath: host.socketPath } })
@@ -72,7 +76,7 @@ export async function dockerRequest<T>(
         body &&
         typeof body === 'object' &&
         typeof (body as { message?: unknown }).message === 'string'
-          ? (body as { message: string }).message.slice(0, 300)
+          ? (body as { message: string }).message.slice(0, 200)
           : ''
       throw new Error(`Docker API returned ${res.statusCode}${message ? `: ${message}` : ''}`)
     }

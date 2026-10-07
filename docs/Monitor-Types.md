@@ -52,6 +52,11 @@ not repeated below.
 - **`real-browser`** never launches Chromium itself. Run a browser server next to the worker (for
   example [browserless](https://www.browserless.io/) or `npx playwright run-server --port 3000`) and set
   its `ws://` URL in `remoteBrowser`. Screenshots are not stored.
+- **Private-address guard** (`MONITOR_DENY_PRIVATE_ADDRESSES`, see
+  [Configuration](Configuration.md#private-address-guard)): every type resolves its target and checks
+  all addresses before connecting. `tailscale-ping`, `real-browser` (Chromium would resolve and connect on
+  its own) and `docker` monitors on a `socket` Docker host are refused while the guard is on, both when
+  saving and when the check runs. Database connection strings that point at a unix socket are refused too.
 - **`snmp`** supports v1 and v2c; SNMPv3 is not available yet.
 - **`websocket-upgrade`** supports none, basic, bearer and mTLS authentication; OAuth2 is not wired.
 - **Conditions** (Uptime Kuma's condition builder for mysql/sqlserver/mqtt) are not implemented; the

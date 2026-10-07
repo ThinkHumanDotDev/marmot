@@ -73,16 +73,23 @@ Uploads (organization logos, status-page logos) go to local disk unless `S3_BUCK
 
 Marmot sends invitations and password-reset mail through the Payload email adapter. Without `SMTP_HOST` the
 messages are written to the web process log instead of being sent, which is enough to copy an invitation
-link during evaluation. The `smtp` notification provider can reuse these settings (**Use server SMTP**).
+link during evaluation. The `smtp` notification provider can reuse these settings (**Use the server SMTP
+settings**); the last two variables decide who may do that and how much mail it may send.
 
-| Variable        | Default                     | Read by     | Description                                                                     |
-| --------------- | --------------------------- | ----------- | ------------------------------------------------------------------------------- |
-| `SMTP_HOST`     | —                           | web, worker | SMTP server. Unset = log mail to the console.                                   |
-| `SMTP_PORT`     | `587`                       | web, worker | SMTP port.                                                                      |
-| `SMTP_USER`     | —                           | web, worker | Username (optional for unauthenticated relays).                                 |
-| `SMTP_PASSWORD` | —                           | web, worker | Password.                                                                       |
-| `SMTP_SECURE`   | `false`                     | web, worker | `true` for implicit TLS (usually port 465); `false` uses STARTTLS when offered. |
-| `EMAIL_FROM`    | `Marmot <marmot@localhost>` | web, worker | Sender address, `Name <address>` form allowed.                                  |
+| Variable                         | Default                     | Read by     | Description                                                                                                                                                                                                          |
+| -------------------------------- | --------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SMTP_HOST`                      | —                           | web, worker | SMTP server. Unset = log mail to the console.                                                                                                                                                                        |
+| `SMTP_PORT`                      | `587`                       | web, worker | SMTP port.                                                                                                                                                                                                           |
+| `SMTP_USER`                      | —                           | web, worker | Username (optional for unauthenticated relays).                                                                                                                                                                      |
+| `SMTP_PASSWORD`                  | —                           | web, worker | Password.                                                                                                                                                                                                            |
+| `SMTP_SECURE`                    | `false`                     | web, worker | `true` for implicit TLS (usually port 465); `false` uses STARTTLS when offered.                                                                                                                                      |
+| `EMAIL_FROM`                     | `Marmot <marmot@localhost>` | web, worker | Sender address, `Name <address>` form allowed.                                                                                                                                                                       |
+| `NOTIFICATIONS_SERVER_SMTP`      | `superadmin`                | web, worker | Who may set up an `smtp` notification channel that sends through the settings above: `all` (anyone who manages channels), `superadmin` (instance superadmins only) or `off` (nobody; such channels fail to deliver). |
+| `NOTIFICATIONS_SERVER_SMTP_RATE` | `60`                        | web, worker | Messages per organization per hour sent through the server SMTP settings, test messages included. `0` = unlimited.                                                                                                   |
+
+Notification mail sent through the server settings is limited to 10 recipients per message (to, cc and bcc
+combined). In `superadmin` mode, channels set up before the upgrade keep sending; see
+[Deployment](Deployment.md#upgrading) for how to list them. Details: [Notifications](Notifications.md#email-through-the-server-smtp-settings).
 
 ## Authentication
 
@@ -104,12 +111,43 @@ Full setup guide with provider walkthroughs: [Single sign-on](Single-Sign-On.md)
 
 ## Monitoring
 
-| Variable                      | Default | Read by     | Description                                                                                                                                                                       |
-| ----------------------------- | ------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `KEEP_DATA_PERIOD_DAYS`       | `365`   | web, worker | Default for the `keepDataPeriodDays` instance setting: how long daily aggregates and important heartbeats are kept. Raw heartbeats live 24 h, minutely buckets 24 h, hourly 30 d. |
-| `WORKER_CONCURRENCY`          | `10`    | worker      | Parallel checks (and notification deliveries) per worker process. Scale out with more worker replicas rather than very high values.                                               |
-| `DOCKER_SOCKET_ENABLED`       | `true`  | web, worker | Allow `socket` Docker hosts, which talk to the Docker daemon of the worker's own host. Set `false` on shared installs where users must not reach the local daemon.                |
-| `MARMOT_DISABLE_ENGINE_HOOKS` | `false` | web         | Skip the BullMQ scheduler sync in the `monitors` collection hooks. Only for tests that run without Redis; the Vitest setup sets it.                                               |
+| Variable                         | Default | Read by     | Description                                                                                                                                                                                                                         |
+| -------------------------------- | ------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KEEP_DATA_PERIOD_DAYS`          | `365`   | web, worker | Default for the `keepDataPeriodDays` instance setting: how long daily aggregates and important heartbeats are kept. Raw heartbeats live 24 h, minutely buckets 24 h, hourly 30 d.                                                   |
+| `WORKER_CONCURRENCY`             | `10`    | worker      | Parallel checks (and notification deliveries) per worker process. Scale out with more worker replicas rather than very high values.                                                                                                 |
+| `DOCKER_SOCKET_ENABLED`          | `true`  | web, worker | Allow `socket` Docker hosts, which talk to the Docker daemon of the worker's own host. Set `false` on shared installs where users must not reach the local daemon.                                                                  |
+| `MARMOT_DISABLE_ENGINE_HOOKS`    | `false` | web         | Skip the BullMQ scheduler sync in the `monitors` collection hooks. Only for tests that run without Redis; the Vitest setup sets it.                                                                                                 |
+| `MONITOR_DENY_PRIVATE_ADDRESSES` | `false` | web, worker | Refuse monitor checks and notification deliveries to private, loopback, link-local, CGNAT, multicast and container-network addresses (see below). Turn on when people you do not trust can create monitors, e.g. with open sign-up. |
+| `MONITOR_DENY_CIDRS`             | —       | web, worker | Comma-separated CIDRs that are always refused, guard on or off (e.g. `203.0.113.0/24, 2001:db8::/32`). Wins over `MONITOR_ALLOW_CIDRS`.                                                                                             |
+| `MONITOR_ALLOW_CIDRS`            | —       | web, worker | Comma-separated CIDRs exempt from the private-address deny list, for internal subnets you do want to monitor (e.g. `10.20.0.0/16`).                                                                                                 |
+
+### Private-address guard
+
+With `MONITOR_DENY_PRIVATE_ADDRESSES=true` the worker checks every address a monitor or notification
+channel would connect to, after DNS resolution and at connect time (every redirect hop included), and
+connects only to the address it checked. A refused check is a DOWN heartbeat such as
+`Blocked: db.internal resolves to a private address (MONITOR_DENY_PRIVATE_ADDRESSES)`.
+
+- **Denied ranges:** `0.0.0.0/8`, `10.0.0.0/8`, `100.64.0.0/10`, `127.0.0.0/8`, `169.254.0.0/16`,
+  `172.16.0.0/12`, `192.0.0.0/24`, `192.168.0.0/16`, `198.18.0.0/15`, `224.0.0.0/4` and above, `::`, `::1`,
+  `fc00::/7`, `fe80::/10`, `fec0::/10`, `ff00::/8`, `64:ff9b:1::/48`, plus IPv6 forms that embed one of the
+  IPv4 ranges (`::ffff:127.0.0.1`, `::127.0.0.1`, NAT64 `64:ff9b::/96`, 6to4 `2002::/16`).
+- **Precedence:** `MONITOR_DENY_CIDRS` › `MONITOR_ALLOW_CIDRS` › the ranges above.
+- **Refused types:** `tailscale-ping`, `real-browser` and Docker hosts of type `socket` cannot be saved or
+  run, and Apprise channels cannot send: they reach the network without passing the guard.
+- **Saving** a monitor, proxy or Docker host whose target is a denied literal (`127.0.0.1`, `2130706433`,
+  `[::1]`, `localhost`) is refused right away; names are judged when the check runs.
+- Instance-wide settings (`SMTP_HOST`, `DATABASE_URL`, `REDIS_URL`) are not affected.
+
+Malformed CIDRs stop the process at startup with a readable error.
+
+## Hosted instance
+
+Switches for running Marmot as a hosted service. Self-hosted installs leave them off.
+
+| Variable               | Default | Read by | Description                                                                                                                                                       |
+| ---------------------- | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LANDING_PAGE_ENABLED` | `false` | web     | Show a marketing landing page at `/` to signed-out visitors instead of redirecting to `/login`. Signed-in users and fresh installs (setup wizard) are unaffected. |
 
 ## Billing
 

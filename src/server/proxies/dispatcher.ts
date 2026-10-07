@@ -19,6 +19,7 @@ import { SocksClient } from 'socks'
 import { Agent, ProxyAgent, type buildConnector, type Dispatcher } from 'undici'
 
 import type { ProxyProtocol } from '@/lib/monitor-resources'
+import { literalTargetDenial, resolveGuardedTarget } from '@/server/security/outbound-guard'
 
 export interface ProxyConfig {
   protocol: ProxyProtocol | string
@@ -27,6 +28,23 @@ export interface ProxyConfig {
   auth?: boolean | null
   username?: string | null
   password?: string | null
+  /**
+   * TLS name of an `https` proxy when `host` was replaced by its vetted address
+   * (`guardProxyAddress`); defaults to `host`.
+   */
+  servername?: string | null
+}
+
+/**
+ * Outbound address guard for the proxy itself: resolve the proxy host once, check it, and return a
+ * config that connects to the vetted address (keeping the name for TLS). Unchanged when the guard
+ * is off.
+ */
+export async function guardProxyAddress(proxy: ProxyConfig): Promise<ProxyConfig> {
+  const host = stripBrackets(proxy.host)
+  const vetted = await resolveGuardedTarget(host)
+  if (!vetted || vetted.address === host) return proxy
+  return { ...proxy, host: vetted.address, servername: proxy.servername ?? host }
 }
 
 /** TLS settings for the connection to the *target* (not the proxy). */
@@ -66,10 +84,21 @@ export function socksConnector(
     const run = async (): Promise<Socket> => {
       const hostname = stripBrackets(options.hostname)
       const port = Number(options.port) || (options.protocol === 'https:' ? 443 : 80)
-      const destination =
-        resolveLocally && isIP(hostname) === 0
-          ? (await lookup(hostname, { family: version === 4 ? 4 : 0 })).address
-          : hostname
+      let destination: string
+      if (resolveLocally) {
+        // Resolved here, so the outbound address guard vets the address the proxy is asked for.
+        const vetted = await resolveGuardedTarget(hostname, version === 4 ? 4 : 0)
+        destination =
+          vetted?.address ??
+          (isIP(hostname) === 0
+            ? (await lookup(hostname, { family: version === 4 ? 4 : 0 })).address
+            : hostname)
+      } else {
+        // socks5h: the proxy resolves the name in its own network; only literals can be judged.
+        const denial = literalTargetDenial(hostname)
+        if (denial) throw new Error(denial)
+        destination = hostname
+      }
 
       const { socket } = await SocksClient.createConnection({
         command: 'connect',
@@ -134,6 +163,7 @@ export function createProxyDispatcher(
       uri: describeProxy(proxy),
       token,
       requestTls: { ...tlsOptions, maxCachedSessions: 0 },
+      ...(proxy.servername ? { proxyTls: { servername: proxy.servername } } : {}),
       allowH2: false,
     })
   }

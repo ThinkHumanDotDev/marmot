@@ -89,6 +89,7 @@ test.describe('Status pages', () => {
   test('renders a published page anonymously', async ({ page }) => {
     await page.goto(`/status/${publishedSlug}`)
     await expect(page).toHaveTitle(/E2E Acme Status/)
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
     await expect(page.getByRole('heading', { level: 1, name: 'E2E Acme Status' })).toBeVisible()
     await expect(page.getByText('Everything we run, in one place.')).toBeVisible()
     await expect(page.getByRole('status')).toHaveText(/All systems operational/)

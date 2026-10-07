@@ -1,4 +1,5 @@
 import { KeyRound } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
 
@@ -21,6 +22,7 @@ interface SsoButtonsProps {
  * because the endpoints answer with a redirect to the identity provider.
  */
 export function SsoButtons({ providers, next }: SsoButtonsProps) {
+  const t = useTranslations('auth.sso')
   if (providers.length === 0) return null
   return (
     <div className="flex flex-col gap-5">
@@ -32,14 +34,14 @@ export function SsoButtons({ providers, next }: SsoButtonsProps) {
               rel="nofollow"
             >
               <KeyRound aria-hidden />
-              Continue with {provider.name}
+              {t('continueWith', { provider: provider.name })}
             </a>
           </Button>
         ))}
       </div>
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border" aria-hidden />
-        or sign in with your password
+        {t('orPassword')}
         <span className="h-px flex-1 bg-border" aria-hidden />
       </div>
     </div>

@@ -44,9 +44,12 @@ The default message is `[monitor name] [✅ Up|🔴 Down|⚠️ Pending|🔧 Mai
 
 ### Testing a channel
 
-`POST /api/orgs/:orgId/notifications/test` with `{ "notificationId": … }` (saved channel) or
+`POST /api/orgs/:orgId/notifications/test` with `{ "notificationId": … }` (saved channel),
+`{ "notificationId": …, "config": { … } }` (unsaved edits of a saved channel) or
 `{ "type": "slack", "config": { … } }` (unsaved) sends a test message and answers `{ ok: true, result }` or
-`400 { ok: false, error }`. Requires `notification:update`. The UI's **Send test** button uses it.
+`400 { ok: false, error }`. Requires `notification:update`. The UI's **Send test** button uses it. Unsaved
+settings follow the same rules as saving them (`403` when the caller may not use the server SMTP settings);
+`429` means the organization used up its hourly budget for the server SMTP settings.
 
 ### Channel API
 
@@ -98,43 +101,65 @@ the dynamic form. Most are ports of Uptime Kuma's providers (see `THIRD_PARTY_NO
 Second wave (all ports of Uptime Kuma 2.5.5 providers; "Generic" also covers incident-management and SMS
 services):
 
-| `type`           | Group   | Config keys (required in **bold**)                                                                                                                                                  |
-| ---------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mattermost`     | Chat    | **webhookUrl**, username, channel, iconUrl, iconEmoji (`:up: :down:` = one emoji per status)                                                                                        |
-| `rocket-chat`    | Chat    | **webhookUrl**, channel, username, iconEmoji                                                                                                                                        |
-| `google-chat`    | Chat    | **webhookUrl**, maxRetries 1–10 (retries on HTTP 429), useTemplate, template _(template)_                                                                                           |
-| `signal`         | Chat    | **apiUrl** (signal-cli-rest-api `/v2/send`), **number**, **recipients** (comma-separated), useTemplate, template _(template)_                                                       |
-| `line-messaging` | Chat    | **channelAccessToken**, **userId**                                                                                                                                                  |
-| `pumble`         | Chat    | **webhookUrl**                                                                                                                                                                      |
-| `zoho-cliq`      | Chat    | **webhookUrl**                                                                                                                                                                      |
-| `nextcloud-talk` | Chat    | **host**, **conversationToken**, **botSecret** (HMAC-signed bot message), sendSilentUp, sendSilentDown                                                                              |
-| `onebot`         | Chat    | **httpAddr**, **accessToken**, msgType `group\|private`, **receiverId**                                                                                                             |
-| `wecom`          | Chat    | **botKey**, mentionedMobileList (comma-separated, `@all`)                                                                                                                           |
-| `dingding`       | Chat    | **webhookUrl**, **secretKey** (signed requests), mentioning `nobody\|everyone\|specify-mobiles\|specify-users`, mobileList, userList                                                |
-| `feishu`         | Chat    | **webhookUrl** (interactive card)                                                                                                                                                   |
-| `bitrix24`       | Chat    | **webhookUrl** (inbound webhook with `im` scope), **userId**                                                                                                                        |
-| `bark`           | Push    | **endpoint** (incl. device key), apiVersion `v1\|v2`, group (default `Marmot`), sound (default `telegraph`)                                                                         |
-| `pushdeer`       | Push    | serverUrl (default `https://api2.pushdeer.com`), **pushKey**                                                                                                                        |
-| `serverchan`     | Push    | **sendKey** (`sctp…` keys route through ft07.com)                                                                                                                                   |
-| `pushbullet`     | Push    | **accessToken**                                                                                                                                                                     |
-| `webpush`        | Push    | **subscription** (PushSubscription JSON), **vapidPublicKey**, **vapidPrivateKey**, **vapidSubject** (`mailto:`), title. Generate keys with `npx web-push generate-vapid-keys`       |
-| `techulus-push`  | Push    | **apiKey**, title, channel, sound, timeSensitive (default true)                                                                                                                     |
-| `pushy`          | Push    | **apiKey**, **deviceToken**                                                                                                                                                         |
-| `home-assistant` | Push    | **url**, **longLivedAccessToken**, notificationService (default `notify`)                                                                                                           |
-| `sendgrid`       | Email   | **apiKey**, **fromEmail**, **toEmail**, ccEmail, bccEmail, subject                                                                                                                  |
-| `resend`         | Email   | **apiKey**, **fromEmail**, fromName, **toEmail**, subject                                                                                                                           |
-| `pagerduty`      | Generic | **integrationKey**, integrationUrl (Events API v2), priority `info\|warning\|error\|critical`, autoResolve `none\|acknowledge\|resolve` (UP events); dedup key `Marmot/<monitorId>` |
-| `opsgenie`       | Generic | region `us\|eu`, **apiKey**, priority 1–5. DOWN creates an alert aliased by monitor name; UP closes it                                                                              |
-| `splunk`         | Generic | **restUrl** (Splunk On-Call REST endpoint), severity `INFO\|WARNING\|CRITICAL`, autoResolve `none\|ACKNOWLEDGEMENT\|RECOVERY`                                                       |
-| `squadcast`      | Generic | **webhookUrl**; sends `trigger`/`resolve` with the heartbeat attached                                                                                                               |
-| `alerta`         | Generic | **apiEndpoint**, **apiKey**, **environment**, alertState (default `critical`), recoverState (default `cleared`)                                                                     |
-| `grafana-oncall` | Generic | **webhookUrl** (formatted webhook); `alerting` on DOWN, `ok` on UP                                                                                                                  |
-| `heii-oncall`    | Generic | **apiKey**, **triggerId**; `alert` on DOWN, `resolve` on UP                                                                                                                         |
-| `twilio`         | Generic | **accountSid**, apiKey (SID, optional), **authToken**, **fromNumber**, **toNumber**, messagingServiceSid (SMS)                                                                      |
-| `clicksend`      | Generic | **login**, **password** (API key), **toNumber**, senderName (SMS; non-ASCII characters are stripped)                                                                                |
-| `apprise`        | Generic | **appriseUrl**, title. Runs the `apprise` CLI on the worker host (`pip install apprise`); fails with a readable error when the binary is missing                                    |
+| `type`           | Group   | Config keys (required in **bold**)                                                                                                                                                                     |
+| ---------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `mattermost`     | Chat    | **webhookUrl**, username, channel, iconUrl, iconEmoji (`:up: :down:` = one emoji per status)                                                                                                           |
+| `rocket-chat`    | Chat    | **webhookUrl**, channel, username, iconEmoji                                                                                                                                                           |
+| `google-chat`    | Chat    | **webhookUrl**, maxRetries 1–10 (retries on HTTP 429), useTemplate, template _(template)_                                                                                                              |
+| `signal`         | Chat    | **apiUrl** (signal-cli-rest-api `/v2/send`), **number**, **recipients** (comma-separated), useTemplate, template _(template)_                                                                          |
+| `line-messaging` | Chat    | **channelAccessToken**, **userId**                                                                                                                                                                     |
+| `pumble`         | Chat    | **webhookUrl**                                                                                                                                                                                         |
+| `zoho-cliq`      | Chat    | **webhookUrl**                                                                                                                                                                                         |
+| `nextcloud-talk` | Chat    | **host**, **conversationToken**, **botSecret** (HMAC-signed bot message), sendSilentUp, sendSilentDown                                                                                                 |
+| `onebot`         | Chat    | **httpAddr**, **accessToken**, msgType `group\|private`, **receiverId**                                                                                                                                |
+| `wecom`          | Chat    | **botKey**, mentionedMobileList (comma-separated, `@all`)                                                                                                                                              |
+| `dingding`       | Chat    | **webhookUrl**, **secretKey** (signed requests), mentioning `nobody\|everyone\|specify-mobiles\|specify-users`, mobileList, userList                                                                   |
+| `feishu`         | Chat    | **webhookUrl** (interactive card)                                                                                                                                                                      |
+| `bitrix24`       | Chat    | **webhookUrl** (inbound webhook with `im` scope), **userId**                                                                                                                                           |
+| `bark`           | Push    | **endpoint** (incl. device key), apiVersion `v1\|v2`, group (default `Marmot`), sound (default `telegraph`)                                                                                            |
+| `pushdeer`       | Push    | serverUrl (default `https://api2.pushdeer.com`), **pushKey**                                                                                                                                           |
+| `serverchan`     | Push    | **sendKey** (`sctp…` keys route through ft07.com)                                                                                                                                                      |
+| `pushbullet`     | Push    | **accessToken**                                                                                                                                                                                        |
+| `webpush`        | Push    | **subscription** (PushSubscription JSON), **vapidPublicKey**, **vapidPrivateKey**, **vapidSubject** (`mailto:`), title. Generate keys with `npx web-push generate-vapid-keys`                          |
+| `techulus-push`  | Push    | **apiKey**, title, channel, sound, timeSensitive (default true)                                                                                                                                        |
+| `pushy`          | Push    | **apiKey**, **deviceToken**                                                                                                                                                                            |
+| `home-assistant` | Push    | **url**, **longLivedAccessToken**, notificationService (default `notify`)                                                                                                                              |
+| `sendgrid`       | Email   | **apiKey**, **fromEmail**, **toEmail**, ccEmail, bccEmail, subject                                                                                                                                     |
+| `resend`         | Email   | **apiKey**, **fromEmail**, fromName, **toEmail**, subject                                                                                                                                              |
+| `pagerduty`      | Generic | **integrationKey**, integrationUrl (Events API v2), priority `info\|warning\|error\|critical`, autoResolve `none\|acknowledge\|resolve` (UP events); dedup key `Marmot/<monitorId>`                    |
+| `opsgenie`       | Generic | region `us\|eu`, **apiKey**, priority 1–5. DOWN creates an alert aliased by monitor name; UP closes it                                                                                                 |
+| `splunk`         | Generic | **restUrl** (Splunk On-Call REST endpoint), severity `INFO\|WARNING\|CRITICAL`, autoResolve `none\|ACKNOWLEDGEMENT\|RECOVERY`                                                                          |
+| `squadcast`      | Generic | **webhookUrl**; sends `trigger`/`resolve` with the heartbeat attached                                                                                                                                  |
+| `alerta`         | Generic | **apiEndpoint**, **apiKey**, **environment**, alertState (default `critical`), recoverState (default `cleared`)                                                                                        |
+| `grafana-oncall` | Generic | **webhookUrl** (formatted webhook); `alerting` on DOWN, `ok` on UP                                                                                                                                     |
+| `heii-oncall`    | Generic | **apiKey**, **triggerId**; `alert` on DOWN, `resolve` on UP                                                                                                                                            |
+| `twilio`         | Generic | **accountSid**, apiKey (SID, optional), **authToken**, **fromNumber**, **toNumber**, messagingServiceSid (SMS)                                                                                         |
+| `clicksend`      | Generic | **login**, **password** (API key), **toNumber**, senderName (SMS; non-ASCII characters are stripped)                                                                                                   |
+| `apprise`        | Generic | **appriseUrl**, title. Runs the `apprise` CLI on the worker host (`pip install apprise`); fails with a readable error when the binary is missing. Refused while `MONITOR_DENY_PRIVATE_ADDRESSES` is on |
 
 Nostr is not ported: it needs `nostr-tools` plus a WebSocket polyfill, which outweighs its use.
+
+### Email through the server SMTP settings
+
+An `smtp` channel with **Use the server SMTP settings** (`useServerSmtp: true`) sends with the instance's
+`SMTP_*` settings and `EMAIL_FROM` instead of its own server, so it carries the operator's sender domain.
+Three limits apply:
+
+- **Who:** `NOTIFICATIONS_SERVER_SMTP` (default `superadmin`). In `superadmin` mode only instance
+  superadmins may create a channel with the option or switch a channel to it, and other users cannot change
+  the settings of a channel that uses it (they may still rename, pause, delete it or turn the option off);
+  everyone else gets a `403` from the REST API, the Local API (without `overrideAccess`) and the routes
+  above, and the form disables the switch. Existing channels keep sending. `off` refuses the option for
+  everyone, and existing channels that use it fail with an error in their **Last error** instead of falling
+  back to the server. `all` lets anyone who manages channels use it.
+- **How much:** `NOTIFICATIONS_SERVER_SMTP_RATE` messages per organization per hour (default `60`, `0` =
+  unlimited), counted in Redis across every channel of the organization; **Send test** counts too. Over
+  the limit a delivery is refused and recorded as the channel's **Last error** (not retried), and the test
+  endpoint answers `429` with `Retry-After`. When Redis is unreachable the limit is not enforced and the
+  worker logs one warning.
+- **To whom:** at most 10 recipients per message (to, cc and bcc combined), checked on save and on send.
+
+Channels with their own SMTP server are not affected by any of these.
 
 ### Adding a provider
 

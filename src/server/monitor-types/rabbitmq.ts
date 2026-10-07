@@ -1,15 +1,16 @@
 /**
  * RabbitMQ monitor: calls the management API `GET /api/health/checks/alarms/` of each node in
  * `rabbitmqNodes` with `rabbitmqUsername`/`rabbitmqPassword`; UP as soon as one node answers 200
- * (no alarms in the cluster). Uses the global `fetch`, no driver.
+ * (no alarms in the cluster). Uses `fetch` (through the outbound address guard), no driver.
  *
  * Ported from Uptime Kuma 2.5.5 `server/monitor-types/rabbitmq.js` — Copyright (c) 2021 Louis Lam,
  * MIT License. See THIRD_PARTY_NOTICES.md.
  */
 import type { Monitor } from '@/payload-types'
+import { guardedFetch } from '@/server/security/outbound-guard'
 
 import { registerMonitorType } from './registry'
-import { checkTimeoutMs, errorMessage } from './util'
+import { checkTimeoutMs, errorMessage, responseExcerpt } from './util'
 
 /** Non-empty node base URLs, or a readable error. */
 export function rabbitmqNodes(monitor: Pick<Monitor, 'rabbitmqNodes'>): string[] {
@@ -46,7 +47,8 @@ async function checkSingleNode(
   ).toString('base64')
   let res: Response
   try {
-    res = await fetch(alarmsUrl(baseUrl), {
+    // Node URLs are user input: every connection and redirect hop passes the address guard.
+    res = await guardedFetch(alarmsUrl(baseUrl), {
       method: 'GET',
       headers: { Accept: 'application/json', Authorization: `Basic ${credentials}` },
       signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]),
@@ -62,7 +64,7 @@ async function checkSingleNode(
   if (res.status === 503) {
     // The management API reports the alarm reason in the body.
     const body = (await res.json().catch(() => null)) as { reason?: string } | null
-    throw new Error(body?.reason || '503 - Service Unavailable')
+    throw new Error(body?.reason ? responseExcerpt(body.reason) : '503 - Service Unavailable')
   }
   throw new Error(`${res.status} - ${res.statusText}`)
 }

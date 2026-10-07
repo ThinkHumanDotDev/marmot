@@ -50,6 +50,8 @@ interface NotificationsViewProps {
   providers: NotificationProviderDescriptor[]
   /** `notification:update` — create, edit, test, toggle, delete. */
   canManage: boolean
+  /** Why this user may not turn on the server SMTP settings for a channel, or `null` when they may. */
+  serverSmtpRestriction: string | null
 }
 
 const relativeTime = (iso: string | null) => {
@@ -68,6 +70,7 @@ export function NotificationsView({
   initial,
   providers,
   canManage,
+  serverSmtpRestriction,
 }: NotificationsViewProps) {
   const [rows, setRows] = React.useState<NotificationRow[]>(initial)
   const [dialogOpen, setDialogOpen] = React.useState(false)
@@ -116,11 +119,7 @@ export function NotificationsView({
   async function sendTest(row: NotificationRow) {
     setBusyId(row.id)
     try {
-      const result = await notificationsApi.test(orgId, {
-        type: row.type,
-        config: row.config,
-        name: row.name,
-      })
+      const result = await notificationsApi.test(orgId, { notificationId: row.id })
       toast.success('Test message sent', { description: result.result })
     } catch (error) {
       const details = error instanceof ApiError ? (error.details as { error?: string }) : null
@@ -286,6 +285,7 @@ export function NotificationsView({
         <ChannelDialog
           orgId={orgId}
           providers={providers}
+          serverSmtpRestriction={serverSmtpRestriction}
           channel={editing}
           open={dialogOpen}
           onOpenChange={setDialogOpen}

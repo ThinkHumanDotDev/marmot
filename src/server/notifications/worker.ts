@@ -1,4 +1,4 @@
-import type { Job, Worker } from 'bullmq'
+import { UnrecoverableError, type Job, type Worker } from 'bullmq'
 import type { Payload } from 'payload'
 
 import { env } from '@/env'
@@ -9,6 +9,7 @@ import { createWorker, type QueueFactoryOptions } from '@/server/engine/queues'
 import { NOTIFICATION_JOB_NAME, type NotificationJobData } from './dispatch'
 import { buildDefaultMessage } from './message'
 import { sendNotification } from './send'
+import { ServerSmtpSendError } from './server-smtp'
 
 const log = childLogger('notifications:worker')
 
@@ -54,8 +55,9 @@ async function recordOutcome(
 
 /**
  * Job processor: load channel + monitor + heartbeat, render the message, call the provider and
- * store the outcome on the channel. Throws on delivery failure so BullMQ retries. Exported so tests
- * can call it with a fake job.
+ * store the outcome on the channel. Throws on delivery failure so BullMQ retries, except for
+ * deliveries refused by the server-SMTP rules (retrying would only repeat the refusal). Exported so
+ * tests can call it with a fake job.
  */
 export async function processNotificationJob(
   payload: Payload,
@@ -100,6 +102,7 @@ export async function processNotificationJob(
       { err, notificationId, type: notification.type, monitorId, attempt: job.attemptsMade },
       'notification failed',
     )
+    if (err instanceof ServerSmtpSendError) throw new UnrecoverableError(error)
     throw err
   }
 }

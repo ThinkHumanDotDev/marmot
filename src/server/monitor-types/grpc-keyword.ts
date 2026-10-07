@@ -9,9 +9,20 @@
 import type { Method } from 'protobufjs'
 
 import type { Monitor } from '@/payload-types'
+import {
+  blockedLocalError,
+  outboundGuardActive,
+  resolveGuardedTarget,
+} from '@/server/security/outbound-guard'
 
 import { registerMonitorType } from './registry'
-import { checkTimeoutMs, loadOptionalDriver, parseJsonObject, requireField } from './util'
+import {
+  checkTimeoutMs,
+  loadOptionalDriver,
+  parseJsonObject,
+  requireField,
+  responseExcerpt,
+} from './util'
 
 /** Response bodies longer than this are truncated in failure messages. */
 const MAX_MESSAGE_RESPONSE = 50
@@ -30,7 +41,7 @@ export function evaluateKeyword(
         : response
     throw new Error(`keyword [${keyword}] is ${keywordFound ? 'present' : 'not'} in [${truncated}]`)
   }
-  return `${response}, keyword [${keyword}] ${keywordFound ? 'is' : 'not'} found`
+  return `${responseExcerpt(response)}, keyword [${keyword}] ${keywordFound ? 'is' : 'not'} found`
 }
 
 /** protobufjs names service methods in lowerCamelCase; accept the proto spelling too. */
@@ -39,6 +50,47 @@ export function lcFirst(name: string): string {
 }
 
 type RpcCallback = (err: Error | null, response?: unknown) => void
+
+/**
+ * Outbound address guard for a gRPC target (`host:port`, `dns:host:port`, `dns:///host:port`):
+ * the channel is pointed at the vetted address while TLS and `:authority` keep the original name.
+ * Other resolver schemes (`unix:`, `ipv4:`, …) are refused while the guard is on.
+ */
+export async function pinGrpcTarget(
+  url: string,
+): Promise<{ target: string; channelOptions: Record<string, string> }> {
+  if (!outboundGuardActive()) return { target: url, channelOptions: {} }
+  let rest = url.trim()
+  const scheme = rest.match(/^([a-z][a-z0-9+.-]*):/i)
+  if (scheme && !/^\d+$/.test(rest.slice(scheme[0].length).split('/')[0])) {
+    if (scheme[1].toLowerCase() !== 'dns') {
+      throw blockedLocalError(`The gRPC target scheme "${scheme[1]}:"`)
+    }
+    rest = rest.slice(scheme[0].length).replace(/^\/\/[^/]*\//, '')
+  }
+  let host: string
+  let port = '443'
+  if (rest.startsWith('[')) {
+    const end = rest.indexOf(']')
+    host = rest.slice(1, end)
+    if (rest[end + 1] === ':') port = rest.slice(end + 2)
+  } else {
+    const colon = rest.lastIndexOf(':')
+    host = colon === -1 ? rest : rest.slice(0, colon)
+    if (colon !== -1) port = rest.slice(colon + 1)
+  }
+  const vetted = await resolveGuardedTarget(host)
+  if (!vetted || vetted.address === host) return { target: url, channelOptions: {} }
+  const address = vetted.family === 6 ? `[${vetted.address}]` : vetted.address
+  const authority = port === '443' ? host : `${host}:${port}`
+  return {
+    target: `${address}:${port}`,
+    channelOptions: {
+      'grpc.ssl_target_name_override': host,
+      'grpc.default_authority': authority,
+    },
+  }
+}
 
 /** Perform the unary call and resolve with the JSON-serialised response. */
 export async function grpcQuery(
@@ -70,7 +122,8 @@ export async function grpcQuery(
   const credentials = monitor.grpcEnableTls
     ? grpc.credentials.createSsl()
     : grpc.credentials.createInsecure()
-  const client = new Client(url, credentials)
+  const { target, channelOptions } = await pinGrpcTarget(url)
+  const client = new Client(target, credentials, channelOptions)
   const metadata = new grpc.Metadata()
   for (const [key, value] of Object.entries(metadataEntries)) metadata.add(key, String(value))
 

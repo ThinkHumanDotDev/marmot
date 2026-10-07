@@ -13,6 +13,8 @@ import { attachDefaultNotifications } from './Notifications'
 import { childLogger } from '@/lib/logger'
 import type { Monitor } from '@/payload-types'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
+import { MONITOR_TARGET_FIELDS, monitorTargetProblem } from '@/server/security/monitor-targets'
+import { outboundGuardActive } from '@/server/security/outbound-guard'
 
 import { HEARTBEAT_STATUSES } from './Heartbeats'
 import { relId } from './shared'
@@ -190,6 +192,36 @@ const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
   return data
 }
 
+/**
+ * Outbound address guard (`MONITOR_DENY_PRIVATE_ADDRESSES` & co.): refuse host-local types and
+ * literally denied targets on save. Fast feedback only — names are vetted when the check connects.
+ * Runs on create and when a target field changes, so status updates never trip over it.
+ */
+const enforceOutboundPolicy: CollectionBeforeChangeHook<Monitor> = async ({
+  data,
+  originalDoc,
+  operation,
+  req,
+}) => {
+  if (!outboundGuardActive()) return data
+  const touched =
+    operation === 'create' ||
+    MONITOR_TARGET_FIELDS.some(
+      (field) =>
+        data[field] !== undefined &&
+        JSON.stringify(data[field] ?? null) !== JSON.stringify(originalDoc?.[field] ?? null),
+    )
+  if (!touched) return data
+  const problem = await monitorTargetProblem({ ...originalDoc, ...data } as Monitor, req)
+  if (problem) {
+    throw new ValidationError({
+      collection: 'monitors',
+      errors: [{ message: problem.message, path: problem.path }],
+    })
+  }
+  return data
+}
+
 export const Monitors: CollectionConfig = {
   slug: 'monitors',
   admin: {
@@ -217,6 +249,7 @@ export const Monitors: CollectionConfig = {
       // New monitors without explicit channels get the organization's default channels.
       attachDefaultNotifications,
       validateOrgReferences,
+      enforceOutboundPolicy,
       // Plan limits (no-op unless BILLING_ENABLED).
       enforceEntitlementOnCreate('monitors'),
     ],

@@ -5,12 +5,20 @@
  *
  * `useServerSmtp` reuses the instance-wide SMTP settings (`SMTP_HOST` & co. in `src/env.ts`) so an
  * admin only has to enter recipients; otherwise the channel carries its own transport settings.
+ * Who may use it, how often and for how many recipients is decided in
+ * `src/server/notifications/server-smtp.ts` (`NOTIFICATIONS_SERVER_SMTP*`).
  */
 import nodemailer, { type Transporter } from 'nodemailer'
 import { z } from 'zod'
 
 import { env } from '@/env'
 import { formatHeartbeatTime, renderMessageTemplate } from '@/server/notifications/message'
+import {
+  SERVER_SMTP_MAX_RECIPIENTS,
+  SERVER_SMTP_OFF_MESSAGE,
+  serverSmtpPolicy,
+} from '@/server/notifications/server-smtp'
+import { resolveGuardedTarget } from '@/server/security/outbound-guard'
 import { OK_MESSAGE } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -37,7 +45,7 @@ export type SmtpConfig = z.infer<typeof smtpConfigSchema>
 export const smtpFieldMeta: Record<keyof SmtpConfig, NotificationFieldMeta> = {
   useServerSmtp: {
     label: 'Use the server SMTP settings',
-    description: 'Send through the SMTP_* configuration of this Marmot instance.',
+    description: `Send through the SMTP_* configuration of this Marmot instance (at most ${SERVER_SMTP_MAX_RECIPIENTS} recipients per message).`,
   },
   host: { label: 'SMTP host', placeholder: 'smtp.example.com' },
   port: { label: 'Port' },
@@ -65,6 +73,8 @@ export const smtpFieldMeta: Record<keyof SmtpConfig, NotificationFieldMeta> = {
 /** Build the nodemailer transport for a channel (exported for tests). */
 export function buildSmtpTransportOptions(config: SmtpConfig): Record<string, unknown> {
   if (config.useServerSmtp) {
+    // `sendNotification` already refuses this; never fall back to the server transport regardless.
+    if (serverSmtpPolicy() === 'off') throw new Error(SERVER_SMTP_OFF_MESSAGE)
     if (!env.SMTP_HOST) {
       throw new Error(
         'This Marmot instance has no SMTP_HOST configured; enter SMTP settings instead.',
@@ -109,7 +119,18 @@ registerNotificationProvider({
   fieldMeta: smtpFieldMeta,
   async send({ config: raw, message, monitor, heartbeat }) {
     const config = smtpConfigSchema.parse(raw)
-    const transport = createTransport(buildSmtpTransportOptions(config))
+    const options = buildSmtpTransportOptions(config)
+    if (!config.useServerSmtp && typeof options.host === 'string') {
+      // A channel's own SMTP host is user input: with the outbound address guard on, connect to the
+      // vetted address and keep the name for TLS (the instance's SMTP_HOST is trusted config).
+      const vetted = await resolveGuardedTarget(options.host)
+      if (vetted && vetted.address !== options.host) {
+        options.tls = { ...(options.tls as object), servername: options.host }
+        options.servername = options.host
+        options.host = vetted.address
+      }
+    }
+    const transport = createTransport(options)
 
     let subject = message
     let body = heartbeat ? `${message}\nTime: ${formatHeartbeatTime(heartbeat)}` : message

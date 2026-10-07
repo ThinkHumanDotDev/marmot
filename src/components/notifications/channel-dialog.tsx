@@ -52,6 +52,8 @@ interface FormValues {
 interface ChannelDialogProps {
   orgId: string
   providers: NotificationProviderDescriptor[]
+  /** Why this user may not turn on the server SMTP settings, or `null` when they may. */
+  serverSmtpRestriction: string | null
   /** Row being edited, or `null` for a new channel. */
   channel: NotificationRow | null
   open: boolean
@@ -92,6 +94,7 @@ function splitFieldError(message: string): [string | null, string] {
 export function ChannelDialog({
   orgId,
   providers,
+  serverSmtpRestriction,
   channel,
   open,
   onOpenChange,
@@ -112,6 +115,7 @@ export function ChannelDialog({
   })
 
   const type = useWatch({ control: form.control, name: 'type' })
+  const useServerSmtp = useWatch({ control: form.control, name: 'config.useServerSmtp' }) === true
   const isDefault = useWatch({ control: form.control, name: 'isDefault' })
   const applyExisting = useWatch({ control: form.control, name: 'applyExisting' })
   const active = useWatch({ control: form.control, name: 'active' })
@@ -180,7 +184,7 @@ export function ChannelDialog({
     form.clearErrors('root')
     try {
       const result = await notificationsApi.test(orgId, {
-        type: values.type,
+        ...(channel ? { notificationId: channel.id } : { type: values.type }),
         config: cleanConfig(provider, values.config),
         name: values.name.trim() || undefined,
       })
@@ -273,14 +277,24 @@ export function ChannelDialog({
 
           {provider ? (
             <div className="grid gap-4">
-              {provider.fields.map((field) => (
-                <ProviderField
-                  key={`${provider.name}.${field.name}`}
-                  control={form.control}
-                  name={`config.${field.name}` as Path<FormValues>}
-                  field={field}
-                />
-              ))}
+              {provider.fields.map((field) => {
+                // The server refuses this option for users who may not use it; an existing channel
+                // that already uses it can still switch it off.
+                const restricted =
+                  provider.name === 'smtp' &&
+                  field.name === 'useServerSmtp' &&
+                  serverSmtpRestriction !== null
+                return (
+                  <ProviderField
+                    key={`${provider.name}.${field.name}`}
+                    control={form.control}
+                    name={`config.${field.name}` as Path<FormValues>}
+                    field={field}
+                    disabled={restricted && !useServerSmtp}
+                    note={restricted ? serverSmtpRestriction : undefined}
+                  />
+                )
+              })}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No providers are registered.</p>

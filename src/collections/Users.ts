@@ -9,6 +9,8 @@ import {
 import { authenticated, selfOrSuperadmin, superadminOnly } from '@/access/org-scoped'
 import { isSuperadmin, type UserLike } from '@/access/permissions'
 import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
+import { adminT } from '@/i18n/admin'
+import { defaultLocale, localeNames, locales } from '@/i18n/locales'
 import { auditAuthFailure, auditLogin, rateLimitAuthOperations } from '@/server/security/auth-hooks'
 import { enforceSsoOnPasswordLogin } from '@/server/sso/enforcement'
 import { isSignupAllowed } from '@/server/settings'
@@ -193,6 +195,18 @@ export const Users: CollectionConfig = {
       admin: {
         position: 'sidebar',
         description: 'Colour scheme preference, applied on every device after sign-in.',
+      },
+    },
+    // Marmot UI locale (src/i18n). Resolved before the `marmot-locale` cookie and `Accept-Language`.
+    {
+      name: 'language',
+      type: 'select',
+      label: adminT('marmot:language'),
+      defaultValue: defaultLocale,
+      options: locales.map((locale) => ({ label: localeNames[locale], value: locale })),
+      admin: {
+        position: 'sidebar',
+        description: adminT('marmot:userLanguageDescription'),
       },
     },
     // Two-factor authentication (src/auth/two-factor). The flag is readable so the UI and the

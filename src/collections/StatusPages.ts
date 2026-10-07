@@ -9,6 +9,8 @@ import {
 
 import { orgScoped } from '@/access/org-scoped'
 import { getOrgIdsWithPermission, isSuperadmin, type UserLike } from '@/access/permissions'
+import { adminT } from '@/i18n/admin'
+import { defaultLocale, localeNames, locales } from '@/i18n/locales'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 
@@ -16,6 +18,10 @@ import type { StatusPage } from '@/payload-types'
 
 export const STATUS_PAGE_THEMES = ['auto', 'light', 'dark'] as const
 export type StatusPageTheme = (typeof STATUS_PAGE_THEMES)[number]
+
+/** `auto` follows the visitor's browser language; otherwise a fixed locale from `src/i18n/locales.ts`. */
+export const STATUS_PAGE_LANGUAGE_AUTO = 'auto' as const
+export type StatusPageLanguage = typeof STATUS_PAGE_LANGUAGE_AUTO | (typeof locales)[number]
 
 /** RFC 1123 hostname: labels of letters, digits and hyphens joined by dots; no scheme, no port. */
 export const HOSTNAME_PATTERN =
@@ -205,6 +211,17 @@ export const StatusPages: CollectionConfig = {
       type: 'select',
       defaultValue: 'auto',
       options: STATUS_PAGE_THEMES.map((theme) => ({ label: theme, value: theme })),
+    },
+    {
+      name: 'language',
+      type: 'select',
+      label: adminT('marmot:language'),
+      defaultValue: defaultLocale,
+      options: [
+        { label: adminT('marmot:followVisitor'), value: STATUS_PAGE_LANGUAGE_AUTO },
+        ...locales.map((locale) => ({ label: localeNames[locale], value: locale })),
+      ],
+      admin: { description: adminT('marmot:statusPageLanguageDescription') },
     },
     {
       name: 'published',

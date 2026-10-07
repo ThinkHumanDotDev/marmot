@@ -78,6 +78,7 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'description',
   'logo',
   'theme',
+  'language',
   'published',
   'searchEngineIndex',
   'showTags',

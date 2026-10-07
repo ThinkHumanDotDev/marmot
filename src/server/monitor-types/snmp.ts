@@ -11,6 +11,8 @@ import type { Varbind } from 'net-snmp'
 
 import type { Monitor } from '@/payload-types'
 
+import { resolveGuardedTarget } from '@/server/security/outbound-guard'
+
 import { evaluateJsonQuery } from './json-query'
 import { registerMonitorType } from './registry'
 import {
@@ -18,6 +20,7 @@ import {
   loadOptionalDriver,
   requireField,
   requireHostname,
+  responseExcerpt,
   withAbort,
 } from './util'
 
@@ -33,13 +36,19 @@ export async function snmpGet(
   const hostname = requireHostname(monitor)
   const oid = requireField(monitor.snmpOid, 'OID')
   const snmp = await loadOptionalDriver(() => import('net-snmp'), 'net-snmp', 'SNMP')
+  // Outbound address guard: the session talks to the vetted address (null when the guard is off).
+  const vetted = await resolveGuardedTarget(hostname)
 
-  const session = snmp.createSession(hostname, monitor.snmpCommunity || DEFAULT_SNMP_COMMUNITY, {
-    port: monitor.port || DEFAULT_SNMP_PORT,
-    retries: 0,
-    timeout: timeoutMs,
-    version: monitor.snmpVersion === '1' ? snmp.Version1 : snmp.Version2c,
-  })
+  const session = snmp.createSession(
+    vetted?.address ?? hostname,
+    monitor.snmpCommunity || DEFAULT_SNMP_COMMUNITY,
+    {
+      port: monitor.port || DEFAULT_SNMP_PORT,
+      retries: 0,
+      timeout: timeoutMs,
+      version: monitor.snmpVersion === '1' ? snmp.Version1 : snmp.Version2c,
+    },
+  )
 
   try {
     const varbinds = await withAbort(
@@ -82,7 +91,7 @@ registerMonitorType({
     const { jsonPath, expectedValue } = ctx.monitor
     const operator = ctx.monitor.jsonPathOperator ?? '=='
     if (expectedValue === null || expectedValue === undefined || expectedValue === '') {
-      ctx.heartbeat.msg = `${ctx.monitor.snmpOid} = ${value}`
+      ctx.heartbeat.msg = `${ctx.monitor.snmpOid} = ${responseExcerpt(value)}`
       ctx.heartbeat.status = 'up'
       return
     }
@@ -90,10 +99,10 @@ registerMonitorType({
     const { status, response } = await evaluateJsonQuery(value, jsonPath, operator, expectedValue)
     if (!status) {
       throw new Error(
-        `JSON query does not pass (comparing ${String(response)} ${operator} ${expectedValue})`,
+        `JSON query does not pass (comparing ${responseExcerpt(response)} ${operator} ${expectedValue})`,
       )
     }
-    ctx.heartbeat.msg = `JSON query passes (comparing ${String(response)} ${operator} ${expectedValue})`
+    ctx.heartbeat.msg = `JSON query passes (comparing ${responseExcerpt(response)} ${operator} ${expectedValue})`
     ctx.heartbeat.status = 'up'
   },
 })

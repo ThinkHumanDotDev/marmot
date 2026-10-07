@@ -6,6 +6,7 @@
 import { spawn } from 'node:child_process'
 import { z } from 'zod'
 
+import { assertHostLocalAllowed } from '@/server/security/outbound-guard'
 import { OK_MESSAGE } from './http'
 import { registerNotificationProvider } from './registry'
 import type { NotificationFieldMeta } from './types'
@@ -74,6 +75,8 @@ registerNotificationProvider({
   fieldMeta: appriseFieldMeta,
   async send({ config: raw, message }) {
     const config = appriseConfigSchema.parse(raw)
+    // The apprise CLI makes its own connections, which the outbound address guard cannot vet.
+    assertHostLocalAllowed('The Apprise CLI')
     const args = ['-vv', '-b', message, config.appriseUrl]
     if (config.title) args.push('-t', config.title)
 

@@ -3,9 +3,12 @@
  * `NotificationProvider.throwGeneralAxiosError` from Uptime Kuma 2.5.5
  * `server/notification-providers/notification-provider.js` (MIT, Louis Lam). See THIRD_PARTY_NOTICES.md.
  *
- * Providers call the global `fetch` so tests can stub `globalThis.fetch`.
+ * Providers call the global `fetch` so tests can stub `globalThis.fetch`. With the outbound address
+ * guard on (`MONITOR_DENY_PRIVATE_ADDRESSES`, `MONITOR_DENY_CIDRS`), requests go through
+ * `guardedFetch`, which vets every connection and redirect hop after DNS resolution.
  */
 import type { Monitor } from '@/payload-types'
+import { findBlockedMessage, guardedFetch } from '@/server/security/outbound-guard'
 
 export const OK_MESSAGE = 'Sent Successfully.'
 
@@ -22,7 +25,7 @@ export interface HttpRequestOptions {
 }
 
 /** Trim a response body for error messages. */
-const snippet = (text: string, max = 500) => (text.length > max ? `${text.slice(0, max)}…` : text)
+const snippet = (text: string, max = 200) => (text.length > max ? `${text.slice(0, max)}…` : text)
 
 /**
  * Perform a request and throw a readable error on network failures or non-2xx responses.
@@ -41,7 +44,7 @@ export async function httpRequest(
 
   let response: Response
   try {
-    response = await fetch(url, {
+    response = await guardedFetch(url, {
       method: options.method ?? (body === undefined ? 'GET' : 'POST'),
       headers,
       body,
@@ -77,6 +80,8 @@ export async function postJson(
 
 /** Expand `fetch` failures (which hide the cause behind "fetch failed") into something actionable. */
 export function describeNetworkError(error: unknown): string {
+  const blocked = findBlockedMessage(error)
+  if (blocked) return blocked
   if (!(error instanceof Error)) return String(error)
   let msg = error.message
   const code = (error as { code?: string }).code

@@ -7,9 +7,12 @@
  * `kafka-producer` branch of `server/model/monitor.js` — Copyright (c) 2021 Louis Lam, MIT License.
  * See THIRD_PARTY_NOTICES.md.
  */
-import type { KafkaConfig } from 'kafkajs'
+import net from 'node:net'
+
+import type { ISocketFactory, KafkaConfig } from 'kafkajs'
 
 import type { Monitor } from '@/payload-types'
+import { guardedNetConnect, outboundGuardActive } from '@/server/security/outbound-guard'
 
 import { registerMonitorType } from './registry'
 import {
@@ -41,6 +44,24 @@ export function kafkaSasl(
   return { ...options, mechanism } as unknown as KafkaConfig['sasl']
 }
 
+/**
+ * kafkajs socket factory (same as its default one) whose sockets pass the outbound address guard.
+ * Brokers discovered from cluster metadata connect through it too, so every broker is vetted at
+ * connect time.
+ */
+export const guardedKafkaSocketFactory: ISocketFactory = ({ host, port, ssl, onConnect }) => {
+  const socket = guardedNetConnect(
+    {
+      host,
+      port,
+      ...(ssl ? { ...(net.isIP(host) ? {} : { servername: host }), ...(ssl as object) } : {}),
+    },
+    { secure: Boolean(ssl), onConnect },
+  )
+  socket.setKeepAlive(true, 60_000)
+  return socket
+}
+
 registerMonitorType({
   name: 'kafka-producer',
   label: 'Kafka Producer',
@@ -66,6 +87,7 @@ registerMonitorType({
       connectionTimeout: timeout,
       requestTimeout: timeout,
       logLevel: logLevel.NOTHING,
+      ...(outboundGuardActive() ? { socketFactory: guardedKafkaSocketFactory } : {}),
     })
     const producer = kafka.producer({
       allowAutoTopicCreation: Boolean(ctx.monitor.kafkaProducerAllowAutoTopicCreation),

@@ -13,6 +13,8 @@ import net from 'node:net'
 
 import type { Monitor } from '@/payload-types'
 
+import { resolveGuardedTarget } from '@/server/security/outbound-guard'
+
 import { registerMonitorType } from './registry'
 import {
   checkTimeoutMs,
@@ -42,6 +44,13 @@ export interface RadiusResponse {
 
 /** Resolve `host` to an address (IPv4 preferred) so the right UDP socket family can be used. */
 async function resolveAddress(host: string): Promise<{ address: string; family: 4 | 6 }> {
+  // Outbound address guard: every address is vetted and the request goes to the one returned.
+  const vetted = await resolveGuardedTarget(host, 4).catch(async (err: unknown) => {
+    // No IPv4 address: retry for any family before reporting.
+    if (err instanceof Error && err.name === 'BlockedAddressError') throw err
+    return resolveGuardedTarget(host)
+  })
+  if (vetted) return vetted
   const literal = net.isIP(host)
   if (literal === 4 || literal === 6) return { address: host, family: literal }
   const results = await dns.lookup(host, { all: true })

@@ -32,14 +32,14 @@ features whose pull requests are merging alongside this documentation.
 
 ## Change it
 
-| Page                                      | What it covers                                                                              |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------- |
-| [Architecture](Architecture.md)           | Processes, polling engine, time-series storage, notifications pipeline, realtime, RBAC.     |
-| [Development](Development.md)             | Local setup with or without Docker, the three processes, tests, migrations, server bundles. |
-| [Release checklist](Release-Checklist.md) | What to verify before tagging a version.                                                    |
-| [Comparison](Comparison.md)               | Feature-by-feature parity with Uptime Kuma and the kan.bn-inspired team features.           |
-| [Contributing](../CONTRIBUTING.md)        | Workflow, commit conventions, how to add a monitor type or a notification provider.         |
-| [Security policy](../SECURITY.md)         | How to report a vulnerability.                                                              |
+| Page                                       | What it covers                                                                              |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| [Architecture](Architecture.md)            | Processes, polling engine, time-series storage, notifications pipeline, realtime, RBAC.     |
+| [Development](Development.md)              | Local setup with or without Docker, the three processes, tests, migrations, server bundles. |
+| [Release checklist](Release-Checklist.md)  | What to verify before tagging a version.                                                    |
+| [Comparison](Comparison.md)                | Feature-by-feature parity with Uptime Kuma and the kan.bn-inspired team features.           |
+| [Contributing](../.github/CONTRIBUTING.md) | Workflow, commit conventions, how to add a monitor type or a notification provider.         |
+| [Security policy](../.github/SECURITY.md)  | How to report a vulnerability.                                                              |
 
 Found a mistake? Documentation lives next to the code in `docs/` and is published to the GitHub wiki on every
 push to `main`; open a pull request with the `docs(docs): …` prefix.

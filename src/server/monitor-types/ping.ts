@@ -5,6 +5,8 @@
  */
 import { spawn } from 'node:child_process'
 
+import { resolveGuardedTarget } from '@/server/security/outbound-guard'
+
 import { registerMonitorType } from './registry'
 
 export interface PingOptions {
@@ -90,7 +92,12 @@ registerMonitorType({
     }
     const timeoutSeconds =
       ctx.monitor.timeout && ctx.monitor.timeout > 0 ? ctx.monitor.timeout : undefined
-    ctx.heartbeat.ping = await ping(ctx.monitor.hostname, { timeoutSeconds, signal: ctx.signal })
+    // Outbound address guard: ping the vetted address (null when the guard is off).
+    const vetted = await resolveGuardedTarget(normalizePingHost(ctx.monitor.hostname))
+    ctx.heartbeat.ping = await ping(vetted?.address ?? ctx.monitor.hostname, {
+      timeoutSeconds,
+      signal: ctx.signal,
+    })
     ctx.heartbeat.msg = ''
     ctx.heartbeat.status = 'up'
   },
