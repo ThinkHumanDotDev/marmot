@@ -35,8 +35,10 @@ import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 import { adminGroup, adminT } from '@/i18n/admin'
 import {
+  DEFAULT_QUORUM,
   isRemoteMonitor,
   MAX_MONITOR_LOCATIONS,
+  QUORUM_MODES,
   monitorLocationIds,
   probeSupportsType,
 } from '@/lib/probe-locations'
@@ -313,8 +315,9 @@ const validateUniqueKey: CollectionBeforeChangeHook<Monitor> = async ({
 }
 
 /**
- * Probe locations (#91): at most `MAX_MONITOR_LOCATIONS` per monitor (until quorum, #92), no
- * duplicates, and only types a probe can run (`PROBE_UNSUPPORTED_TYPES`).
+ * Probe locations (#91): at most `MAX_MONITOR_LOCATIONS` per monitor (several of them, plus the
+ * local workers with `includeLocal`, are combined by quorum, #92), no duplicates, and only types a
+ * probe can run (`PROBE_UNSUPPORTED_TYPES`).
  */
 const validateLocations: CollectionBeforeChangeHook<Monitor> = ({ data, originalDoc, req }) => {
   if (Array.isArray(data.locations)) {
@@ -355,7 +358,14 @@ const enforceOutboundPolicy: CollectionBeforeChangeHook<Monitor> = async ({
   if (!outboundGuardActive()) return data
   // Probe-checked monitors connect from the probe's network, which its own MONITOR_DENY_* settings
   // govern; the workers still vet the targets at connect time if the location is removed.
-  if (isRemoteMonitor({ locations: data.locations ?? originalDoc?.locations })) return data
+  if (
+    isRemoteMonitor({
+      locations: data.locations ?? originalDoc?.locations,
+      includeLocal: data.includeLocal ?? originalDoc?.includeLocal,
+    })
+  ) {
+    return data
+  }
   const touched =
     operation === 'create' ||
     MONITOR_TARGET_FIELDS.some(
@@ -440,6 +450,8 @@ export const Monitors: CollectionConfig = {
           'notification-sent-history',
           'monitor-incidents',
           'push-events',
+          'monitor-location-states',
+          'stat-location-hourly',
         ] as const) {
           await req.payload.delete({ collection, where: { monitor: { equals: id } }, ...common })
         }
@@ -561,6 +573,30 @@ export const Monitors: CollectionConfig = {
       admin: {
         position: 'sidebar',
         description: adminT('marmot:monitors:locationsDescription'),
+      },
+    },
+    {
+      // Multi-location checks (#92): the local worker pool checks the monitor too.
+      name: 'includeLocal',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        position: 'sidebar',
+        description: adminT('marmot:monitors:includeLocalDescription'),
+      },
+    },
+    {
+      // How many of the monitor's locations must agree before its status changes (#92).
+      name: 'quorum',
+      type: 'select',
+      defaultValue: DEFAULT_QUORUM,
+      options: QUORUM_MODES.map((value) => ({
+        label: adminT(`marmot:monitors:quorum_${value}`),
+        value,
+      })),
+      admin: {
+        position: 'sidebar',
+        description: adminT('marmot:monitors:quorumDescription'),
       },
     },
     {

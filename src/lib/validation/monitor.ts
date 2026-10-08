@@ -9,7 +9,12 @@ import { z } from 'zod'
 
 import type { Messages } from '@/i18n/messages'
 import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
-import { MAX_MONITOR_LOCATIONS, probeSupportsType } from '@/lib/probe-locations'
+import {
+  DEFAULT_QUORUM,
+  MAX_MONITOR_LOCATIONS,
+  probeSupportsType,
+  QUORUM_MODES,
+} from '@/lib/probe-locations'
 import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
@@ -472,8 +477,12 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       /** Probe locations that check the monitor (#91); empty for the local workers. */
       locations: z
         .array(z.union([z.string().min(1), z.number().int().positive()]))
-        .max(MAX_MONITOR_LOCATIONS, message('locationsTooMany'))
+        .max(MAX_MONITOR_LOCATIONS, message('locationsTooMany', { max: MAX_MONITOR_LOCATIONS }))
         .default([]),
+      /** Also check from the local workers when probe locations are set (#92). */
+      includeLocal: z.boolean().default(false),
+      /** How many locations must agree before the monitor changes status (#92). */
+      quorum: z.enum(QUORUM_MODES).default(DEFAULT_QUORUM),
 
       // Target
       url: optionalText(2048),
@@ -883,6 +892,8 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     tags: [],
     notifications: [],
     locations: [],
+    includeLocal: false,
+    quorum: DEFAULT_QUORUM,
     url: defaultUrl(type),
     hostname: null,
     port: DEFAULT_PORTS[type] ?? null,

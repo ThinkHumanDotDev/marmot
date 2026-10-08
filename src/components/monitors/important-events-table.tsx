@@ -40,7 +40,9 @@ export function ImportantEventsTable({
 }) {
   const t = useTranslations('monitors.events')
   const format = useMonitorFormat(timeZone)
-  const pageHref = (page: number) => (page <= 1 ? basePath : `${basePath}?page=${page}`)
+  // `basePath` may carry a query already (the location filter, #92).
+  const pageHref = (page: number) =>
+    page <= 1 ? basePath : `${basePath}${basePath.includes('?') ? '&' : '?'}page=${page}`
 
   return (
     <Card className="gap-3" data-testid="important-events">

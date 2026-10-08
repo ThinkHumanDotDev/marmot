@@ -37,7 +37,7 @@ no Redis and no inbound port.
 
    or with compose: `docker/docker-compose.probe.yml` (set `MARMOT_URL` and `MARMOT_PROBE_TOKEN`).
 
-4. Edit a monitor and pick the location under **Check location**. The agent picks the monitor up within
+4. Edit a monitor and switch the location on under **Check locations**. The agent picks the monitor up within
    one refresh cycle (at most a minute) and its heartbeats start arriving.
 
 The location's badge in **Settings → Locations** turns **Online** once the agent called in, shows when it
@@ -60,10 +60,11 @@ Without Docker, run it from a checkout: `pnpm install && pnpm build:server`, the
 ## What runs where
 
 - A monitor without a location is checked by the workers of the Marmot server (the implicit `local`
-  location). A monitor with a location is checked **only** by that location's agents: the workers keep no
-  schedule for it.
-- One location per monitor for now. Checking one monitor from several locations with a quorum is planned
-  (#92); heartbeats already record the location that produced them.
+  location). A monitor with locations is checked **only** by those locations' agents (the workers keep no
+  schedule for it) unless **Local** stays switched on.
+- A monitor can be checked from up to ten probe locations plus the local workers. With more than one, its
+  status is a quorum of the locations' own statuses ([Monitors → Several locations and the
+  quorum](Monitors.md#several-locations-and-the-quorum)); heartbeats record the location that produced them.
 - Group, manual, push and Steam monitors run on the server only (they are computed by the server, wait for
   requests that reach it, or need the instance's Steam key).
 - Proxies and Docker hosts a monitor uses are sent to the agent with the monitor. A Docker host of type
@@ -73,8 +74,9 @@ Without Docker, run it from a checkout: `pnpm install && pnpm build:server`, the
 - Maintenance windows, retries, upside-down mode, the recovery threshold, notifications, incidents and the
   uptime statistics work exactly as for local checks: the server feeds every result through the same state
   machine.
-- **Check now** cannot record a result for a probe-checked monitor (it would mix two vantage points); a dry
-  run (`record=false`) still tests the target from the server.
+- **Check now** cannot record a result for a monitor checked only by probes (it would add a vantage point);
+  a dry run (`record=false`) still tests the target from the server. With **Local** on, it records a local
+  check.
 - With `CONNECTIVITY_CHECK_ENABLED=true` on the agent, it watches its own uplink like a worker does: while
   the probe's internet is down, checks of external targets are recorded as `checker offline` instead of
   going DOWN ([Configuration → Self connectivity check](Configuration.md#self-connectivity-check)).
@@ -84,7 +86,9 @@ Without Docker, run it from a checkout: `pnpm install && pnpm build:server`, the
 The worker re-evaluates every location every 15 seconds. A location is **offline** when its agent has not
 called in for `PROBE_OFFLINE_AFTER` seconds (default 180; agents call in at least every minute). The owners
 and admins of the organization get an email when a location goes offline and again when it is back online.
-While a location is offline its monitors are not checked, and their status stays as it was.
+While a location is offline its monitors are not checked, and their status stays as it was. On a
+multi-location monitor the offline location keeps its last status in the quorum; the other locations
+keep checking.
 
 ## Rotate or delete a token
 

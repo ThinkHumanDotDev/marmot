@@ -98,6 +98,14 @@ const detachFromMonitors: CollectionBeforeDeleteHook = async ({ id, req }) => {
       overrideAccess: true,
     })
   }
+  // Its per-location states (#92) go too; the quorum of the remaining locations takes over.
+  await req.payload.delete({
+    collection: 'monitor-location-states',
+    where: { locationKey: { equals: String(id) } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
 }
 
 /**

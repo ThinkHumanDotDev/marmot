@@ -37,7 +37,7 @@ import { track } from '@/lib/analytics'
 import { api, ApiError } from '@/lib/api'
 import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
 import { supportsAdhocTest, type OnDemandCheckResult } from '@/lib/on-demand-check'
-import { probeSupportsType } from '@/lib/probe-locations'
+import { probeSupportsType, quorumNeeded, QUORUM_MODES } from '@/lib/probe-locations'
 import { REMINDER_BACKOFFS } from '@/lib/reminder-backoff'
 import {
   AUTH_METHODS,
@@ -714,10 +714,12 @@ function RelationSelectField({
 }
 
 /**
- * Where the monitor is checked from (#91): the local workers (`locations: []`) or one probe
- * location (`[id]`; multi-location checks come with #92).
+ * Where the monitor is checked from: the local workers and any number of probe locations (#91).
+ * `locations: []` is the local workers alone; with probe locations, `includeLocal` adds the local
+ * workers. With two or more locations the monitor's status is a quorum (#92) and `quorum` decides
+ * how many must agree.
  */
-function LocationSelectField({
+function LocationsField({
   control,
   options,
   orgSlug,
@@ -727,38 +729,59 @@ function LocationSelectField({
   orgSlug: string
 }) {
   const t = useTranslations('monitors.form.general')
+  const [locations, includeLocal] = useWatch({ control, name: ['locations', 'includeLocal'] })
+  const selected = Array.isArray(locations) ? (locations as (string | number)[]) : []
+  const localOn = selected.length === 0 || includeLocal === true
+  const total = selected.length + (localOn ? 1 : 0)
   return (
-    <FormField
-      control={control}
-      name="locations"
-      render={({ field }) => {
-        const ids = Array.isArray(field.value) ? (field.value as (string | number)[]) : []
-        const current = ids[0]
-        return (
+    <div className="grid gap-3" data-testid="monitor-locations">
+      <FormField
+        control={control}
+        name="locations"
+        render={({ field }) => (
           <FormItem>
-            <FormLabel>{t('location')}</FormLabel>
-            <Select
-              value={current === undefined ? NONE : String(current)}
-              onValueChange={(value) => {
-                if (value === NONE) return field.onChange([])
-                const match = options.find((o) => String(o.id) === value)
-                field.onChange([match ? match.id : value])
-              }}
-            >
-              <FormControl>
-                <SelectTrigger className="w-full" data-testid="monitor-location-select">
-                  <SelectValue />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value={NONE}>{t('locationLocal')}</SelectItem>
-                {options.map((o) => (
-                  <SelectItem key={String(o.id)} value={String(o.id)}>
-                    {o.status === 'offline' ? t('locationOffline', { name: o.name }) : o.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FormLabel>{t('locations')}</FormLabel>
+            <div className="divide-y rounded-lg border">
+              <FormField
+                control={control}
+                name="includeLocal"
+                render={({ field: local }) => (
+                  <label className="flex items-center justify-between gap-4 px-3 py-2 text-sm">
+                    <span>{t('locationLocal')}</span>
+                    <Switch
+                      checked={localOn}
+                      // At least one location: the local workers stay on while no probe is picked.
+                      disabled={selected.length === 0}
+                      onCheckedChange={(on) => local.onChange(on)}
+                      data-testid="monitor-location-local"
+                    />
+                  </label>
+                )}
+              />
+              {options.map((option) => {
+                const on = selected.some((id) => String(id) === String(option.id))
+                return (
+                  <label
+                    key={String(option.id)}
+                    className="flex items-center justify-between gap-4 px-3 py-2 text-sm"
+                  >
+                    <span>
+                      {option.status === 'offline'
+                        ? t('locationOffline', { name: option.name })
+                        : option.name}
+                    </span>
+                    <Switch
+                      checked={on}
+                      onCheckedChange={(next) => {
+                        const rest = selected.filter((id) => String(id) !== String(option.id))
+                        field.onChange(next ? [...rest, option.id] : rest)
+                      }}
+                      data-testid={`monitor-location-${option.id}`}
+                    />
+                  </label>
+                )
+              })}
+            </div>
             <FormDescription>
               {t.rich('locationDescription', {
                 link: (chunks) => (
@@ -773,9 +796,24 @@ function LocationSelectField({
             </FormDescription>
             <FormMessage />
           </FormItem>
-        )
-      }}
-    />
+        )}
+      />
+      {total > 1 && (
+        <SelectField
+          control={control}
+          name="quorum"
+          label={t('quorum')}
+          description={t('quorumDescription', { count: total })}
+          options={QUORUM_MODES.map((value) => ({
+            value,
+            label: t(`quorumOptions.${value}`, {
+              needed: quorumNeeded(value, total),
+              count: total,
+            }),
+          }))}
+        />
+      )}
+    </div>
   )
 }
 
@@ -1209,11 +1247,7 @@ export function MonitorForm({
 
             {((probeSupportsType(type) && resources.locations.length > 0) ||
               (watchedLocations?.length ?? 0) > 0) && (
-              <LocationSelectField
-                control={control}
-                options={resources.locations}
-                orgSlug={orgSlug}
-              />
+              <LocationsField control={control} options={resources.locations} orgSlug={orgSlug} />
             )}
 
             <FormField

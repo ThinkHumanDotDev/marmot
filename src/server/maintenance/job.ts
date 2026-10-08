@@ -10,6 +10,8 @@
  * - `retention` (`src/server/jobs/retention.ts`) shares the queue so a single worker serves it.
  * - `probe-health` (every 15 s, `src/server/probes/health.ts`): marks probe locations offline and
  *   online again (#91); the single consumer makes it the only writer of `locations.status`.
+ * - `quorum-recompute` (every minute, `src/server/jobs/quorum-recompute.ts`): repairs the status of
+ *   multi-location monitors that drifted from their per-location states (#92).
  */
 import type { Job, Queue, Worker } from 'bullmq'
 import type { Payload } from 'payload'
@@ -18,6 +20,11 @@ import { childLogger } from '@/lib/logger'
 import type { Maintenance } from '@/payload-types'
 import { QUEUE_NAMES } from '@/server/engine/names'
 import { createWorker, type QueueFactoryOptions } from '@/server/engine/queues'
+import {
+  QUORUM_RECOMPUTE_INTERVAL_MS,
+  QUORUM_RECOMPUTE_JOB_NAME,
+  recomputeQuorumStatuses,
+} from '@/server/jobs/quorum-recompute'
 import { processRetentionJob, RETENTION_JOB_NAME } from '@/server/jobs/retention'
 import {
   PROBE_HEALTH_INTERVAL_MS,
@@ -149,6 +156,7 @@ export const processMaintenanceJob =
     }
     if (job.name === RETENTION_JOB_NAME) return processRetentionJob(payload)(job)
     if (job.name === PROBE_HEALTH_JOB_NAME) return refreshLocationStatuses(payload)
+    if (job.name === QUORUM_RECOMPUTE_JOB_NAME) return recomputeQuorumStatuses(payload)
     log.warn({ jobId: job.id, name: job.name }, 'unknown job on the maintenance queue; ignored')
     return undefined
   }
@@ -162,6 +170,15 @@ export async function scheduleProbeHealthJob(queue: Queue): Promise<void> {
   )
 }
 
+/** Upsert the every-minute `quorum-recompute` scheduler (#92). Idempotent. */
+export async function scheduleQuorumRecomputeJob(queue: Queue): Promise<void> {
+  await queue.upsertJobScheduler(
+    QUORUM_RECOMPUTE_JOB_NAME,
+    { every: QUORUM_RECOMPUTE_INTERVAL_MS },
+    { name: QUORUM_RECOMPUTE_JOB_NAME, opts: { removeOnComplete: 10, removeOnFail: 50 } },
+  )
+}
+
 /**
  * Worker entrypoint helper: upsert the scheduler and start the worker on the maintenance queue.
  * Returns the worker so the caller can `close()` it on shutdown.
@@ -172,6 +189,7 @@ export async function startMaintenanceWorker(
 ): Promise<Worker> {
   await scheduleMaintenanceStatusJob(getMaintenanceQueue(options))
   await scheduleProbeHealthJob(getMaintenanceQueue(options))
+  await scheduleQuorumRecomputeJob(getMaintenanceQueue(options))
   // Re-plan every wake-up once per boot (they may have been lost with Redis).
   try {
     await refreshMaintenanceStatuses(payload, new Date(), { scheduleJobs: 'all' })

@@ -72,6 +72,15 @@
   --chart-3: oklch(0.8 0.1 70);
   --chart-4: oklch(0.55 0.15 35);
   --chart-5: oklch(0.45 0.1 30);
+  /* Categorical series (one colour per check location, fixed order) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
 }
 
 .dark {
@@ -124,6 +133,15 @@
   --chart-3: oklch(0.84 0.09 75);
   --chart-4: oklch(0.6 0.14 35);
   --chart-5: oklch(0.5 0.1 30);
+  /* Categorical series (one colour per check location, fixed order) */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
 }
 
 @theme inline {

@@ -43,6 +43,7 @@ import * as migration_20261007_201419_outbound_webhooks from './20261007_201419_
 import * as migration_20261007_204902_api_key_scopes from './20261007_204902_api_key_scopes';
 import * as migration_20261007_212204_monitor_key from './20261007_212204_monitor_key';
 import * as migration_20261007_222737_probe_locations from './20261007_222737_probe_locations';
+import * as migration_20261007_234012_location_quorum from './20261007_234012_location_quorum';
 
 export const migrations = [
   {
@@ -268,6 +269,11 @@ export const migrations = [
   {
     up: migration_20261007_222737_probe_locations.up,
     down: migration_20261007_222737_probe_locations.down,
-    name: '20261007_222737_probe_locations'
+    name: '20261007_222737_probe_locations',
+  },
+  {
+    up: migration_20261007_234012_location_quorum.up,
+    down: migration_20261007_234012_location_quorum.down,
+    name: '20261007_234012_location_quorum'
   },
 ];

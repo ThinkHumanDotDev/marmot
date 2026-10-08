@@ -8,8 +8,11 @@ import { adminGroup, adminT } from '@/i18n/admin'
  */
 export const HEARTBEAT_STATUSES = ['up', 'down', 'pending', 'maintenance', 'degraded'] as const
 
-/** What started a check. Unset means the monitor's schedule (or a push). */
-export const HEARTBEAT_TRIGGERS = ['manual'] as const
+/**
+ * What started a check. Unset means the monitor's schedule (or a push); `quorum` is a beat the
+ * quorum recompute job wrote to repair a multi-location monitor's status (#92), not a check.
+ */
+export const HEARTBEAT_TRIGGERS = ['manual', 'quorum'] as const
 
 export const Heartbeats: CollectionConfig = {
   slug: 'heartbeats',
@@ -48,6 +51,13 @@ export const Heartbeats: CollectionConfig = {
       relationTo: 'locations',
       index: true,
       admin: { description: adminT('marmot:heartbeats:locationDescription') },
+    },
+    {
+      // Multi-location monitors (#92): the reporting location's own status; `status` is the quorum.
+      name: 'locationStatus',
+      type: 'select',
+      options: HEARTBEAT_STATUSES.map((s) => ({ label: s, value: s })),
+      admin: { description: adminT('marmot:heartbeats:locationStatusDescription') },
     },
     {
       name: 'status',

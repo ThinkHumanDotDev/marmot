@@ -233,6 +233,7 @@
         "inRange": "in",
         "legacy": "monitor setting"
       },
+      "locationCount": "Checked from {count} locations",
       "checkedFrom": "Checked from {location}",
       "locationStatus": "Probe location {status, select, online {online} offline {offline} other {never connected}}"
     },
@@ -310,6 +311,22 @@
       "average": "Avg {ping}",
       "range": "{min} – {max}",
       "counts": "{up} up · {down} down"
+    },
+    "locations": {
+      "title": "Locations",
+      "description": "Each location runs its own retries. The monitor changes status when {quorum, select, any {any one} all {all {count}} other {{needed} of {count}}} of them agree.",
+      "local": "Local (this server)",
+      "location": "Location",
+      "status": "Status",
+      "ping": "Response",
+      "uptime24h": "Uptime 24 h",
+      "uptime30d": "Uptime 30 d",
+      "lastCheck": "Last check",
+      "filter": "Location",
+      "all": "All locations",
+      "chartTitle": "Response time by location",
+      "chartDescription": "Average per hour over the last 24 hours.",
+      "chartEmpty": "No per-location response times yet. The chart fills in as checks complete."
     },
     "events": {
       "title": "Important events",
@@ -548,7 +565,7 @@
       "assertionNumber": "Enter a number",
       "assertionRegex": "Enter a valid regular expression of at most {max} characters",
       "assertionTooLong": "At most {max} characters",
-      "locationsTooMany": "Pick one location",
+      "locationsTooMany": "Pick at most {max} locations",
       "locationsTypeUnsupported": "Group, manual, push and Steam monitors run on this server only"
     },
     "form": {
@@ -664,10 +681,17 @@
         "publicNameDescription": "Shown on status pages instead of the friendly name. Leave empty to use the friendly name.",
         "descriptionLabel": "Description",
         "descriptionPlaceholder": "Shown on the detail page and status pages.",
-        "location": "Check location",
+        "locations": "Check locations",
         "locationLocal": "Local (this server's workers)",
         "locationOffline": "{name} (offline)",
-        "locationDescription": "Where the checks run. A probe location checks private networks from the inside; manage locations under <link>Settings → Locations</link>."
+        "locationDescription": "Where the checks run. A probe location checks private networks from the inside; several locations tell an outage from a broken network path. Manage locations under <link>Settings → Locations</link>.",
+        "quorum": "Quorum",
+        "quorumDescription": "Checked from {count} locations: the monitor changes status when this many of them agree. Notifications name the failing locations.",
+        "quorumOptions": {
+          "any": "Any location ({needed} of {count})",
+          "half": "At least half ({needed} of {count})",
+          "all": "All locations ({needed} of {count})"
+        }
       },
       "timing": {
         "title": "Timing",
@@ -5355,7 +5379,7 @@
     "locationSlugReserved": "“local” is reserved for the workers of this server.",
     "locationSlugTaken": "Another location of this organization already uses this slug.",
     "locationLabelDuplicate": "Each label key may only be used once.",
-    "monitorTooManyLocations": "A monitor can be checked from at most {max, plural, one {# location} other {# locations}} for now.",
+    "monitorTooManyLocations": "A monitor can be checked from at most {max, plural, one {# location} other {# locations}}.",
     "monitorTypeNotOnProbe": "Group, manual, push and Steam monitors cannot run on a probe location.",
     "checkOnProbe": "This monitor is checked by a probe location, so “Check now” cannot record a result from this server. Run a dry run (record=false) to test the target from here."
   },

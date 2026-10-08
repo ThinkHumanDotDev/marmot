@@ -8,6 +8,7 @@
  * Policy:
  * - `stat-minutely`      older than 24 hours
  * - `stat-hourly`        older than 30 days
+ * - `stat-location-hourly` older than 30 days (per-location series of multi-location monitors, #92)
  * - `stat-daily`         older than `KEEP_DATA_PERIOD_DAYS` (skipped when < 1, like Uptime Kuma)
  * - `heartbeats`         non-important beats older than 24 hours, important beats older than
  *                        `KEEP_DATA_PERIOD_DAYS` (only when the engine's collection exists)
@@ -60,6 +61,7 @@ export type RetentionOptions = {
 export type RetentionResult = {
   minutely: number
   hourly: number
+  locationHourly: number
   daily: number
   heartbeats: number
   importantHeartbeats: number
@@ -116,6 +118,7 @@ export async function runRetention(
   const result: RetentionResult = {
     minutely: 0,
     hourly: 0,
+    locationHourly: 0,
     daily: 0,
     heartbeats: 0,
     importantHeartbeats: 0,
@@ -129,6 +132,9 @@ export async function runRetention(
     timestamp: { less_than: cutoffs.minutely },
   })
   result.hourly = await deleteWhere(payload, 'stat-hourly', {
+    timestamp: { less_than: cutoffs.hourly },
+  })
+  result.locationHourly = await deleteWhere(payload, 'stat-location-hourly', {
     timestamp: { less_than: cutoffs.hourly },
   })
 

@@ -302,7 +302,7 @@ export class ProbeAgent {
         ? connectivityConfigFromEnv()
         : this.options.connectivity
     if (!location || !connectivityConfig || this.connectivity || this.stopped) return
-    // Registered under the location's id: `connectivityLocationOf(monitor)` picks it.
+    // Registered under the location's id, which `checkNow` passes to the guard.
     this.connectivity = new ConnectivityMonitor({ location, config: connectivityConfig })
     setConnectivityMonitor(this.connectivity)
     void this.connectivity.start().catch((err) => log.error({ err }, 'connectivity probe failed'))
@@ -351,8 +351,12 @@ export class ProbeAgent {
     let result: CheckResult
     try {
       const { monitor } = entry
-      result = await guardAgainstOfflineChecker(this.payload, monitor, () =>
-        this.options.runCheck(this.payload, monitor, checkTimeoutMs(monitor)),
+      // Judged by this location's connectivity, whatever else the monitor is assigned to (#92).
+      result = await guardAgainstOfflineChecker(
+        this.payload,
+        monitor,
+        () => this.options.runCheck(this.payload, monitor, checkTimeoutMs(monitor)),
+        this.config?.location.id,
       )
     } catch (err) {
       result = { ok: false, msg: err instanceof Error ? err.message : String(err) }
