@@ -6,6 +6,7 @@ import { StatusPageEditor } from '@/components/status-pages/editor/status-page-e
 import type { MonitorOption } from '@/components/status-pages/api'
 import { toTemplateRow } from '@/lib/templates'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
+import { orgAllowsCustomDomains } from '@/server/billing/entitlements'
 import { getInstanceSettings } from '@/server/settings'
 
 import { resolveOrg } from '../resolve-org'
@@ -120,6 +121,7 @@ export default async function StatusPageEditorPage({
       canSendNotifications={can('subscriber:send')}
       smsChannels={twilioChannels.map((channel) => ({ id: channel.id, name: channel.name }))}
       trustProxy={settings.trustProxy}
+      customDomains={await orgAllowsCustomDomains(payload, org.id)}
     />
   )
 }

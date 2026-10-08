@@ -12,7 +12,10 @@ import { orgScoped } from '@/access/org-scoped'
 import { attachDefaultNotifications } from './Notifications'
 import { childLogger } from '@/lib/logger'
 import type { Monitor } from '@/payload-types'
-import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
+import {
+  enforceEntitlementOnCreate,
+  enforceMinIntervalOnChange,
+} from '@/server/billing/entitlements'
 import { MONITOR_TARGET_FIELDS, monitorTargetProblem } from '@/server/security/monitor-targets'
 import { outboundGuardActive } from '@/server/security/outbound-guard'
 
@@ -433,6 +436,7 @@ export const Monitors: CollectionConfig = {
       enforceOutboundPolicy,
       // Plan limits (no-op unless BILLING_ENABLED).
       enforceEntitlementOnCreate('monitors'),
+      enforceMinIntervalOnChange,
     ],
     afterChange: [
       async ({ doc, req }) => {

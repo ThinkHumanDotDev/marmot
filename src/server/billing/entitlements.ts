@@ -15,16 +15,21 @@ import {
 
 import { env } from '@/env'
 import {
-  assertEntitlement,
+  assertCustomDomains,
+  assertMinInterval,
+  assertRetention,
   effectivePlan,
   EntitlementError,
   getEntitlements,
+  isWithinEntitlement,
+  limitOf,
   type CountedResource,
+  type EntitlementResource,
   type Entitlements,
   type Plan,
   type PlanSource,
 } from '@/lib/entitlements'
-import { apiError } from '@/server/errors'
+import { apiError, type ErrorKey } from '@/server/errors'
 
 export type OrgId = string | number
 
@@ -133,10 +138,19 @@ export async function getOrgEntitlements(
 /** The HTTP status used when a plan limit blocks a write. */
 export const ENTITLEMENT_HTTP_STATUS = 402
 
+const ERROR_KEY: Record<EntitlementResource, ErrorKey> = {
+  monitors: 'planLimit',
+  members: 'planLimit',
+  statusPages: 'planLimit',
+  minIntervalSeconds: 'planMinInterval',
+  retentionDays: 'planRetention',
+  customDomains: 'planCustomDomains',
+}
+
 /** Wraps an `EntitlementError` in a public `APIError` (402) with structured `data`. */
 export function toApiError(error: EntitlementError, plan: Plan): APIError {
   return apiError(
-    'planLimit',
+    ERROR_KEY[error.resource],
     ENTITLEMENT_HTTP_STATUS,
     { resource: error.resource, limit: error.limit },
     {
@@ -173,26 +187,27 @@ const currentCount = (
 }
 
 /**
- * Throws a 402 `APIError` when adding one more `resource` to `orgId` would exceed the plan. A no-op
- * while billing is disabled.
+ * Throws a 402 `APIError` when adding one more `resource` (or `options.adding` of them) to `orgId`
+ * would exceed the plan. A no-op while billing is disabled.
  */
 export async function assertOrgEntitlement(
   payload: Payload,
   resource: CountedResource,
   orgId: OrgId,
-  options: LocalOptions = {},
+  options: LocalOptions & {
+    /** How many are about to be added at once (imports); the default is one. */
+    adding?: number
+  } = {},
 ): Promise<void> {
   if (!isBillingEnabled()) return
+  const adding = Math.max(1, options.adding ?? 1)
   const org = await loadPlanSource(payload, orgId, options)
   const plan = effectivePlan(org)
   const entitlements = entitlementsFor(org)
   const current = await currentCount(payload, resource, orgId, options)
-  try {
-    assertEntitlement(entitlements, resource, current)
-  } catch (error) {
-    if (error instanceof EntitlementError) throw toApiError(error, plan)
-    throw error
-  }
+  // The last of the `adding` documents must still fit.
+  if (isWithinEntitlement(entitlements, resource, current + adding - 1)) return
+  throw toApiError(new EntitlementError(resource, limitOf(entitlements, resource), current), plan)
 }
 
 /**
@@ -211,4 +226,176 @@ export function enforceEntitlementOnCreate(
     await assertOrgEntitlement(req.payload, resource, orgId, { req })
     return data
   }
+}
+
+// ---- Feature limits (#161): minimum interval, retention, custom domains ------------------------
+
+/**
+ * Loads the organization's plan and runs `check` against its entitlements, turning an
+ * `EntitlementError` into the 402 `APIError`. A no-op (no query) while billing is disabled.
+ */
+async function assertOrgFeature(
+  payload: Payload,
+  orgId: OrgId,
+  options: LocalOptions,
+  check: (entitlements: Entitlements) => void,
+): Promise<void> {
+  if (!isBillingEnabled()) return
+  const org = await loadPlanSource(payload, orgId, options)
+  try {
+    check(entitlementsFor(org))
+  } catch (error) {
+    if (error instanceof EntitlementError) throw toApiError(error, effectivePlan(org))
+    throw error
+  }
+}
+
+/** 402 when `seconds` is below the organization's minimum check interval. */
+export const assertOrgMinInterval = (
+  payload: Payload,
+  orgId: OrgId,
+  seconds: number,
+  options: LocalOptions = {},
+) => assertOrgFeature(payload, orgId, options, (e) => assertMinInterval(e, seconds))
+
+/** 402 when a period of `days` reaches further back than the organization's plan keeps. */
+export const assertOrgRetention = (
+  payload: Payload,
+  orgId: OrgId,
+  days: number,
+  options: LocalOptions = {},
+) => assertOrgFeature(payload, orgId, options, (e) => assertRetention(e, days))
+
+/** 402 unless the organization's plan includes custom status page domains. */
+export const assertOrgCustomDomains = (
+  payload: Payload,
+  orgId: OrgId,
+  options: LocalOptions = {},
+) => assertOrgFeature(payload, orgId, options, assertCustomDomains)
+
+/**
+ * The organization's minimum check interval in seconds for the scheduler, or `0` ("no floor")
+ * while billing is disabled, without a query.
+ */
+export async function getOrgMinIntervalSeconds(
+  payload: Payload,
+  orgId: OrgId | null,
+  options: LocalOptions = {},
+): Promise<number> {
+  if (!isBillingEnabled() || orgId === null) return 0
+  return entitlementsFor(await loadPlanSource(payload, orgId, options)).minIntervalSeconds
+}
+
+/**
+ * `getOrgMinIntervalSeconds` with a per-call memo, for loops over many monitors (worker boot,
+ * probe configuration). Each organization is loaded once.
+ */
+export function minIntervalResolver(payload: Payload): (orgId: OrgId | null) => Promise<number> {
+  const memo = new Map<string, Promise<number>>()
+  return (orgId) => {
+    if (!isBillingEnabled() || orgId === null) return Promise.resolve(0)
+    const key = String(orgId)
+    let value = memo.get(key)
+    if (!value) {
+      value = getOrgMinIntervalSeconds(payload, orgId)
+      memo.set(key, value)
+    }
+    return value
+  }
+}
+
+/** Whether the organization's plan serves status pages on custom domains (always while billing is off). */
+export async function orgAllowsCustomDomains(
+  payload: Payload,
+  orgId: OrgId | null,
+  options: LocalOptions = {},
+): Promise<boolean> {
+  if (!isBillingEnabled() || orgId === null) return true
+  return entitlementsFor(await loadPlanSource(payload, orgId, options)).customDomains
+}
+
+/** Days of history the organization's plan keeps (`Infinity` while billing is disabled). */
+export async function getOrgRetentionDays(
+  payload: Payload,
+  orgId: OrgId,
+  options: LocalOptions = {},
+): Promise<number> {
+  if (!isBillingEnabled()) return Infinity
+  return entitlementsFor(await loadPlanSource(payload, orgId, options)).retentionDays
+}
+
+/**
+ * Whether one more member fits (members plus pending invitations below `maxMembers`). For the
+ * paths that add members without an invitation (invite link, single sign-on) and must not fail
+ * hard. Always `true` while billing is disabled.
+ */
+export async function hasMemberSeat(
+  payload: Payload,
+  orgId: OrgId,
+  options: LocalOptions = {},
+): Promise<boolean> {
+  if (!isBillingEnabled()) return true
+  const org = await loadPlanSource(payload, orgId, options)
+  const current = await currentCount(payload, 'members', orgId, options)
+  return current < entitlementsFor(org).maxMembers
+}
+
+/**
+ * `beforeChange` hook of `monitors`: a create or an update that sets `interval` or `retryInterval`
+ * below the plan's minimum fails with 402. Values that do not change are never checked, so a
+ * downgraded organization can still edit its monitors (the engine checks them no faster than the
+ * plan allows, see `effectiveIntervalMs`).
+ */
+export const enforceMinIntervalOnChange: CollectionBeforeChangeHook = async ({
+  data,
+  operation,
+  originalDoc,
+  req,
+}) => {
+  if (!isBillingEnabled() || !data) return data
+  const record = data as Record<string, unknown>
+  const original = (originalDoc ?? {}) as Record<string, unknown>
+  const orgId = relationId(record.organization ?? original.organization)
+  if (orgId === null) return data
+  const requested: number[] = []
+  for (const field of ['interval', 'retryInterval'] as const) {
+    const value = record[field]
+    if (typeof value !== 'number' || !Number.isFinite(value)) continue
+    if (operation === 'update' && original[field] === value) continue
+    requested.push(value)
+  }
+  if (requested.length === 0) return data
+  await assertOrgMinInterval(req.payload, orgId, Math.min(...requested), { req })
+  return data
+}
+
+/**
+ * `beforeChange` hook of `status-pages`: adding a custom hostname needs a plan with
+ * `customDomains` (402 otherwise). Hostnames the page already has are kept as they are, so a
+ * downgraded organization can still edit its page; they just stop resolving
+ * (`/api/status-pages/resolve-domain`) until the plan includes custom domains again.
+ */
+export const enforceCustomDomainsOnChange: CollectionBeforeChangeHook = async ({
+  data,
+  originalDoc,
+  req,
+}) => {
+  if (!isBillingEnabled() || !data) return data
+  const hostnames = (rows: unknown): string[] =>
+    Array.isArray(rows)
+      ? rows
+          .map((row) => (row as { hostname?: unknown } | null)?.hostname)
+          .filter((h): h is string => typeof h === 'string' && h.length > 0)
+      : []
+  const next = hostnames((data as { domains?: unknown }).domains)
+  if (next.length === 0) return data
+  const existing = new Set(hostnames((originalDoc as { domains?: unknown } | undefined)?.domains))
+  if (next.every((hostname) => existing.has(hostname))) return data
+  const orgId = relationId(
+    (data as { organization?: unknown }).organization ??
+      (originalDoc as { organization?: unknown } | undefined)?.organization,
+  )
+  if (orgId === null) return data
+  await assertOrgCustomDomains(req.payload, orgId, { req })
+  return data
 }

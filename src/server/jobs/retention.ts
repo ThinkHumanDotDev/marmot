@@ -13,6 +13,8 @@
  *                        `KEEP_DATA_PERIOD_DAYS`; skipped when < 1, like Uptime Kuma)
  * - `heartbeats`         non-important beats older than 24 hours, important beats older than
  *                        `keepDataPeriodDays` (only when the engine's collection exists)
+ * - with `BILLING_ENABLED`, daily rows and important beats of organizations whose plan keeps less
+ *   (`retentionDays`) are pruned at `min(keepDataPeriodDays, retentionDays)` (#161)
  * - `status-page-subscribers` self sign-ups never confirmed within 72 hours
  * - `subscriber-deliveries` older than 90 days (the per-subscriber delivery log)
  * - `webhook-deliveries` older than `WEBHOOK_DELIVERY_RETENTION_DAYS` (default 14)
@@ -31,9 +33,11 @@ import type { CollectionSlug, Payload, Where } from 'payload'
 
 import { deleteInBatches } from '@/db/delete-in-batches'
 import { env } from '@/env'
+import { effectiveRetentionDays } from '@/lib/entitlements'
 import { UNCONFIRMED_SUBSCRIBER_TTL_HOURS } from '@/lib/status-page-subscribers'
 import { childLogger } from '@/lib/logger'
 import { QUEUE_NAMES } from '@/server/engine'
+import { entitlementsFor, isBillingEnabled } from '@/server/billing/entitlements'
 import { createRedis } from '@/server/redis'
 import { getInstanceSettings } from '@/server/settings'
 import { getDailyKey, getHourlyKey, getMinutelyKey } from '@/server/stats/uptime-calculator'
@@ -107,6 +111,34 @@ const hasCollection = (payload: Payload, slug: string): slug is CollectionSlug =
   Object.prototype.hasOwnProperty.call(payload.collections, slug)
 
 /**
+ * Organizations whose plan keeps less long-term history than the instance (`keepDataPeriodDays`),
+ * grouped by the number of days they keep, so each group is pruned with one query per collection.
+ */
+export async function planRetentionGroups(
+  payload: Payload,
+  keepDataPeriodDays: number,
+): Promise<Map<number, (string | number)[]>> {
+  const groups = new Map<number, (string | number)[]>()
+  if (!isBillingEnabled()) return groups
+  const instance = keepDataPeriodDays >= 1 ? keepDataPeriodDays : Infinity
+  const { docs } = await payload.find({
+    collection: 'organizations',
+    depth: 0,
+    limit: 0,
+    pagination: false,
+    overrideAccess: true,
+    select: { plan: true, subscriptionStatus: true },
+  })
+  for (const org of docs) {
+    const days = effectiveRetentionDays(keepDataPeriodDays, entitlementsFor(org).retentionDays)
+    if (!Number.isFinite(days) || days >= instance) continue
+    groups.set(days, [...(groups.get(days) ?? []), org.id])
+  }
+  return groups
+}
+
+/**
+ * Prune expired rows./**
  * Prune expired rows. `now` is injectable for tests. Returns how many rows were deleted per
  * collection.
  */
@@ -168,6 +200,29 @@ export async function runRetention(
           { important: { equals: true } },
         ],
       })
+    }
+  }
+
+  // Hosted plans (#161): organizations whose plan keeps less history than the instance are pruned
+  // to their plan's `retentionDays`. Raw beats, minutely and hourly rows follow the rules above.
+  if (isBillingEnabled()) {
+    for (const [days, organizations] of await planRetentionGroups(payload, keepDays)) {
+      const cutoff = subtractSeconds(now, days * 86400)
+      result.daily += await deleteWhere('stat-daily', {
+        and: [
+          { organization: { in: organizations } },
+          { timestamp: { less_than: getDailyKey(cutoff) } },
+        ],
+      })
+      if (hasCollection(payload, HEARTBEATS_SLUG)) {
+        result.importantHeartbeats += await deleteWhere(HEARTBEATS_SLUG, {
+          and: [
+            { organization: { in: organizations } },
+            { time: { less_than: cutoff.toISOString() } },
+            { important: { equals: true } },
+          ],
+        })
+      }
     }
   }
 

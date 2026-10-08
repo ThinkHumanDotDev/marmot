@@ -8,9 +8,11 @@ import { createHash } from 'node:crypto'
 import type { Payload } from 'payload'
 
 import { env } from '@/env'
+import { clampInterval } from '@/lib/entitlements'
 import { childLogger } from '@/lib/logger'
 import { isMultiLocation, type LocationStatus } from '@/lib/probe-locations'
 import type { DockerHost, Location, Monitor, MonitorProxy } from '@/payload-types'
+import { minIntervalResolver } from '@/server/billing/entitlements'
 import { createRateLimiter, type RateLimiter } from '@/server/security/rate-limit'
 
 import { displayProbeToken, extractProbeToken, hashProbeToken } from './tokens'
@@ -287,15 +289,29 @@ export async function buildProbeConfig(
     })
     for (const doc of docs) locationStatuses.set(String(relationId(doc.monitor)), doc.lastStatus)
   }
+  // Agents never check faster than the organization's plan allows (#161; no-op without billing).
+  const minInterval = minIntervalResolver(payload)
+  const probeMonitors = await Promise.all(
+    monitors.map(async (monitor) => {
+      const wire = isMultiLocation(monitor)
+        ? toProbeMonitor(monitor, locationStatuses.get(String(monitor.id)) ?? null)
+        : toProbeMonitor(monitor)
+      const floor = await minInterval(relationId(monitor.organization))
+      if (floor <= 0) return wire
+      return {
+        ...wire,
+        interval: clampInterval(wire.interval, floor),
+        ...(typeof wire.retryInterval === 'number'
+          ? { retryInterval: clampInterval(wire.retryInterval, floor) }
+          : {}),
+      }
+    }),
+  )
   const config: ProbeConfig = {
     version: 1,
     location: { id: String(location.id), name: location.name, slug: location.slug },
     refreshSeconds: probeRefreshSeconds(),
-    monitors: monitors.map((monitor) =>
-      isMultiLocation(monitor)
-        ? toProbeMonitor(monitor, locationStatuses.get(String(monitor.id)) ?? null)
-        : toProbeMonitor(monitor),
-    ),
+    monitors: probeMonitors,
     resources: { proxies, dockerHosts },
   }
   const etag = `"${createHash('sha256').update(JSON.stringify(config)).digest('base64url')}"`

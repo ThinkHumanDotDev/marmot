@@ -13,7 +13,8 @@ import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import { checkGroupAccess, extractGroups, parseGroupList } from '@/lib/sso-groups'
 import type { Invitation, User } from '@/payload-types'
-import { recordRequestAuditEvent, recordUserAuditEvent } from '@/server/security/audit'
+import { hasMemberSeat } from '@/server/billing/entitlements'
+import { auditTarget, recordRequestAuditEvent, recordUserAuditEvent } from '@/server/security/audit'
 import { isConnectionMeta } from '@/server/sso/connections'
 import { applyGroupMapping, type GroupPolicy } from '@/server/sso/group-mapping'
 import { isVerifiedDomainOf } from '@/server/sso/domains'
@@ -206,6 +207,26 @@ export const userResolution: UserResolutionOptions = {
       overrideAccess: true,
     })
     if (getUserRole(current, organization)) return
+    // Just-in-time membership takes a seat (#161): with the plan full the user signs in without
+    // joining, and the refusal is audited. No-op without billing.
+    if (!(await hasMemberSeat(payload, organization))) {
+      log.warn({ user: user.id, organization }, 'SSO join skipped: the plan has no free seat')
+      await recordRequestAuditEvent(payload, request, {
+        action: 'member.sync_skipped',
+        actorType: 'system',
+        actorId: `sso:${provider.id}`,
+        actorLabel: provider.name,
+        organization,
+        target: auditTarget('users', user.id),
+        entityType: 'member',
+        entityId: user.id,
+        entityLabel: current.email,
+        before: null,
+        after: { role: defaultRole },
+        metadata: { source: 'sso_jit', provider: provider.id, reason: 'plan_limit' },
+      })
+      return
+    }
     await addOrgMembership({ payload, userId: user.id, orgId: organization, role: defaultRole })
     log.info({ user: user.id, organization, role: defaultRole }, 'joined organization through SSO')
   },

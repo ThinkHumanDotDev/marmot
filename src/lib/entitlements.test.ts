@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  assertCustomDomains,
   assertEntitlement,
+  assertMinInterval,
+  assertRetention,
+  clampInterval,
+  effectiveRetentionDays,
+  isPeriodWithinRetention,
+  periodDays,
   effectivePlan,
   EntitlementError,
   entitlementMessage,
@@ -124,6 +131,42 @@ describe('entitlements', () => {
         customDomains: true,
       })
       expect(serializeEntitlements(PLAN_LIMITS.free).maxMonitors).toBe(10)
+    })
+  })
+
+  describe('feature limits', () => {
+    it('clamps intervals to the plan minimum, and not at all without one', () => {
+      expect(clampInterval(20, 60)).toBe(60)
+      expect(clampInterval(120, 60)).toBe(120)
+      expect(clampInterval(20, 0)).toBe(20)
+      expect(clampInterval(20, undefined)).toBe(20)
+    })
+
+    it('throws EntitlementError for intervals, periods and domains beyond the plan', () => {
+      const free = PLAN_LIMITS.free
+      expect(() => assertMinInterval(free, 60)).not.toThrow()
+      expect(() => assertMinInterval(free, 30)).toThrow(EntitlementError)
+      expect(() => assertRetention(free, 30)).not.toThrow()
+      expect(() => assertRetention(free, 90)).toThrow(/keeps 30 days of history/)
+      expect(() => assertCustomDomains(free)).toThrow(/does not include custom domains/)
+      expect(() => assertCustomDomains(PLAN_LIMITS.team)).not.toThrow()
+      expect(() => assertRetention(PLAN_LIMITS.enterprise, 3650)).not.toThrow()
+    })
+
+    it('caps the instance retention with the plan (below 1 = keep forever)', () => {
+      expect(effectiveRetentionDays(365, 30)).toBe(30)
+      expect(effectiveRetentionDays(14, 30)).toBe(14)
+      expect(effectiveRetentionDays(0, 90)).toBe(90)
+      expect(effectiveRetentionDays(0, Infinity)).toBe(Infinity)
+    })
+
+    it('measures stats periods in days', () => {
+      expect(periodDays('24h')).toBe(1)
+      expect(periodDays('30d')).toBe(30)
+      expect(periodDays('1y')).toBe(365)
+      expect(isPeriodWithinRetention('90d', 30)).toBe(false)
+      expect(isPeriodWithinRetention('30d', 30)).toBe(true)
+      expect(isPeriodWithinRetention('1y', null)).toBe(true)
     })
   })
 })

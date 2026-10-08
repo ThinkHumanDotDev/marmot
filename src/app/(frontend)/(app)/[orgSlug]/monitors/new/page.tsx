@@ -10,6 +10,7 @@ import {
   MONITOR_TYPE_NAMES,
   type MonitorTypeName,
 } from '@/lib/validation/monitor'
+import { getOrgMinIntervalSeconds } from '@/server/billing/entitlements'
 import { listMonitorTypes } from '@/server/monitor-types'
 import {
   getMonitorFormResources,
@@ -75,6 +76,7 @@ export default async function NewMonitorPage({ params, searchParams }: NewMonito
           groups={groups}
           resources={resources}
           canPickChannels={ctx.allowed('notification:read')}
+          planMinInterval={await getOrgMinIntervalSeconds(ctx.payload, ctx.org.id)}
         />
       </section>
     </>

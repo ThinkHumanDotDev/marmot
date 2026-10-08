@@ -24,6 +24,8 @@ import { defaultLocale, localeNames, locales, type Locale } from '@/i18n/locales
 import { PLANS, SUBSCRIPTION_STATUSES } from '@/lib/entitlements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { captureServerEvent, hashAnalyticsId } from '@/server/analytics'
+import { afterCommit } from '@/db/after-commit'
+import { isBillingEnabled } from '@/server/billing/entitlements'
 
 import { translateError, type ErrorKey, type ErrorValues } from '@/server/errors'
 import { slugMessageIn, userLocale } from '@/server/request-locale'
@@ -236,6 +238,36 @@ const removeLocations: CollectionBeforeDeleteHook = async ({ id, req }) => {
 }
 
 /** Webhook endpoints and their delivery log carry a NOT NULL `organization` on Postgres too. */
+/**
+ * A plan or subscription status change (Stripe webhook, superadmin edit) changes the minimum check
+ * interval (#161): re-plan the organization's schedulers once the change is committed. Nothing
+ * happens while billing is disabled.
+ */
+const resyncSchedulesOnPlanChange: CollectionAfterChangeHook<Organization> = async ({
+  doc,
+  previousDoc,
+  operation,
+  req,
+}) => {
+  if (operation !== 'update' || !isBillingEnabled()) return doc
+  if (
+    doc.plan === previousDoc?.plan &&
+    doc.subscriptionStatus === previousDoc?.subscriptionStatus
+  ) {
+    return doc
+  }
+  const { engineHooksEnabled, resyncOrganization } = await import('@/server/engine/scheduler')
+  if (!engineHooksEnabled()) return doc
+  await afterCommit(req, async () => {
+    try {
+      await resyncOrganization(req.payload, doc.id)
+    } catch (err) {
+      req.payload.logger.warn({ err, organization: doc.id }, 'could not re-plan monitor schedules')
+    }
+  })
+  return doc
+}
+
 const removeWebhooks: CollectionBeforeDeleteHook = async ({ id, req }) => {
   for (const collection of ['webhook-deliveries', 'webhook-endpoints'] as const) {
     await req.payload.delete({
@@ -269,7 +301,12 @@ export const Organizations: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [normalizeSlug],
-    afterChange: [grantOwnerMembership, syncStripeCustomer, trackOrgCreated],
+    afterChange: [
+      grantOwnerMembership,
+      syncStripeCustomer,
+      trackOrgCreated,
+      resyncSchedulesOnPlanChange,
+    ],
     beforeDelete: [
       removeInvitations,
       removeApiKeys,
