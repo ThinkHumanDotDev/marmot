@@ -5,14 +5,14 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 
 import type { PermissionOverrides } from '@/access/permissions'
-import pkg from '../../../package.json' with { type: 'json' }
+import { MARMOT_VERSION } from '@/lib/version'
 
 import type { DispatchContext } from './dispatch'
 import { toolsFor } from './tools'
 
 export const MCP_SERVER_NAME = 'marmot'
 export const MCP_SERVER_TITLE = 'Marmot'
-export const MCP_SERVER_VERSION: string = pkg.version
+export const MCP_SERVER_VERSION: string = MARMOT_VERSION
 
 export const MCP_INSTRUCTIONS = [
   'Marmot is a status monitor. This server acts for one organization: the one that owns the API key.',

@@ -14,25 +14,25 @@ features whose pull requests are merging alongside this documentation.
 | [Deployment](Deployment.md)           | Caddy auto-TLS, running behind nginx/Traefik, MongoDB, scaling workers, backups and restore, upgrades, single-container mode. |
 | [Single sign-on](Single-Sign-On.md)   | Generic OIDC, GitHub and Google sign-in, per-organization OIDC/SAML connections with verified domains, linked accounts.       |
 | [Security](Security.md)               | Hardening checklist: TLS, trusted proxies, rate limiting, security headers, audit log and admin access.                       |
-| [Telemetry](Telemetry.md)             | What the opt-in analytics collect and how consent works _(landing in the current release)_.                                   |
-| [Billing](Billing.md)                 | The plan/entitlement scaffold for hosted offerings; off on self-hosted installs _(landing in the current release)_.           |
+| [Telemetry](Telemetry.md)             | What the opt-in analytics collect and how consent works.                                                                      |
+| [Billing](Billing.md)                 | The plan/entitlement scaffold for hosted offerings; off on self-hosted installs.                                              |
 
 ## Use it
 
-| Page                                                      | What it covers                                                                                                                                               |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [Monitors](Monitors.md)                                   | Monitor concepts: types, intervals and retries, groups, push monitors, pausing and cloning.                                                                  |
-| [Monitor types](Monitor-Types.md)                         | Field-by-field reference for every monitor type.                                                                                                             |
-| [Probe locations](Probe-Locations.md)                     | Checks from your own networks: self-hosted probe agents, outbound HTTPS only.                                                                                |
-| [Notifications](Notifications.md)                         | Notification channels, the delivery pipeline, message templates and the provider reference.                                                                  |
-| [Status pages](Status-Pages.md)                           | Public status pages, incidents, custom domains and the public JSON/RSS endpoints.                                                                            |
-| [Maintenance](Maintenance.md)                             | Maintenance windows and how they silence alerts.                                                                                                             |
-| [Organizations and members](Organizations-and-Members.md) | Roles and permissions, invitations, invite links, ownership transfer, account settings.                                                                      |
-| [Integrations](Integrations.md)                           | Status badges, the push endpoint, Prometheus metrics, organization API keys and outbound event webhooks _(landing in the current release)_.                  |
-| [MCP server for AI agents](MCP.md)                        | Connect Claude, Cursor and other MCP clients with an API key; the tools and how they map onto the management API.                                            |
-| [Import and export](Import-and-Export.md)                 | Importing an Uptime Kuma backup or a Marmot export, and exporting an organization.                                                                           |
-| [CLI and monitors as code](CLI.md)                        | The `marmot` command line: status from the terminal, monitors in YAML with plan/apply, GitOps _(landing in the current release)_.                            |
-| [GitHub Action](GitHub-Action.md)                         | Run Marmot's checks after a deploy and fail the job on a broken endpoint; plan and apply monitors as code from workflows _(landing in the current release)_. |
+| Page                                                      | What it covers                                                                                                            |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| [Monitors](Monitors.md)                                   | Monitor concepts: types, intervals and retries, groups, push monitors, pausing and cloning.                               |
+| [Monitor types](Monitor-Types.md)                         | Field-by-field reference for every monitor type.                                                                          |
+| [Probe locations](Probe-Locations.md)                     | Checks from your own networks: self-hosted probe agents, outbound HTTPS only.                                             |
+| [Notifications](Notifications.md)                         | Notification channels, the delivery pipeline, message templates and the provider reference.                               |
+| [Status pages](Status-Pages.md)                           | Public status pages, incidents, custom domains and the public JSON/RSS endpoints.                                         |
+| [Maintenance](Maintenance.md)                             | Maintenance windows and how they silence alerts.                                                                          |
+| [Organizations and members](Organizations-and-Members.md) | Roles and permissions, invitations, invite links, ownership transfer, account settings.                                   |
+| [Integrations](Integrations.md)                           | Status badges, the push endpoint, Prometheus metrics, organization API keys and outbound event webhooks.                  |
+| [MCP server for AI agents](MCP.md)                        | Connect Claude, Cursor and other MCP clients with an API key; the tools and how they map onto the management API.         |
+| [Import and export](Import-and-Export.md)                 | Importing an Uptime Kuma backup or a Marmot export, and exporting an organization.                                        |
+| [CLI and monitors as code](CLI.md)                        | The `marmot` command line: status from the terminal, monitors in YAML with plan/apply, GitOps.                            |
+| [GitHub Action](GitHub-Action.md)                         | Run Marmot's checks after a deploy and fail the job on a broken endpoint; plan and apply monitors as code from workflows. |
 
 ## Change it
 

@@ -16,11 +16,18 @@
  * - `webhook-deliveries` older than `WEBHOOK_DELIVERY_RETENTION_DAYS` (default 14)
  * - `audit-logs`         older than `AUDIT_LOG_RETENTION_DAYS` (default 365; 0 keeps them forever)
  *
+ * Rows are deleted in batches of `DELETE_BATCH_SIZE` (`deleteInBatches`), so a large backlog (a big
+ * install, a worker that was down, a lowered retention period) never has to fit in memory (#237).
+ * The telemetry and log collections have no delete hooks and are removed straight through the
+ * database adapter; unconfirmed subscribers go through `payload.delete` because their
+ * `beforeDelete` hook removes their delivery rows.
+ *
  * Runs hourly as a BullMQ job scheduler on the `marmot:maintenance` queue.
  */
 import { Queue, Worker, type ConnectionOptions, type Job } from 'bullmq'
 import type { CollectionSlug, Payload, Where } from 'payload'
 
+import { deleteInBatches } from '@/db/delete-in-batches'
 import { env } from '@/env'
 import { UNCONFIRMED_SUBSCRIBER_TTL_HOURS } from '@/lib/status-page-subscribers'
 import { childLogger } from '@/lib/logger'
@@ -55,6 +62,8 @@ export type RetentionOptions = {
   auditLogRetentionDays?: number
   /** Days to keep the webhook delivery log. Defaults to `WEBHOOK_DELIVERY_RETENTION_DAYS`. */
   webhookDeliveryRetentionDays?: number
+  /** Rows deleted per batch. Defaults to `DELETE_BATCH_SIZE`; tests pass a small value. */
+  batchSize?: number
 }
 
 export type RetentionResult = {
@@ -90,14 +99,6 @@ export function retentionCutoffs(
   }
 }
 
-async function deleteWhere(payload: Payload, collection: CollectionSlug, where: Where) {
-  const result = await payload.delete({ collection, where, depth: 0 })
-  if (result.errors.length > 0) {
-    log.warn({ collection, errors: result.errors.length }, 'some rows could not be deleted')
-  }
-  return result.docs.length
-}
-
 const hasCollection = (payload: Payload, slug: string): slug is CollectionSlug =>
   Object.prototype.hasOwnProperty.call(payload.collections, slug)
 
@@ -113,6 +114,10 @@ export async function runRetention(
   const keepDays = opts.keepDataPeriodDays ?? env.KEEP_DATA_PERIOD_DAYS
   const auditDays = opts.auditLogRetentionDays ?? env.AUDIT_LOG_RETENTION_DAYS
   const cutoffs = retentionCutoffs(now, keepDays, auditDays)
+  const { batchSize } = opts
+  // Telemetry and logs: no collection hooks to run (see NOT_AUDITED in src/collections/audit.ts).
+  const deleteWhere = (collection: CollectionSlug, where: Where) =>
+    deleteInBatches(payload, collection, where, { batchSize })
   const result: RetentionResult = {
     minutely: 0,
     hourly: 0,
@@ -125,16 +130,16 @@ export async function runRetention(
     webhookDeliveries: 0,
   }
 
-  result.minutely = await deleteWhere(payload, 'stat-minutely', {
+  result.minutely = await deleteWhere('stat-minutely', {
     timestamp: { less_than: cutoffs.minutely },
   })
-  result.hourly = await deleteWhere(payload, 'stat-hourly', {
+  result.hourly = await deleteWhere('stat-hourly', {
     timestamp: { less_than: cutoffs.hourly },
   })
 
   const longTermEnabled = keepDays >= 1
   if (longTermEnabled) {
-    result.daily = await deleteWhere(payload, 'stat-daily', {
+    result.daily = await deleteWhere('stat-daily', {
       timestamp: { less_than: cutoffs.daily },
     })
   } else {
@@ -142,14 +147,14 @@ export async function runRetention(
   }
 
   if (hasCollection(payload, HEARTBEATS_SLUG)) {
-    result.heartbeats = await deleteWhere(payload, HEARTBEATS_SLUG, {
+    result.heartbeats = await deleteWhere(HEARTBEATS_SLUG, {
       and: [
         { time: { less_than: cutoffs.heartbeats.toISOString() } },
         { or: [{ important: { equals: false } }, { important: { exists: false } }] },
       ],
     })
     if (longTermEnabled) {
-      result.importantHeartbeats = await deleteWhere(payload, HEARTBEATS_SLUG, {
+      result.importantHeartbeats = await deleteWhere(HEARTBEATS_SLUG, {
         and: [
           { time: { less_than: cutoffs.importantHeartbeats.toISOString() } },
           { important: { equals: true } },
@@ -159,27 +164,33 @@ export async function runRetention(
   }
 
   if (hasCollection(payload, AUDIT_LOGS_SLUG) && auditDays >= 1) {
-    result.auditLogs = await deleteWhere(payload, AUDIT_LOGS_SLUG, {
+    result.auditLogs = await deleteWhere(AUDIT_LOGS_SLUG, {
       createdAt: { less_than: cutoffs.auditLogs.toISOString() },
     })
   }
 
   if (hasCollection(payload, 'status-page-subscribers')) {
-    result.unconfirmedSubscribers = await deleteWhere(payload, 'status-page-subscribers', {
-      and: [
-        { source: { equals: 'self_signup' } },
-        { confirmedAt: { exists: false } },
-        { createdAt: { less_than: cutoffs.unconfirmedSubscribers.toISOString() } },
-      ],
-    })
-    result.subscriberDeliveries = await deleteWhere(payload, 'subscriber-deliveries', {
+    // Hooks run: `beforeDelete` removes the subscriber's delivery rows.
+    result.unconfirmedSubscribers = await deleteInBatches(
+      payload,
+      'status-page-subscribers',
+      {
+        and: [
+          { source: { equals: 'self_signup' } },
+          { confirmedAt: { exists: false } },
+          { createdAt: { less_than: cutoffs.unconfirmedSubscribers.toISOString() } },
+        ],
+      },
+      { batchSize, hooks: true },
+    )
+    result.subscriberDeliveries = await deleteWhere('subscriber-deliveries', {
       createdAt: { less_than: cutoffs.subscriberDeliveries.toISOString() },
     })
   }
 
   if (hasCollection(payload, 'webhook-deliveries')) {
     const days = opts.webhookDeliveryRetentionDays ?? env.WEBHOOK_DELIVERY_RETENTION_DAYS
-    result.webhookDeliveries = await deleteWhere(payload, 'webhook-deliveries', {
+    result.webhookDeliveries = await deleteWhere('webhook-deliveries', {
       createdAt: { less_than: subtractSeconds(now, days * 86400).toISOString() },
     })
   }

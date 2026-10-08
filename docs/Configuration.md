@@ -214,7 +214,7 @@ Switches for running Marmot as a hosted service. Self-hosted installs leave them
 ## Billing
 
 A scaffold for hosted offerings. Self-hosted installs leave it off; every limit is then unlimited and no
-Stripe code is loaded. Details in [Billing](Billing.md) _(landing in the current release)_.
+Stripe code is loaded. Details in [Billing](Billing.md).
 
 | Variable                 | Default | Read by | Description                                                        |
 | ------------------------ | ------- | ------- | ------------------------------------------------------------------ |
@@ -227,7 +227,7 @@ Stripe code is loaded. Details in [Billing](Billing.md) _(landing in the current
 
 Marmot sends nothing by default: no analytics SDK is loaded, no cookie banner appears and nothing calls
 home. Setting a PostHog key enables opt-in product analytics behind a consent banner; what is collected is
-documented in [Telemetry](Telemetry.md) _(landing in the current release)_.
+documented in [Telemetry](Telemetry.md).
 
 | Variable                   | Default                    | Read by                  | Description                                                                                                 |
 | -------------------------- | -------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------- |
