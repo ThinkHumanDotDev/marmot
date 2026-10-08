@@ -1,4 +1,4 @@
-import { getPayload, type CollectionSlug, type Payload } from 'payload'
+import { getPayload, type CollectionSlug, type EmailAdapter, type Payload } from 'payload'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import config from '@payload-config'
@@ -376,7 +376,12 @@ describe('demo mode', () => {
       }
       expect(simulateOutcome({ ...input, profile: outage })).toMatchObject({ ok: false, msg: 'x' })
       const seeded = simulateCheck(
-        { id: 1, key: 'marketing-site', type: 'http', url: 'https://x' },
+        {
+          id: '1' as unknown as Monitor['id'],
+          key: 'marketing-site',
+          type: 'http',
+          url: 'https://x',
+        },
         time,
       )
       expect(seeded.msg).not.toMatch(/simulated/)
@@ -430,7 +435,7 @@ describe('demo mode', () => {
     it('replaces SMTP with the sink email adapter', async () => {
       setEnv({ SMTP_HOST: 'smtp.example.com' })
       try {
-        const adapter = getEmailAdapter()
+        const adapter = (await getEmailAdapter()) as EmailAdapter | undefined
         const initialized = adapter?.({ payload })
         expect(initialized?.name).toBe('demo-sink')
         await expect(
