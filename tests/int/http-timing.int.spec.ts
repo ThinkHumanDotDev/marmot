@@ -226,11 +226,23 @@ describe('HTTP request timing phases', () => {
     // Any deny list turns the guard on; this one does not match the local server.
     process.env.MONITOR_DENY_CIDRS = '203.0.113.0/24'
     resetEnvCache()
+    // The guard dials the first address `localhost` resolves to, without falling back to the other
+    // family: on hosts where that is `::1` (GitHub runners) the IPv4-only server would refuse it, so
+    // this check gets a server on both stacks (IPv4 only where IPv6 is unavailable).
+    const guardedServer = https.createServer({ cert, key }, slowHandler)
+    const guardedPort = await new Promise<number>((resolve, reject) => {
+      const onListening = () => resolve((guardedServer.address() as AddressInfo).port)
+      guardedServer.once('error', (err: NodeJS.ErrnoException) => {
+        if (err.code !== 'EAFNOSUPPORT' && err.code !== 'EADDRNOTAVAIL') return reject(err)
+        guardedServer.listen(0, '127.0.0.1', onListening)
+      })
+      guardedServer.listen({ port: 0, host: '::', ipv6Only: false }, onListening)
+    })
     try {
       const monitor = await createMonitor({
         name: 'guarded-timing',
         type: 'http',
-        url: `https://localhost:${httpsPort}/`,
+        url: `https://localhost:${guardedPort}/`,
         ignoreTls: true,
       })
       const heartbeat = await check(monitor)
@@ -243,6 +255,8 @@ describe('HTTP request timing phases', () => {
       if (saved === undefined) delete process.env.MONITOR_DENY_CIDRS
       else process.env.MONITOR_DENY_CIDRS = saved
       resetEnvCache()
+      guardedServer.closeAllConnections()
+      await new Promise((resolve) => guardedServer.close(resolve))
     }
   })
 
