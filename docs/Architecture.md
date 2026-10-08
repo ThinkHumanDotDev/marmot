@@ -117,22 +117,33 @@ Raw `heartbeats` are kept for 24 hours (important ones for `KEEP_DATA_PERIOD_DAY
 folded into three aggregate collections, one row per `(monitor, timestamp)` where `timestamp` is the unix
 second of the bucket start (minute / hour / UTC day), guarded by a unique compound index:
 
-| Collection      | Bucket | Kept                    | Serves |
-| --------------- | ------ | ----------------------- | ------ |
-| `stat-minutely` | 1 min  | 24 hours                | `24h`  |
-| `stat-hourly`   | 1 hour | 30 days                 | `30d`  |
-| `stat-daily`    | 1 day  | `KEEP_DATA_PERIOD_DAYS` | `1y`   |
+| Collection      | Bucket | Kept                    | Serves             |
+| --------------- | ------ | ----------------------- | ------------------ |
+| `stat-minutely` | 1 min  | 24 hours                | `24h`, `1d`        |
+| `stat-hourly`   | 1 hour | 30 days                 | `7d`, `14d`, `30d` |
+| `stat-daily`    | 1 day  | `KEEP_DATA_PERIOD_DAYS` | `90d`, `1y`        |
 
 Each row stores `up`, `down`, `ping` (average of UP beats), `pingMin`, `pingMax` and an `extras` JSON with
 `maintenance` (beats during maintenance, also counted as `up`), `degraded` (slow successful checks, also
-counted as `up`, their ping included) and `pingCount` (weight of `ping`). `pending`
+counted as `up`, their ping included) and `pingCount` (weight of `ping`), plus `latencyHistogram`, a
+JSON number array counting the pings of UP and DEGRADED beats per log-spaced bucket (four per doubling, from
+`[0, 1)` ms to an overflow bucket at 2^17 ms; `src/server/stats/latency-histogram.ts`). `pending`
 beats count as `down`. The maths is a port of Uptime Kuma's `UptimeCalculator`
 (`src/server/stats/uptime-calculator.ts`): the worker's heartbeat listener calls
 `recordHeartbeat(payload, { monitorId, organizationId, status, ping, time })`, which reads the three current
 buckets, applies the beat (running average, min/max) and writes them back through the Local API; an insert
 that loses the unique-index race is retried as an update. Reads (`getUptime`, `getAvgPing`, `getBuckets`,
 `getStats`) sum the buckets of the window `[now - range, now]`, falling back to the latest bucket when the
-window is empty, and are exposed at `GET /api/monitors/:id/stats?range=24h|30d|1y`.
+window is empty, and are exposed at `GET /api/monitors/:id/stats?range=…`.
+
+**Percentiles** (#95, `src/server/stats/range-stats.ts`): histograms merge by element-wise addition, so
+`getRangeStats()` derives p50, p75, p90, p95 and p99 of any window by merging the histograms of its buckets
+and reading the nearest-rank sample's bucket, interpolated by rank and bounded by the exact `pingMin` /
+`pingMax`; the result is always inside the histogram bucket of the true value (about ±19 %). It also folds
+the buckets into a fixed number of chart intervals (5 min for 1 d, 1 h for 7 d, 2 h for 14 d, 4 h for 30 d,
+1 day for 90 d) with up / degraded / down counts, the average and the percentiles, so the detail page's
+chart never reads raw heartbeats. Rows written before the histogram existed have none and contribute no
+percentiles.
 
 Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ job scheduler on the
 `marmot:maintenance` queue: minutely rows older than 24 h, hourly older than 30 d, daily and important
@@ -416,6 +427,11 @@ themselves). Their access functions come from `src/access/org-scoped.ts`:
 permission> } }`, or `false` when there are none. When the request carries `data[field]` (create, or an
   update that moves a document) the user must hold the permission in that organization.
 - `superadminOnly`, `authenticated`, `selfOrSuperadmin` cover the non-tenant cases.
+
+Monitor data written by the worker (`heartbeats`, `stat-minutely`/`-hourly`/`-daily`, `push-events`,
+`notification-sent-history`) is read through `orgScoped('monitor:read')` on its own `organization` field and
+is never writable through the API. Server code that has already authorised the monitor (route handlers,
+pages, `loadOrgState`) reads these rows with `overrideAccess: true`.
 
 Permissions are `resource:action` strings mapped to the **minimum** role in `src/access/permissions.ts`
 (`PERMISSIONS`). Roles are ordered `owner > admin > member > viewer`; a role satisfies a permission when it

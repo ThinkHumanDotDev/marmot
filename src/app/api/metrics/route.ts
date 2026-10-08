@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic'
  * `GET /api/metrics` — Prometheus exposition for the organization of the API key carried by the
  * request (`Authorization: Bearer mk_…`, `X-API-Key`, or basic auth with the key as password).
  * 401 without a valid key; the registry is built per scrape from the database.
+ * `?quantiles=true` adds `monitor_response_time_quantile` (p50 … p99 over 24h and 30d, #95).
  */
 export async function GET(request: Request) {
   const payload = await getPayload({ config })
@@ -28,7 +29,10 @@ export async function GET(request: Request) {
     )
   }
 
-  const registry = await collectOrganizationMetrics(payload, auth.organizationId)
+  const quantiles = ['1', 'true', 'yes'].includes(
+    (new URL(request.url).searchParams.get('quantiles') ?? '').toLowerCase(),
+  )
+  const registry = await collectOrganizationMetrics(payload, auth.organizationId, { quantiles })
   return new Response(await registry.metrics(), {
     status: 200,
     headers: { 'Content-Type': registry.contentType, 'Cache-Control': 'no-store' },

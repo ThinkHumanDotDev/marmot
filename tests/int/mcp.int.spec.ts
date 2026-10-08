@@ -267,6 +267,8 @@ describe('MCP server', () => {
     expect(stats.data).toMatchObject({ range: '24h', granularity: 'minute' })
     expect(stats.data).toHaveProperty('uptime')
     expect(stats.data).not.toHaveProperty('buckets')
+    expect(stats.data).not.toHaveProperty('series')
+    expect(stats.data).toHaveProperty('percentiles.p95')
 
     const beats = await call(client, 'list_heartbeats', { monitorId: monitor.id })
     const heartbeats = (beats.data as { heartbeats: { status: string }[] }).heartbeats
@@ -281,7 +283,7 @@ describe('MCP server', () => {
     expect(foreign.isError).toBe(true)
     expect(foreign.text).toMatch(/not found/i)
 
-    const invalid = await call(client, 'get_monitor_stats', { monitorId: monitor.id, range: '7d' })
+    const invalid = await call(client, 'get_monitor_stats', { monitorId: monitor.id, range: '2d' })
     expect(invalid.isError).toBe(true)
     await client.close()
   })
