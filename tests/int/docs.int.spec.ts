@@ -41,7 +41,7 @@ function markdownLinks(markdown: string): { target: string }[] {
  * Pages whose pull requests merge alongside the documentation ("landing in the current release" in the
  * docs). They may be linked before they exist; the release checklist empties this list once they landed.
  */
-const LANDING_PAGES = ['Integrations.md', 'Telemetry.md', 'Billing.md']
+const LANDING_PAGES: string[] = []
 
 /** Exact-case check for wiki pages (macOS file systems would accept `configuration.md` for `Configuration.md`). */
 const pageExists = (target: string) =>

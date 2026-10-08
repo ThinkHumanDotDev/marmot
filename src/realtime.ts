@@ -9,8 +9,8 @@ import { createAdapter } from '@socket.io/redis-adapter'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
-import pkg from '../package.json' with { type: 'json' }
 import { env } from '@/env'
+import { MARMOT_VERSION } from '@/lib/version'
 import { childLogger } from '@/lib/logger'
 import { createRealtimeServer } from '@/server/realtime/server'
 import { createRedis } from '@/server/redis'
@@ -39,7 +39,7 @@ async function main() {
     httpServer,
     cors: { origin: env.NEXT_PUBLIC_SERVER_URL, credentials: true },
     adapter: createAdapter(pub, sub),
-    version: pkg.version,
+    version: MARMOT_VERSION,
   })
 
   httpServer.listen(env.REALTIME_PORT, () => {

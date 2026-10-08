@@ -14,12 +14,19 @@ set -euo pipefail
 
 COMPOSE="${COMPOSE:-docker compose -f docker/docker-compose.yml -f docker/docker-compose.smoke.yml}"
 SINGLE_NAME=marmot-all
+# /api/health must report the version the image was built from (#238), not a fallback like 0.0.0.
+EXPECTED_VERSION="$(jq -r .version "$(dirname "$0")/../package.json")"
+
+# Fails unless the /api/health JSON on stdin is healthy and reports $EXPECTED_VERSION.
+assert_health() {
+  jq -e --arg v "$EXPECTED_VERSION" '.ok == true and .version == $v' >/dev/null
+}
 
 compose_smoke() {
   set -x
   $COMPOSE up -d --wait --wait-timeout 240
   # web, through Caddy
-  curl -fsS --retry 10 --retry-delay 3 --retry-all-errors http://localhost:8080/api/health | grep -q '"ok":true'
+  curl -fsS --retry 10 --retry-delay 3 --retry-all-errors http://localhost:8080/api/health | assert_health
   # realtime health, direct
   curl -fsS http://localhost:3001/healthz | grep -q '"ok":true'
   # socket.io route through Caddy reaches the realtime process (polling handshake returns a sid)
@@ -52,7 +59,7 @@ single_smoke() {
     -e MARMOT_ROLE=all -e PAYLOAD_SECRET -e NEXT_PUBLIC_SERVER_URL=http://localhost:3100 \
     -e DATABASE_URL=postgres://marmot:marmot@postgres:5432/marmot -e REDIS_URL=redis://redis:6379 \
     "$image"
-  curl -fsS --retry 40 --retry-delay 3 --retry-all-errors http://localhost:3100/api/health | grep -q '"ok":true'
+  curl -fsS --retry 40 --retry-delay 3 --retry-all-errors http://localhost:3100/api/health | assert_health
   curl -fsS --retry 10 --retry-delay 2 --retry-all-errors http://localhost:3101/healthz | grep -q '"ok":true'
   docker exec "$SINGLE_NAME" /app/entrypoint.sh healthcheck
   docker stop -t 30 "$SINGLE_NAME"
