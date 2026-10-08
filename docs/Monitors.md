@@ -130,7 +130,8 @@ uptime; it updates over the WebSocket connection without reloading. The detail p
   (about ±19 %) of the exact value;
 - for HTTP and TCP monitors, the [request timing](#request-timing) of the latest check and a phase chart
   that follows the same period selector;
-- the list of **important events** (status changes with their message);
+- the list of **important events** (status changes with their message) and the [**Logs**](#response-log)
+  tab with every check;
 - the certificate panel for HTTPS targets (issuer, expiry; filled by the certificate job landing in the
   current release);
 - the notification channels the monitor alerts through;
@@ -163,6 +164,36 @@ check and in the **Check now** / **Test** result. Successful checks also feed a 
 the statistics buckets, which the **Timing phases** chart stacks for the period chosen in the period
 selector (the stats API's `series` points carry them as `timing`), so the history outlives the 24-hour
 heartbeat retention. gRPC checks do not record timing yet.
+
+### Response log
+
+The **Logs** tab of a monitor (all types except push, which has its own ping log) lists every check,
+newest first: status, time, HTTP status code, response time, trigger (**Scheduled** or **Manual** for
+**Check now**) and the message, with the number of failed assertions. Filters: status (or _Failed_ = down
+and retrying), status code class (`2xx` … `5xx`), trigger and time range (last hour to last 30 days, or
+all). On a monitor checked from several locations, the page's location filter narrows the log to one
+location's checks. **Load more** pages further back. A row opens a sheet with the request timing waterfall, the
+assertion results, the per-probe results of a [Globalping](Monitor-Types.md) check, the response headers
+and the response body.
+
+What an HTTP(s), keyword or JSON query check keeps on its heartbeat:
+
+| Field                  | Stored                                                                                 |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| `statusCode`           | every check that got a response                                                        |
+| `response.headers`     | every check that got a response, about 8 KB at most (`headersTruncated` beyond)        |
+| `response.body`        | **failed (down, retrying) and degraded checks only**, the first 16 KB                  |
+| `assertions`, `timing` | as described in [Check now and Test](#check-now-and-test) and [above](#request-timing) |
+
+On a monitor checked from several locations, the reporting location's own outcome decides whether the
+body is kept, so a failing location keeps its evidence while the quorum is still up.
+
+Only response data is stored, never the request: cookies the target sets (`Set-Cookie`) are replaced by
+`[redacted]`, and every credential the check sent (the `Authorization` header, custom header values, the
+basic-auth password, bearer token, OAuth client secret and a password in the URL) is replaced by
+`[redacted]` wherever the target echoes it in a header or the body. The rows follow the heartbeat
+retention: 24 hours, status changes for `KEEP_DATA_PERIOD_DAYS`. Viewers can read the log; it is scoped to
+the monitor's organization.
 
 ## Check now and Test
 
@@ -338,6 +369,8 @@ same permissions as the UI (`monitor:read` for viewers, `monitor:create|update|d
 | `GET /api/orgs/:orgId/monitors[?key=]`           | List (filter by type, active state or key)         |
 | `POST /api/orgs/:orgId/monitors`                 | Create (body validated by `monitorFormSchema`)     |
 | `GET /api/orgs/:orgId/monitors/:id/heartbeats`   | Latest heartbeats, newest first                    |
+| `GET /api/orgs/:orgId/monitors/:id/logs`         | [Response log](#response-log) (see below)          |
+| `GET /api/orgs/:orgId/monitors/:id/logs/:hbId`   | One check in full (headers, body, assertions)      |
 | `PATCH` / `DELETE /api/orgs/:orgId/monitors/:id` | Update / delete                                    |
 | `POST /api/orgs/:orgId/monitors/:id/pause`       | Pause                                              |
 | `POST /api/orgs/:orgId/monitors/:id/resume`      | Resume                                             |
@@ -354,6 +387,14 @@ omitted). It answers `{ range, granularity, uptime, avgPing, degraded, buckets, 
 series }`: `percentiles` holds p50–p99 over the window, `checks` the `total`, `up`, `failed`, `degraded` and
 `maintenance` counts, and `series` one point per `step` seconds (`timestamp`, `up`, `down`, `degraded`,
 `maintenance`, `ping`, `pingMin`, `pingMax` and the requested percentiles, `null` without pings).
+
+The log list takes `status` (one or a comma-separated list: `down,pending`), `statusCode` (`503` or a class
+such as `5xx`), `trigger` (`schedule` | `manual`), `from` / `to` (ISO instants), `location` (a location id,
+or `local` for this server's workers), `limit` (default fifty,
+at most 200) and `cursor`, and answers `{ docs: [{ id, time, status, msg, ping, statusCode, trigger,
+important, assertions: { passed, failed } | null, location, locationStatus }], nextCursor }`; pass `nextCursor` back as `cursor` for the next,
+older page (`null` on the last one). The detail adds `duration`, `retries`, `timing`, `assertionResults`,
+`probes` and `response: { headers, headersTruncated, body, bodyTruncated }`.
 
 Incident routes (`monitor-incident:*` permissions; ids are strings on MongoDB and numbers on Postgres):
 

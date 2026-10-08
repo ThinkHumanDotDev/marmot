@@ -22,6 +22,7 @@ import { MonitorActions } from '@/components/monitors/monitor-actions'
 import { MonitorChannelsCard } from '@/components/monitors/monitor-channels-card'
 import { MonitorStatsPanel } from '@/components/monitors/monitor-stats-panel'
 import { PushEventsTable, PushPanel } from '@/components/monitors/push-panel'
+import { ResponseLogView } from '@/components/monitors/response-log-view'
 import { MonitorStatusBadge } from '@/components/monitors/status-badge'
 import { TagList } from '@/components/monitors/tag-chip'
 import { TimingWaterfall } from '@/components/monitors/timing-waterfall'
@@ -367,15 +368,32 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="flex min-w-0 flex-col gap-6">
-            {activity ? (
-              <Tabs defaultValue="events" className="min-w-0">
-                <TabsList>
-                  <TabsTrigger value="events">{t('tabs.events')}</TabsTrigger>
+            <Tabs defaultValue="events" className="min-w-0">
+              <TabsList>
+                <TabsTrigger value="events">{t('tabs.events')}</TabsTrigger>
+                {!isPush && (
+                  <TabsTrigger value="logs" data-testid="monitor-logs-tab">
+                    {t('tabs.logs')}
+                  </TabsTrigger>
+                )}
+                {activity && (
                   <TabsTrigger value="activity" data-testid="monitor-activity-tab">
                     {t('tabs.activity')}
                   </TabsTrigger>
-                </TabsList>
-                <TabsContent value="events">{eventsTable}</TabsContent>
+                )}
+              </TabsList>
+              <TabsContent value="events">{eventsTable}</TabsContent>
+              {!isPush && (
+                <TabsContent value="logs">
+                  <ResponseLogView
+                    orgId={String(ctx.org.id)}
+                    monitorId={String(monitor.id)}
+                    timeZone={timeZone}
+                    location={locationFilter}
+                  />
+                </TabsContent>
+              )}
+              {activity && (
                 <TabsContent value="activity" className="flex flex-col gap-3">
                   <p className="text-sm text-muted-foreground">{t('activityDescription')}</p>
                   <AuditLogView
@@ -385,10 +403,8 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
                     timeZone={timeZone}
                   />
                 </TabsContent>
-              </Tabs>
-            ) : (
-              eventsTable
-            )}
+              )}
+            </Tabs>
             {pushEvents && (
               <PushEventsTable events={pushEvents.docs as PushEvent[]} timeZone={timeZone} />
             )}

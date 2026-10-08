@@ -26,6 +26,7 @@ import { API_KEY_SCOPES } from '@/lib/api-key-scopes'
 import { COMPONENT_IMPACTS, INCIDENT_STATUSES } from '@/lib/incident-timeline'
 import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
 import { DOCKER_CONNECTION_TYPES } from '@/lib/monitor-resources'
+import { LOG_TRIGGERS } from '@/lib/response-log'
 import { SUBSCRIBER_CHANNELS } from '@/lib/status-page-subscribers'
 import { maintenanceFormSchema } from '@/lib/validation/maintenance'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
@@ -786,6 +787,76 @@ export const OPERATIONS: OperationSpec[] = [
       description: '`{ docs: [{ id, status, msg, ping, important, time }] }`',
       schema: docsList,
     },
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/monitors/{id}/logs`,
+    operationId: 'listMonitorLogs',
+    summary: 'Per-check response log of a monitor, newest first',
+    description:
+      'Every check with its status code, trigger and assertion counts. Follows the heartbeat retention (24 hours, status changes for `KEEP_DATA_PERIOD_DAYS`). Page with `cursor` = the previous `nextCursor`.',
+    tag: 'Monitors',
+    permission: 'monitor:read',
+    query: [
+      {
+        name: 'status',
+        description: 'One status or a comma-separated list',
+        schema: { type: 'string', examples: ['down', 'down,pending'] },
+      },
+      {
+        name: 'statusCode',
+        description: 'Exact HTTP status code or a class',
+        schema: { type: 'string', examples: ['503', '5xx'] },
+      },
+      {
+        name: 'trigger',
+        description: 'What started the check',
+        schema: { type: 'string', enum: [...LOG_TRIGGERS] },
+      },
+      {
+        name: 'from',
+        description: 'Inclusive start (ISO 8601)',
+        schema: { type: 'string', format: 'date-time' },
+      },
+      {
+        name: 'to',
+        description: 'Inclusive end (ISO 8601)',
+        schema: { type: 'string', format: 'date-time' },
+      },
+      {
+        name: 'location',
+        description: "Checks of one location: its id, or `local` for this server's workers",
+        schema: { type: 'string', examples: ['local', '3'] },
+      },
+      { name: 'limit', description: '1–200, default 50', schema: { type: 'integer' } },
+      {
+        name: 'cursor',
+        description: '`nextCursor` of the previous page',
+        schema: { type: 'string' },
+      },
+    ],
+    response: {
+      description:
+        '`{ docs: [{ id, time, status, msg, ping, statusCode, trigger, important, assertions: { passed, failed } | null, location, locationStatus }], nextCursor }`',
+      schema: {
+        type: 'object',
+        properties: {
+          docs: { type: 'array', items: { type: 'object' } },
+          nextCursor: { type: ['string', 'null'] },
+        },
+      },
+    },
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/monitors/{id}/logs/{heartbeatId}`,
+    operationId: 'getMonitorLog',
+    summary: 'One check of a monitor in full',
+    description:
+      'Adds the response headers (cookies redacted, about 8 KB), the first 16 KB of the body of a failed or degraded check, assertion results, request timing phases and per-probe results. Request headers are never stored.',
+    tag: 'Monitors',
+    permission: 'monitor:read',
+    response: { description: 'The check', schema: anyObject },
   },
   {
     method: 'GET',

@@ -117,6 +117,24 @@ export const Heartbeats: CollectionConfig = {
       type: 'json',
       admin: { readOnly: true, description: adminT('marmot:heartbeats:probesDescription') },
     },
+    {
+      name: 'statusCode',
+      type: 'number',
+      admin: { readOnly: true, description: adminT('marmot:heartbeats:statusCodeDescription') },
+    },
+    {
+      // Response log (#97), HTTP types: response data only, never the request. Headers capped at
+      // ~8 KB with cookies redacted; the body (first 16 KB) only for failed or degraded beats.
+      name: 'response',
+      type: 'group',
+      admin: { description: adminT('marmot:heartbeats:responseDescription') },
+      fields: [
+        { name: 'headers', type: 'json', admin: { readOnly: true } },
+        { name: 'headersTruncated', type: 'checkbox', admin: { readOnly: true } },
+        { name: 'body', type: 'textarea', admin: { readOnly: true } },
+        { name: 'bodyTruncated', type: 'checkbox', admin: { readOnly: true } },
+      ],
+    },
     { name: 'retries', type: 'number', defaultValue: 0 },
     { name: 'downCount', type: 'number', defaultValue: 0 },
     {

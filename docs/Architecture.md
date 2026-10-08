@@ -78,6 +78,15 @@ interceptor timestamps each hop's dispatch, response headers and body end. The f
 (`dns`, `connect`, `tls`, `ttfb`, `transfer`, ms, null when not applicable) go to `ctx.timing`, the
 heartbeat's `timing` group and the stats rollup. The TCP port type records `dns` and `connect`.
 
+**Response log** (#97): `performHttpCheck` hands the response to `captureResponse()`
+(`src/server/monitor-types/response-capture.ts`), which keeps the status code, the headers up to
+`RESPONSE_HEADERS_LIMIT_BYTES` (8 KB, `Set-Cookie` redacted) and the first `RESPONSE_BODY_LIMIT_BYTES`
+(16 KB) of the body, and replaces every credential of the request (`requestSecrets()`) wherever the target
+echoes it. `recordBeat` stores `heartbeats.statusCode` and the `response` group, the body only when the
+beat is DOWN, PENDING or DEGRADED. The log API (`src/server/monitors/response-log.ts`) pages by cursor
+(`time < t OR (time = t AND id NOT IN ids)`), which needs no id ordering and so behaves the same on every
+adapter. Heartbeats are readable with `monitor:read` in their organization only (`orgScoped`).
+
 After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
 `lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`, `recoveries`) and calls every listener registered with
 `registerHeartbeatListener()` (`src/server/engine/hooks.ts`); stats, realtime and notifications plug in there.

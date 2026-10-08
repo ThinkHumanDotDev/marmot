@@ -101,6 +101,7 @@ export async function runCheck(
       assertions: ctx.assertions ?? null,
       timing: ctx.timing ?? null,
       probes: ctx.probes ?? null,
+      response: ctx.response ?? null,
     }
   }
 
@@ -123,5 +124,6 @@ export async function runCheck(
     assertions: ctx.assertions ?? null,
     timing: ctx.timing ?? null,
     probes: ctx.probes ?? null,
+    response: ctx.response ?? null,
   }
 }
