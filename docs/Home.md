@@ -12,6 +12,7 @@ features whose pull requests are merging alongside this documentation.
 | [Getting started](Getting-Started.md) | Docker compose quick start, the first-run setup wizard, your first monitor and your first status page.                        |
 | [Configuration](Configuration.md)     | Every environment variable (grouped, with defaults and the process that reads it), instance settings, first-run and realtime. |
 | [Deployment](Deployment.md)           | Caddy auto-TLS, running behind nginx/Traefik, MongoDB, scaling workers, backups and restore, upgrades, single-container mode. |
+| [Kubernetes](Kubernetes.md)           | The Helm chart: per-role Deployments, migration Job, ingress and `/socket.io`, bundled or external databases, probe agents.   |
 | [Single sign-on](Single-Sign-On.md)   | Generic OIDC, GitHub and Google sign-in, per-organization OIDC/SAML connections with verified domains, linked accounts.       |
 | [Security](Security.md)               | Hardening checklist: TLS, trusted proxies, rate limiting, security headers, audit log and admin access.                       |
 | [Telemetry](Telemetry.md)             | What the opt-in analytics collect and how consent works.                                                                      |
