@@ -623,6 +623,32 @@ be after the last accepted one, `users.twoFactorLastUsedStep`).
 - **Known gap**: Payload's `reset-password` endpoint signs the user in as part of a successful reset without
   offering a hook, so a password reset through the email link bypasses the second step for that session.
 
+## Account security: email verification
+
+Optional (#177, `requireEmailVerification` instance setting, default `REQUIRE_EMAIL_VERIFICATION`),
+implemented in `src/server/auth/email-verification.ts` on top of reusable email-token plumbing:
+
+- **Tokens** (`src/server/auth/email-tokens.ts`, meant to be shared with passwordless sign-in links):
+  256-bit random tokens, only the SHA-256 digest stored in Redis (`marmot:auth-token:<purpose>:<digest>`
+  with the user id and the normalized address, expiring by TTL). A token is bound to its `purpose`,
+  redeemed at most once (`GET` + `DEL` in one `MULTI`, so no database transaction is needed), and
+  issuing a new one for the same user and purpose revokes the previous one.
+- **State** (`users.emailVerified`, default `true`, so existing rows and every server-side creation are
+  verified; `emailVerifiedAt`). Both are writable by superadmins only. A `users.beforeOperation` hook notes
+  whether a create or update comes from a client (`overrideAccess` off, not a superadmin); `beforeChange`
+  then stores `false` for such a sign-up, or an address change, while verification is required, and
+  `afterChange` mails the link (`/verify-email?token=…`, 24 hours) and audits
+  `auth.email_verification_sent`.
+- **Gate**: `requireVerifiedEmail` (`beforeOperation`, create) on `organizations`, `invitations` and
+  `notifications` throws `emailNotVerified` (403) for a pending, non-superadmin user while the setting is
+  on; `requireUser()` sends such a user to `/verify-email`. Logins are not blocked.
+- **Confirmation**: `POST /api/auth/verify-email` redeems a link when the address still matches;
+  `acceptInvitation()` confirms an account whose address the invitation was sent to; the SSO
+  `afterLogin` hook confirms one whose identity asserts the address, and `mapNewUser` provisions SSO
+  accounts unverified only when the provider does not vouch for the address. Each records
+  `auth.email_verified { method }`. `POST /api/auth/verify-email/resend` is limited per account like
+  password reset mail (5 per 15 minutes).
+
 ## Billing (future)
 
 `organizations.plan` + `src/lib/entitlements.ts` express limits. On self-hosted installs everything is
