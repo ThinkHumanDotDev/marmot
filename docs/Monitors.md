@@ -189,6 +189,13 @@ expires after seven days. It opens a page with an **Acknowledge** button, so lin
 acknowledge. Anyone holding the message can use it: a signed-in member is recorded by name, anyone else as
 "from a notification link".
 
+## Check location
+
+A monitor is checked by the workers of the Marmot server unless you pick a
+[probe location](Probe-Locations.md) under **Check location**: then a probe agent in that network runs
+it, and its heartbeats record the location. Group, manual, push, Steam and Globalping monitors always run on the
+server.
+
 ## Groups
 
 A **Group** monitor has no target of its own; set `parent` on other monitors to put them inside it. The

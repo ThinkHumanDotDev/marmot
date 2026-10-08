@@ -1,0 +1,26 @@
+# Marmot probe agent – runs the monitors of one probe location from this host's network (#91).
+# Outbound HTTPS to Marmot only: no database, no Redis, no published ports.
+#
+#   MARMOT_URL=https://marmot.example.com MARMOT_PROBE_TOKEN=mp_... \
+#     docker compose -f docker-compose.probe.yml up -d
+#
+# Create the location and copy its token under Settings → Locations. Full guide: docs/Probe-Locations.md
+name: marmot-probe
+
+services:
+  probe:
+    image: ghcr.io/thinkhumandotdev/marmot:${MARMOT_VERSION:-0.1.1}
+    restart: unless-stopped
+    environment:
+      MARMOT_ROLE: probe
+      MARMOT_URL: ${MARMOT_URL:?set MARMOT_URL to your Marmot server}
+      MARMOT_PROBE_TOKEN: ${MARMOT_PROBE_TOKEN:?set MARMOT_PROBE_TOKEN to the location token}
+      # Checks running at once, and the probe's own uplink check (see docs/Configuration.md).
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-10}
+      CONNECTIVITY_CHECK_ENABLED: ${CONNECTIVITY_CHECK_ENABLED:-false}
+    security_opt:
+      - no-new-privileges:true
+    # Docker Container monitors with a "socket" Docker host read this host's daemon. Uncomment to
+    # allow it (the socket grants full daemon access; see DOCKER_SOCKET_ENABLED).
+    # volumes:
+    #   - /var/run/docker.sock:/var/run/docker.sock:ro

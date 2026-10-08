@@ -9,6 +9,7 @@ import { z } from 'zod'
 
 import type { Messages } from '@/i18n/messages'
 import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
+import { MAX_MONITOR_LOCATIONS, probeSupportsType } from '@/lib/probe-locations'
 import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
@@ -492,6 +493,11 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         .array(z.union([z.string().min(1), z.number().int().positive()]))
         .max(100)
         .default([]),
+      /** Probe locations that check the monitor (#91); empty for the local workers. */
+      locations: z
+        .array(z.union([z.string().min(1), z.number().int().positive()]))
+        .max(MAX_MONITOR_LOCATIONS, message('locationsTooMany'))
+        .default([]),
 
       // Target
       url: optionalText(2048),
@@ -819,6 +825,9 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       if (new Set(channelIds).size !== channelIds.length) {
         issue('notifications', message('channelsUnique'))
       }
+      if (values.locations.length > 0 && !probeSupportsType(type)) {
+        issue('locations', message('locationsTypeUnsupported'))
+      }
 
       if (isDatabaseMonitorType(type)) {
         const conn = values.databaseConnectionString
@@ -981,6 +990,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     active: true,
     tags: [],
     notifications: [],
+    locations: [],
     url: defaultUrl(type),
     hostname: null,
     port: DEFAULT_PORTS[type] ?? null,
@@ -1129,9 +1139,29 @@ export function monitorToFormValues(doc: MonitorLike): MonitorFormValues {
   // Stored rows carry Payload's row `id`; the form and exports use the bare shape.
   const assertions = normalizeAssertions(doc.assertions)
 
-  const out: Record<string, unknown> = { ...base, ...relations, tags, notifications, assertions }
+  const locations = Array.isArray(doc.locations)
+    ? (doc.locations as unknown[]).flatMap((item) => {
+        const id = toId(item)
+        return id === null ? [] : [id]
+      })
+    : []
+
+  const out: Record<string, unknown> = {
+    ...base,
+    ...relations,
+    tags,
+    notifications,
+    locations,
+    assertions,
+  }
   for (const key of Object.keys(base) as (keyof MonitorFormValues)[]) {
-    if (key in relations || key === 'tags' || key === 'notifications' || key === 'assertions')
+    if (
+      key in relations ||
+      key === 'tags' ||
+      key === 'notifications' ||
+      key === 'locations' ||
+      key === 'assertions'
+    )
       continue
     const value = doc[key]
     if (value !== undefined && value !== null) out[key] = value

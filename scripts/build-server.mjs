@@ -13,6 +13,8 @@ const entryPoints = {
   worker: 'src/worker.ts',
   realtime: 'src/realtime.ts',
   migrate: 'src/cli/migrate.ts',
+  // Probe agent (#91, MARMOT_ROLE=probe): no database, no Payload config in its module graph.
+  probe: 'src/probe.ts',
 }
 
 await build({

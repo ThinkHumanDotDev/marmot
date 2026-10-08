@@ -27,15 +27,17 @@ const cidrList = z
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  MARMOT_ROLE: z.enum(['web', 'worker', 'realtime', 'all']).default('all'),
+  // `probe` runs a remote probe agent (#91) instead of a Marmot server: see MARMOT_URL below.
+  MARMOT_ROLE: z.enum(['web', 'worker', 'realtime', 'all', 'probe']).default('all'),
 
-  PAYLOAD_SECRET: z.string().min(16, 'PAYLOAD_SECRET must be at least 16 characters'),
+  // Required by every role but `probe` (checked by `requireServerVariables` below).
+  PAYLOAD_SECRET: z.string().default(''),
   NEXT_PUBLIC_SERVER_URL: z.string().url().default('http://localhost:3000'),
   // Extra origins (comma-separated) allowed by Payload's CORS/CSRF checks besides the server URL.
   ADDITIONAL_ORIGINS: z.string().default(''),
 
   DATABASE_ADAPTER: z.enum(['postgres', 'mongodb', 'sqlite']).default('postgres'),
-  DATABASE_URL: z.string().min(1),
+  DATABASE_URL: z.string().default(''),
 
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
@@ -127,6 +129,14 @@ const schema = z.object({
   // Extra ranges that are always denied, and exceptions to the private ranges (comma-separated CIDRs).
   MONITOR_DENY_CIDRS: cidrList,
   MONITOR_ALLOW_CIDRS: cidrList,
+  // Probe locations (#91), server side: a location is marked offline (and its admins emailed) when
+  // its agent has not called in for this many seconds; requests per minute per location token.
+  PROBE_OFFLINE_AFTER: z.coerce.number().int().min(30).max(86_400).default(180),
+  PROBE_RATE_LIMIT: z.coerce.number().int().min(0).default(600),
+  // Probe agent (MARMOT_ROLE=probe): the Marmot server to call (outbound HTTPS only) and the
+  // location's token. Checks run WORKER_CONCURRENCY at a time.
+  MARMOT_URL: z.string().url().optional(),
+  MARMOT_PROBE_TOKEN: z.string().trim().optional(),
   // Skip the Redis side effects of the `monitors` hooks (tests without Redis).
   MARMOT_DISABLE_ENGINE_HOOKS: booleanish.default(false),
 
@@ -155,12 +165,32 @@ const schema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 })
 
+/**
+ * Server roles need the database and the Payload secret; a probe agent talks to Marmot over HTTPS
+ * only and needs its URL and token instead.
+ */
+const requireRoleVariables = (value: z.infer<typeof schema>, ctx: z.RefinementCtx) => {
+  const missing = (path: keyof z.infer<typeof schema>, message: string) =>
+    ctx.addIssue({ code: 'custom', path: [path], message })
+  if (value.MARMOT_ROLE === 'probe') {
+    if (!value.MARMOT_URL) missing('MARMOT_URL', 'required for MARMOT_ROLE=probe')
+    if (!value.MARMOT_PROBE_TOKEN) missing('MARMOT_PROBE_TOKEN', 'required for MARMOT_ROLE=probe')
+    return
+  }
+  if (value.PAYLOAD_SECRET.length < 16) {
+    missing('PAYLOAD_SECRET', 'PAYLOAD_SECRET must be at least 16 characters')
+  }
+  if (!value.DATABASE_URL) missing('DATABASE_URL', 'DATABASE_URL is required')
+}
+
+const validatedSchema = schema.superRefine(requireRoleVariables)
+
 export type Env = z.infer<typeof schema>
 
 let cached: Env | undefined
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  const parsed = schema.safeParse(source)
+  const parsed = validatedSchema.safeParse(source)
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((i) => `  - ${i.path.join('.')}: ${i.message}`)
@@ -187,5 +217,5 @@ export function resetEnvCache(): void {
 }
 
 export const isProduction = () => env.NODE_ENV === 'production'
-export const runsRole = (role: Exclude<Env['MARMOT_ROLE'], 'all'>) =>
+export const runsRole = (role: Exclude<Env['MARMOT_ROLE'], 'all' | 'probe'>) =>
   env.MARMOT_ROLE === 'all' || env.MARMOT_ROLE === role

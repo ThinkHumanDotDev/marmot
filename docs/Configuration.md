@@ -22,7 +22,7 @@ The `marmot` command-line tool is a client, not one of these processes: its vari
 | `PAYLOAD_SECRET`         | — (required)            | all     | Signs session tokens and encrypts secrets at rest. At least 16 characters; use `openssl rand -hex 32`. Changing it signs everyone out.                                                                                                       |
 | `NEXT_PUBLIC_SERVER_URL` | `http://localhost:3000` | all     | The URL users open Marmot at. Used for CORS/CSRF, invitation and password-reset emails, the OIDC redirect URI, status-page links, custom-domain detection and the realtime CORS origin. Must match the public `https://` URL behind a proxy. |
 | `ADDITIONAL_ORIGINS`     | _(empty)_               | web     | Extra CORS/CSRF origins, comma-separated (e.g. a second hostname behind the same proxy).                                                                                                                                                     |
-| `MARMOT_ROLE`            | `all`                   | all     | Which process this container runs: `web`, `worker`, `realtime` or `all`. The compose file sets it per service.                                                                                                                               |
+| `MARMOT_ROLE`            | `all`                   | all     | Which process this container runs: `web`, `worker`, `realtime`, `all`, or `probe` (a [probe agent](Probe-Locations.md)). The compose file sets it per service.                                                                               |
 | `NODE_ENV`               | `development`           | all     | `development`, `test` or `production`. The Docker image sets `production`, which enables HSTS, refuses plain-`http://` OIDC issuers and makes the database adapters require migrations instead of pushing the schema.                        |
 | `LOG_LEVEL`              | `info`                  | all     | pino level: `fatal`, `error`, `warn`, `info`, `debug`, `trace`. Logs are JSON lines on stdout.                                                                                                                                               |
 
@@ -131,7 +131,7 @@ Full setup guide with provider walkthroughs: [Single sign-on](Single-Sign-On.md)
 | `AUDIT_LOG_RETENTION_DAYS`           | `365`                                                         | worker      | Days the [audit log](Security.md#audit-log) keeps its rows; the hourly retention job deletes older ones. `0` keeps them forever.                                                                                                    |
 | `WEBHOOK_DELIVERY_RETENTION_DAYS`    | `14`                                                          | worker      | Days the [webhook delivery log](Integrations.md#outbound-webhooks) keeps a delivery (1–90); the hourly retention job deletes older ones.                                                                                            |
 | `WEBHOOK_DISABLE_AFTER_FAILURES`     | `5`                                                           | worker      | An [outbound webhook](Integrations.md#outbound-webhooks) endpoint is disabled, and the organization's admins are emailed, after this many deliveries in a row failed for good (each after its retries). `0` never disables.         |
-| `WORKER_CONCURRENCY`                 | `10`                                                          | worker      | Parallel checks (and notification deliveries) per worker process. Scale out with more worker replicas rather than very high values.                                                                                                 |
+| `WORKER_CONCURRENCY`                 | `10`                                                          | worker      | Parallel checks (and notification deliveries) per worker process. One worker uses at most one core (about 25 checks/s): keep it at 10–20 and add worker replicas instead ([Scaling](Deployment.md#scaling)).                        |
 | `ON_DEMAND_CHECKS_PER_MINUTE`        | `30`                                                          | web         | On-demand checks per organization and minute: **Check now**, the monitor form's **Test** and their API (`POST /api/orgs/:orgId/monitors/:id/check`, `POST /api/orgs/:orgId/checks`). Further requests get `429`.                    |
 | `CONNECTIVITY_CHECK_ENABLED`         | `false`                                                       | worker      | [Self connectivity check](#self-connectivity-check): hold checks of external targets while the worker itself is offline instead of reporting them DOWN.                                                                             |
 | `CONNECTIVITY_CHECK_TARGETS`         | `1.1.1.1:53, 8.8.8.8:53, https://www.google.com/generate_204` | worker      | Probe targets, comma-separated: `host:port` (TCP connect, `[v6]:port` for IPv6) or an `http(s)://` URL (any HTTP response counts). Use your own when these are blocked.                                                             |
@@ -188,6 +188,20 @@ connects only to the address it checked. A refused check is a DOWN heartbeat suc
 - Instance-wide settings (`SMTP_HOST`, `DATABASE_URL`, `REDIS_URL`) are not affected.
 
 Malformed CIDRs stop the process at startup with a readable error.
+
+## Probe locations
+
+[Probe locations](Probe-Locations.md) run checks from other networks. The first two variables configure the
+server; the last two are all a probe agent (`MARMOT_ROLE=probe`) needs. An agent reads no database, Redis
+or `PAYLOAD_SECRET`; besides these it honours `WORKER_CONCURRENCY`, `LOG_LEVEL`, `DOCKER_SOCKET_ENABLED`,
+the `MONITOR_*` address guard and the `CONNECTIVITY_CHECK_*` variables ([its own uplink check](#self-connectivity-check)).
+
+| Variable              | Default | Read by     | Description                                                                                                                                                                       |
+| --------------------- | ------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PROBE_OFFLINE_AFTER` | `180`   | web, worker | Seconds without contact after which a location is marked offline and its admins are emailed (30–86400). Agents refresh their configuration every third of it, at most every 60 s. |
+| `PROBE_RATE_LIMIT`    | `600`   | web         | Requests per minute per location token to `/api/probe/v1/*`; `0` turns the limit off.                                                                                             |
+| `MARMOT_URL`          | —       | probe       | Agent only, required: the Marmot server, e.g. `https://marmot.example.com`. The agent only makes outbound HTTPS requests to it.                                                   |
+| `MARMOT_PROBE_TOKEN`  | —       | probe       | Agent only, required: the location's token (`mp_…`), shown once when the location is created or its token is rotated.                                                             |
 
 ## Hosted instance
 
