@@ -224,6 +224,17 @@ const removeApiKeys: CollectionBeforeDeleteHook = async ({ id, req }) => {
   })
 }
 
+/** Probe locations carry a NOT NULL `organization` on Postgres too (their monitors are detached). */
+const removeLocations: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  await req.payload.delete({
+    collection: 'locations',
+    where: { organization: { equals: id } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
+}
+
 /** Webhook endpoints and their delivery log carry a NOT NULL `organization` on Postgres too. */
 const removeWebhooks: CollectionBeforeDeleteHook = async ({ id, req }) => {
   for (const collection of ['webhook-deliveries', 'webhook-endpoints'] as const) {
@@ -259,7 +270,14 @@ export const Organizations: CollectionConfig = {
   hooks: {
     beforeValidate: [normalizeSlug],
     afterChange: [grantOwnerMembership, syncStripeCustomer, trackOrgCreated],
-    beforeDelete: [removeInvitations, removeApiKeys, removeSso, removeWebhooks, removeMemberships],
+    beforeDelete: [
+      removeInvitations,
+      removeApiKeys,
+      removeLocations,
+      removeSso,
+      removeWebhooks,
+      removeMemberships,
+    ],
   },
   fields: [
     {
