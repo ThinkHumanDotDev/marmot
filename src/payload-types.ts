@@ -738,13 +738,6 @@ export interface Heartbeat {
     | number
     | boolean
     | null;
-  timing?: {
-    dns?: number | null;
-    connect?: number | null;
-    tls?: number | null;
-    ttfb?: number | null;
-    transfer?: number | null;
-  };
   probes?:
     | {
         [k: string]: unknown;
@@ -1006,6 +999,15 @@ export interface StatMinutely {
     | number
     | boolean
     | null;
+  latencyHistogram?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1030,6 +1032,15 @@ export interface StatHourly {
     | number
     | boolean
     | null;
+  latencyHistogram?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1046,6 +1057,15 @@ export interface StatDaily {
   pingMin?: number | null;
   pingMax?: number | null;
   extras?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  latencyHistogram?:
     | {
         [k: string]: unknown;
       }
@@ -2079,15 +2099,6 @@ export interface HeartbeatsSelect<T extends boolean = true> {
   important?: T;
   trigger?: T;
   assertions?: T;
-  timing?:
-    | T
-    | {
-        dns?: T;
-        connect?: T;
-        tls?: T;
-        ttfb?: T;
-        transfer?: T;
-      };
   probes?: T;
   retries?: T;
   downCount?: T;
@@ -2158,6 +2169,7 @@ export interface StatMinutelySelect<T extends boolean = true> {
   pingMin?: T;
   pingMax?: T;
   extras?: T;
+  latencyHistogram?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2173,6 +2185,7 @@ export interface StatHourlySelect<T extends boolean = true> {
   pingMin?: T;
   pingMax?: T;
   extras?: T;
+  latencyHistogram?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2188,6 +2201,7 @@ export interface StatDailySelect<T extends boolean = true> {
   pingMin?: T;
   pingMax?: T;
   extras?: T;
+  latencyHistogram?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
