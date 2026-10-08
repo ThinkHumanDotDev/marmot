@@ -9,9 +9,10 @@
  * - `stat-minutely`      older than 24 hours
  * - `stat-hourly`        older than 30 days
  * - `stat-location-hourly` older than 30 days (per-location series of multi-location monitors, #92)
- * - `stat-daily`         older than `KEEP_DATA_PERIOD_DAYS` (skipped when < 1, like Uptime Kuma)
+ * - `stat-daily`         older than the `keepDataPeriodDays` instance setting (default
+ *                        `KEEP_DATA_PERIOD_DAYS`; skipped when < 1, like Uptime Kuma)
  * - `heartbeats`         non-important beats older than 24 hours, important beats older than
- *                        `KEEP_DATA_PERIOD_DAYS` (only when the engine's collection exists)
+ *                        `keepDataPeriodDays` (only when the engine's collection exists)
  * - `status-page-subscribers` self sign-ups never confirmed within 72 hours
  * - `subscriber-deliveries` older than 90 days (the per-subscriber delivery log)
  * - `webhook-deliveries` older than `WEBHOOK_DELIVERY_RETENTION_DAYS` (default 14)
@@ -34,6 +35,7 @@ import { UNCONFIRMED_SUBSCRIBER_TTL_HOURS } from '@/lib/status-page-subscribers'
 import { childLogger } from '@/lib/logger'
 import { QUEUE_NAMES } from '@/server/engine'
 import { createRedis } from '@/server/redis'
+import { getInstanceSettings } from '@/server/settings'
 import { getDailyKey, getHourlyKey, getMinutelyKey } from '@/server/stats/uptime-calculator'
 
 const log = childLogger('retention')
@@ -226,7 +228,9 @@ export const processRetentionJob =
   (payload: Payload) =>
   async (job: Job): Promise<RetentionResult | undefined> => {
     if (job.name !== RETENTION_JOB_NAME) return undefined
-    return runRetention(payload)
+    // The `keepDataPeriodDays` instance setting (defaulting to `KEEP_DATA_PERIOD_DAYS`) decides.
+    const { keepDataPeriodDays } = await getInstanceSettings(payload)
+    return runRetention(payload, new Date(), { keepDataPeriodDays })
   }
 
 export type RetentionWorkerOptions = {
