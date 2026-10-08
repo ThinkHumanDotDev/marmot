@@ -30,8 +30,9 @@ export interface OrgRealtimeState {
 export interface LoadOrgStateOptions {
   /**
    * Request user for access control. With `overrideAccess: false` (default when a user is given)
-   * the Local API applies the collection access functions; the realtime server verifies
-   * membership itself and passes `overrideAccess: true`.
+   * the Local API applies the `monitors` access rules; the realtime server verifies membership
+   * itself and passes `overrideAccess: true`. Heartbeats and stats of the monitors found are read
+   * with `overrideAccess: true`.
    */
   user?: PayloadRequest['user']
   overrideAccess?: boolean
@@ -73,7 +74,6 @@ async function recentHeartbeats(
   payload: Payload,
   monitorId: string | number,
   limit: number,
-  access: Pick<LoadOrgStateOptions, 'user' | 'overrideAccess'>,
   importantOnly = false,
 ): Promise<RealtimeHeartbeat[]> {
   if (limit <= 0) return []
@@ -86,7 +86,9 @@ async function recentHeartbeats(
     limit,
     pagination: false,
     depth: 0,
-    ...access,
+    // The monitor was read with the caller's access in `loadOrgState`; its beats need no check of
+    // their own (and stay readable even if the collection's rules tighten further).
+    overrideAccess: true,
   })
   // Query newest-first so `limit` picks the latest beats, then hand out oldest → newest.
   return (docs as HeartbeatSource[]).map(toRealtimeHeartbeat).reverse()
@@ -132,8 +134,8 @@ export async function loadOrgState(
   await mapLimit(monitors, options.concurrency ?? 8, async (monitor) => {
     const monitorId = parseDocId(payload, monitor.id)
     const [beats, important, stats] = await Promise.all([
-      recentHeartbeats(payload, monitorId, heartbeatLimit, access),
-      recentHeartbeats(payload, monitorId, importantLimit, access, true),
+      recentHeartbeats(payload, monitorId, heartbeatLimit),
+      recentHeartbeats(payload, monitorId, importantLimit, true),
       Promise.all(ranges.map((range) => getStats(payload, monitorId, range as StatsRange))),
     ])
     state.heartbeats[monitor.id] = beats
