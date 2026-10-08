@@ -9,7 +9,7 @@ import type { Payload } from 'payload'
 
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
-import type { LocationStatus } from '@/lib/probe-locations'
+import { isMultiLocation, type LocationStatus } from '@/lib/probe-locations'
 import type { DockerHost, Location, Monitor, MonitorProxy } from '@/payload-types'
 import { createRateLimiter, type RateLimiter } from '@/server/security/rate-limit'
 
@@ -171,15 +171,24 @@ const OMITTED_MONITOR_FIELDS = [
   'publicName',
 ] as const
 
-/** A monitor as a probe receives it: relationships as ids, only `status.lastStatus` kept. */
-export function toProbeMonitor(monitor: Monitor): ProbeMonitor {
+/**
+ * A monitor as a probe receives it: relationships as ids, only `status.lastStatus` kept (on a
+ * multi-location monitor, #92, the location's own status: `locationStatus`).
+ */
+export function toProbeMonitor(
+  monitor: Monitor,
+  locationStatus?: NonNullable<Monitor['status']>['lastStatus'],
+): ProbeMonitor {
   const doc: Record<string, unknown> = { ...monitor }
   for (const field of OMITTED_MONITOR_FIELDS) delete doc[field]
   doc.organization = relationId(monitor.organization)
   doc.proxy = relationId(monitor.proxy)
   doc.dockerHost = relationId(monitor.dockerHost)
   doc.locations = (monitor.locations ?? []).map(relationId)
-  doc.status = { lastStatus: monitor.status?.lastStatus ?? null }
+  doc.status = {
+    lastStatus:
+      (locationStatus !== undefined ? locationStatus : monitor.status?.lastStatus) ?? null,
+  }
   return doc as ProbeMonitor
 }
 
@@ -258,11 +267,35 @@ export async function buildProbeConfig(
       organizationId,
     ),
   ])
+  // Multi-location monitors (#92): the first cadence follows this location's own state.
+  const multi = monitors.filter((monitor) => isMultiLocation(monitor))
+  const locationStatuses = new Map<string, NonNullable<Monitor['status']>['lastStatus']>()
+  if (multi.length > 0) {
+    const { docs } = await payload.find({
+      collection: 'monitor-location-states',
+      where: {
+        and: [
+          { monitor: { in: multi.map((monitor) => monitor.id) } },
+          { locationKey: { equals: String(location.id) } },
+        ],
+      },
+      select: { monitor: true, lastStatus: true },
+      depth: 0,
+      limit: 0,
+      pagination: false,
+      overrideAccess: true,
+    })
+    for (const doc of docs) locationStatuses.set(String(relationId(doc.monitor)), doc.lastStatus)
+  }
   const config: ProbeConfig = {
     version: 1,
     location: { id: String(location.id), name: location.name, slug: location.slug },
     refreshSeconds: probeRefreshSeconds(),
-    monitors: monitors.map(toProbeMonitor),
+    monitors: monitors.map((monitor) =>
+      isMultiLocation(monitor)
+        ? toProbeMonitor(monitor, locationStatuses.get(String(monitor.id)) ?? null)
+        : toProbeMonitor(monitor),
+    ),
     resources: { proxies, dockerHosts },
   }
   const etag = `"${createHash('sha256').update(JSON.stringify(config)).digest('base64url')}"`

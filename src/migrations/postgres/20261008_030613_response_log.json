@@ -1999,6 +1999,21 @@
           "primaryKey": false,
           "notNull": false
         },
+        "include_local": {
+          "name": "include_local",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "quorum": {
+          "name": "quorum",
+          "type": "enum_monitors_quorum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'half'"
+        },
         "weight": {
           "name": "weight",
           "type": "numeric",
@@ -4544,6 +4559,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "location_status": {
+          "name": "location_status",
+          "type": "enum_heartbeats_location_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
         "status": {
           "name": "status",
           "type": "enum_heartbeats_status",
@@ -5371,6 +5393,190 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.monitor_location_states": {
+      "name": "monitor_location_states",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monitor_id": {
+          "name": "monitor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location_key": {
+          "name": "location_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_status": {
+          "name": "last_status",
+          "type": "enum_monitor_location_states_last_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "settled_status": {
+          "name": "settled_status",
+          "type": "enum_monitor_location_states_settled_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "retries": {
+          "name": "retries",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "down_count": {
+          "name": "down_count",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "recoveries": {
+          "name": "recoveries",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "last_check_at": {
+          "name": "last_check_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_ping": {
+          "name": "last_ping",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_msg": {
+          "name": "last_msg",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "monitor_location_states_organization_idx": {
+          "name": "monitor_location_states_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_location_states_monitor_idx": {
+          "name": "monitor_location_states_monitor_idx",
+          "columns": [
+            {
+              "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_location_states_location_key_idx": {
+          "name": "monitor_location_states_location_key_idx",
+          "columns": [
+            {
+              "expression": "location_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_locationKey_idx": {
+          "name": "monitor_locationKey_idx",
+          "columns": [
+            {
+              "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "location_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "monitor_location_states_organization_id_organizations_id_fk": {
+          "name": "monitor_location_states_organization_id_organizations_id_fk",
+          "tableFrom": "monitor_location_states",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitor_location_states_monitor_id_monitors_id_fk": {
+          "name": "monitor_location_states_monitor_id_monitors_id_fk",
+          "tableFrom": "monitor_location_states",
+          "tableTo": "monitors",
+          "columnsFrom": [
+            "monitor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.push_events": {
       "name": "push_events",
       "schema": "",
@@ -6068,6 +6274,187 @@
         "stat_daily_organization_id_organizations_id_fk": {
           "name": "stat_daily_organization_id_organizations_id_fk",
           "tableFrom": "stat_daily",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.stat_location_hourly": {
+      "name": "stat_location_hourly",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "monitor_id": {
+          "name": "monitor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "up": {
+          "name": "up",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "down": {
+          "name": "down",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "ping": {
+          "name": "ping",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ping_min": {
+          "name": "ping_min",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ping_max": {
+          "name": "ping_max",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "extras": {
+          "name": "extras",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "stat_location_hourly_monitor_idx": {
+          "name": "stat_location_hourly_monitor_idx",
+          "columns": [
+            {
+              "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "stat_location_hourly_organization_idx": {
+          "name": "stat_location_hourly_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "stat_location_hourly_timestamp_idx": {
+          "name": "stat_location_hourly_timestamp_idx",
+          "columns": [
+            {
+              "expression": "timestamp",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_location_timestamp_idx": {
+          "name": "monitor_location_timestamp_idx",
+          "columns": [
+            {
+              "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "location",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "timestamp",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "stat_location_hourly_monitor_id_monitors_id_fk": {
+          "name": "stat_location_hourly_monitor_id_monitors_id_fk",
+          "tableFrom": "stat_location_hourly",
+          "tableTo": "monitors",
+          "columnsFrom": [
+            "monitor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "stat_location_hourly_organization_id_organizations_id_fk": {
+          "name": "stat_location_hourly_organization_id_organizations_id_fk",
+          "tableFrom": "stat_location_hourly",
           "tableTo": "organizations",
           "columnsFrom": [
             "organization_id"
@@ -12022,6 +12409,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "monitor_location_states_id": {
+          "name": "monitor_location_states_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "push_events_id": {
           "name": "push_events_id",
           "type": "integer",
@@ -12042,6 +12435,12 @@
         },
         "stat_daily_id": {
           "name": "stat_daily_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stat_location_hourly_id": {
+          "name": "stat_location_hourly_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -12411,6 +12810,21 @@
           "method": "btree",
           "with": {}
         },
+        "payload_locked_documents_rels_monitor_location_states_id_idx": {
+          "name": "payload_locked_documents_rels_monitor_location_states_id_idx",
+          "columns": [
+            {
+              "expression": "monitor_location_states_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "payload_locked_documents_rels_push_events_id_idx": {
           "name": "payload_locked_documents_rels_push_events_id_idx",
           "columns": [
@@ -12461,6 +12875,21 @@
           "columns": [
             {
               "expression": "stat_daily_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_stat_location_hourly_id_idx": {
+          "name": "payload_locked_documents_rels_stat_location_hourly_id_idx",
+          "columns": [
+            {
+              "expression": "stat_location_hourly_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -12889,6 +13318,19 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
+        "payload_locked_documents_rels_monitor_location_states_fk": {
+          "name": "payload_locked_documents_rels_monitor_location_states_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "monitor_location_states",
+          "columnsFrom": [
+            "monitor_location_states_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "payload_locked_documents_rels_push_events_fk": {
           "name": "payload_locked_documents_rels_push_events_fk",
           "tableFrom": "payload_locked_documents_rels",
@@ -12934,6 +13376,19 @@
           "tableTo": "stat_daily",
           "columnsFrom": [
             "stat_daily_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_stat_location_hourly_fk": {
+          "name": "payload_locked_documents_rels_stat_location_hourly_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "stat_location_hourly",
+          "columnsFrom": [
+            "stat_location_hourly_id"
           ],
           "columnsTo": [
             "id"
@@ -13767,6 +14222,15 @@
         "gamedig"
       ]
     },
+    "public.enum_monitors_quorum": {
+      "name": "enum_monitors_quorum",
+      "schema": "public",
+      "values": [
+        "any",
+        "half",
+        "all"
+      ]
+    },
     "public.enum_monitors_reminder_backoff": {
       "name": "enum_monitors_reminder_backoff",
       "schema": "public",
@@ -14018,6 +14482,17 @@
         "domain"
       ]
     },
+    "public.enum_heartbeats_location_status": {
+      "name": "enum_heartbeats_location_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending",
+        "maintenance",
+        "degraded"
+      ]
+    },
     "public.enum_heartbeats_status": {
       "name": "enum_heartbeats_status",
       "schema": "public",
@@ -14033,7 +14508,8 @@
       "name": "enum_heartbeats_trigger",
       "schema": "public",
       "values": [
-        "manual"
+        "manual",
+        "quorum"
       ]
     },
     "public.enum_monitor_incidents_timeline_type": {
@@ -14072,6 +14548,28 @@
         "dashboard",
         "api",
         "link"
+      ]
+    },
+    "public.enum_monitor_location_states_last_status": {
+      "name": "enum_monitor_location_states_last_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending",
+        "maintenance",
+        "degraded"
+      ]
+    },
+    "public.enum_monitor_location_states_settled_status": {
+      "name": "enum_monitor_location_states_settled_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending",
+        "maintenance",
+        "degraded"
       ]
     },
     "public.enum_push_events_kind": {
@@ -14538,6 +15036,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "b6ab2882-ff8f-442a-9b22-946ea3c4a1c0",
+  "id": "d8edb3d4-8620-4fb0-aa69-a163277be317",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

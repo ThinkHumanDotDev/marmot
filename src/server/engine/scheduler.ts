@@ -3,7 +3,7 @@ import type { Payload, PayloadRequest } from 'payload'
 import { afterCommit } from '@/db/after-commit'
 import { PUSH_CRON_CHECK_SECONDS } from '@/lib/push-schedule'
 import { env } from '@/env'
-import { isRemoteMonitor } from '@/lib/probe-locations'
+import { isMultiLocation, isRemoteMonitor } from '@/lib/probe-locations'
 import { childLogger } from '@/lib/logger'
 import type { Monitor } from '@/payload-types'
 import { emitMonitorDeleted, emitMonitorUpdated } from '@/server/realtime/emitter'
@@ -19,8 +19,13 @@ const HOOK_REDIS_TIMEOUT_MS = 5_000
 
 /** Monitor fields the scheduler needs; accepts a full document or the status-cache subset. */
 export type SchedulableMonitor = Pick<Monitor, 'id' | 'interval' | 'retryInterval'> &
-  Partial<Pick<Monitor, 'type' | 'pushSchedule' | 'locations'>> & {
+  Partial<Pick<Monitor, 'type' | 'pushSchedule' | 'locations' | 'includeLocal'>> & {
     status?: Pick<NonNullable<Monitor['status']>, 'lastStatus'> | null
+    /**
+     * Multi-location monitors (#92): status of the local location, which the workers' cadence
+     * follows (`status.lastStatus` is the quorum). Unknown (`interval`) when unset.
+     */
+    localStatus?: NonNullable<Monitor['status']>['lastStatus']
   }
 
 /** `false` when `MARMOT_DISABLE_ENGINE_HOOKS` is set (int tests without Redis). */
@@ -41,7 +46,8 @@ export function effectiveIntervalMs(monitor: SchedulableMonitor): number {
     interval: monitor.interval,
     retryInterval: monitor.retryInterval,
   }
-  return nextIntervalSeconds(monitor.status?.lastStatus ?? 'up', settings) * 1000
+  const status = isMultiLocation(monitor) ? monitor.localStatus : monitor.status?.lastStatus
+  return nextIntervalSeconds(status ?? 'up', settings) * 1000
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
@@ -173,6 +179,7 @@ export async function resyncAll(
       type: true,
       pushSchedule: true,
       locations: true,
+      includeLocal: true,
     },
   })
 

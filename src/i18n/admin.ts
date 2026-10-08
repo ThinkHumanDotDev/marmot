@@ -157,7 +157,7 @@ export const adminTranslations = {
         durationDescription: 'Seconds since the previous heartbeat of this monitor.',
         importantDescription: 'True when the status changed compared to the previous heartbeat.',
         triggerDescription:
-          'What started the check: "manual" for Check now; empty for scheduled checks and pushes.',
+          'What started the beat: "manual" for Check now, "quorum" for a multi-location status repair; empty for scheduled checks and pushes.',
         assertionsDescription: 'Per-assertion results of this check (HTTP and DNS monitors).',
         timingDescription:
           'Request phases in ms: DNS, connect, TLS, time to first byte and transfer (HTTP and TCP monitors).',
@@ -167,6 +167,13 @@ export const adminTranslations = {
         locationDescription: 'Probe location that ran the check; empty for the local workers.',
         probesDescription:
           'Per-probe results of a multi-location check (Globalping monitors): location, outcome and latency.',
+        locationStatusDescription:
+          'Multi-location monitors: the status of the location that ran the check (status is the quorum).',
+      },
+      monitorLocationStates: {
+        description:
+          'Per-location state of monitors checked from several locations; the monitor status is their quorum.',
+        locationKeyDescription: 'Location id, or "local" for the workers of this server.',
       },
       pushEvents: {
         description:
@@ -272,7 +279,14 @@ export const adminTranslations = {
         tagsDescription: 'Tags (optionally with a value, e.g. env: prod) shown as chips.',
         notificationsDescription: 'Channels alerted when this monitor changes status.',
         locationsDescription:
-          'Probe location that checks this monitor. Empty: the workers of this server (local).',
+          'Probe locations that check this monitor. Empty: the workers of this server (local).',
+        includeLocalDescription:
+          'Check from the workers of this server (local) as well as the probe locations.',
+        quorumDescription:
+          'With several locations: how many must agree before the monitor changes status.',
+        quorum_any: 'Any location',
+        quorum_half: 'At least half of the locations',
+        quorum_all: 'All locations',
         weightDescription: 'Sort order on status pages.',
         proxyDescription: 'Send the request through this proxy (inactive proxies are skipped).',
         dockerContainerDescription: 'Container name or id.',
@@ -418,6 +432,13 @@ export const adminTranslations = {
           description: 'Per-monitor heartbeat aggregates, one row per day.',
           timestampDescription: 'Unix seconds, truncated to the start of the day (UTC).',
         },
+        locationHour: {
+          label: 'Stats per location (hourly)',
+          description:
+            'Heartbeat aggregates of multi-location monitors, one row per location and hour.',
+          timestampDescription: 'Unix seconds, truncated to the start of the hour (UTC).',
+        },
+        locationDescription: 'Location id, or "local" for the workers of this server.',
         pingDescription: 'Average ping (ms) of UP beats.',
         extrasDescription: 'Additional counters, e.g. { maintenance, pingCount }.',
         latencyHistogramDescription:

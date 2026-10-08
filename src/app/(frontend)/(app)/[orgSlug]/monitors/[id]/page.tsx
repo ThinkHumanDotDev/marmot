@@ -1,5 +1,6 @@
 import { ExternalLink, FolderTree } from 'lucide-react'
 import type { Metadata } from 'next'
+import type { Where } from 'payload'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { getTranslations } from 'next-intl/server'
@@ -12,7 +13,9 @@ import {
 } from '@/components/monitors/assertion-results-card'
 import { CertificatePanel } from '@/components/monitors/certificate-panel'
 import { monitorTarget, useMonitorFormat } from '@/components/monitors/format'
-import { type BeatLike } from '@/components/monitors/heartbeat-bar'
+import { HeartbeatBar, type BeatLike } from '@/components/monitors/heartbeat-bar'
+import { LocationLatencyChart } from '@/components/monitors/location-latency-chart'
+import { LocationFilter, LocationStatusTable } from '@/components/monitors/location-status-table'
 import { LiveHeartbeatBar } from '@/components/monitors/live-heartbeat-bar'
 import { ImportantEventsTable } from '@/components/monitors/important-events-table'
 import { MonitorActions } from '@/components/monitors/monitor-actions'
@@ -33,11 +36,19 @@ import { env } from '@/env'
 import { timeZoneOrDefault } from '@/i18n/formats'
 import { parseRequestTiming } from '@/lib/request-timing'
 import { isHttpMonitorType } from '@/lib/validation/monitor'
-import type { LocationStatus } from '@/lib/probe-locations'
+import {
+  DEFAULT_QUORUM,
+  isMultiLocation,
+  isQuorumMode,
+  monitorLocationKeys,
+  quorumNeeded,
+  type LocationStatus,
+} from '@/lib/probe-locations'
 import type { Heartbeat, Location, Monitor, PushEvent } from '@/payload-types'
 import { recentMonitorIncidents, renderTime } from '@/server/incidents/store'
 import { toRealtimeTags } from '@/server/realtime/serialize'
 import { listAuditEvents } from '@/server/audit/query'
+import { heartbeatLocationWhere, loadMonitorLocationView } from '@/server/monitors/location-view'
 import { getMonitorChannels, getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
 import { getRangeStats } from '@/server/stats/range-stats'
 import { getUptime } from '@/server/stats/uptime-calculator'
@@ -48,7 +59,7 @@ const EVENTS_PER_PAGE = 20
 
 interface MonitorDetailPageProps {
   params: Promise<{ orgSlug: string; id: string }>
-  searchParams: Promise<{ page?: string }>
+  searchParams: Promise<{ page?: string; location?: string }>
 }
 
 export async function generateMetadata({ params }: MonitorDetailPageProps): Promise<Metadata> {
@@ -84,7 +95,7 @@ function LastCheck({ at, msg }: { at: string | null | undefined; msg: string | n
 
 export default async function MonitorDetailPage({ params, searchParams }: MonitorDetailPageProps) {
   const { orgSlug, id } = await params
-  const { page: rawPage } = await searchParams
+  const { page: rawPage, location: rawLocation } = await searchParams
   const ctx = await getOrgPageContext(orgSlug, `/${orgSlug}/monitors/${id}`)
   const monitor = await getOrgMonitor(ctx, id, 1)
   const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1)
@@ -97,43 +108,62 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const now = new Date()
   const isPush = monitor.type === 'push'
   const canReadIncidents = ctx.allowed('monitor-incident:read')
-  const [stats24h, uptime30d, uptime1y, latest, events, channels, pushEvents, incidents] =
-    await Promise.all([
-      // The detail chart's default period; also the 24h figures of the uptime cards.
-      getRangeStats(payload, monitor.id, '1d'),
-      getUptime(payload, monitor.id, '30d'),
-      getUptime(payload, monitor.id, '1y'),
-      payload.find({
-        collection: 'heartbeats',
-        where: { monitor: { equals: monitor.id } },
-        sort: '-time',
-        limit: 100,
-        depth: 0,
-        pagination: false,
+  // Multi-location monitors (#92): per-location table, latency chart and the location filter.
+  const multi = isMultiLocation(monitor)
+  const locationKeys = monitorLocationKeys(monitor)
+  const locationFilter =
+    multi && rawLocation && locationKeys.includes(rawLocation) ? rawLocation : null
+  const beatWhere = (where: Where): Where =>
+    locationFilter ? { and: [where, heartbeatLocationWhere(locationFilter)] } : where
+  const [
+    stats24h,
+    uptime30d,
+    uptime1y,
+    latest,
+    events,
+    channels,
+    pushEvents,
+    incidents,
+    locationView,
+  ] = await Promise.all([
+    // The detail chart's default period; also the 24h figures of the uptime cards.
+    getRangeStats(payload, monitor.id, '1d'),
+    getUptime(payload, monitor.id, '30d'),
+    getUptime(payload, monitor.id, '1y'),
+    payload.find({
+      collection: 'heartbeats',
+      where: beatWhere({ monitor: { equals: monitor.id } }),
+      sort: '-time',
+      limit: 100,
+      depth: 0,
+      pagination: false,
+    }),
+    payload.find({
+      collection: 'heartbeats',
+      where: beatWhere({
+        and: [{ monitor: { equals: monitor.id } }, { important: { equals: true } }],
       }),
-      payload.find({
-        collection: 'heartbeats',
-        where: { and: [{ monitor: { equals: monitor.id } }, { important: { equals: true } }] },
-        sort: '-time',
-        limit: EVENTS_PER_PAGE,
-        page,
-        depth: 0,
-      }),
-      getMonitorChannels(ctx, monitor),
-      isPush
-        ? payload.find({
-            collection: 'push-events',
-            where: { monitor: { equals: monitor.id } },
-            sort: '-time',
-            limit: 20,
-            depth: 0,
-            pagination: false,
-          })
-        : null,
-      canReadIncidents
-        ? recentMonitorIncidents(payload, monitor.id, { user: ctx.requestUser })
-        : Promise.resolve(null),
-    ])
+      sort: '-time',
+      limit: EVENTS_PER_PAGE,
+      page,
+      depth: 0,
+    }),
+    getMonitorChannels(ctx, monitor),
+    isPush
+      ? payload.find({
+          collection: 'push-events',
+          where: { monitor: { equals: monitor.id } },
+          sort: '-time',
+          limit: 20,
+          depth: 0,
+          pagination: false,
+        })
+      : null,
+    canReadIncidents
+      ? recentMonitorIncidents(payload, monitor.id, { user: ctx.requestUser })
+      : Promise.resolve(null),
+    multi ? loadMonitorLocationView(payload, monitor, now) : Promise.resolve(null),
+  ])
   // Activity tab: this monitor's audit events, for holders of `audit-log:read`.
   const activity = ctx.allowed('audit-log:read')
     ? await listAuditEvents(payload, ctx.requestUser, ctx.org.id, {
@@ -155,9 +185,13 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
     monitor.parent && typeof monitor.parent === 'object' ? (monitor.parent as Monitor) : null
   const target = monitorTarget(monitor)
   // Probe location (#91), populated at depth 1 (readers without `location:read` see an id).
-  const location = (monitor.locations ?? []).find(
-    (value): value is Location => typeof value === 'object' && value !== null,
-  )
+  const location = multi
+    ? undefined
+    : (monitor.locations ?? []).find(
+        (value): value is Location => typeof value === 'object' && value !== null,
+      )
+  const detailPath = `/${orgSlug}/monitors/${monitor.id}`
+  const quorum = isQuorumMode(monitor.quorum) ? monitor.quorum : DEFAULT_QUORUM
   const active = monitor.active !== false
   const pushUrl =
     monitor.type === 'push' && monitor.pushToken
@@ -172,7 +206,9 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         totalPages: events.totalPages,
         totalDocs: events.totalDocs,
       }}
-      basePath={`/${orgSlug}/monitors/${monitor.id}`}
+      basePath={
+        locationFilter ? `${detailPath}?location=${encodeURIComponent(locationFilter)}` : detailPath
+      }
       timeZone={timeZone}
     />
   )
@@ -207,6 +243,11 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         description={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <MonitorTypeBadge type={monitor.type} />
+            {multi && (
+              <Badge variant="outline" data-testid="monitor-location-count">
+                {t('locationCount', { count: locationKeys.length })}
+              </Badge>
+            )}
             {location && (
               <MonitorLocationBadge
                 name={location.name}
@@ -251,6 +292,22 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
           </p>
         )}
 
+        {locationView && (
+          <LocationStatusTable
+            rows={locationView.rows}
+            quorum={quorum}
+            needed={quorumNeeded(quorum, locationKeys.length)}
+          />
+        )}
+
+        {locationView && (
+          <LocationFilter
+            rows={locationView.rows}
+            selected={locationFilter}
+            basePath={detailPath}
+          />
+        )}
+
         <Card className="gap-3 py-4">
           <CardHeader className="px-4">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -258,11 +315,16 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4">
-            <LiveHeartbeatBar
-              monitorId={String(monitor.id)}
-              beats={latest.docs.map(toBeat)}
-              timeZone={timeZone}
-            />
+            {locationFilter ? (
+              // The live store mixes every location's beats; a filtered bar stays server-rendered.
+              <HeartbeatBar beats={latest.docs.map(toBeat)} timeZone={timeZone} />
+            ) : (
+              <LiveHeartbeatBar
+                monitorId={String(monitor.id)}
+                beats={latest.docs.map(toBeat)}
+                timeZone={timeZone}
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -295,6 +357,14 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
           lastCheckAt={monitor.status?.lastCheckAt}
           showTiming={measuresTiming}
         />
+
+        {locationView && (
+          <LocationLatencyChart
+            series={locationView.series
+              .map((series, colorIndex) => ({ ...series, colorIndex }))
+              .filter((series) => !locationFilter || series.key === locationFilter)}
+          />
+        )}
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="flex min-w-0 flex-col gap-6">

@@ -3,17 +3,36 @@
  * the probe agent and the UI, so it imports nothing from the server.
  *
  * A monitor without `locations` is checked by the instance's own worker pool, the implicit
- * location `local`. A monitor assigned to a remote location is checked only by the probe agents
- * of that location; its heartbeats carry the location's id. Until multi-location quorum (#92)
- * exists a monitor has at most one location (`MAX_MONITOR_LOCATIONS`), so its single state
- * machine never interleaves results from two vantage points.
+ * location `local`. A monitor assigned to remote locations is checked by the probe agents of those
+ * locations (and by the local workers too when `includeLocal` is set); its heartbeats carry the
+ * location's id. A monitor checked from more than one location (#92) keeps a state per location
+ * and derives its own status by quorum (`src/server/engine/quorum.ts`).
  */
 
 /** Id of the implicit location: the worker pool of the Marmot instance itself. */
 export const LOCAL_LOCATION = 'local'
 
-/** Locations per monitor until multi-location quorum (#92) lifts the limit. */
-export const MAX_MONITOR_LOCATIONS = 1
+/** Remote locations per monitor (the local worker pool comes on top). */
+export const MAX_MONITOR_LOCATIONS = 10
+
+/**
+ * How many of a monitor's locations must agree before the monitor changes status (#92):
+ * `any` one of them, at least `half` of them (the default) or `all` of them.
+ */
+export const QUORUM_MODES = ['any', 'half', 'all'] as const
+export type QuorumMode = (typeof QUORUM_MODES)[number]
+export const DEFAULT_QUORUM: QuorumMode = 'half'
+
+export const isQuorumMode = (value: unknown): value is QuorumMode =>
+  typeof value === 'string' && (QUORUM_MODES as readonly string[]).includes(value)
+
+/** Locations that must report a status for the monitor to take it, out of `total`. */
+export function quorumNeeded(mode: QuorumMode | null | undefined, total: number): number {
+  const n = Math.max(1, Math.floor(total))
+  if (mode === 'any') return 1
+  if (mode === 'all') return n
+  return Math.ceil(n / 2)
+}
 
 /** Metadata labels per location (`region: eu-west`). */
 export const MAX_LOCATION_LABELS = 20
@@ -60,9 +79,28 @@ export function monitorLocationIds(monitor: { locations?: unknown } | null | und
   return value.map(idOf).filter((id): id is Id => id !== null)
 }
 
-/** `true` when the monitor is checked by a probe agent instead of the local worker pool. */
-export const isRemoteMonitor = (monitor: { locations?: unknown } | null | undefined): boolean =>
-  monitorLocationIds(monitor).length > 0
+type LocatedMonitor = { locations?: unknown; includeLocal?: boolean | null } | null | undefined
+
+/** `true` when the local worker pool checks the monitor (no remote location, or `includeLocal`). */
+export const checksLocally = (monitor: LocatedMonitor): boolean =>
+  monitorLocationIds(monitor).length === 0 || monitor?.includeLocal === true
+
+/** `true` when only probe agents check the monitor, never the local worker pool. */
+export const isRemoteMonitor = (monitor: LocatedMonitor): boolean => !checksLocally(monitor)
+
+/**
+ * Location keys a monitor is checked from: the remote locations' ids (as strings) plus `local`
+ * when the worker pool checks it too. Never empty.
+ */
+export function monitorLocationKeys(monitor: LocatedMonitor): string[] {
+  const keys = [...new Set(monitorLocationIds(monitor).map(String))]
+  if (checksLocally(monitor)) keys.push(LOCAL_LOCATION)
+  return keys
+}
+
+/** `true` when the monitor is checked from several locations and its status is a quorum (#92). */
+export const isMultiLocation = (monitor: LocatedMonitor): boolean =>
+  monitorLocationKeys(monitor).length > 1
 
 /** Location key of a heartbeat: the location's id, or `local` for the worker pool. */
 export const heartbeatLocationKey = (location: unknown): string => {

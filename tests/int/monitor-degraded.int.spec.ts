@@ -110,7 +110,8 @@ beforeAll(async () => {
     data: { name: 'Degraded Org', slug: `degraded-${run}` },
   })
   server = http.createServer((req, res) => {
-    const delay = req.url === '/slow' ? 400 : 0
+    // `/?delay=<ms>` answers after that many milliseconds; anything else answers at once.
+    const delay = Number(new URL(req.url ?? '/', 'http://localhost').searchParams.get('delay') ?? 0)
     setTimeout(() => {
       res.writeHead(200, { 'content-type': 'text/plain' })
       res.end('ok')
@@ -147,9 +148,12 @@ afterEach(() => {
 
 describe('degraded checks through the worker', () => {
   it('a real slow HTTP check is DEGRADED, a fast one UP, with the transition announced', async () => {
+    // The fast leg is a real loopback request timed by the wall clock: on a loaded host it has taken
+    // over 300 ms, so the threshold leaves room for scheduling delay and the slow leg sits above it.
     const monitor = await createMonitor({
       name: 'slow-http',
-      url: `http://127.0.0.1:${port}/slow`,
+      url: `http://127.0.0.1:${port}/?delay=1200`,
+      degradedAfter: 1000,
     })
     const events: HeartbeatEvent[] = []
     registerHeartbeatListener((event) => {
@@ -162,9 +166,9 @@ describe('degraded checks through the worker', () => {
       { queue: fakeChecksQueue().queue },
     )
     expect(first.heartbeat).toMatchObject({ status: 'degraded', important: true })
-    expect(first.heartbeat?.ping).toBeGreaterThan(200)
+    expect(first.heartbeat?.ping).toBeGreaterThan(1000)
     expect(first.heartbeat?.msg).toMatch(
-      /^200 - OK \(response time \d+ ms exceeds the degraded threshold of 200 ms\)$/,
+      /^200 - OK \(response time \d+ ms exceeds the degraded threshold of 1000 ms\)$/,
     )
     expect(events[0]).toMatchObject({ isFirstBeat: true, notify: false, notificationEvent: null })
     expect((await reload(monitor.id)).status).toMatchObject({
@@ -255,7 +259,7 @@ describe('degraded checks through the worker', () => {
   it('maintenance overrides the threshold; leaving it slowly is a degraded transition', async () => {
     const monitor = await createMonitor({
       name: 'maintenance',
-      url: `http://127.0.0.1:${port}/slow`,
+      url: `http://127.0.0.1:${port}/?delay=400`,
     })
     const runJob = () =>
       processCheckJob(

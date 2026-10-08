@@ -14,8 +14,9 @@
  * turns into a DOWN.
  *
  * Probing is per location: `ConnectivityMonitor`s are registered by location id and
- * `connectivityLocationOf(monitor)` picks the one that judges a monitor. Every worker runs one
- * monitor for `DEFAULT_LOCATION`; a probe agent (#91) runs one for its own location's id.
+ * the caller names the one that judges a check (`connectivityLocationOf(monitor)` by default).
+ * Every worker runs one monitor for `DEFAULT_LOCATION`; a probe agent (#91) runs one for its own
+ * location's id, so a multi-location monitor (#92) is held per location.
  */
 import dns from 'node:dns'
 import net from 'node:net'
@@ -23,7 +24,7 @@ import type { Payload } from 'payload'
 
 import { env } from '@/env'
 import { parseConnectivityTargets, type ConnectivityTarget } from '@/lib/connectivity-targets'
-import { monitorLocationIds } from '@/lib/probe-locations'
+import { checksLocally, monitorLocationIds } from '@/lib/probe-locations'
 import { childLogger } from '@/lib/logger'
 import type { DockerHost, Monitor } from '@/payload-types'
 import { AddressPolicy, stripAddress } from '@/server/security/address-policy'
@@ -270,12 +271,16 @@ export function getConnectivityMonitor(
 }
 
 /**
- * Location whose connectivity judges `monitor`'s checks: the id of the probe location it is
- * assigned to (#91), whose agent registers its own `ConnectivityMonitor` under that id, or
- * `DEFAULT_LOCATION` for the local worker pool. Multi-location checks (#92) will pass the location
- * a check runs at instead of taking the first.
+ * Default location whose connectivity judges `monitor`'s checks: `DEFAULT_LOCATION` when the local
+ * worker pool checks it, otherwise the first probe location it is assigned to (#91). Callers that
+ * know where a check runs pass that location to `guardAgainstOfflineChecker` instead: the workers
+ * pass `DEFAULT_LOCATION` and a probe agent its own location, so a multi-location monitor (#92) is
+ * judged per location.
  */
-export function connectivityLocationOf(monitor: Pick<Monitor, 'locations'>): string {
+export function connectivityLocationOf(
+  monitor: Pick<Monitor, 'locations'> & Partial<Pick<Monitor, 'includeLocal'>>,
+): string {
+  if (checksLocally(monitor)) return DEFAULT_LOCATION
   const [location] = monitorLocationIds(monitor)
   return location === undefined ? DEFAULT_LOCATION : String(location)
 }
@@ -426,8 +431,9 @@ export async function guardAgainstOfflineChecker(
   payload: Payload,
   monitor: Monitor,
   check: () => Promise<CheckResult>,
+  location: string = connectivityLocationOf(monitor),
 ): Promise<CheckResult> {
-  const connectivity = getConnectivityMonitor(connectivityLocationOf(monitor))
+  const connectivity = getConnectivityMonitor(location)
   if (!connectivity) return check()
 
   const hold = async (): Promise<boolean> => {
