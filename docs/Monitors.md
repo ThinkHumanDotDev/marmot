@@ -121,7 +121,13 @@ uptime; it updates over the WebSocket connection without reloading. The detail p
 
 - uptime for 24 h and 30 d, average and current response time, and the number of degraded checks in the
   last 24 hours;
-- a response-time chart;
+- a **period selector** (24 hours, 7, 14, 30 or 90 days) and a **percentile selector** (p50, p75, p90,
+  p95, p99) driving a metrics row (uptime, the highest selected percentile, total, failed and degraded
+  checks, last check time), the **response-time chart** (one line per selected percentile plus the
+  average) and a **checks chart** (up / degraded / down per interval). The figures come from the stat
+  rollups (minutely for a day, hourly up to 30 days, daily for 90 days), so switching periods is cheap;
+  percentiles are estimated from per-bucket latency histograms and stay within one histogram bucket
+  (about ±19 %) of the exact value;
 - the list of **important events** (status changes with their message);
 - the certificate panel for HTTPS targets (issuer, expiry; filled by the certificate job landing in the
   current release);
@@ -301,20 +307,27 @@ import drops keys that are already in use.
 Monitors are managed through org-scoped route handlers that authenticate the Payload session and apply the
 same permissions as the UI (`monitor:read` for viewers, `monitor:create|update|delete` for members):
 
-| Method & path                                    | Purpose                                           |
-| ------------------------------------------------ | ------------------------------------------------- |
-| `GET /api/orgs/:orgId/monitors[?key=]`           | List (filter by type, active state or key)        |
-| `POST /api/orgs/:orgId/monitors`                 | Create (body validated by `monitorFormSchema`)    |
-| `GET /api/orgs/:orgId/monitors/:id/heartbeats`   | Latest heartbeats, newest first                   |
-| `PATCH` / `DELETE /api/orgs/:orgId/monitors/:id` | Update / delete                                   |
-| `POST /api/orgs/:orgId/monitors/:id/pause`       | Pause                                             |
-| `POST /api/orgs/:orgId/monitors/:id/resume`      | Resume                                            |
-| `POST /api/orgs/:orgId/monitors/:id/clone`       | Clone (returns the new, paused monitor)           |
-| `POST /api/orgs/:orgId/monitors/:id/check`       | Check now (see below)                             |
-| `POST /api/orgs/:orgId/checks`                   | Test an unsaved configuration (see below)         |
-| `GET /api/monitors/:id/stats?range=24h\|30d\|1y` | Uptime, average ping and buckets for a range      |
-| `GET /api/orgs/:orgId/monitor-incidents`         | Incidents + MTTA/MTTR (see below)                 |
-| `GET /api/monitors` (Payload REST)               | List with Payload's `where`/`limit`/`sort` syntax |
+| Method & path                                    | Purpose                                            |
+| ------------------------------------------------ | -------------------------------------------------- |
+| `GET /api/orgs/:orgId/monitors[?key=]`           | List (filter by type, active state or key)         |
+| `POST /api/orgs/:orgId/monitors`                 | Create (body validated by `monitorFormSchema`)     |
+| `GET /api/orgs/:orgId/monitors/:id/heartbeats`   | Latest heartbeats, newest first                    |
+| `PATCH` / `DELETE /api/orgs/:orgId/monitors/:id` | Update / delete                                    |
+| `POST /api/orgs/:orgId/monitors/:id/pause`       | Pause                                              |
+| `POST /api/orgs/:orgId/monitors/:id/resume`      | Resume                                             |
+| `POST /api/orgs/:orgId/monitors/:id/clone`       | Clone (returns the new, paused monitor)            |
+| `POST /api/orgs/:orgId/monitors/:id/check`       | Check now (see below)                              |
+| `POST /api/orgs/:orgId/checks`                   | Test an unsaved configuration (see below)          |
+| `GET /api/monitors/:id/stats?range=&percentile=` | Uptime, ping, percentiles and chart series (below) |
+| `GET /api/orgs/:orgId/monitor-incidents`         | Incidents + MTTA/MTTR (see below)                  |
+| `GET /api/monitors` (Payload REST)               | List with Payload's `where`/`limit`/`sort` syntax  |
+
+`GET /api/monitors/:id/stats` takes `range` = `1d`, `7d`, `14d`, `30d`, `90d` (chart periods) or `24h`,
+`1y` (default `24h`, same window as `1d`) and an optional `percentile` list (`p50,p95`; all five when
+omitted). It answers `{ range, granularity, uptime, avgPing, degraded, buckets, percentiles, checks, step,
+series }`: `percentiles` holds p50–p99 over the window, `checks` the `total`, `up`, `failed`, `degraded` and
+`maintenance` counts, and `series` one point per `step` seconds (`timestamp`, `up`, `down`, `degraded`,
+`maintenance`, `ping`, `pingMin`, `pingMax` and the requested percentiles, `null` without pings).
 
 Incident routes (`monitor-incident:*` permissions; ids are strings on MongoDB and numbers on Postgres):
 

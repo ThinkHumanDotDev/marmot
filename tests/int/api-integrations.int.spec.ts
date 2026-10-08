@@ -455,6 +455,30 @@ describe('API keys, push, metrics and badges', () => {
       expect(body).not.toContain(`monitor_cert_is_valid{${labels}}`)
     })
 
+    it('exposes response-time quantiles only when asked (?quantiles=true, #95)', async () => {
+      const plain = await metricsRoute(
+        request('http://localhost/api/metrics', { headers: { authorization: `Bearer ${key}` } }),
+      )
+      expect(await plain.text()).not.toContain('monitor_response_time_quantile')
+
+      const res = await metricsRoute(
+        request('http://localhost/api/metrics?quantiles=true', {
+          headers: { authorization: `Bearer ${key}` },
+        }),
+      )
+      expect(res.status).toBe(200)
+      const body = await res.text()
+      const labels = `monitor_id="${monitor.id}",monitor_name="${monitor.name}",monitor_type="push",monitor_url="",monitor_hostname="db.internal",monitor_port="5432"`
+      expect(body).toContain('# TYPE monitor_response_time_quantile gauge')
+      // One push with ping=40: every quantile is that ping (bounded by the exact min/max).
+      for (const quantile of ['0.5', '0.75', '0.9', '0.95', '0.99']) {
+        expect(body).toContain(
+          `monitor_response_time_quantile{${labels},window="24h",quantile="${quantile}"} 40`,
+        )
+      }
+      expect(body).toContain(`window="30d",quantile="0.95"} 40`)
+    })
+
     it('is scoped to the key organization', async () => {
       const other = await createKey(
         request(`http://localhost/api/orgs/${orgB.id}/api-keys`, {

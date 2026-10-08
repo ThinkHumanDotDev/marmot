@@ -11,6 +11,7 @@
 import { getPayload, type CollectionSlug } from 'payload'
 
 import config from '@payload-config'
+import { deleteInBatches } from '@/db/delete-in-batches'
 
 // Never touched: dropping applied migrations would make `payload migrate` re-run them.
 const KEEP = new Set<string>(['payload-migrations'])
@@ -30,12 +31,8 @@ async function main(): Promise<void> {
     failures = []
     for (const slug of slugs) {
       try {
-        await payload.delete({
-          collection: slug as CollectionSlug,
-          where: { id: { exists: true } },
-          overrideAccess: true,
-          depth: 0,
-        })
+        // In batches, so a large heartbeat table never has to fit in memory (#237).
+        await deleteInBatches(payload, slug as CollectionSlug, {}, { hooks: true })
       } catch (error) {
         failures.push(`${slug}: ${error instanceof Error ? error.message : String(error)}`)
       }

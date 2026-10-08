@@ -20,7 +20,7 @@ import { LiveHeartbeatBar } from '@/components/monitors/live-heartbeat-bar'
 import { ImportantEventsTable } from '@/components/monitors/important-events-table'
 import { MonitorActions } from '@/components/monitors/monitor-actions'
 import { MonitorChannelsCard } from '@/components/monitors/monitor-channels-card'
-import { ResponseTimeChart } from '@/components/monitors/response-time-chart'
+import { MonitorStatsPanel } from '@/components/monitors/monitor-stats-panel'
 import { PushEventsTable, PushPanel } from '@/components/monitors/push-panel'
 import { MonitorStatusBadge } from '@/components/monitors/status-badge'
 import { TagList } from '@/components/monitors/tag-chip'
@@ -47,7 +47,8 @@ import { toRealtimeTags } from '@/server/realtime/serialize'
 import { listAuditEvents } from '@/server/audit/query'
 import { heartbeatLocationWhere, loadMonitorLocationView } from '@/server/monitors/location-view'
 import { getMonitorChannels, getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
-import { getStats, getUptime } from '@/server/stats/uptime-calculator'
+import { getRangeStats } from '@/server/stats/range-stats'
+import { getUptime } from '@/server/stats/uptime-calculator'
 
 export const dynamic = 'force-dynamic'
 
@@ -121,7 +122,8 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
     incidents,
     locationView,
   ] = await Promise.all([
-    getStats(payload, monitor.id, '24h'),
+    // The detail chart's default period; also the 24h figures of the uptime cards.
+    getRangeStats(payload, monitor.id, '1d'),
     getUptime(payload, monitor.id, '30d'),
     getUptime(payload, monitor.id, '1y'),
     payload.find({
@@ -334,7 +336,19 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
 
         {showAssertions && <AssertionResultsCard results={assertionResults} />}
 
-        <ResponseTimeChart buckets={stats24h.buckets} />
+        <MonitorStatsPanel
+          monitorId={String(monitor.id)}
+          initial={{
+            range: stats24h.range,
+            uptime: stats24h.uptime,
+            avgPing: stats24h.avgPing,
+            percentiles: stats24h.percentiles,
+            checks: stats24h.checks,
+            step: stats24h.step,
+            series: stats24h.series,
+          }}
+          lastCheckAt={monitor.status?.lastCheckAt}
+        />
 
         {locationView && (
           <LocationLatencyChart

@@ -143,11 +143,11 @@ Raw `heartbeats` are kept for 24 hours (important ones for `KEEP_DATA_PERIOD_DAY
 folded into three aggregate collections, one row per `(monitor, timestamp)` where `timestamp` is the unix
 second of the bucket start (minute / hour / UTC day), guarded by a unique compound index:
 
-| Collection      | Bucket | Kept                    | Serves |
-| --------------- | ------ | ----------------------- | ------ |
-| `stat-minutely` | 1 min  | 24 hours                | `24h`  |
-| `stat-hourly`   | 1 hour | 30 days                 | `30d`  |
-| `stat-daily`    | 1 day  | `KEEP_DATA_PERIOD_DAYS` | `1y`   |
+| Collection      | Bucket | Kept                    | Serves             |
+| --------------- | ------ | ----------------------- | ------------------ |
+| `stat-minutely` | 1 min  | 24 hours                | `24h`, `1d`        |
+| `stat-hourly`   | 1 hour | 30 days                 | `7d`, `14d`, `30d` |
+| `stat-daily`    | 1 day  | `KEEP_DATA_PERIOD_DAYS` | `90d`, `1y`        |
 
 Multi-location monitors (#92) count the quorum status there (the ping of a location whose own check
 failed is left out) and also feed a separate per-location series, `stat-location-hourly` (one row per
@@ -157,19 +157,34 @@ and latency chart read.
 
 Each row stores `up`, `down`, `ping` (average of UP beats), `pingMin`, `pingMax` and an `extras` JSON with
 `maintenance` (beats during maintenance, also counted as `up`), `degraded` (slow successful checks, also
-counted as `up`, their ping included) and `pingCount` (weight of `ping`). `pending`
+counted as `up`, their ping included) and `pingCount` (weight of `ping`), plus `latencyHistogram`, a
+JSON number array counting the pings of UP and DEGRADED beats per log-spaced bucket (four per doubling, from
+`[0, 1)` ms to an overflow bucket at 2^17 ms; `src/server/stats/latency-histogram.ts`). `pending`
 beats count as `down`. The maths is a port of Uptime Kuma's `UptimeCalculator`
 (`src/server/stats/uptime-calculator.ts`): the worker's heartbeat listener calls
 `recordHeartbeat(payload, { monitorId, organizationId, status, ping, time })`, which reads the three current
 buckets, applies the beat (running average, min/max) and writes them back through the Local API; an insert
 that loses the unique-index race is retried as an update. Reads (`getUptime`, `getAvgPing`, `getBuckets`,
 `getStats`) sum the buckets of the window `[now - range, now]`, falling back to the latest bucket when the
-window is empty, and are exposed at `GET /api/monitors/:id/stats?range=24h|30d|1y`.
+window is empty, and are exposed at `GET /api/monitors/:id/stats?range=…`.
+
+**Percentiles** (#95, `src/server/stats/range-stats.ts`): histograms merge by element-wise addition, so
+`getRangeStats()` derives p50, p75, p90, p95 and p99 of any window by merging the histograms of its buckets
+and reading the nearest-rank sample's bucket, interpolated by rank and bounded by the exact `pingMin` /
+`pingMax`; the result is always inside the histogram bucket of the true value (about ±19 %). It also folds
+the buckets into a fixed number of chart intervals (5 min for 1 d, 1 h for 7 d, 2 h for 14 d, 4 h for 30 d,
+1 day for 90 d) with up / degraded / down counts, the average and the percentiles, so the detail page's
+chart never reads raw heartbeats. Rows written before the histogram existed have none and contribute no
+percentiles.
 
 Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ job scheduler on the
 `marmot:maintenance` queue: minutely rows older than 24 h, hourly and per-location hourly older than 30 d, daily and important
 heartbeats older than `KEEP_DATA_PERIOD_DAYS` (long-term pruning is disabled when the value is `< 1`), and
-non-important heartbeats older than 24 h.
+non-important heartbeats older than 24 h. It deletes in batches of 1,000 rows (`deleteInBatches` in
+`src/db/delete-in-batches.ts`: fetch one batch of ids, delete them with `id in [...]`, repeat), so a large
+backlog never has to fit in the worker's memory. Telemetry and log collections have no delete hooks and
+are removed through the database adapter (`payload.db.deleteMany`); unconfirmed subscribers go through
+`payload.delete` so their `beforeDelete` cascade still runs.
 
 ## Notifications
 

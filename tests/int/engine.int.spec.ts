@@ -14,6 +14,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 
 import config from '@payload-config'
 import { afterCommit } from '@/db/after-commit'
+import { deleteInBatches } from '@/db/delete-in-batches'
 import { MONITOR_TYPE_NAMES } from '@/lib/validation/monitor'
 import type { Monitor } from '@/payload-types'
 import {
@@ -151,8 +152,9 @@ beforeAll(async () => {
     data: { name: 'engine-int-org', slug: `engine-int-org-${Date.now().toString(36)}` },
   })
   organizationId = org.id
-  await payload.delete({ collection: 'heartbeats', where: {}, overrideAccess: true })
-  await payload.delete({ collection: 'monitors', where: {}, overrideAccess: true })
+  // In batches: a shared dev database can hold far more heartbeats than fit in memory (#237).
+  await deleteInBatches(payload, 'heartbeats', {})
+  await deleteInBatches(payload, 'monitors', {}, { hooks: true })
 
   httpServer = http.createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost')
