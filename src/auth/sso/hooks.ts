@@ -14,7 +14,9 @@ import { childLogger } from '@/lib/logger'
 import { checkGroupAccess, extractGroups, parseGroupList } from '@/lib/sso-groups'
 import type { Invitation, User } from '@/payload-types'
 import { hasMemberSeat } from '@/server/billing/entitlements'
+import { markEmailVerified } from '@/server/auth/email-verification'
 import { auditTarget, recordRequestAuditEvent, recordUserAuditEvent } from '@/server/security/audit'
+import { isEmailVerificationRequired } from '@/server/settings'
 import { isConnectionMeta } from '@/server/sso/connections'
 import { applyGroupMapping, type GroupPolicy } from '@/server/sso/group-mapping'
 import { isVerifiedDomainOf } from '@/server/sso/domains'
@@ -22,6 +24,10 @@ import { isVerifiedDomainOf } from '@/server/sso/domains'
 import { OIDC_PROVIDER_ID } from './providers'
 
 const log = childLogger('sso')
+
+/** The identity provider asserts the address (OIDC `email_verified`) or is the organization's own. */
+const ssoVerifiesEmail = (identity: { emailVerified: boolean }, provider: ProviderInfo): boolean =>
+  identity.emailVerified || isConnectionMeta(provider.meta)
 
 async function findPendingInvitation(
   payload: Payload,
@@ -174,7 +180,17 @@ export const userResolution: UserResolutionOptions = {
 
   beforeLink: assertGroupAccess,
 
-  mapNewUser: ({ provider }) => ({ authProvider: authProviderFor(provider) }),
+  /**
+   * Accounts the identity provider vouches for (a verified email, or an organization's own
+   * connection) count as verified; others confirm their address by email like a sign-up while the
+   * instance requires verification (#177).
+   */
+  mapNewUser: async ({ payload, identity, provider }) => ({
+    authProvider: authProviderFor(provider),
+    ...(!ssoVerifiesEmail(identity, provider) && (await isEmailVerificationRequired(payload))
+      ? { emailVerified: false }
+      : {}),
+  }),
 
   afterProvision: async ({ payload, user, identity, provider }) => {
     if (isConnectionMeta(provider.meta) || !env.DISABLE_SIGNUP) return
@@ -190,13 +206,22 @@ export const userResolution: UserResolutionOptions = {
   },
 
   afterLogin: async (ctx) => {
-    const { payload, user, provider, request, created, linked } = ctx
+    const { payload, user, identity, provider, request, created, linked } = ctx
     await assertGroupAccess(ctx)
     const mapped = await mapGroups(ctx)
     await recordUserAuditEvent(payload, request, user, 'auth.sso_login', {
       organization: isConnectionMeta(provider.meta) ? provider.meta.organization : null,
       metadata: { provider: provider.id, created, linked },
     })
+    // A pending account whose address the identity provider asserts as verified is confirmed.
+    if (identity.emailVerified && identity.email) {
+      await markEmailVerified(payload, {
+        userId: user.id,
+        email: identity.email,
+        method: 'sso',
+        request,
+      })
+    }
     if (!isConnectionMeta(provider.meta)) return
     const { organization, defaultRole } = provider.meta
     if (mapped.has(String(organization))) return

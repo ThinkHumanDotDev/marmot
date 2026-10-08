@@ -157,4 +157,12 @@ export const authApi = {
   resetPassword: (data: { token: string; password: string }) =>
     api.post<LoginResponse>('/api/users/reset-password', data),
   me: () => api.get<{ user: SessionUser | null }>('/api/users/me'),
+  /** Redeems the link from the verification email (`/verify-email?token=…`). */
+  verifyEmail: (token: string) =>
+    api.post<{ verified: true; email: string; alreadyVerified: boolean }>(
+      '/api/auth/verify-email',
+      { token },
+    ),
+  /** Mails the signed-in user a new verification link (rate limited). */
+  resendVerification: () => api.post<{ sent: boolean }>('/api/auth/verify-email/resend'),
 }

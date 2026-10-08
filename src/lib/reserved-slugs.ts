@@ -49,6 +49,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'uploads',
   'users',
   'verify',
+  'verify-email',
   'www',
 ])
 
