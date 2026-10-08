@@ -18,6 +18,7 @@ import type { Payload } from 'payload'
 
 import { getUserOrgIds, isSuperadmin } from '@/access/permissions'
 import { childLogger } from '@/lib/logger'
+import { MARMOT_VERSION } from '@/lib/version'
 import type { User } from '@/payload-types'
 import {
   orgRoom,
@@ -53,7 +54,7 @@ export interface CreateRealtimeServerOptions {
   /** socket.io adapter (production: `@socket.io/redis-adapter`). */
   adapter?: ServerOptions['adapter']
   cors?: ServerOptions['cors']
-  /** Reported in the `info` event. */
+  /** Reported in the `info` event (default: package.json's version). */
   version?: string
   /** Further socket.io options (tests: `connectTimeout`, transports …). */
   serverOptions?: Partial<ServerOptions>
@@ -82,7 +83,7 @@ export function canJoinOrg(user: User, organizationId: string | number): boolean
 
 export function createRealtimeServer(options: CreateRealtimeServerOptions): RealtimeServer {
   const { payload, httpServer } = options
-  const version = options.version ?? '0.0.0'
+  const version = options.version ?? MARMOT_VERSION
 
   const io: RealtimeServer = new Server(httpServer, {
     cors: options.cors,
