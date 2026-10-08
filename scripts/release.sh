@@ -7,8 +7,9 @@
 #   1. sets "version" in package.json
 #   2. sets the default image tag (MARMOT_VERSION) in docker/docker-compose.yml
 #   3. sets the image tag in the Railway template images (deploy/railway/*/Dockerfile)
-#   4. rebuilds the GitHub Action bundle (action/dist, versioned with the tag; docs/GitHub-Action.md)
-#   5. regenerates CHANGELOG.md with git-cliff (cliff.toml), treating unreleased commits as v<version>
+#   4. sets the Helm chart version and appVersion (charts/marmot/Chart.yaml)
+#   5. rebuilds the GitHub Action bundle (action/dist, versioned with the tag; docs/GitHub-Action.md)
+#   6. regenerates CHANGELOG.md with git-cliff (cliff.toml), treating unreleased commits as v<version>
 #
 # Override the git-cliff command with GIT_CLIFF (default: `pnpm dlx git-cliff@2`).
 # Full procedure: docs/Release-Checklist.md
@@ -73,21 +74,26 @@ for f in "${RAILWAY_DOCKERFILES[@]}"; do
 done
 node scripts/check-railway.mjs
 
+CHART_FILE=charts/marmot/Chart.yaml
+echo "==> ${CHART_FILE}: version and appVersion -> ${VERSION}"
+sed -i.bak -E -e "s#^version: .*#version: ${VERSION}#" -e "s#^appVersion: .*#appVersion: '${VERSION}'#" "$CHART_FILE"
+rm -f "${CHART_FILE}.bak"
+
 echo "==> action/dist: GitHub Action bundle (version ${VERSION})"
 pnpm -s build:action
 
 echo "==> CHANGELOG.md (${GIT_CLIFF} --tag ${TAG})"
 $GIT_CLIFF --config cliff.toml --tag "$TAG" --output CHANGELOG.md
-pnpm exec prettier --log-level warn --write CHANGELOG.md package.json "$COMPOSE_FILE"
+pnpm exec prettier --log-level warn --write CHANGELOG.md package.json "$COMPOSE_FILE" "$CHART_FILE"
 
-git --no-pager diff --stat -- package.json "$COMPOSE_FILE" CHANGELOG.md deploy/railway action/dist
+git --no-pager diff --stat -- package.json "$COMPOSE_FILE" "$CHART_FILE" CHANGELOG.md deploy/railway action/dist
 
 cat <<EOF
 
 Release ${TAG} prepared. Review CHANGELOG.md, then:
 
   git switch -c chore/release-${VERSION}
-  git add package.json docker/docker-compose.yml deploy/railway action/dist CHANGELOG.md
+  git add package.json docker/docker-compose.yml charts/marmot/Chart.yaml deploy/railway action/dist CHANGELOG.md
   git commit -m "chore(release): ${TAG}"
   git push -u origin chore/release-${VERSION}     # open a PR, wait for CI, squash-merge
 

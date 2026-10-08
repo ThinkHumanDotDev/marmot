@@ -1,0 +1,64 @@
+{{- if and (include "marmot.server" .) .Values.migrations.enabled }}
+{{- /*
+On install the Job is a regular resource: it retries until the database (possibly the bundled one, created
+in the same release) accepts connections, while web waits in its startup probe. On upgrade it is a
+pre-upgrade hook, so the schema is migrated before any new pod starts. The Job only reads the Secret
+created by the previous release, so a DATABASE_URL change takes two steps (see docs/Kubernetes.md).
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "marmot.fullname" . }}-migrate-{{ .Release.Revision }}
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" "migrate") | nindent 4 }}
+  {{- if or (not .Release.IsInstall) .Values.migrations.annotations }}
+  annotations:
+    {{- if not .Release.IsInstall }}
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: '0'
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    {{- end }}
+    {{- with .Values.migrations.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  backoffLimit: {{ .Values.migrations.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.migrations.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" "migrate") | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "marmot.podCommon" . | nindent 6 }}
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: {{ include "marmot.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: [migrate]
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            {{- include "marmot.env" (dict "ctx" $ "role" "web" "migrate" true) | nindent 12 }}
+          envFrom:
+            {{- include "marmot.envFrom" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
+      {{- with .Values.web.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.web.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

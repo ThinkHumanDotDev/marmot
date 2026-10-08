@@ -1,0 +1,6 @@
+# chart-testing (ct) settings for .github/workflows/helm.yml. The chart version follows the Marmot
+# release (scripts/release.sh), so ct does not demand a version bump on every chart change.
+chart-dirs: [charts]
+target-branch: main
+validate-maintainers: false
+check-version-increment: false

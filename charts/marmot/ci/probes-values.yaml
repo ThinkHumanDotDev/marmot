@@ -1,0 +1,7 @@
+# Probe agents only, for a remote network (no server, database or Redis).
+mode: probes
+probes:
+  agents:
+    - name: office
+      marmotUrl: https://status.example.com
+      existingSecret: marmot-probe-office
