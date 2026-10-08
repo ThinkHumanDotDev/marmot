@@ -83,10 +83,12 @@ export interface Config {
     'notification-sent-history': NotificationSentHistory;
     heartbeats: Heartbeat;
     'monitor-incidents': MonitorIncident;
+    'monitor-location-states': MonitorLocationState;
     'push-events': PushEvent;
     'stat-minutely': StatMinutely;
     'stat-hourly': StatHourly;
     'stat-daily': StatDaily;
+    'stat-location-hourly': StatLocationHourly;
     'status-pages': StatusPage;
     'status-page-viewers': StatusPageViewer;
     incidents: Incident;
@@ -123,10 +125,12 @@ export interface Config {
     'notification-sent-history': NotificationSentHistorySelect<false> | NotificationSentHistorySelect<true>;
     heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
     'monitor-incidents': MonitorIncidentsSelect<false> | MonitorIncidentsSelect<true>;
+    'monitor-location-states': MonitorLocationStatesSelect<false> | MonitorLocationStatesSelect<true>;
     'push-events': PushEventsSelect<false> | PushEventsSelect<true>;
     'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
     'stat-hourly': StatHourlySelect<false> | StatHourlySelect<true>;
     'stat-daily': StatDailySelect<false> | StatDailySelect<true>;
+    'stat-location-hourly': StatLocationHourlySelect<false> | StatLocationHourlySelect<true>;
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
     'status-page-viewers': StatusPageViewersSelect<false> | StatusPageViewersSelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
@@ -430,6 +434,8 @@ export interface Monitor {
     | null;
   notifications?: (number | Notification)[] | null;
   locations?: (number | Location)[] | null;
+  includeLocal?: boolean | null;
+  quorum?: ('any' | 'half' | 'all') | null;
   weight?: number | null;
   url?: string | null;
   proxy?: (number | null) | MonitorProxy;
@@ -723,12 +729,13 @@ export interface Heartbeat {
   monitor: number | Monitor;
   organization?: (number | null) | Organization;
   location?: (number | null) | Location;
+  locationStatus?: ('up' | 'down' | 'pending' | 'maintenance' | 'degraded') | null;
   status: 'up' | 'down' | 'pending' | 'maintenance' | 'degraded';
   msg?: string | null;
   ping?: number | null;
   duration?: number | null;
   important?: boolean | null;
-  trigger?: 'manual' | null;
+  trigger?: ('manual' | 'quorum') | null;
   assertions?:
     | {
         [k: string]: unknown;
@@ -966,6 +973,24 @@ export interface StatusPage {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "monitor-location-states".
+ */
+export interface MonitorLocationState {
+  id: number;
+  organization: number | Organization;
+  monitor: number | Monitor;
+  locationKey: string;
+  lastStatus?: ('up' | 'down' | 'pending' | 'maintenance' | 'degraded') | null;
+  settledStatus?: ('up' | 'down' | 'pending' | 'maintenance' | 'degraded') | null;
+  retries?: number | null;
+  downCount?: number | null;
+  recoveries?: number | null;
+  lastCheckAt?: string | null;
+  lastPing?: number | null;
+  lastMsg?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "push-events".
  */
 export interface PushEvent {
@@ -1073,6 +1098,31 @@ export interface StatDaily {
     | boolean
     | null;
   latencyHistogram?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-location-hourly".
+ */
+export interface StatLocationHourly {
+  id: number;
+  monitor: number | Monitor;
+  organization: number | Organization;
+  location: string;
+  timestamp: number;
+  up: number;
+  down: number;
+  ping?: number | null;
+  pingMin?: number | null;
+  pingMax?: number | null;
+  extras?:
     | {
         [k: string]: unknown;
       }
@@ -1561,6 +1611,10 @@ export interface PayloadLockedDocument {
         value: number | MonitorIncident;
       } | null)
     | ({
+        relationTo: 'monitor-location-states';
+        value: number | MonitorLocationState;
+      } | null)
+    | ({
         relationTo: 'push-events';
         value: number | PushEvent;
       } | null)
@@ -1575,6 +1629,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'stat-daily';
         value: number | StatDaily;
+      } | null)
+    | ({
+        relationTo: 'stat-location-hourly';
+        value: number | StatLocationHourly;
       } | null)
     | ({
         relationTo: 'status-pages';
@@ -1854,6 +1912,8 @@ export interface MonitorsSelect<T extends boolean = true> {
       };
   notifications?: T;
   locations?: T;
+  includeLocal?: T;
+  quorum?: T;
   weight?: T;
   url?: T;
   proxy?: T;
@@ -2099,6 +2159,7 @@ export interface HeartbeatsSelect<T extends boolean = true> {
   monitor?: T;
   organization?: T;
   location?: T;
+  locationStatus?: T;
   status?: T;
   msg?: T;
   ping?: T;
@@ -2152,6 +2213,23 @@ export interface MonitorIncidentsSelect<T extends boolean = true> {
       };
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "monitor-location-states_select".
+ */
+export interface MonitorLocationStatesSelect<T extends boolean = true> {
+  organization?: T;
+  monitor?: T;
+  locationKey?: T;
+  lastStatus?: T;
+  settledStatus?: T;
+  retries?: T;
+  downCount?: T;
+  recoveries?: T;
+  lastCheckAt?: T;
+  lastPing?: T;
+  lastMsg?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2218,6 +2296,22 @@ export interface StatDailySelect<T extends boolean = true> {
   pingMax?: T;
   extras?: T;
   latencyHistogram?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stat-location-hourly_select".
+ */
+export interface StatLocationHourlySelect<T extends boolean = true> {
+  monitor?: T;
+  organization?: T;
+  location?: T;
+  timestamp?: T;
+  up?: T;
+  down?: T;
+  ping?: T;
+  pingMin?: T;
+  pingMax?: T;
+  extras?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
