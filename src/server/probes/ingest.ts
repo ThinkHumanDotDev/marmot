@@ -7,12 +7,13 @@
 import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
-import { monitorLocationIds, probeSupportsType } from '@/lib/probe-locations'
+import { isMultiLocation, monitorLocationIds, probeSupportsType } from '@/lib/probe-locations'
 import type { Location, Monitor } from '@/payload-types'
 import { parseRequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
 import { nextIntervalSeconds, type CheckResult } from '@/server/engine/beat'
 import type { TlsInfo } from '@/server/engine/tls'
+import { locationLastCheckAt } from '@/server/engine/quorum-store'
 import { recordBeat } from '@/server/engine/worker'
 import { isMonitorUnderMaintenance } from '@/server/maintenance/resolver'
 import { ensureBeatPipeline } from '@/server/push/pipeline'
@@ -116,7 +117,11 @@ export async function ingestProbeResults(
       reject('stale')
       continue
     }
-    const lastCheckAt = monitor.status?.lastCheckAt ? Date.parse(monitor.status.lastCheckAt) : 0
+    // A multi-location monitor (#92) is checked by others too: compare with this location's checks.
+    const previous = isMultiLocation(monitor)
+      ? await locationLastCheckAt(payload, monitor.id, String(location.id))
+      : monitor.status?.lastCheckAt
+    const lastCheckAt = previous ? Date.parse(previous) : 0
     if (time.getTime() <= lastCheckAt) {
       reject('duplicate')
       continue
@@ -135,8 +140,11 @@ export async function ingestProbeResults(
       outcomes.push({
         monitorId,
         accepted: true,
-        status: recorded.next.status,
-        nextCheckSeconds: nextIntervalSeconds(recorded.next.status, recorded.monitor),
+        // The location's own beat on a multi-location monitor (#92): its cadence is the location's.
+        status: (recorded.locationNext ?? recorded.next).status,
+        nextCheckSeconds: recorded.locationNext
+          ? recorded.locationNext.nextIntervalSeconds
+          : nextIntervalSeconds(recorded.next.status, recorded.monitor),
       })
     } catch (err) {
       log.error({ err, monitorId, locationId: location.id }, 'failed to record a probe result')

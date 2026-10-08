@@ -215,12 +215,40 @@ expires after seven days. It opens a page with an **Acknowledge** button, so lin
 acknowledge. Anyone holding the message can use it: a signed-in member is recorded by name, anyone else as
 "from a notification link".
 
-## Check location
+## Check locations
 
-A monitor is checked by the workers of the Marmot server unless you pick a
-[probe location](Probe-Locations.md) under **Check location**: then a probe agent in that network runs
+A monitor is checked by the workers of the Marmot server (**Local**) unless you switch on
+[probe locations](Probe-Locations.md) under **Check locations**: then probe agents in those networks run
 it, and its heartbeats record the location. Group, manual, push, Steam and Globalping monitors always run on the
 server.
+
+### Several locations and the quorum
+
+Pick more than one location (probe locations, plus **Local** if the server's workers should check too)
+to tell an outage of the service from a broken path between one checker and the service. Every location
+runs the monitor on its own schedule with its own retries, degraded threshold, recovery threshold and
+checker-offline holds; the monitor's status is a **quorum** of the locations' statuses, set with
+**Quorum**:
+
+| Quorum                  | DOWN when …                        | 3 locations |
+| ----------------------- | ---------------------------------- | ----------- |
+| Any location            | one location is down               | 1 of 3      |
+| At least half (default) | half of the locations (rounded up) | 2 of 3      |
+| All locations           | every location is down             | 3 of 3      |
+
+Before that the monitor is PENDING while down and retrying locations together reach the quorum, and
+DEGRADED while degraded and failing locations do. A monitor checked from three locations therefore stays
+UP when one location fails and goes DOWN when a second one does. Only the monitor's own transitions are
+status changes: they are the important events, open and resolve incidents and send notifications, whose
+message names the failing locations (`Down at 2 of 3 locations: Berlin (timeout), Paris (ECONNREFUSED)`).
+A location failing on its own is recorded on its heartbeats and in the per-location table, silently.
+Reminders (`resendInterval`) count the beats of every location, so the interval is multiplied by the
+number of locations.
+
+The monitor page then shows a **Locations** table (each location's status, response time, last check and
+24-hour / 30-day uptime), a **Response time by location** chart and a location filter for the heartbeat
+bar, the events and the chart. The uptime cards and the main chart are the monitor-wide figures, computed
+from the quorum status.
 
 ## Groups
 

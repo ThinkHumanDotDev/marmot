@@ -87,7 +87,7 @@ async function createHeartbeats(
 }
 
 async function createStats(
-  collection: 'stat-minutely' | 'stat-hourly' | 'stat-daily',
+  collection: 'stat-minutely' | 'stat-hourly' | 'stat-daily' | 'stat-location-hourly',
   timestamps: number[],
 ) {
   const docs = await times(timestamps.length, (i) =>
@@ -99,7 +99,9 @@ async function createStats(
         timestamp: timestamps[i]!,
         up: 1,
         down: 0,
-      },
+        // The per-location series (#92) also names the location.
+        ...(collection === 'stat-location-hourly' ? { location: 'local' } : {}),
+      } as never,
       depth: 0,
     }),
   )
@@ -311,6 +313,10 @@ describe('runRetention in batches', () => {
         'stat-hourly',
         Array.from({ length: EXPIRED }, (_, i) => getHourlyKey(daysAgo(31 + i))),
       ),
+      locationHourly: await createStats(
+        'stat-location-hourly',
+        Array.from({ length: EXPIRED }, (_, i) => getHourlyKey(daysAgo(31 + i))),
+      ),
       daily: await createStats(
         'stat-daily',
         Array.from({ length: EXPIRED }, (_, i) => getDailyKey(daysAgo(400 + i))),
@@ -342,6 +348,7 @@ describe('runRetention in batches', () => {
     const fresh = {
       minutely: await createStats('stat-minutely', [getMinutelyKey(hoursAgo(1))]),
       hourly: await createStats('stat-hourly', [getHourlyKey(daysAgo(1))]),
+      locationHourly: await createStats('stat-location-hourly', [getHourlyKey(daysAgo(1))]),
       daily: await createStats('stat-daily', [getDailyKey(daysAgo(10))]),
       heartbeats: await createHeartbeats(monitorId, 1, () => hoursAgo(1)),
       importantHeartbeats: await createHeartbeats(monitorId, 1, () => daysAgo(10), true),
@@ -390,6 +397,7 @@ describe('runRetention in batches', () => {
     // The job prunes the whole database: rows of other test files may be counted as well.
     expect(result.minutely).toBeGreaterThanOrEqual(EXPIRED)
     expect(result.hourly).toBeGreaterThanOrEqual(EXPIRED)
+    expect(result.locationHourly).toBeGreaterThanOrEqual(EXPIRED)
     expect(result.daily).toBeGreaterThanOrEqual(EXPIRED)
     expect(result.heartbeats).toBeGreaterThanOrEqual(EXPIRED)
     expect(result.importantHeartbeats).toBeGreaterThanOrEqual(EXPIRED)
@@ -401,6 +409,7 @@ describe('runRetention in batches', () => {
     const slugs: Record<keyof typeof expired, CollectionSlug> = {
       minutely: 'stat-minutely',
       hourly: 'stat-hourly',
+      locationHourly: 'stat-location-hourly',
       daily: 'stat-daily',
       heartbeats: 'heartbeats',
       importantHeartbeats: 'heartbeats',
@@ -432,6 +441,7 @@ describe('runRetention in batches', () => {
     expect(again).toEqual({
       minutely: 0,
       hourly: 0,
+      locationHourly: 0,
       daily: 0,
       heartbeats: 0,
       importantHeartbeats: 0,

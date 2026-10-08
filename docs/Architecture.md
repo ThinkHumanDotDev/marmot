@@ -66,8 +66,9 @@ PENDING `checker offline` beat (`holdBeatWhileCheckerOffline` in `beat.ts`); `re
 read by `/api/health`, `/api/metrics` and the UI banner through `connectivity-state.ts`), broadcasts the
 `checkerStatus` realtime event, sends one offline / back-online notice per outage (claimed in Redis so one
 replica sends it) and re-enqueues the held monitors when connectivity returns. `connectivityLocationOf()` is
-the hook for multi-location checks: a monitor assigned to a probe location (#91) is judged by the
-`ConnectivityMonitor` the agent registers under that location's id; quorum across locations is #92.
+the default of the guard's `location` argument; the workers pass `DEFAULT_LOCATION` and a probe agent (#91)
+its own location's id, under which it registers its `ConnectivityMonitor`, so the checks of a
+multi-location monitor (#92) are held per location.
 
 **Request timing** (#94): `performHttpCheck` builds its per-check undici agent with an
 `HttpTimingCapture` (`src/server/monitor-types/http-timing.ts`). A connector wrapper placed outside the
@@ -86,9 +87,10 @@ After each beat the worker writes a `heartbeats` row, refreshes the monitor's `s
 `locations` (#91, org-scoped: `name`, `slug` unique per organization (`local` reserved), up to 20
 `labels`, `tokenHash` + `tokenPrefix`, `status` = `unknown | online | offline`, `statusChangedAt`,
 `lastSeenAt`, `agent { version, hostname, platform }`) are self-hosted check locations. Monitors reference
-them through `monitors.locations` (at most one until quorum, #92; none = the implicit `local` worker pool);
-`src/lib/probe-locations.ts` holds the shared rules (`isRemoteMonitor`, `PROBE_UNSUPPORTED_TYPES`: group,
-manual, push, steam, globalping).
+them through `monitors.locations` (up to `MAX_MONITOR_LOCATIONS` = 10; none = the implicit `local` worker
+pool, which `includeLocal` adds to probe locations); `src/lib/probe-locations.ts` holds the shared rules
+(`monitorLocationKeys`, `checksLocally`, `isRemoteMonitor`, `isMultiLocation`, `quorumNeeded`,
+`PROBE_UNSUPPORTED_TYPES`: group, manual, push, steam, globalping).
 
 - **Token**: `mp_<prefix>_<secret>` (`src/server/probes/tokens.ts`), modelled on API keys: only the SHA-256
   is stored, the plaintext is returned once by `POST /api/orgs/:orgId/locations` and
@@ -113,6 +115,30 @@ manual, push, steam, globalping).
   incidents and notifications run through the lazily registered beat pipeline as for push monitors. The
   wire format (`src/server/probes/wire.ts`) is versioned in the path; requests are rate limited per token
   (`PROBE_RATE_LIMIT`).
+- **Multi-location quorum** (#92): a monitor with more than one location key (`isMultiLocation`) keeps
+  one `monitor-location-states` row per `(monitor, locationKey)` (`lastStatus`, `settledStatus`,
+  `retries`, `downCount`, `recoveries`, `lastCheckAt`, `lastPing`, `lastMsg`; unique compound index).
+  `recordBeat` then calls `applyQuorum` (`src/server/engine/quorum-store.ts`): the reporting location's
+  result goes through `computeNextBeat` on that location's row (retries, degraded, recovery threshold,
+  checker-offline holds stay per location), the row is upserted, and the pure quorum layer
+  (`src/server/engine/quorum.ts`) tallies the assigned locations (`voteOf`: a recovery streak counts as
+  down, a retry as retrying, no row as unknown), derives the monitor status (`quorumStatus`: MAINTENANCE,
+  DOWN at `quorumNeeded(quorum, n)` down locations — `any` 1, `half` ⌈n/2⌉ (default), `all` n — PENDING
+  while down + retrying reach it or no location succeeded yet, DEGRADED while degraded + failing reach
+  it, else UP) and judges the monitor-level transition on `monitors.status` (`computeQuorumBeat`, Uptime
+  Kuma's rules; a PENDING monitor settled DOWN counts as DOWN; reminders every
+  `resendInterval × n` beats). Announced beats carry `quorumMessage` (`Down at 2 of 3 locations: …`).
+  The heartbeat stores the quorum `status` plus `location` and `locationStatus`; listeners get
+  `event.location { key, status }`. The local workers' scheduler follows the local row
+  (`SchedulableMonitor.localStatus`), probe agents the location's cadence from the ingest response, and
+  ingest refuses results not newer than the **location's** `lastCheckAt`. Single-location monitors never
+  touch any of this.
+- **Quorum safety net**: the `quorum-recompute` job (every minute on `marmot:maintenance`,
+  `src/server/jobs/quorum-recompute.ts`) deletes state rows of locations a monitor no longer uses and
+  recomputes each active multi-location monitor's quorum (skipping monitors checked in the last 5 s);
+  when it differs from `status.lastStatus` (two locations' beats raced, then the locations went quiet) it
+  records a repair beat (`trigger: 'quorum'`, `event.repair`, not counted in the stats) through the same
+  transition rules, so the notification and incident still happen.
 - **Liveness**: every authenticated probe request stamps `lastSeenAt` (at most every 10 s). The
   `probe-health` job (every 15 s on `marmot:maintenance`, whose single consumer makes it the only writer of
   `status`) derives `online`/`offline` from `lastSeenAt` and `PROBE_OFFLINE_AFTER` and emails the
@@ -130,6 +156,12 @@ second of the bucket start (minute / hour / UTC day), guarded by a unique compou
 | `stat-minutely` | 1 min  | 24 hours                | `24h`, `1d`        |
 | `stat-hourly`   | 1 hour | 30 days                 | `7d`, `14d`, `30d` |
 | `stat-daily`    | 1 day  | `KEEP_DATA_PERIOD_DAYS` | `90d`, `1y`        |
+
+Multi-location monitors (#92) count the quorum status there (the ping of a location whose own check
+failed is left out) and also feed a separate per-location series, `stat-location-hourly` (one row per
+`(monitor, location, hour)`, 30 days, same columns; `src/server/stats/location-stats.ts`:
+`recordLocationHeartbeat`, `getLocationStats` for `24h` / `30d`), which the monitor page's location table
+and latency chart read.
 
 Each row stores `up`, `down`, `ping` (average of UP beats), `pingMin`, `pingMax` and an `extras` JSON with
 `maintenance` (beats during maintenance, also counted as `up`), `degraded` (slow successful checks, also
@@ -156,7 +188,7 @@ chart never reads raw heartbeats. Rows written before the histogram existed have
 percentiles.
 
 Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ job scheduler on the
-`marmot:maintenance` queue: minutely rows older than 24 h, hourly older than 30 d, daily and important
+`marmot:maintenance` queue: minutely rows older than 24 h, hourly and per-location hourly older than 30 d, daily and important
 heartbeats older than `KEEP_DATA_PERIOD_DAYS` (long-term pruning is disabled when the value is `< 1`), and
 non-important heartbeats older than 24 h. It deletes in batches of 1,000 rows (`deleteInBatches` in
 `src/db/delete-in-batches.ts`: fetch one batch of ids, delete them with `id in [...]`, repeat), so a large
@@ -438,8 +470,8 @@ permission> } }`, or `false` when there are none. When the request carries `data
   update that moves a document) the user must hold the permission in that organization.
 - `superadminOnly`, `authenticated`, `selfOrSuperadmin` cover the non-tenant cases.
 
-Monitor data written by the worker (`heartbeats`, `stat-minutely`/`-hourly`/`-daily`, `push-events`,
-`notification-sent-history`) is read through `orgScoped('monitor:read')` on its own `organization` field and
+Monitor data written by the worker (`heartbeats`, `stat-minutely`/`-hourly`/`-daily`, `stat-location-hourly`,
+`monitor-location-states`, `push-events`, `notification-sent-history`) is read through `orgScoped('monitor:read')` on its own `organization` field and
 is never writable through the API. Server code that has already authorised the monitor (route handlers,
 pages, `loadOrgState`) reads these rows with `overrideAccess: true`.
 

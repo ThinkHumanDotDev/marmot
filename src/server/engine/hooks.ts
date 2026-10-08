@@ -43,6 +43,17 @@ export interface HeartbeatEvent {
    * checker offline one, which must not count as downtime either.
    */
   deferred?: boolean
+  /**
+   * Multi-location monitors (#92): the location that reported the beat (`local` for the worker
+   * pool) and its own status. The heartbeat's `status` is the monitor's quorum. `null` or unset on
+   * single-location monitors.
+   */
+  location?: { key: string; status: BeatStatus } | null
+  /**
+   * Written by the quorum recompute job to repair a multi-location monitor's status (#92), not by
+   * a check: it is not counted in the stats.
+   */
+  repair?: boolean
 }
 
 export type HeartbeatListener = (event: HeartbeatEvent) => void | Promise<void>

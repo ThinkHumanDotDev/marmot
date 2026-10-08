@@ -299,7 +299,7 @@ describe('location tokens and access', () => {
 })
 
 describe('monitor assignment', () => {
-  it('accepts one location of the same organization for types a probe can run', async () => {
+  it('accepts locations of the same organization for types a probe can run', async () => {
     const { body } = await createLocation('Assignable')
     const monitor = await createMonitor({
       name: 'Assigned',
@@ -309,13 +309,13 @@ describe('monitor assignment', () => {
     expect(connectivityLocationOf(monitor)).toBe(String(body.doc.id))
     expect(connectivityLocationOf({ locations: [] })).toBe(DEFAULT_LOCATION)
 
+    // Several locations are allowed since multi-location quorum (#92).
     const second = await createLocation('Second')
-    await expect(
-      createMonitor({
-        name: 'Two',
-        locations: [dbId(body.doc.id), dbId(second.body.doc.id)] as never,
-      }),
-    ).rejects.toThrow()
+    const two = await createMonitor({
+      name: 'Two',
+      locations: [dbId(body.doc.id), dbId(second.body.doc.id)] as never,
+    })
+    expect(two.locations?.map(String)).toEqual([String(body.doc.id), String(second.body.doc.id)])
     await expect(
       createMonitor({ name: 'Push', type: 'push', locations: [dbId(body.doc.id)] as never }),
     ).rejects.toThrow()

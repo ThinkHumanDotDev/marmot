@@ -13,6 +13,7 @@ import { Maintenance } from './Maintenance'
 import { MaintenanceOccurrences } from './MaintenanceOccurrences'
 import { Media } from './Media'
 import { MonitorIncidents } from './MonitorIncidents'
+import { MonitorLocationStates } from './MonitorLocationStates'
 import { Monitors } from './Monitors'
 import { Notifications } from './Notifications'
 import { NotificationSentHistory } from './NotificationSentHistory'
@@ -23,6 +24,7 @@ import { SsoConnections } from './SsoConnections'
 import { SsoDomains } from './SsoDomains'
 import { StatDaily } from './StatDaily'
 import { StatHourly } from './StatHourly'
+import { StatLocationHourly } from './StatLocationHourly'
 import { StatMinutely } from './StatMinutely'
 import { StatusPages } from './StatusPages'
 import { StatusPageSubscribers } from './StatusPageSubscribers'
@@ -56,10 +58,12 @@ export const collections: CollectionConfig[] = [
   NotificationSentHistory,
   Heartbeats,
   MonitorIncidents,
+  MonitorLocationStates,
   PushEvents,
   StatMinutely,
   StatHourly,
   StatDaily,
+  StatLocationHourly,
   StatusPages,
   StatusPageViewers,
   Incidents,
