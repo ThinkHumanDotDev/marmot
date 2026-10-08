@@ -139,7 +139,7 @@ export async function runRetention(
   result.hourly = await deleteWhere('stat-hourly', {
     timestamp: { less_than: cutoffs.hourly },
   })
-  result.locationHourly = await deleteWhere(payload, 'stat-location-hourly', {
+  result.locationHourly = await deleteWhere('stat-location-hourly', {
     timestamp: { less_than: cutoffs.hourly },
   })
 
