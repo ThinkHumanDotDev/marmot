@@ -56,6 +56,8 @@ export interface EditorProps {
   smsChannels: SmsChannelOption[]
   /** Instance setting `trustProxy` (the IP allow-list needs client addresses). */
   trustProxy: boolean
+  /** The organization's plan serves custom domains (always without billing, #161). */
+  customDomains?: boolean
 }
 
 /** The page's components (group rows, by row id) in display order: what an incident can affect. */
@@ -88,6 +90,7 @@ export function StatusPageEditor({
   canSendNotifications,
   smsChannels,
   trustProxy,
+  customDomains = true,
 }: EditorProps) {
   const t = useTranslations('statusPages.editorPage')
   const ta = useTranslations('statusPages.access.editor')
@@ -235,7 +238,13 @@ export function StatusPageEditor({
             </TabsContent>
           )}
           <TabsContent value="domains" className="pt-6">
-            <DomainsPanel orgId={orgId} page={page} onSaved={setPage} canEdit={canEdit} />
+            <DomainsPanel
+              orgId={orgId}
+              page={page}
+              onSaved={setPage}
+              canEdit={canEdit}
+              customDomains={customDomains}
+            />
           </TabsContent>
           <TabsContent value="access" className="pt-6">
             <AccessPanel

@@ -272,7 +272,7 @@ offers **Send test email** (`POST /api/instance/smtp-test { to? }`, superadmin-o
 | `entryPage`                         | `dashboard`                  | `dashboard` or `status-page`: what the root URL shows.                                                                                                |
 | `tlsExpiryNotifyDays`               | `7, 14, 21`                  | Days before a TLS certificate expires at which to notify.                                                                                             |
 | `domainExpiryNotifyDays`            | `7, 14, 21`                  | Days before a domain registration expires at which to notify.                                                                                         |
-| `keepDataPeriodDays`                | `KEEP_DATA_PERIOD_DAYS`      | Retention of daily aggregates and important heartbeats (`0` disables).                                                                                |
+| `keepDataPeriodDays`                | `KEEP_DATA_PERIOD_DAYS`      | Retention of daily aggregates and important heartbeats (`0` disables). Honoured by the hourly retention job.                                          |
 | `trustProxy`                        | `false`                      | Trust `X-Forwarded-*` headers from the reverse proxy for client IPs (rate limits, audit log, status page IP allow-lists).                             |
 | `steamApiKey`, `globalpingApiToken` | —                            | Third-party API keys for the corresponding monitor types (superadmin-only read).                                                                      |
 

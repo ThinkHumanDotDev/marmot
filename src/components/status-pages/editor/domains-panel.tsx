@@ -18,11 +18,14 @@ export function DomainsPanel({
   page,
   onSaved,
   canEdit,
+  customDomains = true,
 }: {
   orgId: OrgId
   page: StatusPage
   onSaved: (page: StatusPage) => void
   canEdit: boolean
+  /** The organization's plan serves custom domains (#161); without it hostnames cannot be added. */
+  customDomains?: boolean
 }) {
   const t = useTranslations('statusPages.domains')
   const [hostnames, setHostnames] = React.useState<string[]>(() =>
@@ -73,13 +76,26 @@ export function DomainsPanel({
           </p>
         </div>
 
+        {!customDomains && (
+          <p
+            role="status"
+            data-testid="domains-plan-unavailable"
+            className="rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground"
+          >
+            {t.rich('planUnavailable', {
+              path: `/status/${page.slug}`,
+              code: (chunks) => <code>{chunks}</code>,
+            })}
+          </p>
+        )}
+
         <form onSubmit={add} className="flex items-start gap-2">
           <div className="flex-1">
             <Input
               aria-label={t('hostname')}
               placeholder="status.example.com"
               value={input}
-              disabled={!canEdit}
+              disabled={!canEdit || !customDomains}
               onChange={(e) => {
                 setInput(e.target.value)
                 setError(null)
@@ -91,7 +107,11 @@ export function DomainsPanel({
               </p>
             )}
           </div>
-          <Button type="submit" variant="outline" disabled={!canEdit || !input.trim()}>
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={!canEdit || !customDomains || !input.trim()}
+          >
             <Plus /> {t('add')}
           </Button>
         </form>

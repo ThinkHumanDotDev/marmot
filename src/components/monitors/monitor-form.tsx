@@ -121,6 +121,11 @@ export interface MonitorFormProps {
    * (kept on edit, the organization's default channels on create).
    */
   canPickChannels?: boolean
+  /**
+   * The organization's plan minimum check interval in seconds (#161, billing only); `0` = none.
+   * Raises the interval fields' minimum and explains why.
+   */
+  planMinInterval?: number
 }
 
 const EMPTY_RESOURCES: MonitorFormResources = {
@@ -873,6 +878,7 @@ export function MonitorForm({
   groups,
   resources = EMPTY_RESOURCES,
   canPickChannels = false,
+  planMinInterval = 0,
 }: MonitorFormProps) {
   const t = useTranslations('monitors.form')
   const tMonitors = useTranslations('monitors')
@@ -957,7 +963,19 @@ export function MonitorForm({
   const isWebSocket = type === 'websocket-upgrade'
   const isGlobalping = type === 'globalping'
   const gpMeasurement = globalpingMeasurement ?? 'http'
-  const minInterval = isGlobalping ? GLOBALPING_MIN_INTERVAL_SECONDS : 20
+  const minInterval = Math.max(isGlobalping ? GLOBALPING_MIN_INTERVAL_SECONDS : 20, planMinInterval)
+  const planLimited = planMinInterval > (isGlobalping ? GLOBALPING_MIN_INTERVAL_SECONDS : 20)
+  const withPlanNote = (hint: string | undefined) =>
+    planLimited ? (
+      <>
+        {hint ? <>{hint} · </> : null}
+        <span data-testid="interval-plan-minimum">
+          {t('timing.planMinimum', { seconds: planMinInterval })}
+        </span>
+      </>
+    ) : (
+      hint
+    )
   const showsJsonQuery =
     type === 'json-query' ||
     type === 'mongodb' ||
@@ -1476,11 +1494,11 @@ export function MonitorForm({
                   label={t('timing.interval')}
                   unit={t('timing.seconds')}
                   min={minInterval}
-                  description={
+                  description={withPlanNote(
                     timingHint(interval)
                       ? t('timing.intervalHint', { duration: timingHint(interval) ?? '' })
-                      : undefined
-                  }
+                      : undefined,
+                  )}
                 />
               )}
               <NumberField

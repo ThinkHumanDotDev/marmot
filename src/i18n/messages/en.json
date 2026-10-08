@@ -821,6 +821,7 @@
         "interval": "Heartbeat interval",
         "seconds": "seconds",
         "intervalHint": "Check every {duration}",
+        "planMinimum": "Your plan checks monitors at most every {seconds} seconds.",
         "retries": "Retries",
         "retriesDescription": "Failed checks before the monitor is marked DOWN.",
         "retryInterval": "Heartbeat retry interval",
@@ -4128,6 +4129,7 @@
     },
     "domains": {
       "title": "Custom domains",
+      "planUnavailable": "Your plan does not include custom domains. Upgrade your plan to serve this page on your own hostname; until then it stays available at <code>{path}</code>.",
       "description": "Serve this page at the root of your own hostname, e.g. <code>status.example.com</code>.",
       "hostname": "Hostname",
       "add": "Add",
@@ -5192,7 +5194,9 @@
       "channelExists": "A channel with this name already exists; monitors are linked to it",
       "invalidSlug": "Invalid slug \"{slug}\": {reason}",
       "slugInUse": "\"{title}\": slug \"{slug}\" is already in use; imported as \"{imported}\"",
-      "domainInUse": "\"{title}\": custom domain {hostname} is already used by another status page and was dropped"
+      "domainInUse": "\"{title}\": custom domain {hostname} is already used by another status page and was dropped",
+      "planIntervalRaised": "\"{name}\": check interval raised to {seconds} seconds, the minimum of your plan",
+      "domainsNotInPlan": "\"{title}\": your plan does not include custom domains, so {count, plural, one {# domain was} other {# domains were}} dropped"
     }
   },
   "landing": {
@@ -5496,6 +5500,9 @@
     "planInvalid": "plan must be one of: {plans}",
     "planNotPurchasable": "The {plan} plan cannot be purchased online.",
     "planLimit": "Your plan allows {limit, plural, one {{limit} {resource, select, monitors {monitor} members {member} other {status page}}} other {{limit} {resource, select, monitors {monitors} members {members} other {status pages}}}}. Upgrade your plan to add more.",
+    "planMinInterval": "Your plan checks monitors at most every {limit} seconds. Choose an interval of at least {limit} seconds or upgrade your plan.",
+    "planRetention": "Your plan keeps {limit, plural, one {# day} other {# days}} of history. Choose a shorter period or upgrade your plan.",
+    "planCustomDomains": "Your plan does not include custom domains. Upgrade your plan to serve status pages on your own domain.",
     "stripeNotConfigured": "Stripe is not configured.",
     "stripePriceMissing": "No active Stripe price is tagged with metadata plan={plan}.",
     "stripeNoCheckoutUrl": "Stripe did not return a checkout URL.",

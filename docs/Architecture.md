@@ -198,7 +198,8 @@ percentiles.
 
 Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ job scheduler on the
 `marmot:maintenance` queue: minutely rows older than 24 h, hourly and per-location hourly older than 30 d, daily and important
-heartbeats older than `KEEP_DATA_PERIOD_DAYS` (long-term pruning is disabled when the value is `< 1`), and
+heartbeats older than the `keepDataPeriodDays` instance setting (default `KEEP_DATA_PERIOD_DAYS`; long-term
+pruning is disabled when the value is `< 1`), and
 non-important heartbeats older than 24 h. It deletes in batches of 1,000 rows (`deleteInBatches` in
 `src/db/delete-in-batches.ts`: fetch one batch of ids, delete them with `id in [...]`, repeat), so a large
 backlog never has to fit in the worker's memory. Telemetry and log collections have no delete hooks and

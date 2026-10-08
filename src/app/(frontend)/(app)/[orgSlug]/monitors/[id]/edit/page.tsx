@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { MonitorForm } from '@/components/monitors/monitor-form'
 import { PageHeader } from '@/components/page-header'
 import { monitorToFormValues } from '@/lib/validation/monitor'
+import { getOrgMinIntervalSeconds } from '@/server/billing/entitlements'
 import { listMonitorTypes } from '@/server/monitor-types'
 import {
   getMonitorFormResources,
@@ -60,6 +61,7 @@ export default async function EditMonitorPage({ params }: EditMonitorPageProps) 
           groups={groups}
           resources={resources}
           canPickChannels={ctx.allowed('notification:read')}
+          planMinInterval={await getOrgMinIntervalSeconds(ctx.payload, ctx.org.id)}
         />
       </section>
     </>

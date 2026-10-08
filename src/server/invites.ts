@@ -14,6 +14,7 @@ import {
 import { acceptInvitation } from '@/collections/Invitations'
 import { generateInviteLinkToken } from '@/collections/Organizations'
 import { env } from '@/env'
+import { assertOrgEntitlement, isBillingEnabled } from '@/server/billing/entitlements'
 
 import type { Organization } from '@/payload-types'
 import { apiError } from '@/server/errors'
@@ -116,6 +117,21 @@ export async function acceptInviteCode({
   if (resolved.kind === 'invitation') {
     const result = await acceptInvitation({ payload, token: code, user, req })
     return { organization: resolved.organization, role: result.role }
+  }
+
+  // A join through the shareable link takes a seat: members plus pending invitations must stay
+  // within the plan (#161, no-op without billing). Existing members keep their role as before.
+  if (isBillingEnabled()) {
+    const joiner = await payload.findByID({
+      collection: 'users',
+      id: user.id,
+      depth: 0,
+      req,
+      overrideAccess: true,
+    })
+    if (!getUserRole(joiner, resolved.organization.id)) {
+      await assertOrgEntitlement(payload, 'members', resolved.organization.id, { req })
+    }
   }
 
   const role = await addOrgMembership({

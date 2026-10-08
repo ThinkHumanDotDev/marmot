@@ -102,6 +102,16 @@ describe('API error locale', () => {
         expect(error.data).toMatchObject({ code: 'entitlement_exceeded', resource, limit })
       }
     }
+    for (const [resource, limit] of [
+      ['minIntervalSeconds', 60],
+      ['retentionDays', 1],
+      ['retentionDays', 30],
+      ['customDomains', 0],
+    ] as const) {
+      const error = toApiError(new EntitlementError(resource, limit, limit + 1), 'free')
+      expect(error.message).toBe(entitlementMessage(resource, limit))
+      expect(error.status).toBe(402)
+    }
   })
 })
 
