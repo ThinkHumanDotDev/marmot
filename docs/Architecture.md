@@ -413,6 +413,11 @@ permission> } }`, or `false` when there are none. When the request carries `data
   update that moves a document) the user must hold the permission in that organization.
 - `superadminOnly`, `authenticated`, `selfOrSuperadmin` cover the non-tenant cases.
 
+Monitor data written by the worker (`heartbeats`, `stat-minutely`/`-hourly`/`-daily`, `push-events`,
+`notification-sent-history`) is read through `orgScoped('monitor:read')` on its own `organization` field and
+is never writable through the API. Server code that has already authorised the monitor (route handlers,
+pages, `loadOrgState`) reads these rows with `overrideAccess: true`.
+
 Permissions are `resource:action` strings mapped to the **minimum** role in `src/access/permissions.ts`
 (`PERMISSIONS`). Roles are ordered `owner > admin > member > viewer`; a role satisfies a permission when it
 ranks at or above the minimum. Helpers: `can(user, orgId, permission)`, `hasOrgRole(user, orgId,

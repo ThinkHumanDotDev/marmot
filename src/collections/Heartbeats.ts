@@ -1,4 +1,6 @@
 import type { CollectionConfig } from 'payload'
+
+import { orgScoped } from '@/access/org-scoped'
 import { adminGroup, adminT } from '@/i18n/admin'
 
 /**
@@ -17,9 +19,12 @@ export const Heartbeats: CollectionConfig = {
     group: adminGroup('monitoring'),
     defaultColumns: ['monitor', 'status', 'msg', 'ping', 'time'],
   },
-  // TODO(#1): scope reads to the user's organizations once RBAC lands.
+  // Reads are scoped to the organizations in which the user holds `monitor:read` (honouring the
+  // organization's permission overrides; superadmins see everything). The worker sets
+  // `organization` from the monitor on every beat, so rows without one are visible to superadmins
+  // only. Writes are server-only: the worker and retention job use `overrideAccess: true`.
   access: {
-    read: ({ req }) => Boolean(req.user),
+    read: orgScoped('monitor:read'),
     create: () => false,
     update: () => false,
     delete: () => false,
