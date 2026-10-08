@@ -1,0 +1,407 @@
+# Marmot Helm chart. Full guide: docs/Kubernetes.md
+#
+# Minimal install with the bundled Postgres and Redis (evaluation):
+#   helm install marmot oci://ghcr.io/thinkhumandotdev/charts/marmot \
+#     --set serverUrl=https://status.example.com --set ingress.enabled=true \
+#     --set ingress.host=status.example.com --set postgresql.enabled=true --set redis.enabled=true
+
+image:
+  repository: ghcr.io/thinkhumandotdev/marmot
+  # Defaults to the chart's appVersion.
+  tag: ''
+  # Pin an exact image instead of a tag (sha256:...).
+  digest: ''
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ''
+fullnameOverride: ''
+
+# `split`: separate web, worker and realtime Deployments (recommended).
+# `all`: one Deployment running MARMOT_ROLE=all (single replica; evaluation and small installs).
+# `probes`: only the probe agents in probes.agents (a remote network running checks for a Marmot elsewhere).
+mode: split
+
+# Public URL users open (NEXT_PUBLIC_SERVER_URL). Must match the browser URL exactly (scheme, host, port),
+# or the CSRF/CORS checks reject the auth cookie.
+serverUrl: http://localhost:3000
+
+database:
+  # postgres | mongodb. MongoDB is external only (secrets.databaseUrl or the existing Secret).
+  adapter: postgres
+
+# Non-secret environment variables for every Marmot role (web, worker, realtime and `all`). Any variable
+# from docs/Configuration.md goes here; values must be strings. Secrets go into `secrets` below.
+config:
+  LOG_LEVEL: info
+  # DISABLE_SIGNUP: 'true'
+  # ADDITIONAL_ORIGINS: https://ops.example.com
+  # EMAIL_FROM: Marmot <marmot@example.com>
+  # SMTP_HOST: smtp.example.com
+  # SMTP_PORT: '587'
+  # SMTP_USER: marmot
+  # SMTP_SECURE: 'false'
+  # NOTIFICATIONS_SERVER_SMTP: superadmin
+  # NOTIFICATIONS_SERVER_SMTP_RATE: '60'
+  # S3_BUCKET: marmot-uploads
+  # S3_REGION: auto
+  # S3_ENDPOINT: https://<account>.r2.cloudflarestorage.com
+  # S3_FORCE_PATH_STYLE: 'false'
+  # OIDC_ISSUER_URL: https://auth.example.com/realms/main
+  # OIDC_CLIENT_ID: marmot
+  # OIDC_DISPLAY_NAME: Single sign-on
+  # OIDC_AUTO_PROVISION: 'true'
+  # OIDC_SCOPES: openid email profile
+  # OIDC_GROUP_CLAIM: groups
+  # OIDC_ALLOWED_GROUPS: ''
+  # OIDC_ROLE_MAPPING: '{"platform-admins": {"org": "acme", "role": "admin"}}'
+  # OIDC_ROLE_MAPPING_REMOVE: 'false'
+  # OIDC_DISABLE_LOCAL_LOGIN: 'false'
+  # OIDC_BREAK_GLASS: 'false'
+  # GITHUB_CLIENT_ID: ''
+  # GOOGLE_CLIENT_ID: ''
+  # API_KEY_RATE_LIMIT: '600'
+  # API_KEY_WRITE_RATE_LIMIT: '60'
+  # KEEP_DATA_PERIOD_DAYS: '365'
+  # AUDIT_LOG_RETENTION_DAYS: '365'
+  # WEBHOOK_DELIVERY_RETENTION_DAYS: '14'
+  # WEBHOOK_DISABLE_AFTER_FAILURES: '5'
+  # WORKER_CONCURRENCY: '10'
+  # ON_DEMAND_CHECKS_PER_MINUTE: '30'
+  # CONNECTIVITY_CHECK_ENABLED: 'false'
+  # CONNECTIVITY_CHECK_TARGETS: 1.1.1.1:53, 8.8.8.8:53, https://www.google.com/generate_204
+  # CONNECTIVITY_CHECK_MODE: any
+  # CONNECTIVITY_CHECK_INTERVAL: '30'
+  # CONNECTIVITY_CHECK_TIMEOUT: '5'
+  # CONNECTIVITY_CHECK_NOTIFY_EMAIL: 'true'
+  # CONNECTIVITY_CHECK_NOTIFICATION_ID: ''
+  # PROBE_OFFLINE_AFTER: '180'
+  # PROBE_RATE_LIMIT: '600'
+  # Off by default here: pods have no Docker socket unless you mount one (extraVolumes).
+  DOCKER_SOCKET_ENABLED: 'false'
+  # MONITOR_DENY_PRIVATE_ADDRESSES: 'false'
+  # MONITOR_DENY_CIDRS: ''
+  # MONITOR_ALLOW_CIDRS: ''
+  # STATUS_PAGE_SESSION_DAYS: '30'
+  # WORKER_SCHEMA_WAIT_MS: '120000'
+  # BILLING_ENABLED: 'false'
+  # LANDING_PAGE_ENABLED: 'false'
+
+# Secret environment variables. Either name an existing Secret (every key becomes an environment variable
+# of the web, worker, realtime and migration pods), or let the chart create one from the values below.
+secrets:
+  # Existing Secret with at least PAYLOAD_SECRET, DATABASE_URL (unless postgresql.enabled) and REDIS_URL
+  # (unless redis.enabled). Optional keys: SMTP_PASSWORD, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY,
+  # OIDC_CLIENT_SECRET, GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET.
+  existingSecret: ''
+  # Used only when existingSecret is empty. A random PAYLOAD_SECRET is generated (and kept across upgrades)
+  # when left empty.
+  payloadSecret: ''
+  # postgres://user:password@host:5432/marmot or mongodb://.../marmot. Ignored when postgresql.enabled.
+  databaseUrl: ''
+  # redis://[:password@]host:6379[/db]. Ignored when redis.enabled.
+  redisUrl: ''
+  # Further secret variables, e.g. SMTP_PASSWORD: ..., OIDC_CLIENT_SECRET: ...
+  extra: {}
+
+# Extra environment entries (full EnvVar objects, e.g. valueFrom) and envFrom sources for every Marmot role.
+extraEnv: []
+extraEnvFrom: []
+
+serviceAccount:
+  create: true
+  name: ''
+  annotations: {}
+  # Marmot does not talk to the Kubernetes API.
+  automountServiceAccountToken: false
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+
+# Migrations: a Job runs `entrypoint.sh migrate` (dist/server/migrate.mjs). On `helm install` it is a
+# regular Job that retries until the database is reachable; on `helm upgrade` it is a pre-upgrade hook, so
+# the schema is migrated before the new pods start. Web runs with SKIP_MIGRATIONS=true either way.
+# Set enabled=false to let `web` migrate on start instead (only with web.replicas=1 and no web HPA).
+migrations:
+  enabled: true
+  backoffLimit: 10
+  activeDeadlineSeconds: 1800
+  annotations: {}
+  resources: {}
+
+web:
+  replicas: 1
+  # Empty: Recreate while uploads sit on a ReadWriteOnce volume (a second pod could not mount it on
+  # another node), otherwise a rolling update that keeps the old pod until the new one is ready.
+  strategy: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      memory: 1Gi
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 75
+  pdb:
+    enabled: false
+    minAvailable: 1
+  service:
+    type: ClusterIP
+    port: 3000
+    annotations: {}
+  # Startup allows for the first install, when web waits for the migration Job (10 minutes).
+  startupProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 60
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  # /api/health also checks the database; the high threshold keeps a short database outage from
+  # restarting every web pod.
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 6
+  env: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  podAnnotations: {}
+
+worker:
+  # Stateless BullMQ consumers: one replica per ~25 checks/s (docs/Deployment.md#sizing).
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 384Mi
+    limits:
+      memory: 1Gi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+  pdb:
+    enabled: false
+    minAvailable: 1
+  # The worker has no HTTP endpoint: the process exiting is its failure signal.
+  livenessProbe: {}
+  readinessProbe: {}
+  # In-flight checks finish within 30 s of SIGTERM.
+  terminationGracePeriodSeconds: 45
+  env: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  podAnnotations: {}
+
+realtime:
+  # More than one replica needs sticky sessions at the ingress (ingress.realtime.annotations) because the
+  # socket.io polling handshake must reach the same pod.
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      memory: 512Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 75
+  pdb:
+    enabled: false
+    minAvailable: 1
+  service:
+    type: ClusterIP
+    port: 3001
+    annotations: {}
+  readinessProbe:
+    httpGet:
+      path: /healthz
+      port: realtime
+    periodSeconds: 10
+    timeoutSeconds: 5
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: realtime
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3
+  env: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  podAnnotations: {}
+
+# mode=all: one pod runs web, worker and realtime (entrypoint supervises the three processes).
+all:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      memory: 2Gi
+  startupProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 60
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    periodSeconds: 10
+    timeoutSeconds: 5
+  livenessProbe:
+    exec:
+      command: [/app/entrypoint.sh, healthcheck]
+    periodSeconds: 20
+    timeoutSeconds: 10
+    failureThreshold: 6
+  env: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+
+# Logos and other uploads (UPLOADS_DIR=/app/uploads) when S3_BUCKET is not configured. With more than one
+# web replica use a ReadWriteMany storage class, or S3.
+persistence:
+  enabled: true
+  existingClaim: ''
+  storageClass: ''
+  accessModes: [ReadWriteOnce]
+  size: 2Gi
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ''
+  # Annotations for both Ingress objects (web and realtime).
+  annotations: {}
+  host: status.example.com
+  # Extra hosts served by the same backends, e.g. custom status-page domains.
+  extraHosts: []
+  tls: []
+  #  - secretName: marmot-tls
+  #    hosts: [status.example.com]
+  # `/socket.io` goes to the realtime Service. With `separate`, through a second Ingress for the same host
+  # so it can carry its own annotations (long timeouts, sticky sessions); set it to false for controllers
+  # that create one load balancer per Ingress (GKE), which puts both paths into one Ingress.
+  realtime:
+    separate: true
+    # Added to ingress.annotations on the realtime Ingress (only with separate: true).
+    annotations: {}
+    # ingress-nginx example:
+    #   nginx.ingress.kubernetes.io/proxy-read-timeout: '3600'
+    #   nginx.ingress.kubernetes.io/proxy-send-timeout: '3600'
+    #   nginx.ingress.kubernetes.io/affinity: cookie
+
+# Remote probe agents (MARMOT_ROLE=probe, docs/Probe-Locations.md): one Deployment per location. An agent
+# only needs MARMOT_URL and its location token, so these pods get none of the server secrets.
+probes:
+  agents: []
+  #  - name: office
+  #    # Defaults to serverUrl.
+  #    marmotUrl: ''
+  #    # Secret holding the location token under `tokenKey`, or the token itself (`token`).
+  #    existingSecret: marmot-probe-office
+  #    tokenKey: MARMOT_PROBE_TOKEN
+  #    token: ''
+  #    env: []
+  #    resources: {}
+  #    nodeSelector: {}
+  #    tolerations: []
+  #    affinity: {}
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      memory: 512Mi
+
+# Bundled single-instance Postgres (official postgres image) for evaluation and small installs. For
+# production use a managed database or an operator (CloudNativePG, ...) and secrets.databaseUrl.
+postgresql:
+  enabled: false
+  image:
+    repository: postgres
+    tag: 16-alpine
+    pullPolicy: IfNotPresent
+  database: marmot
+  username: marmot
+  # Generated (and kept across upgrades) when empty and no existingSecret is set.
+  password: ''
+  # Secret with the password under `passwordKey`.
+  existingSecret: ''
+  passwordKey: postgres-password
+  persistence:
+    size: 8Gi
+    storageClass: ''
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+# Bundled single-instance Redis (official redis image) with `noeviction` and persistence, as BullMQ needs.
+redis:
+  enabled: false
+  image:
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+  # Generated (and kept across upgrades) when empty and no existingSecret is set.
+  password: ''
+  existingSecret: ''
+  passwordKey: redis-password
+  persistence:
+    size: 1Gi
+    storageClass: ''
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 512Mi
+
+# Extra volumes / mounts for every Marmot server pod (e.g. a CA bundle, or the Docker socket for worker).
+extraVolumes: []
+extraVolumeMounts: []

@@ -1,0 +1,38 @@
+{{- if include "marmot.server" . }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "marmot.fullname" . }}-test-health
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" "test") | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: health
+      image: {{ include "marmot.image" . }}
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+      # web: /api/health (database reachable); realtime: /healthz and a socket.io polling handshake.
+      command:
+        - sh
+        - -ec
+        - |
+          web=http://{{ include "marmot.fullname" . }}-web:{{ .Values.web.service.port }}
+          rt=http://{{ include "marmot.fullname" . }}-realtime:{{ .Values.realtime.service.port }}
+          wget -q -T 10 -O - "$web/api/health" | grep -q '"ok":true'
+          wget -q -T 10 -O - "$rt/healthz" | grep -q '"ok":true'
+          wget -q -T 10 -O - "$rt/socket.io/?EIO=4&transport=polling" | grep -q '"sid"'
+          echo ok
+{{- end }}

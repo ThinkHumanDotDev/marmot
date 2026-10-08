@@ -1,0 +1,19 @@
+{{- if eq .Values.mode "split" }}
+{{- range $component := list "web" "worker" "realtime" }}
+{{- $values := index $.Values $component }}
+{{- if $values.pdb.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "marmot.fullname" $ }}-{{ $component }}
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" $component) | nindent 4 }}
+spec:
+  minAvailable: {{ $values.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" $component) | nindent 6 }}
+{{- end }}
+{{- end }}
+{{- end }}

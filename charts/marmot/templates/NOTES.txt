@@ -1,0 +1,35 @@
+{{- if eq .Values.mode "probes" }}
+{{ len .Values.probes.agents }} Marmot probe agent(s) are being deployed. Their locations turn Online under
+Settings → Locations once the agents have called in.
+{{- else }}
+Marmot {{ .Chart.AppVersion }} ({{ .Values.mode }} mode) is being deployed.
+
+{{- if and .Values.migrations.enabled .Release.IsInstall }}
+
+The migration Job {{ include "marmot.fullname" . }}-migrate-{{ .Release.Revision }} creates the database schema;
+web becomes ready once it has finished:
+  kubectl -n {{ .Release.Namespace }} logs -f job/{{ include "marmot.fullname" . }}-migrate-{{ .Release.Revision }}
+{{- end }}
+
+{{- if .Values.ingress.enabled }}
+
+Open {{ .Values.serverUrl }} and complete the setup wizard.
+{{- else }}
+
+No ingress is configured. To try it locally:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "marmot.fullname" . }}-web 3000:{{ .Values.web.service.port }}
+Then open http://localhost:3000 (live updates need /socket.io routed to the realtime Service on the same
+origin; see docs/Kubernetes.md).
+{{- end }}
+
+{{- if and (eq .Values.mode "split") (or (gt (int .Values.realtime.replicas) 1) .Values.realtime.autoscaling.enabled) }}
+
+WARNING: more than one realtime replica needs sticky sessions for /socket.io at the ingress
+(ingress.realtime.annotations, e.g. nginx.ingress.kubernetes.io/affinity: cookie).
+{{- end }}
+{{- if or .Values.postgresql.enabled .Values.redis.enabled }}
+
+The bundled {{ if .Values.postgresql.enabled }}Postgres{{ end }}{{ if and .Values.postgresql.enabled .Values.redis.enabled }} and {{ end }}{{ if .Values.redis.enabled }}Redis{{ end }} run as single pods without backups. For production use
+managed services or operators and set secrets.databaseUrl / secrets.redisUrl.
+{{- end }}
+{{- end }}

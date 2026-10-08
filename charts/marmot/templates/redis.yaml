@@ -1,0 +1,117 @@
+{{- if and (include "marmot.server" .) .Values.redis.enabled }}
+{{- $name := include "marmot.redis.fullname" . }}
+{{- $redis := .Values.redis }}
+{{- if not $redis.existingSecret }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" "redis") | nindent 4 }}
+type: Opaque
+stringData:
+  {{ $redis.passwordKey }}: {{ default (include "marmot.persistentRandom" (dict "ctx" $ "secret" $name "key" $redis.passwordKey "length" 32)) $redis.password | quote }}
+---
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" "redis") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+  selector:
+    {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" "redis") | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" "redis") | nindent 4 }}
+spec:
+  serviceName: {{ $name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" "redis") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" "redis") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        # uid/gid of the `redis` user in the alpine image.
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: {{ printf "%s:%s" $redis.image.repository $redis.image.tag }}
+          imagePullPolicy: {{ $redis.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          # noeviction: BullMQ must never lose keys; appendonly + save: queues and job schedulers
+          # survive a restart.
+          command:
+            - sh
+            - -c
+            - exec redis-server --requirepass "$REDIS_PASSWORD" --maxmemory-policy noeviction --appendonly yes --save 60 1 --dir /data
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "marmot.redis.secretName" . }}
+                  key: {{ $redis.passwordKey }}
+            - name: REDISCLI_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "marmot.redis.secretName" . }}
+                  key: {{ $redis.passwordKey }}
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: [redis-cli, ping]
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: [redis-cli, ping]
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            {{- toYaml $redis.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with $redis.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ $redis.persistence.size }}
+{{- end }}

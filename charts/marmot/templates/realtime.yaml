@@ -1,0 +1,101 @@
+{{- if eq .Values.mode "split" }}
+{{- $component := "realtime" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marmot.fullname" . }}-realtime
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" $component) | nindent 4 }}
+spec:
+  {{- if not .Values.realtime.autoscaling.enabled }}
+  replicas: {{ .Values.realtime.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" $component) | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- include "marmot.podAnnotations" . | nindent 8 }}
+        {{- with .Values.realtime.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "marmot.podCommon" . | nindent 6 }}
+      containers:
+        - name: realtime
+          image: {{ include "marmot.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: realtime
+              containerPort: {{ .Values.realtime.service.port }}
+              protocol: TCP
+          env:
+            {{- include "marmot.env" (dict "ctx" $ "role" "realtime") | nindent 12 }}
+            {{- with .Values.realtime.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          envFrom:
+            {{- include "marmot.envFrom" . | nindent 12 }}
+          {{- with .Values.realtime.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.realtime.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.realtime.resources | nindent 12 }}
+          {{- with .Values.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.realtime.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.realtime.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.realtime.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.realtime.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "marmot.fullname" . }}-realtime
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" $component) | nindent 4 }}
+  {{- with .Values.realtime.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.realtime.service.type }}
+  ports:
+    - name: realtime
+      port: {{ .Values.realtime.service.port }}
+      targetPort: realtime
+      protocol: TCP
+  selector:
+    {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" $component) | nindent 4 }}
+{{- end }}

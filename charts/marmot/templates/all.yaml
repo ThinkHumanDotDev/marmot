@@ -1,0 +1,139 @@
+{{- if eq .Values.mode "all" }}
+{{- $component := "all" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marmot.fullname" . }}-all
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" $component) | nindent 4 }}
+spec:
+  # One pod runs web, worker and realtime; a second replica would duplicate the realtime/worker state
+  # handling without sticky routing, so `all` mode is single-replica.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" $component) | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- include "marmot.podAnnotations" . | nindent 8 }}
+        {{- with .Values.all.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "marmot.podCommon" . | nindent 6 }}
+      containers:
+        - name: marmot
+          image: {{ include "marmot.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.web.service.port }}
+              protocol: TCP
+            - name: realtime
+              containerPort: {{ .Values.realtime.service.port }}
+              protocol: TCP
+          env:
+            {{- include "marmot.env" (dict "ctx" $ "role" "all") | nindent 12 }}
+            {{- with .Values.all.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          envFrom:
+            {{- include "marmot.envFrom" . | nindent 12 }}
+          {{- with .Values.all.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.all.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.all.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.all.resources | nindent 12 }}
+          {{- if or .Values.persistence.enabled .Values.extraVolumeMounts }}
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: uploads
+              mountPath: /app/uploads
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+      {{- if or .Values.persistence.enabled .Values.extraVolumes }}
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: {{ include "marmot.uploadsClaimName" . }}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.all.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.all.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.all.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "marmot.fullname" . }}-web
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" $component) | nindent 4 }}
+  {{- with .Values.web.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.web.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.web.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" $component) | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "marmot.fullname" . }}-realtime
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" $component) | nindent 4 }}
+  {{- with .Values.realtime.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.realtime.service.type }}
+  ports:
+    - name: realtime
+      port: {{ .Values.realtime.service.port }}
+      targetPort: realtime
+      protocol: TCP
+  selector:
+    {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" $component) | nindent 4 }}
+{{- end }}
