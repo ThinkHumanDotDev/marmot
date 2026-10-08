@@ -148,7 +148,7 @@ HTTP(s), keyword and JSON query checks record where the response time went, in m
 The phases describe the final response: after redirects, earlier hops count towards the response time
 but not towards a phase, and DNS, connect and TLS are empty when that request reused a connection.
 Through a proxy only TTFB and transfer are measured (TTFB then includes connecting to the proxy).
-TCP port checks record DNS and connect. Without redirects the phases add up to the response time,
+TCP port checks record DNS and connect. Checks run by probe agents report the same phases. Without redirects the phases add up to the response time,
 give or take a millisecond of request setup.
 
 The phases are stored on each heartbeat (`heartbeats.timing`) and shown as a waterfall for the latest
