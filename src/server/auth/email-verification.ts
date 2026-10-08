@@ -54,7 +54,7 @@ export const emailVerificationLimiter: RateLimiter = createRateLimiter(
 )
 
 /** How a pending account was confirmed (`auth.email_verified` metadata). */
-export type EmailVerificationMethod = 'link' | 'invitation' | 'sso'
+export type EmailVerificationMethod = 'link' | 'invitation' | 'sso' | 'magic-link'
 
 /** `req.context` flag: the users operation was made by a client, not by server code. */
 const CLIENT_WRITE_CONTEXT = 'marmotUserClientWrite'

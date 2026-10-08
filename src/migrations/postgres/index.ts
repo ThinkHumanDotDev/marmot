@@ -49,6 +49,7 @@ import * as migration_20261008_013406_heartbeat_timing from './20261008_013406_h
 import * as migration_20261008_023424_location_quorum from './20261008_023424_location_quorum';
 import * as migration_20261008_030613_response_log from './20261008_030613_response_log';
 import * as migration_20261008_035336_email_verification from './20261008_035336_email_verification';
+import * as migration_20261008_053209_magic_link from './20261008_053209_magic_link';
 
 export const migrations = [
   {
@@ -304,6 +305,11 @@ export const migrations = [
   {
     up: migration_20261008_035336_email_verification.up,
     down: migration_20261008_035336_email_verification.down,
-    name: '20261008_035336_email_verification'
+    name: '20261008_035336_email_verification',
+  },
+  {
+    up: migration_20261008_053209_magic_link.up,
+    down: migration_20261008_053209_magic_link.down,
+    name: '20261008_053209_magic_link'
   },
 ];

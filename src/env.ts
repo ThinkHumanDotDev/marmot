@@ -71,6 +71,9 @@ const schema = z.object({
   // Self-service sign-ups must confirm their address before they can create organizations, invite
   // people or set up notification channels. Default of the `requireEmailVerification` instance setting.
   REQUIRE_EMAIL_VERIFICATION: booleanish.default(false),
+  // Passwordless sign-in: "Email me a sign-in link" on the login page (#164). Default of the
+  // `magicLinkEnabled` instance setting.
+  MAGIC_LINK_ENABLED: booleanish.default(false),
   OIDC_ISSUER_URL: z.string().url().optional(),
   OIDC_CLIENT_ID: z.string().optional(),
   OIDC_CLIENT_SECRET: z.string().optional(),

@@ -4,7 +4,10 @@ import 'dotenv/config'
 import {
   ADMIN_STATE,
   baseURL,
+  mailPort,
+  mailURL,
   realtimePort,
+  smtpPort,
   realtimeURL,
   targetPort,
   targetURL,
@@ -28,6 +31,12 @@ const serverEnv: Record<string, string> = {
   NEXT_PUBLIC_SERVER_URL: baseURL,
   REALTIME_PORT: String(realtimePort),
   NEXT_PUBLIC_REALTIME_URL: process.env.NEXT_PUBLIC_REALTIME_URL || realtimeURL,
+  // Every email goes to the mail sink, where specs read emailed links.
+  SMTP_HOST: '127.0.0.1',
+  SMTP_PORT: String(smtpPort),
+  SMTP_SECURE: 'false',
+  SMTP_USER: '',
+  SMTP_PASSWORD: '',
 }
 
 export default defineConfig({
@@ -73,6 +82,13 @@ export default defineConfig({
       name: 'target',
       command: `node tests/e2e/target-server.mjs ${targetPort}`,
       url: `${targetURL}/health`,
+      reuseExistingServer: !isCI,
+      timeout: 10_000,
+    },
+    {
+      name: 'mail',
+      command: `node tests/e2e/mail-sink.mjs ${smtpPort} ${mailPort}`,
+      url: `${mailURL}/health`,
       reuseExistingServer: !isCI,
       timeout: 10_000,
     },

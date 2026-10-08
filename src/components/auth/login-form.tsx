@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { ApiError, authApi } from '@/lib/api'
+import { MAGIC_LINK_TTL_MINUTES } from '@/lib/magic-link'
 import { safeNextPath } from '@/lib/utils'
 
 type Values = { email: string; password: string }
@@ -31,6 +32,8 @@ interface LoginFormProps {
   twoFactor?: boolean
   /** Break-glass login of the SSO-only mode: posts with `?local=1`. */
   local?: boolean
+  /** Offer "Email me a sign-in link" (#164, `magicLinkEnabled`). */
+  magicLink?: boolean
 }
 
 /**
@@ -38,7 +41,12 @@ interface LoginFormProps {
  * `requiresTwoFactor` for protected accounts; the code (authenticator or backup) then goes to
  * `POST /api/auth/2fa`, which sets the session cookie.
  */
-export function LoginForm({ next, twoFactor = false, local = false }: LoginFormProps) {
+export function LoginForm({
+  next,
+  twoFactor = false,
+  local = false,
+  magicLink = false,
+}: LoginFormProps) {
   const t = useTranslations('auth.login')
   const tf = useTranslations('auth.fields')
   const tv = useTranslations('auth.validation')
@@ -55,7 +63,9 @@ export function LoginForm({ next, twoFactor = false, local = false }: LoginFormP
     [tv],
   )
   const router = useRouter()
-  const [step, setStep] = React.useState<'password' | 'code'>(twoFactor ? 'code' : 'password')
+  const [step, setStep] = React.useState<'password' | 'code' | 'magic-link'>(
+    twoFactor ? 'code' : 'password',
+  )
   const [challenge, setChallenge] = React.useState<string | undefined>()
   const [pending, setPending] = React.useState(false)
   const [useBackup, setUseBackup] = React.useState(false)
@@ -117,6 +127,16 @@ export function LoginForm({ next, twoFactor = false, local = false }: LoginFormP
       }
       setPending(false)
     }
+  }
+
+  if (step === 'magic-link') {
+    return (
+      <MagicLinkRequestForm
+        next={next}
+        initialEmail={form.getValues('email')}
+        onUsePassword={() => setStep('password')}
+      />
+    )
   }
 
   if (step === 'code') {
@@ -244,6 +264,124 @@ export function LoginForm({ next, twoFactor = false, local = false }: LoginFormP
         <Button type="submit" className="w-full" disabled={pending}>
           {pending ? t('submitting') : t('submit')}
         </Button>
+        {magicLink && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => setStep('magic-link')}
+            data-testid="use-magic-link"
+          >
+            {t('magicLink.use')}
+          </Button>
+        )}
+      </form>
+    </Form>
+  )
+}
+
+/**
+ * "Email me a sign-in link" (#164). The answer never says whether the address has an account, so
+ * the confirmation reads the same for everyone.
+ */
+function MagicLinkRequestForm({
+  next,
+  initialEmail,
+  onUsePassword,
+}: {
+  next?: string
+  initialEmail: string
+  onUsePassword: () => void
+}) {
+  const t = useTranslations('auth.login.magicLink')
+  const tf = useTranslations('auth.fields')
+  const tv = useTranslations('auth.validation')
+  const schema = React.useMemo(() => z.object({ email: z.email(tv('email')) }), [tv])
+  const form = useForm<{ email: string }>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: initialEmail },
+  })
+  const [sentTo, setSentTo] = React.useState<string | null>(null)
+
+  async function onSubmit(values: { email: string }) {
+    try {
+      await authApi.requestMagicLink({ email: values.email, next })
+      setSentTo(values.email)
+    } catch (error) {
+      form.setError('root', { message: error instanceof Error ? error.message : t('failed') })
+    }
+  }
+
+  if (sentTo) {
+    return (
+      <div className="flex flex-col gap-4" data-testid="magic-link-sent">
+        <p className="text-sm font-medium">{t('sentTitle')}</p>
+        <p className="text-sm text-muted-foreground">
+          {t.rich('sent', {
+            minutes: MAGIC_LINK_TTL_MINUTES,
+            email: () => <span className="font-medium text-foreground">{sentTo}</span>,
+          })}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setSentTo(null)
+            form.reset({ email: '' })
+          }}
+        >
+          {t('again')}
+        </Button>
+        <button
+          type="button"
+          className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          onClick={onUsePassword}
+        >
+          {t('usePassword')}
+        </button>
+      </div>
+    )
+  }
+
+  const rootError = form.formState.errors.root?.message
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+        <p className="text-sm text-muted-foreground">{t('hint')}</p>
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{tf('email')}</FormLabel>
+              <FormControl>
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  placeholder={tf('emailPlaceholder')}
+                  autoFocus
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {rootError && (
+          <p role="alert" className="text-sm text-destructive">
+            {rootError}
+          </p>
+        )}
+        <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting ? t('submitting') : t('submit')}
+        </Button>
+        <button
+          type="button"
+          className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          onClick={onUsePassword}
+        >
+          {t('usePassword')}
+        </button>
       </form>
     </Form>
   )

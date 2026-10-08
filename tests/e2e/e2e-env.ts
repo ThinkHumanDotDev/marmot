@@ -6,6 +6,8 @@
  * - `E2E_PORT` – web app port when `E2E_BASE_URL` is unset (default 3000)
  * - `E2E_REALTIME_PORT` – realtime (socket.io) port (default web port + 1)
  * - `E2E_TARGET_PORT` – local HTTP server that HTTP monitors check (default web port + 2)
+ * - `E2E_SMTP_PORT` – SMTP port of the mail sink the app sends to (default web port + 3)
+ * - `E2E_MAIL_PORT` – HTTP port where specs read the captured mail (default web port + 4)
  */
 const rawBaseURL = process.env.E2E_BASE_URL?.trim()
 
@@ -23,6 +25,13 @@ export const targetPort = Number(process.env.E2E_TARGET_PORT || port + 2)
 
 /** Origin of the fixture HTTP server (`tests/e2e/target-server.mjs`). */
 export const targetURL = `http://127.0.0.1:${targetPort}`
+
+export const smtpPort = Number(process.env.E2E_SMTP_PORT || port + 3)
+
+export const mailPort = Number(process.env.E2E_MAIL_PORT || port + 4)
+
+/** Origin of the mail sink's message API (`tests/e2e/mail-sink.mjs`). */
+export const mailURL = `http://127.0.0.1:${mailPort}`
 
 /** Storage state of the admin created by the setup wizard (written by `00-setup.e2e.spec.ts`). */
 export const ADMIN_STATE = 'test-results/e2e/.auth/admin.json'

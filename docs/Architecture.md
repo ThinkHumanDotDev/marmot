@@ -649,6 +649,28 @@ implemented in `src/server/auth/email-verification.ts` on top of reusable email-
   `auth.email_verified { method }`. `POST /api/auth/verify-email/resend` is limited per account like
   password reset mail (5 per 15 minutes).
 
+## Account security: sign-in links
+
+Passwordless sign-in (#164, `magicLinkEnabled` instance setting, default `MAGIC_LINK_ENABLED`, off) lives in
+`src/server/auth/magic-link.ts` on the same token plumbing (purposes `magic-link` for an existing account and
+`magic-link-signup` for an address without one, keyed by `addressTokenSubject(email)`; 15 minutes):
+
+- **Request** (`POST /api/auth/magic-link`): rate limited per client IP (`magic-link-ip`, or the shared
+  `magic-link-instance` bucket without a trusted address) and per address digest (`magic-link-email`, 5 per
+  15 minutes), then answered `202 { sent: true }` before the account lookup, which runs in the background
+  (`deliver`, `settleMagicLinkDeliveries` in tests), so neither the body nor the timing reveals whether the
+  address has an account. The mail links to `/login/magic-link?token=…`, a confirm page.
+- **Redeem** (`POST /api/auth/magic-link/verify`): consumes the token, checks the account still has the
+  address (or creates the account: `allowSignup`, or a pending invitation that is then accepted;
+  `authProvider: 'magic-link'`, random password, verified), applies the password policy
+  (`passwordDecision(…, { local: false })`) and confirms the address (`markEmailVerified`, method
+  `magic-link`). Accounts with 2FA get the usual challenge (`issueTwoFactorChallenge(id, 'magic-link')`; the
+  challenge remembers the first factor so `/api/auth/2fa` audits `auth.login { method: 'magic-link' }`);
+  others get a session from `createPayloadSessionCookie`.
+- **Policy**: links count as a local login. `isMagicLinkEnabled` is false in the SSO-only mode (no
+  break-glass through links); organization enforcement suppresses the mail and refuses redemption for
+  members on verified domains, while owners and superadmins pass with an `auth.break_glass` row.
+
 ## Billing (future)
 
 `organizations.plan` + `src/lib/entitlements.ts` express limits. On self-hosted installs everything is

@@ -1173,7 +1173,28 @@
       },
       "organizationSso": "Sign in with your organization's SSO",
       "localDisabled": "Password sign-in is turned off on this server. Use single sign-on to continue.",
-      "breakGlass": "Break-glass sign-in for instance administrators. Every sign-in here is recorded in the audit log."
+      "breakGlass": "Break-glass sign-in for instance administrators. Every sign-in here is recorded in the audit log.",
+      "magicLink": {
+        "use": "Email me a sign-in link instead",
+        "usePassword": "Sign in with your password instead",
+        "hint": "We will email you a link that signs you in, no password needed.",
+        "submit": "Email me a sign-in link",
+        "submitting": "Sending…",
+        "sentTitle": "Check your inbox",
+        "sent": "If <email></email> can sign in here, a link is on its way. It expires in {minutes, plural, one {# minute} other {# minutes}} and works once.",
+        "again": "Use another address",
+        "failed": "Could not send the link."
+      }
+    },
+    "magicLink": {
+      "pageTitle": "Sign in with a link",
+      "title": "Sign in to Marmot",
+      "description": "Continue to sign in with the link from your email.",
+      "confirm": "Continue",
+      "confirming": "Signing in…",
+      "invalid": "This sign-in link is invalid, has expired or was already used.",
+      "requestNew": "Request a new link",
+      "twoFactorTitle": "One more step"
     },
     "sso": {
       "continueWith": "Continue with {provider}",
@@ -1680,7 +1701,8 @@
         "sso_login_failed": "Failed single sign-on",
         "sso_group_denied": "Single sign-on refused: not in an allowed group",
         "email_verification_sent": "Confirmation email sent",
-        "email_verified": "Email address confirmed"
+        "email_verified": "Email address confirmed",
+        "magic_link_sent": "Sign-in link sent"
       }
     },
     "billing": {
@@ -1789,6 +1811,8 @@
       "allowSignupHint": "Anyone can create an account. When off, only invited people can join.",
       "requireEmailVerification": "Require email verification",
       "requireEmailVerificationHint": "New self-service accounts confirm their address by email before they can create organizations, invite people or add notification channels. Existing accounts are not affected.",
+      "magicLinkEnabled": "Sign-in links",
+      "magicLinkEnabledHint": "People can sign in with a single-use link sent to their email address instead of a password (two-factor authentication still applies). Needs SMTP. Off in SSO-only mode.",
       "entryPage": "Entry page",
       "entryPageDashboard": "Dashboard",
       "entryPageStatusPage": "Status page",
@@ -5350,6 +5374,21 @@
       "link": "Confirm your email address: {url}",
       "expires": "This link expires in {hours, plural, one {# hour} other {# hours}} and works once.",
       "ignore": "If you did not create a Marmot account, you can ignore this email."
+    },
+    "magicLink": {
+      "signIn": {
+        "subject": "Your Marmot sign-in link",
+        "intro": "Use this link to sign in to Marmot as <strong>{email}</strong>.",
+        "button": "Sign in to Marmot"
+      },
+      "signup": {
+        "subject": "Finish creating your Marmot account",
+        "intro": "Use this link to create your Marmot account for <strong>{email}</strong> and sign in.",
+        "button": "Create account and sign in"
+      },
+      "link": "Open this link: {url}",
+      "expires": "This link expires in {minutes, plural, one {# minute} other {# minutes}} and works once.",
+      "ignore": "If you did not ask for it, you can ignore this email: nobody can sign in without the link."
     }
   },
   "apiDocs": {
@@ -5586,7 +5625,9 @@
     "monitorTypeNotOnProbe": "Group, manual, push, Steam and Globalping monitors cannot run on a probe location.",
     "checkOnProbe": "This monitor is checked by a probe location, so “Check now” cannot record a result from this server. Run a dry run (record=false) to test the target from here.",
     "emailNotVerified": "Confirm your email address first: open the link we sent you, or request a new one.",
-    "verificationLinkInvalid": "This confirmation link is invalid or has expired. Sign in and request a new one."
+    "verificationLinkInvalid": "This confirmation link is invalid or has expired. Sign in and request a new one.",
+    "magicLinkDisabled": "Sign-in links are turned off on this server.",
+    "magicLinkInvalid": "This sign-in link is invalid, has expired or was already used. Request a new one."
   },
   "subscriberMessages": {
     "sms": {

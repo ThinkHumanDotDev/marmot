@@ -107,6 +107,10 @@ pnpm test:e2e                                # starts `pnpm dev:web` for you
 `00-setup.e2e.spec.ts` needs a database without users and is skipped outside CI. Set
 `PLAYWRIGHT_CHROMIUM_PATH` to use an existing Chromium binary.
 
+The web and worker processes send every email to a small SMTP sink (`tests/e2e/mail-sink.mjs`, SMTP on web
+port + 3, `E2E_SMTP_PORT`); specs read what was sent from its HTTP API (`GET <mailURL>/messages?to=…`,
+web port + 4, `E2E_MAIL_PORT`), for example the sign-in link in `magic-link.e2e.spec.ts`.
+
 ### What to test where
 
 Integration tests for behaviour that matters (access control, state machines, rollups, provider payloads,
