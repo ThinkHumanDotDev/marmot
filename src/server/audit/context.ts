@@ -89,6 +89,24 @@ export function apiKeyActor(apiKey: {
   }
 }
 
+/**
+ * Actor of an operation an AI agent performed through the MCP endpoint (#119) with an API key; the
+ * label names the key and the tool.
+ */
+export function mcpActor(apiKey: {
+  id: AuditId
+  name?: string | null
+  prefix?: string | null
+  tool?: string | null
+}): AuditActor {
+  const key = apiKeyActor(apiKey)
+  return {
+    ...key,
+    type: 'mcp',
+    label: apiKey.tool ? `${key.label ?? key.id} · ${apiKey.tool}` : key.label,
+  }
+}
+
 /** Actor of a signed-in user. */
 export function userActor(user: { id: AuditId; email?: string | null }): AuditActor {
   return { type: 'user', id: String(user.id), label: user.email ?? null, userId: user.id }
@@ -98,7 +116,8 @@ export function userActor(user: { id: AuditId; email?: string | null }): AuditAc
  * The actor of the operation `req` belongs to:
  * 1. an explicit `req.context[AUDIT_ACTOR_CONTEXT]`;
  * 2. an API key principal — `req.user` from the `api-keys` collection, or a user-like object that
- *    carries the key as `apiKey` (how an API-key-authenticated route can present itself);
+ *    carries the key as `apiKey` (how an API-key-authenticated route can present itself); `mcp`
+ *    when the key acts through the MCP endpoint (`apiKey.via`);
  * 3. a signed-in user;
  * 4. otherwise the system (worker jobs, scheduled transitions, seeding).
  */
@@ -113,12 +132,20 @@ export function actorFromRequest(req: RequestLike | null | undefined): AuditActo
         name?: string | null
         prefix?: string | null
         collection?: string
-        apiKey?: { id: AuditId; name?: string | null; prefix?: string | null } | null
+        apiKey?: {
+          id: AuditId
+          name?: string | null
+          prefix?: string | null
+          via?: string
+          tool?: string
+        } | null
       }
     | null
     | undefined
   if (!user || user.id === undefined || user.id === null) return SYSTEM_ACTOR
-  if (user.apiKey && typeof user.apiKey === 'object') return apiKeyActor(user.apiKey)
+  if (user.apiKey && typeof user.apiKey === 'object') {
+    return user.apiKey.via === 'mcp' ? mcpActor(user.apiKey) : apiKeyActor(user.apiKey)
+  }
   if (user.collection === 'api-keys') {
     return apiKeyActor({ id: user.id, name: user.name, prefix: user.prefix })
   }

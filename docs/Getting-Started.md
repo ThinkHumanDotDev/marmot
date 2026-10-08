@@ -69,8 +69,8 @@ Go to **Monitors → New monitor**. The form asks for:
    `retryInterval` before going DOWN (default 0 retries), and `resendInterval` to re-alert while a monitor
    stays down (default 0 = alert once per transition).
 
-Notification channels marked _default_ are attached automatically (per-monitor channel selection in the
-form is landing in the current release). Save. The worker schedules the monitor immediately and the first heartbeat shows up on the detail page
+Notification channels marked _default_ are attached automatically; pick other channels per monitor in the
+form. Save. The worker schedules the monitor immediately and the first heartbeat shows up on the detail page
 within one interval, together with the uptime cards (24h/30d), the response-time chart and the list of
 status changes. The monitor list on `/acme/monitors` updates live over the WebSocket connection.
 
@@ -108,4 +108,4 @@ provider ([Single sign-on](Single-Sign-On.md)).
 - Harden and operate the install: [Deployment](Deployment.md) (reverse proxies, backups, upgrades).
 - Tune it: [Configuration](Configuration.md) (every variable), the instance settings in `/admin`.
 - Automate it: badges, the push endpoint, Prometheus metrics and API keys in
-  [Integrations](Integrations.md) _(landing in the current release)_.
+  [Integrations](Integrations.md).

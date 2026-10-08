@@ -1,6 +1,7 @@
 import { getPayload, type Where } from 'payload'
 
 import config from '@payload-config'
+import { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
 import {
   authenticate,
   authorize,
@@ -19,7 +20,8 @@ const MAX_LIMIT = 500
 
 /**
  * GET /api/orgs/:orgId/monitors/:id/heartbeats — the monitor's latest heartbeats, newest first
- * (`monitor:read`). Query: `limit` (1–500, default 50), `important=true` for status changes only.
+ * (`monitor:read`). Query: `limit` (1–500, default 50), `important=true` for status changes only,
+ * `status` (`up`, `down`, `pending`, `maintenance`, `degraded`) for one status.
  * Raw beats are kept for 24 hours, important ones for `KEEP_DATA_PERIOD_DAYS`.
  */
 export async function GET(request: Request, { params }: RouteContext) {
@@ -40,9 +42,13 @@ export async function GET(request: Request, { params }: RouteContext) {
   const limit = Number.isInteger(requested) && requested > 0 ? Math.min(requested, MAX_LIMIT) : 50
   const and: Where[] = [{ monitor: { equals: monitor.id } }]
   if (url.searchParams.get('important') === 'true') and.push({ important: { equals: true } })
+  const status = url.searchParams.get('status')
+  if (status && (HEARTBEAT_STATUSES as readonly string[]).includes(status)) {
+    and.push({ status: { equals: status } })
+  }
 
   try {
-    // The monitor was loaded as the caller above; heartbeat rows carry no access rules of their own.
+    // The monitor was loaded as the caller above, so its beats are read without a second check.
     const { docs } = await payload.find({
       collection: 'heartbeats',
       where: { and },

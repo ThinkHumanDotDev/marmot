@@ -80,6 +80,12 @@ export const PERMISSIONS = {
   'docker-host:update': 'admin',
   'docker-host:delete': 'admin',
 
+  // Probe locations (#91): everyone sees where monitors are checked from; admins mint the tokens.
+  'location:read': 'viewer',
+  'location:create': 'admin',
+  'location:update': 'admin',
+  'location:delete': 'admin',
+
   'api-key:read': 'admin',
   'api-key:create': 'admin',
   'api-key:delete': 'admin',

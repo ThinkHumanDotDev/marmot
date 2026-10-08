@@ -14,11 +14,13 @@
 
 - [Monitors](Monitors.md)
 - [Monitor types](Monitor-Types.md)
+- [Probe locations](Probe-Locations.md)
 - [Notifications](Notifications.md)
 - [Status pages](Status-Pages.md)
 - [Maintenance](Maintenance.md)
 - [Organizations and members](Organizations-and-Members.md)
 - [Integrations](Integrations.md)
+- [MCP server for AI agents](MCP.md)
 - [Import and export](Import-and-Export.md)
 - [CLI and monitors as code](CLI.md)
 - [GitHub Action](GitHub-Action.md)

@@ -11,7 +11,13 @@ import type { Payload } from 'payload'
 
 import type { Monitor } from '@/payload-types'
 import { getCheckerSummary, type CheckerSummary } from '@/server/engine/connectivity-state'
-import { getUptime, type StatsRange } from '@/server/stats/uptime-calculator'
+import {
+  PERCENTILE_VALUES,
+  PERCENTILES,
+  type PercentileValues,
+} from '@/server/stats/latency-histogram'
+import { bucketPercentiles } from '@/server/stats/range-stats'
+import { getBuckets, getUptime, type StatsRange } from '@/server/stats/uptime-calculator'
 
 export const MONITOR_LABELS = [
   'monitor_id',
@@ -82,6 +88,11 @@ export interface MetricsSource {
   uptime: Map<string, Partial<Record<StatsRange, number>>>
   /** Self connectivity check of the workers (#148); omitted when disabled. */
   checker?: CheckerSummary
+  /**
+   * Response-time percentiles per monitor id and window (#95). The `monitor_response_time_quantile`
+   * gauge is only registered when this is set (`/api/metrics?quantiles=true`).
+   */
+  quantiles?: Map<string, Partial<Record<StatsRange, Partial<PercentileValues>>>>
 }
 
 /** Build a registry from already loaded data (pure; tests call this directly). */
@@ -120,6 +131,15 @@ export function buildRegistry(source: MetricsSource): Registry {
     registers: [registry],
   })
 
+  const quantile = source.quantiles
+    ? new Gauge({
+        name: 'monitor_response_time_quantile',
+        help: "Response time (ms) quantile over the sliding window specified by the 'window' label",
+        labelNames: [...labelNames, 'window', 'quantile'],
+        registers: [registry],
+      })
+    : null
+
   if (source.checker && source.checker.status !== 'disabled') {
     const checkerOnline = new Gauge({
       name: 'marmot_checker_online',
@@ -150,6 +170,17 @@ export function buildRegistry(source: MetricsSource): Registry {
       }
     }
 
+    const monitorQuantiles = source.quantiles?.get(String(monitor.id))
+    for (const window of UPTIME_WINDOWS) {
+      const values = monitorQuantiles?.[window]
+      for (const key of PERCENTILES) {
+        const value = values?.[key]
+        if (quantile && typeof value === 'number' && Number.isFinite(value)) {
+          quantile.set({ ...labels, window, quantile: String(PERCENTILE_VALUES[key] / 100) }, value)
+        }
+      }
+    }
+
     const cert = readCertInfo(monitor)
     if (cert) {
       certValid.set(labels, cert.valid ? 1 : 0)
@@ -160,10 +191,16 @@ export function buildRegistry(source: MetricsSource): Registry {
   return registry
 }
 
+export type CollectMetricsOptions = {
+  /** Also export `monitor_response_time_quantile` (reads the stat rollups' histograms). */
+  quantiles?: boolean
+}
+
 /** Load the organization's monitors and their uptime windows, then build the registry. */
 export async function collectOrganizationMetrics(
   payload: Payload,
   organizationId: string | number,
+  options: CollectMetricsOptions = {},
 ): Promise<Registry> {
   const { docs } = await payload.find({
     collection: 'monitors',
@@ -191,5 +228,24 @@ export async function collectOrganizationMetrics(
     }),
   )
 
-  return buildRegistry({ monitors, uptime, checker: await getCheckerSummary() })
+  let quantiles: MetricsSource['quantiles']
+  if (options.quantiles) {
+    const collected: NonNullable<MetricsSource['quantiles']> = new Map()
+    await Promise.all(
+      monitors.map(async (monitor) => {
+        const windows: Partial<Record<StatsRange, Partial<PercentileValues>>> = {}
+        for (const window of UPTIME_WINDOWS) {
+          try {
+            windows[window] = bucketPercentiles(await getBuckets(payload, monitor.id, window))
+          } catch {
+            // Same as uptime: skip the sample rather than fail the scrape.
+          }
+        }
+        collected.set(String(monitor.id), windows)
+      }),
+    )
+    quantiles = collected
+  }
+
+  return buildRegistry({ monitors, uptime, quantiles, checker: await getCheckerSummary() })
 }

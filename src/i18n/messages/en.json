@@ -233,7 +233,9 @@
         "none": "(none)",
         "inRange": "in",
         "legacy": "monitor setting"
-      }
+      },
+      "checkedFrom": "Checked from {location}",
+      "locationStatus": "Probe location {status, select, online {online} offline {offline} other {never connected}}"
     },
     "new": {
       "pageTitle": "New monitor",
@@ -305,11 +307,34 @@
     },
     "chart": {
       "title": "Response time",
-      "description": "Average per minute over the last 24 hours, with min–max range.",
+      "description": "Latency percentiles and the average per interval over the selected period.",
       "empty": "No response-time data yet. The chart fills in as checks complete.",
       "average": "Avg {ping}",
-      "range": "{min} – {max}",
-      "counts": "{up} up · {down} down"
+      "averageLegend": "Average",
+      "percentile": "p{value}",
+      "percentileValue": "p{value} {ping}",
+      "countsDegraded": "{up} up · {degraded} degraded · {down} down",
+      "period": "Period",
+      "percentiles": "Percentiles",
+      "periods": {
+        "1d": "24 hours",
+        "7d": "7 days",
+        "14d": "14 days",
+        "30d": "30 days",
+        "90d": "90 days"
+      },
+      "loadError": "Could not load the statistics for this period.",
+      "checksTitle": "Checks",
+      "checksDescription": "Up, degraded and down checks per interval.",
+      "checksEmpty": "No checks in this period."
+    },
+    "metrics": {
+      "uptime": "Uptime",
+      "percentileResponse": "p{value} response",
+      "totalChecks": "Total checks",
+      "failedChecks": "Failed checks",
+      "degradedChecks": "Degraded checks",
+      "lastCheck": "Last check"
     },
     "timing": {
       "title": "Request timing",
@@ -651,7 +676,9 @@
       "globalpingProtocol": "This protocol is not available for the selected measurement",
       "globalpingLocationsMax": "At most {max} locations",
       "globalpingMinSuccessRequired": "Enter how many probes must succeed",
-      "globalpingMinSuccessMax": "Cannot be more than the number of probes"
+      "globalpingMinSuccessMax": "Cannot be more than the number of probes",
+      "locationsTooMany": "Pick one location",
+      "locationsTypeUnsupported": "Group, manual, push, Steam and Globalping monitors run on this server only"
     },
     "form": {
       "assertions": {
@@ -765,7 +792,11 @@
         "publicName": "Public name",
         "publicNameDescription": "Shown on status pages instead of the friendly name. Leave empty to use the friendly name.",
         "descriptionLabel": "Description",
-        "descriptionPlaceholder": "Shown on the detail page and status pages."
+        "descriptionPlaceholder": "Shown on the detail page and status pages.",
+        "location": "Check location",
+        "locationLocal": "Local (this server's workers)",
+        "locationOffline": "{name} (offline)",
+        "locationDescription": "Where the checks run. A probe location checks private networks from the inside; manage locations under <link>Settings → Locations</link>."
       },
       "timing": {
         "title": "Timing",
@@ -1252,7 +1283,8 @@
       "security": "Security",
       "notifications": "Notifications",
       "instance": "Instance",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "locations": "Locations"
     },
     "pageTitles": {
       "account": "Account settings",
@@ -1270,7 +1302,8 @@
       "notifications": "Notification settings",
       "instance": "Instance settings",
       "webhooks": "Webhooks",
-      "webhookDeliveries": "Webhook deliveries"
+      "webhookDeliveries": "Webhook deliveries",
+      "locations": "Locations"
     },
     "account": {
       "profile": {
@@ -1561,7 +1594,8 @@
         "user": "Account",
         "instance_settings": "Instance settings",
         "import": "Import",
-        "webhook_endpoint": "Webhook endpoint"
+        "webhook_endpoint": "Webhook endpoint",
+        "location": "Probe location"
       },
       "verbs": {
         "created": "created",
@@ -1584,7 +1618,8 @@
         "added": "added",
         "sync_skipped": "change skipped",
         "superadmin_granted": "granted superadmin",
-        "superadmin_revoked": "superadmin revoked"
+        "superadmin_revoked": "superadmin revoked",
+        "token_rotated": "token rotated"
       },
       "authActions": {
         "login": "Signed in",
@@ -1832,7 +1867,8 @@
         "sso": "Single sign-on",
         "subscriber": "Status page subscribers",
         "monitorIncident": "Monitor incidents",
-        "webhook": "Webhooks"
+        "webhook": "Webhooks",
+        "location": "Probe locations"
       },
       "actions": {
         "read": "View",
@@ -2241,6 +2277,81 @@
           "responseStatus": "Response · HTTP {status}",
           "noResponse": "No response"
         }
+      }
+    },
+    "locations": {
+      "title": "Probe locations",
+      "description": "Run checks from your own networks: a probe agent connects to Marmot over HTTPS (outbound only), runs the monitors assigned to its location and reports the results. A location is marked offline, and admins are emailed, after {minutes, plural, one {# minute} other {# minutes}} without contact.",
+      "forbiddenTitle": "Not available",
+      "forbidden": "You do not have access to the probe locations of this organization.",
+      "newLocation": "New location",
+      "emptyTitle": "No probe locations yet",
+      "emptyDescription": "Create a location, start an agent with its token, then pick the location in a monitor's settings.",
+      "emptyReadOnly": "Admins of this organization can create probe locations.",
+      "columns": {
+        "name": "Location",
+        "status": "Status",
+        "lastSeen": "Last seen",
+        "agent": "Agent",
+        "monitors": "Monitors",
+        "token": "Token"
+      },
+      "status": {
+        "online": "Online",
+        "offline": "Offline",
+        "unknown": "Never connected"
+      },
+      "lastSeen": {
+        "never": "Never",
+        "seconds": "{count} s ago",
+        "minutes": "{count} min ago",
+        "hours": "{count} h ago",
+        "days": "{count} d ago"
+      },
+      "editLabel": "Edit {name}",
+      "rotateLabel": "Rotate the token of {name}",
+      "deleteLabel": "Delete {name}",
+      "saved": "Location saved",
+      "deleted": "Location deleted",
+      "deleteFailed": "Could not delete the location",
+      "rotateFailed": "Could not rotate the token",
+      "rotateTitle": "Rotate the token of “{name}”?",
+      "rotateDescription": "The current token stops working immediately: agents using it stop checking until you restart them with the new token.",
+      "rotate": "Rotate token",
+      "deleteTitle": "Delete “{name}”?",
+      "deleteDescription": "Its token stops working immediately. {count, plural, =0 {No monitor uses this location.} one {The monitor checked from here moves back to the workers of this server.} other {The # monitors checked from here move back to the workers of this server.}} This cannot be undone.",
+      "delete": "Delete location",
+      "cancel": "Cancel",
+      "form": {
+        "createTitle": "New probe location",
+        "createDescription": "Name the place the agent runs in, for example an office, a data centre or a VPC.",
+        "editTitle": "Edit location",
+        "editDescription": "The token stays the same.",
+        "name": "Name",
+        "namePlaceholder": "Office Berlin",
+        "slug": "Slug",
+        "slugPlaceholder": "office-berlin",
+        "slugHint": "Lower-case letters, digits and dashes; derived from the name when empty. “local” is reserved for the workers of this server.",
+        "labels": "Labels",
+        "labelKey": "Key",
+        "labelValue": "Value",
+        "addLabel": "Add label",
+        "removeLabel": "Remove label",
+        "cancel": "Cancel",
+        "create": "Create location",
+        "save": "Save",
+        "failed": "Could not save the location"
+      },
+      "reveal": {
+        "title": "Copy the probe token",
+        "description": "This is the only time the token for “{name}” is shown. Store it somewhere safe; if you lose it, rotate it.",
+        "tokenLabel": "Probe token",
+        "runLabel": "Start an agent",
+        "runHint": "The agent only makes outbound HTTPS requests to this server. It picks up its monitors within a minute.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copyFailed": "Copy failed. Select the text and copy it manually.",
+        "done": "Done"
       }
     }
   },
@@ -5172,6 +5283,13 @@
       "intro": "Marmot disabled the webhook endpoint {url} of {organization} after {count, plural, one {# delivery} other {# deliveries in a row}} failed.",
       "lastError": "Last error: {error}",
       "action": "Fix the receiver, then re-enable the endpoint under Settings → Webhooks:"
+    },
+    "probeLocation": {
+      "offlineSubject": "Probe location offline: {location}",
+      "offlineText": "The probe location {location} of {organization} stopped calling in. It was last seen at {lastSeen} and is offline since {time}. Its monitors are not checked until an agent reconnects.",
+      "onlineSubject": "Probe location back online: {location}",
+      "onlineText": "The probe location {location} of {organization} is back online since {time} after {minutes, plural, one {# minute} other {# minutes}} offline.",
+      "action": "Probe locations:"
     }
   },
   "apiDocs": {
@@ -5289,6 +5407,8 @@
     "apiKeyReadOnly": "This API key has the read scope and may only send GET requests. Create a key with the write scope for changes.",
     "apiKeyRouteForbidden": "API keys cannot manage members, invitations, API keys, single sign-on, billing or ownership. Sign in to do this.",
     "apiKeyWrongOrganization": "This API key belongs to another organization.",
+    "mcpApiKeyRequired": "Connect with an organization API key: send it as Authorization: Bearer mk_….",
+    "mcpMethodNotAllowed": "This MCP endpoint is stateless: send JSON-RPC messages with POST.",
     "dockerHostNotFound": "Docker host not found",
     "socketPathAbsolute": "Enter an absolute socket path.",
     "dockerTestTargetRequired": "Provide dockerHostId or connectionType + socketPath/url",
@@ -5333,6 +5453,7 @@
     "permissionLocked": "\"{permission}\" cannot be overridden.",
     "permissionRoleInvalid": "Invalid role for \"{permission}\".",
     "statsRangeInvalid": "Invalid range; expected one of {ranges}",
+    "statsPercentileInvalid": "Invalid percentile; expected a comma-separated list of {percentiles}",
     "serverSmtpRestrictedOff": "Sending through the server SMTP settings is turned off on this instance.",
     "serverSmtpRestrictedSuperadmin": "Only an instance superadmin can turn on the server SMTP settings for a channel.",
     "incidentComponentsInvalid": "Each affected component must be listed once and belong to the status page.",
@@ -5395,7 +5516,15 @@
     "webhookEventUnknown": "Unknown event type: {event}",
     "webhookNotFound": "Webhook endpoint not found.",
     "webhookDeliveryNotFound": "Webhook delivery not found.",
-    "heartbeatNotFound": "Check not found"
+    "heartbeatNotFound": "Check not found",
+    "locationNotFound": "Location not found",
+    "locationSlugInvalid": "Use lower-case letters, digits and dashes (at most 60 characters).",
+    "locationSlugReserved": "“local” is reserved for the workers of this server.",
+    "locationSlugTaken": "Another location of this organization already uses this slug.",
+    "locationLabelDuplicate": "Each label key may only be used once.",
+    "monitorTooManyLocations": "A monitor can be checked from at most {max, plural, one {# location} other {# locations}} for now.",
+    "monitorTypeNotOnProbe": "Group, manual, push, Steam and Globalping monitors cannot run on a probe location.",
+    "checkOnProbe": "This monitor is checked by a probe location, so “Check now” cannot record a result from this server. Run a dry run (record=false) to test the target from here."
   },
   "subscriberMessages": {
     "sms": {

@@ -8,7 +8,7 @@ To publish one: **Status pages → New page**, give it a title and slug, add gro
 them on the **Groups & monitors** tab, then flip **Published** in the header. Visitors see each monitor's
 current status, its last 50 heartbeats and 24h/30d uptime (unless hidden), [static components](#components)
 whose status you set through incidents, the incidents you post, running and upcoming
-[maintenance windows](Maintenance.md), the last days of incidents, and (landing in the current release)
+[maintenance windows](Maintenance.md), the last days of incidents,
 status badges, a [history page with a permalink per incident and maintenance window](#history-and-permalinks)
 and [subscriptions](#subscribers) by email, SMS, webhook or Slack. Members and above can edit pages; viewers can see
 drafts but not change them.
@@ -531,7 +531,7 @@ viewers get `403`. The Payload REST API (`/api/incidents`) applies the same hook
 
 ## Subscribers
 
-_(landing in the current release)_ Visitors can subscribe to a page's incident and maintenance
+Visitors can subscribe to a page's incident and maintenance
 announcements by **email**, **SMS**, **webhook** or **Slack**, for every component or only the ones they
 choose. Raw monitor alerts are never sent to subscribers: only what you publish on the page.
 

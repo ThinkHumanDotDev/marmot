@@ -2,6 +2,7 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { getCheckerSummary } from '@/server/engine/connectivity-state'
+import { MARMOT_VERSION } from '@/lib/version'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +19,7 @@ export async function GET() {
     return Response.json({
       ok: true,
       service: 'marmot',
-      version: process.env.npm_package_version ?? '0.0.0',
+      version: MARMOT_VERSION,
       checker,
     })
   } catch (error) {

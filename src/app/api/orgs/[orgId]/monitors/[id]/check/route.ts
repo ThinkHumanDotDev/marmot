@@ -1,6 +1,7 @@
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
+import { isRemoteMonitor } from '@/lib/probe-locations'
 import { supportsCheckNow } from '@/lib/on-demand-check'
 import {
   enqueueOnDemandCheck,
@@ -34,7 +35,7 @@ type RouteContext = { params: Promise<{ orgId: string; id: string }> }
  * `record=false` runs the check without storing a heartbeat or touching the monitor's state.
  *
  * Needs `monitor:update`; rate-limited per organization (`ON_DEMAND_CHECKS_PER_MINUTE`). Paused
- * and push monitors answer 409.
+ * and push monitors answer 409, as do recorded checks of monitors checked by a probe location.
  */
 export async function POST(request: Request, { params }: RouteContext) {
   const payload = await getPayload({ config })
@@ -52,12 +53,17 @@ export async function POST(request: Request, { params }: RouteContext) {
     return jsonError(409, errorText(request, 'checkNotApplicable'))
   }
   if (!monitor.active) return jsonError(409, errorText(request, 'monitorPausedNoCheck'))
+  const record = queryFlag(request, 'record', true)
+  // Probe-checked monitors (#91): a beat recorded from this server would mix two vantage points
+  // into one state machine. Dry runs (`record=false`) still test the target from here.
+  if (record && isRemoteMonitor(monitor)) {
+    return jsonError(409, errorText(request, 'checkOnProbe'))
+  }
 
   const budget = await consumeCheckBudget(request, orgId)
   if (budget.response) return budget.response
 
   const wait = queryFlag(request, 'wait', true)
-  const record = queryFlag(request, 'record', true)
   const waitMs = onDemandWaitMs(monitor)
   const monitorId = String(monitor.id)
 

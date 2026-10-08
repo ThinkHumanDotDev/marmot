@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+
 import { orgScoped } from '@/access/org-scoped'
 import { adminGroup, adminT } from '@/i18n/admin'
 import { TIMING_PHASES } from '@/lib/request-timing'
@@ -19,7 +20,10 @@ export const Heartbeats: CollectionConfig = {
     group: adminGroup('monitoring'),
     defaultColumns: ['monitor', 'status', 'msg', 'ping', 'time'],
   },
-  // Rows carry response headers and failed bodies (#97): readable in the monitor's organization only.
+  // Reads are scoped to the organizations in which the user holds `monitor:read` (honouring the
+  // organization's permission overrides; superadmins see everything). The worker sets
+  // `organization` from the monitor on every beat, so rows without one are visible to superadmins
+  // only. Writes are server-only: the worker and retention job use `overrideAccess: true`.
   access: {
     read: orgScoped('monitor:read'),
     create: () => false,
@@ -42,6 +46,14 @@ export const Heartbeats: CollectionConfig = {
       relationTo: 'organizations',
       index: true,
       admin: { description: adminT('marmot:heartbeats:organizationDescription') },
+    },
+    {
+      // Probe location that produced the beat (#91); empty for the local worker pool and pushes.
+      name: 'location',
+      type: 'relationship',
+      relationTo: 'locations',
+      index: true,
+      admin: { description: adminT('marmot:heartbeats:locationDescription') },
     },
     {
       name: 'status',

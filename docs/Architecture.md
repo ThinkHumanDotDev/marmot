@@ -7,6 +7,7 @@ Marmot is a single TypeScript codebase that runs as three processes from one Doc
 | `web`      | `next start`      | Marmot UI, Payload admin, REST/GraphQL, public status pages, badges, push, metrics                                         |
 | `worker`   | `src/worker.ts`   | BullMQ job schedulers (one per monitor), check execution, heartbeat state machine, stats rollups, retention, notifications |
 | `realtime` | `src/realtime.ts` | socket.io server; authenticates Payload sessions; joins users to `org:<id>` rooms                                          |
+| `probe`    | `src/probe.ts`    | Remote probe agent (optional, runs elsewhere): pulls its location's monitors over HTTPS and pushes the results back        |
 
 The `marmot` command-line tool (`src/cli/`, bundled into `dist/cli/marmot.mjs`) is a client of the
 management API only; see [CLI and monitors as code](CLI.md).
@@ -65,7 +66,8 @@ PENDING `checker offline` beat (`holdBeatWhileCheckerOffline` in `beat.ts`); `re
 read by `/api/health`, `/api/metrics` and the UI banner through `connectivity-state.ts`), broadcasts the
 `checkerStatus` realtime event, sends one offline / back-online notice per outage (claimed in Redis so one
 replica sends it) and re-enqueues the held monitors when connectivity returns. `connectivityLocationOf()` is
-the hook for multi-location checks (#92): every location will run its own monitor.
+the hook for multi-location checks: a monitor assigned to a probe location (#91) is judged by the
+`ConnectivityMonitor` the agent registers under that location's id; quorum across locations is #92.
 
 **Request timing** (#94): `performHttpCheck` builds its per-check undici agent with an
 `HttpTimingCapture` (`src/server/monitor-types/http-timing.ts`). A connector wrapper placed outside the
@@ -88,34 +90,88 @@ After each beat the worker writes a `heartbeats` row, refreshes the monitor's `s
 `lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`, `recoveries`) and calls every listener registered with
 `registerHeartbeatListener()` (`src/server/engine/hooks.ts`); stats, realtime and notifications plug in there.
 
+## Probe locations
+
+`locations` (#91, org-scoped: `name`, `slug` unique per organization (`local` reserved), up to 20
+`labels`, `tokenHash` + `tokenPrefix`, `status` = `unknown | online | offline`, `statusChangedAt`,
+`lastSeenAt`, `agent { version, hostname, platform }`) are self-hosted check locations. Monitors reference
+them through `monitors.locations` (at most one until quorum, #92; none = the implicit `local` worker pool);
+`src/lib/probe-locations.ts` holds the shared rules (`isRemoteMonitor`, `PROBE_UNSUPPORTED_TYPES`: group,
+manual, push, steam, globalping).
+
+- **Token**: `mp_<prefix>_<secret>` (`src/server/probes/tokens.ts`), modelled on API keys: only the SHA-256
+  is stored, the plaintext is returned once by `POST /api/orgs/:orgId/locations` and
+  `POST …/locations/:id/rotate-token`. Routes are admin-only (`location:create|update|delete`; everyone
+  reads with `location:read`) and closed to API keys; create, update, rotation (`location.token_rotated`)
+  and delete are audited by the collection hooks (`auditCollection`).
+- **Engine**: `syncMonitor` removes the scheduler of a probe-checked monitor instead of upserting it,
+  `resyncAll` skips them and `processCheckJob` drops a leftover job (`reason: remote`), so the workers
+  never check them. A recorded **Check now** answers 409 (dry runs still run on the server).
+- **Agent** (`src/probe.ts` → `ProbeAgent` in `src/probe/agent.ts`, `MARMOT_ROLE=probe`, bundled to
+  `dist/server/probe.mjs`): no Payload config, database or Redis in its module graph. It pulls
+  `GET /api/probe/v1/config` every `refreshSeconds` (ETag, `304` when unchanged), schedules each monitor
+  locally (`interval`, `retryInterval` while PENDING as the server reports back), runs `runCheck()`
+  (`src/server/engine/run-check.ts`, the same monitor types; proxies and Docker hosts come with the config
+  and are served by a stub `Payload`) through `guardAgainstOfflineChecker`, and posts each result to
+  `POST /api/probe/v1/results`. Undelivered results wait in a bounded outbox with backoff; a `401` stops
+  every check.
+- **Ingest** (`src/server/probes/ingest.ts`, web process): each result is checked against the monitor
+  (organization, assignment, active, type), refused when older than ten minutes or not newer than
+  `status.lastCheckAt` (so re-sent batches are recorded once), passed through the maintenance resolver and
+  recorded with `recordBeat(…, { location })`: the heartbeat carries `location`, and stats, realtime,
+  incidents and notifications run through the lazily registered beat pipeline as for push monitors. The
+  wire format (`src/server/probes/wire.ts`) is versioned in the path; requests are rate limited per token
+  (`PROBE_RATE_LIMIT`).
+- **Liveness**: every authenticated probe request stamps `lastSeenAt` (at most every 10 s). The
+  `probe-health` job (every 15 s on `marmot:maintenance`, whose single consumer makes it the only writer of
+  `status`) derives `online`/`offline` from `lastSeenAt` and `PROBE_OFFLINE_AFTER` and emails the
+  organization's owners and admins on each change to offline and each recovery
+  (`src/server/probes/health.ts`).
+
 ## Time-series storage
 
 Raw `heartbeats` are kept for 24 hours (important ones for `KEEP_DATA_PERIOD_DAYS`). Every beat is also
 folded into three aggregate collections, one row per `(monitor, timestamp)` where `timestamp` is the unix
 second of the bucket start (minute / hour / UTC day), guarded by a unique compound index:
 
-| Collection      | Bucket | Kept                    | Serves |
-| --------------- | ------ | ----------------------- | ------ |
-| `stat-minutely` | 1 min  | 24 hours                | `24h`  |
-| `stat-hourly`   | 1 hour | 30 days                 | `30d`  |
-| `stat-daily`    | 1 day  | `KEEP_DATA_PERIOD_DAYS` | `1y`   |
+| Collection      | Bucket | Kept                    | Serves             |
+| --------------- | ------ | ----------------------- | ------------------ |
+| `stat-minutely` | 1 min  | 24 hours                | `24h`, `1d`        |
+| `stat-hourly`   | 1 hour | 30 days                 | `7d`, `14d`, `30d` |
+| `stat-daily`    | 1 day  | `KEEP_DATA_PERIOD_DAYS` | `90d`, `1y`        |
 
 Each row stores `up`, `down`, `ping` (average of UP beats), `pingMin`, `pingMax` and an `extras` JSON with
 `maintenance` (beats during maintenance, also counted as `up`), `degraded` (slow successful checks, also
 counted as `up`, their ping included), `pingCount` (weight of `ping`) and `timing` (per-phase running
-averages of the request timing, `{ dns: { avg, count }, … }`, from successful checks). `pending`
+averages of the request timing, `{ dns: { avg, count }, … }`, from successful checks), plus
+`latencyHistogram`, a JSON number array counting the pings of UP and DEGRADED beats per log-spaced bucket
+(four per doubling, from `[0, 1)` ms to an overflow bucket at 2^17 ms;
+`src/server/stats/latency-histogram.ts`). `pending`
 beats count as `down`. The maths is a port of Uptime Kuma's `UptimeCalculator`
 (`src/server/stats/uptime-calculator.ts`): the worker's heartbeat listener calls
 `recordHeartbeat(payload, { monitorId, organizationId, status, ping, time })`, which reads the three current
 buckets, applies the beat (running average, min/max) and writes them back through the Local API; an insert
 that loses the unique-index race is retried as an update. Reads (`getUptime`, `getAvgPing`, `getBuckets`,
 `getStats`) sum the buckets of the window `[now - range, now]`, falling back to the latest bucket when the
-window is empty, and are exposed at `GET /api/monitors/:id/stats?range=24h|30d|1y`.
+window is empty, and are exposed at `GET /api/monitors/:id/stats?range=…`.
+
+**Percentiles** (#95, `src/server/stats/range-stats.ts`): histograms merge by element-wise addition, so
+`getRangeStats()` derives p50, p75, p90, p95 and p99 of any window by merging the histograms of its buckets
+and reading the nearest-rank sample's bucket, interpolated by rank and bounded by the exact `pingMin` /
+`pingMax`; the result is always inside the histogram bucket of the true value (about ±19 %). It also folds
+the buckets into a fixed number of chart intervals (5 min for 1 d, 1 h for 7 d, 2 h for 14 d, 4 h for 30 d,
+1 day for 90 d) with up / degraded / down counts, the average and the percentiles, so the detail page's
+chart never reads raw heartbeats. Rows written before the histogram existed have none and contribute no
+percentiles.
 
 Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ job scheduler on the
 `marmot:maintenance` queue: minutely rows older than 24 h, hourly older than 30 d, daily and important
 heartbeats older than `KEEP_DATA_PERIOD_DAYS` (long-term pruning is disabled when the value is `< 1`), and
-non-important heartbeats older than 24 h.
+non-important heartbeats older than 24 h. It deletes in batches of 1,000 rows (`deleteInBatches` in
+`src/db/delete-in-batches.ts`: fetch one batch of ids, delete them with `id in [...]`, repeat), so a large
+backlog never has to fit in the worker's memory. Telemetry and log collections have no delete hooks and
+are removed through the database adapter (`payload.db.deleteMany`); unconfirmed subscribers go through
+`payload.delete` so their `beforeDelete` cascade still runs.
 
 ## Notifications
 
@@ -391,6 +447,11 @@ permission> } }`, or `false` when there are none. When the request carries `data
   update that moves a document) the user must hold the permission in that organization.
 - `superadminOnly`, `authenticated`, `selfOrSuperadmin` cover the non-tenant cases.
 
+Monitor data written by the worker (`heartbeats`, `stat-minutely`/`-hourly`/`-daily`, `push-events`,
+`notification-sent-history`) is read through `orgScoped('monitor:read')` on its own `organization` field and
+is never writable through the API. Server code that has already authorised the monitor (route handlers,
+pages, `loadOrgState`) reads these rows with `overrideAccess: true`.
+
 Permissions are `resource:action` strings mapped to the **minimum** role in `src/access/permissions.ts`
 (`PERMISSIONS`). Roles are ordered `owner > admin > member > viewer`; a role satisfies a permission when it
 ranks at or above the minimum. Helpers: `can(user, orgId, permission)`, `hasOrgRole(user, orgId,
@@ -443,6 +504,8 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `proxy:create`, `proxy:update`, `proxy:delete`                      |        |        |   ✓   |   ✓   |
 | `docker-host:read`                                                  |        |   ✓    |   ✓   |   ✓   |
 | `docker-host:create`, `docker-host:update`, `docker-host:delete`    |        |        |   ✓   |   ✓   |
+| `location:read`                                                     |   ✓    |   ✓    |   ✓   |   ✓   |
+| `location:create`, `location:update`, `location:delete`             |        |        |   ✓   |   ✓   |
 | `api-key:read`, `api-key:create`, `api-key:delete`                  |        |        |   ✓   |   ✓   |
 
 Nobody may invite or assign a role above their own (`canManageRole`); superadmins may.
@@ -483,6 +546,18 @@ UI goes through dedicated route handlers backed by `src/server/members.ts` (`lis
 
 An organization always keeps at least one owner: the last owner cannot be demoted, removed or leave, and
 deleting an organization first removes its invitations and memberships (`beforeDelete` hooks).
+
+### API keys and the MCP server
+
+Route handlers authenticate through `authenticateRequest` (`src/server/auth/request-auth.ts`): a session,
+or on `/api/orgs/:orgId/**` an organization API key that becomes a synthetic `viewer`/`member` principal
+([Integrations](Integrations.md#management-api)). The MCP endpoint (`/api/mcp`, `src/server/mcp`) adds no
+business logic of its own: it verifies the key once per request, then each tool builds an in-process
+`Request` for the matching route handler and marks it with `delegateApiKeyRequest` (a `WeakMap`, so no
+client header can forge it). The handler runs its usual permission checks and validation; the delegated
+path skips the key lookup and request budget already spent, and the audit hooks record changes with
+actor type `mcp` (`apiKey.via`, `mcpActor` in `src/server/audit/context.ts`)
+([MCP](MCP.md)).
 
 ## Account security: two-factor authentication
 

@@ -118,9 +118,15 @@ SQLite is for local development only.
 pub/sub that powers the live dashboard. It needs no backup: the worker rebuilds its state from the
 database on start.
 
-**How many monitors can it handle?** The worker is a stateless queue consumer: run several
-(`--scale worker=N`) and raise `WORKER_CONCURRENCY`. Heartbeats are rolled up into minutely/hourly/daily
-buckets so the database stays small; raw beats are pruned after 24 hours.
+**How many monitors can it handle?** Work out the check rate, checks/s = Σ(1 / interval) over the active
+monitors: 1,000 monitors at 60 s are about 17 checks/s. One worker process uses at most one CPU core and
+handles about 25 checks/s; beyond that, add worker replicas (`docker compose up -d --scale worker=N`) and keep
+`WORKER_CONCURRENCY` around 10–20 rather than raising it. Budget roughly 0.04 worker cores and 0.02 Postgres
+cores per check/s, and about 1 MB of database per monitor at a 60 s interval: heartbeats are rolled up into
+minutely/hourly/daily buckets and raw beats are pruned after 24 hours. These figures were measured on one
+machine (`main` as of 2026-10-06, after v0.1.1; 4 vCPU, Postgres 16, Redis 7, HTTP checks of a 150 ms
+endpoint, production build with separate processes); the sizing table is in
+[docs/Deployment.md](docs/Deployment.md#sizing).
 
 **Can I run it behind my own reverse proxy?** Yes. Route `/socket.io/*` (with WebSocket upgrades) to the
 realtime process and everything else to the web process; nginx and Traefik examples are in

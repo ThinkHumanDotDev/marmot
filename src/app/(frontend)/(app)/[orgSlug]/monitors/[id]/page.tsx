@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { getTranslations } from 'next-intl/server'
 
 import { MonitorIncidentsCard } from '@/components/incidents/monitor-incidents-card'
+import { MonitorLocationBadge } from '@/components/locations/location-badge'
 import {
   AssertionResultsCard,
   parseAssertionResults,
@@ -16,7 +17,7 @@ import { LiveHeartbeatBar } from '@/components/monitors/live-heartbeat-bar'
 import { ImportantEventsTable } from '@/components/monitors/important-events-table'
 import { MonitorActions } from '@/components/monitors/monitor-actions'
 import { MonitorChannelsCard } from '@/components/monitors/monitor-channels-card'
-import { ResponseTimeChart } from '@/components/monitors/response-time-chart'
+import { MonitorStatsPanel } from '@/components/monitors/monitor-stats-panel'
 import { PushEventsTable, PushPanel } from '@/components/monitors/push-panel'
 import { ResponseLogView } from '@/components/monitors/response-log-view'
 import { MonitorStatusBadge } from '@/components/monitors/status-badge'
@@ -33,12 +34,14 @@ import { env } from '@/env'
 import { timeZoneOrDefault } from '@/i18n/formats'
 import { parseRequestTiming } from '@/lib/request-timing'
 import { isHttpMonitorType } from '@/lib/validation/monitor'
-import type { Heartbeat, Monitor, PushEvent } from '@/payload-types'
+import type { LocationStatus } from '@/lib/probe-locations'
+import type { Heartbeat, Location, Monitor, PushEvent } from '@/payload-types'
 import { recentMonitorIncidents, renderTime } from '@/server/incidents/store'
 import { toRealtimeTags } from '@/server/realtime/serialize'
 import { listAuditEvents } from '@/server/audit/query'
 import { getMonitorChannels, getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
-import { getStats, getUptime } from '@/server/stats/uptime-calculator'
+import { getRangeStats } from '@/server/stats/range-stats'
+import { getUptime } from '@/server/stats/uptime-calculator'
 
 export const dynamic = 'force-dynamic'
 
@@ -97,7 +100,8 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const canReadIncidents = ctx.allowed('monitor-incident:read')
   const [stats24h, uptime30d, uptime1y, latest, events, channels, pushEvents, incidents] =
     await Promise.all([
-      getStats(payload, monitor.id, '24h'),
+      // The detail chart's default period; also the 24h figures of the uptime cards.
+      getRangeStats(payload, monitor.id, '1d'),
       getUptime(payload, monitor.id, '30d'),
       getUptime(payload, monitor.id, '1y'),
       payload.find({
@@ -151,6 +155,10 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const parent =
     monitor.parent && typeof monitor.parent === 'object' ? (monitor.parent as Monitor) : null
   const target = monitorTarget(monitor)
+  // Probe location (#91), populated at depth 1 (readers without `location:read` see an id).
+  const location = (monitor.locations ?? []).find(
+    (value): value is Location => typeof value === 'object' && value !== null,
+  )
   const active = monitor.active !== false
   const pushUrl =
     monitor.type === 'push' && monitor.pushToken
@@ -200,6 +208,12 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         description={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <MonitorTypeBadge type={monitor.type} />
+            {location && (
+              <MonitorLocationBadge
+                name={location.name}
+                status={(location.status ?? 'unknown') as LocationStatus}
+              />
+            )}
             {target &&
               (isHttpMonitorType(monitor.type) ? (
                 <a
@@ -268,7 +282,19 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
 
         {showAssertions && <AssertionResultsCard results={assertionResults} />}
 
-        <ResponseTimeChart buckets={stats24h.buckets} />
+        <MonitorStatsPanel
+          monitorId={String(monitor.id)}
+          initial={{
+            range: stats24h.range,
+            uptime: stats24h.uptime,
+            avgPing: stats24h.avgPing,
+            percentiles: stats24h.percentiles,
+            checks: stats24h.checks,
+            step: stats24h.step,
+            series: stats24h.series,
+          }}
+          lastCheckAt={monitor.status?.lastCheckAt}
+        />
 
         {measuresTiming && (
           <TimingPhasesChart monitorId={String(monitor.id)} initialBuckets={stats24h.buckets} />

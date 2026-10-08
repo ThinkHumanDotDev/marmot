@@ -140,6 +140,17 @@ export const adminTranslations = {
         connectionTypeSocket: 'Socket',
         connectionTypeTcp: 'TCP / HTTP',
       },
+      locations: {
+        description:
+          'Self-hosted probe locations. Manage them under Settings → Locations; the token is shown once.',
+        slugDescription:
+          'Unique per organization; "local" is reserved for the workers of this server.',
+        labelsDescription: 'Up to 20 metadata labels, e.g. region: eu-west.',
+        tokenPrefixDescription: 'Public identifier of the current token (mp_<prefix>).',
+        statusDescription:
+          'unknown until an agent calls in; offline after PROBE_OFFLINE_AFTER seconds of silence.',
+        agentDescription: 'Version, host name and platform the last agent reported.',
+      },
       heartbeats: {
         organizationDescription: 'Denormalised from the monitor for org-scoped queries.',
         pingDescription: 'Response time in milliseconds (null when not measured).',
@@ -153,6 +164,7 @@ export const adminTranslations = {
         statusCodeDescription: 'HTTP status code of the response (HTTP monitors).',
         responseDescription:
           'Response headers (cookies redacted, about 8 KB) and, for failed or degraded checks, the first 16 KB of the body.',
+        locationDescription: 'Probe location that ran the check; empty for the local workers.',
         probesDescription:
           'Per-probe results of a multi-location check (Globalping monitors): location, outcome and latency.',
       },
@@ -259,6 +271,8 @@ export const adminTranslations = {
           'Monitors-as-code key: `marmot monitors apply` manages the monitor with this key. Unique per organization.',
         tagsDescription: 'Tags (optionally with a value, e.g. env: prod) shown as chips.',
         notificationsDescription: 'Channels alerted when this monitor changes status.',
+        locationsDescription:
+          'Probe location that checks this monitor. Empty: the workers of this server (local).',
         weightDescription: 'Sort order on status pages.',
         proxyDescription: 'Send the request through this proxy (inactive proxies are skipped).',
         dockerContainerDescription: 'Container name or id.',
@@ -406,6 +420,8 @@ export const adminTranslations = {
         },
         pingDescription: 'Average ping (ms) of UP beats.',
         extrasDescription: 'Additional counters, e.g. { maintenance, pingCount }.',
+        latencyHistogramDescription:
+          'Response-time histogram: counts per log-spaced millisecond bucket, used for percentiles.',
       },
       statusPages: {
         slugDescription: 'Public URL: /status/<slug>. Lowercase letters, numbers, hyphens.',

@@ -10,6 +10,7 @@ README badges, cron jobs and Grafana dashboards keep working after a switch.
 | `GET /api/metrics`                           | API key                                            | Prometheus exposition                             |
 | `/api/orgs/:orgId/**`                        | session **or** API key of the org (scoped)         | management API                                    |
 | `GET /api/openapi.json`, `GET /api/docs`     | public                                             | management API reference                          |
+| `POST /api/mcp`, `GET /.well-known/mcp.json` | API key of the org (scoped) / public               | [MCP server for AI agents](MCP.md)                |
 | `GET/POST /api/orgs/:orgId/api-keys`         | session, `api-key:read` / `api-key:create` (admin) | manage keys                                       |
 | `PATCH/DELETE /api/orgs/:orgId/api-keys/:id` | session, `api-key:delete` (admin)                  | disable / re-enable / revoke                      |
 | `GET /api/orgs/:orgId/audit-logs[/export]`   | session, `audit-log:read` (admin)                  | [audit log](Security.md#audit-log) as JSON or CSV |
@@ -69,7 +70,8 @@ per-organization overrides and collection access apply as for a person with that
   `API_KEY_WRITE_RATE_LIMIT` (default 60) may be writes; above that the API answers `429` with
   `Retry-After` ([Configuration](Configuration.md#authentication));
 - changes made with a key appear in the [audit log](Security.md#audit-log) like any other
-  (`monitor.created`, `incident.updated`, …) with actor type `apiKey` and the key's name, so automation
+  (`monitor.created`, `incident.updated`, …) with actor type `apiKey` and the key's name (actor type `mcp`
+  and the key's name plus the tool when the change came through the [MCP server](MCP.md)), so automation
   is told apart from people; the key's own life cycle is `api_key.created`, `api_key.enabled`,
   `api_key.disabled` and `api_key.revoked`;
 - keys are not password logins: SSO-only mode (`OIDC_DISABLE_LOCAL_LOGIN`) and organizations'
@@ -89,6 +91,8 @@ the same zod schemas the handlers validate with) and browsable at `/api/docs`. E
 
 ```sh
 curl -H "Authorization: Bearer $MARMOT_KEY" https://marmot.example.com/api/orgs/1/monitors
+curl -H "Authorization: Bearer $MARMOT_KEY" 'https://marmot.example.com/api/orgs/1/monitors/7/stats?range=30d'
+curl -H "Authorization: Bearer $MARMOT_KEY" 'https://marmot.example.com/api/orgs/1/monitors/7/heartbeats?limit=20'
 curl -X POST -H "Authorization: Bearer $MARMOT_KEY" -H 'content-type: application/json' \
   -d '{"name":"API","type":"http","url":"https://api.example.com/health","interval":60}' \
   https://marmot.example.com/api/orgs/1/monitors
@@ -214,14 +218,20 @@ scrape_configs:
       credentials: mk_… # or basic_auth: { username: marmot, password: mk_… }
 ```
 
-| Metric                        | Labels            | Value                                                                                                            |
-| ----------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `monitor_status`              | common            | `1` up, `0` down, `2` pending, `3` maintenance, `4` degraded                                                     |
-| `monitor_response_time`       | common            | last ping in ms (`-1` when the beat had no ping)                                                                 |
-| `monitor_uptime_ratio`        | common + `window` | `0.0…1.0` over `24h` and `30d`                                                                                   |
-| `monitor_cert_days_remaining` | common            | from `monitors.certInfo` (only when present)                                                                     |
-| `monitor_cert_is_valid`       | common            | `1` / `0`, from `monitors.certInfo`                                                                              |
-| `marmot_checker_online`       | `location`        | `1` online, `0` offline ([self connectivity check](Configuration.md#self-connectivity-check), only when enabled) |
+| Metric                           | Labels                         | Value                                                                                                                   |
+| -------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `monitor_status`                 | common                         | `1` up, `0` down, `2` pending, `3` maintenance, `4` degraded                                                            |
+| `monitor_response_time`          | common                         | last ping in ms (`-1` when the beat had no ping)                                                                        |
+| `monitor_uptime_ratio`           | common + `window`              | `0.0…1.0` over `24h` and `30d`                                                                                          |
+| `monitor_cert_days_remaining`    | common                         | from `monitors.certInfo` (only when present)                                                                            |
+| `monitor_cert_is_valid`          | common                         | `1` / `0`, from `monitors.certInfo`                                                                                     |
+| `marmot_checker_online`          | `location`                     | `1` online, `0` offline ([self connectivity check](Configuration.md#self-connectivity-check), only when enabled)        |
+| `monitor_response_time_quantile` | common + `window` + `quantile` | response time (ms) at `quantile` `0.5`, `0.75`, `0.9`, `0.95`, `0.99` over `24h` and `30d`; only with `?quantiles=true` |
+
+`monitor_response_time_quantile` is opt-in because it reads every monitor's latency histograms on each
+scrape: add `params: { quantiles: ['true'] }` to the scrape config (or call `/api/metrics?quantiles=true`).
+The values are estimated from the stat rollups' histograms and stay within one histogram bucket (about
+±19 %) of the exact percentile.
 
 Common labels: `monitor_id`, `monitor_name`, `monitor_type`, `monitor_url`, `monitor_hostname`,
 `monitor_port` (empty string when a monitor has no such field). Names and labels match Uptime Kuma's

@@ -84,6 +84,12 @@ export const AUDITED: Partial<Record<CollectionSlug, AuditCollectionOptions>> = 
     ],
     toggle: { field: 'active', on: 'webhook_endpoint.enabled', off: 'webhook_endpoint.disabled' },
   },
+  locations: {
+    entityType: 'location',
+    // Liveness and agent details are refreshed by probe requests and the `probe-health` job; a new
+    // token is recorded as `location.token_rotated` (`tokenHash` itself never reaches the log).
+    ignore: ['status', 'statusChangedAt', 'lastSeenAt', 'agent', 'tokenHash'],
+  },
   'sso-connections': { entityType: 'sso_connection' },
   'sso-domains': { entityType: 'sso_domain' },
   invitations: { entityType: 'invitation' },

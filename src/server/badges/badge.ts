@@ -173,6 +173,9 @@ export function durationLabel(range: StatsRange): { value: string; unit: string 
       return { value: '30', unit: 'd' }
     case '1y':
       return { value: '1', unit: 'y' }
+    default:
+      // Chart periods (`7d`, `90d`, …) are never produced by `parseBadgeDuration`.
+      return { value: range.slice(0, -1), unit: range.slice(-1) }
   }
 }
 

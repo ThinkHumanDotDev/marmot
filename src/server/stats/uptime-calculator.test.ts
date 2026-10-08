@@ -16,6 +16,7 @@ import {
   type BucketData,
   type HeartbeatStatus,
 } from './uptime-calculator'
+import { addSample, sampleCount } from './latency-histogram'
 
 // 2021-01-01T12:34:56.789Z
 const T = new Date(Date.UTC(2021, 0, 1, 12, 34, 56, 789))
@@ -79,7 +80,20 @@ describe('applyBeat', () => {
       pingMin: 120,
       pingMax: 120,
       extras: { pingCount: 1 },
+      latencyHistogram: addSample(null, 120),
     })
+  })
+
+  it('feeds the latency histogram with pinged up and degraded beats only', () => {
+    const bucket = beats([
+      ['up', 100],
+      ['degraded', 900],
+      ['down', 50],
+      ['maintenance', null],
+      ['up', null],
+    ])
+    expect(sampleCount(bucket.latencyHistogram)).toBe(2)
+    expect(bucket.latencyHistogram).toEqual(addSample(addSample(null, 100), 900))
   })
 
   it('keeps a running average with min and max', () => {
@@ -214,7 +228,8 @@ describe('ranges', () => {
     expect(isStatsRange('24h')).toBe(true)
     expect(isStatsRange('30d')).toBe(true)
     expect(isStatsRange('1y')).toBe(true)
-    expect(isStatsRange('7d')).toBe(false)
+    for (const range of ['1d', '7d', '14d', '90d']) expect(isStatsRange(range)).toBe(true)
+    expect(isStatsRange('2d')).toBe(false)
     expect(isStatsRange(undefined)).toBe(false)
   })
 
@@ -234,6 +249,14 @@ describe('ranges', () => {
       buckets: 365,
       collection: 'stat-daily',
     })
+  })
+
+  it('backs the chart periods with the finest rollup that is still retained', () => {
+    expect(RANGE_SPECS['1d']).toEqual(RANGE_SPECS['24h'])
+    expect(RANGE_SPECS['7d']).toMatchObject({ collection: 'stat-hourly', buckets: 168 })
+    expect(RANGE_SPECS['14d']).toMatchObject({ collection: 'stat-hourly', buckets: 336 })
+    // Hourly rows are kept for 30 days only, so 90 days come from the daily rollup.
+    expect(RANGE_SPECS['90d']).toMatchObject({ collection: 'stat-daily', buckets: 90 })
   })
 
   it('computes an inclusive window ending at the current bucket', () => {

@@ -1,5 +1,6 @@
 import type { Access, CollectionConfig } from 'payload'
 
+import { orgScoped } from '@/access/org-scoped'
 import { adminGroup, adminT } from '@/i18n/admin'
 
 /**
@@ -8,9 +9,8 @@ import { adminGroup, adminT } from '@/i18n/admin'
  *
  * Rows are written exclusively by the worker through the Local API
  * (`src/server/stats/uptime-calculator.ts`), so REST/GraphQL writes are disabled. Reads are
- * allowed for any authenticated user until organization RBAC lands.
+ * scoped to the organizations in which the user holds `monitor:read`, like the monitors themselves.
  */
-const authenticatedRead: Access = ({ req }) => Boolean(req.user)
 const localApiOnly: Access = () => false
 
 export type StatCollectionSlug = 'stat-minutely' | 'stat-hourly' | 'stat-daily'
@@ -35,7 +35,7 @@ export function buildStatCollection({ slug, bucket }: StatCollectionOptions): Co
       hideAPIURL: true,
     },
     access: {
-      read: authenticatedRead,
+      read: orgScoped('monitor:read'),
       create: localApiOnly,
       update: localApiOnly,
       delete: localApiOnly,
@@ -79,6 +79,13 @@ export function buildStatCollection({ slug, bucket }: StatCollectionOptions): Co
         name: 'extras',
         type: 'json',
         admin: { description: adminT('marmot:stats:extrasDescription') },
+      },
+      {
+        // Log-spaced response-time histogram (src/server/stats/latency-histogram.ts, #95): a
+        // number array in JSON so it is stored the same way on Postgres and MongoDB.
+        name: 'latencyHistogram',
+        type: 'json',
+        admin: { description: adminT('marmot:stats:latencyHistogramDescription') },
       },
     ],
   }
