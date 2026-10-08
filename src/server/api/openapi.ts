@@ -543,6 +543,23 @@ export const OPERATIONS: OperationSpec[] = [
     tag: 'Members',
     body: { schema: transferBody },
   },
+  {
+    method: 'POST',
+    path: `${ORG}/logo`,
+    operationId: 'uploadOrganizationLogo',
+    summary: 'Upload and set the organization logo (PNG, JPEG, GIF, WebP, AVIF or SVG, ≤ 5 MB)',
+    tag: 'Organizations',
+    permission: 'organization:update',
+    body: { schema: imageUpload, contentType: 'multipart/form-data' },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/logo`,
+    operationId: 'removeOrganizationLogo',
+    summary: 'Remove the organization logo',
+    tag: 'Organizations',
+    permission: 'organization:update',
+  },
 
   // Maintenance
   {

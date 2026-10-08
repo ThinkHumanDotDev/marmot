@@ -4,12 +4,15 @@
  * file's bytes (the browser-supplied type is ignored) and SVGs are rebuilt by the allowlist
  * sanitiser before they are stored in `media`.
  */
+import { canInOrg } from '@/access/overrides'
 import { defaultLocale, type Locale } from '@/i18n/locales'
+import { discardMedia, storeMedia } from '@/server/media/store'
 import { translateError } from '@/server/errors'
 import { errorText, requestLocale } from '@/server/request-locale'
 import { sanitizeSvg, SvgRejectedError } from './svg'
 import {
   authenticate,
+  coerceId,
   errorResponse,
   jsonError,
   loadOrgStatusPage,
@@ -18,6 +21,8 @@ import {
 
 export const STATUS_PAGE_ASSET_KINDS = ['logo', 'logoDark', 'favicon'] as const
 export type StatusPageAssetKind = (typeof STATUS_PAGE_ASSET_KINDS)[number]
+/** Status page images plus the organization logo and the account avatar (`src/server/media.ts`). */
+export type ImageAssetKind = StatusPageAssetKind | 'orgLogo' | 'avatar'
 
 type ImageType = 'png' | 'jpeg' | 'gif' | 'webp' | 'avif' | 'ico' | 'svg'
 
@@ -31,8 +36,10 @@ const MIME: Record<ImageType, string> = {
   svg: 'image/svg+xml',
 }
 
+const PICTURE_TYPES: readonly ImageType[] = ['png', 'jpeg', 'gif', 'webp', 'avif', 'svg']
+
 export const ASSET_RULES: Record<
-  StatusPageAssetKind,
+  ImageAssetKind,
   { maxBytes: number; types: readonly ImageType[] }
 > = {
   logo: {
@@ -44,6 +51,9 @@ export const ASSET_RULES: Record<
     types: ['png', 'jpeg', 'gif', 'webp', 'avif', 'svg'],
   },
   favicon: { maxBytes: 100 * 1024, types: ['png', 'ico', 'svg'] },
+  // The settings forms' picker (`src/components/image-upload.tsx`) allows up to 5 MB.
+  orgLogo: { maxBytes: 5 * 1024 * 1024, types: PICTURE_TYPES },
+  avatar: { maxBytes: 5 * 1024 * 1024, types: PICTURE_TYPES },
 }
 
 const startsWith = (buf: Buffer, bytes: number[], offset = 0) =>
@@ -91,7 +101,7 @@ export type PreparedAsset = { data: Buffer; mimetype: string; name: string; size
 
 /** Validates and (for SVG) sanitises an upload, or returns an error message in `locale`. */
 export async function prepareAsset(
-  kind: StatusPageAssetKind,
+  kind: ImageAssetKind,
   file: File,
   locale: Locale = defaultLocale,
 ): Promise<{ ok: true; asset: PreparedAsset } | { ok: false; error: string }> {
@@ -175,6 +185,11 @@ export function uploadAssetHandler(kind: StatusPageAssetKind) {
     try {
       const page = await loadOrgStatusPage(auth.ctx, orgId, id, 0)
       if (!page) return jsonError(errorText(request, 'statusPageNotFound'), 404)
+      // `media` is server-only (`src/server/media/store.ts`): check the page permission before
+      // storing anything; the page itself is still updated with the user's access below.
+      if (!(await canInOrg(payload, user, coerceId(payload, orgId), 'status-page:update'))) {
+        return jsonError(errorText(request, 'forbidden'), 403)
+      }
 
       let form: FormData
       try {
@@ -188,20 +203,11 @@ export function uploadAssetHandler(kind: StatusPageAssetKind) {
       const prepared = await prepareAsset(kind, file, requestLocale(request))
       if (!prepared.ok) return jsonError(prepared.error, 400)
 
-      const media = await payload.create({
-        collection: 'media',
-        data: { alt: `${page.title} ${ALT[kind]}` },
-        file: prepared.asset,
-        user,
-        overrideAccess: false,
-      })
+      const media = await storeMedia(payload, prepared.asset, `${page.title} ${ALT[kind]}`)
       try {
         return Response.json({ doc: await setAsset(auth.ctx, page.id, kind, media.id) })
       } catch (error) {
-        // The page's access rules said no (e.g. a viewer): don't leave an orphaned upload behind.
-        await payload
-          .delete({ collection: 'media', id: media.id, overrideAccess: true })
-          .catch(() => undefined)
+        await discardMedia(payload, media.id)
         throw error
       }
     } catch (error) {
