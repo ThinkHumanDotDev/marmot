@@ -460,8 +460,8 @@ permission> } }`, or `false` when there are none. When the request carries `data
   update that moves a document) the user must hold the permission in that organization.
 - `superadminOnly`, `authenticated`, `selfOrSuperadmin` cover the non-tenant cases.
 
-Monitor data written by the worker (`heartbeats`, `stat-minutely`/`-hourly`/`-daily`, `push-events`,
-`notification-sent-history`) is read through `orgScoped('monitor:read')` on its own `organization` field and
+Monitor data written by the worker (`heartbeats`, `stat-minutely`/`-hourly`/`-daily`, `stat-location-hourly`,
+`monitor-location-states`, `push-events`, `notification-sent-history`) is read through `orgScoped('monitor:read')` on its own `organization` field and
 is never writable through the API. Server code that has already authorised the monitor (route handlers,
 pages, `loadOrgState`) reads these rows with `overrideAccess: true`.
 

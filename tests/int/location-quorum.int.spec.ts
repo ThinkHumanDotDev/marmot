@@ -10,6 +10,7 @@ import { getPayload, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import config from '@payload-config'
+import { addOrgMembership } from '@/access/memberships'
 import {
   checksLocally,
   isMultiLocation,
@@ -24,6 +25,7 @@ import type {
   Monitor,
   MonitorLocationState,
   Organization,
+  User,
 } from '@/payload-types'
 import {
   recordBeat,
@@ -348,6 +350,63 @@ describe('per-location stats and the location filter', () => {
       overrideAccess: true,
     })
     expect(local.totalDocs).toBe(1)
+  })
+})
+
+describe('per-location read access', () => {
+  it('lets only members with monitor:read read the location states and stats', async () => {
+    const monitor = await createMonitor({
+      name: 'access multi',
+      locations: [berlin.id, paris.id],
+    })
+    const listener = createStatsListener(payload)
+    unsubscribe.push(registerHeartbeatListener((event) => listener(event)))
+    const beat = beatAt(Date.now() - 60_000)
+    await beat(monitor.id, berlin, UP)
+    await beat(monitor.id, paris, UP)
+
+    const other = await payload.create({
+      collection: 'organizations',
+      data: { name: 'Quorum other org', slug: `quorum-other-${run}` },
+    })
+    const users: User[] = []
+    const userIn = async (name: string, orgId: string | number) => {
+      const created = await payload.create({
+        collection: 'users',
+        data: { email: `${name}+quorum-${run}@marmot.test`, password: 'password-123', name },
+      })
+      users.push(created)
+      await addOrgMembership({ payload, userId: created.id, orgId, role: 'viewer' })
+      const fresh = await payload.findByID({ collection: 'users', id: created.id, depth: 0 })
+      return { ...fresh, collection: 'users' as const }
+    }
+    try {
+      const member = await userIn('member', org.id)
+      const outsider = await userIn('outsider', other.id)
+      for (const collection of ['monitor-location-states', 'stat-location-hourly'] as const) {
+        const readAs = (user: typeof member) =>
+          payload.find({
+            collection,
+            where: { monitor: { equals: monitor.id } },
+            depth: 0,
+            user,
+            overrideAccess: false,
+          })
+        expect((await readAs(member)).totalDocs).toBeGreaterThanOrEqual(2)
+        expect((await readAs(outsider)).totalDocs).toBe(0)
+        await expect(
+          payload.create({
+            collection,
+            data: { organization: org.id, monitor: monitor.id } as never,
+            user: member,
+            overrideAccess: false,
+          }),
+        ).rejects.toThrow()
+      }
+    } finally {
+      for (const user of users) await payload.delete({ collection: 'users', id: user.id })
+      await payload.delete({ collection: 'organizations', id: other.id })
+    }
   })
 })
 

@@ -1,8 +1,8 @@
 import type { Access, CollectionConfig } from 'payload'
 
+import { orgScoped } from '@/access/org-scoped'
 import { adminGroup, adminT } from '@/i18n/admin'
 
-const authenticatedRead: Access = ({ req }) => Boolean(req.user)
 const localApiOnly: Access = () => false
 
 /**
@@ -10,6 +10,8 @@ const localApiOnly: Access = () => false
  * `(monitor, location, hour)`, kept for 30 days. A separate series next to `stat-*` (which keep the
  * monitor-wide figures, computed from the quorum status), so the global rollups are unchanged.
  * Same columns and maths as `StatFields.ts` (`src/server/stats/location-stats.ts`).
+ * Written only by the worker through the Local API; read like `stat-*`, scoped to the organizations in
+ * which the user holds `monitor:read` (#245).
  */
 export const StatLocationHourly: CollectionConfig = {
   slug: 'stat-location-hourly',
@@ -24,7 +26,7 @@ export const StatLocationHourly: CollectionConfig = {
     hideAPIURL: true,
   },
   access: {
-    read: authenticatedRead,
+    read: orgScoped('monitor:read'),
     create: localApiOnly,
     update: localApiOnly,
     delete: localApiOnly,
