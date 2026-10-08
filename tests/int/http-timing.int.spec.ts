@@ -20,6 +20,7 @@ import {
 } from '@/server/engine'
 import { processManualCheckJob } from '@/server/engine/on-demand-jobs'
 import { createStatsListener, getBuckets } from '@/server/stats'
+import { getRangeStats } from '@/server/stats/range-stats'
 
 /**
  * Request timing phases (#94): HTTP(S) checks record DNS, connect, TLS, TTFB and transfer on the
@@ -353,5 +354,12 @@ describe('per-phase averages in the stat buckets', () => {
       expect(pingMin).toBe(Math.min(...pings))
       expect(pingMax).toBe(Math.max(...pings))
     }
+
+    // The detail page's chart series carries the interval averages for the phase chart.
+    const stats = await getRangeStats(payload, monitor.id, '1d')
+    const withTiming = stats.series.filter((point) => point.timing)
+    expect(withTiming.length).toBeGreaterThan(0)
+    expect(withTiming.every((point) => typeof point.timing?.ttfb === 'number')).toBe(true)
+    expect(stats.series.some((point) => point.up > 0 && !point.timing)).toBe(false)
   })
 })

@@ -82,3 +82,31 @@ export function bucketTimingAverages(extras: unknown): RequestTiming | null {
   }
   return parseRequestTiming(averages)
 }
+
+/**
+ * Combine several buckets' `extras.timing` into per-phase averages weighted by their counts (a
+ * chart interval spanning several rollup rows). Null when none of them measured a phase.
+ */
+export function mergeBucketTiming(extrasList: readonly unknown[]): RequestTiming | null {
+  const sums: Record<string, { total: number; count: number }> = {}
+  for (const extras of extrasList) {
+    if (!extras || typeof extras !== 'object') continue
+    const raw = (extras as { timing?: unknown }).timing
+    if (!raw || typeof raw !== 'object') continue
+    for (const phase of TIMING_PHASES) {
+      const entry = (raw as Record<string, unknown>)[phase] as Partial<TimingAverage> | undefined
+      if (!entry || !isPhaseValue(entry.avg) || !isPhaseValue(entry.count) || entry.count === 0) {
+        continue
+      }
+      const sum = (sums[phase] ??= { total: 0, count: 0 })
+      sum.total += entry.avg * entry.count
+      sum.count += entry.count
+    }
+  }
+  const averages: Record<string, number | null> = {}
+  for (const phase of TIMING_PHASES) {
+    const sum = sums[phase]
+    averages[phase] = sum ? sum.total / sum.count : null
+  }
+  return parseRequestTiming(averages)
+}

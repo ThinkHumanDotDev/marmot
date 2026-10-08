@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   applyTiming,
+  mergeBucketTiming,
   bucketTimingAverages,
   parseRequestTiming,
   timingTotal,
@@ -46,6 +47,17 @@ describe('applyTiming', () => {
     const first = applyTiming(undefined, beat({ ttfb: 10 }))
     applyTiming(first, beat({ ttfb: 30 }))
     expect(first.ttfb).toEqual({ avg: 10, count: 1 })
+  })
+})
+
+describe('mergeBucketTiming', () => {
+  it('weights each bucket by its per-phase count', () => {
+    const a = { timing: { ttfb: { avg: 10, count: 1 }, tls: { avg: 4, count: 1 } } }
+    const b = { timing: { ttfb: { avg: 40, count: 3 } } }
+    expect(mergeBucketTiming([a, b, { pingCount: 2 }, null])).toEqual(
+      beat({ ttfb: (10 + 120) / 4, tls: 4 }),
+    )
+    expect(mergeBucketTiming([{ pingCount: 1 }])).toBeNull()
   })
 })
 

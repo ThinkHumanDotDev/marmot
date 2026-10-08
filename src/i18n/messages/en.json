@@ -306,11 +306,34 @@
     },
     "chart": {
       "title": "Response time",
-      "description": "Average per minute over the last 24 hours, with min–max range.",
+      "description": "Latency percentiles and the average per interval over the selected period.",
       "empty": "No response-time data yet. The chart fills in as checks complete.",
       "average": "Avg {ping}",
-      "range": "{min} – {max}",
-      "counts": "{up} up · {down} down"
+      "averageLegend": "Average",
+      "percentile": "p{value}",
+      "percentileValue": "p{value} {ping}",
+      "countsDegraded": "{up} up · {degraded} degraded · {down} down",
+      "period": "Period",
+      "percentiles": "Percentiles",
+      "periods": {
+        "1d": "24 hours",
+        "7d": "7 days",
+        "14d": "14 days",
+        "30d": "30 days",
+        "90d": "90 days"
+      },
+      "loadError": "Could not load the statistics for this period.",
+      "checksTitle": "Checks",
+      "checksDescription": "Up, degraded and down checks per interval.",
+      "checksEmpty": "No checks in this period."
+    },
+    "metrics": {
+      "uptime": "Uptime",
+      "percentileResponse": "p{value} response",
+      "totalChecks": "Total checks",
+      "failedChecks": "Failed checks",
+      "degradedChecks": "Degraded checks",
+      "lastCheck": "Last check"
     },
     "timing": {
       "title": "Request timing",
@@ -328,14 +351,7 @@
       "waterfallLabel": "Request timing waterfall",
       "chartTitle": "Timing phases",
       "chartDescription": "Average time per phase, stacked, for successful checks.",
-      "chartEmpty": "No timing data in this range yet. HTTP and TCP checks record it.",
-      "loadFailed": "Could not load the timing data.",
-      "rangeLabel": "Range",
-      "ranges": {
-        "24h": "24 hours",
-        "30d": "30 days",
-        "1y": "1 year"
-      }
+      "chartEmpty": "No timing data in this period yet. HTTP and TCP checks record it."
     },
     "events": {
       "title": "Important events",
@@ -5361,6 +5377,7 @@
     "permissionLocked": "\"{permission}\" cannot be overridden.",
     "permissionRoleInvalid": "Invalid role for \"{permission}\".",
     "statsRangeInvalid": "Invalid range; expected one of {ranges}",
+    "statsPercentileInvalid": "Invalid percentile; expected a comma-separated list of {percentiles}",
     "serverSmtpRestrictedOff": "Sending through the server SMTP settings is turned off on this instance.",
     "serverSmtpRestrictedSuperadmin": "Only an instance superadmin can turn on the server SMTP settings for a channel.",
     "incidentComponentsInvalid": "Each affected component must be listed once and belong to the status page.",

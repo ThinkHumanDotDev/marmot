@@ -10,15 +10,17 @@ import {
   payloadError,
 } from '@/server/monitors/http'
 import { errorText } from '@/server/request-locale'
-import { getStats, isStatsRange, STATS_RANGES } from '@/server/stats/uptime-calculator'
+import { getRangeStats } from '@/server/stats/range-stats'
+import { isStatsRange, STATS_RANGES } from '@/server/stats/uptime-calculator'
 
 export const dynamic = 'force-dynamic'
 
 type RouteContext = { params: Promise<{ orgId: string; id: string }> }
 
 /**
- * GET /api/orgs/:orgId/monitors/:id/stats?range=24h|30d|1y — uptime (0..1), average response time,
- * degraded checks and the buckets of the range (`monitor:read`). The same figures as the dashboard.
+ * GET /api/orgs/:orgId/monitors/:id/stats?range=24h|1d|7d|14d|30d|90d|1y — uptime (0..1), average
+ * response time, degraded checks, latency percentiles, check counts, the chart series and the
+ * buckets of the range (`monitor:read`). The same figures as the dashboard (#95).
  */
 export async function GET(request: Request, { params }: RouteContext) {
   const payload = await getPayload({ config })
@@ -42,7 +44,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   if (!monitor) return jsonError(404, errorText(request, 'monitorNotFound'))
 
   try {
-    return Response.json(await getStats(payload, monitor.id, range))
+    return Response.json(await getRangeStats(payload, monitor.id, range))
   } catch (error) {
     return payloadError(error, request)
   }

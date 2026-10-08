@@ -417,6 +417,8 @@ export const adminTranslations = {
         },
         pingDescription: 'Average ping (ms) of UP beats.',
         extrasDescription: 'Additional counters, e.g. { maintenance, pingCount }.',
+        latencyHistogramDescription:
+          'Response-time histogram: counts per log-spaced millisecond bucket, used for percentiles.',
       },
       statusPages: {
         slugDescription: 'Public URL: /status/<slug>. Lowercase letters, numbers, hyphens.',
