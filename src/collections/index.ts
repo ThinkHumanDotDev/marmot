@@ -8,6 +8,7 @@ import { AuditLogs } from './AuditLogs'
 import { Heartbeats } from './Heartbeats'
 import { Incidents } from './Incidents'
 import { Invitations } from './Invitations'
+import { Locations } from './Locations'
 import { Maintenance } from './Maintenance'
 import { MaintenanceOccurrences } from './MaintenanceOccurrences'
 import { Media } from './Media'
@@ -51,6 +52,7 @@ export const collections: CollectionConfig[] = [
   Tags,
   Proxies,
   DockerHosts,
+  Locations,
   NotificationSentHistory,
   Heartbeats,
   MonitorIncidents,

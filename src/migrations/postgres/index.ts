@@ -43,6 +43,7 @@ import * as migration_20261007_201419_outbound_webhooks from './20261007_201419_
 import * as migration_20261007_204902_api_key_scopes from './20261007_204902_api_key_scopes';
 import * as migration_20261007_212204_monitor_key from './20261007_212204_monitor_key';
 import * as migration_20261007_221416_globalping_monitor from './20261007_221416_globalping_monitor';
+import * as migration_20261007_232200_probe_locations from './20261007_232200_probe_locations';
 
 export const migrations = [
   {
@@ -268,6 +269,11 @@ export const migrations = [
   {
     up: migration_20261007_221416_globalping_monitor.up,
     down: migration_20261007_221416_globalping_monitor.down,
-    name: '20261007_221416_globalping_monitor'
+    name: '20261007_221416_globalping_monitor',
+  },
+  {
+    up: migration_20261007_232200_probe_locations.up,
+    down: migration_20261007_232200_probe_locations.down,
+    name: '20261007_232200_probe_locations'
   },
 ];

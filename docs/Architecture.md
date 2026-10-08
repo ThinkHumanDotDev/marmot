@@ -7,6 +7,7 @@ Marmot is a single TypeScript codebase that runs as three processes from one Doc
 | `web`      | `next start`      | Marmot UI, Payload admin, REST/GraphQL, public status pages, badges, push, metrics                                         |
 | `worker`   | `src/worker.ts`   | BullMQ job schedulers (one per monitor), check execution, heartbeat state machine, stats rollups, retention, notifications |
 | `realtime` | `src/realtime.ts` | socket.io server; authenticates Payload sessions; joins users to `org:<id>` rooms                                          |
+| `probe`    | `src/probe.ts`    | Remote probe agent (optional, runs elsewhere): pulls its location's monitors over HTTPS and pushes the results back        |
 
 The `marmot` command-line tool (`src/cli/`, bundled into `dist/cli/marmot.mjs`) is a client of the
 management API only; see [CLI and monitors as code](CLI.md).
@@ -65,11 +66,50 @@ PENDING `checker offline` beat (`holdBeatWhileCheckerOffline` in `beat.ts`); `re
 read by `/api/health`, `/api/metrics` and the UI banner through `connectivity-state.ts`), broadcasts the
 `checkerStatus` realtime event, sends one offline / back-online notice per outage (claimed in Redis so one
 replica sends it) and re-enqueues the held monitors when connectivity returns. `connectivityLocationOf()` is
-the hook for multi-location checks (#92): every location will run its own monitor.
+the hook for multi-location checks: a monitor assigned to a probe location (#91) is judged by the
+`ConnectivityMonitor` the agent registers under that location's id; quorum across locations is #92.
 
 After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
 `lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`, `recoveries`) and calls every listener registered with
 `registerHeartbeatListener()` (`src/server/engine/hooks.ts`); stats, realtime and notifications plug in there.
+
+## Probe locations
+
+`locations` (#91, org-scoped: `name`, `slug` unique per organization (`local` reserved), up to 20
+`labels`, `tokenHash` + `tokenPrefix`, `status` = `unknown | online | offline`, `statusChangedAt`,
+`lastSeenAt`, `agent { version, hostname, platform }`) are self-hosted check locations. Monitors reference
+them through `monitors.locations` (at most one until quorum, #92; none = the implicit `local` worker pool);
+`src/lib/probe-locations.ts` holds the shared rules (`isRemoteMonitor`, `PROBE_UNSUPPORTED_TYPES`: group,
+manual, push, steam, globalping).
+
+- **Token**: `mp_<prefix>_<secret>` (`src/server/probes/tokens.ts`), modelled on API keys: only the SHA-256
+  is stored, the plaintext is returned once by `POST /api/orgs/:orgId/locations` and
+  `POST …/locations/:id/rotate-token`. Routes are admin-only (`location:create|update|delete`; everyone
+  reads with `location:read`) and closed to API keys; create, update, rotation (`location.token_rotated`)
+  and delete are audited by the collection hooks (`auditCollection`).
+- **Engine**: `syncMonitor` removes the scheduler of a probe-checked monitor instead of upserting it,
+  `resyncAll` skips them and `processCheckJob` drops a leftover job (`reason: remote`), so the workers
+  never check them. A recorded **Check now** answers 409 (dry runs still run on the server).
+- **Agent** (`src/probe.ts` → `ProbeAgent` in `src/probe/agent.ts`, `MARMOT_ROLE=probe`, bundled to
+  `dist/server/probe.mjs`): no Payload config, database or Redis in its module graph. It pulls
+  `GET /api/probe/v1/config` every `refreshSeconds` (ETag, `304` when unchanged), schedules each monitor
+  locally (`interval`, `retryInterval` while PENDING as the server reports back), runs `runCheck()`
+  (`src/server/engine/run-check.ts`, the same monitor types; proxies and Docker hosts come with the config
+  and are served by a stub `Payload`) through `guardAgainstOfflineChecker`, and posts each result to
+  `POST /api/probe/v1/results`. Undelivered results wait in a bounded outbox with backoff; a `401` stops
+  every check.
+- **Ingest** (`src/server/probes/ingest.ts`, web process): each result is checked against the monitor
+  (organization, assignment, active, type), refused when older than ten minutes or not newer than
+  `status.lastCheckAt` (so re-sent batches are recorded once), passed through the maintenance resolver and
+  recorded with `recordBeat(…, { location })`: the heartbeat carries `location`, and stats, realtime,
+  incidents and notifications run through the lazily registered beat pipeline as for push monitors. The
+  wire format (`src/server/probes/wire.ts`) is versioned in the path; requests are rate limited per token
+  (`PROBE_RATE_LIMIT`).
+- **Liveness**: every authenticated probe request stamps `lastSeenAt` (at most every 10 s). The
+  `probe-health` job (every 15 s on `marmot:maintenance`, whose single consumer makes it the only writer of
+  `status`) derives `online`/`offline` from `lastSeenAt` and `PROBE_OFFLINE_AFTER` and emails the
+  organization's owners and admins on each change to offline and each recovery
+  (`src/server/probes/health.ts`).
 
 ## Time-series storage
 
@@ -425,6 +465,8 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `proxy:create`, `proxy:update`, `proxy:delete`                      |        |        |   ✓   |   ✓   |
 | `docker-host:read`                                                  |        |   ✓    |   ✓   |   ✓   |
 | `docker-host:create`, `docker-host:update`, `docker-host:delete`    |        |        |   ✓   |   ✓   |
+| `location:read`                                                     |   ✓    |   ✓    |   ✓   |   ✓   |
+| `location:create`, `location:update`, `location:delete`             |        |        |   ✓   |   ✓   |
 | `api-key:read`, `api-key:create`, `api-key:delete`                  |        |        |   ✓   |   ✓   |
 
 Nobody may invite or assign a role above their own (`canManageRole`); superadmins may.

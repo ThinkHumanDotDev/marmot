@@ -37,6 +37,7 @@ import { track } from '@/lib/analytics'
 import { api, ApiError } from '@/lib/api'
 import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
 import { supportsAdhocTest, type OnDemandCheckResult } from '@/lib/on-demand-check'
+import { probeSupportsType } from '@/lib/probe-locations'
 import { REMINDER_BACKOFFS } from '@/lib/reminder-backoff'
 import {
   AUTH_METHODS,
@@ -126,6 +127,7 @@ const EMPTY_RESOURCES: MonitorFormResources = {
   tags: [],
   proxies: [],
   dockerHosts: [],
+  locations: [],
   notifications: [],
 }
 
@@ -722,6 +724,72 @@ function RelationSelectField({
   )
 }
 
+/**
+ * Where the monitor is checked from (#91): the local workers (`locations: []`) or one probe
+ * location (`[id]`; multi-location checks come with #92).
+ */
+function LocationSelectField({
+  control,
+  options,
+  orgSlug,
+}: {
+  control: FormControlType
+  options: MonitorFormResources['locations']
+  orgSlug: string
+}) {
+  const t = useTranslations('monitors.form.general')
+  return (
+    <FormField
+      control={control}
+      name="locations"
+      render={({ field }) => {
+        const ids = Array.isArray(field.value) ? (field.value as (string | number)[]) : []
+        const current = ids[0]
+        return (
+          <FormItem>
+            <FormLabel>{t('location')}</FormLabel>
+            <Select
+              value={current === undefined ? NONE : String(current)}
+              onValueChange={(value) => {
+                if (value === NONE) return field.onChange([])
+                const match = options.find((o) => String(o.id) === value)
+                field.onChange([match ? match.id : value])
+              }}
+            >
+              <FormControl>
+                <SelectTrigger className="w-full" data-testid="monitor-location-select">
+                  <SelectValue />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value={NONE}>{t('locationLocal')}</SelectItem>
+                {options.map((o) => (
+                  <SelectItem key={String(o.id)} value={String(o.id)}>
+                    {o.status === 'offline' ? t('locationOffline', { name: o.name }) : o.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormDescription>
+              {t.rich('locationDescription', {
+                link: (chunks) => (
+                  <Link
+                    href={`/${orgSlug}/settings/locations`}
+                    className="underline underline-offset-2"
+                  >
+                    {chunks}
+                  </Link>
+                ),
+              })}
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )
+      }}
+    />
+  )
+}
+
 // ---- Form ---------------------------------------------------------------------------------------
 
 /** Defaults applied when the type changes so the target section is not left half-filled. */
@@ -803,6 +871,7 @@ export function MonitorForm({
     pushCron,
     pushTimezone,
     dnsResolveType,
+    watchedLocations,
     globalpingMeasurement,
     globalpingSuccessRule,
     globalpingProtocol,
@@ -823,6 +892,7 @@ export function MonitorForm({
       'pushCron',
       'pushTimezone',
       'dnsResolveType',
+      'locations',
       'globalpingMeasurement',
       'globalpingSuccessRule',
       'globalpingProtocol',
@@ -1196,6 +1266,15 @@ export function MonitorForm({
               <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
                 {t('general.push')}
               </p>
+            )}
+
+            {((probeSupportsType(type) && resources.locations.length > 0) ||
+              (watchedLocations?.length ?? 0) > 0) && (
+              <LocationSelectField
+                control={control}
+                options={resources.locations}
+                orgSlug={orgSlug}
+              />
             )}
 
             <FormField
