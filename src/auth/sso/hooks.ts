@@ -28,7 +28,8 @@ const log = childLogger('sso')
 const ssoVerifiesEmail = (identity: { emailVerified: boolean }, provider: ProviderInfo): boolean =>
   identity.emailVerified || isConnectionMeta(provider.meta)
 
-async function findPendingInvitation(
+/** The newest pending, unexpired invitation sent to `email` (also used by sign-in links, #164). */
+export async function findPendingInvitation(
   payload: Payload,
   email: string,
 ): Promise<Invitation | undefined> {

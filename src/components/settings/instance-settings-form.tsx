@@ -36,6 +36,7 @@ interface FormState {
   primaryBaseUrl: string
   allowSignup: boolean
   requireEmailVerification: boolean
+  magicLinkEnabled: boolean
   entryPage: 'dashboard' | 'status-page'
   tlsExpiryNotifyDays: string
   domainExpiryNotifyDays: string
@@ -49,6 +50,7 @@ const toForm = (s: InstanceSettings): FormState => ({
   primaryBaseUrl: s.primaryBaseUrl,
   allowSignup: s.allowSignup,
   requireEmailVerification: s.requireEmailVerification,
+  magicLinkEnabled: s.magicLinkEnabled,
   entryPage: s.entryPage,
   tlsExpiryNotifyDays: s.tlsExpiryNotifyDays.join(', '),
   domainExpiryNotifyDays: s.domainExpiryNotifyDays.join(', '),
@@ -109,6 +111,7 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
       primaryBaseUrl: baseUrl,
       allowSignup: form.allowSignup,
       requireEmailVerification: form.requireEmailVerification,
+      magicLinkEnabled: form.magicLinkEnabled,
       entryPage: form.entryPage,
       tlsExpiryNotifyDays: tls,
       domainExpiryNotifyDays: domain,
@@ -164,6 +167,14 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
             hint={t('requireEmailVerificationHint')}
             checked={form.requireEmailVerification}
             onChange={(v) => set('requireEmailVerification', v)}
+          />
+
+          <ToggleRow
+            id={field('magicLinkEnabled')}
+            label={t('magicLinkEnabled')}
+            hint={t('magicLinkEnabledHint')}
+            checked={form.magicLinkEnabled}
+            onChange={(v) => set('magicLinkEnabled', v)}
           />
 
           <div className="grid gap-2">

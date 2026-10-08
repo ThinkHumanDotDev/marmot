@@ -27,7 +27,10 @@ test.describe('Frontend', () => {
   test('auth config endpoint reports signup availability', async ({ request }) => {
     const res = await request.get('/api/auth/config')
     expect(res.ok()).toBeTruthy()
-    expect(await res.json()).toEqual({ signupEnabled: expect.any(Boolean) })
+    expect(await res.json()).toEqual({
+      signupEnabled: expect.any(Boolean),
+      magicLinkEnabled: expect.any(Boolean),
+    })
   })
 
   test('health endpoint reports ok', async ({ request }) => {

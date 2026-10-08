@@ -63,6 +63,7 @@ export const AUTH_ACTIONS = [
   'auth.sso_group_denied',
   'auth.email_verification_sent',
   'auth.email_verified',
+  'auth.magic_link_sent',
 ] as const
 
 /** Verbs beyond create/update/delete, named after what the user did. */

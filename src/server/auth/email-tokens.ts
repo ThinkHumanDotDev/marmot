@@ -7,7 +7,8 @@
  *   sent to, and it expires on its own (`ttlSeconds`).
  * - Tokens are bound to a `purpose`: a verification token can never be redeemed as anything else.
  * - Issuing a token for a user and purpose revokes the one issued before (only the newest link in
- *   the inbox works).
+ *   the inbox works). Tokens for an address without an account (`magic-link-signup`) use a stable
+ *   pseudo user id derived from the address (`addressTokenSubject`).
  * - `consumeEmailToken` reads and deletes the entry in one `MULTI`, so a token is redeemed at most
  *   once even when two requests race, on every database adapter (no transactions involved).
  * - The address travels with the token: callers compare it with the user's current address, so a
@@ -22,8 +23,15 @@ import { createRedis } from '@/server/redis'
 
 const log = childLogger('email-tokens')
 
-/** What a token proves. Add a purpose per flow (`magic-link` for #164). */
-export const EMAIL_TOKEN_PURPOSES = ['email-verification'] as const
+/**
+ * What a token proves. `magic-link` signs an existing account in, `magic-link-signup` creates the
+ * account for an address that has none yet (#164).
+ */
+export const EMAIL_TOKEN_PURPOSES = [
+  'email-verification',
+  'magic-link',
+  'magic-link-signup',
+] as const
 export type EmailTokenPurpose = (typeof EMAIL_TOKEN_PURPOSES)[number]
 
 const KEY_PREFIX = 'marmot:auth-token'
@@ -71,6 +79,13 @@ export interface RedeemedEmailToken {
 }
 
 export const normalizeTokenEmail = (email: string): string => email.trim().toLowerCase()
+
+/**
+ * Stand-in for the user id of a token sent to an address that has no account yet, so issuing a new
+ * one still revokes the previous link to the same address. Never a real id (it contains `:`).
+ */
+export const addressTokenSubject = (email: string): string =>
+  `address:${digest(normalizeTokenEmail(email))}`
 
 /** `true` for strings shaped like a token (cheap check before touching Redis). */
 export const isEmailTokenShape = (value: unknown): value is string =>

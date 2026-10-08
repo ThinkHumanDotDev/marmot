@@ -8,6 +8,7 @@ export interface InstanceSettings {
   primaryBaseUrl: string
   allowSignup: boolean
   requireEmailVerification: boolean
+  magicLinkEnabled: boolean
   entryPage: 'dashboard' | 'status-page'
   tlsExpiryNotifyDays: number[]
   domainExpiryNotifyDays: number[]
@@ -38,6 +39,7 @@ export function defaultInstanceSettings(): InstanceSettings {
     primaryBaseUrl: env.NEXT_PUBLIC_SERVER_URL,
     allowSignup: !env.DISABLE_SIGNUP,
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
+    magicLinkEnabled: env.MAGIC_LINK_ENABLED,
     entryPage: 'dashboard',
     tlsExpiryNotifyDays: [...DEFAULT_EXPIRY_NOTIFY_DAYS],
     domainExpiryNotifyDays: [...DEFAULT_EXPIRY_NOTIFY_DAYS],
@@ -67,6 +69,8 @@ export function resolveInstanceSettings(
       typeof doc.requireEmailVerification === 'boolean'
         ? doc.requireEmailVerification
         : defaults.requireEmailVerification,
+    magicLinkEnabled:
+      typeof doc.magicLinkEnabled === 'boolean' ? doc.magicLinkEnabled : defaults.magicLinkEnabled,
     entryPage: doc.entryPage === 'status-page' ? 'status-page' : 'dashboard',
     tlsExpiryNotifyDays: numbers(doc.tlsExpiryNotifyDays, defaults.tlsExpiryNotifyDays),
     domainExpiryNotifyDays: numbers(doc.domainExpiryNotifyDays, defaults.domainExpiryNotifyDays),
@@ -118,4 +122,14 @@ export async function isSignupAllowed(payload: Payload): Promise<boolean> {
  */
 export async function isEmailVerificationRequired(payload: Payload): Promise<boolean> {
   return (await getInstanceSettings(payload)).requireEmailVerification
+}
+
+/**
+ * Whether people may sign in with a link sent to their address (#164): `magicLinkEnabled`,
+ * defaulting to `MAGIC_LINK_ENABLED` (off). Sign-in links count as a local login, so the SSO-only
+ * mode (`OIDC_DISABLE_LOCAL_LOGIN`) turns them off whatever the setting says.
+ */
+export async function isMagicLinkEnabled(payload: Payload): Promise<boolean> {
+  if (env.OIDC_DISABLE_LOCAL_LOGIN) return false
+  return (await getInstanceSettings(payload)).magicLinkEnabled
 }

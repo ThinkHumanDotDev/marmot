@@ -529,7 +529,7 @@ export const adminTranslations = {
         superadminDescription:
           'Instance administrator: can access the Payload admin panel and every organization.',
         authProviderDescription:
-          'How the account was created: password signup, the OIDC client, a social OAuth provider or SAML.',
+          'How the account was created: password signup, the OIDC client, a social OAuth provider, SAML or an email sign-in link.',
         oidcIssuerDescription: 'Legacy: identities now live in Auth accounts.',
         oidcSubjectDescription: 'Legacy `sub` claim; identities now live in Auth accounts.',
         themeDescription: 'Colour scheme preference, applied on every device after sign-in.',

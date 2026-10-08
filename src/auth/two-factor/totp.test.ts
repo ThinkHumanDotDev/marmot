@@ -145,7 +145,18 @@ describe('login challenge cookie', () => {
     const userId = 'user-id-in-plaintext'
     const sealed = await sealChallenge({ userId, attempts: 2 }, secret, { now })
     expect(sealed).not.toContain(userId)
-    expect(await openChallenge(sealed, secret, { now })).toEqual({ userId, attempts: 2 })
+    expect(await openChallenge(sealed, secret, { now })).toEqual({
+      userId,
+      attempts: 2,
+      method: 'password',
+    })
+  })
+
+  it('remembers a sign-in link as the first factor', async () => {
+    const sealed = await sealChallenge({ userId: 'u', attempts: 0, method: 'magic-link' }, secret, {
+      now,
+    })
+    expect((await openChallenge(sealed, secret, { now }))?.method).toBe('magic-link')
   })
 
   it('expires, and rejects foreign or malformed tokens', async () => {
