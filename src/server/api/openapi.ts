@@ -789,7 +789,8 @@ export const OPERATIONS: OperationSpec[] = [
       },
     ],
     response: {
-      description: '`{ uptime, avgPing, degraded, range, granularity, buckets }`',
+      description:
+        '`{ uptime, avgPing, degraded, range, granularity, buckets, percentiles, checks, step, series }`',
       schema: anyObject,
     },
   },
