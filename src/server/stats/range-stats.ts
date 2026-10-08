@@ -8,6 +8,8 @@
  */
 import type { Payload } from 'payload'
 
+import { mergeBucketTiming, type RequestTiming } from '@/lib/request-timing'
+
 import {
   estimatePercentiles,
   mergeHistograms,
@@ -73,6 +75,8 @@ export type SeriesPoint = {
   ping: number | null
   pingMin: number | null
   pingMax: number | null
+  /** Average request timing phases of the interval (#94); only on intervals that measured them. */
+  timing?: RequestTiming
 } & Partial<PercentileValues>
 
 export type RangeStats = Omit<MonitorStats, 'buckets'> & {
@@ -152,6 +156,7 @@ export function buildSeries(
   for (let timestamp = first; timestamp <= last; timestamp += step) {
     const group = groups.get(timestamp) ?? []
     const counts = countChecks(group)
+    const timing = mergeBucketTiming(group.map((bucket) => bucket.extras))
     let pingTotal = 0
     let weightTotal = 0
     for (const bucket of group) {
@@ -170,6 +175,7 @@ export function buildSeries(
       pingMin: minOf(group.map((b) => b.pingMin)),
       pingMax: maxOf(group.map((b) => b.pingMax)),
       ...(percentiles.length > 0 ? bucketPercentiles(group, percentiles) : {}),
+      ...(timing ? { timing } : {}),
     })
   }
   return series

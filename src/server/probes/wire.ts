@@ -67,6 +67,17 @@ export const probeResultSchema = z.object({
   duration: z.number().finite().min(0).nullish(),
   tlsInfo: z.record(z.string(), z.unknown()).nullish(),
   assertions: z.array(z.record(z.string(), z.unknown())).max(100).nullish(),
+  /** Request timing phases in ms (#94); older agents omit it. */
+  timing: z
+    .object({
+      dns: z.number().finite().min(0).nullable(),
+      connect: z.number().finite().min(0).nullable(),
+      tls: z.number().finite().min(0).nullable(),
+      ttfb: z.number().finite().min(0).nullable(),
+      transfer: z.number().finite().min(0).nullable(),
+    })
+    .partial()
+    .nullish(),
   blocked: z.boolean().optional(),
   checkerOffline: z.boolean().optional(),
   /** The check could not judge the target (`CheckDeferredError`): held, never DOWN. */

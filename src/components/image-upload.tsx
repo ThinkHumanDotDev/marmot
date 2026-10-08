@@ -7,25 +7,30 @@ import { toast } from 'sonner'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { uploadMedia, type MediaDoc } from '@/lib/org-api'
 import { cn, initials } from '@/lib/utils'
 
 interface ImageUploadProps {
   /** Current image URL, if any. */
   value: string | null
-  /** Text used for the fallback initials and the upload's alt text. */
+  /** Text used for the fallback initials and the input's label. */
   label: string
-  onChange: (media: MediaDoc | null) => Promise<void> | void
+  /** Uploads and attaches the image; a thrown `Error` message is shown as a toast. */
+  onUpload: (file: File) => Promise<void>
+  onRemove: () => Promise<void> | void
   disabled?: boolean
   shape?: 'circle' | 'square'
   className?: string
 }
 
-/** Avatar/logo picker: previews the current image and uploads a replacement to `/api/media`. */
+/**
+ * Avatar/logo picker: previews the current image and hands a replacement to `onUpload`, which posts
+ * it to the owning document's upload route (`/api/orgs/:orgId/logo`, `/api/account/avatar`).
+ */
 export function ImageUpload({
   value,
   label,
-  onChange,
+  onUpload,
+  onRemove,
   disabled,
   shape = 'square',
   className,
@@ -44,8 +49,7 @@ export function ImageUpload({
     }
     setBusy(true)
     try {
-      const media = await uploadMedia(file, label)
-      await onChange(media)
+      await onUpload(file)
     } catch (error) {
       toast.error((error instanceof Error && error.message) || t('failed'))
     } finally {
@@ -56,7 +60,7 @@ export function ImageUpload({
   async function clear() {
     setBusy(true)
     try {
-      await onChange(null)
+      await onRemove()
     } finally {
       setBusy(false)
     }

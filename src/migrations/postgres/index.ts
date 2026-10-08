@@ -45,7 +45,8 @@ import * as migration_20261007_212204_monitor_key from './20261007_212204_monito
 import * as migration_20261007_221416_globalping_monitor from './20261007_221416_globalping_monitor';
 import * as migration_20261007_232200_probe_locations from './20261007_232200_probe_locations';
 import * as migration_20261008_001442_latency_histogram from './20261008_001442_latency_histogram';
-import * as migration_20261008_013420_response_log from './20261008_013420_response_log';
+import * as migration_20261008_013406_heartbeat_timing from './20261008_013406_heartbeat_timing';
+import * as migration_20261008_023437_response_log from './20261008_023437_response_log';
 
 export const migrations = [
   {
@@ -284,8 +285,13 @@ export const migrations = [
     name: '20261008_001442_latency_histogram',
   },
   {
-    up: migration_20261008_013420_response_log.up,
-    down: migration_20261008_013420_response_log.down,
-    name: '20261008_013420_response_log'
+    up: migration_20261008_013406_heartbeat_timing.up,
+    down: migration_20261008_013406_heartbeat_timing.down,
+    name: '20261008_013406_heartbeat_timing',
+  },
+  {
+    up: migration_20261008_023437_response_log.up,
+    down: migration_20261008_023437_response_log.down,
+    name: '20261008_023437_response_log'
   },
 ];

@@ -14,11 +14,13 @@ import type { Heartbeat, Monitor } from '@/payload-types'
 import {
   clearHeartbeatListeners,
   processCheckJob,
+  recordBeat,
   registerHeartbeatListener,
   type ChecksQueue,
 } from '@/server/engine'
 import { processManualCheckJob } from '@/server/engine/on-demand-jobs'
 import { createStatsListener, getBuckets } from '@/server/stats'
+import { getRangeStats } from '@/server/stats/range-stats'
 
 /**
  * Request timing phases (#94): HTTP(S) checks record DNS, connect, TLS, TTFB and transfer on the
@@ -111,7 +113,7 @@ async function storedTiming(heartbeat: Heartbeat): Promise<RequestTiming | null>
     depth: 0,
     overrideAccess: true,
   })
-  return parseRequestTiming(doc.timing)
+  return parseRequestTiming((doc as Heartbeat).timing)
 }
 
 beforeAll(async () => {
@@ -224,11 +226,23 @@ describe('HTTP request timing phases', () => {
     // Any deny list turns the guard on; this one does not match the local server.
     process.env.MONITOR_DENY_CIDRS = '203.0.113.0/24'
     resetEnvCache()
+    // The guard dials the first address `localhost` resolves to, without falling back to the other
+    // family: on hosts where that is `::1` (GitHub runners) the IPv4-only server would refuse it, so
+    // this check gets a server on both stacks (IPv4 only where IPv6 is unavailable).
+    const guardedServer = https.createServer({ cert, key }, slowHandler)
+    const guardedPort = await new Promise<number>((resolve, reject) => {
+      const onListening = () => resolve((guardedServer.address() as AddressInfo).port)
+      guardedServer.once('error', (err: NodeJS.ErrnoException) => {
+        if (err.code !== 'EAFNOSUPPORT' && err.code !== 'EADDRNOTAVAIL') return reject(err)
+        guardedServer.listen(0, '127.0.0.1', onListening)
+      })
+      guardedServer.listen({ port: 0, host: '::', ipv6Only: false }, onListening)
+    })
     try {
       const monitor = await createMonitor({
         name: 'guarded-timing',
         type: 'http',
-        url: `https://localhost:${httpsPort}/`,
+        url: `https://localhost:${guardedPort}/`,
         ignoreTls: true,
       })
       const heartbeat = await check(monitor)
@@ -241,6 +255,8 @@ describe('HTTP request timing phases', () => {
       if (saved === undefined) delete process.env.MONITOR_DENY_CIDRS
       else process.env.MONITOR_DENY_CIDRS = saved
       resetEnvCache()
+      guardedServer.closeAllConnections()
+      await new Promise((resolve) => guardedServer.close(resolve))
     }
   })
 
@@ -297,6 +313,29 @@ describe('HTTP request timing phases', () => {
 })
 
 describe('per-phase averages in the stat buckets', () => {
+  it('stores and rolls up no timing for a deferred beat', async () => {
+    registerHeartbeatListener(createStatsListener(payload))
+    const monitor = await createMonitor({
+      name: 'deferred-timing',
+      type: 'http',
+      url: `http://127.0.0.1:${httpPort}/`,
+    })
+    const { heartbeat } = await recordBeat(
+      payload,
+      monitor,
+      {
+        ok: false,
+        msg: 'rate limited',
+        deferred: true,
+        timing: { dns: 1, connect: 2, tls: null, ttfb: 3, transfer: 4 },
+      },
+      { queue },
+    )
+    expect(await storedTiming(heartbeat)).toBeNull()
+    const buckets = await getBuckets(payload, monitor.id, '24h')
+    expect(buckets.every((b) => b.extras.timing === undefined)).toBe(true)
+  })
+
   it('rolls up the phase averages and keeps the ping statistics unchanged', async () => {
     registerHeartbeatListener(createStatsListener(payload))
     const monitor = await createMonitor({
@@ -329,5 +368,12 @@ describe('per-phase averages in the stat buckets', () => {
       expect(pingMin).toBe(Math.min(...pings))
       expect(pingMax).toBe(Math.max(...pings))
     }
+
+    // The detail page's chart series carries the interval averages for the phase chart.
+    const stats = await getRangeStats(payload, monitor.id, '1d')
+    const withTiming = stats.series.filter((point) => point.timing)
+    expect(withTiming.length).toBeGreaterThan(0)
+    expect(withTiming.every((point) => typeof point.timing?.ttfb === 'number')).toBe(true)
+    expect(stats.series.some((point) => point.up > 0 && !point.timing)).toBe(false)
   })
 })

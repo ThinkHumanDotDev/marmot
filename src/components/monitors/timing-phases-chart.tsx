@@ -12,32 +12,28 @@ import {
   YAxis,
 } from 'recharts'
 
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { api } from '@/lib/api'
-import { bucketTimingAverages, TIMING_PHASES, type TimingPhase } from '@/lib/request-timing'
+import { parseRequestTiming, TIMING_PHASES, type TimingPhase } from '@/lib/request-timing'
 
 import { TIMING_PHASE_COLORS, useFormatPhase } from './timing-waterfall'
 
-const RANGES = ['24h', '30d', '1y'] as const
-type Range = (typeof RANGES)[number]
-
-/** What the chart needs from a stat bucket (`GET /api/monitors/:id/stats`). */
-export interface TimingBucket {
-  /** Unix seconds (bucket start). */
+/** One chart interval: the `series` points of `GET /api/monitors/:id/stats`. */
+export interface TimingSeriesPoint {
+  /** Unix seconds (interval start). */
   timestamp: number
-  extras?: unknown
+  /** Average phases of the interval (#94); absent when nothing was measured. */
+  timing?: unknown
 }
 
 type Point = { t: number } & Record<TimingPhase, number | null>
 
-const toPoints = (buckets: readonly TimingBucket[]): Point[] =>
-  buckets.map((bucket) => {
-    const averages = bucketTimingAverages(bucket.extras)
-    const point = { t: bucket.timestamp } as Point
+const toPoints = (series: readonly TimingSeriesPoint[]): Point[] =>
+  series.map((entry) => {
+    const timing = parseRequestTiming(entry.timing)
+    const point = { t: entry.timestamp * 1000 } as Point
     for (const phase of TIMING_PHASES) {
-      // A bucket without timing breaks the areas; a phase that did not apply stacks as 0.
-      point[phase] = averages ? (averages[phase] ?? 0) : null
+      // An interval without timing breaks the areas; a phase that did not apply stacks as 0.
+      point[phase] = timing ? (timing[phase] ?? 0) : null
     }
     return point
   })
@@ -56,7 +52,7 @@ function ChartTooltip({
   if (!active || !point || point.dns === null) return null
   return (
     <div className="rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
-      <div className="font-medium">{format.dateTime(new Date(point.t * 1000), 'short')}</div>
+      <div className="font-medium">{format.dateTime(new Date(point.t), 'short')}</div>
       <ul className="mt-1 flex flex-col gap-0.5">
         {[...TIMING_PHASES].reverse().map((phase) => (
           <li key={phase} className="flex items-center justify-between gap-4">
@@ -77,79 +73,29 @@ function ChartTooltip({
 }
 
 /**
- * Stacked area chart of the per-phase average request timing (#94) over the selected range. The
- * 24-hour data comes with the page; the other ranges are loaded from the stats API on demand.
+ * Stacked area chart of the per-phase average request timing (#94), one point per chart interval.
+ * Presentational: `MonitorStatsPanel` passes the series of its selected period.
  */
 export function TimingPhasesChart({
-  monitorId,
-  initialBuckets,
+  series,
+  dailyTicks = false,
 }: {
-  monitorId: string
-  /** The 24-hour buckets the page already loaded. */
-  initialBuckets: readonly TimingBucket[]
+  series: readonly TimingSeriesPoint[]
+  /** Label the x axis with dates instead of times (periods longer than a day). */
+  dailyTicks?: boolean
 }) {
   const t = useTranslations('monitors.timing')
   const formatter = useFormatter()
   const formatPhase = useFormatPhase()
-  const [range, setRange] = React.useState<Range>('24h')
-  const [loaded, setLoaded] = React.useState<Partial<Record<Range, readonly TimingBucket[]>>>({
-    '24h': initialBuckets,
-  })
-  const [failedRange, setFailedRange] = React.useState<Range | null>(null)
-  const failed = failedRange === range
-  const buckets = loaded[range]
-
-  React.useEffect(() => {
-    if (loaded[range]) return
-    let cancelled = false
-    api
-      .get<{ buckets: TimingBucket[] }>(`/api/monitors/${encodeURIComponent(monitorId)}/stats`, {
-        query: { range },
-      })
-      .then((stats) => {
-        if (cancelled) return
-        setLoaded((prev) => ({ ...prev, [range]: stats.buckets }))
-        setFailedRange(null)
-      })
-      .catch(() => {
-        if (!cancelled) setFailedRange(range)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [loaded, monitorId, range])
-
-  const data = React.useMemo(() => toPoints(buckets ?? []), [buckets])
+  const data = React.useMemo(() => toPoints(series), [series])
   const hasTiming = data.some((point) => point.dns !== null)
-  const tickFormat = range === '24h' ? 'time' : 'date'
+  const domain: [number, number] = data.length > 0 ? [data[0].t, data[data.length - 1].t] : [0, 0]
 
   return (
     <Card className="gap-3" data-testid="timing-phases-chart">
-      <CardHeader className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1.5">
-          <CardTitle className="text-base">{t('chartTitle')}</CardTitle>
-          <CardDescription>{t('chartDescription')}</CardDescription>
-        </div>
-        <div
-          role="group"
-          aria-label={t('rangeLabel')}
-          className="inline-flex rounded-lg bg-muted p-[3px]"
-        >
-          {RANGES.map((value) => (
-            <Button
-              key={value}
-              type="button"
-              size="xs"
-              variant="ghost"
-              aria-pressed={range === value}
-              className="aria-pressed:bg-background aria-pressed:shadow-sm"
-              onClick={() => setRange(value)}
-              data-testid={`timing-range-${value}`}
-            >
-              {t(`ranges.${value}`)}
-            </Button>
-          ))}
-        </div>
+      <CardHeader>
+        <CardTitle className="text-base">{t('chartTitle')}</CardTitle>
+        <CardDescription>{t('chartDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {hasTiming ? (
@@ -161,10 +107,10 @@ export function TimingPhasesChart({
                   <XAxis
                     dataKey="t"
                     type="number"
-                    domain={['dataMin', 'dataMax']}
+                    domain={domain}
                     scale="time"
                     tickFormatter={(v: number) =>
-                      formatter.dateTime(new Date(v * 1000), tickFormat)
+                      formatter.dateTime(new Date(v), dailyTicks ? 'date' : 'time')
                     }
                     tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
                     axisLine={false}
@@ -215,7 +161,7 @@ export function TimingPhasesChart({
           </>
         ) : (
           <div className="flex h-56 items-center justify-center rounded-lg border border-dashed px-4 text-center text-sm text-muted-foreground">
-            {failed ? t('loadFailed') : buckets ? t('chartEmpty') : null}
+            {t('chartEmpty')}
           </div>
         )}
       </CardContent>

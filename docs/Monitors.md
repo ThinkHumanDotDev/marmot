@@ -128,7 +128,8 @@ uptime; it updates over the WebSocket connection without reloading. The detail p
   rollups (minutely for a day, hourly up to 30 days, daily for 90 days), so switching periods is cheap;
   percentiles are estimated from per-bucket latency histograms and stay within one histogram bucket
   (about ±19 %) of the exact value;
-- for HTTP and TCP monitors, the [request timing](#request-timing) of the latest check and a phase chart;
+- for HTTP and TCP monitors, the [request timing](#request-timing) of the latest check and a phase chart
+  that follows the same period selector;
 - the list of **important events** (status changes with their message) and the [**Logs**](#response-log)
   tab with every check;
 - the certificate panel for HTTPS targets (issuer, expiry; filled by the certificate job landing in the
@@ -155,13 +156,14 @@ HTTP(s), keyword and JSON query checks record where the response time went, in m
 The phases describe the final response: after redirects, earlier hops count towards the response time
 but not towards a phase, and DNS, connect and TLS are empty when that request reused a connection.
 Through a proxy only TTFB and transfer are measured (TTFB then includes connecting to the proxy).
-TCP port checks record DNS and connect. Without redirects the phases add up to the response time,
-give or take a millisecond of request setup.
+TCP port checks record DNS and connect. Checks run by probe agents report the same phases. Without
+redirects the phases add up to the response time, give or take a millisecond of request setup.
 
 The phases are stored on each heartbeat (`heartbeats.timing`) and shown as a waterfall for the latest
 check and in the **Check now** / **Test** result. Successful checks also feed a per-phase average into
-the statistics buckets, which the **Timing phases** chart stacks over 24 hours, 30 days or a year, so
-the history outlives the 24-hour heartbeat retention. gRPC checks do not record timing yet.
+the statistics buckets, which the **Timing phases** chart stacks for the period chosen in the period
+selector (the stats API's `series` points carry them as `timing`), so the history outlives the 24-hour
+heartbeat retention. gRPC checks do not record timing yet.
 
 ### Response log
 

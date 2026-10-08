@@ -185,8 +185,9 @@ export async function recordBeat(
       ...(result.assertions?.length
         ? { assertions: result.assertions as unknown as Heartbeat['assertions'] }
         : {}),
-      // Request timing phases (#94); omitted for types that do not measure them.
-      ...(result.timing ? { timing: result.timing } : {}),
+      // Request timing phases (#94); omitted for types that do not measure them and for held
+      // (deferred / checker offline) beats, which measured nothing.
+      ...(result.timing && !held ? { timing: result.timing } : {}),
       // Per-probe results of multi-location checks (Globalping, #142).
       ...(result.probes?.length ? { probes: result.probes as unknown as Heartbeat['probes'] } : {}),
       // Response log (#97): status code and headers of every HTTP check, the body only when the

@@ -964,7 +964,8 @@ PNG, ICO or SVG up to 100 KB and falls back to the logo. Formats are detected fr
 not the declared type. SVGs are rebuilt by an allowlist sanitiser (`src/server/status-pages/svg.ts`):
 scripts, event handlers, `foreignObject`, external references, `<style>`, DOCTYPEs and entities are
 removed or rejected. Media URLs point at Marmot's own host, so logos and favicon also load on custom
-domains; the favicon and logo are listed in the web manifest.
+domains; the favicon and logo are listed in the web manifest. Uploads only go through these routes
+(after the `status-page:update` check): the `media` collection is not writable through `/api/media`.
 
 **Banner headline** (`bannerText`): replaces the automatic overall-status text (for example "Scheduled
 upgrade tonight"). The banner colour still follows the monitors, and screen readers still hear the

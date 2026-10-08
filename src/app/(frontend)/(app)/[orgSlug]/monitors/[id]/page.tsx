@@ -22,7 +22,6 @@ import { PushEventsTable, PushPanel } from '@/components/monitors/push-panel'
 import { ResponseLogView } from '@/components/monitors/response-log-view'
 import { MonitorStatusBadge } from '@/components/monitors/status-badge'
 import { TagList } from '@/components/monitors/tag-chip'
-import { TimingPhasesChart } from '@/components/monitors/timing-phases-chart'
 import { TimingWaterfall } from '@/components/monitors/timing-waterfall'
 import { UptimeCards } from '@/components/monitors/uptime-cards'
 import { PageHeader } from '@/components/page-header'
@@ -294,11 +293,8 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             series: stats24h.series,
           }}
           lastCheckAt={monitor.status?.lastCheckAt}
+          showTiming={measuresTiming}
         />
-
-        {measuresTiming && (
-          <TimingPhasesChart monitorId={String(monitor.id)} initialBuckets={stats24h.buckets} />
-        )}
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="flex min-w-0 flex-col gap-6">
