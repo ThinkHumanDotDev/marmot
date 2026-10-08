@@ -94,6 +94,26 @@ describe('safe regular expressions', () => {
     expect(Date.now() - started).toBeLessThan(2000)
   })
 
+  it('cuts a catastrophic pattern off after its CPU budget', () => {
+    const started = Date.now()
+    expect(() =>
+      safeRegexTest('^(a+)+$', `${'a'.repeat(40)}b`, { cpuMs: 20, wallMs: 1000 }),
+    ).toThrow(/timed out after 20 ms/)
+    // An idle host stops at the 20 ms budget; a loaded one at the 1000 ms wall cap at the latest.
+    expect(Date.now() - started).toBeLessThan(1500)
+  })
+
+  it('a thread starved of CPU is retried, but never beyond the wall-clock cap', () => {
+    // A frozen CPU clock looks like scheduling delay, so the match gets a second attempt...
+    const starved = { cpuMs: 20, wallMs: 300, cpuClock: () => 0 }
+    const started = Date.now()
+    expect(() => safeRegexTest('^(a+)+$', `${'a'.repeat(40)}b`, starved)).toThrow(/timed out/)
+    // ...that runs until the wall cap, not forever.
+    expect(Date.now() - started).toBeGreaterThanOrEqual(250)
+    expect(Date.now() - started).toBeLessThan(2000)
+    expect(safeRegexTest('"version":"1\\.\\d+', response.body, starved)).toBe(true)
+  })
+
   it('rejects invalid and over-long patterns', () => {
     expect(() => safeRegexTest('(', 'x')).toThrow(/invalid/)
     expect(() => safeRegexTest('a'.repeat(501), 'x')).toThrow(/invalid/)

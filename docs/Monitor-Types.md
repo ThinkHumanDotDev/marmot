@@ -102,8 +102,9 @@ check is UP only when **all** pass. Each row is `{ kind, target, comparator, val
   record matches; `not_eq`, `not_contains` and `not_matches` pass when **none** does. Record types other
   than `dnsResolveType` are looked up with the same resolvers; "no such record" is an empty set.
 - **Regular expressions** (`matches`) are `pattern` or `/pattern/flags` (flags `i`, `m`, `s`, `u`), at
-  most 500 characters. Each match runs in a `node:vm` context with a 50 ms timeout, so a pattern with
-  catastrophic backtracking fails the assertion instead of stalling the worker. Regexes inside JSONata
+  most 500 characters. Each match runs in a `node:vm` context with a 100 ms CPU budget (capped at 1 s of wall-clock
+  time on a busy host), so a pattern with catastrophic backtracking fails the assertion instead of
+  stalling the worker. Regexes inside JSONata
   expressions use the same guard, and every JSONata evaluation has a 1 s and 500-level depth budget. Nothing
   evaluates JavaScript.
 - **Existing fields keep working and are shown as equivalent assertions.** Monitors are not migrated:

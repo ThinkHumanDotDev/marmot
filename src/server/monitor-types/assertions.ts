@@ -22,8 +22,16 @@ import {
 
 export type { AssertionResult, MonitorAssertion } from '@/lib/validation/assertions'
 
-/** Budget of one regular-expression execution. */
-export const REGEX_TIMEOUT_MS = 50
+/**
+ * CPU budget of one regular-expression execution. A match that spends this much CPU time is cut
+ * off as catastrophic backtracking; ordinary patterns need well under a millisecond.
+ */
+export const REGEX_TIMEOUT_MS = 100
+/**
+ * Hard wall-clock cap of one regular-expression execution, retries included. Bounds how long a
+ * match can hold the worker when the machine is so busy that the CPU budget is never reached.
+ */
+export const REGEX_WALL_LIMIT_MS = 1000
 /** Budget of one JSONata evaluation and its maximum evaluation depth. */
 export const JSONATA_TIMEOUT_MS = 1000
 export const JSONATA_MAX_DEPTH = 500
@@ -48,13 +56,55 @@ interface SandboxMatch {
   lastIndex: number
 }
 
-/** Run `RegExp.prototype.exec` in the sandbox, aborting after `REGEX_TIMEOUT_MS`. */
+export interface RegexBudget {
+  /** CPU time after which a match counts as runaway (default `REGEX_TIMEOUT_MS`). */
+  cpuMs: number
+  /** Wall-clock cap across attempts (default `REGEX_WALL_LIMIT_MS`). */
+  wallMs: number
+  /** CPU time of this thread in ms; injectable so tests can simulate a starved thread. */
+  cpuClock?: () => number
+}
+
+const DEFAULT_REGEX_BUDGET: RegexBudget = {
+  cpuMs: REGEX_TIMEOUT_MS,
+  wallMs: REGEX_WALL_LIMIT_MS,
+}
+
+// `threadCpuUsage` only counts this thread (Node >= 22.x / 23.9); `cpuUsage` counts the whole process,
+// which over-reports CPU time and so errs towards cutting a match off, never towards running longer.
+const threadCpuMs: () => number =
+  typeof process.threadCpuUsage === 'function'
+    ? () => {
+        const { user, system } = process.threadCpuUsage()
+        return (user + system) / 1000
+      }
+    : () => {
+        const { user, system } = process.cpuUsage()
+        return (user + system) / 1000
+      }
+
+const isTimeout = (err: unknown) =>
+  (err as NodeJS.ErrnoException)?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT'
+
+/**
+ * Run `RegExp.prototype.exec` in the sandbox, aborting it once it has used `budget.cpuMs` of CPU.
+ *
+ * `node:vm`'s `timeout` is wall-clock time: on a busy host the thread can be descheduled for longer
+ * than the budget in the middle of an ordinary sub-millisecond match, and the watchdog then fires
+ * although the regex did almost no work. So the first attempt runs with `cpuMs` as its wall-clock
+ * timeout (enough for a catastrophic pattern on an idle host, which burns CPU the whole time), and a
+ * timeout that spent less than half of the budget on CPU is treated as scheduling delay: the match is
+ * retried once with the rest of `wallMs`. Catastrophic patterns are still cut off after `cpuMs` on an
+ * idle host and after at most `wallMs` on a saturated one.
+ */
 function sandboxExec(
   pattern: string,
   flags: string,
   input: string,
   lastIndex: number,
+  budget: RegexBudget = DEFAULT_REGEX_BUDGET,
 ): SandboxMatch | null {
+  const cpuClock = budget.cpuClock ?? threadCpuMs
   sandbox ??= vm.createContext(Object.create(null))
   Object.assign(sandbox, {
     __pattern: pattern,
@@ -62,16 +112,26 @@ function sandboxExec(
     __input: input,
     __lastIndex: lastIndex,
   })
+  const deadline = performance.now() + budget.wallMs
   try {
-    const result = EXEC.runInContext(sandbox, { timeout: REGEX_TIMEOUT_MS }) as SandboxMatch | null
-    return result
-      ? { groups: [...result.groups], index: result.index, lastIndex: result.lastIndex }
-      : null
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT') {
-      throw new Error(`regular expression timed out after ${REGEX_TIMEOUT_MS} ms`)
+    let timeout = Math.min(budget.cpuMs, budget.wallMs)
+    for (;;) {
+      const cpuStart = cpuClock()
+      try {
+        const result = EXEC.runInContext(sandbox, { timeout }) as SandboxMatch | null
+        return result
+          ? { groups: [...result.groups], index: result.index, lastIndex: result.lastIndex }
+          : null
+      } catch (err) {
+        if (!isTimeout(err)) throw new Error(err instanceof Error ? err.message : String(err))
+        const starved = cpuClock() - cpuStart < budget.cpuMs / 2
+        const remaining = Math.floor(deadline - performance.now())
+        if (!starved || timeout !== budget.cpuMs || remaining < 1) {
+          throw new Error(`regular expression timed out after ${budget.cpuMs} ms`)
+        }
+        timeout = remaining
+      }
     }
-    throw new Error(err instanceof Error ? err.message : String(err))
   } finally {
     // Do not keep the (possibly large) response body alive between checks.
     Object.assign(sandbox, { __input: '' })
@@ -113,11 +173,15 @@ export class SafeRegExp {
 }
 
 /** Test `source` (`/pattern/flags` or a bare pattern) against `input` with a timeout. */
-export function safeRegexTest(source: string, input: string): boolean {
+export function safeRegexTest(
+  source: string,
+  input: string,
+  budget: RegexBudget = DEFAULT_REGEX_BUDGET,
+): boolean {
   const parsed = parseAssertionRegex(source)
   if (!parsed) throw new Error('invalid regular expression')
   // Without `g`/`y` exec ignores lastIndex; strip them so repeated calls are independent.
-  return sandboxExec(parsed.pattern, parsed.flags.replace(/[gy]/g, ''), input, 0) !== null
+  return sandboxExec(parsed.pattern, parsed.flags.replace(/[gy]/g, ''), input, 0, budget) !== null
 }
 
 /** Evaluate a JSONata expression with the time, depth and regex guards. */
