@@ -6,8 +6,8 @@ import 'dotenv/config'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
-import pkg from '../package.json' with { type: 'json' }
 import { childLogger } from '@/lib/logger'
+import { MARMOT_VERSION } from '@/lib/version'
 import { captureServerEvent, shutdownServerAnalytics } from '@/server/analytics'
 import {
   closeChecksQueue,
@@ -63,7 +63,7 @@ async function main() {
   )
   // Opt-in telemetry (docs/Telemetry.md): one aggregate event per worker boot, no identifiers.
   captureServerEvent('instance_started', {
-    version: pkg.version,
+    version: MARMOT_VERSION,
     adapter: payload.db.name,
     role: 'worker',
     node: process.versions.node,

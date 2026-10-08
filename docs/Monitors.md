@@ -283,7 +283,7 @@ import drops keys that are already in use.
   takes `notifications: [id, …]` on `POST`/`PATCH /api/orgs/:orgId/monitors`; a create without the key
   gets the default channels. See [Notifications](Notifications.md).
 - **Maintenance**: a monitor inside an active maintenance window reports MAINTENANCE instead of DOWN and does
-  not notify; see [Maintenance](Maintenance.md) _(landing in the current release)_.
+  not notify; see [Maintenance](Maintenance.md).
 - **Tags**: coloured labels with optional values (`env: prod`), managed under Settings → Tags, shown in the
   monitor list, on the detail page and on status pages with `showTags` on.
 - **Proxies**: HTTP-type monitors can send their requests through an HTTP(S) or SOCKS proxy (Settings →
