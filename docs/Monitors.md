@@ -128,6 +128,8 @@ uptime; it updates over the WebSocket connection without reloading. The detail p
   rollups (minutely for a day, hourly up to 30 days, daily for 90 days), so switching periods is cheap;
   percentiles are estimated from per-bucket latency histograms and stay within one histogram bucket
   (about ±19 %) of the exact value;
+- for HTTP and TCP monitors, the [request timing](#request-timing) of the latest check and a phase chart
+  that follows the same period selector;
 - the list of **important events** (status changes with their message);
 - the certificate panel for HTTPS targets (issuer, expiry; filled by the certificate job landing in the
   current release);
@@ -137,6 +139,30 @@ uptime; it updates over the WebSocket connection without reloading. The detail p
 
 Statistics are kept as minutely (24 h), hourly (30 d) and daily (`KEEP_DATA_PERIOD_DAYS`, default one
 year) buckets, so a monitor's history survives the pruning of raw heartbeats after 24 hours.
+
+### Request timing
+
+HTTP(s), keyword and JSON query checks record where the response time went, in milliseconds:
+
+| Phase                | Measured from → to                                                              |
+| -------------------- | ------------------------------------------------------------------------------- |
+| **DNS lookup**       | start of the connection → the host name is resolved (empty for an IP address)   |
+| **TCP connect**      | resolved → TCP connection established                                           |
+| **TLS handshake**    | connected → TLS handshake done (empty for plain `http://`)                      |
+| **Waiting (TTFB)**   | connection ready (or request sent on a reused connection) → first response byte |
+| **Content transfer** | response headers → last body byte                                               |
+
+The phases describe the final response: after redirects, earlier hops count towards the response time
+but not towards a phase, and DNS, connect and TLS are empty when that request reused a connection.
+Through a proxy only TTFB and transfer are measured (TTFB then includes connecting to the proxy).
+TCP port checks record DNS and connect. Checks run by probe agents report the same phases. Without
+redirects the phases add up to the response time, give or take a millisecond of request setup.
+
+The phases are stored on each heartbeat (`heartbeats.timing`) and shown as a waterfall for the latest
+check and in the **Check now** / **Test** result. Successful checks also feed a per-phase average into
+the statistics buckets, which the **Timing phases** chart stacks for the period chosen in the period
+selector (the stats API's `series` points carry them as `timing`), so the history outlives the 24-hour
+heartbeat retention. gRPC checks do not record timing yet.
 
 ## Check now and Test
 
@@ -340,6 +366,7 @@ requests for the same monitor share one job) and waits up to the monitor's timeo
   "blocked": false,
   "maintenance": false,
   "tls": null,
+  "timing": { "dns": null, "connect": 0.4, "tls": null, "ttfb": 38.2, "transfer": 0.6 },
   "assertions": [
     {
       "kind": "status",
@@ -364,7 +391,8 @@ requests for the same monitor share one job) and waits up to the monitor's timeo
 
 `status` is the beat's status after `upsideDown`, the degraded threshold and retries (a failing check
 with retries left is `pending`); `assertions` lists the per-assertion results of HTTP and DNS monitors
-(the same shape as `heartbeats.assertions`) and `details` carries other check-specific fields. Query parameters:
+(the same shape as `heartbeats.assertions`), `timing` the [request timing](#request-timing) phases (`null`
+for types that measure none) and `details` carries other check-specific fields. Query parameters:
 `wait=false` answers `202 { "jobId", "monitorId", "status": "queued" }` at once (the heartbeat arrives over
 realtime), `record=false` runs the check without storing a heartbeat or changing the monitor's state.
 

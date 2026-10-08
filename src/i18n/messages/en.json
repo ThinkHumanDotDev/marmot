@@ -282,6 +282,7 @@
       "message": "Message",
       "noMessage": "No message",
       "responseTime": "Response time",
+      "timing": "Request timing",
       "took": "Took",
       "milliseconds": "{ms} ms",
       "checkedAt": "Checked at",
@@ -333,6 +334,24 @@
       "failedChecks": "Failed checks",
       "degradedChecks": "Degraded checks",
       "lastCheck": "Last check"
+    },
+    "timing": {
+      "title": "Request timing",
+      "latestDescription": "Where the time of the latest check went.",
+      "phases": {
+        "dns": "DNS lookup",
+        "connect": "TCP connect",
+        "tls": "TLS handshake",
+        "ttfb": "Waiting (TTFB)",
+        "transfer": "Content transfer"
+      },
+      "ms": "{ms} ms",
+      "notApplicable": "n/a",
+      "total": "Phases add up to {total} of {ping} response time",
+      "waterfallLabel": "Request timing waterfall",
+      "chartTitle": "Timing phases",
+      "chartDescription": "Average time per phase, stacked, for successful checks.",
+      "chartEmpty": "No timing data in this period yet. HTTP and TCP checks record it."
     },
     "events": {
       "title": "Important events",
@@ -5597,6 +5616,14 @@
       "statusCode": "HTTP {code}",
       "elapsed": "took {ms} ms",
       "tls": "TLS certificate valid: {valid}, {days} days left",
+      "phase": "{name} {ms} ms",
+      "phases": {
+        "dns": "DNS",
+        "connect": "connect",
+        "tls": "TLS",
+        "ttfb": "TTFB",
+        "transfer": "transfer"
+      },
       "queued": "Check of {name} queued; the result arrives as a heartbeat.",
       "unsupported": "this Marmot version has no on-demand checks"
     },

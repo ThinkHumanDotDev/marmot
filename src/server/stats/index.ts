@@ -23,6 +23,8 @@ export type HeartbeatContext = {
   heartbeat: {
     status: HeartbeatStatus
     ping?: number | null
+    /** Request timing phases (#94), the stored heartbeat's `timing` group. */
+    timing?: unknown
     /** The engine hands over the stored document, whose time is an ISO string. */
     time: Date | string
     important?: boolean | null
@@ -55,6 +57,7 @@ export const createStatsListener =
         organizationId: ctx.organizationId,
         status: ctx.heartbeat.status,
         ping: ctx.heartbeat.ping ?? null,
+        timing: ctx.heartbeat.timing,
         time: new Date(ctx.heartbeat.time),
       })
     } catch (error) {

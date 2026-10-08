@@ -4,11 +4,13 @@ import { ShieldAlert } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 
 import type { OnDemandCheckResult } from '@/lib/on-demand-check'
+import { parseRequestTiming } from '@/lib/request-timing'
 import { cn } from '@/lib/utils'
 
 import { AssertionResultsCard, parseAssertionResults } from './assertion-results-card'
 import { useMonitorFormat } from './format'
 import { MonitorStatusBadge } from './status-badge'
+import { TimingWaterfall } from './timing-waterfall'
 
 const show = (value: unknown): string =>
   typeof value === 'string' ? value : (JSON.stringify(value) ?? String(value))
@@ -34,6 +36,7 @@ export function CheckResultView({
   const format = useFormatter()
   const { ping } = useMonitorFormat()
   const assertions = parseAssertionResults(result.assertions)
+  const timing = parseRequestTiming(result.timing)
   const extra = Object.entries(result.details ?? {}).filter(
     ([, value]) => value !== null && value !== undefined && value !== '',
   )
@@ -82,6 +85,15 @@ export function CheckResultView({
           </Row>
         ))}
       </dl>
+
+      {timing && (
+        <section className="flex flex-col gap-2" aria-labelledby="check-result-timing">
+          <h3 id="check-result-timing" className="text-sm font-medium">
+            {t('timing')}
+          </h3>
+          <TimingWaterfall timing={timing} ping={result.ping} />
+        </section>
+      )}
 
       {assertions.length > 0 && <AssertionResultsCard results={assertions} />}
 

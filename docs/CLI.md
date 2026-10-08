@@ -62,7 +62,7 @@ marmot logout --profile staging
 | `monitors list [--type T] [--active \| --paused]`                                        | All monitors with key, type, status and target.                                         |
 | `monitors info KEY\|ID`                                                                  | One monitor: target, interval, last check, message, ping.                               |
 | `monitors logs KEY\|ID [--limit N] [--important]`                                        | Latest heartbeats, newest first (`--important`: status changes only).                   |
-| `monitors check KEY\|ID [--no-wait] [--timing]`                                          | Run the monitor's check now and print the result.                                       |
+| `monitors check KEY\|ID [--no-wait] [--timing]`                                          | Run the monitor's check now and print the result (`--timing`: request phases, details). |
 | `monitors pause KEY\|ID`, `monitors resume KEY\|ID`                                      | Pause or resume a monitor.                                                              |
 | `monitors import [-o FILE] [--format yaml\|json] [--redact-secrets]`                     | Write the organization's monitors as a monitors file (alias `monitors export`).         |
 | `monitors plan -f FILE [--prune] [--exit-code]`                                          | Show what `apply` would change. Changes nothing.                                        |

@@ -11,6 +11,8 @@ import {
 } from '../core/spec'
 import { EXIT, findMonitor, idOf, intFlag, requireArg, UsageError, type Ctx } from '../context'
 import { formatValue, renderPlan, statusColor, table } from '../output'
+import { parseRequestTiming, TIMING_PHASES } from '@/lib/request-timing'
+
 import { t } from '../text'
 
 /** Monitors, channels and tags of the organization. Channels need a `write` key (member). */
@@ -257,6 +259,15 @@ export function printCheckResult(ctx: Ctx, result: CheckResult): number {
           valid: result.tls.valid ? t('common.yes') : t('common.no'),
           days: result.tls.daysRemaining ?? '?',
         }),
+      )
+    }
+    const timing = ctx.bool('timing') ? parseRequestTiming(result.timing) : null
+    if (timing) {
+      lines.push(
+        TIMING_PHASES.flatMap((phase) => {
+          const ms = timing[phase]
+          return ms === null ? [] : [t('check.phase', { name: t(`check.phases.${phase}`), ms })]
+        }).join(' · '),
       )
     }
     if (ctx.bool('timing') && result.details) {

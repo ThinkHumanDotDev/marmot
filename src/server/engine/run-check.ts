@@ -99,6 +99,7 @@ export async function runCheck(
       tlsInfo: ctx.tlsInfo ?? null,
       details: heartbeatDetails(ctx.heartbeat),
       assertions: ctx.assertions ?? null,
+      timing: ctx.timing ?? null,
       probes: ctx.probes ?? null,
     }
   }
@@ -120,6 +121,7 @@ export async function runCheck(
     tlsInfo: ctx.tlsInfo ?? null,
     details: heartbeatDetails(ctx.heartbeat),
     assertions: ctx.assertions ?? null,
+    timing: ctx.timing ?? null,
     probes: ctx.probes ?? null,
   }
 }

@@ -28,6 +28,7 @@ import {
   resolveGuardedTarget,
 } from '@/server/security/outbound-guard'
 import { describeAssertionResult, evaluateHttpAssertions, passedSuffix } from './assertions'
+import { HttpTimingCapture } from './http-timing'
 import type { MonitorCheckContext } from './types'
 
 const DEFAULT_ACCEPT =
@@ -105,23 +106,25 @@ const isTlsSocket = (socket: unknown): socket is TLSSocket =>
 export function capturingAgent(
   connectOptions: buildConnector.BuildOptions,
   capture: TlsCapture,
+  timing?: HttpTimingCapture,
 ): Agent {
   const connector = buildConnector({ ...connectOptions, maxCachedSessions: 0 })
+  const capturing: buildConnector.connector = (opts, callback) =>
+    connector(opts, (err, socket) => {
+      if (socket && isTlsSocket(socket)) {
+        try {
+          capture.tlsInfo = captureFromSocket(socket, opts.servername || opts.hostname)
+        } catch {
+          // Certificate capture must never fail the check itself.
+        }
+      }
+      if (err) callback(err, null)
+      else callback(null, socket as NonNullable<typeof socket>)
+    })
   return new Agent({
     allowH2: false,
-    connect: guardConnector((opts, callback) => {
-      connector(opts, (err, socket) => {
-        if (socket && isTlsSocket(socket)) {
-          try {
-            capture.tlsInfo = captureFromSocket(socket, opts.servername || opts.hostname)
-          } catch {
-            // Certificate capture must never fail the check itself.
-          }
-        }
-        if (err) callback(err, null)
-        else callback(null, socket as NonNullable<typeof socket>)
-      })
-    }),
+    // The timing probe wraps the guard, so the guard's DNS resolution counts as the DNS phase.
+    connect: timing ? timing.connector(guardConnector, capturing) : guardConnector(capturing),
   })
 }
 
@@ -264,6 +267,8 @@ export async function buildHttpRequest(
   options: Parameters<typeof request>[1]
   cleanup: () => Promise<void>
   capture: TlsCapture
+  /** Request timing phases (#94), read with `timing.result()` once the body was received. */
+  timing: HttpTimingCapture
 }> {
   if (!monitor.url) {
     throw new Error('URL is required')
@@ -342,6 +347,7 @@ export async function buildHttpRequest(
   // Dispatcher: a per-check agent that records the TLS certificate (or, with a proxy, the proxy
   // agent: the certificate is then only fetched directly after a failed handshake) + redirects.
   const capture: TlsCapture = { tlsInfo: null }
+  const timing = new HttpTimingCapture()
   const tlsOptions = {
     rejectUnauthorized: !monitor.ignoreTls,
     ...(monitor.authMethod === 'mtls'
@@ -354,13 +360,16 @@ export async function buildHttpRequest(
   }
   const agent: Dispatcher = proxy
     ? createProxyDispatcher(await guardProxyAddress(proxy), tlsOptions)
-    : capturingAgent(tlsOptions, capture)
+    : capturingAgent(tlsOptions, capture, timing)
   const cleanup = async () => {
     await agent.close()
   }
   const maxRedirections = monitor.maxRedirects ?? 10
+  // The timing interceptor sits inside the redirect one, so it sees every hop.
   const dispatcher: Dispatcher =
-    maxRedirections > 0 ? agent.compose(interceptors.redirect({ maxRedirections })) : agent
+    maxRedirections > 0
+      ? agent.compose(timing.interceptor(), interceptors.redirect({ maxRedirections }))
+      : agent.compose(timing.interceptor())
 
   return {
     url: monitor.url,
@@ -373,6 +382,7 @@ export async function buildHttpRequest(
     },
     cleanup,
     capture,
+    timing,
   }
 }
 
@@ -414,6 +424,7 @@ export async function performHttpCheck(
     options: requestOptions,
     cleanup,
     capture,
+    timing,
   } = await buildHttpRequest(ctx.monitor, ctx.signal, { proxy })
   const startTime = Date.now()
   let response: HttpCheckResponse
@@ -427,6 +438,7 @@ export async function performHttpCheck(
     }
     const body = await res.body.text()
     const ping = Date.now() - startTime
+    ctx.timing = timing.result()
     await recordTlsInfo(ctx, url, capture)
     response = {
       statusCode: res.statusCode,

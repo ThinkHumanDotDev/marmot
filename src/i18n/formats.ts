@@ -34,6 +34,8 @@ export const formats = {
     /** `100%` */
     wholePercent: { style: 'percent', maximumFractionDigits: 0 },
     integer: { maximumFractionDigits: 0 },
+    /** `12.3`: request timing phases, where sub-millisecond values are common. */
+    milliseconds: { maximumFractionDigits: 1 },
   },
 } satisfies Formats
 
