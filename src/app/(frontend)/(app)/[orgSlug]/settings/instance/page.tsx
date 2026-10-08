@@ -40,7 +40,10 @@ export default async function InstanceSettingsPage({
   // Open sign-up lets anyone create monitors; without the guard they can point them at the
   // worker's private network (metadata endpoints, the bundled database, the tailnet).
   const warnPrivateAddresses = settings.allowSignup && !env.MONITOR_DENY_PRIVATE_ADDRESSES
+  // Verification links cannot reach anyone without SMTP: they are only written to the log.
+  const warnVerificationWithoutSmtp = settings.requireEmailVerification && !env.SMTP_HOST
   const t = await getTranslations('settings.instance.privateAddressWarning')
+  const tv = await getTranslations('settings.instance.emailVerificationSmtpWarning')
 
   return (
     <>
@@ -50,6 +53,20 @@ export default async function InstanceSettingsPage({
             <CardTitle className="text-destructive">{t('title')}</CardTitle>
             <CardDescription>
               {t.rich('description', { code: (chunks) => <code>{chunks}</code> })}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : null}
+      {warnVerificationWithoutSmtp ? (
+        <Card
+          role="alert"
+          className="border-destructive/50"
+          data-testid="email-verification-smtp-warning"
+        >
+          <CardHeader>
+            <CardTitle className="text-destructive">{tv('title')}</CardTitle>
+            <CardDescription>
+              {tv.rich('description', { code: (chunks) => <code>{chunks}</code> })}
             </CardDescription>
           </CardHeader>
         </Card>

@@ -95,6 +95,32 @@ accounts**: link GitHub, Google or the company IdP, unlink any but the last way 
 refused while you are the sole owner of an organization). Password reset by email is available from the
 login page (`/forgot-password`) when SMTP is configured.
 
+### Email verification
+
+Instances open to the public can require new accounts to confirm their address
+(`REQUIRE_EMAIL_VERIFICATION=true`, or **Require email verification** under **Settings → Instance**; off by
+default). While it is on, an account created on `/signup` starts unverified and receives a link
+(`/verify-email?token=…`) that is valid for 24 hours and works once; opening it shows a **Confirm** button,
+so mail scanners that follow links cannot use it up. Until then the person can sign in but only sees a
+"check your inbox" screen, where they can request a new link (five per quarter hour), correct a mistyped
+address (a new link goes to the new address) or sign out. Creating organizations, invitations and
+notification channels answers `403` with an explanation, also through the API.
+
+Nobody else has to do anything:
+
+- accounts that existed before the setting was turned on, the setup wizard's administrator, superadmins
+  and accounts created by server code count as verified;
+- accepting an email invitation sent to the account's own address confirms it (an invite link does not);
+- single sign-on accounts whose identity provider asserts the address (`email_verified`, or an
+  organization's own connection) are verified, and such a login also confirms a pending account with the
+  same address.
+
+A signed-in user who changes their address has to confirm the new one while the setting is on. Turning the
+setting off lifts every restriction at once. Without `SMTP_HOST` the links are only written to the web
+process log; the setup screen and the Instance settings page warn about it. Sent links and confirmations
+are recorded in the audit log (`auth.email_verification_sent`, `auth.email_verified` with the method:
+`link`, `invitation` or `sso`).
+
 ## API
 
 | Method & path                                                                                                                         | Permission / rule                                                                                                          |
@@ -113,6 +139,8 @@ login page (`/forgot-password`) when SMTP is configured.
 | `GET /api/account/accounts`, `DELETE /api/account/accounts/:id`                                                                       | the signed-in user; unlinking the last identity of a password-less account is refused                                      |
 | `GET /api/orgs/:orgId/sso/connections`, `GET /api/orgs/:orgId/sso/domains`                                                            | `sso:read` (admins and owners)                                                                                             |
 | `POST`/`PATCH`/`DELETE` under `/api/orgs/:orgId/sso/*`, `POST …/domains/:id/verify`, `POST …/sso/metadata`, `PATCH …/sso/enforcement` | `sso:manage` (owners); see [Single sign-on](Single-Sign-On.md#per-organization-connections-hosted-and-multi-team-installs) |
+| `POST /api/auth/verify-email` `{ token }`                                                                                             | anyone holding the link; confirms the address it was sent to (`400` when invalid, expired, used or outdated)               |
+| `POST /api/auth/verify-email/resend`                                                                                                  | the signed-in user; mails a new link (rate limited, `429`)                                                                 |
 | `DELETE /api/account` `{ confirm: email }`                                                                                            | the signed-in user, unless sole owner somewhere                                                                            |
 | `GET /api/orgs/slug-available?slug=`                                                                                                  | signed-in user                                                                                                             |
 

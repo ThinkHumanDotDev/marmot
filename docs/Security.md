@@ -93,7 +93,10 @@ members under Settings → Permissions. Superadmins also see instance-level rows
 4. **Keep the database, Redis and the realtime port private.** Only Caddy (80/443) needs to be reachable
    from the internet; `REALTIME_PORT` is proxied under `/socket.io`.
 5. **Disable open signup** (`DISABLE_SIGNUP=true` or the `allowSignup` instance setting) and invite people
-   instead; use single sign-on (`OIDC_*`) where you can.
+   instead; use single sign-on (`OIDC_*`) where you can. If sign-up has to stay open, turn on
+   **email verification** (`REQUIRE_EMAIL_VERIFICATION=true` or the `requireEmailVerification` instance
+   setting) with SMTP configured, so nobody can register with an address they do not own and send
+   invitations or alerts from it ([details](Organizations-and-Members.md#email-verification)).
 6. **Deny private addresses when untrusted people can create monitors.** Every member can point monitors
    and notification channels at any host, and the worker connects from inside your network (cloud
    metadata at `169.254.169.254`, the bundled Postgres and Redis, the Docker host, your tailnet). Set
