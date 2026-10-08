@@ -1,0 +1,70 @@
+# Marmot demo instance (docs/Demo-Mode.md): one Marmot container (web + worker + realtime), Postgres,
+# Redis and Caddy on http://localhost:8080. The data is seeded on start and reset every hour; checks
+# are simulated and nothing (no notification, email or webhook) leaves the instance.
+#
+#   docker compose -f docker/docker-compose.demo.yml up -d --wait
+#   open http://localhost:8080 and sign in as demo@example.com / marmot-demo
+#
+# Everything lives in throwaway volumes: `docker compose -f docker/docker-compose.demo.yml down -v`.
+name: marmot-demo
+
+services:
+  marmot:
+    image: ghcr.io/thinkhumandotdev/marmot:${MARMOT_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      MARMOT_ROLE: all
+      DEMO_MODE: 'true'
+      DEMO_RESET_INTERVAL_MINUTES: ${DEMO_RESET_INTERVAL_MINUTES:-60}
+      # Throwaway secret: a demo holds no data worth protecting and resets anyway.
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:-marmot-demo-secret-change-me}
+      NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:-http://localhost:8080}
+      DATABASE_URL: postgres://marmot:marmot@postgres:5432/marmot
+      REDIS_URL: redis://redis:6379
+    expose: ['3000', '3001']
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: marmot
+      POSTGRES_PASSWORD: marmot
+      POSTGRES_DB: marmot
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U marmot -d marmot']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--maxmemory-policy', 'noeviction']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ['8080:80']
+    environment:
+      SITE_ADDRESS: ':80'
+      WEB_UPSTREAM: marmot:3000
+      REALTIME_UPSTREAM: marmot:3001
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - marmot
+
+volumes:
+  postgres:

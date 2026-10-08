@@ -31,6 +31,8 @@ interface LoginFormProps {
   twoFactor?: boolean
   /** Break-glass login of the SSO-only mode: posts with `?local=1`. */
   local?: boolean
+  /** Pre-filled credentials (the shared account of a demo instance, #159). */
+  defaultCredentials?: Values
 }
 
 /**
@@ -38,7 +40,12 @@ interface LoginFormProps {
  * `requiresTwoFactor` for protected accounts; the code (authenticator or backup) then goes to
  * `POST /api/auth/2fa`, which sets the session cookie.
  */
-export function LoginForm({ next, twoFactor = false, local = false }: LoginFormProps) {
+export function LoginForm({
+  next,
+  twoFactor = false,
+  local = false,
+  defaultCredentials,
+}: LoginFormProps) {
   const t = useTranslations('auth.login')
   const tf = useTranslations('auth.fields')
   const tv = useTranslations('auth.validation')
@@ -61,7 +68,7 @@ export function LoginForm({ next, twoFactor = false, local = false }: LoginFormP
   const [useBackup, setUseBackup] = React.useState(false)
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: defaultCredentials ?? { email: '', password: '' },
   })
   const codeForm = useForm<CodeValues>({
     resolver: zodResolver(codeSchema),

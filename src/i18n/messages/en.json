@@ -152,6 +152,13 @@
       "since": "Marmot lost its own internet connectivity at {time}.",
       "now": "Marmot lost its own internet connectivity.",
       "description": "Checks of external targets are paused and do not count as downtime; they resume automatically when connectivity returns."
+    },
+    "demo": {
+      "label": "Demo instance",
+      "description": "Checks are simulated and nothing is sent. All data resets every {minutes, plural, one {minute} other {# minutes}}.",
+      "nextReset": "Next reset {time}.",
+      "resetting": "Resetting now…",
+      "credentials": "Sign in as <code>{email}</code> with the password <code>{password}</code>."
     }
   },
   "dashboard": {
@@ -3710,7 +3717,8 @@
         "degradedMessage": "Response time 2400 ms is above the 1000 ms threshold",
         "maintenanceTitle": "Database upgrade"
       }
-    }
+    },
+    "demoSinkDelivered": "Demo instance: the message went to the demo sink, nothing was sent."
   },
   "consent": {
     "privacyPolicy": "What is collected",
@@ -5592,6 +5600,7 @@
     "monitorTooManyLocations": "A monitor can be checked from at most {max, plural, one {# location} other {# locations}}.",
     "monitorTypeNotOnProbe": "Group, manual, push, Steam and Globalping monitors cannot run on a probe location.",
     "checkOnProbe": "This monitor is checked by a probe location, so “Check now” cannot record a result from this server. Run a dry run (record=false) to test the target from here.",
+    "demoModeRestricted": "This is turned off on the demo instance. Install Marmot to use it.",
     "emailNotVerified": "Confirm your email address first: open the link we sent you, or request a new one.",
     "verificationLinkInvalid": "This confirmation link is invalid or has expired. Sign in and request a new one."
   },

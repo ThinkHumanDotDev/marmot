@@ -41,14 +41,19 @@ export interface AddressPolicyConfig {
   denyCidrs?: readonly string[]
   /** Exceptions to the private ranges (`MONITOR_ALLOW_CIDRS`). They never override `denyCidrs`. */
   allowCidrs?: readonly string[]
+  /** Deny every address (demo mode, #159): nothing may leave the instance. Overrides the rest. */
+  denyAll?: boolean
 }
 
 export type AddressVerdict =
   | { allowed: true }
   | {
       allowed: false
-      /** `private`: in the private set; `denied`: in `denyCidrs`; `invalid`: not an IP address. */
-      reason: 'private' | 'denied' | 'invalid'
+      /**
+       * `private`: in the private set; `denied`: in `denyCidrs`; `demo`: demo mode denies every
+       * address; `invalid`: not an IP address.
+       */
+      reason: 'private' | 'denied' | 'demo' | 'invalid'
     }
 
 interface ParsedCidr {
@@ -161,16 +166,19 @@ export function embeddedIPv4(address: string): string | null {
 
 /**
  * Classifies IP addresses against the private set, the deny list and the allow list. Precedence:
- * `denyCidrs` (always denied) > `allowCidrs` (exceptions) > private set (when `denyPrivate`).
+ * `denyAll` (demo mode) > `denyCidrs` (always denied) > `allowCidrs` (exceptions) > private set
+ * (when `denyPrivate`).
  */
 export class AddressPolicy {
   readonly denyPrivate: boolean
+  readonly denyAll: boolean
   private readonly privateList: BlockList
   private readonly denyList: BlockList | null
   private readonly allowList: BlockList | null
 
   constructor(config: AddressPolicyConfig) {
     this.denyPrivate = config.denyPrivate
+    this.denyAll = config.denyAll ?? false
     this.privateList = blockListOf([...PRIVATE_IPV4_CIDRS, ...PRIVATE_IPV6_CIDRS])
     this.denyList = config.denyCidrs?.length ? blockListOf(config.denyCidrs) : null
     this.allowList = config.allowCidrs?.length ? blockListOf(config.allowCidrs) : null
@@ -178,7 +186,7 @@ export class AddressPolicy {
 
   /** Whether any address can be denied at all (otherwise callers skip resolution entirely). */
   get active(): boolean {
-    return this.denyPrivate || this.denyList !== null
+    return this.denyAll || this.denyPrivate || this.denyList !== null
   }
 
   /** Judge one IP address (v4 or v6, brackets and zone ids allowed). Non-IPs are `invalid`. */
@@ -186,6 +194,7 @@ export class AddressPolicy {
     const address = stripAddress(rawAddress)
     const version = isIP(address)
     if (version === 0) return { allowed: false, reason: 'invalid' }
+    if (this.denyAll) return { allowed: false, reason: 'demo' }
 
     const candidates: { address: string; type: 'ipv4' | 'ipv6' }[] = [
       { address, type: version === 4 ? 'ipv4' : 'ipv6' },

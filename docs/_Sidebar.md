@@ -10,6 +10,7 @@
 - [Security](Security.md)
 - [Telemetry](Telemetry.md)
 - [Billing](Billing.md)
+- [Demo mode](Demo-Mode.md)
 
 **Use it**
 
