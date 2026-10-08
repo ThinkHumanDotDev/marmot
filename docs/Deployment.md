@@ -154,7 +154,8 @@ services:
 
 Attach both services to Traefik's network. The same split (everything to `web:3000`, `/socket.io/*` to
 `realtime:3001`) applies to any other proxy or ingress controller, including Cloudflare Tunnel (enable
-WebSockets on the tunnel) and Kubernetes ingresses (two path rules, WebSocket timeouts raised).
+WebSockets on the tunnel) and Kubernetes ingresses (two path rules, WebSocket timeouts raised; the
+[Helm chart](Kubernetes.md#ingress-and-realtime) renders them).
 
 ## Railway
 
@@ -182,6 +183,23 @@ after deploying is to open the domain and complete the setup wizard.
 
 How the template is built, and how to rebuild it, is described in
 [`deploy/railway/README.md`](../deploy/railway/README.md).
+
+## Kubernetes (Helm)
+
+The Helm chart in `charts/marmot` (published as `oci://ghcr.io/thinkhumandotdev/charts/marmot` with every
+release) runs `web`, `worker` and `realtime` as separate Deployments with their own replicas, resources and
+autoscalers, or one `MARMOT_ROLE=all` pod. A Job runs the migrations, as a `pre-upgrade` hook on upgrades,
+so new pods only start against a migrated schema. Postgres or MongoDB and Redis are external, or Postgres
+and Redis are bundled for evaluation; secrets come from an existing Secret or from the values.
+
+```bash
+helm install marmot oci://ghcr.io/thinkhumandotdev/charts/marmot -n marmot --create-namespace \
+  --set serverUrl=https://status.example.com --set postgresql.enabled=true --set redis.enabled=true \
+  --set ingress.enabled=true --set ingress.host=status.example.com
+```
+
+The full guide (values, ingress and `/socket.io`, TLS for custom status-page domains, scaling, probe agents)
+is [Kubernetes](Kubernetes.md).
 
 ## Running the image without compose
 

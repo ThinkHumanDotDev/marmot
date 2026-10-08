@@ -1,0 +1,131 @@
+name: Helm chart
+
+# Lints the chart in charts/marmot and installs it on a kind cluster with the image built from this commit.
+# Runs only when the chart, the image or this workflow changes. Guide: docs/Kubernetes.md
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'charts/**'
+      - 'docker/Dockerfile'
+      - 'docker/entrypoint.sh'
+      - '.github/ct.yaml'
+      - '.github/workflows/helm.yml'
+  pull_request:
+    paths:
+      - 'charts/**'
+      - 'docker/Dockerfile'
+      - 'docker/entrypoint.sh'
+      - '.github/ct.yaml'
+      - '.github/workflows/helm.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: helm-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: helm lint & ct lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: helm/chart-testing-action@v2
+      - name: helm lint (every values file in charts/marmot/ci)
+        run: |
+          set -euo pipefail
+          for values in charts/marmot/ci/*-values.yaml; do
+            helm lint --strict charts/marmot -f "$values"
+          done
+      - name: ct lint
+        run: ct lint --config .github/ct.yaml --charts charts/marmot
+      - name: Validate rendered manifests (kubeconform)
+        run: |
+          set -euo pipefail
+          curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /usr/local/bin kubeconform
+          for values in charts/marmot/ci/*-values.yaml; do
+            for upgrade in false true; do
+              helm template marmot charts/marmot -f "$values" --is-upgrade="$upgrade" \
+                | kubeconform -strict -summary -kubernetes-version 1.30.0
+            done
+          done
+
+  kind:
+    name: Install on kind (bundled Postgres + Redis)
+    needs: lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      RELEASE: marmot
+      CHART_ARGS: >-
+        -f charts/marmot/ci/bundled-values.yaml --set image.repository=marmot --set image.tag=ci
+        --set image.pullPolicy=Never --set ingress.enabled=false --set serverUrl=http://localhost:3000
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: false
+          load: true
+          tags: marmot:ci
+          # Reads CI's cache of main; writes nothing so it is never evicted.
+          cache-from: type=gha,scope=ci
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: marmot
+      - name: Load the image into kind
+        run: kind load docker-image marmot:ci --name marmot
+      - name: helm install (migration Job, then web / worker / realtime)
+        run: helm install "$RELEASE" charts/marmot $CHART_ARGS --wait --timeout 12m
+      - name: helm test (health endpoints, socket.io handshake)
+        run: helm test "$RELEASE" --logs --timeout 3m
+      - name: Smoke test through the Services
+        run: |
+          set -euo pipefail
+          expected="$(jq -r .version package.json)"
+          kubectl port-forward "svc/${RELEASE}-web" 3000:3000 >/tmp/pf-web.log 2>&1 &
+          kubectl port-forward "svc/${RELEASE}-realtime" 3001:3001 >/tmp/pf-rt.log 2>&1 &
+          curl -fsS --retry 20 --retry-delay 2 --retry-all-errors http://localhost:3000/api/health \
+            | jq -e --arg v "$expected" '.ok == true and .version == $v'
+          curl -fsS --retry 10 --retry-delay 2 --retry-all-errors http://localhost:3001/healthz | grep -q '"ok":true'
+          curl -fsS 'http://localhost:3001/socket.io/?EIO=4&transport=polling' | grep -q '"sid"'
+          for i in $(seq 1 50); do
+            kubectl logs "deploy/${RELEASE}-worker" | grep -q 'worker booted' && break
+            [ "$i" -eq 50 ] && { echo 'worker did not boot in time'; exit 1; }
+            sleep 3
+          done
+      - name: helm upgrade (pre-upgrade migration hook, rolling restart)
+        run: |
+          set -euo pipefail
+          helm upgrade "$RELEASE" charts/marmot $CHART_ARGS --set config.LOG_LEVEL=debug --wait --timeout 10m
+          helm history "$RELEASE"
+          helm test "$RELEASE" --logs --timeout 3m
+      - name: Cluster state
+        if: failure()
+        run: |
+          kubectl get all,pvc,jobs -o wide || true
+          kubectl get events --sort-by=.lastTimestamp | tail -n 60 || true
+          for pod in $(kubectl get pods -o name); do
+            echo "::group::${pod}"
+            kubectl describe "$pod" | tail -n 30 || true
+            kubectl logs "$pod" --all-containers --tail=150 || true
+            echo '::endgroup::'
+          done
