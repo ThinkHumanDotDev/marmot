@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { orgScoped } from '@/access/org-scoped'
 import { adminGroup, adminT } from '@/i18n/admin'
 import { TIMING_PHASES } from '@/lib/request-timing'
 
@@ -18,9 +19,9 @@ export const Heartbeats: CollectionConfig = {
     group: adminGroup('monitoring'),
     defaultColumns: ['monitor', 'status', 'msg', 'ping', 'time'],
   },
-  // TODO(#1): scope reads to the user's organizations once RBAC lands.
+  // Rows carry response headers and failed bodies (#97): readable in the monitor's organization only.
   access: {
-    read: ({ req }) => Boolean(req.user),
+    read: orgScoped('monitor:read'),
     create: () => false,
     update: () => false,
     delete: () => false,
@@ -93,6 +94,24 @@ export const Heartbeats: CollectionConfig = {
       name: 'probes',
       type: 'json',
       admin: { readOnly: true, description: adminT('marmot:heartbeats:probesDescription') },
+    },
+    {
+      name: 'statusCode',
+      type: 'number',
+      admin: { readOnly: true, description: adminT('marmot:heartbeats:statusCodeDescription') },
+    },
+    {
+      // Response log (#97), HTTP types: response data only, never the request. Headers capped at
+      // ~8 KB with cookies redacted; the body (first 16 KB) only for failed or degraded beats.
+      name: 'response',
+      type: 'group',
+      admin: { description: adminT('marmot:heartbeats:responseDescription') },
+      fields: [
+        { name: 'headers', type: 'json', admin: { readOnly: true } },
+        { name: 'headersTruncated', type: 'checkbox', admin: { readOnly: true } },
+        { name: 'body', type: 'textarea', admin: { readOnly: true } },
+        { name: 'bodyTruncated', type: 'checkbox', admin: { readOnly: true } },
+      ],
     },
     { name: 'retries', type: 'number', defaultValue: 0 },
     { name: 'downCount', type: 'number', defaultValue: 0 },

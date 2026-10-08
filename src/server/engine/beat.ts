@@ -16,6 +16,7 @@
 import { degradedThresholdMs } from '@/lib/monitor-degraded'
 import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
+import type { CapturedResponse } from '@/server/monitor-types/response-capture'
 import type { HeartbeatStatus, ProbeResult } from '@/server/monitor-types/types'
 import type { TlsInfo } from './tls'
 
@@ -95,6 +96,8 @@ export interface CheckResult {
   deferred?: boolean
   /** Per-probe results of a multi-location check (Globalping), whatever the outcome. */
   probes?: ProbeResult[] | null
+  /** Response received by the check (HTTP types), whatever the outcome (#97). */
+  response?: CapturedResponse | null
   /**
    * Extra fields the type set on `ctx.heartbeat` besides status/msg/ping/duration (e.g.
    * `statusCode`). Not persisted; returned by on-demand checks.

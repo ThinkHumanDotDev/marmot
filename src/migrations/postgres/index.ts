@@ -44,6 +44,7 @@ import * as migration_20261007_204902_api_key_scopes from './20261007_204902_api
 import * as migration_20261007_212204_monitor_key from './20261007_212204_monitor_key';
 import * as migration_20261007_221416_globalping_monitor from './20261007_221416_globalping_monitor';
 import * as migration_20261007_233426_heartbeat_timing from './20261007_233426_heartbeat_timing';
+import * as migration_20261007_235433_response_log from './20261007_235433_response_log';
 
 export const migrations = [
   {
@@ -274,6 +275,11 @@ export const migrations = [
   {
     up: migration_20261007_233426_heartbeat_timing.up,
     down: migration_20261007_233426_heartbeat_timing.down,
-    name: '20261007_233426_heartbeat_timing'
+    name: '20261007_233426_heartbeat_timing',
+  },
+  {
+    up: migration_20261007_235433_response_log.up,
+    down: migration_20261007_235433_response_log.down,
+    name: '20261007_235433_response_log'
   },
 ];

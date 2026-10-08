@@ -9,6 +9,8 @@ import type { AssertionResult } from '@/lib/validation/assertions'
 import type { Monitor } from '@/payload-types'
 import type { TlsInfo } from '@/server/engine/tls'
 
+import type { CapturedResponse } from './response-capture'
+
 export type HeartbeatStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded'
 
 export interface MonitorCheckContext {
@@ -45,6 +47,12 @@ export interface MonitorCheckContext {
    * stores it on the heartbeat (`heartbeats.probes`).
    */
   probes?: ProbeResult[] | null
+  /**
+   * The response received by the check (HTTP types, #97): status code, capped headers and body,
+   * secrets scrubbed (`./response-capture.ts`). The worker stores it on the heartbeat, the body
+   * only for failed or degraded beats.
+   */
+  response?: CapturedResponse | null
 }
 
 /** One probe of a multi-location check (`heartbeats.probes`). */

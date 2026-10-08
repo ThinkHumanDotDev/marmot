@@ -150,6 +150,9 @@ export const adminTranslations = {
         assertionsDescription: 'Per-assertion results of this check (HTTP and DNS monitors).',
         timingDescription:
           'Request phases in ms: DNS, connect, TLS, time to first byte and transfer (HTTP and TCP monitors).',
+        statusCodeDescription: 'HTTP status code of the response (HTTP monitors).',
+        responseDescription:
+          'Response headers (cookies redacted, about 8 KB) and, for failed or degraded checks, the first 16 KB of the body.',
         probesDescription:
           'Per-probe results of a multi-location check (Globalping monitors): location, outcome and latency.',
       },

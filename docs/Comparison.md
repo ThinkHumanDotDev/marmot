@@ -42,6 +42,7 @@ documentation remains the reference for the behaviour of the ported checks.
 | Uptime 24h / 30d / 1y, average response time, response-time chart                              |      ✓      | **done**                                                                     |
 | Important events list                                                                          |      ✓      | **done**                                                                     |
 | HTTP request timing phases (DNS, connect, TLS, TTFB, transfer): waterfall and phase chart      |      —      | **landing** (#94, [Monitors](Monitors.md#request-timing))                    |
+| Per-check response log with filters: status code, headers, failed bodies, assertions           |      —      | **landing** (#97, [Monitors](Monitors.md#response-log))                      |
 | Data retention setting                                                                         |      ✓      | **done** (`KEEP_DATA_PERIOD_DAYS`, instance setting)                         |
 | Live dashboard over WebSockets                                                                 |      ✓      | **done** (socket.io, Redis adapter)                                          |
 

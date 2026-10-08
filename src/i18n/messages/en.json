@@ -217,7 +217,8 @@
       "noDescription": "No description yet. Add one from Edit.",
       "tabs": {
         "events": "Important events",
-        "activity": "Activity"
+        "activity": "Activity",
+        "logs": "Logs"
       },
       "activityDescription": "Changes to this monitor from the audit log.",
       "assertions": {
@@ -345,6 +346,74 @@
       "pagination": "Page {page} of {totalPages} · {totalDocs} events",
       "newer": "Newer",
       "older": "Older"
+    },
+    "logs": {
+      "description": "Every check of this monitor with its response. Open a check for its headers, body, assertions and timing.",
+      "retention": "Checks are kept for 24 hours; status changes for longer.",
+      "loading": "Loading…",
+      "loadFailed": "Could not load the checks.",
+      "detailFailed": "Could not load this check.",
+      "loadMore": "Load more",
+      "clearFilters": "Clear filters",
+      "empty": "No checks recorded yet.",
+      "emptyFiltered": "No checks match these filters.",
+      "openCheck": "Open the check of {time}",
+      "httpStatus": "HTTP {code}",
+      "assertionsFailed": "{count, plural, one {# assertion failed} other {# assertions failed}}",
+      "filters": {
+        "label": "Filter checks",
+        "status": "Status",
+        "anyStatus": "Any status",
+        "statusCode": "Status code",
+        "anyStatusCode": "Any code",
+        "trigger": "Trigger",
+        "anyTrigger": "Any trigger",
+        "range": "Time range"
+      },
+      "statuses": {
+        "failed": "Failed (down or retrying)",
+        "down": "Down",
+        "degraded": "Degraded",
+        "pending": "Pending",
+        "up": "Up",
+        "maintenance": "Maintenance"
+      },
+      "triggers": {
+        "schedule": "Scheduled",
+        "manual": "Manual"
+      },
+      "ranges": {
+        "1h": "Last hour",
+        "24h": "Last 24 hours",
+        "7d": "Last 7 days",
+        "30d": "Last 30 days",
+        "all": "All time"
+      },
+      "columns": {
+        "status": "Status",
+        "time": "Time",
+        "statusCode": "Code",
+        "ping": "Response time",
+        "message": "Message"
+      },
+      "detail": {
+        "message": "Message",
+        "responseTime": "Response time",
+        "none": "None",
+        "important": "Status change",
+        "importantValue": "Yes, this check changed the monitor's status",
+        "timing": "Request timing",
+        "probes": "Probes",
+        "probeOk": "Passed",
+        "probeFailed": "Failed",
+        "headers": "Response headers",
+        "noHeaders": "No response headers were recorded for this check.",
+        "headersTruncated": "Some headers were left out to stay under 8 KB.",
+        "body": "Response body",
+        "bodyTruncated": "Only the first 16 KB are stored.",
+        "emptyBody": "The response body was empty.",
+        "bodyNotStored": "Bodies are only stored for failed and degraded checks."
+      }
     },
     "certificate": {
       "title": "Certificate",
@@ -5325,7 +5394,8 @@
     "webhookEventsRequired": "Select at least one event.",
     "webhookEventUnknown": "Unknown event type: {event}",
     "webhookNotFound": "Webhook endpoint not found.",
-    "webhookDeliveryNotFound": "Webhook delivery not found."
+    "webhookDeliveryNotFound": "Webhook delivery not found.",
+    "heartbeatNotFound": "Check not found"
   },
   "subscriberMessages": {
     "sms": {

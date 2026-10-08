@@ -2,13 +2,20 @@ import type { Job } from 'bullmq'
 import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
+import { BODY_STATUSES } from '@/lib/response-log'
 import type { Heartbeat, Monitor } from '@/payload-types'
 import {
   getMonitorType,
   isCheckDeferredError,
   type MonitorCheckContext,
 } from '@/server/monitor-types'
-import { computeNextBeat, type CheckResult, type NextState, type PrevState } from './beat'
+import {
+  computeNextBeat,
+  type BeatStatus,
+  type CheckResult,
+  type NextState,
+  type PrevState,
+} from './beat'
 import { emitHeartbeat, isUnderMaintenance } from './hooks'
 import type { CheckJobData, QueueFactoryOptions } from './queues'
 import { effectiveIntervalMs, removeMonitorSchedule, syncMonitor } from './scheduler'
@@ -116,6 +123,7 @@ export async function runCheck(
       assertions: ctx.assertions ?? null,
       timing: ctx.timing ?? null,
       probes: ctx.probes ?? null,
+      response: ctx.response ?? null,
     }
   }
 
@@ -138,6 +146,7 @@ export async function runCheck(
     assertions: ctx.assertions ?? null,
     timing: ctx.timing ?? null,
     probes: ctx.probes ?? null,
+    response: ctx.response ?? null,
   }
 }
 
@@ -204,6 +213,28 @@ export interface RecordBeatResult {
   next: NextState
 }
 
+/** `heartbeats.statusCode` / `heartbeats.response` for a beat with status `status` (#97). */
+export function responseFields(
+  result: CheckResult,
+  status: BeatStatus,
+): Partial<Pick<Heartbeat, 'statusCode' | 'response'>> {
+  const response = result.response
+  const statusCode =
+    response?.statusCode ??
+    (typeof result.details?.statusCode === 'number' ? result.details.statusCode : null)
+  if (!response) return statusCode === null ? {} : { statusCode }
+  const keepBody = (BODY_STATUSES as readonly string[]).includes(status)
+  return {
+    statusCode,
+    response: {
+      headers: response.headers,
+      headersTruncated: response.headersTruncated,
+      body: keepBody ? response.body : null,
+      bodyTruncated: keepBody ? response.bodyTruncated : false,
+    },
+  }
+}
+
 /**
  * Feed a check result through the state machine and persist it: `heartbeats` row, `monitors.status`
  * cache (with `context.skipEngineSync`), scheduler re-plan when the cadence changed, listeners.
@@ -264,6 +295,9 @@ export async function recordBeat(
       ...(result.timing ? { timing: result.timing } : {}),
       // Per-probe results of multi-location checks (Globalping, #142).
       ...(result.probes?.length ? { probes: result.probes as unknown as Heartbeat['probes'] } : {}),
+      // Response log (#97): status code and headers of every HTTP check, the body only when the
+      // check failed or was degraded.
+      ...responseFields(result, next.status),
     },
   })) as Heartbeat
 

@@ -719,6 +719,21 @@ export interface Heartbeat {
     | number
     | boolean
     | null;
+  statusCode?: number | null;
+  response?: {
+    headers?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    headersTruncated?: boolean | null;
+    body?: string | null;
+    bodyTruncated?: boolean | null;
+  };
   retries?: number | null;
   downCount?: number | null;
   time: string;
@@ -2016,6 +2031,15 @@ export interface HeartbeatsSelect<T extends boolean = true> {
         transfer?: T;
       };
   probes?: T;
+  statusCode?: T;
+  response?:
+    | T
+    | {
+        headers?: T;
+        headersTruncated?: T;
+        body?: T;
+        bodyTruncated?: T;
+      };
   retries?: T;
   downCount?: T;
   time?: T;

@@ -29,6 +29,7 @@ import {
 } from '@/server/security/outbound-guard'
 import { describeAssertionResult, evaluateHttpAssertions, passedSuffix } from './assertions'
 import { HttpTimingCapture } from './http-timing'
+import { captureResponse, requestSecrets } from './response-capture'
 import type { MonitorCheckContext } from './types'
 
 const DEFAULT_ACCEPT =
@@ -451,6 +452,11 @@ export async function performHttpCheck(
     await cleanup()
   }
   ctx.heartbeat.ping = response.ping
+  // Response log (#97): capped, scrubbed headers and body; the beat keeps the body only on failure.
+  ctx.response = captureResponse(
+    response,
+    requestSecrets(requestOptions?.headers as Record<string, string> | undefined, ctx.monitor),
+  )
   // Reported by on-demand checks ("Check now", "Test"); not stored on heartbeats.
   ctx.heartbeat.statusCode = response.statusCode
 
