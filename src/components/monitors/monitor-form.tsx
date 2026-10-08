@@ -70,6 +70,17 @@ import {
   type MonitorTypeName,
 } from '@/lib/validation/monitor'
 import { supportsAssertions } from '@/lib/validation/assertions'
+import {
+  GLOBALPING_DNS_RECORD_TYPES,
+  GLOBALPING_HTTP_METHODS,
+  GLOBALPING_IP_VERSIONS,
+  GLOBALPING_MAX_PACKETS,
+  GLOBALPING_MAX_PROBES,
+  GLOBALPING_MEASUREMENTS,
+  GLOBALPING_MIN_INTERVAL_SECONDS,
+  GLOBALPING_PROTOCOLS,
+  GLOBALPING_SUCCESS_RULES,
+} from '@/lib/validation/globalping'
 import type { MonitorFormResources } from '@/server/monitors/page-data'
 
 import { TimezoneSelect } from '@/components/settings/timezone-select'
@@ -833,6 +844,15 @@ function applyTypeDefaults(
   if (type === 'dns' && !get('dnsResolveServer')) set('dnsResolveServer', '1.1.1.1')
   if (type === 'manual' && !get('manualStatus')) set('manualStatus', 'up')
   if (type === 'snmp' && !get('snmpCommunity')) set('snmpCommunity', 'public')
+  if (type === 'globalping') {
+    if (!get('url')) set('url', 'https://')
+    for (const field of ['interval', 'retryInterval'] as const) {
+      const value = get(field)
+      if (typeof value === 'number' && value < GLOBALPING_MIN_INTERVAL_SECONDS) {
+        set(field, GLOBALPING_MIN_INTERVAL_SECONDS)
+      }
+    }
+  }
   const codes = get('acceptedStatusCodes')
   const isDefaultCodes = (list: unknown, value: string) =>
     Array.isArray(list) && list.length === 1 && list[0] === value
@@ -890,6 +910,9 @@ export function MonitorForm({
     pushTimezone,
     dnsResolveType,
     watchedLocations,
+    globalpingMeasurement,
+    globalpingSuccessRule,
+    globalpingProtocol,
   ] = useWatch({
     control,
     name: [
@@ -908,6 +931,9 @@ export function MonitorForm({
       'pushTimezone',
       'dnsResolveType',
       'locations',
+      'globalpingMeasurement',
+      'globalpingSuccessRule',
+      'globalpingProtocol',
     ],
   })
   const orgTimeZone = useTimeZone() ?? 'UTC'
@@ -929,6 +955,9 @@ export function MonitorForm({
   const isPort = isPortMonitorType(type)
   const isDatabase = isDatabaseMonitorType(type)
   const isWebSocket = type === 'websocket-upgrade'
+  const isGlobalping = type === 'globalping'
+  const gpMeasurement = globalpingMeasurement ?? 'http'
+  const minInterval = isGlobalping ? GLOBALPING_MIN_INTERVAL_SECONDS : 20
   const showsJsonQuery =
     type === 'json-query' ||
     type === 'mongodb' ||
@@ -1121,6 +1150,38 @@ export function MonitorForm({
                   />
                 )}
               </div>
+            )}
+
+            {isGlobalping && (
+              <>
+                <SelectField
+                  control={control}
+                  name="globalpingMeasurement"
+                  label={t('globalping.measurement')}
+                  options={GLOBALPING_MEASUREMENTS.map((m) => ({
+                    value: m,
+                    label: t(`globalping.measurementOption.${m}`),
+                  }))}
+                />
+                {gpMeasurement === 'http' ? (
+                  <TextField
+                    control={control}
+                    name="url"
+                    label={t('general.url')}
+                    type="url"
+                    placeholder="https://example.com/health"
+                    autoComplete="off"
+                  />
+                ) : (
+                  <TextField
+                    control={control}
+                    name="hostname"
+                    label={t('general.hostname')}
+                    placeholder="example.com"
+                    autoComplete="off"
+                  />
+                )}
+              </>
             )}
 
             {isKeywordMonitorType(type) && (
@@ -1414,7 +1475,7 @@ export function MonitorForm({
                   name="interval"
                   label={t('timing.interval')}
                   unit={t('timing.seconds')}
-                  min={20}
+                  min={minInterval}
                   description={
                     timingHint(interval)
                       ? t('timing.intervalHint', { duration: timingHint(interval) ?? '' })
@@ -1435,7 +1496,7 @@ export function MonitorForm({
                   name="retryInterval"
                   label={t('timing.retryInterval')}
                   unit={t('timing.seconds')}
-                  min={20}
+                  min={minInterval}
                   description={
                     timingHint(retryInterval)
                       ? t('timing.retryIntervalHint', {
@@ -1973,6 +2034,182 @@ export function MonitorForm({
                   />
                 </>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Globalping ---------------------------------------------------------------------- */}
+        {isGlobalping && (
+          <Card data-testid="globalping-options">
+            <CardHeader>
+              <CardTitle>{t('globalping.title')}</CardTitle>
+              <CardDescription>{t('globalping.description')}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-5">
+              <TextareaField
+                control={control}
+                name="globalpingLocations"
+                label={t('globalping.locations')}
+                rows={2}
+                placeholder={t('globalping.locationsPlaceholder')}
+                description={t.rich('globalping.locationsDescription', {
+                  code: (chunks) => <code>{chunks}</code>,
+                })}
+              />
+              <div className="grid gap-5 sm:grid-cols-3">
+                <NumberField
+                  control={control}
+                  name="globalpingProbes"
+                  label={t('globalping.probes')}
+                  min={1}
+                  max={GLOBALPING_MAX_PROBES}
+                  description={t('globalping.probesDescription', { max: GLOBALPING_MAX_PROBES })}
+                />
+                <SelectField
+                  control={control}
+                  name="globalpingSuccessRule"
+                  label={t('globalping.successRule')}
+                  options={GLOBALPING_SUCCESS_RULES.map((rule) => ({
+                    value: rule,
+                    label: t(`globalping.successRuleOption.${rule}`),
+                  }))}
+                />
+                {globalpingSuccessRule === 'atLeast' && (
+                  <NumberField
+                    control={control}
+                    name="globalpingMinSuccess"
+                    label={t('globalping.minSuccess')}
+                    min={1}
+                    max={GLOBALPING_MAX_PROBES}
+                  />
+                )}
+              </div>
+              <div className="grid gap-5 sm:grid-cols-3">
+                <FormField
+                  control={control}
+                  name="globalpingProtocol"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('globalping.protocol')}</FormLabel>
+                      <Select
+                        value={(field.value as string | null | undefined) ?? NONE}
+                        onValueChange={(value) => field.onChange(value === NONE ? null : value)}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={NONE}>{t('globalping.protocolDefault')}</SelectItem>
+                          {GLOBALPING_PROTOCOLS[gpMeasurement].map((protocol) => (
+                            <SelectItem key={protocol} value={protocol}>
+                              {protocol}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name="globalpingIpVersion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('globalping.ipVersion')}</FormLabel>
+                      <Select
+                        value={(field.value as string | null | undefined) ?? NONE}
+                        onValueChange={(value) => field.onChange(value === NONE ? null : value)}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={NONE}>{t('globalping.ipVersionAny')}</SelectItem>
+                          {GLOBALPING_IP_VERSIONS.map((version) => (
+                            <SelectItem key={version} value={version}>
+                              {t('globalping.ipVersionOption', { version })}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {gpMeasurement === 'ping' && (
+                  <NumberField
+                    control={control}
+                    name="globalpingPackets"
+                    label={t('globalping.packets')}
+                    min={1}
+                    max={GLOBALPING_MAX_PACKETS}
+                  />
+                )}
+                {(gpMeasurement === 'dns' ||
+                  (gpMeasurement === 'ping' && globalpingProtocol === 'TCP') ||
+                  (gpMeasurement === 'traceroute' &&
+                    (globalpingProtocol === 'TCP' || globalpingProtocol === 'UDP'))) && (
+                  <NumberField
+                    control={control}
+                    name="port"
+                    label={t('globalping.port')}
+                    min={1}
+                    max={65535}
+                  />
+                )}
+              </div>
+              {gpMeasurement === 'http' && (
+                <>
+                  <div className="grid gap-5 sm:grid-cols-3">
+                    <SelectField
+                      control={control}
+                      name="method"
+                      label={t('globalping.method')}
+                      options={GLOBALPING_HTTP_METHODS.map((m) => ({ value: m, label: m }))}
+                    />
+                  </div>
+                  <TextareaField
+                    control={control}
+                    name="headers"
+                    label={t('http.headers')}
+                    mono
+                    placeholder={'{\n  "Authorization": "Token abc"\n}'}
+                    description={t('http.headersDescription')}
+                  />
+                  <StatusCodesField control={control} />
+                  <SwitchField
+                    control={control}
+                    name="ignoreTls"
+                    label={t('http.ignoreTls')}
+                    description={t('http.ignoreTlsDescription')}
+                  />
+                </>
+              )}
+              {gpMeasurement === 'dns' && (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <TextField
+                    control={control}
+                    name="dnsResolveServer"
+                    label={t('globalping.resolver')}
+                    placeholder="1.1.1.1"
+                    description={t('globalping.resolverDescription')}
+                  />
+                  <SelectField
+                    control={control}
+                    name="dnsResolveType"
+                    label={t('general.recordType')}
+                    options={GLOBALPING_DNS_RECORD_TYPES.map((r) => ({ value: r, label: r }))}
+                  />
+                </div>
+              )}
+              <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                {t('globalping.rateLimit')}
+              </p>
             </CardContent>
           </Card>
         )}

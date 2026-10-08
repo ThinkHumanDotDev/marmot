@@ -3,7 +3,11 @@
  * turned into a `CheckResult` for the state machine. Kept apart from the BullMQ processor
  * (`worker.ts`) so the probe agent (`src/probe`) can run checks without Redis or the database.
  */
-import { getMonitorType, type MonitorCheckContext } from '@/server/monitor-types'
+import {
+  getMonitorType,
+  isCheckDeferredError,
+  type MonitorCheckContext,
+} from '@/server/monitor-types'
 import type { Monitor } from '@/payload-types'
 import { findBlockedMessage } from '@/server/security/outbound-guard'
 import type { Payload } from 'payload'
@@ -67,6 +71,16 @@ export async function runCheck(
   try {
     await Promise.race([type.check(ctx), timeout])
   } catch (err) {
+    // The check could not judge the target (rate limit): the beat is held, never DOWN (#142).
+    if (isCheckDeferredError(err)) {
+      return {
+        ok: false,
+        msg: err.message,
+        deferred: true,
+        details: heartbeatDetails(ctx.heartbeat),
+        probes: ctx.probes ?? null,
+      }
+    }
     // A target refused by the outbound address guard reads the same for every type and driver.
     const blocked = findBlockedMessage(err)
     const msg = blocked
@@ -85,6 +99,7 @@ export async function runCheck(
       tlsInfo: ctx.tlsInfo ?? null,
       details: heartbeatDetails(ctx.heartbeat),
       assertions: ctx.assertions ?? null,
+      probes: ctx.probes ?? null,
     }
   }
 
@@ -105,5 +120,6 @@ export async function runCheck(
     tlsInfo: ctx.tlsInfo ?? null,
     details: heartbeatDetails(ctx.heartbeat),
     assertions: ctx.assertions ?? null,
+    probes: ctx.probes ?? null,
   }
 }

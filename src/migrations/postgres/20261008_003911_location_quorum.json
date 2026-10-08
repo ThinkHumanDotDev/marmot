@@ -2331,6 +2331,62 @@
           "notNull": false,
           "default": "'A'"
         },
+        "globalping_measurement": {
+          "name": "globalping_measurement",
+          "type": "enum_monitors_globalping_measurement",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'http'"
+        },
+        "globalping_protocol": {
+          "name": "globalping_protocol",
+          "type": "enum_monitors_globalping_protocol",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "globalping_ip_version": {
+          "name": "globalping_ip_version",
+          "type": "enum_monitors_globalping_ip_version",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "globalping_locations": {
+          "name": "globalping_locations",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "globalping_probes": {
+          "name": "globalping_probes",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 3
+        },
+        "globalping_success_rule": {
+          "name": "globalping_success_rule",
+          "type": "enum_monitors_globalping_success_rule",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'all'"
+        },
+        "globalping_min_success": {
+          "name": "globalping_min_success",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "globalping_packets": {
+          "name": "globalping_packets",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 3
+        },
         "push_token": {
           "name": "push_token",
           "type": "varchar",
@@ -4551,6 +4607,12 @@
         },
         "assertions": {
           "name": "assertions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "probes": {
+          "name": "probes",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
@@ -14056,6 +14118,7 @@
         "port",
         "ping",
         "dns",
+        "globalping",
         "push",
         "group",
         "manual",
@@ -14168,6 +14231,45 @@
         "SOA",
         "SRV",
         "TXT"
+      ]
+    },
+    "public.enum_monitors_globalping_measurement": {
+      "name": "enum_monitors_globalping_measurement",
+      "schema": "public",
+      "values": [
+        "ping",
+        "http",
+        "dns",
+        "traceroute"
+      ]
+    },
+    "public.enum_monitors_globalping_protocol": {
+      "name": "enum_monitors_globalping_protocol",
+      "schema": "public",
+      "values": [
+        "ICMP",
+        "TCP",
+        "UDP",
+        "HTTP",
+        "HTTPS",
+        "HTTP2"
+      ]
+    },
+    "public.enum_monitors_globalping_ip_version": {
+      "name": "enum_monitors_globalping_ip_version",
+      "schema": "public",
+      "values": [
+        "4",
+        "6"
+      ]
+    },
+    "public.enum_monitors_globalping_success_rule": {
+      "name": "enum_monitors_globalping_success_rule",
+      "schema": "public",
+      "values": [
+        "all",
+        "any",
+        "atLeast"
       ]
     },
     "public.enum_monitors_push_schedule": {
@@ -14856,6 +14958,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "86e09ced-6a3d-4343-9e75-096100dc2ecb",
+  "id": "ed514922-5f25-441b-8e1e-08225ee0fcd2",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

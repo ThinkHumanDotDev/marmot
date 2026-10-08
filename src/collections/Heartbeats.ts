@@ -94,6 +94,11 @@ export const Heartbeats: CollectionConfig = {
       type: 'json',
       admin: { readOnly: true, description: adminT('marmot:heartbeats:assertionsDescription') },
     },
+    {
+      name: 'probes',
+      type: 'json',
+      admin: { readOnly: true, description: adminT('marmot:heartbeats:probesDescription') },
+    },
     { name: 'retries', type: 'number', defaultValue: 0 },
     { name: 'downCount', type: 'number', defaultValue: 0 },
     {

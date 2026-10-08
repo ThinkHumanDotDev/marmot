@@ -42,8 +42,9 @@ import * as migration_20261007_192808_sso_group_mapping from './20261007_192808_
 import * as migration_20261007_201419_outbound_webhooks from './20261007_201419_outbound_webhooks';
 import * as migration_20261007_204902_api_key_scopes from './20261007_204902_api_key_scopes';
 import * as migration_20261007_212204_monitor_key from './20261007_212204_monitor_key';
-import * as migration_20261007_222737_probe_locations from './20261007_222737_probe_locations';
-import * as migration_20261007_234012_location_quorum from './20261007_234012_location_quorum';
+import * as migration_20261007_221416_globalping_monitor from './20261007_221416_globalping_monitor';
+import * as migration_20261007_232200_probe_locations from './20261007_232200_probe_locations';
+import * as migration_20261008_003911_location_quorum from './20261008_003911_location_quorum';
 
 export const migrations = [
   {
@@ -267,13 +268,18 @@ export const migrations = [
     name: '20261007_212204_monitor_key',
   },
   {
-    up: migration_20261007_222737_probe_locations.up,
-    down: migration_20261007_222737_probe_locations.down,
-    name: '20261007_222737_probe_locations',
+    up: migration_20261007_221416_globalping_monitor.up,
+    down: migration_20261007_221416_globalping_monitor.down,
+    name: '20261007_221416_globalping_monitor',
   },
   {
-    up: migration_20261007_234012_location_quorum.up,
-    down: migration_20261007_234012_location_quorum.down,
-    name: '20261007_234012_location_quorum'
+    up: migration_20261007_232200_probe_locations.up,
+    down: migration_20261007_232200_probe_locations.down,
+    name: '20261007_232200_probe_locations',
+  },
+  {
+    up: migration_20261008_003911_location_quorum.up,
+    down: migration_20261008_003911_location_quorum.down,
+    name: '20261008_003911_location_quorum'
   },
 ];

@@ -69,6 +69,8 @@ export const probeResultSchema = z.object({
   assertions: z.array(z.record(z.string(), z.unknown())).max(100).nullish(),
   blocked: z.boolean().optional(),
   checkerOffline: z.boolean().optional(),
+  /** The check could not judge the target (`CheckDeferredError`): held, never DOWN. */
+  deferred: z.boolean().optional(),
 })
 export type ProbeResult = z.input<typeof probeResultSchema>
 

@@ -160,6 +160,8 @@ export const adminTranslations = {
           'What started the beat: "manual" for Check now, "quorum" for a multi-location status repair; empty for scheduled checks and pushes.',
         assertionsDescription: 'Per-assertion results of this check (HTTP and DNS monitors).',
         locationDescription: 'Probe location that ran the check; empty for the local workers.',
+        probesDescription:
+          'Per-probe results of a multi-location check (Globalping monitors): location, outcome and latency.',
         locationStatusDescription:
           'Multi-location monitors: the status of the location that ran the check (status is the quorum).',
       },
@@ -339,6 +341,12 @@ export const adminTranslations = {
         gameDescription: 'GameDig game id, e.g. minecraft.',
         gamedigGivenPortOnlyDescription: 'Do not probe the other ports a game commonly uses.',
         remoteBrowserDescription: 'Playwright-compatible remote browser websocket URL.',
+        globalpingProtocolDescription:
+          'Ping: ICMP or TCP; HTTP: HTTP, HTTPS or HTTP2; DNS: UDP or TCP; traceroute: ICMP, TCP or UDP. Empty uses the default.',
+        globalpingLocationsDescription:
+          'Comma-separated Globalping locations, e.g. Europe, US+AWS, AS13335. Empty means anywhere.',
+        globalpingSuccessRuleDescription:
+          'all: every probe must succeed; any: one is enough; atLeast: the minimum below.',
       },
       notificationSentHistory: {
         description:

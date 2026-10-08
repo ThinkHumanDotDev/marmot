@@ -47,9 +47,16 @@ export type LocationStatus = (typeof LOCATION_STATUSES)[number]
 
 /**
  * Types a probe cannot run: `group` and `manual` are computed by the server, `push` waits for
- * requests that reach the server, and `steam` needs the instance's Steam API key.
+ * requests that reach the server, `steam` needs the instance's Steam API key, and `globalping`
+ * only calls the Globalping API (whose probes are the vantage points) with the instance's token.
  */
-export const PROBE_UNSUPPORTED_TYPES: readonly string[] = ['group', 'manual', 'push', 'steam']
+export const PROBE_UNSUPPORTED_TYPES: readonly string[] = [
+  'group',
+  'manual',
+  'push',
+  'steam',
+  'globalping',
+]
 
 export const probeSupportsType = (type: string | null | undefined): boolean =>
   Boolean(type) && !PROBE_UNSUPPORTED_TYPES.includes(type as string)

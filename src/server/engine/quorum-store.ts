@@ -172,7 +172,7 @@ export async function applyQuorum(
   const row = states.get(key)
   const prev = prevStateOf(row)
   const locationNext = computeNextBeat(prev, result, monitor)
-  const held = result.checkerOffline === true
+  const held = result.checkerOffline === true || result.deferred === true
 
   const stored: StateData = {
     lastStatus: held ? (row?.lastStatus ?? null) : locationNext.status,

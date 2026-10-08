@@ -33,6 +33,16 @@ import {
 import { relId } from './shared'
 import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
+import {
+  GLOBALPING_DEFAULT_PACKETS,
+  GLOBALPING_DEFAULT_PROBES,
+  GLOBALPING_IP_VERSIONS,
+  GLOBALPING_MAX_PACKETS,
+  GLOBALPING_MAX_PROBES,
+  GLOBALPING_MEASUREMENTS,
+  GLOBALPING_PROTOCOL_VALUES,
+  GLOBALPING_SUCCESS_RULES,
+} from '@/lib/validation/globalping'
 import { adminGroup, adminT } from '@/i18n/admin'
 import {
   DEFAULT_QUORUM,
@@ -58,6 +68,7 @@ export const MONITOR_TYPES = [
   { label: adminT('marmot:labels:tcpPort'), value: 'port' },
   { label: 'Ping', value: 'ping' },
   { label: 'DNS', value: 'dns' },
+  { label: 'Globalping', value: 'globalping' },
   { label: adminT('marmot:labels:push'), value: 'push' },
   { label: adminT('marmot:labels:group'), value: 'group' },
   { label: adminT('marmot:labels:manual'), value: 'manual' },
@@ -113,9 +124,15 @@ export const KEYWORD_TYPES = ['keyword', 'grpc-keyword']
 /** Types whose target names a domain (URL or hostname), i.e. domain expiry can be looked up. */
 export const DOMAIN_TYPES = [...HTTP_TYPES, 'port', 'ping', 'dns']
 
-type TypeData = { type?: string } | undefined
+type TypeData = { type?: string; globalpingMeasurement?: string | null } | undefined
 const typeIn = (list: string[]) => (data: TypeData) =>
   Boolean(data?.type && list.includes(data.type))
+
+/** Globalping monitors (#142) take `url` for HTTP measurements and `hostname` otherwise. */
+const isGlobalping = (data: TypeData, measurement?: string) =>
+  data?.type === 'globalping' &&
+  (measurement === undefined || (data.globalpingMeasurement ?? 'http') === measurement)
+const globalpingHost = (data: TypeData) => isGlobalping(data) && !isGlobalping(data, 'http')
 
 const isDomainType = (data: { type?: string } | undefined) =>
   Boolean(data?.type && DOMAIN_TYPES.includes(data.type))
@@ -610,7 +627,10 @@ export const Monitors: CollectionConfig = {
     {
       name: 'url',
       type: 'text',
-      admin: { condition: typeIn(URL_TYPES), placeholder: 'https://' },
+      admin: {
+        condition: (data) => typeIn(URL_TYPES)(data) || isGlobalping(data, 'http'),
+        placeholder: 'https://',
+      },
     },
     {
       name: 'proxy',
@@ -646,7 +666,7 @@ export const Monitors: CollectionConfig = {
         {
           name: 'hostname',
           type: 'text',
-          admin: { condition: typeIn(HOST_TYPES) },
+          admin: { condition: (data) => typeIn(HOST_TYPES)(data) || globalpingHost(data) },
         },
         {
           name: 'port',
@@ -654,7 +674,7 @@ export const Monitors: CollectionConfig = {
           min: 1,
           max: 65535,
           admin: {
-            condition: typeIn(PORT_TYPES),
+            condition: (data) => typeIn(PORT_TYPES)(data) || globalpingHost(data),
             description: adminT('marmot:monitors:portDescription'),
           },
         },
@@ -763,7 +783,10 @@ export const Monitors: CollectionConfig = {
     {
       type: 'collapsible',
       label: adminT('marmot:labels:httpOptions'),
-      admin: { condition: typeIn(URL_TYPES), initCollapsed: true },
+      admin: {
+        condition: (data) => typeIn(URL_TYPES)(data) || isGlobalping(data, 'http'),
+        initCollapsed: true,
+      },
       fields: [
         {
           type: 'row',
@@ -1015,7 +1038,7 @@ export const Monitors: CollectionConfig = {
     // ---- DNS ------------------------------------------------------------------------------------
     {
       type: 'row',
-      admin: { condition: (data) => data?.type === 'dns' },
+      admin: { condition: (data) => data?.type === 'dns' || isGlobalping(data, 'dns') },
       fields: [
         {
           name: 'dnsResolveServer',
@@ -1028,6 +1051,76 @@ export const Monitors: CollectionConfig = {
           type: 'select',
           defaultValue: 'A',
           options: ['A', 'AAAA', 'CAA', 'CNAME', 'MX', 'NS', 'PTR', 'SOA', 'SRV', 'TXT'],
+        },
+      ],
+    },
+
+    // ---- Globalping (#142) ----------------------------------------------------------------------
+    {
+      type: 'collapsible',
+      label: 'Globalping',
+      admin: { condition: (data) => data?.type === 'globalping', initCollapsed: false },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'globalpingMeasurement',
+              type: 'select',
+              defaultValue: 'http',
+              options: [...GLOBALPING_MEASUREMENTS],
+            },
+            {
+              name: 'globalpingProtocol',
+              type: 'select',
+              options: [...GLOBALPING_PROTOCOL_VALUES],
+              admin: { description: adminT('marmot:monitors:globalpingProtocolDescription') },
+            },
+            {
+              name: 'globalpingIpVersion',
+              type: 'select',
+              options: GLOBALPING_IP_VERSIONS.map((value) => ({ label: `IPv${value}`, value })),
+            },
+          ],
+        },
+        {
+          name: 'globalpingLocations',
+          type: 'textarea',
+          admin: { description: adminT('marmot:monitors:globalpingLocationsDescription') },
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'globalpingProbes',
+              type: 'number',
+              defaultValue: GLOBALPING_DEFAULT_PROBES,
+              min: 1,
+              max: GLOBALPING_MAX_PROBES,
+            },
+            {
+              name: 'globalpingSuccessRule',
+              type: 'select',
+              defaultValue: 'all',
+              options: [...GLOBALPING_SUCCESS_RULES],
+              admin: { description: adminT('marmot:monitors:globalpingSuccessRuleDescription') },
+            },
+            {
+              name: 'globalpingMinSuccess',
+              type: 'number',
+              min: 1,
+              max: GLOBALPING_MAX_PROBES,
+              admin: { condition: (data) => data?.globalpingSuccessRule === 'atLeast' },
+            },
+            {
+              name: 'globalpingPackets',
+              type: 'number',
+              defaultValue: GLOBALPING_DEFAULT_PACKETS,
+              min: 1,
+              max: GLOBALPING_MAX_PACKETS,
+              admin: { condition: (data) => isGlobalping(data, 'ping') },
+            },
+          ],
         },
       ],
     },

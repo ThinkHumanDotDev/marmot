@@ -11,7 +11,7 @@ goes DOWN with the message `The "<pkg>" package is not installed. Install <pkg> 
 The Docker image installs all of them. Shared fields (`interval`, `retryInterval`, `maxRetries`,
 `resendInterval`, `timeout`, `upsideDown`, `active`, `parent`, `description`) apply to every type and are
 not repeated below. `degradedAfter` (ms, [Monitors → Degraded](Monitors.md#degraded)) applies to HTTP(s),
-keyword, JSON query, TCP port, ping, DNS and gRPC monitors.
+keyword, JSON query, TCP port, ping, DNS, gRPC and Globalping monitors.
 
 | Type                | Label                                      | Fields                                                                                                                                                                                                   | Driver / requirement                 |
 | ------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
@@ -22,6 +22,7 @@ keyword, JSON query, TCP port, ping, DNS and gRPC monitors.
 | `port`              | TCP Port                                   | `hostname`, `port`                                                                                                                                                                                       | —                                    |
 | `ping`              | Ping                                       | `hostname`                                                                                                                                                                                               | system `ping` binary                 |
 | `dns`               | DNS                                        | `hostname`, `port` (53), `dnsResolveServer`, `dnsResolveType`, `assertions` (dnsRecord)                                                                                                                  | —                                    |
+| `globalping`        | Globalping                                 | `globalpingMeasurement` ping \| http \| dns \| traceroute, `url` or `hostname`, `globalpingLocations`, `globalpingProbes`, `globalpingSuccessRule`; see [Globalping](#globalping)                        | Globalping API                       |
 | `push`              | Push                                       | `pushToken` (generated), `pushSchedule` interval \| cron, `pushCron`, `pushTimezone`, `pushGrace`, `pushMaxDuration`; the client calls `/api/push/<token>[/start\|/fail\|/log\|/<code>]` (see below)     | —                                    |
 | `manual`            | Manual                                     | `manualStatus`                                                                                                                                                                                           | —                                    |
 | `group`             | Group                                      | children via `parent`                                                                                                                                                                                    | —                                    |
@@ -43,6 +44,36 @@ keyword, JSON query, TCP port, ping, DNS and gRPC monitors.
 | `redis`             | Redis                                      | `databaseConnectionString` (`redis://…` or `rediss://…`), `ignoreTls`                                                                                                                                    | — (ioredis)                          |
 | `steam`             | Steam Game Server                          | `hostname`, `port`; `steamApiKey` instance setting                                                                                                                                                       | Steam Web API key                    |
 | `gamedig`           | GameDig                                    | `hostname`, `port`, `game` (GameDig id), `gamedigGivenPortOnly`                                                                                                                                          | `gamedig`                            |
+
+## Globalping
+
+`globalping` monitors run the check from [Globalping](https://globalping.io) community probes instead of
+the worker: a cheap way to see a service from many places before Marmot has probes of its own (#91, #92).
+
+- **Measurement**: `ping` (`globalpingPackets` packets, ICMP or TCP to `port`), `http` (`url` with
+  `method` HEAD, GET or OPTIONS, `headers`, `acceptedStatusCodes`; an untrusted certificate fails unless
+  `ignoreTls`), `dns` (`dnsResolveType`, optional `dnsResolveServer` and `port`; at least one answer) or
+  `traceroute` (the last hop must answer from the target's address). `globalpingProtocol` and
+  `globalpingIpVersion` are passed through; empty means the API default.
+- **Locations**: `globalpingLocations` is a comma-separated list in Globalping's location syntax
+  (`Europe`, `US+AWS`, `AS13335`, `Frankfurt`; empty = anywhere), and `globalpingProbes` (1–50) probes
+  answer per check.
+- **Status rule**: `globalpingSuccessRule` `all` (default), `any`, or `atLeast` with
+  `globalpingMinSuccess`. The heartbeat message lists each probe (`Frankfurt, DE, EU, Hetzner (AS24940):
+200 OK, 23 ms`), `heartbeats.probes` stores `{ location, ok, latency, msg }` per probe, and the beat's
+  response time is the average latency of the successful probes (so `degradedAfter` applies to it).
+- **Credentials and limits**: the `globalpingApiToken` instance setting is sent as a bearer token when set;
+  otherwise checks are anonymous (250 probe measurements per hour per IP). Every probe uses one credit, so
+  `interval` and `retryInterval` are at least 60 s for this type.
+- **Rate limits never mark a monitor DOWN**: a `429` records a PENDING beat that says so and when checks
+  resume; it uses up no retry, sends no notification, does not count as downtime and keeps the monitor's
+  previous state (like the "checker offline" beats of the [self connectivity check](Monitors.md)). The
+  worker then skips the API for those credentials until the reset time the API announced
+  (`Retry-After` / `X-RateLimit-Reset`, at most an hour). An unavailable API (5xx after one retry,
+  network errors) is held the same way; validation errors (bad target, no probe in the locations) are
+  DOWN with the API's message.
+- The private-address guard does not apply: the worker only talks to `api.globalping.io`, and Globalping
+  itself refuses private targets.
 
 ## Assertions
 
@@ -115,7 +146,7 @@ shared by the form, the API and the collection are in `src/lib/validation/assert
 - **Conditions** (Uptime Kuma's condition builder for mysql/sqlserver/mqtt) are not implemented; the
   SQL types report the row count and MQTT uses keyword or JSON-query matching.
 - **Not ported**: `oracledb` (the driver is too heavy for the default image), `docker`, `sip-options`,
-  `system-service`, `globalping`, `pm2`.
+  `system-service`, `pm2`.
 
 ## Adding a type
 

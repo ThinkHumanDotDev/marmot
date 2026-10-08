@@ -82,7 +82,7 @@ After each beat the worker writes a `heartbeats` row, refreshes the monitor's `s
 them through `monitors.locations` (up to `MAX_MONITOR_LOCATIONS` = 10; none = the implicit `local` worker
 pool, which `includeLocal` adds to probe locations); `src/lib/probe-locations.ts` holds the shared rules
 (`monitorLocationKeys`, `checksLocally`, `isRemoteMonitor`, `isMultiLocation`, `quorumNeeded`,
-`PROBE_UNSUPPORTED_TYPES`: group, manual, push, steam).
+`PROBE_UNSUPPORTED_TYPES`: group, manual, push, steam, globalping).
 
 - **Token**: `mp_<prefix>_<secret>` (`src/server/probes/tokens.ts`), modelled on API keys: only the SHA-256
   is stored, the plaintext is returned once by `POST /api/orgs/:orgId/locations` and
@@ -539,6 +539,18 @@ UI goes through dedicated route handlers backed by `src/server/members.ts` (`lis
 
 An organization always keeps at least one owner: the last owner cannot be demoted, removed or leave, and
 deleting an organization first removes its invitations and memberships (`beforeDelete` hooks).
+
+### API keys and the MCP server
+
+Route handlers authenticate through `authenticateRequest` (`src/server/auth/request-auth.ts`): a session,
+or on `/api/orgs/:orgId/**` an organization API key that becomes a synthetic `viewer`/`member` principal
+([Integrations](Integrations.md#management-api)). The MCP endpoint (`/api/mcp`, `src/server/mcp`) adds no
+business logic of its own: it verifies the key once per request, then each tool builds an in-process
+`Request` for the matching route handler and marks it with `delegateApiKeyRequest` (a `WeakMap`, so no
+client header can forge it). The handler runs its usual permission checks and validation; the delegated
+path skips the key lookup and request budget already spent, and the audit hooks record changes with
+actor type `mcp` (`apiKey.via`, `mcpActor` in `src/server/audit/context.ts`)
+([MCP](MCP.md)).
 
 ## Account security: two-factor authentication
 

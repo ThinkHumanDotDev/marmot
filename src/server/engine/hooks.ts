@@ -39,6 +39,11 @@ export interface HeartbeatEvent {
    */
   checkerOffline?: boolean
   /**
+   * The check was deferred (#142, e.g. the Globalping rate limit): a PENDING beat held like a
+   * checker offline one, which must not count as downtime either.
+   */
+  deferred?: boolean
+  /**
    * Multi-location monitors (#92): the location that reported the beat (`local` for the worker
    * pool) and its own status. The heartbeat's `status` is the monitor's quorum. `null` or unset on
    * single-location monitors.
