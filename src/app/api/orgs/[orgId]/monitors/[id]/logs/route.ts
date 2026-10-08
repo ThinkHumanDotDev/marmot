@@ -24,8 +24,8 @@ type RouteContext = { params: Promise<{ orgId: string; id: string }> }
 /**
  * GET /api/orgs/:orgId/monitors/:id/logs — the monitor's per-check log, newest first
  * (`monitor:read`, #97). Query: `status` (one or a comma-separated list), `statusCode` (`503` or
- * `5xx`), `trigger` (`schedule` | `manual`), `from` / `to` (ISO instants), `limit` (1–200, default
- * 50) and `cursor` (the previous page's `nextCursor`). Rows follow the heartbeat retention: 24 hours,
+ * `5xx`), `trigger` (`schedule` | `manual`), `from` / `to` (ISO instants), `location` (a location id
+ * or `local`, #92), `limit` (1–200, default 50) and `cursor` (the previous page's `nextCursor`). Rows follow the heartbeat retention: 24 hours,
  * status changes for `KEEP_DATA_PERIOD_DAYS`.
  */
 export async function GET(request: Request, { params }: RouteContext) {

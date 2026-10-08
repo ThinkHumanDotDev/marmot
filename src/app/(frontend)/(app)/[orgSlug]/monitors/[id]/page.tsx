@@ -389,6 +389,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
                     orgId={String(ctx.org.id)}
                     monitorId={String(monitor.id)}
                     timeZone={timeZone}
+                    location={locationFilter}
                   />
                 </TabsContent>
               )}

@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { getPayload, type Payload, type RequiredDataFromCollectionSlug } from 'payload'
@@ -19,6 +20,7 @@ import {
 import type { Heartbeat, Monitor, Organization, User } from '@/payload-types'
 import { processCheckJob, type ChecksQueue } from '@/server/engine'
 import { processManualCheckJob } from '@/server/engine/on-demand-jobs'
+import { hashProbeToken } from '@/server/probes/tokens'
 
 /**
  * Per-check response log (#97): what HTTP checks store (status code, capped headers, the body of
@@ -205,6 +207,11 @@ afterAll(async () => {
     })
   }
   await payload.delete({ collection: 'monitors', where: { organization: { in: orgIds } } })
+  await payload.delete({
+    collection: 'locations',
+    where: { organization: { in: orgIds } },
+    overrideAccess: true,
+  })
   await payload.delete({ collection: 'organizations', where: { id: { in: orgIds } } })
   await payload.delete({
     collection: 'users',
@@ -429,6 +436,55 @@ describe('log API', () => {
       overrideAccess: false,
     })
     expect(own.docs.length).toBeGreaterThan(0)
+  })
+
+  it('filters by location (#92): a location id, or `local` for the workers', async () => {
+    const location = await payload.create({
+      collection: 'locations',
+      overrideAccess: true,
+      depth: 0,
+      data: {
+        organization: orgA.id,
+        name: 'Probe',
+        slug: `probe-${run}`,
+        tokenHash: hashProbeToken(`mp_${randomBytes(8).toString('hex')}`),
+        tokenPrefix: randomBytes(4).toString('hex'),
+      } as never,
+    })
+    const multi = await createMonitor(orgA, {
+      name: 'multi',
+      type: 'http',
+      url: 'http://127.0.0.1/',
+    })
+    for (const [msg, extra] of [
+      ['remote', { location: location.id, locationStatus: 'down' }],
+      ['local', { locationStatus: 'up' }],
+    ] as const) {
+      await payload.create({
+        collection: 'heartbeats',
+        overrideAccess: true,
+        data: {
+          monitor: multi.id,
+          organization: orgA.id,
+          status: 'up',
+          msg,
+          time: at(1),
+          ...extra,
+        } as RequiredDataFromCollectionSlug<'heartbeats'>,
+      })
+    }
+    const remote = (await logs(multi, { location: String(location.id) })).body
+    expect(names(remote)).toEqual(['remote'])
+    expect(remote.docs[0]).toMatchObject({
+      status: 'up',
+      location: String(location.id),
+      locationStatus: 'down',
+    })
+    const local = (await logs(multi, { location: 'local' })).body
+    expect(names(local)).toEqual(['local'])
+    expect(local.docs[0]).toMatchObject({ location: 'local', locationStatus: 'up' })
+    expect((await logs(multi)).body.docs).toHaveLength(2)
+    expect((await logs(multi, { location: 'not a location' })).status).toBe(400)
   })
 
   it('keeps the heartbeats route as it was', async () => {

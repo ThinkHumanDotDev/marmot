@@ -72,13 +72,15 @@ interface ResponseLogViewProps {
   monitorId: string
   /** Zone of the timestamps (the organization's). */
   timeZone: string
+  /** Multi-location monitors (#92): the location chosen in the page's filter (id or `local`). */
+  location?: string | null
 }
 
 /**
  * Per-check log of a monitor (#97): every check with its status, HTTP status code, response time
  * and trigger, filterable and paged by cursor. A row opens the check in a sheet.
  */
-export function ResponseLogView({ orgId, monitorId, timeZone }: ResponseLogViewProps) {
+export function ResponseLogView({ orgId, monitorId, timeZone, location }: ResponseLogViewProps) {
   const t = useTranslations('monitors.logs')
   const format = useMonitorFormat(timeZone)
 
@@ -97,7 +99,7 @@ export function ResponseLogView({ orgId, monitorId, timeZone }: ResponseLogViewP
   } | null>(null)
   const [loadingMore, setLoadingMore] = React.useState(false)
 
-  const key = JSON.stringify([status, code, trigger, range])
+  const key = JSON.stringify([status, code, trigger, range, location ?? null])
 
   React.useEffect(() => {
     let cancelled = false
@@ -109,7 +111,7 @@ export function ResponseLogView({ orgId, monitorId, timeZone }: ResponseLogViewP
     if (range !== ANY) {
       query.from = new Date(Date.now() - RANGE_OPTIONS[range as RangeOption]).toISOString()
     }
-    // #92 (multi-location checks): the location filter joins here.
+    if (location) query.location = location
     responseLogApi
       .list(orgId, monitorId, query)
       .then((page) => {
@@ -121,7 +123,7 @@ export function ResponseLogView({ orgId, monitorId, timeZone }: ResponseLogViewP
     return () => {
       cancelled = true
     }
-  }, [orgId, monitorId, key, status, code, trigger, range])
+  }, [orgId, monitorId, key, status, code, trigger, range, location])
 
   const current = result?.key === key ? result : null
   // While new filters load, the previous rows stay on screen.

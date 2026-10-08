@@ -823,6 +823,11 @@ export const OPERATIONS: OperationSpec[] = [
         description: 'Inclusive end (ISO 8601)',
         schema: { type: 'string', format: 'date-time' },
       },
+      {
+        name: 'location',
+        description: "Checks of one location: its id, or `local` for this server's workers",
+        schema: { type: 'string', examples: ['local', '3'] },
+      },
       { name: 'limit', description: '1–200, default 50', schema: { type: 'integer' } },
       {
         name: 'cursor',
@@ -832,7 +837,7 @@ export const OPERATIONS: OperationSpec[] = [
     ],
     response: {
       description:
-        '`{ docs: [{ id, time, status, msg, ping, statusCode, trigger, important, assertions: { passed, failed } | null }], nextCursor }`',
+        '`{ docs: [{ id, time, status, msg, ping, statusCode, trigger, important, assertions: { passed, failed } | null, location, locationStatus }], nextCursor }`',
       schema: {
         type: 'object',
         properties: {

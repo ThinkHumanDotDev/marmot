@@ -217,7 +217,9 @@ export async function recordBeat(
       ...(result.probes?.length ? { probes: result.probes as unknown as Heartbeat['probes'] } : {}),
       // Response log (#97): status code and headers of every HTTP check, the body only when the
       // check failed or was degraded.
-      ...responseFields(result, next.status),
+      // On a multi-location monitor the reporting location's own outcome decides: a failing location
+      // keeps its body even while the quorum is still up.
+      ...responseFields(result, quorum ? quorum.location.next.status : next.status),
     },
   })) as Heartbeat
 

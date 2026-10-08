@@ -46,7 +46,12 @@ export const responseLogFiltersSchema = z.object({
   from: dateParam.optional(),
   /** Inclusive end (ISO instant). */
   to: dateParam.optional(),
-  // #92 (multi-location checks): a `location` filter is added here and in `responseLogWhere`.
+  /** Checks of one location (#92): a location id, or `local` for this server's workers. */
+  location: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9-]{1,64}$/, 'expected a location id or "local"')
+    .optional(),
 })
 
 export type ResponseLogFilters = z.infer<typeof responseLogFiltersSchema>
@@ -89,6 +94,10 @@ export interface ResponseLogEntry {
   important: boolean
   /** Assertion counts of the check; `null` when the type evaluates none. */
   assertions: { passed: number; failed: number } | null
+  /** Location that ran the check (#91): its id, or `local` for this server's workers. */
+  location: string
+  /** Multi-location monitors (#92): the location's own status; `status` is the quorum. */
+  locationStatus: LogStatus | null
 }
 
 export interface ResponseLogPage {

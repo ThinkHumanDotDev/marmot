@@ -13,6 +13,7 @@
 import type { Payload, Where } from 'payload'
 
 import { parseAssertionResults } from '@/lib/assertion-results'
+import { heartbeatLocationKey } from '@/lib/probe-locations'
 import { parseRequestTiming } from '@/lib/request-timing'
 import {
   LOG_MAX_PAGE_SIZE,
@@ -27,6 +28,7 @@ import {
   type StoredResponse,
 } from '@/lib/response-log'
 import type { Heartbeat } from '@/payload-types'
+import { heartbeatLocationWhere } from '@/server/monitors/location-view'
 
 type Id = string | number
 
@@ -110,7 +112,7 @@ export function responseLogWhere(
   if (filters.trigger === 'schedule') and.push({ trigger: { not_equals: 'manual' } })
   if (filters.from) and.push({ time: { greater_than_equal: new Date(filters.from).toISOString() } })
   if (filters.to) and.push({ time: { less_than_equal: new Date(filters.to).toISOString() } })
-  // #92 (multi-location checks): `if (filters.location) and.push({ location: { equals: … } })`.
+  if (filters.location) and.push(heartbeatLocationWhere(filters.location))
   if (cursor) {
     const at = new Date(cursor.t).toISOString()
     const ids = cursor.ids.map((id) => toId(payload, id))
@@ -154,6 +156,8 @@ export function toResponseLogEntry(heartbeat: Heartbeat): ResponseLogEntry {
     trigger: triggerOf(heartbeat),
     important: Boolean(heartbeat.important),
     assertions: assertionCounts(heartbeat.assertions),
+    location: heartbeatLocationKey(heartbeat.location),
+    locationStatus: heartbeat.locationStatus ?? null,
   }
 }
 
@@ -200,6 +204,8 @@ const LIST_SELECT = {
   important: true,
   assertions: true,
   time: true,
+  location: true,
+  locationStatus: true,
 } as const
 
 /** One page of a monitor's log, newest first. */
