@@ -1,0 +1,52 @@
+# Needs a human
+
+- Stray branch `chore/push-probe` on origin (created while testing push access; the git proxy blocks branch deletion). Delete it on GitHub.
+- PR #193 (chore(release): v0.1.1) and #189 (Railway template) were left alone: not milestone 0.2+ work / release is yours to cut.
+- #198 (#131 notification picker): manual click-through/screenshots of the form card and the channel "Monitors" dialog (headless env).
+- v0.1.1 image tag exists; Railway Dockerfiles now pin 0.1.1 (#197) — confirm the GHCR image for 0.1.1 was published before publishing the Railway template.
+- #203 (#106): no screenshots; badges ignore showValues; maintenance on static components is page-wide (follow-ups listed in PR).
+- #204 (#102): without trustProxy all visitors of a protected page share one login rate-limit bucket (documented) — consider enabling trustProxy behind a proxy. New env STATUS_PAGE_SESSION_DAYS.
+- #210 (#154): public JSON `maintenance[].id` is now the occurrence id (breaking; `maintenanceId` added). Existing maintenances get no default reminders. Editing posted updates not implemented.
+- #207 (#103): IP allow-list mode admits nobody unless trustProxy is on; exporting access settings left as follow-up.
+- #206 (#105): an active "danger" incident with no components now shows "Major outage" after upgrade.
+- #214 (#104 subscribers): real SMTP/Twilio sending only tested with stubs; custom-domain manage/unsubscribe links use the main server URL; no e2e/screenshots.
+- #211 (#108 feeds): not validated with the W3C feed validator / an iCal validator; Statuspage JSON checked against a fixture only.
+- #213 (#107): magic-link sign-in doesn't return visitors to the permalink they opened.
+- #216 (#134 push cron): behaviour change — a reported DOWN (/fail, exit code, ?status=down) now stays DOWN until the next success. Not built (need own issues?): slug push URLs, ?create=1 auto-create, systemd oncalendar. Concurrent start/finish can lose a run record.
+- #215 (#93 degraded): incident with degraded_performance impact now shows overall "Degraded performance" (was "Partially degraded service"). No screenshots of the new amber colour.
+- #220 (#148): connectivity check is env-only (CONNECTIVITY_CHECK_*), off by default; local targets auto-detected (no per-monitor override); one failed probe round = offline (may flap).
+- #223 (#150 Liquid): custom SMTP HTML bodies now auto-escape values (was raw) — values with < or & render differently. Telegram HTML template still unescaped (pre-existing).
+- #224 (#115): /api/docs loads Scalar API reference from jsDelivr CDN — check CSP / self-hosting preference; API keys get 403 on members/SSO/billing routes by design.
+- #226 (#119 MCP): decide whether API keys may read the audit log (would enable list_audit_logs tool). OAuth 2.1 for MCP is a follow-up.
+- #117 Terraform provider: NOT started — issue specifies a separate repo (Terraform Plugin Framework, Go) published to the Terraform/OpenTofu registries, plus acceptance tests against a compose-started instance. Needs you to create the repo (e.g. thinkhumandotdev/terraform-provider-marmot), registry namespace + GPG signing key. The API it needs (#224 API keys + OpenAPI, #227 CLI/monitor keys) is in flight.
+- #118 GitHub Action: shipped inside this repo as `action/` (uses: thinkhumandotdev/marmot/action@vX) — a dedicated marmot-action repo / Marketplace listing is a follow-up if wanted.
+- #227 (#116 CLI): not published to npm (package is private); monitor `key` not yet in the UI form.
+- #229 (#158 OIDC groups): SSO-mapped members bypass plan member limits; Payload admin login form has no break-glass (?local=1 via /login); no screenshots; GitHub/Google not subject to group allow-list.
+- #230 (#118 Action): Marketplace listing needs a separate marmot-action repo; action/dist bundle must be rebuilt (pnpm build:action) when src/cli, validation or cli i18n change, or the "bundle up to date" job goes red. Run mode needs #217's check route to accept org API keys (follow-up once #224 lands — orchestrator to fold into #227/#226 reconciliation).
+- #221 (#100 monitor incidents): Decide: `acknowledged`/`resolved` channel events are ON by default (deviates from #219's "defaults = old behaviour"); remove from DEFAULT_CHANNEL_EVENTS to make opt-in.
+- #220: manual "Check now" (recorded) is gated while checker offline.
+- #224 (#115 API keys): keys keep working under SSO-only mode / enforceSso (documented; revoke keys to stop automation); check-now requires a `write` key; no screenshots of scope selector.
+- #228 (#157 webhooks): fixed a real Mongo bug in afterCommit (dataloader turned null txn id into {} → work never ran); also affected incident subscriber notifications on Mongo before this PR.
+- #232 (#142 Globalping): review decision — Globalping API 5xx/network errors also DEFER (PENDING, no notify) instead of DOWN; rate-limit back-off is per worker process (in memory); no per-probe table in UI yet; no screenshots.
+- #233 (#95 percentiles): check the new stats panel visually (light/dark, 288-bar 1d chart); old stat rows have no histogram (percentiles fill in over time); Prometheus quantiles via /api/metrics?quantiles=true.
+- #234 (#91 probe agents): same image with MARMOT_ROLE=probe (no separate tag); one location per monitor until #92; no screenshots; follow-ups: separate image tag, Check-now dispatch to probe, CLI support for locations, realtime status.
+- Pre-existing bug found by #91 worker: push monitors handled in the web process ignore maintenance windows (maintenance resolver only installed in the worker). Suggested as a separate task.
+- #235 (#94 timing): with redirects only the final hop is timed; via proxy only TTFB/transfer; gRPC timing not covered; no screenshots.
+- Possible flaky test: tests/int/status-page-subscribers "refuses forged links" failed once locally for the #94 worker, passed on re-run — worth a look.
+- Possible flaky test: src/server/monitor-types/assertions.test.ts — 50 ms regex sandbox timeout tripped under load (seen by #238 worker during a concurrent build); may flake on busy CI runners.
+- SECURITY (pre-existing on main, fixed in #242): `heartbeats` collection read access was "any logged-in user" — any user could read any org's heartbeats via Payload REST. #242 scopes it to org `monitor:read`. Released versions (v0.1.1) likely affected — consider an advisory/patch release.
+- #242 (#97 response log): stacked on #235; credentials echoed by targets are scrubbed; no E2E/screenshots; follow-ups: #92 location filter, CLI `monitors logs` → /logs.
+- #243 (#237 retention): single-parent cascades elsewhere (e.g. deleting a monitor with a huge heartbeat history) still use unbounded payload.delete — follow-up.
+- #244 (#92 quorum): offline probe locations keep last status in quorum; per-location data not in API/status pages/badges/CLI; location chart hourly only; no screenshots.
+- SECURITY: #245 fixes cross-org reads of heartbeats + stat-minutely/hourly/daily (v0.1.0 and v0.1.1 affected → decide on advisory/patch release). Legacy heartbeats without organization become superadmin-only.
+- SECURITY (pre-existing): `media` collection only defines read access, so any logged-in user can create/update/delete media (Payload default). Fix PR being prepared.
+- #248 (media writes): org logo + avatar now go through new routes (POST/DELETE /api/orgs/:orgId/logo, /api/account/avatar); media create/update/delete superadmin-only. Consider auditing media uploaded via the old open endpoint on existing deployments; disclosure decision.
+- #250 (flake fix): SafeRegExp budget now CPU-time based (100 ms CPU / 1 s wall cap). Production risk noted: Liquid TEMPLATE_RENDER_LIMIT_MS=200 is wall-clock, so notification templates could fail to render on a saturated worker — candidate follow-up.
+- #195 Railway button: BLOCKED on you — publish the Railway template (issue steps 2–4: `pnpm railway:bootstrap`, generate template, secrets, publish, test-deploy) and supply the template slug + referralCode. Then the README change is ~5 lines (format at deploy/railway/README.md:75).
+- #252 (#130 Helm): on first release make the GHCR package charts/marmot public + link to repo; chart DOCKER_SOCKET_ENABLED=false by default; changing DATABASE_URL + version needs two upgrades (documented).
+- #254 (#99 OTLP): design deviation — collectors are org resources monitors point to (not per-monitor endpoint/headers) to keep secrets out of monitor docs/exports; JSON only (no protobuf/gzip; Datadog needs Agent/Collector); no screenshots.
+- #253 (#177 email verification): off by default; pending users can log in but can't create orgs/invitations/channels; no e2e/screenshots of /verify-email.
+- #255 (#161 plan limits): also fixes retention ignoring the keepDataPeriodDays instance setting (all installs). Decisions: downgraded orgs keep existing over-limit pages/domains; SSO skips full orgs (login still succeeds); imports raise intervals rather than fail. Follow-ups: badges/status pages still label "1y" uptime under shorter plan retention; OpenAPI lacks 402 docs.
+- #256 (#159 demo mode): all checks simulated (issue mentioned safe public targets); compose file docker/docker-compose.demo.yml; refuses to start on a DB with non-demo accounts unless DEMO_MODE_FORCE. Needs: deploy a public demo host, screenshots.
+- #257 (#124 monitor list, "Part of"): not done — sortable table view, bulk add-to-maintenance / add-to-status-page-group, MCP bulk tool; no single DB transaction for bulk (per-monitor results). #124 stays open for those. e2e reset-db leaves orgs behind in a DB shared with int tests (CI unaffected).
+- #258 (#164 magic link): off by default; counts as local login (blocked under SSO-only; owners/superadmins break-glass under enforceSso, audited); Payload's failed-password lockout doesn't block link sign-in; e2e now routes all mail to an in-memory SMTP sink; no screenshots.
