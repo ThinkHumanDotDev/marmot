@@ -102,6 +102,9 @@ export async function seedDemoData(
       email: account.email,
       name: account.name,
       password: account.password,
+      // Verified, whatever `requireEmailVerification` says (#253): nobody can confirm these inboxes.
+      emailVerified: true,
+      emailVerifiedAt: now.toISOString(),
       organizations: [{ organization: orgId, role: account.role }],
     })
     userIds.push(user.id)

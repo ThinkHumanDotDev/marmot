@@ -43,6 +43,7 @@ const STATIC_ROUTES = new Set([
   'signup',
   'forgot-password',
   'reset-password',
+  'verify-email',
   'setup',
   'onboarding',
   'admin',

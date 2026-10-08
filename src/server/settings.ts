@@ -7,6 +7,7 @@ import type { InstanceSetting } from '@/payload-types'
 export interface InstanceSettings {
   primaryBaseUrl: string
   allowSignup: boolean
+  requireEmailVerification: boolean
   entryPage: 'dashboard' | 'status-page'
   tlsExpiryNotifyDays: number[]
   domainExpiryNotifyDays: number[]
@@ -36,6 +37,7 @@ export function defaultInstanceSettings(): InstanceSettings {
   return {
     primaryBaseUrl: env.NEXT_PUBLIC_SERVER_URL,
     allowSignup: !env.DISABLE_SIGNUP,
+    requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
     entryPage: 'dashboard',
     tlsExpiryNotifyDays: [...DEFAULT_EXPIRY_NOTIFY_DAYS],
     domainExpiryNotifyDays: [...DEFAULT_EXPIRY_NOTIFY_DAYS],
@@ -61,6 +63,10 @@ export function resolveInstanceSettings(
   return {
     primaryBaseUrl: doc.primaryBaseUrl?.trim() || defaults.primaryBaseUrl,
     allowSignup: typeof doc.allowSignup === 'boolean' ? doc.allowSignup : defaults.allowSignup,
+    requireEmailVerification:
+      typeof doc.requireEmailVerification === 'boolean'
+        ? doc.requireEmailVerification
+        : defaults.requireEmailVerification,
     entryPage: doc.entryPage === 'status-page' ? 'status-page' : 'dashboard',
     tlsExpiryNotifyDays: numbers(doc.tlsExpiryNotifyDays, defaults.tlsExpiryNotifyDays),
     domainExpiryNotifyDays: numbers(doc.domainExpiryNotifyDays, defaults.domainExpiryNotifyDays),
@@ -104,4 +110,16 @@ export async function isSignupAllowed(payload: Payload): Promise<boolean> {
   // Demo mode (#159): everyone shares the demo account; new accounts would survive no reset.
   if (env.OIDC_DISABLE_LOCAL_LOGIN || env.DEMO_MODE) return false
   return (await getInstanceSettings(payload)).allowSignup
+}
+
+/**
+ * Whether new self-service accounts must confirm their address before they may create
+ * organizations, invitations or notification channels: `requireEmailVerification`, defaulting to
+ * `REQUIRE_EMAIL_VERIFICATION` (off).
+ */
+export async function isEmailVerificationRequired(payload: Payload): Promise<boolean> {
+  // Demo mode (#159): no signups, no address changes, and the demo accounts are verified; a
+  // verification requirement could only lock the shared account out.
+  if (env.DEMO_MODE) return false
+  return (await getInstanceSettings(payload)).requireEmailVerification
 }

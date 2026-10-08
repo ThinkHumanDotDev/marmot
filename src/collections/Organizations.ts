@@ -29,6 +29,7 @@ import { translateError, type ErrorKey, type ErrorValues } from '@/server/errors
 import { slugMessageIn, userLocale } from '@/server/request-locale'
 
 import type { Organization, User } from '@/payload-types'
+import { requireVerifiedEmail } from '@/server/auth/email-verification'
 
 export { PLANS, type Plan } from '@/lib/entitlements'
 
@@ -268,6 +269,8 @@ export const Organizations: CollectionConfig = {
     delete: orgScoped('organization:delete', { field: 'id' }),
   },
   hooks: {
+    // Unconfirmed self-service accounts cannot create organizations (#177).
+    beforeOperation: [requireVerifiedEmail],
     beforeValidate: [normalizeSlug],
     afterChange: [grantOwnerMembership, syncStripeCustomer, trackOrgCreated],
     beforeDelete: [

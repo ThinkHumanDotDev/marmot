@@ -84,6 +84,15 @@ export const InstanceSettings: GlobalConfig = {
       },
     },
     {
+      name: 'requireEmailVerification',
+      type: 'checkbox',
+      defaultValue: () => env.REQUIRE_EMAIL_VERIFICATION,
+      admin: {
+        description:
+          'New self-service sign-ups must confirm their email address before they can create organizations, invite people or add notification channels. Defaults to REQUIRE_EMAIL_VERIFICATION.',
+      },
+    },
+    {
       name: 'entryPage',
       type: 'select',
       defaultValue: 'dashboard',

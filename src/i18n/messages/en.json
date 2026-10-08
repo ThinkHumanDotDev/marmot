@@ -1238,7 +1238,8 @@
       "submitting": "Setting up…",
       "ready": "Marmot is ready",
       "alreadyDone": "Setup has already been completed. Please sign in.",
-      "failed": "Could not complete setup."
+      "failed": "Could not complete setup.",
+      "verificationSmtpWarning": "Email verification is on but SMTP is not configured: confirmation links for new sign-ups are only written to the server log. Set SMTP_HOST to send them."
     },
     "ssoErrors": {
       "provider_unknown": "This sign-in method is not configured on this server.",
@@ -1276,6 +1277,32 @@
       "noSsoForEmail": "No single sign-on is set up for that email domain. Sign in with your password, or ask your administrator.",
       "noSsoForOrganization": "No single sign-on is set up for that organization.",
       "failed": "Could not look that up."
+    },
+    "verifyEmail": {
+      "pageTitle": "Confirm your email address",
+      "title": "Check your inbox",
+      "description": "We sent a confirmation link to <strong>{email}</strong>. Open it to finish setting up your account.",
+      "blocked": "Until then you cannot create organizations, invite people or add notification channels.",
+      "resend": "Send a new link",
+      "resending": "Sending…",
+      "resent": "A new link is on its way.",
+      "resendFailed": "Could not send a new link.",
+      "continue": "I have confirmed my address",
+      "signOut": "Sign out",
+      "wrongAddress": "Wrong address?",
+      "newEmail": "New email address",
+      "changeEmail": "Change address and resend",
+      "changingEmail": "Saving…",
+      "emailChanged": "Address updated. We sent a new link to {email}.",
+      "changeFailed": "Could not change the address.",
+      "confirmTitle": "Confirm your email address",
+      "confirmDescription": "Confirm the address to finish setting up your Marmot account.",
+      "confirm": "Confirm email address",
+      "confirming": "Confirming…",
+      "confirmFailed": "This confirmation link is invalid or has expired.",
+      "confirmedDescription": "Thanks, {email} is confirmed.",
+      "toDashboard": "Continue to Marmot",
+      "toSignIn": "Sign in"
     }
   },
   "settings": {
@@ -1658,7 +1685,9 @@
         "backup_codes_regenerated": "Backup codes regenerated",
         "sso_login": "Signed in with single sign-on",
         "sso_login_failed": "Failed single sign-on",
-        "sso_group_denied": "Single sign-on refused: not in an allowed group"
+        "sso_group_denied": "Single sign-on refused: not in an allowed group",
+        "email_verification_sent": "Confirmation email sent",
+        "email_verified": "Email address confirmed"
       }
     },
     "billing": {
@@ -1765,6 +1794,8 @@
       "baseUrlHint": "Used in notification links, status page URLs and emails.",
       "allowSignup": "Allow sign-up",
       "allowSignupHint": "Anyone can create an account. When off, only invited people can join.",
+      "requireEmailVerification": "Require email verification",
+      "requireEmailVerificationHint": "New self-service accounts confirm their address by email before they can create organizations, invite people or add notification channels. Existing accounts are not affected.",
       "entryPage": "Entry page",
       "entryPageDashboard": "Dashboard",
       "entryPageStatusPage": "Status page",
@@ -1803,6 +1834,10 @@
         "sending": "Sending…",
         "sent": "Test email sent to {to}",
         "failed": "Could not send the test email."
+      },
+      "emailVerificationSmtpWarning": {
+        "title": "Verification emails are only logged",
+        "description": "Email verification is on, but <code>SMTP_HOST</code> is not set, so confirmation links are written to the server log instead of being sent. New accounts cannot confirm their address on their own until SMTP is configured."
       }
     },
     "organization": {
@@ -5315,6 +5350,14 @@
       "onlineSubject": "Probe location back online: {location}",
       "onlineText": "The probe location {location} of {organization} is back online since {time} after {minutes, plural, one {# minute} other {# minutes}} offline.",
       "action": "Probe locations:"
+    },
+    "verification": {
+      "subject": "Confirm your email address for Marmot",
+      "intro": "Confirm that <strong>{email}</strong> is your address to finish setting up your Marmot account.",
+      "button": "Confirm email address",
+      "link": "Confirm your email address: {url}",
+      "expires": "This link expires in {hours, plural, one {# hour} other {# hours}} and works once.",
+      "ignore": "If you did not create a Marmot account, you can ignore this email."
     }
   },
   "apiDocs": {
@@ -5550,7 +5593,9 @@
     "monitorTooManyLocations": "A monitor can be checked from at most {max, plural, one {# location} other {# locations}}.",
     "monitorTypeNotOnProbe": "Group, manual, push, Steam and Globalping monitors cannot run on a probe location.",
     "checkOnProbe": "This monitor is checked by a probe location, so “Check now” cannot record a result from this server. Run a dry run (record=false) to test the target from here.",
-    "demoModeRestricted": "This is turned off on the demo instance. Install Marmot to use it."
+    "demoModeRestricted": "This is turned off on the demo instance. Install Marmot to use it.",
+    "emailNotVerified": "Confirm your email address first: open the link we sent you, or request a new one.",
+    "verificationLinkInvalid": "This confirmation link is invalid or has expired. Sign in and request a new one."
   },
   "subscriberMessages": {
     "sms": {

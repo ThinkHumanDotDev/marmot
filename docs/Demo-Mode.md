@@ -55,19 +55,19 @@ Monitors visitors create get a default profile and a message saying the check wa
 
 ## Guard rails
 
-| What                                                    | In demo mode                                                                                       |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Notifications (every provider, test messages, SMS)      | Rendered as usual, then logged to the sink (`demoSink` log lines) instead of sent.                 |
-| Email (invitations, subscriber mail, password reset, …) | The email adapter is the sink, whatever `SMTP_*` says. The SMTP test route answers 403.            |
-| Outbound and subscriber webhooks                        | Logged to the sink. Webhook endpoints cannot be created.                                           |
-| Any other outbound connection                           | The outbound address guard refuses every target before resolving it (`Blocked: … (DEMO_MODE)`).    |
-| Monitor targets                                         | Never contacted (simulated checks); the domain expiry lookup is off; Docker host tests answer 403. |
-| Demo account                                            | Password, email, password reset, account deletion and two-factor setup are refused.                |
-| Signups and first-run setup                             | Off.                                                                                               |
-| API keys, SSO connections and domains, SSO enforcement  | Refused.                                                                                           |
-| Uploads (logos, avatars, favicons), custom domains      | Refused.                                                                                           |
-| Imports (Marmot, Uptime Kuma, subscriber CSV), billing  | Refused.                                                                                           |
-| Instance settings                                       | Read-only.                                                                                         |
+| What                                                    | In demo mode                                                                                                   |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Notifications (every provider, test messages, SMS)      | Rendered as usual, then logged to the sink (`demoSink` log lines) instead of sent.                             |
+| Email (invitations, subscriber mail, password reset, …) | The email adapter is the sink, whatever `SMTP_*` says. The SMTP test route answers 403.                        |
+| Outbound and subscriber webhooks                        | Logged to the sink. Webhook endpoints cannot be created.                                                       |
+| Any other outbound connection                           | The outbound address guard refuses every target before resolving it (`Blocked: … (DEMO_MODE)`).                |
+| Monitor targets                                         | Never contacted (simulated checks); the domain expiry lookup is off; Docker host tests answer 403.             |
+| Demo account                                            | Password, email, password reset, account deletion and two-factor setup are refused.                            |
+| Signups, first-run setup, email verification            | Off. The demo accounts are seeded verified; `REQUIRE_EMAIL_VERIFICATION` and the instance setting are ignored. |
+| API keys, SSO connections and domains, SSO enforcement  | Refused.                                                                                                       |
+| Uploads (logos, avatars, favicons), custom domains      | Refused.                                                                                                       |
+| Imports (Marmot, Uptime Kuma, subscriber CSV), billing  | Refused.                                                                                                       |
+| Instance settings                                       | Read-only.                                                                                                     |
 
 Refusals answer `403` with `errors[0].data = { code: 'demo_mode', feature }`. They are collection hooks
 (`src/server/demo/guards.ts`), so the Marmot routes, the Payload REST/GraphQL API, the admin panel and the

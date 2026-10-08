@@ -61,6 +61,8 @@ export const AUTH_ACTIONS = [
   'auth.sso_login',
   'auth.sso_login_failed',
   'auth.sso_group_denied',
+  'auth.email_verification_sent',
+  'auth.email_verified',
 ] as const
 
 /** Verbs beyond create/update/delete, named after what the user did. */

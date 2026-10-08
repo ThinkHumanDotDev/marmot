@@ -37,7 +37,7 @@ import { runCheck } from '@/server/engine/run-check'
 import { scheduleDemoJobs } from '@/server/maintenance/job'
 import { sendNotification } from '@/server/notifications/send'
 import { findBlockedMessage, guardedFetch } from '@/server/security/outbound-guard'
-import { isSignupAllowed } from '@/server/settings'
+import { isEmailVerificationRequired, isSignupAllowed } from '@/server/settings'
 import { runSetup, SetupError } from '@/server/setup'
 import { postSubscriberWebhook } from '@/server/status-pages/subscribers/deliver'
 import { postWebhook } from '@/server/webhooks/deliver'
@@ -164,6 +164,7 @@ describe('demo mode', () => {
       const owner = users.docs.find((u) => u.email === DEMO_ACCOUNT.email)
       expect(owner?.organizations?.[0]?.role).toBe('owner')
       expect(owner?.superadmin).toBeFalsy()
+      expect(users.docs.every((u) => u.emailVerified === true)).toBe(true)
       expect(await count('monitors')).toBe(DEMO_MONITORS.length)
       expect(new Set(DEMO_MONITORS.map((m) => m.type)).size).toBeGreaterThanOrEqual(10)
       expect(await count('status-pages')).toBe(DEMO_STATUS_PAGES.length)
@@ -448,8 +449,9 @@ describe('demo mode', () => {
   })
 
   describe('guard rails', () => {
-    it('turns signups and first-run setup off', async () => {
+    it('turns signups, email verification and first-run setup off', async () => {
       expect(await isSignupAllowed(payload)).toBe(false)
+      expect(await isEmailVerificationRequired(payload)).toBe(false)
       await expect(
         runSetup(payload, {
           name: 'x',
