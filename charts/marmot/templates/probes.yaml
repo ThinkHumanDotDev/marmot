@@ -1,0 +1,85 @@
+{{- range $agent := .Values.probes.agents }}
+{{- if not $agent.name }}
+{{- fail "every entry in probes.agents needs a name" }}
+{{- end }}
+{{- if and (not $agent.existingSecret) (not $agent.token) }}
+{{- fail (printf "probes.agents[%s]: set existingSecret or token" $agent.name) }}
+{{- end }}
+{{- $name := printf "%s-probe-%s" (include "marmot.fullname" $) $agent.name | trunc 63 | trimSuffix "-" }}
+{{- $component := printf "probe-%s" $agent.name | trunc 63 | trimSuffix "-" }}
+{{- $tokenKey := default "MARMOT_PROBE_TOKEN" $agent.tokenKey }}
+{{- if not $agent.existingSecret }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" $component) | nindent 4 }}
+type: Opaque
+stringData:
+  {{ $tokenKey }}: {{ $agent.token | quote }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" $component) | nindent 4 }}
+spec:
+  # One agent per location.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "marmot.componentSelectorLabels" (dict "ctx" $ "component" $component) | nindent 8 }}
+        {{- with $.Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- if not $agent.existingSecret }}
+      annotations:
+        checksum/token: {{ $agent.token | sha256sum }}
+      {{- end }}
+    spec:
+      {{- include "marmot.podCommon" $ | nindent 6 }}
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: probe
+          image: {{ include "marmot.image" $ }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
+          env:
+            - name: MARMOT_ROLE
+              value: probe
+            - name: MARMOT_URL
+              value: {{ default $.Values.serverUrl $agent.marmotUrl | quote }}
+            - name: MARMOT_PROBE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default $name $agent.existingSecret }}
+                  key: {{ $tokenKey }}
+            {{- with $agent.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml (default $.Values.probes.resources $agent.resources) | nindent 12 }}
+      {{- with $agent.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $agent.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $agent.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

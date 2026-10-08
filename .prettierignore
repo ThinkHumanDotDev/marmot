@@ -7,3 +7,5 @@ src/migrations
 playwright-report
 test-results
 dist
+# Helm templates are Go templates, not YAML
+charts/*/templates

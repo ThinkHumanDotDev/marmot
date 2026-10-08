@@ -1,0 +1,20 @@
+apiVersion: v2
+name: marmot
+description: Self-hosted status monitor for teams (web, worker and realtime roles, optional probe agents)
+type: application
+# Chart version and appVersion follow the Marmot release (scripts/release.sh sets both).
+version: 0.2.0
+appVersion: '0.2.0'
+kubeVersion: '>=1.25.0-0'
+home: https://github.com/ThinkHumanDotDev/marmot
+sources:
+  - https://github.com/ThinkHumanDotDev/marmot
+keywords:
+  - monitoring
+  - uptime
+  - status-page
+maintainers:
+  - name: ThinkHumanDotDev
+    url: https://github.com/ThinkHumanDotDev
+annotations:
+  artifacthub.io/license: AGPL-3.0-only

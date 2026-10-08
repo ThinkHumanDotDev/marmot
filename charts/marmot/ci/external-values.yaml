@@ -1,0 +1,40 @@
+# External MongoDB and Redis from an existing Secret, autoscaling, PDBs and a probe agent.
+serverUrl: https://status.example.com
+database:
+  adapter: mongodb
+secrets:
+  existingSecret: marmot-secrets
+persistence:
+  enabled: false
+config:
+  S3_BUCKET: marmot-uploads
+  S3_REGION: auto
+web:
+  autoscaling:
+    enabled: true
+  pdb:
+    enabled: true
+worker:
+  replicas: 3
+  pdb:
+    enabled: true
+realtime:
+  replicas: 2
+ingress:
+  enabled: true
+  className: nginx
+  host: status.example.com
+  extraHosts: [status.acme.example]
+  tls:
+    - secretName: marmot-tls
+      hosts: [status.example.com, status.acme.example]
+  realtime:
+    annotations:
+      nginx.ingress.kubernetes.io/affinity: cookie
+probes:
+  agents:
+    - name: office
+      existingSecret: marmot-probe-office
+    - name: lab
+      token: mp_example_token
+      marmotUrl: https://marmot.internal.example
