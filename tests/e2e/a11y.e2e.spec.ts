@@ -17,6 +17,8 @@ const statusPageSlug = `e2e-a11y-status-${run}`
 let monitorId: DocId
 const created: { collection: string; id: DocId }[] = []
 
+const membersTable = (page: Page) => page.locator('#main-content').getByTestId('members-table')
+
 /** Runs axe with the WCAG 2.1 A/AA rules and fails on serious or critical findings. */
 async function expectNoSeriousViolations(page: Page, label: string) {
   const results = await new AxeBuilder({ page })
@@ -110,7 +112,9 @@ test.describe('Accessibility', () => {
     {
       name: 'members',
       path: () => `/${org.slug}/members`,
-      ready: (page: Page) => page.getByTestId('members-table'),
+      // Scoped to the main landmark: while the route streams in, React keeps a hidden copy of the
+      // table outside it, and an unscoped test id then matches twice.
+      ready: (page: Page) => membersTable(page),
     },
   ]
 
@@ -138,7 +142,7 @@ test.describe('Accessibility', () => {
 
   test('command palette finds monitors and runs keyboard navigation', async ({ page }) => {
     await page.goto(`/${org.slug}/members`)
-    await expect(page.getByTestId('members-table')).toBeVisible()
+    await expect(membersTable(page)).toBeVisible()
 
     // ⌘K / Ctrl+K opens the palette; typing a monitor name and Enter opens its detail page.
     await page.keyboard.press('ControlOrMeta+k')
