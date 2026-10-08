@@ -152,6 +152,14 @@ const schema = z.object({
   // `/` then routes straight to the setup wizard or the login page.
   LANDING_PAGE_ENABLED: booleanish.default(false),
 
+  // Demo mode (#159, docs/Demo-Mode.md): the instance wipes itself and reseeds a fixed dataset on
+  // boot and every DEMO_RESET_INTERVAL_MINUTES; checks are simulated and nothing leaves the
+  // instance. Refuses a database with non-demo accounts unless DEMO_MODE_FORCE is set (which
+  // DELETES that data on the next reset).
+  DEMO_MODE: booleanish.default(false),
+  DEMO_RESET_INTERVAL_MINUTES: z.coerce.number().int().min(15).max(10_080).default(60),
+  DEMO_MODE_FORCE: booleanish.default(false),
+
   // Billing scaffold (disabled by default on self-host)
   BILLING_ENABLED: booleanish.default(false),
   STRIPE_SECRET_KEY: z.string().optional(),

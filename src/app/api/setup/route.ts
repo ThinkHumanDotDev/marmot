@@ -1,6 +1,7 @@
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
+import { demoRefusal } from '@/server/demo/config'
 import { createSetupSession, needsSetup, runSetup, SetupError, setupSchema } from '@/server/setup'
 import { errorText } from '@/server/request-locale'
 
@@ -15,6 +16,9 @@ const error = (message: string, status: number) =>
  * user in and sets the `payload-token` cookie. Refuses with 409 once any user exists.
  */
 export async function POST(request: Request) {
+  // Demo mode (#159): the reset creates the accounts; the database is briefly empty while it runs.
+  const refused = demoRefusal(request, 'setup')
+  if (refused) return refused
   const payload = await getPayload({ config })
   if (!(await needsSetup(payload))) return error(errorText(request, 'setupCompleted'), 409)
 

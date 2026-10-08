@@ -21,6 +21,8 @@ import {
 } from '@/lib/webhooks'
 import type { WebhookDelivery, WebhookEndpoint } from '@/payload-types'
 import { describeNetworkError } from '@/server/notification-providers/http'
+import { isDemoMode } from '@/server/demo/config'
+import { deliverToDemoSink } from '@/server/demo/sink'
 import { findBlockedMessage, guardedFetch } from '@/server/security/outbound-guard'
 
 import { notifyEndpointDisabled } from './disabled-email'
@@ -136,6 +138,20 @@ export async function postWebhook(request: {
     }),
   }
   const requestHeaders = loggedRequestHeaders(headers)
+  // Demo mode (#159): the sink accepts the delivery; nothing is sent.
+  if (isDemoMode()) {
+    deliverToDemoSink('webhook', { event: request.envelope.type, deliveryId: request.deliveryId })
+    return {
+      ok: true,
+      retryable: false,
+      status: 202,
+      requestHeaders,
+      responseHeaders: null,
+      responseBody: null,
+      durationMs: 0,
+      error: null,
+    }
+  }
   const started = performance.now()
   const elapsed = () => Math.round(performance.now() - started)
 

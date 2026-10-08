@@ -628,3 +628,15 @@ be after the last accepted one, `users.twoFactorLastUsedStep`).
 `organizations.plan` + `src/lib/entitlements.ts` express limits. On self-hosted installs everything is
 unlimited and `BILLING_ENABLED=false`. When enabled, `@payloadcms/plugin-stripe` is registered and the Billing
 settings tab appears.
+
+## Demo mode
+
+`DEMO_MODE` (#159, `src/server/demo/`) turns an instance into a self-resetting demo
+([Demo mode](Demo-Mode.md)). The `demo-reset` job scheduler on `marmot:maintenance` (plus a boot job)
+wipes every collection in batches (`deleteInBatches`, in an order that never leaves a required reference
+dangling) and reseeds `dataset.ts` through the Local API, then back-fills heartbeats and stat roll-ups
+through `payload.db.create`. `runCheck` returns `simulateCheck()` instead of running the type's check, and
+the `demo-probes` job feeds the seeded probe locations' results through `ingestProbeResults`. Guard rails
+are collection hooks added by `withDemoGuards` in the collection registry, route refusals
+(`demoRefusal`), the sink (notifications, email adapter, webhooks) and a deny-all outbound address policy.
+Payload's `onInit` refuses to start against a database with non-demo accounts.

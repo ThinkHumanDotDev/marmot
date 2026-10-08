@@ -3,6 +3,8 @@
  * turned into a `CheckResult` for the state machine. Kept apart from the BullMQ processor
  * (`worker.ts`) so the probe agent (`src/probe`) can run checks without Redis or the database.
  */
+import { env } from '@/env'
+import { isSimulatedType, simulateCheck } from '@/server/demo/simulate'
 import {
   getMonitorType,
   isCheckDeferredError,
@@ -48,6 +50,9 @@ export async function runCheck(
   if (!type) {
     return { ok: false, msg: `Unknown monitor type "${monitor.type}"` }
   }
+  // Demo mode (#159): no monitor ever connects to its target (no SSRF, no load on third parties);
+  // the outcome is simulated from the seeded profile. Push, manual and group monitors stay real.
+  if (env.DEMO_MODE && isSimulatedType(monitor.type)) return simulateCheck(monitor)
 
   const signal = AbortSignal.timeout(timeoutMs)
   const ctx: MonitorCheckContext = {

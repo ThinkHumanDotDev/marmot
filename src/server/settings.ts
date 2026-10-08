@@ -101,6 +101,7 @@ export async function getInstanceSettings(payload: Payload): Promise<InstanceSet
  * from single sign-on only.
  */
 export async function isSignupAllowed(payload: Payload): Promise<boolean> {
-  if (env.OIDC_DISABLE_LOCAL_LOGIN) return false
+  // Demo mode (#159): everyone shares the demo account; new accounts would survive no reset.
+  if (env.OIDC_DISABLE_LOCAL_LOGIN || env.DEMO_MODE) return false
   return (await getInstanceSettings(payload)).allowSignup
 }

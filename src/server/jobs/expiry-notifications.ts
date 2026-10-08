@@ -12,6 +12,8 @@
  */
 import type { Payload } from 'payload'
 
+import { env } from '@/env'
+
 import type { Locale } from '@/i18n/locales'
 import { childLogger } from '@/lib/logger'
 import type { Monitor, Notification } from '@/payload-types'
@@ -211,6 +213,8 @@ export function registerExpiryNotificationListener(
     } catch (err) {
       log.error({ err, monitorId: event.monitor.id }, 'certificate expiry check failed')
     }
+    // Demo mode (#159): the RDAP lookup would query a third party for visitor-chosen domains.
+    if (env.DEMO_MODE) return
     try {
       await processDomainExpiry(payload, event, options)
     } catch (err) {

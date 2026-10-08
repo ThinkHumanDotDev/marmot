@@ -12,12 +12,27 @@
  *   online again (#91); the single consumer makes it the only writer of `locations.status`.
  * - `quorum-recompute` (every minute, `src/server/jobs/quorum-recompute.ts`): repairs the status of
  *   multi-location monitors that drifted from their per-location states (#92).
+ * - Demo mode only (#159): `demo-reset` (on boot and every `DEMO_RESET_INTERVAL_MINUTES`,
+ *   `src/server/demo/reset.ts`) wipes and reseeds the demo dataset; `demo-probes` (every minute,
+ *   `src/server/demo/probes.ts`) plays the simulated probe agents.
  */
 import type { Job, Queue, Worker } from 'bullmq'
 import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
 import type { Maintenance } from '@/payload-types'
+import { isDemoMode } from '@/server/demo/config'
+import { DEMO_PROBES_INTERVAL_MS, DEMO_PROBES_JOB_NAME, runDemoProbes } from '@/server/demo/probes'
+import {
+  DEMO_RESET_JOB_NAME,
+  enqueueBootReset,
+  processDemoResetJob,
+  redisLock,
+  removeDemoSchedulers,
+  scheduleDemoReset,
+} from '@/server/demo/reset'
+import { resyncAll } from '@/server/engine/scheduler'
+import { createRedis } from '@/server/redis'
 import { QUEUE_NAMES } from '@/server/engine/names'
 import { createWorker, type QueueFactoryOptions } from '@/server/engine/queues'
 import {
@@ -146,6 +161,9 @@ export async function scheduleMaintenanceStatusJob(queue: Queue): Promise<void> 
   )
 }
 
+/** Redis connection of the demo reset lock (created on the first reset). */
+let demoLockClient: ReturnType<typeof createRedis> | undefined
+
 /** Processor of the maintenance queue: reconciler, wake-ups and retention jobs. */
 export const processMaintenanceJob =
   (payload: Payload) =>
@@ -157,6 +175,14 @@ export const processMaintenanceJob =
     if (job.name === RETENTION_JOB_NAME) return processRetentionJob(payload)(job)
     if (job.name === PROBE_HEALTH_JOB_NAME) return refreshLocationStatuses(payload)
     if (job.name === QUORUM_RECOMPUTE_JOB_NAME) return recomputeQuorumStatuses(payload)
+    if (job.name === DEMO_RESET_JOB_NAME) {
+      demoLockClient ??= createRedis()
+      return processDemoResetJob(payload, job, {
+        resync: (p) => resyncAll(p),
+        withLock: redisLock(demoLockClient),
+      })
+    }
+    if (job.name === DEMO_PROBES_JOB_NAME) return runDemoProbes(payload)
     log.warn({ jobId: job.id, name: job.name }, 'unknown job on the maintenance queue; ignored')
     return undefined
   }
@@ -180,6 +206,25 @@ export async function scheduleQuorumRecomputeJob(queue: Queue): Promise<void> {
 }
 
 /**
+ * Demo mode (#159): upsert the reset and simulated-probe schedulers and enqueue the boot reset; on
+ * any other instance remove them, so a former demo's scheduler can never wipe real data.
+ */
+export async function scheduleDemoJobs(queue: Queue): Promise<void> {
+  if (!isDemoMode()) {
+    await removeDemoSchedulers(queue)
+    await queue.removeJobScheduler(DEMO_PROBES_JOB_NAME)
+    return
+  }
+  await scheduleDemoReset(queue)
+  await queue.upsertJobScheduler(
+    DEMO_PROBES_JOB_NAME,
+    { every: DEMO_PROBES_INTERVAL_MS },
+    { name: DEMO_PROBES_JOB_NAME, opts: { removeOnComplete: 10, removeOnFail: 50 } },
+  )
+  await enqueueBootReset(queue)
+}
+
+/**
  * Worker entrypoint helper: upsert the scheduler and start the worker on the maintenance queue.
  * Returns the worker so the caller can `close()` it on shutdown.
  */
@@ -190,6 +235,7 @@ export async function startMaintenanceWorker(
   await scheduleMaintenanceStatusJob(getMaintenanceQueue(options))
   await scheduleProbeHealthJob(getMaintenanceQueue(options))
   await scheduleQuorumRecomputeJob(getMaintenanceQueue(options))
+  await scheduleDemoJobs(getMaintenanceQueue(options))
   // Re-plan every wake-up once per boot (they may have been lost with Redis).
   try {
     await refreshMaintenanceStatuses(payload, new Date(), { scheduleJobs: 'all' })

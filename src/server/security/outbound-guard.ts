@@ -16,6 +16,7 @@
  * - Everything else: `resolveGuardedTarget` returns the vetted address to connect to.
  *
  * When the guard is off (the default) every helper is a pass-through and nothing is resolved early.
+ * In demo mode (`DEMO_MODE`, #159) it refuses every target before any DNS lookup.
  */
 import dns from 'node:dns'
 import net from 'node:net'
@@ -32,6 +33,7 @@ let cached: { key: string; policy: AddressPolicy } | undefined
 /** The policy for the current environment (rebuilt when the variables change, e.g. in tests). */
 export function getAddressPolicy(): AddressPolicy {
   const key = [
+    env.DEMO_MODE,
     env.MONITOR_DENY_PRIVATE_ADDRESSES,
     env.MONITOR_DENY_CIDRS,
     env.MONITOR_ALLOW_CIDRS,
@@ -43,6 +45,9 @@ export function getAddressPolicy(): AddressPolicy {
         denyPrivate: env.MONITOR_DENY_PRIVATE_ADDRESSES,
         denyCidrs: parseCidrList(env.MONITOR_DENY_CIDRS),
         allowCidrs: parseCidrList(env.MONITOR_ALLOW_CIDRS),
+        // Demo mode (#159): checks are simulated and deliveries go to the sink, so any connection
+        // that still reaches the guard is refused, whatever the target.
+        denyAll: env.DEMO_MODE,
       }),
     }
   }
@@ -57,7 +62,8 @@ export const outboundGuardActive = (): boolean => getAddressPolicy().active
  * host-local notification tools (Apprise) are refused: they would reach the network without
  * passing through this guard.
  */
-export const hostLocalChecksRefused = (): boolean => env.MONITOR_DENY_PRIVATE_ADDRESSES
+export const hostLocalChecksRefused = (): boolean =>
+  env.MONITOR_DENY_PRIVATE_ADDRESSES || env.DEMO_MODE
 
 /** Raised (or passed to socket callbacks) when a target is denied. Never retried. */
 export class BlockedAddressError extends Error {
@@ -68,7 +74,11 @@ export class BlockedAddressError extends Error {
   }
 }
 
-const SETTING = { private: 'MONITOR_DENY_PRIVATE_ADDRESSES', denied: 'MONITOR_DENY_CIDRS' } as const
+const SETTING = {
+  private: 'MONITOR_DENY_PRIVATE_ADDRESSES',
+  denied: 'MONITOR_DENY_CIDRS',
+  demo: 'DEMO_MODE',
+} as const
 
 /** `Blocked: <host> resolves to a private address (MONITOR_DENY_PRIVATE_ADDRESSES)`. */
 export function blockedError(
@@ -78,6 +88,11 @@ export function blockedError(
   if (reason === 'invalid') {
     return new BlockedAddressError(`Blocked: ${host} did not resolve to a valid IP address`)
   }
+  if (reason === 'demo') {
+    return new BlockedAddressError(
+      `Blocked: ${host} cannot be reached on a demo instance (DEMO_MODE)`,
+    )
+  }
   const kind = reason === 'private' ? 'a private' : 'a denied'
   return new BlockedAddressError(
     `Blocked: ${host} resolves to ${kind} address (${SETTING[reason]})`,
@@ -86,9 +101,8 @@ export function blockedError(
 
 /** Error for targets the guard cannot vet at all (unix sockets, named pipes, local tools). */
 export function blockedLocalError(what: string): BlockedAddressError {
-  return new BlockedAddressError(
-    `Blocked: ${what} is not allowed on this instance (MONITOR_DENY_PRIVATE_ADDRESSES)`,
-  )
+  const setting = env.DEMO_MODE ? 'DEMO_MODE' : 'MONITOR_DENY_PRIVATE_ADDRESSES'
+  return new BlockedAddressError(`Blocked: ${what} is not allowed on this instance (${setting})`)
 }
 
 /** Throws `BlockedAddressError` unless the host-local feature `what` is allowed. */
@@ -107,7 +121,7 @@ export function findBlockedMessage(err: unknown, depth = 0): string | null {
     }
   }
   const message = err instanceof Error ? err.message : typeof err === 'string' ? err : ''
-  const match = message.match(/Blocked: .*?(?:\(MONITOR_[A-Z_]+\)|valid IP address)/)
+  const match = message.match(/Blocked: .*?(?:\((?:MONITOR|DEMO)_[A-Z_]+\)|valid IP address)/)
   if (match) return match[0]
   return findBlockedMessage((err as { cause?: unknown }).cause, depth + 1)
 }
@@ -120,6 +134,8 @@ export interface ResolvedAddress {
 /** Resolve `host` (IP literals included) to every address `dns.lookup` returns. */
 async function resolveAll(host: string, family: 0 | 4 | 6 = 0): Promise<ResolvedAddress[]> {
   const bare = stripAddress(host)
+  // Demo mode refuses every target: no need to resolve it (nor to leak the lookup).
+  if (getAddressPolicy().denyAll) throw blockedError(bare, 'demo')
   const literal = net.isIP(bare)
   if (literal) return [{ address: bare, family: literal as 4 | 6 }]
   const results = await dns.promises.lookup(bare, { all: true, family })
@@ -193,6 +209,12 @@ export function guardedLookup(
       : typeof options === 'number'
         ? { family: options }
         : {}
+  if (getAddressPolicy().denyAll) {
+    process.nextTick(() =>
+      callback(blockedError(stripAddress(hostname), 'demo'), opts.all ? [] : ''),
+    )
+    return
+  }
   dns.lookup(hostname, { ...opts, all: true }, (err, addresses) => {
     if (err) return callback(err, opts.all ? [] : '')
     try {
@@ -332,7 +354,9 @@ export async function guardedFetch(input: string | URL, init: RequestInit = {}):
  * `localhost`) is denied, or `null` when it is allowed or is a name that only resolution can judge.
  */
 export function literalTargetDenial(host: string | null | undefined): string | null {
-  if (!host || !outboundGuardActive()) return null
+  // Demo mode simulates every check, so no saved target is ever contacted; refusing only literal
+  // addresses would just make the demo inconsistent.
+  if (!host || !outboundGuardActive() || env.DEMO_MODE) return null
   const trimmed = stripAddress(host.trim())
   if (!trimmed) return null
   const lower = trimmed.toLowerCase().replace(/\.$/, '')

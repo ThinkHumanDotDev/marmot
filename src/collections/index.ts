@@ -1,5 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
+import { withDemoGuards } from '@/server/demo/guards'
+
 import { ApiKeys } from './ApiKeys'
 import { withAuditHooks } from './audit'
 import { AuthAccounts } from './AuthAccounts'
@@ -77,4 +79,7 @@ export const collections: CollectionConfig[] = [
   AuditLogs,
   WebhookEndpoints,
   WebhookDeliveries,
-].map(withAuditHooks)
+]
+  .map(withAuditHooks)
+  // Demo mode guard rails (#159): no-ops unless DEMO_MODE is set.
+  .map(withDemoGuards)

@@ -1,3 +1,4 @@
+import { demoRefusal } from '@/server/demo/config'
 import { isSubscriberChannel } from '@/lib/status-page-subscribers'
 import { relationId } from '@/server/audit/collection-hooks'
 import { actorFromRequest, AUDIT_SKIP_CONTEXT } from '@/server/audit/context'
@@ -31,6 +32,9 @@ async function readCsv(request: Request): Promise<string | null> {
  * skipped and reported. Needs `subscriber:manage`. At most 10 000 rows.
  */
 export async function POST(request: Request, { params }: RouteContext) {
+  // Demo mode (#159): no bulk lists of (real) addresses on a public demo.
+  const refused = demoRefusal(request, 'imports')
+  if (refused) return refused
   const { orgId, id } = await params
   const owner = await ownerContext(request, orgId, id, 'subscriber:manage')
   if (!owner.ok) return owner.response

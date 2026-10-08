@@ -16,6 +16,7 @@ features whose pull requests are merging alongside this documentation.
 | [Security](Security.md)               | Hardening checklist: TLS, trusted proxies, rate limiting, security headers, audit log and admin access.                       |
 | [Telemetry](Telemetry.md)             | What the opt-in analytics collect and how consent works.                                                                      |
 | [Billing](Billing.md)                 | The plan/entitlement scaffold for hosted offerings; off on self-hosted installs.                                              |
+| [Demo mode](Demo-Mode.md)             | A self-resetting demo instance: seeded data, simulated checks, nothing sent, scheduled resets.                                |
 
 ## Use it
 
