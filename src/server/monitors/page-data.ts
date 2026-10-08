@@ -104,6 +104,8 @@ export interface MonitorFormResources {
   locations: { id: string | number; name: string; status: string }[]
   /** Channels of the organization (empty when the user may not read them). */
   notifications: MonitorChannelOption[]
+  /** OpenTelemetry collectors (#99; empty when the user may not read them). */
+  otelCollectors: { id: string | number; name: string; active: boolean; isDefault: boolean }[]
 }
 
 const toChannelOption = (doc: {
@@ -173,7 +175,7 @@ export async function getMonitorFormResources(ctx: OrgPageContext): Promise<Moni
     overrideAccess: false,
     disableErrors: true,
   } as const
-  const [tags, proxies, dockerHosts, locations, notifications] = await Promise.all([
+  const [tags, proxies, dockerHosts, locations, notifications, otelCollectors] = await Promise.all([
     ctx.payload.find({ collection: 'tags', sort: 'name', ...common }),
     ctx.payload.find({ collection: 'proxies', ...common }),
     ctx.payload.find({ collection: 'docker-hosts', sort: 'name', ...common }),
@@ -188,6 +190,14 @@ export async function getMonitorFormResources(ctx: OrgPageContext): Promise<Moni
           collection: 'notifications',
           sort: 'name',
           select: { name: true, type: true, active: true, isDefault: true },
+          ...common,
+        })
+      : Promise.resolve({ docs: [] }),
+    ctx.allowed('otel-collector:read')
+      ? ctx.payload.find({
+          collection: 'otel-collectors',
+          sort: 'name',
+          select: { name: true, active: true, default: true },
           ...common,
         })
       : Promise.resolve({ docs: [] }),
@@ -207,5 +217,11 @@ export async function getMonitorFormResources(ctx: OrgPageContext): Promise<Moni
       status: doc.status ?? 'unknown',
     })),
     notifications: notifications.docs.map(toChannelOption),
+    otelCollectors: otelCollectors.docs.map((doc) => ({
+      id: doc.id,
+      name: doc.name,
+      active: doc.active !== false,
+      isDefault: Boolean(doc.default),
+    })),
   }
 }

@@ -15,6 +15,7 @@ import {
   Server,
   ShieldCheck,
   Tags,
+  Telescope,
   UserRound,
   Users,
   Webhook,
@@ -55,6 +56,11 @@ export function SettingsTabs({
     { href: `/${orgSlug}/settings/locations`, label: t('locations'), icon: RadioTower },
     { href: `/${orgSlug}/settings/api-keys`, label: t('apiKeys'), icon: KeyRound },
     { href: `/${orgSlug}/settings/webhooks`, label: t('webhooks'), icon: Webhook },
+    {
+      href: `/${orgSlug}/settings/opentelemetry`,
+      label: t('openTelemetry'),
+      icon: Telescope,
+    },
     { href: `/${orgSlug}/settings/audit-log`, label: t('auditLog'), icon: ScrollText },
     { href: `/${orgSlug}/settings/import-export`, label: t('importExport'), icon: ArrowDownUp },
     ...(showBilling

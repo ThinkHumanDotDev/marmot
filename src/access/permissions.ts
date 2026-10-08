@@ -96,6 +96,11 @@ export const PERMISSIONS = {
   'webhook:read': 'admin',
   'webhook:manage': 'admin',
 
+  // OpenTelemetry collectors (#99): members pick one for their monitors (header values are never
+  // readable), admins configure them.
+  'otel-collector:read': 'member',
+  'otel-collector:manage': 'admin',
+
   // Single sign-on connections and verified domains (Settings → Security).
   'sso:read': 'admin',
   'sso:manage': 'owner',

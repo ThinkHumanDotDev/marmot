@@ -1,20 +1,21 @@
-# Integrations: badges, push monitors, Prometheus, API keys, webhooks
+# Integrations: badges, push monitors, Prometheus, OpenTelemetry, API keys, webhooks
 
 Marmot's machine-facing endpoints live under `src/app/api/` and mirror Uptime Kuma's, so existing
 README badges, cron jobs and Grafana dashboards keep working after a switch.
 
-| Endpoint                                     | Auth                                               | Purpose                                           |
-| -------------------------------------------- | -------------------------------------------------- | ------------------------------------------------- |
-| `GET /api/badge/:monitorId/<type>[/<range>]` | public status page **or** API key of the org       | shields.io-style SVG badges                       |
-| `ALL /api/push/:token[/<signal>]`            | the monitor's push token                           | heartbeat for push monitors                       |
-| `GET /api/metrics`                           | API key                                            | Prometheus exposition                             |
-| `/api/orgs/:orgId/**`                        | session **or** API key of the org (scoped)         | management API                                    |
-| `GET /api/openapi.json`, `GET /api/docs`     | public                                             | management API reference                          |
-| `POST /api/mcp`, `GET /.well-known/mcp.json` | API key of the org (scoped) / public               | [MCP server for AI agents](MCP.md)                |
-| `GET/POST /api/orgs/:orgId/api-keys`         | session, `api-key:read` / `api-key:create` (admin) | manage keys                                       |
-| `PATCH/DELETE /api/orgs/:orgId/api-keys/:id` | session, `api-key:delete` (admin)                  | disable / re-enable / revoke                      |
-| `GET /api/orgs/:orgId/audit-logs[/export]`   | session, `audit-log:read` (admin)                  | [audit log](Security.md#audit-log) as JSON or CSV |
-| `GET/POST /api/orgs/:orgId/webhooks[/:id/…]` | session, `webhook:read` / `webhook:manage` (admin) | [outbound webhooks](#outbound-webhooks)           |
+| Endpoint                                     | Auth                                               | Purpose                                            |
+| -------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
+| `GET /api/badge/:monitorId/<type>[/<range>]` | public status page **or** API key of the org       | shields.io-style SVG badges                        |
+| `ALL /api/push/:token[/<signal>]`            | the monitor's push token                           | heartbeat for push monitors                        |
+| `GET /api/metrics`                           | API key                                            | Prometheus exposition                              |
+| `/api/orgs/:orgId/**`                        | session **or** API key of the org (scoped)         | management API                                     |
+| `GET /api/openapi.json`, `GET /api/docs`     | public                                             | management API reference                           |
+| `POST /api/mcp`, `GET /.well-known/mcp.json` | API key of the org (scoped) / public               | [MCP server for AI agents](MCP.md)                 |
+| `GET/POST /api/orgs/:orgId/api-keys`         | session, `api-key:read` / `api-key:create` (admin) | manage keys                                        |
+| `PATCH/DELETE /api/orgs/:orgId/api-keys/:id` | session, `api-key:delete` (admin)                  | disable / re-enable / revoke                       |
+| `GET /api/orgs/:orgId/audit-logs[/export]`   | session, `audit-log:read` (admin)                  | [audit log](Security.md#audit-log) as JSON or CSV  |
+| `GET/POST /api/orgs/:orgId/webhooks[/:id/…]` | session, `webhook:read` / `webhook:manage` (admin) | [outbound webhooks](#outbound-webhooks)            |
+| `/api/orgs/:orgId/otel-collectors[/:id/…]`   | `otel-collector:read` (member) / `:manage` (admin) | [OpenTelemetry export](#opentelemetry-otlp-export) |
 
 ## API keys
 
@@ -240,6 +241,124 @@ Marmot addition, so alert rules written for Kuma that test `monitor_status == 1`
 `monitor_status == 1 or monitor_status == 4` to keep treating slow checks as up. Monitors without a heartbeat
 yet have no `monitor_status` sample. Without a valid
 key the endpoint answers `401` with a `WWW-Authenticate` header.
+
+## OpenTelemetry (OTLP) export
+
+_(landing in the current release, #99)_
+
+Prometheus scraping gives the current state when the scraper asks. The OpenTelemetry export works the
+other way round: after **every check** the worker pushes the result as OTLP metrics to a collector, so
+Grafana, Datadog, Honeycomb, New Relic or your own OpenTelemetry Collector see one data point per check
+next to the rest of your telemetry, and Marmot need not be reachable from the backend.
+
+### Collectors
+
+Admins add collectors under **Settings → OpenTelemetry** (`/{orgSlug}/settings/opentelemetry`;
+permissions `otel-collector:read`, members by default, and `otel-collector:manage`, admins by default).
+A collector has:
+
+- an **endpoint**: an OTLP/HTTP metrics URL. Like `OTEL_EXPORTER_OTLP_ENDPOINT`, a URL without a path
+  (`http://otel-collector:4318`) gets `/v1/metrics` appended; any other path is used as-is
+  (`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` semantics). Credentials in the URL are refused: put them in a
+  header.
+- **headers** sent with every export (`Authorization`, `X-Scope-OrgID`, `DD-API-KEY`, …), at most 20.
+  Values are encrypted at rest (AES-256-GCM with a key derived from `PAYLOAD_SECRET`), never returned by
+  the API or shown again in the UI, and redacted in the [audit log](Security.md#audit-log); only their
+  names are visible. Leaving a value empty when editing keeps the stored one. Rotating `PAYLOAD_SECRET`
+  makes stored values unreadable: enter them again.
+- **default**: the organization's default collector (one per organization). **Every monitor exports to it**
+  unless the monitor picks a collector of its own or turns **Export metrics** off (monitor form →
+  OpenTelemetry; fields `otlpExport` and `otlpCollector` in the [API](Monitors.md#api)). A monitor whose own
+  collector is inactive exports nothing; it does not fall back to the default.
+- **active**: inactive collectors receive nothing.
+
+The list shows when each collector last accepted an export and the last error; **Send test** (the paper
+plane) pushes one `marmot.collector.test` data point right away.
+
+### Metrics
+
+Every check produces these data points, stamped with the check's time:
+
+| Metric                        | Type                       | Unit      | Value                                                                                                                                                            |
+| ----------------------------- | -------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `marmot.check.duration`       | gauge                      | `ms`      | response time (when the check measured one)                                                                                                                      |
+| `marmot.check.phase.duration` | gauge                      | `ms`      | one [timing phase](Monitors.md#request-timing) per point, attribute `marmot.check.phase` = `dns`, `connect`, `tls`, `ttfb`, `transfer` (HTTP types and TCP port) |
+| `marmot.check.status`         | gauge                      | `1`       | `1` the check succeeded (UP, DEGRADED, a "Recovering n/N" success), `0` it failed                                                                                |
+| `marmot.check.errors`         | sum, monotonic, cumulative | `{error}` | failed checks counted by the exporting process since it started                                                                                                  |
+| `marmot.check.packet_loss`    | gauge                      | `1`       | ping monitors: share of echo requests without a reply (`0` or `1`: one request per check)                                                                        |
+
+Data point attributes: `marmot.monitor.id`, `marmot.monitor.name`, `marmot.monitor.type`,
+`marmot.monitor.target` (URL without credentials or query string, or `host[:port]`), `marmot.location`
+(`local` for the server's workers, else the [probe location](Monitors.md#check-locations)'s slug) and
+`http.response.status_code` when there was a response (not on `marmot.check.errors` and
+`marmot.check.packet_loss`). Resource attributes: `service.name` = `marmot-synthetic-check`,
+`service.version`, `service.instance.id` (host and process of the worker, so the cumulative counters of
+several workers stay apart) and `marmot.organization.id`.
+
+Beats that ran no check are not exported: maintenance, checks held while the
+[worker was offline](Configuration.md#self-connectivity-check), deferred checks and quorum repairs. Push
+monitors and probe results are exported by the web process, which records them.
+
+### Delivery
+
+Each process keeps one exporter per collector and reuses it for every check: data points are batched for
+`OTLP_EXPORT_INTERVAL_MS` (5 s) or until `OTLP_EXPORT_MAX_BATCH` (1,000) are waiting, then sent in one
+`POST` with the OTLP/HTTP **JSON** encoding (`Content-Type: application/json`), which every OTLP/HTTP
+receiver accepts. Following the OTLP specification, `408`, `429`, `502`, `503`, `504` and network errors
+are retried twice with backoff (honouring `Retry-After`); other answers drop the batch. A collector that
+stays down never grows the worker's memory beyond `OTLP_EXPORT_MAX_QUEUE` points (oldest dropped first).
+Failures are logged and shown on the collector; they never change a check's result. Requests go through
+the [outbound address guard](Security.md), so with `MONITOR_DENY_PRIVATE_ADDRESSES` on, collectors on
+private addresses are refused. `OTLP_EXPORT_ENABLED=false` turns the export off for the whole instance
+(see [Configuration](Configuration.md)).
+
+### Example: OpenTelemetry Collector
+
+```yaml
+# otel-collector.yaml
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+processors:
+  batch: {}
+exporters:
+  prometheusremotewrite:
+    endpoint: http://mimir:9009/api/v1/push
+  debug: {}
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheusremotewrite, debug]
+```
+
+Collector endpoint in Marmot: `http://otel-collector:4318` (Marmot appends `/v1/metrics`). Add an
+`Authorization` header if the receiver sits behind an authenticating proxy.
+
+### Example: Grafana Cloud
+
+In Grafana Cloud open **Connections → OpenTelemetry (OTLP)** and create a token. Then add a collector with
+
+- endpoint `https://otlp-gateway-<zone>.grafana.net/otlp/v1/metrics`
+- header `Authorization` = `Basic <base64 of "<instance id>:<token>">`
+
+The metrics arrive in Mimir with Prometheus names, for example `marmot_check_duration_milliseconds`,
+`marmot_check_status_ratio` and `marmot_check_errors_total`, and the attributes as labels
+(`marmot_monitor_name`, `marmot_location`, …):
+
+```promql
+# p95 response time per monitor over 5 minutes
+quantile_over_time(0.95, marmot_check_duration_milliseconds[5m])
+# failed checks per minute and location
+sum by (marmot_monitor_name, marmot_location) (rate(marmot_check_errors_total[5m])) * 60
+```
+
+Other backends work the same way: Honeycomb (`https://api.honeycomb.io/v1/metrics`, header
+`x-honeycomb-team`, plus `x-honeycomb-dataset`), Datadog through the Datadog Agent's or the Collector's
+OTLP receiver, New Relic (`https://otlp.nr-data.net/v1/metrics`, header `api-key`).
 
 ## Outbound webhooks
 

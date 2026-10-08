@@ -359,6 +359,14 @@ import drops keys that are already in use.
   socket or `tcp://`/`https://`). `DOCKER_SOCKET_ENABLED=false` forbids socket hosts on shared instances.
   Details in [Architecture](Architecture.md#tags-proxies-and-docker-hosts).
 
+## OpenTelemetry export
+
+_(landing in the current release, #99)_ Each monitor's checks are pushed as OpenTelemetry metrics to the
+organization's default OTLP collector. The form's **OpenTelemetry** card turns this off for the monitor
+(`otlpExport: false`) or sends it to another collector (`otlpCollector`, a collector id of the same
+organization; `null` = the default). Collectors, metrics and backend examples:
+[Integrations](Integrations.md#opentelemetry-otlp-export).
+
 ## API
 
 Monitors are managed through org-scoped route handlers that authenticate the Payload session and apply the

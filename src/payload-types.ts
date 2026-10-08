@@ -102,6 +102,7 @@ export interface Config {
     'audit-logs': AuditLog;
     'webhook-endpoints': WebhookEndpoint;
     'webhook-deliveries': WebhookDelivery;
+    'otel-collectors': OtelCollector;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -144,6 +145,7 @@ export interface Config {
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
     'webhook-endpoints': WebhookEndpointsSelect<false> | WebhookEndpointsSelect<true>;
     'webhook-deliveries': WebhookDeliveriesSelect<false> | WebhookDeliveriesSelect<true>;
+    'otel-collectors': OtelCollectorsSelect<false> | OtelCollectorsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -433,6 +435,8 @@ export interface Monitor {
       }[]
     | null;
   notifications?: (number | Notification)[] | null;
+  otlpExport?: boolean | null;
+  otlpCollector?: (number | null) | OtelCollector;
   locations?: (number | Location)[] | null;
   includeLocal?: boolean | null;
   quorum?: ('any' | 'half' | 'all') | null;
@@ -641,6 +645,33 @@ export interface Notification {
   active?: boolean | null;
   lastSentAt?: string | null;
   lastError?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "otel-collectors".
+ */
+export interface OtelCollector {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  endpoint: string;
+  headers?: string | null;
+  headerNames?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  active?: boolean | null;
+  default?: boolean | null;
+  lastExportAt?: string | null;
+  lastError?: string | null;
+  createdBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -1700,6 +1731,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'webhook-deliveries';
         value: number | WebhookDelivery;
+      } | null)
+    | ({
+        relationTo: 'otel-collectors';
+        value: number | OtelCollector;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1926,6 +1961,8 @@ export interface MonitorsSelect<T extends boolean = true> {
         id?: T;
       };
   notifications?: T;
+  otlpExport?: T;
+  otlpCollector?: T;
   locations?: T;
   includeLocal?: T;
   quorum?: T;
@@ -2744,6 +2781,24 @@ export interface WebhookDeliveriesSelect<T extends boolean = true> {
   error?: T;
   deliveredAt?: T;
   redeliveryOf?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "otel-collectors_select".
+ */
+export interface OtelCollectorsSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  endpoint?: T;
+  headers?: T;
+  headerNames?: T;
+  active?: T;
+  default?: T;
+  lastExportAt?: T;
+  lastError?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }

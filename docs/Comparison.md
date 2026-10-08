@@ -94,15 +94,16 @@ documentation remains the reference for the behaviour of the ported checks.
 
 ## Integrations and API
 
-| Feature                          | Uptime Kuma | Marmot                                                       |
-| -------------------------------- | :---------: | ------------------------------------------------------------ |
-| Prometheus `/metrics`            |      ✓      | **landing** (#20)                                            |
-| API keys                         |      ✓      | **landing** (#20), per organization                          |
-| Push endpoint `/api/push/:token` |      ✓      | **landing** (#20)                                            |
-| REST API for everything          |   partial   | **done** (Payload REST + GraphQL, org-scoped route handlers) |
-| MCP server for AI agents         |      –      | **landing** (#119, [MCP](MCP.md))                            |
-| Backup / restore JSON export     | deprecated  | **planned** (#28, import from Uptime Kuma included)          |
-| Settings: 2FA                    |      ✓      | **planned** (#25)                                            |
+| Feature                          | Uptime Kuma | Marmot                                                                       |
+| -------------------------------- | :---------: | ---------------------------------------------------------------------------- |
+| Prometheus `/metrics`            |      ✓      | **landing** (#20)                                                            |
+| OpenTelemetry (OTLP) push        |      –      | **landing** (#99, [Integrations](Integrations.md#opentelemetry-otlp-export)) |
+| API keys                         |      ✓      | **landing** (#20), per organization                                          |
+| Push endpoint `/api/push/:token` |      ✓      | **landing** (#20)                                                            |
+| REST API for everything          |   partial   | **done** (Payload REST + GraphQL, org-scoped route handlers)                 |
+| MCP server for AI agents         |      –      | **landing** (#119, [MCP](MCP.md))                                            |
+| Backup / restore JSON export     | deprecated  | **planned** (#28, import from Uptime Kuma included)                          |
+| Settings: 2FA                    |      ✓      | **planned** (#25)                                                            |
 
 ## Platform and operations
 

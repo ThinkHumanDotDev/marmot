@@ -96,6 +96,14 @@ const schema = z.object({
   // row must fail (after their retries) before an endpoint is disabled (0 never disables).
   WEBHOOK_DELIVERY_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(14),
   WEBHOOK_DISABLE_AFTER_FAILURES: z.coerce.number().int().min(0).default(5),
+  // OpenTelemetry metrics export (#99): instance switch, how long data points wait to be batched,
+  // data points per request, data points buffered per collector (oldest dropped beyond) and the
+  // request timeout.
+  OTLP_EXPORT_ENABLED: booleanish.default(true),
+  OTLP_EXPORT_INTERVAL_MS: z.coerce.number().int().min(100).max(300_000).default(5_000),
+  OTLP_EXPORT_MAX_BATCH: z.coerce.number().int().min(1).max(100_000).default(1_000),
+  OTLP_EXPORT_MAX_QUEUE: z.coerce.number().int().min(100).max(1_000_000).default(20_000),
+  OTLP_EXPORT_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(10_000),
   // Polling engine (worker): parallel checks per worker process.
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(10),
   // On-demand checks ("Check now" and ad-hoc tests) allowed per organization and minute.

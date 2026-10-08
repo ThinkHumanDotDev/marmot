@@ -1,13 +1,14 @@
 /**
  * Heartbeat listeners of the web process. The push endpoint records beats synchronously through the
  * engine, so the listeners the worker registers at boot (stats rollups, realtime emitter, monitor
- * incidents, notification dispatch) are registered lazily on the first push signal.
+ * incidents, notification dispatch, OpenTelemetry export) are registered lazily on the first push signal.
  */
 import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
 import { registerIncidentListener } from '@/server/incidents/listener'
 import { registerNotificationListener } from '@/server/notifications'
+import { registerOtelListener } from '@/server/otel/listener'
 import { registerRealtimeListener } from '@/server/realtime/listener'
 import { registerStatsListener } from '@/server/stats'
 
@@ -29,6 +30,7 @@ export function ensureBeatPipeline(payload: Payload): void {
   // Before notifications, so a DOWN alert can link to its incident.
   registerIncidentListener(payload)
   registerNotificationListener(payload)
+  registerOtelListener(payload)
 }
 
 /** Tests: forget that the pipeline was registered (listeners themselves are cleared elsewhere). */

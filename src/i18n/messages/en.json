@@ -1032,6 +1032,19 @@
         "active": "Active",
         "activeDescription": "Paused monitors keep their history but are not checked."
       },
+      "openTelemetry": {
+        "title": "OpenTelemetry",
+        "description": "Push each check's duration, status and errors as OTLP metrics.",
+        "export": "Export metrics",
+        "exportDescription": "Send this monitor's check results to an OpenTelemetry collector.",
+        "collector": "Collector",
+        "defaultCollector": "Organization default",
+        "defaultCollectorNamed": "Organization default ({name})",
+        "noDefaultCollector": "Organization default (none set)",
+        "collectorInactive": "{name} (inactive)",
+        "collectorDescription": "Empty uses the organization's default collector.",
+        "collectorEmpty": "No collectors yet; an admin can add one in <link>settings</link>."
+      },
       "push": {
         "title": "Schedule",
         "description": "When your job is expected to call the push URL, and how late it may be.",
@@ -1301,6 +1314,7 @@
       "notifications": "Notifications",
       "instance": "Instance",
       "webhooks": "Webhooks",
+      "openTelemetry": "OpenTelemetry",
       "locations": "Locations"
     },
     "pageTitles": {
@@ -1319,6 +1333,7 @@
       "notifications": "Notification settings",
       "instance": "Instance settings",
       "webhooks": "Webhooks",
+      "openTelemetry": "OpenTelemetry",
       "webhookDeliveries": "Webhook deliveries",
       "locations": "Locations"
     },
@@ -1612,7 +1627,8 @@
         "instance_settings": "Instance settings",
         "import": "Import",
         "webhook_endpoint": "Webhook endpoint",
-        "location": "Probe location"
+        "location": "Probe location",
+        "otel_collector": "OpenTelemetry collector"
       },
       "verbs": {
         "created": "created",
@@ -1885,6 +1901,7 @@
         "subscriber": "Status page subscribers",
         "monitorIncident": "Monitor incidents",
         "webhook": "Webhooks",
+        "otelCollector": "OpenTelemetry collectors",
         "location": "Probe locations"
       },
       "actions": {
@@ -2369,6 +2386,61 @@
         "copied": "Copied",
         "copyFailed": "Copy failed. Select the text and copy it manually.",
         "done": "Done"
+      }
+    },
+    "openTelemetry": {
+      "membersOnlyTitle": "Members only",
+      "membersOnlyDescription": "OpenTelemetry collectors are visible to members and managed by admins of this organization.",
+      "title": "OpenTelemetry collectors",
+      "description": "Every check is pushed as OpenTelemetry metrics (OTLP/HTTP) to the monitor's collector, or to the default collector. Use it to see synthetic checks next to your other telemetry in Grafana, Datadog, Honeycomb or an OpenTelemetry Collector.",
+      "new": "New collector",
+      "emptyTitle": "No collectors",
+      "emptyDescription": "Add a collector and make it the default to export every monitor's checks.",
+      "emptyReadOnly": "Admins of this organization can add collectors.",
+      "badge": {
+        "default": "Default",
+        "inactive": "Inactive",
+        "headers": "{count, plural, one {# header} other {# headers}}"
+      },
+      "lastExport": "Last export {time}",
+      "neverExported": "Nothing exported yet",
+      "lastError": "Last export failed: {error}",
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "testLabel": "Send a test data point to {name}",
+      "testSucceeded": "The collector accepted the test data point",
+      "testFailed": "The test export failed: {error}",
+      "confirmDeleteTitle": "Delete collector {name}?",
+      "confirmDeleteDescription": "Monitors using it fall back to the default collector. This cannot be undone.",
+      "confirmDelete": "Delete collector",
+      "deleted": "Collector deleted",
+      "deleteFailed": "Could not delete the collector",
+      "form": {
+        "newTitle": "New collector",
+        "editTitle": "Edit collector",
+        "description": "An OTLP/HTTP metrics endpoint. Data is sent as JSON (application/json).",
+        "name": "Name",
+        "namePlaceholder": "Grafana Cloud",
+        "endpoint": "Endpoint",
+        "endpointPlaceholder": "https://otel-collector.example.com:4318",
+        "endpointHint": "A URL without a path gets /v1/metrics appended; any other path is used as-is.",
+        "headers": "Headers",
+        "headersHint": "Sent with every export, e.g. Authorization. Values are encrypted and never shown again.",
+        "headerName": "Header name",
+        "headerValue": "Value",
+        "headerKept": "Unchanged (stored)",
+        "addHeader": "Add header",
+        "removeHeader": "Remove header {name}",
+        "active": "Active",
+        "activeHint": "Inactive collectors receive nothing.",
+        "default": "Default",
+        "defaultHint": "Monitors without a collector of their own export here.",
+        "cancel": "Cancel",
+        "save": "Save",
+        "create": "Create collector",
+        "saved": "Collector saved",
+        "created": "Collector created",
+        "failed": "Could not save the collector"
       }
     }
   },
@@ -5532,6 +5604,15 @@
     "webhookEventsRequired": "Select at least one event.",
     "webhookEventUnknown": "Unknown event type: {event}",
     "webhookNotFound": "Webhook endpoint not found.",
+    "otelCollectorNotFound": "OpenTelemetry collector not found.",
+    "otelHeaderValueInvalid": "The value of \"{name}\" is too long or contains line breaks.",
+    "otelHeaderDuplicate": "The header \"{name}\" is listed twice.",
+    "otelHeaderReserved": "The header \"{name}\" is set by Marmot.",
+    "otelHeaderNameInvalid": "\"{name}\" is not a valid header name.",
+    "otelHeadersTooMany": "Use at most {max} headers.",
+    "otelEndpointBlocked": "This URL is not allowed: {reason}",
+    "otelEndpointCredentials": "Put credentials in a header instead of the URL.",
+    "otelEndpointInvalid": "Enter an http:// or https:// OTLP/HTTP URL.",
     "webhookDeliveryNotFound": "Webhook delivery not found.",
     "heartbeatNotFound": "Check not found",
     "locationNotFound": "Location not found",

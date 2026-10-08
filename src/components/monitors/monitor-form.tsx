@@ -129,6 +129,7 @@ const EMPTY_RESOURCES: MonitorFormResources = {
   dockerHosts: [],
   locations: [],
   notifications: [],
+  otelCollectors: [],
 }
 
 type Name = FieldPath<MonitorFormInput>
@@ -721,6 +722,70 @@ function RelationSelectField({
         )
       }}
     />
+  )
+}
+
+/**
+ * OpenTelemetry export (#99): on by default (the organization's default collector receives the
+ * checks), with an optional collector of the monitor's own.
+ */
+function OpenTelemetryCard({
+  control,
+  collectors,
+  orgSlug,
+}: {
+  control: FormControlType
+  collectors: MonitorFormResources['otelCollectors']
+  orgSlug: string
+}) {
+  const t = useTranslations('monitors.form.openTelemetry')
+  const enabled = useWatch({ control, name: 'otlpExport' })
+  const fallback = collectors.find((c) => c.isDefault && c.active)
+  return (
+    <Card data-testid="otel-card">
+      <CardHeader>
+        <CardTitle>{t('title')}</CardTitle>
+        <CardDescription>{t('description')}</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-5">
+        <SwitchField
+          control={control}
+          name="otlpExport"
+          label={t('export')}
+          description={t('exportDescription')}
+        />
+        {enabled !== false && (
+          <RelationSelectField
+            control={control}
+            name="otlpCollector"
+            label={t('collector')}
+            noneLabel={
+              fallback
+                ? t('defaultCollectorNamed', { name: fallback.name })
+                : t('noDefaultCollector')
+            }
+            options={collectors.map((c) => ({
+              id: c.id,
+              label: c.active ? c.name : t('collectorInactive', { name: c.name }),
+            }))}
+            description={
+              collectors.length === 0
+                ? t.rich('collectorEmpty', {
+                    link: (chunks) => (
+                      <Link
+                        href={`/${orgSlug}/settings/opentelemetry`}
+                        className="underline underline-offset-2"
+                      >
+                        {chunks}
+                      </Link>
+                    ),
+                  })
+                : t('collectorDescription')
+            }
+          />
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -2499,6 +2564,14 @@ export function MonitorForm({
               />
             </CardContent>
           </Card>
+        )}
+
+        {type !== 'group' && (
+          <OpenTelemetryCard
+            control={control}
+            collectors={resources.otelCollectors}
+            orgSlug={orgSlug}
+          />
         )}
 
         {(testing || testResult) && (
