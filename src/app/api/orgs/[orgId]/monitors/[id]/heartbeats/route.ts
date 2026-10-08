@@ -48,7 +48,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   }
 
   try {
-    // The monitor was loaded as the caller above; heartbeat rows carry no access rules of their own.
+    // The monitor was loaded as the caller above, so its beats are read without a second check.
     const { docs } = await payload.find({
       collection: 'heartbeats',
       where: { and },
