@@ -189,6 +189,12 @@ web:
     periodSeconds: 20
     timeoutSeconds: 5
     failureThreshold: 6
+  # Keeps a terminating pod serving for a few seconds while it is removed from the Service endpoints
+  # (kube-proxy and ingress controllers lag behind), so rollouts do not drop requests.
+  lifecycle:
+    preStop:
+      exec:
+        command: [sleep, '5']
   env: []
   nodeSelector: {}
   tolerations: []
@@ -260,6 +266,11 @@ realtime:
     periodSeconds: 20
     timeoutSeconds: 5
     failureThreshold: 3
+  # See web.lifecycle.
+  lifecycle:
+    preStop:
+      exec:
+        command: [sleep, '5']
   env: []
   nodeSelector: {}
   tolerations: []

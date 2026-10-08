@@ -68,6 +68,10 @@ spec:
           livenessProbe:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- with .Values.web.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
           {{- if or .Values.persistence.enabled .Values.extraVolumeMounts }}

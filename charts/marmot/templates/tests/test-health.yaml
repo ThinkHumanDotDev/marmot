@@ -32,8 +32,11 @@ spec:
         - |
           web=http://{{ include "marmot.fullname" . }}-web:{{ .Values.web.service.port }}
           rt=http://{{ include "marmot.fullname" . }}-realtime:{{ .Values.realtime.service.port }}
+          echo "web $web/api/health"
           wget -q -T 10 -O - "$web/api/health" | grep -q '"ok":true'
+          echo "realtime $rt/healthz"
           wget -q -T 10 -O - "$rt/healthz" | grep -q '"ok":true'
+          echo "realtime $rt/socket.io/ polling handshake"
           wget -q -T 10 -O - "$rt/socket.io/?EIO=4&transport=polling" | grep -q '"sid"'
           echo ok
 {{- end }}
