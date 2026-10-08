@@ -11,6 +11,7 @@
  */
 import type { Payload } from 'payload'
 
+import { deleteInBatches } from '@/db/delete-in-batches'
 import { childLogger } from '@/lib/logger'
 import {
   closeRun,
@@ -174,13 +175,8 @@ export async function prunePushEvents(
   })
   const boundary = docs[0]
   if (!boundary) return 0
-  const result = await payload.delete({
-    collection: 'push-events',
-    where: {
-      and: [{ monitor: { equals: monitorId } }, { time: { less_than_equal: boundary.time } }],
-    },
-    depth: 0,
-    overrideAccess: true,
+  // Batched and without hooks (the ping log has none): a lowered limit can leave a long backlog.
+  return deleteInBatches(payload, 'push-events', {
+    and: [{ monitor: { equals: monitorId } }, { time: { less_than_equal: boundary.time } }],
   })
-  return result.docs.length
 }
