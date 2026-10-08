@@ -47,7 +47,9 @@ All notable changes to Marmot are documented here. Marmot uses
 
 ### 🐞 Bug Fixes
 
+- [#241](https://github.com/ThinkHumanDotDev/marmot/pull/241) **api:** Report the real version from /api/health in Docker images
 - [#197](https://github.com/ThinkHumanDotDev/marmot/pull/197) **deploy:** Pin the Railway service images to 0.1.1
+- [#243](https://github.com/ThinkHumanDotDev/marmot/pull/243) **engine:** Prune expired rows in bounded batches
 
 ### 📝 Documentation
 
