@@ -249,7 +249,17 @@ export function fromMarmotExport(file: Record<string, unknown>): {
     keyById.set(String(monitor.id), key)
   }
   const monitors = exported.map((monitor) => {
-    const { id, parent, notifications, tags, proxy, dockerHost, pushToken: _p, ...fields } = monitor
+    const {
+      id,
+      parent,
+      notifications,
+      tags,
+      proxy,
+      dockerHost,
+      locations,
+      pushToken: _p,
+      ...fields
+    } = monitor
     const entry: Record<string, unknown> = { ...fields, key: keyById.get(String(id)) }
     if (parent !== null && parent !== undefined) {
       entry.parent = keyById.get(String(parent)) ?? null
@@ -264,6 +274,7 @@ export function fromMarmotExport(file: Record<string, unknown>): {
       Array.isArray(tags) && tags.length > 0 ? 'tags' : null,
       proxy !== null && proxy !== undefined ? 'proxy' : null,
       dockerHost !== null && dockerHost !== undefined ? 'dockerHost' : null,
+      Array.isArray(locations) && locations.length > 0 ? 'locations' : null,
     ].filter(Boolean)
     if (dropped.length > 0) {
       warnings.push(

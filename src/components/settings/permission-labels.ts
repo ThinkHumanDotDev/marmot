@@ -16,6 +16,7 @@ export const PERMISSION_RESOURCE_KEYS = {
   tag: 'tag',
   proxy: 'proxy',
   'docker-host': 'dockerHost',
+  location: 'location',
   'api-key': 'apiKey',
   'audit-log': 'auditLog',
   webhook: 'webhook',

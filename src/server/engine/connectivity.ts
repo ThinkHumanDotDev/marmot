@@ -14,8 +14,8 @@
  * turns into a DOWN.
  *
  * Probing is per location: `ConnectivityMonitor`s are registered by location id and
- * `connectivityLocationOf(monitor)` picks the one that judges a monitor. Today every worker runs
- * one monitor for `DEFAULT_LOCATION`; multi-location checks (#92) register one per location.
+ * `connectivityLocationOf(monitor)` picks the one that judges a monitor. Every worker runs one
+ * monitor for `DEFAULT_LOCATION`; a probe agent (#91) runs one for its own location's id.
  */
 import dns from 'node:dns'
 import net from 'node:net'
@@ -23,6 +23,7 @@ import type { Payload } from 'payload'
 
 import { env } from '@/env'
 import { parseConnectivityTargets, type ConnectivityTarget } from '@/lib/connectivity-targets'
+import { monitorLocationIds } from '@/lib/probe-locations'
 import { childLogger } from '@/lib/logger'
 import type { DockerHost, Monitor } from '@/payload-types'
 import { AddressPolicy, stripAddress } from '@/server/security/address-policy'
@@ -32,7 +33,7 @@ import type { CheckResult } from './beat'
 
 const log = childLogger('engine:connectivity')
 
-/** The only location until multi-location checks (#92) exist. */
+/** Location key of the local worker pool (probe agents use their location's id). */
 export const DEFAULT_LOCATION = 'default'
 
 /** Message of the PENDING beat written instead of a check while the worker is offline. */
@@ -269,11 +270,14 @@ export function getConnectivityMonitor(
 }
 
 /**
- * Location whose connectivity judges `monitor`'s checks. Extension point for multi-location
- * checks (#92): a monitor will be checked from (and judged by) the location it is assigned to.
+ * Location whose connectivity judges `monitor`'s checks: the id of the probe location it is
+ * assigned to (#91), whose agent registers its own `ConnectivityMonitor` under that id, or
+ * `DEFAULT_LOCATION` for the local worker pool. Multi-location checks (#92) will pass the location
+ * a check runs at instead of taking the first.
  */
-export function connectivityLocationOf(_monitor: Monitor): string {
-  return DEFAULT_LOCATION
+export function connectivityLocationOf(monitor: Pick<Monitor, 'locations'>): string {
+  const [location] = monitorLocationIds(monitor)
+  return location === undefined ? DEFAULT_LOCATION : String(location)
 }
 
 // ---- Which monitors need the internet --------------------------------------------------------

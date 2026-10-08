@@ -112,7 +112,7 @@ async function storedTiming(heartbeat: Heartbeat): Promise<RequestTiming | null>
     depth: 0,
     overrideAccess: true,
   })
-  return parseRequestTiming(doc.timing)
+  return parseRequestTiming((doc as Heartbeat).timing)
 }
 
 beforeAll(async () => {

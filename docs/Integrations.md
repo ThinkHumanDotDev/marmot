@@ -10,6 +10,7 @@ README badges, cron jobs and Grafana dashboards keep working after a switch.
 | `GET /api/metrics`                           | API key                                            | Prometheus exposition                             |
 | `/api/orgs/:orgId/**`                        | session **or** API key of the org (scoped)         | management API                                    |
 | `GET /api/openapi.json`, `GET /api/docs`     | public                                             | management API reference                          |
+| `POST /api/mcp`, `GET /.well-known/mcp.json` | API key of the org (scoped) / public               | [MCP server for AI agents](MCP.md)                |
 | `GET/POST /api/orgs/:orgId/api-keys`         | session, `api-key:read` / `api-key:create` (admin) | manage keys                                       |
 | `PATCH/DELETE /api/orgs/:orgId/api-keys/:id` | session, `api-key:delete` (admin)                  | disable / re-enable / revoke                      |
 | `GET /api/orgs/:orgId/audit-logs[/export]`   | session, `audit-log:read` (admin)                  | [audit log](Security.md#audit-log) as JSON or CSV |
@@ -69,7 +70,8 @@ per-organization overrides and collection access apply as for a person with that
   `API_KEY_WRITE_RATE_LIMIT` (default 60) may be writes; above that the API answers `429` with
   `Retry-After` ([Configuration](Configuration.md#authentication));
 - changes made with a key appear in the [audit log](Security.md#audit-log) like any other
-  (`monitor.created`, `incident.updated`, …) with actor type `apiKey` and the key's name, so automation
+  (`monitor.created`, `incident.updated`, …) with actor type `apiKey` and the key's name (actor type `mcp`
+  and the key's name plus the tool when the change came through the [MCP server](MCP.md)), so automation
   is told apart from people; the key's own life cycle is `api_key.created`, `api_key.enabled`,
   `api_key.disabled` and `api_key.revoked`;
 - keys are not password logins: SSO-only mode (`OIDC_DISABLE_LOCAL_LOGIN`) and organizations'
@@ -89,6 +91,8 @@ the same zod schemas the handlers validate with) and browsable at `/api/docs`. E
 
 ```sh
 curl -H "Authorization: Bearer $MARMOT_KEY" https://marmot.example.com/api/orgs/1/monitors
+curl -H "Authorization: Bearer $MARMOT_KEY" 'https://marmot.example.com/api/orgs/1/monitors/7/stats?range=30d'
+curl -H "Authorization: Bearer $MARMOT_KEY" 'https://marmot.example.com/api/orgs/1/monitors/7/heartbeats?limit=20'
 curl -X POST -H "Authorization: Bearer $MARMOT_KEY" -H 'content-type: application/json' \
   -d '{"name":"API","type":"http","url":"https://api.example.com/health","interval":60}' \
   https://marmot.example.com/api/orgs/1/monitors

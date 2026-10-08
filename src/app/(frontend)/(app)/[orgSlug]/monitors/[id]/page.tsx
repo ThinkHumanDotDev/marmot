@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { getTranslations } from 'next-intl/server'
 
 import { MonitorIncidentsCard } from '@/components/incidents/monitor-incidents-card'
+import { MonitorLocationBadge } from '@/components/locations/location-badge'
 import {
   AssertionResultsCard,
   parseAssertionResults,
@@ -32,7 +33,8 @@ import { env } from '@/env'
 import { timeZoneOrDefault } from '@/i18n/formats'
 import { parseRequestTiming } from '@/lib/request-timing'
 import { isHttpMonitorType } from '@/lib/validation/monitor'
-import type { Heartbeat, Monitor, PushEvent } from '@/payload-types'
+import type { LocationStatus } from '@/lib/probe-locations'
+import type { Heartbeat, Location, Monitor, PushEvent } from '@/payload-types'
 import { recentMonitorIncidents, renderTime } from '@/server/incidents/store'
 import { toRealtimeTags } from '@/server/realtime/serialize'
 import { listAuditEvents } from '@/server/audit/query'
@@ -150,6 +152,10 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const parent =
     monitor.parent && typeof monitor.parent === 'object' ? (monitor.parent as Monitor) : null
   const target = monitorTarget(monitor)
+  // Probe location (#91), populated at depth 1 (readers without `location:read` see an id).
+  const location = (monitor.locations ?? []).find(
+    (value): value is Location => typeof value === 'object' && value !== null,
+  )
   const active = monitor.active !== false
   const pushUrl =
     monitor.type === 'push' && monitor.pushToken
@@ -199,6 +205,12 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         description={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <MonitorTypeBadge type={monitor.type} />
+            {location && (
+              <MonitorLocationBadge
+                name={location.name}
+                status={(location.status ?? 'unknown') as LocationStatus}
+              />
+            )}
             {target &&
               (isHttpMonitorType(monitor.type) ? (
                 <a

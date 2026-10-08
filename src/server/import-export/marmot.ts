@@ -589,6 +589,7 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
       tags: [],
       proxy: null,
       dockerHost: null,
+      locations: [],
       parent: null,
     })
     if (!parsed.success) {

@@ -1,8 +1,11 @@
 # syntax=docker/dockerfile:1
-# Marmot – one image, three roles (web | worker | realtime | all) selected with MARMOT_ROLE.
+# Marmot – one image, three roles (web | worker | realtime | all) selected with MARMOT_ROLE, plus the
+# remote probe agent (MARMOT_ROLE=probe, docs/Probe-Locations.md).
 #
 #   docker build -f docker/Dockerfile -t marmot .
 #   docker run --rm -e MARMOT_ROLE=web ... marmot            # start a role (default: all)
+#   docker run --rm -e MARMOT_ROLE=probe -e MARMOT_URL=https://marmot.example.com \
+#     -e MARMOT_PROBE_TOKEN=mp_... marmot                    # a probe agent (outbound HTTPS only)
 #   docker run --rm ... marmot migrate                        # run database migrations only
 #
 # Stages: base → deps (all deps, for the build) + prod-deps (runtime deps only) → builder → runner.

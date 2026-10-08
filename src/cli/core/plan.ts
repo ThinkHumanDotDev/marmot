@@ -213,6 +213,8 @@ export function diffValues(desired: DesiredMonitor, current: NamedValues | null)
   for (const field of COMPARED_FIELDS) {
     if (field === 'notifications' && !desired.managed.notifications) continue
     if (field === 'active' && !desired.managed.active) continue
+    // Probe locations (#91) are assigned in the UI; files leave them alone for now.
+    if (field === 'locations') continue
     const after = (desired.values as Record<string, unknown>)[field]
     const before = current ? (current as Record<string, unknown>)[field] : undefined
     if (current && comparable(field, before) === comparable(field, after)) continue

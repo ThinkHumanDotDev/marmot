@@ -43,6 +43,14 @@ export const Heartbeats: CollectionConfig = {
       admin: { description: adminT('marmot:heartbeats:organizationDescription') },
     },
     {
+      // Probe location that produced the beat (#91); empty for the local worker pool and pushes.
+      name: 'location',
+      type: 'relationship',
+      relationTo: 'locations',
+      index: true,
+      admin: { description: adminT('marmot:heartbeats:locationDescription') },
+    },
+    {
       name: 'status',
       type: 'select',
       options: HEARTBEAT_STATUSES.map((s) => ({ label: s, value: s })),

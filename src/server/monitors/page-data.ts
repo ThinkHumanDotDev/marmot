@@ -100,6 +100,8 @@ export interface MonitorFormResources {
   tags: { id: string | number; name: string; color: string }[]
   proxies: { id: string | number; label: string; active: boolean; isDefault: boolean }[]
   dockerHosts: { id: string | number; name: string }[]
+  /** Probe locations (#91) a monitor can be checked from besides the local workers. */
+  locations: { id: string | number; name: string; status: string }[]
   /** Channels of the organization (empty when the user may not read them). */
   notifications: MonitorChannelOption[]
 }
@@ -171,10 +173,16 @@ export async function getMonitorFormResources(ctx: OrgPageContext): Promise<Moni
     overrideAccess: false,
     disableErrors: true,
   } as const
-  const [tags, proxies, dockerHosts, notifications] = await Promise.all([
+  const [tags, proxies, dockerHosts, locations, notifications] = await Promise.all([
     ctx.payload.find({ collection: 'tags', sort: 'name', ...common }),
     ctx.payload.find({ collection: 'proxies', ...common }),
     ctx.payload.find({ collection: 'docker-hosts', sort: 'name', ...common }),
+    ctx.payload.find({
+      collection: 'locations',
+      sort: 'name',
+      select: { name: true, status: true },
+      ...common,
+    }),
     ctx.allowed('notification:read')
       ? ctx.payload.find({
           collection: 'notifications',
@@ -193,6 +201,11 @@ export async function getMonitorFormResources(ctx: OrgPageContext): Promise<Moni
       isDefault: Boolean(doc.default),
     })),
     dockerHosts: dockerHosts.docs.map((doc) => ({ id: doc.id, name: doc.name })),
+    locations: locations.docs.map((doc) => ({
+      id: doc.id,
+      name: doc.name,
+      status: doc.status ?? 'unknown',
+    })),
     notifications: notifications.docs.map(toChannelOption),
   }
 }
