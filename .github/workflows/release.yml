@@ -280,9 +280,42 @@ jobs:
         if: always()
         run: scripts/smoke-test.sh down
 
+  # The Helm chart (charts/marmot) as an OCI artifact: oci://ghcr.io/thinkhumandotdev/charts/marmot:<version>.
+  chart:
+    name: Publish Helm chart
+    needs: [image, smoke]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    env:
+      VERSION: ${{ needs.image.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.CHECKOUT_REF }}
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+      - name: Package and push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          helm lint --strict charts/marmot -f charts/marmot/ci/bundled-values.yaml
+          helm package charts/marmot --version "$VERSION" --app-version "$VERSION" --destination dist-chart
+          echo "$GH_TOKEN" | helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          helm push "dist-chart/marmot-${VERSION}.tgz" oci://ghcr.io/thinkhumandotdev/charts
+          {
+            echo "### Helm chart"
+            echo
+            echo "\`oci://ghcr.io/thinkhumandotdev/charts/marmot\` version \`${VERSION}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   release:
     name: GitHub Release
-    needs: [image, smoke]
+    needs: [image, smoke, chart]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -314,6 +347,14 @@ jobs:
             echo '```'
             echo
             echo 'Multi-arch (linux/amd64, linux/arm64). Upgrade guide: [docs/Deployment.md](https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/Deployment.md#upgrading).'
+            echo
+            echo '### Helm chart'
+            echo
+            echo '```bash'
+            echo "helm install marmot oci://ghcr.io/thinkhumandotdev/charts/marmot --version ${VERSION}"
+            echo '```'
+            echo
+            echo 'Guide: [docs/Kubernetes.md](https://github.com/ThinkHumanDotDev/marmot/blob/main/docs/Kubernetes.md).'
             echo
             cat notes.footer
           } > RELEASE_NOTES.md

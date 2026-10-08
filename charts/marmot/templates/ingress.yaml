@@ -1,0 +1,56 @@
+{{- if and (include "marmot.server" .) .Values.ingress.enabled }}
+{{- $fullname := include "marmot.fullname" . }}
+{{- $hosts := prepend .Values.ingress.extraHosts .Values.ingress.host }}
+{{- $separate := .Values.ingress.realtime.separate }}
+{{- $parts := ternary (list "web" "realtime") (list "web") $separate }}
+{{- range $part := $parts }}
+{{- $annotations := $.Values.ingress.annotations }}
+{{- if eq $part "realtime" }}
+{{- $annotations = merge (deepCopy $.Values.ingress.realtime.annotations) $.Values.ingress.annotations }}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullname }}-{{ $part }}
+  labels:
+    {{- include "marmot.componentLabels" (dict "ctx" $ "component" $part) | nindent 4 }}
+  {{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $.Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with $.Values.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range $host := $hosts }}
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          {{- if or (eq $part "realtime") (not $separate) }}
+          # socket.io long-polling and the WebSocket upgrade.
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-realtime
+                port:
+                  name: realtime
+          {{- end }}
+          {{- if eq $part "web" }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-web
+                port:
+                  name: http
+          {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}

@@ -5,6 +5,7 @@
 - [Getting started](Getting-Started.md)
 - [Configuration](Configuration.md)
 - [Deployment](Deployment.md)
+- [Kubernetes](Kubernetes.md)
 - [Single sign-on](Single-Sign-On.md)
 - [Security](Security.md)
 - [Telemetry](Telemetry.md)
