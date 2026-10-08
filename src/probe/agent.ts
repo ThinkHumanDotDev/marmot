@@ -373,6 +373,7 @@ export class ProbeAgent {
       duration: finiteOrNull(result.duration),
       tlsInfo: (result.tlsInfo as Record<string, unknown> | null | undefined) ?? null,
       assertions: (result.assertions as Record<string, unknown>[] | null | undefined) ?? null,
+      timing: result.timing ?? null,
       ...(result.blocked ? { blocked: true } : {}),
       ...(result.checkerOffline ? { checkerOffline: true } : {}),
       ...(result.deferred ? { deferred: true } : {}),

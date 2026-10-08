@@ -21,6 +21,7 @@ import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 import { useMonitorFormat } from './format'
+import { TimingPhasesChart } from './timing-phases-chart'
 
 /** Mirrors `CHART_RANGES` / `PERCENTILES` in `src/server/stats` (kept here to stay client-only). */
 export const STATS_PANEL_RANGES = ['1d', '7d', '14d', '30d', '90d'] as const
@@ -50,6 +51,8 @@ export type StatsPanelPoint = {
   degraded: number
   maintenance: number
   ping: number | null
+  /** Average request timing phases of the interval (#94), when measured. */
+  timing?: unknown
 } & Partial<Record<PercentileKey, number | null>>
 
 /** The part of `GET /api/monitors/:id/stats` (`RangeStats`) the panel uses. */
@@ -164,10 +167,13 @@ export function MonitorStatsPanel({
   monitorId,
   initial,
   lastCheckAt,
+  showTiming = false,
 }: {
   monitorId: string
   initial: StatsPanelData
   lastCheckAt: string | null | undefined
+  /** Add the request timing phase chart (#94) for the selected period (HTTP and TCP monitors). */
+  showTiming?: boolean
 }) {
   const t = useTranslations('monitors.chart')
   const tMetrics = useTranslations('monitors.metrics')
@@ -449,6 +455,8 @@ export function MonitorStatsPanel({
           )}
         </CardContent>
       </Card>
+
+      {showTiming && <TimingPhasesChart series={data.series} dailyTicks={range !== '1d'} />}
     </div>
   )
 }

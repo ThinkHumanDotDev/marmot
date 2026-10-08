@@ -24,14 +24,16 @@ import { MonitorStatsPanel } from '@/components/monitors/monitor-stats-panel'
 import { PushEventsTable, PushPanel } from '@/components/monitors/push-panel'
 import { MonitorStatusBadge } from '@/components/monitors/status-badge'
 import { TagList } from '@/components/monitors/tag-chip'
+import { TimingWaterfall } from '@/components/monitors/timing-waterfall'
 import { UptimeCards } from '@/components/monitors/uptime-cards'
 import { PageHeader } from '@/components/page-header'
 import { AuditLogView } from '@/components/settings/audit-log-view'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { env } from '@/env'
 import { timeZoneOrDefault } from '@/i18n/formats'
+import { parseRequestTiming } from '@/lib/request-timing'
 import { isHttpMonitorType } from '@/lib/validation/monitor'
 import {
   DEFAULT_QUORUM,
@@ -97,6 +99,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const monitor = await getOrgMonitor(ctx, id, 1)
   const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1)
   const t = await getTranslations('monitors.detail')
+  const tTiming = await getTranslations('monitors.timing')
   const timeZone = timeZoneOrDefault(ctx.org.settings?.timezone)
 
   const { payload } = ctx
@@ -174,6 +177,9 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const assertionResults = parseAssertionResults(latest.docs[0]?.assertions)
   const showAssertions =
     assertionResults.length > 1 || assertionResults.some((result) => !result.legacy)
+  // Request timing phases (#94): HTTP types and TCP port measure them.
+  const measuresTiming = isHttpMonitorType(monitor.type) || monitor.type === 'port'
+  const latestTiming = parseRequestTiming(latest.docs[0]?.timing)
   const parent =
     monitor.parent && typeof monitor.parent === 'object' ? (monitor.parent as Monitor) : null
   const target = monitorTarget(monitor)
@@ -348,6 +354,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             series: stats24h.series,
           }}
           lastCheckAt={monitor.status?.lastCheckAt}
+          showTiming={measuresTiming}
         />
 
         {locationView && (
@@ -395,6 +402,17 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
                 initial={incidents}
                 now={renderTime()}
               />
+            )}
+            {latestTiming && (
+              <Card className="gap-3" data-testid="latest-timing">
+                <CardHeader>
+                  <CardTitle className="text-base">{tTiming('title')}</CardTitle>
+                  <CardDescription>{tTiming('latestDescription')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <TimingWaterfall timing={latestTiming} ping={latest.docs[0]?.ping} />
+                </CardContent>
+              </Card>
             )}
             {(isHttpMonitorType(monitor.type) ||
               monitor.certInfo ||

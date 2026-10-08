@@ -588,6 +588,8 @@ describe('probe agent', () => {
       status: 'up' as const,
       msg: 'probe ok',
       ping: 7,
+      // Request timing phases (#94) travel over the wire to the heartbeat.
+      timing: { dns: null, connect: 1.5, tls: null, ttfb: 4, transfer: 0.5 },
     }))
     const agent = new ProbeAgent({
       url: 'http://marmot.test',
@@ -610,6 +612,7 @@ describe('probe agent', () => {
       const beats = await heartbeatsOf(monitor.id)
       expect(beats).toHaveLength(1)
       expect(beats[0]).toMatchObject({ status: 'up', msg: 'probe ok', ping: 7 })
+      expect(beats[0].timing).toMatchObject({ dns: null, connect: 1.5, ttfb: 4, transfer: 0.5 })
 
       // Rotating the token: the next refresh is refused and every check stops.
       await rotateTokenRoute(

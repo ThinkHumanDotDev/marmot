@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
 import { adminGroup, adminT } from '@/i18n/admin'
+import { TIMING_PHASES } from '@/lib/request-timing'
 
 /**
  * One row per check result. Written exclusively by the worker (Local API, `overrideAccess: true`).
@@ -98,6 +99,18 @@ export const Heartbeats: CollectionConfig = {
       name: 'assertions',
       type: 'json',
       admin: { readOnly: true, description: adminT('marmot:heartbeats:assertionsDescription') },
+    },
+    {
+      // Request timing phases in ms (#94): HTTP types and TCP port. A phase that does not apply
+      // (no TLS, a reused connection) stays empty; the whole group is empty for other types.
+      name: 'timing',
+      type: 'group',
+      admin: { description: adminT('marmot:heartbeats:timingDescription') },
+      fields: TIMING_PHASES.map((phase) => ({
+        name: phase,
+        type: 'number' as const,
+        admin: { readOnly: true },
+      })),
     },
     {
       name: 'probes',

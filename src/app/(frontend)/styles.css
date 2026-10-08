@@ -81,6 +81,14 @@
   --series-6: #008300;
   --series-7: #4a3aa7;
   --series-8: #e34948;
+
+  /* Request timing phases (categorical, validated for colour-vision deficiency): DNS, connect,
+     TLS, TTFB, transfer */
+  --timing-dns: #2a78d6;
+  --timing-connect: #eb6834;
+  --timing-tls: #1baf7a;
+  --timing-ttfb: #eda100;
+  --timing-transfer: #e87ba4;
 }
 
 .dark {
@@ -142,6 +150,12 @@
   --series-6: #008300;
   --series-7: #9085e9;
   --series-8: #e66767;
+
+  --timing-dns: #3987e5;
+  --timing-connect: #d95926;
+  --timing-tls: #199e70;
+  --timing-ttfb: #c98500;
+  --timing-transfer: #d55181;
 }
 
 @theme inline {
@@ -203,6 +217,12 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  --color-timing-dns: var(--timing-dns);
+  --color-timing-connect: var(--timing-connect);
+  --color-timing-tls: var(--timing-tls);
+  --color-timing-ttfb: var(--timing-ttfb);
+  --color-timing-transfer: var(--timing-transfer);
 }
 
 @layer base {

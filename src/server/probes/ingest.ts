@@ -9,6 +9,7 @@ import type { Payload } from 'payload'
 import { childLogger } from '@/lib/logger'
 import { isMultiLocation, monitorLocationIds, probeSupportsType } from '@/lib/probe-locations'
 import type { Location, Monitor } from '@/payload-types'
+import { parseRequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
 import { nextIntervalSeconds, type CheckResult } from '@/server/engine/beat'
 import type { TlsInfo } from '@/server/engine/tls'
@@ -40,6 +41,7 @@ export function toCheckResult(result: ParsedResult): CheckResult {
     duration: result.duration ?? null,
     tlsInfo: (result.tlsInfo as TlsInfo | null | undefined) ?? null,
     assertions: (result.assertions as AssertionResult[] | null | undefined) ?? null,
+    timing: parseRequestTiming(result.timing),
     ...(result.blocked ? { blocked: true } : {}),
     ...(result.checkerOffline ? { checkerOffline: true } : {}),
     ...(result.deferred ? { deferred: true } : {}),

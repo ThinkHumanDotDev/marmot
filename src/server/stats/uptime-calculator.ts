@@ -21,6 +21,7 @@ import type { Payload, RequiredDataFromCollectionSlug, Where } from 'payload'
 
 import type { StatCollectionSlug } from '@/collections/StatFields'
 import { childLogger } from '@/lib/logger'
+import { applyTiming, parseRequestTiming, type BucketTiming } from '@/lib/request-timing'
 
 import { addSample, parseHistogram, type LatencyHistogram } from './latency-histogram'
 
@@ -96,6 +97,8 @@ export type BucketExtras = {
   degraded?: number
   /** Number of UP beats that carried a ping; weight of `ping` in the running average. */
   pingCount?: number
+  /** Per-phase running averages of the request timing (#94), `{ dns: { avg, count }, … }`. */
+  timing?: BucketTiming
   [key: string]: unknown
 }
 
@@ -178,6 +181,7 @@ export function applyBeat(
   bucket: BucketData,
   status: HeartbeatStatus,
   ping: number | null | undefined,
+  timing?: unknown,
 ): BucketData {
   const next: BucketData = { ...bucket, extras: { ...bucket.extras } }
   const flat = flatStatus(status)
@@ -205,6 +209,9 @@ export function applyBeat(
       next.extras.pingCount = count
       next.latencyHistogram = addSample(bucket.latencyHistogram ?? null, ping)
     }
+    // Request timing phases (#94) follow the ping: successful checks only.
+    const phases = status === 'up' || status === 'degraded' ? parseRequestTiming(timing) : null
+    if (phases) next.extras.timing = applyTiming(next.extras.timing, phases)
   } else {
     next.down += 1
     if (isUsablePing(ping) && ping > 0) {
@@ -267,6 +274,8 @@ export type RecordHeartbeatInput = {
   organizationId: MonitorId
   status: HeartbeatStatus
   ping?: number | null
+  /** Request timing phases of the beat (#94), rolled up as per-phase averages. */
+  timing?: unknown
   /** Beat time; defaults to now. */
   time?: Date
 }
@@ -337,18 +346,19 @@ async function upsertBucket(
   collection: StatCollectionSlug,
   input: Required<Pick<RecordHeartbeatInput, 'monitorId' | 'organizationId' | 'status'>> & {
     ping: number | null
+    timing?: unknown
   },
   timestamp: number,
 ): Promise<Bucket> {
   const existing = await findBucket(payload, collection, input.monitorId, timestamp)
 
   if (existing) {
-    const next = applyBeat(existing, input.status, input.ping)
+    const next = applyBeat(existing, input.status, input.ping, input.timing)
     await payload.update({ collection, id: existing.id, data: bucketToData(next), depth: 0 })
     return { ...next, timestamp }
   }
 
-  const fresh = applyBeat(emptyBucket(), input.status, input.ping)
+  const fresh = applyBeat(emptyBucket(), input.status, input.ping, input.timing)
   try {
     // Relationship ids are numbers on Postgres/SQLite and strings on MongoDB; the generated
     // types follow the adapter the types were generated with, so cast the adapter-neutral ids.
@@ -368,7 +378,7 @@ async function upsertBucket(
       { collection, monitorId: input.monitorId, timestamp },
       'bucket insert raced; updating',
     )
-    const next = applyBeat(raced, input.status, input.ping)
+    const next = applyBeat(raced, input.status, input.ping, input.timing)
     await payload.update({ collection, id: raced.id, data: bucketToData(next), depth: 0 })
     return { ...next, timestamp }
   }
@@ -388,6 +398,7 @@ export async function recordHeartbeat(
     organizationId: input.organizationId,
     status: input.status,
     ping: isUsablePing(input.ping) ? input.ping : null,
+    timing: input.timing,
   }
 
   const [minute, hour, day] = await Promise.all(

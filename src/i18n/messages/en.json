@@ -283,6 +283,7 @@
       "message": "Message",
       "noMessage": "No message",
       "responseTime": "Response time",
+      "timing": "Request timing",
       "took": "Took",
       "milliseconds": "{ms} ms",
       "checkedAt": "Checked at",
@@ -350,6 +351,24 @@
       "chartTitle": "Response time by location",
       "chartDescription": "Average per hour over the last 24 hours.",
       "chartEmpty": "No per-location response times yet. The chart fills in as checks complete."
+    },
+    "timing": {
+      "title": "Request timing",
+      "latestDescription": "Where the time of the latest check went.",
+      "phases": {
+        "dns": "DNS lookup",
+        "connect": "TCP connect",
+        "tls": "TLS handshake",
+        "ttfb": "Waiting (TTFB)",
+        "transfer": "Content transfer"
+      },
+      "ms": "{ms} ms",
+      "notApplicable": "n/a",
+      "total": "Phases add up to {total} of {ping} response time",
+      "waterfallLabel": "Request timing waterfall",
+      "chartTitle": "Timing phases",
+      "chartDescription": "Average time per phase, stacked, for successful checks.",
+      "chartEmpty": "No timing data in this period yet. HTTP and TCP checks record it."
     },
     "events": {
       "title": "Important events",
@@ -5399,8 +5418,8 @@
     "httpUrlRequired": "Enter an http(s) URL.",
     "contactUrlInvalid": "Enter an http(s) URL or a mailto: address.",
     "componentMonitorRequired": "Pick a monitor for this component.",
-    "assetTooLarge": "{kind, select, logoDark {Dark logo} favicon {Favicon} other {Logo}} must be {size} or smaller",
-    "assetType": "{kind, select, logoDark {Dark logo} favicon {Favicon} other {Logo}} must be one of: {types}",
+    "assetTooLarge": "{kind, select, logoDark {Dark logo} favicon {Favicon} avatar {Avatar} other {Logo}} must be {size} or smaller",
+    "assetType": "{kind, select, logoDark {Dark logo} favicon {Favicon} avatar {Avatar} other {Logo}} must be one of: {types}",
     "svgRejected": "SVG rejected: {reason}",
     "themePresetUnknown": "Unknown theme preset. Use one of: {presets}.",
     "crossSiteRefused": "Cross-site request refused",
@@ -5621,6 +5640,14 @@
       "statusCode": "HTTP {code}",
       "elapsed": "took {ms} ms",
       "tls": "TLS certificate valid: {valid}, {days} days left",
+      "phase": "{name} {ms} ms",
+      "phases": {
+        "dns": "DNS",
+        "connect": "connect",
+        "tls": "TLS",
+        "ttfb": "TTFB",
+        "transfer": "transfer"
+      },
       "queued": "Check of {name} queued; the result arrives as a heartbeat.",
       "unsupported": "this Marmot version has no on-demand checks"
     },

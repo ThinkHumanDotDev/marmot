@@ -159,6 +159,8 @@ export const adminTranslations = {
         triggerDescription:
           'What started the beat: "manual" for Check now, "quorum" for a multi-location status repair; empty for scheduled checks and pushes.',
         assertionsDescription: 'Per-assertion results of this check (HTTP and DNS monitors).',
+        timingDescription:
+          'Request phases in ms: DNS, connect, TLS, time to first byte and transfer (HTTP and TCP monitors).',
         locationDescription: 'Probe location that ran the check; empty for the local workers.',
         probesDescription:
           'Per-probe results of a multi-location check (Globalping monitors): location, outcome and latency.',
