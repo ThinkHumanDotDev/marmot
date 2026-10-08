@@ -11,8 +11,10 @@ import {
   Pencil,
   Play,
   Plus,
+  Search,
   SunMoon,
   Sun,
+  Trash2,
   Wrench,
   Zap,
 } from 'lucide-react'
@@ -44,6 +46,7 @@ import {
   useMonitorStore,
   type MonitorStatusKey,
 } from '@/stores/monitor-store'
+import { selectSelectionCount, useMonitorSelection } from '@/stores/monitor-selection-store'
 import { useUiStore } from '@/stores/ui-store'
 
 import { useGoShortcuts } from './keyboard-shortcuts'
@@ -199,6 +202,18 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
   }
 
   const canWriteMonitors = roleCan(currentOrg.role, 'monitor:update')
+  const canDeleteMonitors = roleCan(currentOrg.role, 'monitor:delete')
+  // Bulk actions on the monitor list's selection (#124), while the list is on screen.
+  const listMounted = useMonitorSelection((s) => s.listMounted)
+  const selectedCount = useMonitorSelection(selectSelectionCount)
+  const bulkCount = listMounted ? selectedCount : 0
+
+  function searchMonitors() {
+    useMonitorSelection.getState().requestSearchFocus()
+    if (!useMonitorSelection.getState().listMounted) {
+      router.push(orgPath(currentOrg.slug, 'monitors'))
+    }
+  }
   const canCreateMonitors = roleCan(currentOrg.role, 'monitor:create')
   const canCreateMaintenance = roleCan(currentOrg.role, 'maintenance:create')
 
@@ -266,6 +281,48 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
               onSelect={run(() => router.push(orgPath(currentOrg.slug, 'monitors/new')))}
             >
               <Plus aria-hidden /> {t('newMonitor')}
+            </CommandItem>
+          )}
+          <CommandItem
+            value="search monitors filter find"
+            keywords={[t('searchMonitors')]}
+            onSelect={run(searchMonitors)}
+          >
+            <Search aria-hidden /> {t('searchMonitors')}
+            <CommandShortcut aria-hidden>/</CommandShortcut>
+          </CommandItem>
+          {bulkCount > 0 && canWriteMonitors && (
+            <>
+              <CommandItem
+                value="pause selected monitors bulk"
+                keywords={[t('bulkPause', { count: bulkCount })]}
+                onSelect={run(() => useMonitorSelection.getState().requestBulk('pause'))}
+              >
+                <Pause aria-hidden /> {t('bulkPause', { count: bulkCount })}
+              </CommandItem>
+              <CommandItem
+                value="resume selected monitors bulk"
+                keywords={[t('bulkResume', { count: bulkCount })]}
+                onSelect={run(() => useMonitorSelection.getState().requestBulk('resume'))}
+              >
+                <Play aria-hidden /> {t('bulkResume', { count: bulkCount })}
+              </CommandItem>
+              <CommandItem
+                value="check selected monitors now bulk"
+                keywords={[t('bulkCheck', { count: bulkCount })]}
+                onSelect={run(() => useMonitorSelection.getState().requestBulk('check'))}
+              >
+                <Zap aria-hidden /> {t('bulkCheck', { count: bulkCount })}
+              </CommandItem>
+            </>
+          )}
+          {bulkCount > 0 && canDeleteMonitors && (
+            <CommandItem
+              value="delete selected monitors bulk"
+              keywords={[t('bulkDelete', { count: bulkCount })]}
+              onSelect={run(() => useMonitorSelection.getState().requestBulk('delete'))}
+            >
+              <Trash2 aria-hidden /> {t('bulkDelete', { count: bulkCount })}
             </CommandItem>
           )}
           {canCreateMaintenance && (

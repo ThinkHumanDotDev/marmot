@@ -26,10 +26,34 @@ export const MONITOR_SUMMARY_SELECT = {
   parent: true,
   organization: true,
   tags: true,
+  description: true,
+  notifications: true,
+  locations: true,
+  includeLocal: true,
 } as const
 
 export type MonitorSummarySource = Pick<Monitor, 'id' | 'name' | 'type' | 'interval'> &
-  Partial<Pick<Monitor, 'active' | 'url' | 'hostname' | 'parent' | 'organization' | 'tags'>>
+  Partial<
+    Pick<
+      Monitor,
+      | 'active'
+      | 'url'
+      | 'hostname'
+      | 'parent'
+      | 'organization'
+      | 'tags'
+      | 'description'
+      | 'notifications'
+      | 'locations'
+      | 'includeLocal'
+    >
+  >
+
+/** Ids of a has-many relationship, populated or not. */
+function relationIds(value: readonly Relation[] | null | undefined): RealtimeId[] {
+  if (!Array.isArray(value)) return []
+  return value.map(relationId).filter((id): id is RealtimeId => id !== null)
+}
 
 /** Tags of a monitor whose `tags[].tag` is populated; unpopulated rows are skipped. */
 export function toRealtimeTags(tags: Monitor['tags']): RealtimeTag[] {
@@ -99,6 +123,10 @@ export function toRealtimeMonitor(doc: MonitorSummarySource): RealtimeMonitor {
     parent: relationId(doc.parent),
     organization: relationId(doc.organization),
     tags: toRealtimeTags(doc.tags),
+    description: doc.description ?? null,
+    notifications: relationIds(doc.notifications),
+    locations: relationIds(doc.locations),
+    includeLocal: doc.includeLocal === true,
   }
 }
 

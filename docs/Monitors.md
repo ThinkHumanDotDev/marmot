@@ -117,7 +117,8 @@ monitor is never checked twice at once ([Architecture](Architecture.md#polling-e
 ## The monitor page
 
 `/{org}/monitors` lists every monitor with its live status, a bar of the last 100 heartbeats and the 24 h
-uptime; it updates over the WebSocket connection without reloading. The detail page adds:
+uptime; it updates over the WebSocket connection without reloading (see
+[search, filters and bulk actions](#search-filters-and-bulk-actions) below). The detail page adds:
 
 - uptime for 24 h and 30 d, average and current response time, and the number of degraded checks in the
   last 24 hours;
@@ -140,6 +141,45 @@ uptime; it updates over the WebSocket connection without reloading. The detail p
 
 Statistics are kept as minutely (24 h), hourly (30 d) and daily (`KEEP_DATA_PERIOD_DAYS`, default one
 year) buckets, so a monitor's history survives the pruning of raw heartbeats after 24 hours.
+
+### Search, filters and bulk actions
+
+_(landing in the current release, #124)_
+
+The list has a **search box** (press <kbd>/</kbd> to focus it, or **Search monitors** in the command
+palette) and **filter menus**:
+
+- the search matches every word against the name, the URL or hostname and the description, ignoring case
+  and accents; words of three letters or more also match the name loosely (`chkapi` finds "Checkout API").
+  It understands filter tokens too: `status:down tag:prod` (also `is:paused`, `type:http`,
+  `location:<name>` or `location:local`; `tag:` matches a tag's name, its value or `name:value`);
+- **Status** (up, down, pending, degraded, maintenance, paused), **Type**, **Tags**, **Channels** (not shown
+  to viewers, who cannot read channels) and **Locations** (shown once the organization has a
+  [probe location](Probe-Locations.md); _This server_ is the local worker pool). Values of one filter are
+  alternatives, different filters and search tokens must all match.
+
+Search and filters live in the query string (`/acme/monitors?q=api&status=down,degraded&tag=12`), so a
+filtered view can be bookmarked and shared. The list stays live while filtered: a monitor that goes down
+appears under **Status: Down** as soon as its heartbeat arrives.
+
+Members (anyone with `monitor:update` or `monitor:delete`) get a checkbox per row. Click to select,
+<kbd>Shift</kbd>-click to select a range, or use the keyboard: <kbd>Space</kbd> toggles the focused row,
+<kbd>↑</kbd>/<kbd>↓</kbd> move between rows and <kbd>Shift</kbd> with either extends the selection. The
+header checkbox selects every monitor shown. The selection only ever holds monitors that are shown: a
+monitor hidden by a filter (or deleted) drops out of it. On the selection:
+
+- **Pause** / **Resume**;
+- **Check now** (one recorded check per monitor, queued without waiting; each spends one of the
+  organization's `ON_DEMAND_CHECKS_PER_MINUTE`, and paused, push and probe-checked monitors are skipped);
+- **Tags → Add tag / Remove tag** (an added tag keeps the value a monitor already has for it);
+- **Channels → Attach channel / Detach channel**;
+- **Delete** (after a confirmation; `monitor:delete`).
+
+Pause, resume, check now and delete of the selection are also in the command palette while the list is
+open. Viewers see the search and the filters but no checkboxes.
+
+Each bulk action is one request to [`POST /api/orgs/:orgId/monitors/bulk`](#bulk-actions); the toast
+reports how many monitors changed, how many already were in the requested state and the first failure.
 
 ### Request timing
 
@@ -376,6 +416,7 @@ same permissions as the UI (`monitor:read` for viewers, `monitor:create|update|d
 | `POST /api/orgs/:orgId/monitors/:id/resume`      | Resume                                             |
 | `POST /api/orgs/:orgId/monitors/:id/clone`       | Clone (returns the new, paused monitor)            |
 | `POST /api/orgs/:orgId/monitors/:id/check`       | Check now (see below)                              |
+| `POST /api/orgs/:orgId/monitors/bulk`            | One action on many monitors (see below)            |
 | `POST /api/orgs/:orgId/checks`                   | Test an unsaved configuration (see below)          |
 | `GET /api/monitors/:id/stats?range=&percentile=` | Uptime, ping, percentiles and chart series (below) |
 | `GET /api/orgs/:orgId/monitor-incidents`         | Incidents + MTTA/MTTR (see below)                  |
@@ -417,6 +458,50 @@ message } }`; the realtime `monitorIncident` event carries the same object.
 Requests from outside the browser must send the `payload-token` cookie or a `JWT` `Authorization` header
 (`POST /api/users/login` returns one) and an `Origin` matching `NEXT_PUBLIC_SERVER_URL`. Organization API
 keys give machine access to badges and metrics ([Integrations](Integrations.md)).
+
+### Bulk actions
+
+`POST /api/orgs/:orgId/monitors/bulk` runs one action on up to 500 monitors:
+
+```json
+{ "ids": [12, 13, 14], "action": "addTags", "payload": { "tags": [{ "tag": 3, "value": "eu" }] } }
+```
+
+| `action`                                     | `payload`                            | Permission       |
+| -------------------------------------------- | ------------------------------------ | ---------------- |
+| `pause`, `resume`                            | —                                    | `monitor:update` |
+| `check` (queue a recorded check, no waiting) | —                                    | `monitor:update` |
+| `addTags`, `removeTags`                      | `{ tags: [{ tag, value? }] }` (≤ 50) | `monitor:update` |
+| `addNotifications`, `removeNotifications`    | `{ notifications: [id] }` (≤ 50)     | `monitor:update` |
+| `delete`                                     | —                                    | `monitor:delete` |
+
+The answer is `200` with one result per id (duplicates collapse) and a summary:
+
+```json
+{
+  "action": "pause",
+  "results": [
+    { "id": "12", "ok": true, "monitor": { "id": "12", "name": "API", "active": false, "…": "…" } },
+    { "id": "13", "ok": true, "unchanged": true },
+    { "id": "99", "ok": false, "error": "notFound", "message": "Monitor not found" }
+  ],
+  "summary": { "changed": 1, "unchanged": 1, "failed": 1 }
+}
+```
+
+`error` is `notFound` (not a monitor of the organization you can see), `notApplicable` (`check` of a paused,
+push or probe-checked monitor), `rateLimited` (`check` over the organization's on-demand budget) or `failed`
+(the write was refused, with the reason in `message`). Changed monitors come back in the realtime list shape
+(`monitor`), and the same change reaches every open list over the WebSocket.
+
+Every monitor is written through the same path as the single-monitor routes (collection access, the
+organization checks of tags and channels, plan limits, scheduler sync, realtime events) as its own
+operation, so a failure affects only its id, on Postgres and on MongoDB alike. Everything that can be
+checked up front is checked before anything changes: the permission, the body, tags and channels of another
+organization (`400`) and the API key budget (an API key spends one write per monitor and may name at most
+`API_KEY_WRITE_RATE_LIMIT` monitors). Each changed monitor gets its own [audit log](Security.md#audit-log)
+row (`monitor.paused`, `monitor.resumed`, `monitor.updated`, `monitor.deleted`) with
+`metadata.bulk = { action, count }`; monitors that were already in the requested state get none.
 
 ### On-demand checks
 

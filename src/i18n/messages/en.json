@@ -145,7 +145,12 @@
       "checkNow": "Check “{name}” now",
       "checkingMonitor": "Checking “{name}”…",
       "checkResult": "“{name}” is {status, select, up {up} down {down} pending {pending} maintenance {under maintenance} degraded {degraded} other {unknown}}: {msg}",
-      "checkFailed": "Could not run the check"
+      "checkFailed": "Could not run the check",
+      "searchMonitors": "Search monitors",
+      "bulkPause": "Pause {count, plural, one {# selected monitor} other {# selected monitors}}",
+      "bulkResume": "Resume {count, plural, one {# selected monitor} other {# selected monitors}}",
+      "bulkCheck": "Check {count, plural, one {# selected monitor} other {# selected monitors}} now",
+      "bulkDelete": "Delete {count, plural, one {# selected monitor} other {# selected monitors}}…"
     },
     "checkerOffline": {
       "title": "Checker offline",
@@ -201,7 +206,55 @@
         "ping": "Ping"
       },
       "listLabel": "Monitors",
-      "paused": "Paused"
+      "paused": "Paused",
+      "search": {
+        "label": "Search monitors",
+        "placeholder": "Search name, URL, description, or status:down tag:prod…"
+      },
+      "filters": {
+        "label": "Filters",
+        "status": "Status",
+        "type": "Type",
+        "tags": "Tags",
+        "notifications": "Channels",
+        "locations": "Locations",
+        "localLocation": "This server",
+        "active": "Active filters",
+        "remove": "Remove filter {label}",
+        "clear": "Clear filters",
+        "clearOne": "Clear",
+        "menuLabelActive": "{label} ({count, plural, one {# selected} other {# selected}})"
+      },
+      "summary": "Showing {shown, plural, one {# monitor} other {# monitors}} of {total}",
+      "noMatchesTitle": "No monitors match",
+      "noMatchesDescription": "Try another search or clear the filters.",
+      "selection": {
+        "selectAll": "Select all shown monitors",
+        "selectMonitor": "Select {name}",
+        "selected": "{count, plural, one {# selected} other {# selected}}",
+        "none": "Select monitors for bulk actions",
+        "clear": "Clear selection"
+      },
+      "bulk": {
+        "label": "Bulk actions",
+        "pause": "Pause",
+        "resume": "Resume",
+        "check": "Check now",
+        "delete": "Delete",
+        "tags": "Tags",
+        "addTag": "Add tag",
+        "removeTag": "Remove tag",
+        "channels": "Channels",
+        "attachChannel": "Attach channel",
+        "detachChannel": "Detach channel",
+        "working": "Working…",
+        "result": "{action, select, pause {Paused} resume {Resumed} check {Queued a check for} delete {Deleted} addTags {Tagged} removeTags {Removed the tag from} addNotifications {Attached the channel to} removeNotifications {Detached the channel from} other {Updated}} {changed, plural, one {# monitor} other {# monitors}}{unchanged, plural, =0 {} other { ({unchanged} already done)}}.",
+        "partial": "{failed, plural, one {# monitor was} other {# monitors were}} not changed: {message}",
+        "failed": "The bulk action failed",
+        "deleteTitle": "Delete {count, plural, one {# monitor} other {# monitors}}?",
+        "deleteDescription": "This removes the selected monitors together with their heartbeats and statistics. Child monitors of a group are kept and detached. This cannot be undone.",
+        "confirmDelete": "Delete monitors"
+      }
     },
     "realtime": {
       "live": "Live",
@@ -5541,7 +5594,10 @@
     "locationLabelDuplicate": "Each label key may only be used once.",
     "monitorTooManyLocations": "A monitor can be checked from at most {max, plural, one {# location} other {# locations}}.",
     "monitorTypeNotOnProbe": "Group, manual, push, Steam and Globalping monitors cannot run on a probe location.",
-    "checkOnProbe": "This monitor is checked by a probe location, so “Check now” cannot record a result from this server. Run a dry run (record=false) to test the target from here."
+    "checkOnProbe": "This monitor is checked by a probe location, so “Check now” cannot record a result from this server. Run a dry run (record=false) to test the target from here.",
+    "bulkTooManyMonitors": "At most {max} monitors per bulk request.",
+    "unknownTags": "{count, plural, one {Unknown tag} other {Unknown tags}}: {ids}",
+    "unknownNotificationChannels": "{count, plural, one {Unknown notification channel} other {Unknown notification channels}}: {ids}"
   },
   "subscriberMessages": {
     "sms": {

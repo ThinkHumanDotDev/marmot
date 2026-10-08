@@ -71,6 +71,14 @@ export interface RealtimeMonitor {
   organization?: RealtimeId | null
   /** Resolved tags (name + colour) with the monitor's value. */
   tags?: RealtimeTag[]
+  /** Free-text description (searched by the monitor list, #124). */
+  description?: string | null
+  /** Ids of the attached notification channels (filter of the monitor list). */
+  notifications?: RealtimeId[]
+  /** Ids of the probe locations (#91); empty: the local worker pool. */
+  locations?: RealtimeId[]
+  /** The local worker pool checks the monitor besides its probe locations (#92). */
+  includeLocal?: boolean
 }
 
 export interface RealtimeTag {

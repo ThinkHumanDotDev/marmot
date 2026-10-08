@@ -68,6 +68,30 @@ describe('realtime status mapping', () => {
       hostname: null,
       organization: '3',
       tags: [],
+      description: null,
+      notifications: [],
+      locations: [],
+      includeLocal: false,
+    })
+
+    // The list's filter fields (#124) travel as string ids.
+    expect(
+      toStoreMonitor({
+        id: '8',
+        name: 'Web',
+        type: 'http',
+        active: true,
+        interval: 60,
+        description: 'Shop',
+        notifications: ['4'],
+        locations: ['9'],
+        includeLocal: true,
+      }),
+    ).toMatchObject({
+      description: 'Shop',
+      notifications: ['4'],
+      locations: ['9'],
+      includeLocal: true,
     })
   })
 })

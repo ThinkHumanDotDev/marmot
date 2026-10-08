@@ -31,6 +31,7 @@ import { SUBSCRIBER_CHANNELS } from '@/lib/status-page-subscribers'
 import { maintenanceFormSchema } from '@/lib/validation/maintenance'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
 import { apiKeyCreateSchema, apiKeyPatchSchema } from '@/server/api-keys/schemas'
+import { monitorBulkBody } from '@/server/monitors/bulk-schema'
 import { locationCreateSchema, locationPatchSchema } from '@/server/probes/schemas'
 import { API_KEY_FORBIDDEN_SECTIONS, isWriteMethod } from '@/server/auth/request-auth'
 import { STATS_RANGES } from '@/server/stats/uptime-calculator'
@@ -735,6 +736,22 @@ export const OPERATIONS: OperationSpec[] = [
     body: { schema: monitorFormSchema },
     status: 201,
     response: { description: 'The created monitor', schema: anyObject },
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/monitors/bulk`,
+    operationId: 'bulkMonitors',
+    summary: 'Run one action on many monitors',
+    description:
+      '`pause`, `resume`, `check` (queues a recorded check per monitor, spending the organization’s on-demand budget), `delete`, `addTags` / `removeTags` (`payload.tags`) and `addNotifications` / `removeNotifications` (`payload.notifications`), up to 500 ids. Each monitor is written on its own and audited on its own; the response has one result per id. `delete` needs `monitor:delete`. An API key spends one write per monitor and may name at most `API_KEY_WRITE_RATE_LIMIT` ids.',
+    tag: 'Monitors',
+    permission: 'monitor:update',
+    body: { schema: monitorBulkBody },
+    response: {
+      description:
+        '`{ action, results: [{ id, ok, unchanged?, monitor?, error?, message? }], summary }`',
+      schema: anyObject,
+    },
   },
   {
     method: 'GET',

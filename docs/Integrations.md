@@ -68,7 +68,9 @@ per-organization overrides and collection access apply as for a person with that
   (`403`), whatever the organization's permission overrides say;
 - each key may send `API_KEY_RATE_LIMIT` requests per minute (default 600), of which
   `API_KEY_WRITE_RATE_LIMIT` (default 60) may be writes; above that the API answers `429` with
-  `Retry-After` ([Configuration](Configuration.md#authentication));
+  `Retry-After` ([Configuration](Configuration.md#authentication)); a
+  [bulk request](Monitors.md#search-filters-and-bulk-actions) (`POST …/monitors/bulk`) spends one write per
+  monitor it names and may name at most `API_KEY_WRITE_RATE_LIMIT` monitors;
 - changes made with a key appear in the [audit log](Security.md#audit-log) like any other
   (`monitor.created`, `incident.updated`, …) with actor type `apiKey` and the key's name (actor type `mcp`
   and the key's name plus the tool when the change came through the [MCP server](MCP.md)), so automation

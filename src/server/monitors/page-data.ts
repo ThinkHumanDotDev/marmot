@@ -209,3 +209,43 @@ export async function getMonitorFormResources(ctx: OrgPageContext): Promise<Moni
     notifications: notifications.docs.map(toChannelOption),
   }
 }
+
+/**
+ * Tags, notification channels and probe locations for the monitor list's filters and bulk actions
+ * (#124), read as the user. `notifications` is `null` when the user may not read channels (viewers),
+ * so the list hides that filter instead of offering an empty one.
+ */
+export async function getMonitorListResources(ctx: OrgPageContext): Promise<{
+  tags: { id: string; name: string; color: string | null }[]
+  notifications: { id: string; name: string }[] | null
+  locations: { id: string; name: string }[]
+}> {
+  const common = {
+    where: { organization: { equals: ctx.org.id } },
+    sort: 'name',
+    depth: 0,
+    limit: 500,
+    user: ctx.requestUser,
+    overrideAccess: false,
+    disableErrors: true,
+  } as const
+  const canReadChannels = ctx.allowed('notification:read')
+  const [tags, locations, notifications] = await Promise.all([
+    ctx.payload.find({ collection: 'tags', select: { name: true, color: true }, ...common }),
+    ctx.payload.find({ collection: 'locations', select: { name: true }, ...common }),
+    canReadChannels
+      ? ctx.payload.find({ collection: 'notifications', select: { name: true }, ...common })
+      : Promise.resolve(null),
+  ])
+  return {
+    tags: tags.docs.map((doc) => ({
+      id: String(doc.id),
+      name: doc.name,
+      color: doc.color ?? null,
+    })),
+    locations: locations.docs.map((doc) => ({ id: String(doc.id), name: doc.name })),
+    notifications: notifications
+      ? notifications.docs.map((doc) => ({ id: String(doc.id), name: doc.name }))
+      : null,
+  }
+}

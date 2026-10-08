@@ -37,8 +37,11 @@ export interface RateLimiter {
   readonly name: string
   readonly points: number
   readonly duration: number
-  /** Spend one point for `key` and report whether the caller may proceed. Never throws. */
-  consume(key: string): Promise<RateLimitDecision>
+  /**
+   * Spend `points` (default one) for `key` and report whether the caller may proceed. Never
+   * throws.
+   */
+  consume(key: string, points?: number): Promise<RateLimitDecision>
 }
 
 /** The subset of ioredis the limiter needs; lets tests pass a stub. */
@@ -98,9 +101,9 @@ export function createRateLimiter(
     name,
     points: options.points,
     duration: options.duration,
-    async consume(key) {
+    async consume(key, points = 1) {
       try {
-        const res = await getLimiter().consume(key, 1)
+        const res = await getLimiter().consume(key, Math.max(1, Math.floor(points)))
         if (degradedSince !== null) {
           log.info({ limiter: name }, 'rate limiting restored')
           degradedSince = null
