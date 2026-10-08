@@ -224,14 +224,58 @@ your own build).
 
 - **Workers** are stateless BullMQ consumers: `docker compose up -d --scale worker=3`. Each runs
   `WORKER_CONCURRENCY` (default 10) checks in parallel; BullMQ guarantees a monitor is checked by one worker
-  at a time. Scale out for thousands of monitors or for checks with long timeouts.
+  at a time. A worker is a single Node.js process, so it can use at most one CPU core: one worker handles
+  about **25 checks/s**, and raising `WORKER_CONCURRENCY` beyond that no longer helps (see
+  [Sizing](#sizing)). Keep `WORKER_CONCURRENCY` around 10–20 and add worker replicas instead; raise it only
+  when most checks wait on slow targets or long timeouts rather than on the CPU.
 - **Realtime** replicas share state through the Redis adapter, so several can run; the proxy in front then
   needs sticky sessions (or WebSocket-only transport) because socket.io's polling handshake must land on the
   same replica.
 - **Web** is a regular Next.js server and scales horizontally behind the proxy. Only one replica should run
   migrations: set `SKIP_MIGRATIONS=true` on the others or run `migrate` as a separate step.
+- **Postgres** does about a third of the CPU work of the checks (every beat writes a heartbeat and updates
+  the stats buckets). Give it room when you add workers, and run it on its own host once the workers need
+  more than a couple of cores.
 - **Redis** must run with `maxmemory-policy noeviction` and persistence (`--save`) so job schedulers survive
   a restart; the compose file configures both.
+
+With the [self connectivity check](Configuration.md#self-connectivity-check) enabled, every worker replica
+probes the targets on its own (a few requests every `CONNECTIVITY_CHECK_INTERVAL` seconds), while the
+"checker offline" notice is still sent only once per outage.
+
+### Sizing
+
+Work out the check rate first: **checks/s = Σ (1 / interval)** over the active monitors. 600 monitors at
+60 s are 10 checks/s; add 400 at 20 s and it is 30 checks/s. Then size from the figures below.
+
+> **Measured on one machine, as a rough guide.** `main` as of 2026-10-06 (after v0.1.1), production build
+> with separate web / worker / realtime processes, Postgres 16, Redis 7, 4 vCPU, HTTP monitors against an
+> endpoint that answers in 150 ms. Slower targets, HTTPS, keywords or other monitor types change the
+> numbers; measure your own load before relying on them.
+
+| Monitors                    | Wanted checks/s | Workers × concurrency | Achieved checks/s | Worker CPU |
+| --------------------------- | --------------: | --------------------- | ----------------: | ---------: |
+| 600 at 60 s / 30 s          |              18 | 1 × 10                |              18.3 | 0.64 cores |
+| 1,000 at 60 s / 30 s / 20 s |              38 | 1 × 10                |          **23.8** | 0.81 cores |
+| same                        |              38 | 1 × 40                |          **30.1** | 1.07 cores |
+| same                        |              38 | **2 × 20**            |              40.3 | 1.56 cores |
+
+One worker falls behind at about 25–30 checks/s whatever its concurrency; a second replica catches up.
+Rules of thumb from the same run:
+
+- **Workers:** one replica per ~25 checks/s, with `WORKER_CONCURRENCY` at 10–20.
+- **CPU:** about 0.04 worker cores per check/s (HTTPS adds about 10–15% for the TLS handshake), plus about
+  0.02 Postgres cores per check/s.
+- **Memory:** a worker uses about 250 MB at concurrency 10 and about 500 MB at 20–40; web about 310 MB,
+  realtime about 170 MB.
+- **Disk:** a row is about 240 B per heartbeat, 260 B per minutely, 350 B per hourly and 480 B per daily
+  bucket. With the default retention (non-important beats and minutely buckets 24 h, hourly buckets 30 days,
+  daily buckets and important beats `KEEP_DATA_PERIOD_DAYS` = 365 days) that is about 1.0 / 1.4 / 1.9 MB per
+  monitor at 60 / 30 / 20 s intervals.
+
+For example, 1,000 monitors at 60 s (about 17 checks/s) fit one worker at the default concurrency, use about
+0.7 worker cores and 0.35 Postgres cores, and about 1 GB of database. Retention runs hourly; see
+[Configuration](Configuration.md) for `KEEP_DATA_PERIOD_DAYS` and the instance setting that overrides it.
 
 ## Backups and restore
 
