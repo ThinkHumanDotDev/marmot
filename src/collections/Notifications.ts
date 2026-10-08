@@ -29,6 +29,7 @@ import { checkServerSmtpChange } from '@/server/notifications/server-smtp'
 import { adminGroup, adminT } from '@/i18n/admin'
 import { userErrorText, userLocale } from '@/server/request-locale'
 import { apiError } from '@/server/errors'
+import { requireVerifiedEmail } from '@/server/auth/email-verification'
 
 const log = childLogger('notifications')
 
@@ -271,6 +272,8 @@ export const Notifications: CollectionConfig = {
   },
   indexes: [{ fields: ['organization', 'isDefault'] }],
   hooks: {
+    // Unconfirmed self-service accounts cannot add notification channels (#177).
+    beforeOperation: [requireVerifiedEmail],
     beforeValidate: [validateProviderConfig],
     beforeChange: [clearLastErrorOnEdit],
     afterChange: [applyToExistingMonitors],

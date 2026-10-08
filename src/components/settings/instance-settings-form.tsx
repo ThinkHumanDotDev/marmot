@@ -35,6 +35,7 @@ interface InstanceSettingsFormProps {
 interface FormState {
   primaryBaseUrl: string
   allowSignup: boolean
+  requireEmailVerification: boolean
   entryPage: 'dashboard' | 'status-page'
   tlsExpiryNotifyDays: string
   domainExpiryNotifyDays: string
@@ -47,6 +48,7 @@ interface FormState {
 const toForm = (s: InstanceSettings): FormState => ({
   primaryBaseUrl: s.primaryBaseUrl,
   allowSignup: s.allowSignup,
+  requireEmailVerification: s.requireEmailVerification,
   entryPage: s.entryPage,
   tlsExpiryNotifyDays: s.tlsExpiryNotifyDays.join(', '),
   domainExpiryNotifyDays: s.domainExpiryNotifyDays.join(', '),
@@ -106,6 +108,7 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
     const data: InstanceSettingsInput = {
       primaryBaseUrl: baseUrl,
       allowSignup: form.allowSignup,
+      requireEmailVerification: form.requireEmailVerification,
       entryPage: form.entryPage,
       tlsExpiryNotifyDays: tls,
       domainExpiryNotifyDays: domain,
@@ -153,6 +156,14 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
             hint={t('allowSignupHint')}
             checked={form.allowSignup}
             onChange={(v) => set('allowSignup', v)}
+          />
+
+          <ToggleRow
+            id={field('requireEmailVerification')}
+            label={t('requireEmailVerification')}
+            hint={t('requireEmailVerificationHint')}
+            checked={form.requireEmailVerification}
+            onChange={(v) => set('requireEmailVerification', v)}
           />
 
           <div className="grid gap-2">

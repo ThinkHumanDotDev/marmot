@@ -8,6 +8,7 @@
 import type { Locale } from '@/i18n/locales'
 import { escapeHtml, renderMarkdown } from '@/lib/markdown'
 import { serverTranslator } from '@/server/i18n'
+import { emailButton as button, emailLayout as layout } from '@/server/email/layout'
 import type { Announcement, RenderContext } from '@/server/status-pages/subscribers/content'
 import { bodyLines, headline } from '@/server/status-pages/subscribers/content'
 import type { SubscriptionLinks } from '@/server/status-pages/subscribers/links'
@@ -17,12 +18,6 @@ export interface RenderedEmail {
   text: string
   html: string
 }
-
-const button = (url: string, label: string) =>
-  `<p style="margin:24px 0"><a href="${escapeHtml(url)}" style="display:inline-block;padding:10px 18px;border-radius:6px;background:#1c1a18;color:#ffffff;text-decoration:none;font-weight:600">${escapeHtml(label)}</a></p>`
-
-const layout = (body: string, footer: string) =>
-  `<!doctype html><html><body style="margin:0;padding:24px;background:#f7f5f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1c1a18"><div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;padding:24px 28px;line-height:1.5;font-size:15px">${body}</div><div style="max-width:560px;margin:12px auto 0;font-size:12px;color:#6b6760;line-height:1.5">${footer}</div></body></html>`
 
 const footerHtml = (siteName: string, links: SubscriptionLinks, locale: Locale) => {
   const t = serverTranslator(locale)

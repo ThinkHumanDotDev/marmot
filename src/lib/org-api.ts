@@ -177,6 +177,7 @@ export const permissionsApi = {
 export interface InstanceSettingsInput {
   primaryBaseUrl?: string | null
   allowSignup?: boolean
+  requireEmailVerification?: boolean
   entryPage?: 'dashboard' | 'status-page'
   tlsExpiryNotifyDays?: number[]
   domainExpiryNotifyDays?: number[]

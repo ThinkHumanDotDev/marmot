@@ -7,6 +7,7 @@ import { cache } from 'react'
 
 import config from '@payload-config'
 import type { User } from '@/payload-types'
+import { isUnverified, needsEmailVerification } from '@/server/auth/email-verification'
 
 /** One organization the current user belongs to, as the UI needs it. */
 export interface OrgMembership {
@@ -29,12 +30,17 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   return (user as CurrentUser | null) ?? null
 })
 
-/** Redirects to `/login` (remembering where the user wanted to go) when signed out. */
+/**
+ * Redirects to `/login` (remembering where the user wanted to go) when signed out, and to the
+ * "check your inbox" screen (`/verify-email`) while the account still has to confirm its address
+ * (#177, `needsEmailVerification`).
+ */
 export async function requireUser(next?: string): Promise<CurrentUser> {
   const user = await getCurrentUser()
-  if (!user) {
-    const search = next ? `?next=${encodeURIComponent(next)}` : ''
-    redirect(`/login${search}`)
+  const search = next ? `?next=${encodeURIComponent(next)}` : ''
+  if (!user) redirect(`/login${search}`)
+  if (isUnverified(user) && (await needsEmailVerification(await getPayload({ config }), user))) {
+    redirect(`/verify-email${search}`)
   }
   return user
 }
