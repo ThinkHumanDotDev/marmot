@@ -39,7 +39,6 @@ export interface SlugAvailability {
 export type OrganizationPatch = {
   name?: string
   slug?: string
-  logo?: Id | null
   settings?: { timezone?: string; weekStart?: 'monday' | 'sunday' }
 }
 
@@ -56,6 +55,10 @@ export const orgApi = {
   update: (orgId: Id, data: OrganizationPatch) =>
     api.patch<{ doc: { id: Id; slug: string } }>(`/api/organizations/${orgId}`, { ...data }),
   remove: (orgId: Id) => api.delete<unknown>(`/api/organizations/${orgId}`),
+  /** Uploads and sets the logo (`organization:update`). */
+  uploadLogo: (orgId: Id, file: File) =>
+    uploadImage<{ logo: MediaDoc }>(`/api/orgs/${orgId}/logo`, file),
+  removeLogo: (orgId: Id) => api.delete<{ logo: null }>(`/api/orgs/${orgId}/logo`),
 
   invite: (orgId: Id, data: { email: string; role: Role }) =>
     api.post<{ doc: InvitationRow }>('/api/invitations', { organization: orgId, ...data }),
@@ -119,7 +122,6 @@ export const accountApi = {
     data: {
       name?: string
       email?: string
-      avatar?: Id | null
       theme?: ThemePreference
       language?: Locale
     },
@@ -128,6 +130,9 @@ export const accountApi = {
       `/api/users/${userId}`,
       data,
     ),
+  /** Uploads and sets the signed-in user's avatar. */
+  uploadAvatar: (file: File) => uploadImage<{ avatar: MediaDoc }>('/api/account/avatar', file),
+  removeAvatar: () => api.delete<{ avatar: null }>('/api/account/avatar'),
   changePassword: (data: { currentPassword: string; password: string }) =>
     api.post<{ updated: true }>('/api/account/password', data),
   remove: (confirm: string) => api.delete<{ deleted: true }>('/api/account', { body: { confirm } }),
@@ -190,20 +195,17 @@ export const instanceApi = {
 }
 
 /**
- * Uploads an image to the `media` collection. A failure without a server message throws an
- * `Error` with an empty message; the caller shows its own (translated) fallback.
+ * Posts an image as multipart `file` to one of the upload routes (`/api/orgs/:orgId/logo`,
+ * `/api/account/avatar`); the `media` collection itself is not writable through REST. A failure
+ * without a server message throws an `Error` with an empty message; the caller shows its own
+ * (translated) fallback.
  */
-export async function uploadMedia(file: File, alt: string): Promise<MediaDoc> {
+async function uploadImage<T>(path: string, file: File): Promise<T> {
   const form = new FormData()
   form.append('file', file)
-  form.append('_payload', JSON.stringify({ alt }))
-  const res = await fetch('/api/media', { method: 'POST', body: form, credentials: 'include' })
-  const body = (await res.json().catch(() => null)) as {
-    doc?: MediaDoc
-    errors?: { message?: string }[]
-  } | null
-  if (!res.ok || !body?.doc) {
-    throw new Error(body?.errors?.[0]?.message ?? '')
-  }
-  return body.doc
+  const res = await fetch(path, { method: 'POST', body: form, credentials: 'include' })
+  const body = (await res.json().catch(() => null)) as
+    (T & { errors?: { message?: string }[] }) | null
+  if (!res.ok || !body) throw new Error(body?.errors?.[0]?.message ?? '')
+  return body
 }

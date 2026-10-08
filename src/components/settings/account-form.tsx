@@ -50,13 +50,19 @@ export function AccountForm({ user }: AccountFormProps) {
     }
   }
 
-  async function setAvatar(media: { id: string | number } | null) {
+  async function uploadAvatar(file: File) {
+    await accountApi.uploadAvatar(file)
+    toast.success(t('avatarUpdated'))
+    router.refresh()
+  }
+
+  async function removeAvatar() {
     try {
-      await accountApi.update(user.id, { avatar: media ? media.id : null })
-      toast.success(media ? t('avatarUpdated') : t('avatarRemoved'))
+      await accountApi.removeAvatar()
+      toast.success(t('avatarRemoved'))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('avatarFailed'))
+      toast.error(error instanceof Error && error.message ? error.message : t('avatarFailed'))
     }
   }
 
@@ -73,7 +79,8 @@ export function AccountForm({ user }: AccountFormProps) {
             <ImageUpload
               value={user.avatarUrl}
               label={user.name || user.email}
-              onChange={setAvatar}
+              onUpload={uploadAvatar}
+              onRemove={removeAvatar}
               shape="circle"
             />
           </div>

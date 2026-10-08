@@ -66,13 +66,19 @@ export function OrganizationForm({ org, canEdit }: OrganizationFormProps) {
     }
   }
 
-  async function setLogo(media: { id: string | number } | null) {
+  async function uploadLogo(file: File) {
+    await orgApi.uploadLogo(org.id, file)
+    toast.success(t('logoUpdated'))
+    router.refresh()
+  }
+
+  async function removeLogo() {
     try {
-      await orgApi.update(org.id, { logo: media ? media.id : null })
-      toast.success(media ? t('logoUpdated') : t('logoRemoved'))
+      await orgApi.removeLogo(org.id)
+      toast.success(t('logoRemoved'))
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('logoFailed'))
+      toast.error(error instanceof Error && error.message ? error.message : t('logoFailed'))
     }
   }
 
@@ -89,7 +95,8 @@ export function OrganizationForm({ org, canEdit }: OrganizationFormProps) {
             <ImageUpload
               value={org.logoUrl}
               label={org.name}
-              onChange={setLogo}
+              onUpload={uploadLogo}
+              onRemove={removeLogo}
               disabled={!canEdit}
             />
           </div>

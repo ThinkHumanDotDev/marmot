@@ -74,6 +74,8 @@ export const API_KEY_FORBIDDEN_SECTIONS: readonly string[] = [
   'invite-link',
   // Probe location tokens are credentials, like API keys (#91).
   'locations',
+  // The organization logo needs `organization:update`, which keys never hold.
+  'logo',
   'members',
   'permissions',
   'sso',
