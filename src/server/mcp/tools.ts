@@ -267,7 +267,7 @@ export const MCP_TOOLS: McpTool[] = [
     name: 'get_monitor_stats',
     title: 'Get monitor statistics',
     description:
-      'Uptime (0..1), average response time in ms and degraded checks of a monitor over 24h, 30d or 1y.',
+      'Uptime (0..1), average response time in ms, latency percentiles (p50–p99) and check counts of a monitor over 24h, 1d, 7d, 14d, 30d, 90d or 1y.',
     scope: 'read',
     permission: 'monitor:read',
     inputSchema: z.object({
@@ -276,7 +276,7 @@ export const MCP_TOOLS: McpTool[] = [
       includeBuckets: z
         .boolean()
         .default(false)
-        .describe('Also return the per-minute/hour/day buckets of the range'),
+        .describe('Also return the buckets and the chart series of the range'),
     }),
     annotations: READ,
     run: ({ monitorId, range, includeBuckets }, ctx) =>
@@ -290,9 +290,9 @@ export const MCP_TOOLS: McpTool[] = [
           params: { id: String(monitorId) },
           query: { range },
         },
-        (stats: { buckets?: unknown[] }) => {
+        (stats: { buckets?: unknown[]; series?: unknown[] }) => {
           if (includeBuckets) return stats
-          const { buckets: _buckets, ...summary } = stats
+          const { buckets: _buckets, series: _series, ...summary } = stats
           return summary
         },
       ),

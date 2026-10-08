@@ -6,6 +6,8 @@ import { addOrgMembership } from '@/access/memberships'
 import { GET as statsRoute } from '@/app/api/monitors/[id]/stats/route'
 import { retentionCutoffs, runRetention } from '@/server/jobs/retention'
 import { createStatsListener } from '@/server/stats'
+import { addSample, bucketIndex, bucketLowerBound } from '@/server/stats/latency-histogram'
+import { getRangeStats } from '@/server/stats/range-stats'
 import {
   clearStatistics,
   getAvgPing,
@@ -121,6 +123,8 @@ describe('stats: time-series aggregation', () => {
       extras: { pingCount: 2 },
     })
     expect(String(minutely.docs[0].organization)).toBe(String(organizationId))
+    // The latency histogram round-trips through the JSON column unchanged (#95).
+    expect(minutely.docs[0].latencyHistogram).toEqual(addSample(addSample(null, 100), 200))
 
     expect(await countRows('stat-hourly', monitorId)).toBe(1)
     expect(await countRows('stat-daily', monitorId)).toBe(1)
@@ -152,6 +156,27 @@ describe('stats: time-series aggregation', () => {
     expect(minutely.totalDocs).toBe(1)
     expect(minutely.docs[0].up).toBe(1)
     await clearStatistics(payload, otherMonitorId)
+  })
+
+  it('records nothing, histogram included, for deferred or checker-offline beats', async () => {
+    await clearStatistics(payload, otherMonitorId)
+    const listener = createStatsListener(payload)
+    const time = new Date(Date.now() - 60_000).toISOString()
+    // A deferred beat (Globalping 429, #142) is PENDING; a ping on it must still not be sampled.
+    await listener({
+      monitor: { id: otherMonitorId },
+      organizationId,
+      deferred: true,
+      heartbeat: { status: 'pending', ping: 250, time },
+    })
+    await listener({
+      monitor: { id: otherMonitorId },
+      organizationId,
+      checkerOffline: true,
+      heartbeat: { status: 'pending', ping: 250, time },
+    })
+    expect(await countRows('stat-minutely', otherMonitorId)).toBe(0)
+    expect(await countRows('stat-daily', otherMonitorId)).toBe(0)
   })
 
   it('tolerates concurrent beats for the same bucket without losing any', async () => {
@@ -222,6 +247,55 @@ describe('stats: time-series aggregation', () => {
     const buckets = await getBuckets(payload, monitorId, '24h', { now: NOW })
     expect(buckets).toHaveLength(2)
     expect(buckets[1]).toMatchObject({ up: 2, down: 1, ping: 150 })
+  })
+
+  it('derives percentiles, check counts and a chart series from the rollups (#95)', async () => {
+    // State from the previous tests: pings 100 + 200 now, 50 three hours ago, a pending beat five
+    // days ago and 1000 a hundred days ago.
+    const month = await getRangeStats(payload, monitorId, '30d', { now: NOW, percentiles: ['p95'] })
+    expect(month.granularity).toBe('hour')
+    expect(month.checks).toEqual({ total: 6, up: 4, failed: 2, degraded: 0, maintenance: 1 })
+    // p95 of [50, 100, 200] is 200: the estimate stays in 200's bucket (bounded by the max).
+    expect(month.percentiles.p95).toBeGreaterThanOrEqual(bucketLowerBound(bucketIndex(200)))
+    expect(month.percentiles.p95).toBeLessThanOrEqual(200)
+    expect(month.percentiles.p50).toBeGreaterThanOrEqual(bucketLowerBound(bucketIndex(100)))
+    expect(month.step).toBe(4 * 3600)
+    expect(month.series).toHaveLength(180)
+    expect(month.series.reduce((sum, p) => sum + p.up + p.down, 0)).toBe(6)
+    expect(month.series.at(-1)).toHaveProperty('p95')
+    expect(month.series.at(-1)).not.toHaveProperty('p50')
+    expect(month.buckets[0]).not.toHaveProperty('latencyHistogram')
+
+    // 90 days come from the daily rollup and stop short of the beat 100 days ago.
+    const quarter = await getRangeStats(payload, monitorId, '90d', { now: NOW })
+    expect(quarter.granularity).toBe('day')
+    expect(quarter.series).toHaveLength(90)
+    expect(quarter.percentiles.p99).toBeLessThanOrEqual(200)
+    const year = await getRangeStats(payload, monitorId, '1y', { now: NOW })
+    expect(year.percentiles.p99).toBeGreaterThan(500)
+
+    // 7 days: hourly rows; degraded beats are counted and feed the percentiles.
+    await clearStatistics(payload, otherMonitorId)
+    await recordHeartbeat(payload, {
+      monitorId: otherMonitorId,
+      organizationId,
+      status: 'degraded',
+      ping: 4000,
+      time: daysAgo(2),
+    })
+    await recordHeartbeat(payload, {
+      monitorId: otherMonitorId,
+      organizationId,
+      status: 'up',
+      ping: 40,
+      time: daysAgo(1),
+    })
+    const week = await getRangeStats(payload, otherMonitorId, '7d', { now: NOW })
+    expect(week.checks).toMatchObject({ total: 2, degraded: 1, failed: 0 })
+    expect(week.series.reduce((sum, p) => sum + p.degraded, 0)).toBe(1)
+    expect(week.percentiles.p99).toBeGreaterThanOrEqual(bucketLowerBound(bucketIndex(4000)))
+    expect(week.percentiles.p99).toBeLessThanOrEqual(4000)
+    await clearStatistics(payload, otherMonitorId)
   })
 
   it('falls back to the latest bucket when the window is empty', async () => {
@@ -315,9 +389,9 @@ describe('stats: time-series aggregation', () => {
       expect(res.status).toBe(401)
     })
 
-    it('rejects an unknown range with 400', async () => {
-      const res = await call(monitorId, '?range=7d')
-      expect(res.status).toBe(400)
+    it('rejects an unknown range or percentile with 400', async () => {
+      expect((await call(monitorId, '?range=2d')).status).toBe(400)
+      expect((await call(monitorId, '?range=7d&percentile=p42')).status).toBe(400)
     })
 
     it('returns uptime, avgPing and buckets for an authenticated user', async () => {
@@ -343,6 +417,22 @@ describe('stats: time-series aggregation', () => {
       expect(body.uptime).toBeLessThanOrEqual(1)
       expect(typeof body.avgPing).toBe('number')
       expect(Array.isArray(body.buckets)).toBe(true)
+
+      // Chart periods with a percentile selection (#95).
+      const month = await call(monitorId, '?range=30d&percentile=p95,p50', headers)
+      expect(month.status).toBe(200)
+      const monthBody = (await month.json()) as {
+        range: string
+        percentiles: Record<string, number | null>
+        checks: { total: number }
+        series: Array<Record<string, unknown>>
+      }
+      expect(monthBody.range).toBe('30d')
+      expect(Object.keys(monthBody.percentiles)).toEqual(['p50', 'p75', 'p90', 'p95', 'p99'])
+      expect(monthBody.series).toHaveLength(180)
+      expect(monthBody.series[0]).toHaveProperty('p95')
+      expect(monthBody.series[0]).toHaveProperty('p50')
+      expect(monthBody.series[0]).not.toHaveProperty('p99')
 
       const missing = await call(999_999_999, '?range=24h', headers)
       expect(missing.status).toBe(404)

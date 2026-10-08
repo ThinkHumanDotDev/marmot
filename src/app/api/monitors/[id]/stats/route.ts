@@ -1,7 +1,9 @@
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
-import { getStats, isStatsRange, STATS_RANGES } from '@/server/stats/uptime-calculator'
+import { isPercentile, PERCENTILES, type Percentile } from '@/server/stats/latency-histogram'
+import { getRangeStats } from '@/server/stats/range-stats'
+import { isStatsRange, STATS_RANGES } from '@/server/stats/uptime-calculator'
 import { errorText, rememberRequestUser } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
@@ -9,22 +11,44 @@ export const dynamic = 'force-dynamic'
 type RouteContext = { params: Promise<{ id: string }> }
 
 /**
- * GET /api/monitors/:id/stats?range=24h|30d|1y
+ * GET /api/monitors/:id/stats?range=1d|7d|14d|30d|90d|24h|1y&percentile=p50,p95
  *
- * Returns `{ uptime, avgPing, buckets, range, granularity }` for a monitor. Requires an
+ * Returns `{ uptime, avgPing, degraded, buckets, range, granularity }` for a monitor, plus (#95)
+ * `percentiles` (p50 … p99 over the window), `checks` (total / up / failed / degraded /
+ * maintenance), `step` and `series` (one point per `step` seconds with counts, average ping and
+ * the requested percentiles; all five when `percentile` is omitted). The rollup is picked from the
+ * range, so no raw heartbeats are read. Requires an
  * authenticated Payload session (cookie or `Authorization: JWT …`). The monitor is loaded with
  * the caller's access control, so organization scoping applies as soon as the `monitors`
  * collection enforces it.
  */
 export async function GET(request: Request, { params }: RouteContext) {
   const { id } = await params
-  const range = new URL(request.url).searchParams.get('range') ?? '24h'
+  const searchParams = new URL(request.url).searchParams
+  const range = searchParams.get('range') ?? '24h'
+  const percentileParam = searchParams.get('percentile')
 
   if (!isStatsRange(range)) {
     return Response.json(
       { error: errorText(request, 'statsRangeInvalid', { ranges: STATS_RANGES.join(', ') }) },
       { status: 400 },
     )
+  }
+
+  let percentiles: Percentile[] = [...PERCENTILES]
+  if (percentileParam !== null && percentileParam.trim() !== '') {
+    const requested = percentileParam.split(',').map((value) => value.trim())
+    if (!requested.every(isPercentile)) {
+      return Response.json(
+        {
+          error: errorText(request, 'statsPercentileInvalid', {
+            percentiles: PERCENTILES.join(', '),
+          }),
+        },
+        { status: 400 },
+      )
+    }
+    percentiles = PERCENTILES.filter((key) => requested.includes(key))
   }
 
   const payload = await getPayload({ config })
@@ -49,6 +73,6 @@ export async function GET(request: Request, { params }: RouteContext) {
     return Response.json({ error: errorText(request, 'monitorNotFound') }, { status: 404 })
   }
 
-  const stats = await getStats(payload, monitorId, range)
+  const stats = await getRangeStats(payload, monitorId, range, { percentiles })
   return Response.json(stats)
 }

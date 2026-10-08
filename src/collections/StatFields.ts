@@ -80,6 +80,13 @@ export function buildStatCollection({ slug, bucket }: StatCollectionOptions): Co
         type: 'json',
         admin: { description: adminT('marmot:stats:extrasDescription') },
       },
+      {
+        // Log-spaced response-time histogram (src/server/stats/latency-histogram.ts, #95): a
+        // number array in JSON so it is stored the same way on Postgres and MongoDB.
+        name: 'latencyHistogram',
+        type: 'json',
+        admin: { description: adminT('marmot:stats:latencyHistogramDescription') },
+      },
     ],
   }
 }
