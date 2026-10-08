@@ -36,6 +36,7 @@ import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
 import type { Invitation } from '@/payload-types'
 import { adminGroup, adminT } from '@/i18n/admin'
 import { userErrorText } from '@/server/request-locale'
+import { markEmailVerified, requireVerifiedEmail } from '@/server/auth/email-verification'
 
 const log = childLogger('invitations')
 
@@ -249,6 +250,14 @@ export async function acceptInvitation({
     context,
   })
 
+  // The invitation reached this address, which proves the user owns it (#177).
+  await markEmailVerified(payload, {
+    userId: user.id,
+    email: invitation.email,
+    method: 'invitation',
+    req,
+  })
+
   await recordRequestAuditEvent(payload, req ?? { headers: new Headers() }, {
     action: 'invitation.accepted',
     actor: user.id,
@@ -284,6 +293,8 @@ export const Invitations: CollectionConfig = {
     delete: orgScoped('member:invite'),
   },
   hooks: {
+    // Unconfirmed self-service accounts cannot invite people (#177).
+    beforeOperation: [requireVerifiedEmail],
     // Seats: members + pending invitations must fit the plan (no-op unless BILLING_ENABLED).
     beforeChange: [prepareInvitation, enforceEntitlementOnCreate('members')],
     afterChange: [sendInvitationEmail],

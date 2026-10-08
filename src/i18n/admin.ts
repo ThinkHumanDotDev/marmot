@@ -547,6 +547,8 @@ export const adminTranslations = {
         oidcSubjectDescription: 'Legacy `sub` claim; identities now live in Auth accounts.',
         themeDescription: 'Colour scheme preference, applied on every device after sign-in.',
         twoFactorEnabledDescription: 'Managed from Settings → Account → Two-factor authentication.',
+        emailVerifiedDescription:
+          'Whether the address is confirmed. Only enforced while the instance requires email verification.',
       },
     },
   },

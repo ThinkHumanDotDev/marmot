@@ -237,6 +237,19 @@
           "notNull": false,
           "default": false
         },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "email_verified_at": {
+          "name": "email_verified_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "auth_provider": {
           "name": "auth_provider",
           "type": "enum_users_auth_provider",
@@ -14186,6 +14199,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "require_email_verification": {
+          "name": "require_email_verification",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
         "entry_page": {
           "name": "entry_page",
           "type": "enum_instance_settings_entry_page",
@@ -15330,6 +15349,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "032b080a-eb3a-4e51-b5a0-30565b889d2d",
+  "id": "b1c70b4e-98ae-42db-941a-58ea7458c72a",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

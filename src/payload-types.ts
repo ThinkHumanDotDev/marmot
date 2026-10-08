@@ -198,6 +198,8 @@ export interface User {
   name?: string | null;
   avatar?: (number | null) | Media;
   superadmin?: boolean | null;
+  emailVerified?: boolean | null;
+  emailVerifiedAt?: string | null;
   authProvider?: ('local' | 'oidc' | 'oauth' | 'saml') | null;
   oidcIssuer?: string | null;
   oidcSubject?: string | null;
@@ -1786,6 +1788,8 @@ export interface UsersSelect<T extends boolean = true> {
   name?: T;
   avatar?: T;
   superadmin?: T;
+  emailVerified?: T;
+  emailVerifiedAt?: T;
   authProvider?: T;
   oidcIssuer?: T;
   oidcSubject?: T;
@@ -2857,6 +2861,10 @@ export interface InstanceSetting {
    */
   allowSignup?: boolean | null;
   /**
+   * New self-service sign-ups must confirm their email address before they can create organizations, invite people or add notification channels. Defaults to REQUIRE_EMAIL_VERIFICATION.
+   */
+  requireEmailVerification?: boolean | null;
+  /**
    * What visitors of the root URL see.
    */
   entryPage?: ('dashboard' | 'status-page') | null;
@@ -2894,6 +2902,7 @@ export interface InstanceSetting {
 export interface InstanceSettingsSelect<T extends boolean = true> {
   primaryBaseUrl?: T;
   allowSignup?: T;
+  requireEmailVerification?: T;
   entryPage?: T;
   tlsExpiryNotifyDays?: T;
   domainExpiryNotifyDays?: T;

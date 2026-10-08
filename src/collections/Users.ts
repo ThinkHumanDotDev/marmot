@@ -16,6 +16,11 @@ import {
   rateLimitAuthOperations,
   TWO_FACTOR_GATE_CONTEXT,
 } from '@/server/security/auth-hooks'
+import {
+  applyEmailVerificationState,
+  flagClientUserWrite,
+  sendVerificationOnChange,
+} from '@/server/auth/email-verification'
 import { refusePasswordLogin, refusePasswordReset } from '@/server/sso/local-login'
 import { isSignupAllowed } from '@/server/settings'
 import { apiError } from '@/server/errors'
@@ -111,7 +116,11 @@ export const Users: CollectionConfig = {
   hooks: {
     // Rate limits `login` / `forgot-password` (REST only) and records the attempts in `audit-logs`.
     // Then the password policy (SSO-only mode, organization enforcement) refuses resets.
-    beforeOperation: [rateLimitAuthOperations, refusePasswordReset],
+    // `flagClientUserWrite` + `applyEmailVerificationState` + `sendVerificationOnChange`: optional
+    // email verification of self-service sign-ups (src/server/auth/email-verification.ts).
+    beforeOperation: [rateLimitAuthOperations, refusePasswordReset, flagClientUserWrite],
+    beforeChange: [applyEmailVerificationState],
+    afterChange: [sendVerificationOnChange],
     beforeLogin: [refusePasswordLogin, requireTwoFactorGate],
     beforeDelete: [removeAuthAccounts],
     afterLogin: [auditLogin],
@@ -140,6 +149,31 @@ export const Users: CollectionConfig = {
       admin: {
         description: adminT('marmot:users:superadminDescription'),
       },
+    },
+    // Email verification (#177). `true` by default, so accounts from before the setting existed,
+    // the setup wizard, invitations and server code are verified; only a self-service sign-up made
+    // while `requireEmailVerification` is on starts as `false` (src/server/auth/email-verification.ts).
+    {
+      name: 'emailVerified',
+      type: 'checkbox',
+      defaultValue: true,
+      access: {
+        create: superadminField,
+        update: superadminField,
+      },
+      admin: {
+        position: 'sidebar',
+        description: adminT('marmot:users:emailVerifiedDescription'),
+      },
+    },
+    {
+      name: 'emailVerifiedAt',
+      type: 'date',
+      access: {
+        create: superadminField,
+        update: superadminField,
+      },
+      admin: { position: 'sidebar', readOnly: true },
     },
     // Single sign-on (src/auth/sso). Set server-side with `overrideAccess`; clients can never write
     // them, so a signup POST cannot claim somebody else's identity.
