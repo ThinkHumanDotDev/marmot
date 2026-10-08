@@ -93,7 +93,9 @@ export function MonitorBulkBar({
       setPending(action)
       try {
         const response = await api.post<BulkResponse>(`/api/orgs/${orgId}/monitors/bulk`, {
-          body: { ids, action, ...(payload ? { payload } : {}) },
+          ids,
+          action,
+          ...(payload ? { payload } : {}),
         })
         applyResults(response)
         const { changed, unchanged, failed } = response.summary
