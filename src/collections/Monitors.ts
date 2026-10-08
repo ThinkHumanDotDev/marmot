@@ -202,7 +202,7 @@ const sameOrganization = ({ data }: { data?: { organization?: unknown } }): Wher
   data?.organization ? { organization: { equals: relId(data.organization) } } : true
 
 /**
- * Tags, notification channels, the proxy and the Docker host must belong to the monitor's
+ * Tags, notification channels, the proxy, the OTLP collector and the Docker host must belong to the monitor's
  * organization. `filterOptions` only guards the admin UI; this hook guards every API so a member
  * cannot attach another organization's channel, proxy (and its credentials) or Docker host to
  * their monitor.
@@ -263,6 +263,10 @@ const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
   }
   const proxy = relId(data.proxy)
   if (proxy !== null) checks.push({ collection: 'proxies', ids: [proxy], path: 'proxy' })
+  const otlpCollector = relId(data.otlpCollector)
+  if (otlpCollector !== null) {
+    checks.push({ collection: 'otel-collectors', ids: [otlpCollector], path: 'otlpCollector' })
+  }
   const dockerHost = relId(data.dockerHost)
   if (dockerHost !== null) {
     checks.push({ collection: 'docker-hosts', ids: [dockerHost], path: 'dockerHost' })
@@ -578,6 +582,29 @@ export const Monitors: CollectionConfig = {
       admin: {
         position: 'sidebar',
         description: adminT('marmot:monitors:notificationsDescription'),
+      },
+    },
+    {
+      // OpenTelemetry metrics export (#99): on by default, so the organization's default collector
+      // receives every monitor's checks; off opts this monitor out.
+      name: 'otlpExport',
+      type: 'checkbox',
+      defaultValue: true,
+      admin: {
+        position: 'sidebar',
+        description: adminT('marmot:monitors:otlpExportDescription'),
+      },
+    },
+    {
+      // Collector of this monitor; empty = the organization's default collector.
+      name: 'otlpCollector',
+      type: 'relationship',
+      relationTo: 'otel-collectors',
+      filterOptions: sameOrganization,
+      admin: {
+        position: 'sidebar',
+        condition: (data) => data?.otlpExport !== false,
+        description: adminT('marmot:monitors:otlpCollectorDescription'),
       },
     },
     {

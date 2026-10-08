@@ -30,6 +30,7 @@ import {
   registerNotificationListener,
   startNotificationWorker,
 } from '@/server/notifications'
+import { closeOtelExports, registerOtelListener } from '@/server/otel/listener'
 import { closeEmitter } from '@/server/realtime/emitter'
 import { registerRealtimeListener } from '@/server/realtime/listener'
 import { registerStatsListener } from '@/server/stats'
@@ -86,6 +87,9 @@ async function main() {
   // Notifications: enqueue one job per attached channel when a beat should notify.
   registerNotificationListener(payload)
 
+  // OpenTelemetry: queue each check's metrics for the monitor's OTLP collector (batched export).
+  registerOtelListener(payload)
+
   // Maintenance: monitors inside a running window get MAINTENANCE beats instead of being checked.
   setMaintenanceResolver(createMaintenanceResolver())
   // TLS certificate / domain registration expiry warnings (thresholds from the instance settings).
@@ -119,6 +123,7 @@ async function main() {
           maintenanceWorker.close(),
         ])
         await connectivity?.stop()
+        await closeOtelExports()
         await Promise.all([closeChecksQueue(), closeNotificationsQueue(), closeMaintenanceQueue()])
         await closeCheckerStateStore()
         await closeEmitter()

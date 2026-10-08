@@ -385,6 +385,21 @@ after `WEBHOOK_DISABLE_AFTER_FAILURES` deliveries in a row failed for good. Test
 sent synchronously from the web process (`deliverNow`). Retention prunes the log after
 `WEBHOOK_DELIVERY_RETENTION_DAYS`. See [Integrations](Integrations.md#outbound-webhooks).
 
+### OpenTelemetry export
+
+`registerOtelListener()` (`src/server/otel/listener.ts`, #99) is a heartbeat listener of the worker and of
+the web process's beat pipeline (push monitors, probe results). For each beat that ran a check it resolves
+the monitor's collector (`otel-collectors`, org-scoped: the monitor's `otlpCollector`, else the
+organization's active `default` one; `monitors.otlpExport = false` opts out; cached for 30 s per process,
+`resolve.ts`), turns the beat into data points (`metrics.ts`: duration, timing phases, status, a cumulative
+error counter kept per monitor and location in the process, ping packet loss) and queues them on the
+collector's `OtelExporter` (`exporter.ts`), one per collector and process. The exporter batches for
+`OTLP_EXPORT_INTERVAL_MS` or `OTLP_EXPORT_MAX_BATCH` points and POSTs the OTLP/HTTP JSON encoding
+(`encode.ts`, no OpenTelemetry SDK) through `guardedFetch`, retrying 408/429/502/503/504 and network
+errors; the outcome is written to the collector's `lastExportAt` / `lastError` at most once a minute
+unless it changes. Collector headers are sealed with `encryptSecret` (`headers.ts`) and written only by the
+management routes (`manage.ts`).
+
 ## Realtime
 
 The realtime process (`src/realtime.ts` → `createRealtimeServer()` in `src/server/realtime/server.ts`) is

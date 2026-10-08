@@ -90,6 +90,13 @@ export const AUDITED: Partial<Record<CollectionSlug, AuditCollectionOptions>> = 
     // token is recorded as `location.token_rotated` (`tokenHash` itself never reaches the log).
     ignore: ['status', 'statusChangedAt', 'lastSeenAt', 'agent', 'tokenHash'],
   },
+  'otel-collectors': {
+    entityType: 'otel_collector',
+    // Export bookkeeping of the worker. `headers` (sealed) is redacted by name; `headerNames` shows
+    // which headers changed.
+    ignore: ['lastExportAt', 'lastError'],
+    toggle: { field: 'active', on: 'otel_collector.enabled', off: 'otel_collector.disabled' },
+  },
   'sso-connections': { entityType: 'sso_connection' },
   'sso-domains': { entityType: 'sso_domain' },
   invitations: { entityType: 'invitation' },

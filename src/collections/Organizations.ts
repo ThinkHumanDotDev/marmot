@@ -249,6 +249,17 @@ const removeWebhooks: CollectionBeforeDeleteHook = async ({ id, req }) => {
   }
 }
 
+/** OpenTelemetry collectors (#99) carry a NOT NULL `organization` too (monitors are detached). */
+const removeOtelCollectors: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  await req.payload.delete({
+    collection: 'otel-collectors',
+    where: { organization: { equals: id } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
+}
+
 /**
  * Tenant collection for `@payloadcms/plugin-multi-tenant`. Access is implemented here (the plugin's
  * own tenant-collection access is disabled) so that any authenticated user can create their first
@@ -279,6 +290,7 @@ export const Organizations: CollectionConfig = {
       removeLocations,
       removeSso,
       removeWebhooks,
+      removeOtelCollectors,
       removeMemberships,
     ],
   },

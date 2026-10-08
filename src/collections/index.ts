@@ -18,6 +18,7 @@ import { Monitors } from './Monitors'
 import { Notifications } from './Notifications'
 import { NotificationSentHistory } from './NotificationSentHistory'
 import { Organizations } from './Organizations'
+import { OtelCollectors } from './OtelCollectors'
 import { Proxies } from './Proxies'
 import { PushEvents } from './PushEvents'
 import { SsoConnections } from './SsoConnections'
@@ -77,4 +78,5 @@ export const collections: CollectionConfig[] = [
   AuditLogs,
   WebhookEndpoints,
   WebhookDeliveries,
+  OtelCollectors,
 ].map(withAuditHooks)
