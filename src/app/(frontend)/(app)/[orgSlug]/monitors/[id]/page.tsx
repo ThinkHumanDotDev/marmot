@@ -20,6 +20,8 @@ import { LiveHeartbeatBar } from '@/components/monitors/live-heartbeat-bar'
 import { ImportantEventsTable } from '@/components/monitors/important-events-table'
 import { MonitorActions } from '@/components/monitors/monitor-actions'
 import { MonitorChannelsCard } from '@/components/monitors/monitor-channels-card'
+import { isPeriodWithinRetention } from '@/lib/entitlements'
+import { getOrgRetentionDays } from '@/server/billing/entitlements'
 import { MonitorStatsPanel } from '@/components/monitors/monitor-stats-panel'
 import { PushEventsTable, PushPanel } from '@/components/monitors/push-panel'
 import { ResponseLogView } from '@/components/monitors/response-log-view'
@@ -104,6 +106,9 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const timeZone = timeZoneOrDefault(ctx.org.settings?.timezone)
 
   const { payload } = ctx
+  // Periods longer than the plan's history are not offered (#161; unlimited without billing).
+  const planRetention = await getOrgRetentionDays(payload, ctx.org.id)
+  const retentionDays = Number.isFinite(planRetention) ? planRetention : null
   // Access was verified on the monitor; its history is read with the Local API directly.
   const now = new Date()
   const isPush = monitor.type === 'push'
@@ -337,6 +342,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             lastPing: monitor.status?.lastPing ?? null,
             degraded24h: stats24h.degraded,
           }}
+          showYear={isPeriodWithinRetention('1y', retentionDays)}
         />
 
         {pushUrl && <PushPanel monitor={monitor} pushUrl={pushUrl} timeZone={timeZone} now={now} />}
@@ -356,6 +362,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
           }}
           lastCheckAt={monitor.status?.lastCheckAt}
           showTiming={measuresTiming}
+          retentionDays={retentionDays}
         />
 
         {locationView && (

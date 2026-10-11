@@ -1,6 +1,7 @@
 import { createLocalReq, generatePayloadCookie, type Payload } from 'payload'
 import { z } from 'zod'
 
+import { env } from '@/env'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import type { Organization, User } from '@/payload-types'
 
@@ -69,6 +70,9 @@ export interface SetupResult {
  * `needsSetup()` stays `true`. Throws `SetupError(409)` when a user already exists.
  */
 export async function runSetup(payload: Payload, input: SetupInput): Promise<SetupResult> {
+  // Demo mode (#159): the reset owns the accounts; never let a visitor claim a superadmin while the
+  // database is empty mid-reset.
+  if (env.DEMO_MODE) throw new SetupError('Setup is disabled on a demo instance.', 403)
   if (!(await needsSetup(payload))) {
     throw new SetupError('Setup has already been completed.', 409)
   }

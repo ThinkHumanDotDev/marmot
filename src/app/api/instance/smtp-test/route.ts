@@ -1,5 +1,6 @@
 import { isSuperadmin } from '@/access/permissions'
 import { env } from '@/env'
+import { demoRefusal } from '@/server/demo/config'
 import {
   forbidden,
   getRequestContext,
@@ -20,6 +21,9 @@ export const dynamic = 'force-dynamic'
  * not configured (`SMTP_HOST` unset: Payload would only log the mail to the console).
  */
 export const POST = withErrors(async (request: Request) => {
+  // Demo mode (#159): no real email leaves a demo instance.
+  const refused = demoRefusal(request, 'smtp')
+  if (refused) return refused
   const { payload, user } = await getRequestContext(request)
   if (!user) return unauthorized(request)
   if (!isSuperadmin(user)) return forbidden(request)

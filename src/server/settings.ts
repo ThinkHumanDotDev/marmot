@@ -111,7 +111,8 @@ export async function getInstanceSettings(payload: Payload): Promise<InstanceSet
  * from single sign-on only.
  */
 export async function isSignupAllowed(payload: Payload): Promise<boolean> {
-  if (env.OIDC_DISABLE_LOCAL_LOGIN) return false
+  // Demo mode (#159): everyone shares the demo account; new accounts would survive no reset.
+  if (env.OIDC_DISABLE_LOCAL_LOGIN || env.DEMO_MODE) return false
   return (await getInstanceSettings(payload)).allowSignup
 }
 
@@ -121,6 +122,9 @@ export async function isSignupAllowed(payload: Payload): Promise<boolean> {
  * `REQUIRE_EMAIL_VERIFICATION` (off).
  */
 export async function isEmailVerificationRequired(payload: Payload): Promise<boolean> {
+  // Demo mode (#159): no signups, no address changes, and the demo accounts are verified; a
+  // verification requirement could only lock the shared account out.
+  if (env.DEMO_MODE) return false
   return (await getInstanceSettings(payload)).requireEmailVerification
 }
 
@@ -130,6 +134,7 @@ export async function isEmailVerificationRequired(payload: Payload): Promise<boo
  * mode (`OIDC_DISABLE_LOCAL_LOGIN`) turns them off whatever the setting says.
  */
 export async function isMagicLinkEnabled(payload: Payload): Promise<boolean> {
-  if (env.OIDC_DISABLE_LOCAL_LOGIN) return false
+  // Demo mode (#159): the shared account's credentials stay fixed and no mail leaves the instance.
+  if (env.OIDC_DISABLE_LOCAL_LOGIN || env.DEMO_MODE) return false
   return (await getInstanceSettings(payload)).magicLinkEnabled
 }

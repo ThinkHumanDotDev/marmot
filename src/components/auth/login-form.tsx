@@ -34,6 +34,8 @@ interface LoginFormProps {
   local?: boolean
   /** Offer "Email me a sign-in link" (#164, `magicLinkEnabled`). */
   magicLink?: boolean
+  /** Pre-filled credentials (the shared account of a demo instance, #159). */
+  defaultCredentials?: Values
 }
 
 /**
@@ -46,6 +48,7 @@ export function LoginForm({
   twoFactor = false,
   local = false,
   magicLink = false,
+  defaultCredentials,
 }: LoginFormProps) {
   const t = useTranslations('auth.login')
   const tf = useTranslations('auth.fields')
@@ -71,7 +74,7 @@ export function LoginForm({
   const [useBackup, setUseBackup] = React.useState(false)
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: defaultCredentials ?? { email: '', password: '' },
   })
   const codeForm = useForm<CodeValues>({
     resolver: zodResolver(codeSchema),

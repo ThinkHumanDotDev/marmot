@@ -20,6 +20,12 @@ import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import type { Incident, Monitor, Notification, StatusPage, Template } from '@/payload-types'
 import type { RequestUser } from '@/server/monitors/http'
 import { AUDIT_SKIP_CONTEXT } from '@/server/audit/context'
+import type { Entitlements } from '@/lib/entitlements'
+import {
+  assertOrgEntitlement,
+  getOrgEntitlements,
+  isBillingEnabled,
+} from '@/server/billing/entitlements'
 import { checkServerSmtpChange } from '@/server/notifications/server-smtp'
 import { recordAuditEventFromReq } from '@/server/security/audit'
 
@@ -69,6 +75,12 @@ function uniqueSlug(slug: string, taken: Set<string>): string {
     if (!taken.has(candidate)) return candidate
   }
   return `${slug}-${Date.now().toString(36)}`
+}
+
+/** The organization's entitlements while billing is enabled, `null` (no query) otherwise. */
+async function planLimitsFor(payload: Payload, orgId: OrgId): Promise<Entitlements | null> {
+  if (!isBillingEnabled()) return null
+  return (await getOrgEntitlements(payload, orgId)).entitlements
 }
 
 export async function applyImportPlan(
@@ -286,6 +298,47 @@ export async function applyImportPlan(
     return [{ ...page, data: { ...page.data, slug }, domains }]
   })
 
+  // ---- Plan limits (#161; nothing to check without billing) ---------------------------------
+  // Counts are checked up front so an import that cannot fit writes nothing (MongoDB without a
+  // replica set has no rollback); intervals and custom domains are adapted with a warning.
+  const limits = await planLimitsFor(payload, orgId)
+  if (limits) {
+    if (plan.monitors.length > 0) {
+      await assertOrgEntitlement(payload, 'monitors', orgId, { adding: plan.monitors.length })
+    }
+    if (statusPages.length > 0) {
+      await assertOrgEntitlement(payload, 'statusPages', orgId, { adding: statusPages.length })
+    }
+    const floor = limits.minIntervalSeconds
+    plan = {
+      ...plan,
+      monitors: plan.monitors.map((planned) => {
+        const { interval, retryInterval } = planned.data
+        const raise = (value: number | null | undefined) =>
+          typeof value === 'number' && value < floor ? floor : value
+        if (raise(interval) === interval && raise(retryInterval) === retryInterval) return planned
+        report.warnings.push(t('planIntervalRaised', { name: planned.data.name, seconds: floor }))
+        return {
+          ...planned,
+          data: {
+            ...planned.data,
+            interval: raise(interval) as number,
+            retryInterval: raise(retryInterval) as number,
+          },
+        }
+      }),
+    }
+    if (!limits.customDomains) {
+      for (const page of statusPages) {
+        if (page.domains.length === 0) continue
+        report.warnings.push(
+          t('domainsNotInPlan', { title: page.data.title, count: page.domains.length }),
+        )
+        page.domains = []
+      }
+    }
+  }
+
   const orderedMonitors = orderByDepth(plan.monitors)
   report.notifications.create = plan.notifications.length
   report.monitors.create = orderedMonitors.length
@@ -494,7 +547,7 @@ export async function applyImportPlan(
     throw error
   }
 
-  await scheduleImportedMonitors(createdMonitors, orgId)
+  await scheduleImportedMonitors(payload, createdMonitors, orgId)
   report.monitors.created = created.monitors
   report.notifications.created = created.notifications
   report.statusPages.created = created.statusPages
@@ -506,14 +559,19 @@ export async function applyImportPlan(
  * Register the check schedulers of the imported monitors and tell live dashboards about them,
  * once the documents are durable. Failures are logged, not thrown: the import itself succeeded.
  */
-async function scheduleImportedMonitors(monitors: Monitor[], orgId: OrgId): Promise<void> {
+async function scheduleImportedMonitors(
+  payload: Payload,
+  monitors: Monitor[],
+  orgId: OrgId,
+): Promise<void> {
   if (monitors.length === 0) return
   try {
-    const { syncMonitor, engineHooksEnabled } = await import('@/server/engine/scheduler')
+    const { syncMonitor, engineHooksEnabled, withPlanCadence } =
+      await import('@/server/engine/scheduler')
     if (!engineHooksEnabled()) return
     const { emitMonitorUpdated } = await import('@/server/realtime/emitter')
     for (const monitor of monitors) {
-      if (monitor.active) await syncMonitor(monitor)
+      if (monitor.active) await syncMonitor(await withPlanCadence(payload, monitor))
       emitMonitorUpdated(orgId, monitor)
     }
   } catch (err) {

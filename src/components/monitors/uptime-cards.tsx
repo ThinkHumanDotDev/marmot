@@ -55,12 +55,24 @@ function StatTile({
   )
 }
 
-/** Uptime (24h / 30d / 1y) and ping tiles, Uptime Kuma's detail header row. */
-export function UptimeCards({ summary }: { summary: UptimeSummary }) {
+/**
+ * Uptime (24h / 30d / 1y) and ping tiles, Uptime Kuma's detail header row. `showYear={false}`
+ * drops the 1y tile when the organization's plan keeps less history.
+ */
+export function UptimeCards({
+  summary,
+  showYear = true,
+}: {
+  summary: UptimeSummary
+  showYear?: boolean
+}) {
   const t = useTranslations('monitors.stats')
   const format = useMonitorFormat()
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-5" data-testid="uptime-cards">
+    <div
+      className={cn('grid grid-cols-2 gap-3', showYear ? 'md:grid-cols-5' : 'md:grid-cols-4')}
+      data-testid="uptime-cards"
+    >
       <StatTile
         label={t('response')}
         hint={t('latestCheck')}
@@ -91,13 +103,15 @@ export function UptimeCards({ summary }: { summary: UptimeSummary }) {
         valueClassName={tier(summary.uptime30d)}
         testId="stat-uptime-30d"
       />
-      <StatTile
-        label={t('uptime')}
-        hint={t('lastYear')}
-        value={format.uptime(summary.uptime1y)}
-        valueClassName={tier(summary.uptime1y)}
-        testId="stat-uptime-1y"
-      />
+      {showYear && (
+        <StatTile
+          label={t('uptime')}
+          hint={t('lastYear')}
+          value={format.uptime(summary.uptime1y)}
+          valueClassName={tier(summary.uptime1y)}
+          testId="stat-uptime-1y"
+        />
+      )}
     </div>
   )
 }

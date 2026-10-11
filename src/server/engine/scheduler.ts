@@ -3,9 +3,15 @@ import type { Payload, PayloadRequest } from 'payload'
 import { afterCommit } from '@/db/after-commit'
 import { PUSH_CRON_CHECK_SECONDS } from '@/lib/push-schedule'
 import { env } from '@/env'
+import { clampInterval } from '@/lib/entitlements'
 import { isMultiLocation, isRemoteMonitor } from '@/lib/probe-locations'
 import { childLogger } from '@/lib/logger'
 import type { Monitor } from '@/payload-types'
+import {
+  isBillingEnabled,
+  minIntervalResolver,
+  relationId as orgIdOf,
+} from '@/server/billing/entitlements'
 import { emitMonitorDeleted, emitMonitorUpdated } from '@/server/realtime/emitter'
 import { populateMonitorTags, relationId } from '@/server/realtime/serialize'
 import { nextIntervalSeconds, type MonitorSettings } from './beat'
@@ -26,6 +32,11 @@ export type SchedulableMonitor = Pick<Monitor, 'id' | 'interval' | 'retryInterva
      * follows (`status.lastStatus` is the quorum). Unknown (`interval`) when unset.
      */
     localStatus?: NonNullable<Monitor['status']>['lastStatus']
+    /**
+     * The organization's minimum check interval (`minIntervalSeconds` of its plan, #161): checks
+     * never run more often, whatever `interval` says. Unset or `0` without billing.
+     */
+    minIntervalSeconds?: number
   }
 
 /** `false` when `MARMOT_DISABLE_ENGINE_HOOKS` is set (int tests without Redis). */
@@ -35,19 +46,36 @@ export function engineHooksEnabled(): boolean {
 
 /**
  * Milliseconds between checks for the monitor's current state: `retryInterval` while PENDING,
- * `interval` otherwise (Uptime Kuma switches `beatInterval` the same way).
+ * `interval` otherwise (Uptime Kuma switches `beatInterval` the same way), never below the plan's
+ * `minIntervalSeconds`.
  */
 export function effectiveIntervalMs(monitor: SchedulableMonitor): number {
   // Cron push monitors are due at wall-clock times, not every `interval`: check every minute.
   if (monitor.type === 'push' && monitor.pushSchedule === 'cron') {
-    return PUSH_CRON_CHECK_SECONDS * 1000
+    return clampInterval(PUSH_CRON_CHECK_SECONDS, monitor.minIntervalSeconds) * 1000
   }
   const settings: MonitorSettings = {
     interval: monitor.interval,
     retryInterval: monitor.retryInterval,
   }
   const status = isMultiLocation(monitor) ? monitor.localStatus : monitor.status?.lastStatus
-  return nextIntervalSeconds(status ?? 'up', settings) * 1000
+  return (
+    clampInterval(nextIntervalSeconds(status ?? 'up', settings), monitor.minIntervalSeconds) * 1000
+  )
+}
+
+/**
+ * The monitor with its organization's minimum interval attached, so `syncMonitor` honours the
+ * plan. Returns the monitor unchanged (no query) while billing is disabled.
+ */
+export async function withPlanCadence<T extends SchedulableMonitor & { organization?: unknown }>(
+  payload: Payload,
+  monitor: T,
+  resolve: (orgId: string | number | null) => Promise<number> = minIntervalResolver(payload),
+): Promise<T> {
+  if (!isBillingEnabled()) return monitor
+  const minIntervalSeconds = await resolve(orgIdOf(monitor.organization))
+  return minIntervalSeconds > 0 ? { ...monitor, minIntervalSeconds } : monitor
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
@@ -126,7 +154,7 @@ export async function syncMonitorAfterCommit(
 ): Promise<void> {
   await afterCommit(req, async () => {
     try {
-      if (monitor.active) await syncMonitor(monitor, queue)
+      if (monitor.active) await syncMonitor(await withPlanCadence(req.payload, monitor), queue)
       else await removeMonitorSchedule(monitor.id, queue)
       const organizationId = relationId(monitor.organization)
       if (organizationId) {
@@ -180,6 +208,7 @@ export async function resyncAll(
       pushSchedule: true,
       locations: true,
       includeLocal: true,
+      organization: true,
     },
   })
 
@@ -197,11 +226,51 @@ export async function resyncAll(
   }
 
   let upserted = 0
+  const resolve = minIntervalResolver(payload)
   for (const monitor of wanted.values()) {
-    await syncMonitor(monitor as SchedulableMonitor, queue)
+    await syncMonitor(await withPlanCadence(payload, monitor as SchedulableMonitor, resolve), queue)
     upserted++
   }
 
   log.info({ upserted, removed }, 'monitor schedulers resynced')
   return { upserted, removed }
+}
+
+/**
+ * Re-plans the schedulers of an organization's active monitors, e.g. after its plan or
+ * subscription status changed (#161): a downgrade slows checks down to the new plan's minimum
+ * interval, an upgrade lets them run at their own `interval` again.
+ */
+export async function resyncOrganization(
+  payload: Payload,
+  organizationId: string | number,
+  queue?: ChecksQueue,
+): Promise<number> {
+  const { docs } = await payload.find({
+    collection: 'monitors',
+    where: { and: [{ organization: { equals: organizationId } }, { active: { equals: true } }] },
+    depth: 0,
+    limit: 0,
+    pagination: false,
+    overrideAccess: true,
+    select: {
+      interval: true,
+      retryInterval: true,
+      status: true,
+      type: true,
+      pushSchedule: true,
+      locations: true,
+      includeLocal: true,
+      organization: true,
+    },
+  })
+  const resolve = minIntervalResolver(payload)
+  let synced = 0
+  for (const monitor of docs) {
+    if (isRemoteMonitor(monitor)) continue
+    await syncMonitor(await withPlanCadence(payload, monitor as SchedulableMonitor, resolve), queue)
+    synced++
+  }
+  log.info({ organizationId: String(organizationId), synced }, 'organization schedulers re-planned')
+  return synced
 }

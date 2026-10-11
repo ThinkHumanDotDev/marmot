@@ -10,6 +10,7 @@ import { LoginForm } from '@/components/auth/login-form'
 import { SsoButtons } from '@/components/auth/sso-button'
 import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth'
+import { DEMO_ACCOUNT, isDemoMode } from '@/server/demo/config'
 import { safeNextPath } from '@/lib/utils'
 import { isMagicLinkEnabled, isSignupAllowed } from '@/server/settings'
 import { hasAnyEnabledConnection } from '@/server/sso/connections'
@@ -46,6 +47,11 @@ export default async function LoginPage({
   const localDisabled = isLocalLoginDisabled()
   const breakGlass = localDisabled && isBreakGlassEnabled() && local === '1'
   const showPasswordForm = !localDisabled || breakGlass || two_factor === '1'
+  // Demo mode (#159): everyone signs in with the shared demo account, pre-filled.
+  const demo = isDemoMode()
+    ? { email: DEMO_ACCOUNT.email, password: DEMO_ACCOUNT.password }
+    : undefined
+  const tDemo = await getTranslations('shell.demo')
 
   return (
     <AuthCard
@@ -81,6 +87,18 @@ export default async function LoginPage({
             {t('breakGlass')}
           </p>
         )}
+        {demo && (
+          <p
+            data-testid="demo-credentials"
+            className="rounded-md border border-status-pending/40 bg-status-pending/10 px-3 py-2 text-sm"
+          >
+            {tDemo.rich('credentials', {
+              email: demo.email,
+              password: demo.password,
+              code: (chunks) => <code className="font-mono font-medium">{chunks}</code>,
+            })}
+          </p>
+        )}
         {showPasswordForm ? (
           <LoginForm
             next={next}
@@ -88,6 +106,7 @@ export default async function LoginPage({
             local={breakGlass}
             // Sign-in links count as a local login: never offered on the break-glass form.
             magicLink={magicLinkEnabled && !breakGlass}
+            defaultCredentials={demo}
           />
         ) : (
           <p className="text-center text-sm text-muted-foreground">{t('localDisabled')}</p>

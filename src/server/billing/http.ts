@@ -7,6 +7,7 @@ import { APIError, getPayload, type Payload } from 'payload'
 
 import config from '@payload-config'
 import { authenticateRequest } from '@/server/auth/request-auth'
+import { demoRefusal } from '@/server/demo/config'
 import { errorMessageFor, errorText } from '@/server/request-locale'
 import { can } from '@/access/permissions'
 import { isBillingEnabled } from './entitlements'
@@ -38,6 +39,9 @@ export async function billingContext(
   request: Request,
   orgId: string,
 ): Promise<{ ok: true; ctx: BillingContext } | { ok: false; response: Response }> {
+  // Demo mode (#159): no checkout or customer portal on a public demo.
+  const refused = demoRefusal(request, 'billing')
+  if (refused) return { ok: false, response: refused }
   if (!isBillingEnabled()) return { ok: false, response: billingDisabled(request) }
 
   const payload = await getPayload({ config })

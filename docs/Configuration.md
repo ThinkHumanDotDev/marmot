@@ -213,6 +213,16 @@ Switches for running Marmot as a hosted service. Self-hosted installs leave them
 | ---------------------- | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `LANDING_PAGE_ENABLED` | `false` | web     | Show a marketing landing page at `/` to signed-out visitors instead of redirecting to `/login`. Signed-in users and fresh installs (setup wizard) are unaffected. |
 
+## Demo mode
+
+A self-resetting public demo; see [Demo mode](Demo-Mode.md). **Every reset deletes all data.**
+
+| Variable                      | Default | Read by     | Description                                                                                                                 |
+| ----------------------------- | ------- | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `DEMO_MODE`                   | `false` | all         | Seed the demo dataset, reset it on schedule, simulate checks, send nothing and switch off the features listed in the guide. |
+| `DEMO_RESET_INTERVAL_MINUTES` | `60`    | web, worker | Minutes between two resets (15–10080).                                                                                      |
+| `DEMO_MODE_FORCE`             | `false` | all         | Start although the database holds non-demo accounts, and wipe it on the next reset.                                         |
+
 ## Billing
 
 A scaffold for hosted offerings. Self-hosted installs leave it off; every limit is then unlimited and no
@@ -274,7 +284,7 @@ offers **Send test email** (`POST /api/instance/smtp-test { to? }`, superadmin-o
 | `entryPage`                         | `dashboard`                  | `dashboard` or `status-page`: what the root URL shows.                                                                                                |
 | `tlsExpiryNotifyDays`               | `7, 14, 21`                  | Days before a TLS certificate expires at which to notify.                                                                                             |
 | `domainExpiryNotifyDays`            | `7, 14, 21`                  | Days before a domain registration expires at which to notify.                                                                                         |
-| `keepDataPeriodDays`                | `KEEP_DATA_PERIOD_DAYS`      | Retention of daily aggregates and important heartbeats (`0` disables).                                                                                |
+| `keepDataPeriodDays`                | `KEEP_DATA_PERIOD_DAYS`      | Retention of daily aggregates and important heartbeats (`0` disables). Honoured by the hourly retention job.                                          |
 | `trustProxy`                        | `false`                      | Trust `X-Forwarded-*` headers from the reverse proxy for client IPs (rate limits, audit log, status page IP allow-lists).                             |
 | `steamApiKey`, `globalpingApiToken` | —                            | Third-party API keys for the corresponding monitor types (superadmin-only read).                                                                      |
 

@@ -10,6 +10,8 @@ import type { Notification, StatusPage, StatusPageSubscriber } from '@/payload-t
 import type { RenderedEmail } from '@/server/email/subscriber-emails'
 import { subscriberEmailHeaders } from '@/server/email/subscriber-emails'
 import { describeNetworkError } from '@/server/notification-providers/http'
+import { isDemoMode } from '@/server/demo/config'
+import { deliverToDemoSink } from '@/server/demo/sink'
 import { sendNotification } from '@/server/notifications/send'
 import { guardedFetch } from '@/server/security/outbound-guard'
 import { webhookSignatureHeaders } from '@/server/webhooks/signature'
@@ -125,6 +127,14 @@ export interface WebhookRequest {
 
 /** POST JSON with a 5 s timeout, no redirects; classifies failures for the retry policy. */
 export async function postSubscriberWebhook(request: WebhookRequest): Promise<number> {
+  // Demo mode (#159): the sink accepts the delivery; nothing is sent.
+  if (isDemoMode()) {
+    deliverToDemoSink('subscriber-webhook', {
+      event: request.event,
+      deliveryId: request.deliveryId,
+    })
+    return 202
+  }
   const raw = JSON.stringify(request.body)
   const headers: Record<string, string> = {}
   for (const row of request.headers ?? []) {

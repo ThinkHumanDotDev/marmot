@@ -51,8 +51,14 @@ export async function readJson<T = Record<string, unknown>>(request: Request): P
   }
 }
 
-export const jsonError = (message: string, status: number) =>
-  Response.json({ errors: [{ message }] }, { status })
+export const jsonError = (message: string, status: number, data?: unknown) =>
+  Response.json({ errors: [{ message, ...(data !== undefined ? { data } : {}) }] }, { status })
+
+/** Structured details a client may act on: the plan limit of a 402 (`entitlement_exceeded`). */
+const publicData = (error: APIError): unknown => {
+  const data = error.data as { code?: unknown } | undefined
+  return data && data.code === 'entitlement_exceeded' ? data : undefined
+}
 
 /** `jsonError` with an `errors.*` message in the request's locale. */
 export const localizedError = (
@@ -84,7 +90,7 @@ export function withErrors<Args extends unknown[]>(
           error instanceof LocalizedAPIError && request
             ? error.messageIn(requestLocale(request))
             : error.message
-        return jsonError(message, status)
+        return jsonError(message, status, publicData(error))
       }
       throw error
     }
