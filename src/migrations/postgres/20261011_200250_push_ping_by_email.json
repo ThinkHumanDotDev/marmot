@@ -2047,43 +2047,6 @@
           "notNull": false,
           "default": 2000
         },
-        "aggregation": {
-          "name": "aggregation",
-          "type": "enum_monitors_aggregation",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'worst'"
-        },
-        "aggregation_quorum": {
-          "name": "aggregation_quorum",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "aggregation_quorum_unit": {
-          "name": "aggregation_quorum_unit",
-          "type": "enum_monitors_aggregation_quorum_unit",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'count'"
-        },
-        "aggregation_latency": {
-          "name": "aggregation_latency",
-          "type": "enum_monitors_aggregation_latency",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'none'"
-        },
-        "group_weight": {
-          "name": "group_weight",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 1
-        },
         "url": {
           "name": "url",
           "type": "varchar",
@@ -2502,6 +2465,32 @@
           "type": "numeric",
           "primaryKey": false,
           "notNull": false
+        },
+        "push_email_failure_keyword": {
+          "name": "push_email_failure_keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_email_success_keyword": {
+          "name": "push_email_success_keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_email_start_keyword": {
+          "name": "push_email_start_keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_email_unmatched": {
+          "name": "push_email_unmatched",
+          "type": "enum_monitors_push_email_unmatched",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'ignore'"
         },
         "manual_status": {
           "name": "manual_status",
@@ -14609,33 +14598,6 @@
         "all"
       ]
     },
-    "public.enum_monitors_aggregation": {
-      "name": "enum_monitors_aggregation",
-      "schema": "public",
-      "values": [
-        "worst",
-        "quorum",
-        "weighted"
-      ]
-    },
-    "public.enum_monitors_aggregation_quorum_unit": {
-      "name": "enum_monitors_aggregation_quorum_unit",
-      "schema": "public",
-      "values": [
-        "count",
-        "percent"
-      ]
-    },
-    "public.enum_monitors_aggregation_latency": {
-      "name": "enum_monitors_aggregation_latency",
-      "schema": "public",
-      "values": [
-        "none",
-        "avg",
-        "max",
-        "min"
-      ]
-    },
     "public.enum_monitors_reminder_backoff": {
       "name": "enum_monitors_reminder_backoff",
       "schema": "public",
@@ -14773,6 +14735,14 @@
       "values": [
         "interval",
         "cron"
+      ]
+    },
+    "public.enum_monitors_push_email_unmatched": {
+      "name": "enum_monitors_push_email_unmatched",
+      "schema": "public",
+      "values": [
+        "ignore",
+        "fail"
       ]
     },
     "public.enum_monitors_manual_status": {
@@ -15453,6 +15423,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "120c10fc-1ee4-47f5-8807-7a09a87eb209",
+  "id": "8a8294ff-986c-45f2-83c7-3265f2592243",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

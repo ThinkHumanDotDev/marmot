@@ -52,7 +52,8 @@ import * as migration_20261008_035336_email_verification from './20261008_035336
 import * as migration_20261008_054355_otel_collectors from './20261008_054355_otel_collectors';
 import * as migration_20261011_162022_magic_link from './20261011_162022_magic_link';
 import * as migration_20261011_193817_status_page_monitor from './20261011_193817_status_page_monitor';
-import * as migration_20261011_200358_group_aggregation_modes from './20261011_200358_group_aggregation_modes';
+import * as migration_20261011_200250_push_ping_by_email from './20261011_200250_push_ping_by_email';
+import * as migration_20261011_202811_group_aggregation_modes from './20261011_202811_group_aggregation_modes';
 
 export const migrations = [
   {
@@ -326,8 +327,13 @@ export const migrations = [
     name: '20261011_193817_status_page_monitor',
   },
   {
-    up: migration_20261011_200358_group_aggregation_modes.up,
-    down: migration_20261011_200358_group_aggregation_modes.down,
-    name: '20261011_200358_group_aggregation_modes'
+    up: migration_20261011_200250_push_ping_by_email.up,
+    down: migration_20261011_200250_push_ping_by_email.down,
+    name: '20261011_200250_push_ping_by_email',
+  },
+  {
+    up: migration_20261011_202811_group_aggregation_modes.up,
+    down: migration_20261011_202811_group_aggregation_modes.down,
+    name: '20261011_202811_group_aggregation_modes'
   },
 ];

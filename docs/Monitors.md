@@ -379,6 +379,41 @@ curl -fsS "https://status.example.com/api/push/<token>/start"
 See [Integrations](Integrations.md#push-monitors) for the endpoint reference and
 [Monitor types](Monitor-Types.md#push-schedules-and-signals) for the scheduling rules.
 
+### Ping-by-email
+
+Systems that can send mail but not make HTTP requests (NAS appliances, backup software, cron with
+`MAILTO`, network devices) can ping a push monitor by email. Once the instance is
+[configured](Configuration.md#ping-by-email), every push monitor receives mail at
+`<push token>@<INBOUND_EMAIL_DOMAIN>`, shown on the monitor page. A `+tag` after the token is ignored
+(`<token>+nas1@…`).
+
+Mail arrives through the worker's SMTP listener (`INBOUND_SMTP_PORT`; make it the MX of the inbound domain,
+or put a relay in front of it) or through the inbound-parse webhook `POST /api/inbound-email`
+(`INBOUND_EMAIL_WEBHOOK_SECRET`):
+
+| Provider                 | Setup                                                                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Postmark                 | Inbound webhook URL `https://marmot:<secret>@status.example.com/api/inbound-email` (JSON).                                                                    |
+| Mailgun                  | A route for the domain that forwards to `https://status.example.com/api/inbound-email?secret=<secret>` (parsed fields, or `body-mime` for the MIME endpoint). |
+| SendGrid Inbound Parse   | Destination URL `https://status.example.com/api/inbound-email?secret=<secret>`, with or without "POST the raw, full MIME message".                            |
+| Cloudflare Email Routing | An Email Worker that posts `message.raw` with `Content-Type: message/rfc822`, `X-Marmot-Secret: <secret>` and `X-Marmot-Recipient: message.to`.               |
+| Anything else            | POST the raw message (`message/rfc822`), Postmark-style JSON or `{ "to", "subject", "text" }` with the secret.                                                |
+
+Each message is matched, ignoring case, against its subject and plain-text body using the monitor's
+**Email pings** keywords, in this order:
+
+1. the **failure keyword** records a failure (e.g. `FAILED`);
+2. the **success keyword** records a success;
+3. the **start keyword** starts a run, like `/start`;
+4. without a success keyword, any other message is a success, so "Backup OK" works with no setup at all;
+5. with one, a message that matches nothing is **ignored** (kept in the ping log as a `log` entry) or
+   recorded as a **failure**, as configured.
+
+The subject becomes the heartbeat message and the first 2 000 characters of the body the ping log entry
+(source `email`). Mail to unknown tokens, paused monitors or other domains is refused (`550` over SMTP,
+dropped with `accepted: 0` on the webhook), and mail over `INBOUND_EMAIL_MAX_BYTES` is refused without
+being parsed.
+
 ## Public name
 
 The optional **Public name** (`publicName`) is what status pages show instead of the monitor's friendly
