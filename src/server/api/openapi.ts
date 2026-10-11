@@ -35,6 +35,7 @@ import { locationCreateSchema, locationPatchSchema } from '@/server/probes/schem
 import { API_KEY_FORBIDDEN_SECTIONS, isWriteMethod } from '@/server/auth/request-auth'
 import { STATS_RANGES } from '@/server/stats/uptime-calculator'
 import { createEndpointSchema, updateEndpointSchema } from '@/server/webhooks/manage'
+import { createCollectorSchema, updateCollectorSchema } from '@/server/otel/manage'
 
 /** Version of the management API contract. Breaking changes bump the major version. */
 export const MANAGEMENT_API_VERSION = '1.0.0'
@@ -1390,6 +1391,17 @@ export const OPERATIONS: OperationSpec[] = [
     permission: 'status-page:update',
   },
 
+  // Uptime history (#112)
+  {
+    method: 'GET',
+    path: `${ORG}/status-pages/{id}/uptime-history`,
+    operationId: 'getStatusPageUptimeHistory',
+    summary:
+      'Monthly uptime per component (`?months=1..24`, default 12); `?format=csv` downloads it as CSV',
+    tag: 'Status pages',
+    permission: 'status-page:history',
+  },
+
   // Outbound webhooks (admins by default; keys only where the organization lowered `webhook:*`)
   {
     method: 'GET',
@@ -1472,6 +1484,61 @@ export const OPERATIONS: OperationSpec[] = [
     summary: 'Send a signed `webhook.test` event now',
     tag: 'Webhooks',
     permission: 'webhook:manage',
+  },
+
+  // OpenTelemetry collectors (#99): header values are write-only
+  {
+    method: 'GET',
+    path: `${ORG}/otel-collectors`,
+    operationId: 'listOtelCollectors',
+    summary: 'OpenTelemetry collectors (header names, never their values)',
+    tag: 'OpenTelemetry',
+    permission: 'otel-collector:read',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/otel-collectors`,
+    operationId: 'createOtelCollector',
+    summary: 'Create an OTLP/HTTP metrics collector',
+    description: 'Header values are sealed at rest and never returned.',
+    tag: 'OpenTelemetry',
+    permission: 'otel-collector:manage',
+    body: { schema: createCollectorSchema },
+    status: 201,
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/otel-collectors/{id}`,
+    operationId: 'getOtelCollector',
+    summary: 'An OpenTelemetry collector',
+    tag: 'OpenTelemetry',
+    permission: 'otel-collector:read',
+  },
+  {
+    method: 'PATCH',
+    path: `${ORG}/otel-collectors/{id}`,
+    operationId: 'updateOtelCollector',
+    summary: 'Update a collector (`headers` replaces the set; `value: null` keeps a stored value)',
+    tag: 'OpenTelemetry',
+    permission: 'otel-collector:manage',
+    body: { schema: updateCollectorSchema },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/otel-collectors/{id}`,
+    operationId: 'deleteOtelCollector',
+    summary: 'Delete a collector (its monitors fall back to the default collector)',
+    tag: 'OpenTelemetry',
+    permission: 'otel-collector:manage',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/otel-collectors/{id}/test`,
+    operationId: 'testOtelCollector',
+    summary: 'Send one `marmot.collector.test` data point now',
+    tag: 'OpenTelemetry',
+    permission: 'otel-collector:manage',
+    response: { description: '`{ ok, status, error }`', schema: anyObject },
   },
 
   // Not organization-scoped

@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { LegalNotice } from '@/components/legal-links'
 import {
   Card,
   CardContent,
@@ -24,6 +25,9 @@ import { cn } from '@/lib/utils'
 interface BillingPanelProps {
   orgId: string | number
   overview: BillingOverview
+  /** Operator's `TERMS_URL` / `PRIVACY_URL`, shown under the plan card when set. */
+  termsUrl?: string | null
+  privacyUrl?: string | null
 }
 
 const statusVariant = (
@@ -78,7 +82,12 @@ function UsageRow({ label, used, limit }: { label: string; used: number; limit: 
  * Billing Portal to manage payment details and cancel). Rendered only for admins and owners
  * while `BILLING_ENABLED` is on.
  */
-export function BillingPanel({ orgId, overview }: BillingPanelProps) {
+export function BillingPanel({
+  orgId,
+  overview,
+  termsUrl = null,
+  privacyUrl = null,
+}: BillingPanelProps) {
   const t = useTranslations('settings.billing')
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -206,6 +215,7 @@ export function BillingPanel({ orgId, overview }: BillingPanelProps) {
           </CardFooter>
         )}
       </Card>
+      <LegalNotice termsUrl={termsUrl} privacyUrl={privacyUrl} context="billing" className="mt-4" />
     </>
   )
 }

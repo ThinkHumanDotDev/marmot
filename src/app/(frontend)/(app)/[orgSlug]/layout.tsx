@@ -20,6 +20,7 @@ import {
 import type { Organization } from '@/payload-types'
 import { hashAnalyticsId, isServerAnalyticsEnabled } from '@/server/analytics'
 import { getCheckerSummary } from '@/server/engine/connectivity-state'
+import { sourceUrl } from '@/server/site-links'
 
 export const dynamic = 'force-dynamic'
 
@@ -90,6 +91,7 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
           : organizations
       }
       currentOrg={currentOrg}
+      sourceUrl={sourceUrl()}
     >
       <ThemeSync theme={user.theme} />
       {/* Dates on the organization's pages render in its time zone (UTC unless configured). */}

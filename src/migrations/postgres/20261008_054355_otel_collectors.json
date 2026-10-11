@@ -2012,6 +2012,19 @@
           "primaryKey": false,
           "notNull": false
         },
+        "otlp_export": {
+          "name": "otlp_export",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "otlp_collector_id": {
+          "name": "otlp_collector_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "include_local": {
           "name": "include_local",
           "type": "boolean",
@@ -2839,6 +2852,21 @@
           "method": "btree",
           "with": {}
         },
+        "monitors_otlp_collector_idx": {
+          "name": "monitors_otlp_collector_idx",
+          "columns": [
+            {
+              "expression": "otlp_collector_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "monitors_proxy_idx": {
           "name": "monitors_proxy_idx",
           "columns": [
@@ -2977,6 +3005,19 @@
           "tableTo": "monitors",
           "columnsFrom": [
             "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitors_otlp_collector_id_otel_collectors_id_fk": {
+          "name": "monitors_otlp_collector_id_otel_collectors_id_fk",
+          "tableFrom": "monitors",
+          "tableTo": "otel_collectors",
+          "columnsFrom": [
+            "otlp_collector_id"
           ],
           "columnsTo": [
             "id"
@@ -7229,28 +7270,6 @@
           "notNull": false,
           "default": true
         },
-        "uptime_bar_days": {
-          "name": "uptime_bar_days",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 90
-        },
-        "uptime_calculation": {
-          "name": "uptime_calculation",
-          "type": "enum_status_pages_uptime_calculation",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'checks'"
-        },
-        "show_uptime_percentage": {
-          "name": "show_uptime_percentage",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": true
-        },
         "auto_refresh_interval": {
           "name": "auto_refresh_interval",
           "type": "numeric",
@@ -7748,241 +7767,6 @@
           "tableTo": "status_pages",
           "columnsFrom": [
             "page_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.status_page_uptime_history": {
-      "name": "status_page_uptime_history",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status_page_id": {
-          "name": "status_page_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "component": {
-          "name": "component",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "timestamp": {
-          "name": "timestamp",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "day": {
-          "name": "day",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "month": {
-          "name": "month",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "up": {
-          "name": "up",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "down": {
-          "name": "down",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "degraded": {
-          "name": "degraded",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0
-        },
-        "maintenance": {
-          "name": "maintenance",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0
-        },
-        "down_seconds": {
-          "name": "down_seconds",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0
-        },
-        "known_seconds": {
-          "name": "known_seconds",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0
-        },
-        "state": {
-          "name": "state",
-          "type": "enum_status_page_uptime_history_state",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'up'"
-        }
-      },
-      "indexes": {
-        "status_page_uptime_history_organization_idx": {
-          "name": "status_page_uptime_history_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_page_uptime_history_status_page_idx": {
-          "name": "status_page_uptime_history_status_page_idx",
-          "columns": [
-            {
-              "expression": "status_page_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_page_uptime_history_component_idx": {
-          "name": "status_page_uptime_history_component_idx",
-          "columns": [
-            {
-              "expression": "component",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_page_uptime_history_timestamp_idx": {
-          "name": "status_page_uptime_history_timestamp_idx",
-          "columns": [
-            {
-              "expression": "timestamp",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_page_uptime_history_month_idx": {
-          "name": "status_page_uptime_history_month_idx",
-          "columns": [
-            {
-              "expression": "month",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "statusPage_component_timestamp_idx": {
-          "name": "statusPage_component_timestamp_idx",
-          "columns": [
-            {
-              "expression": "status_page_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "component",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "timestamp",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "status_page_uptime_history_organization_id_organizations_id_fk": {
-          "name": "status_page_uptime_history_organization_id_organizations_id_fk",
-          "tableFrom": "status_page_uptime_history",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "status_page_uptime_history_status_page_id_status_pages_id_fk": {
-          "name": "status_page_uptime_history_status_page_id_status_pages_id_fk",
-          "tableFrom": "status_page_uptime_history",
-          "tableTo": "status_pages",
-          "columnsFrom": [
-            "status_page_id"
           ],
           "columnsTo": [
             "id"
@@ -12423,6 +12207,225 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.otel_collectors": {
+      "name": "otel_collectors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "endpoint": {
+          "name": "endpoint",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "headers": {
+          "name": "headers",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "header_names": {
+          "name": "header_names",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "default": {
+          "name": "default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "last_export_at": {
+          "name": "last_export_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_id": {
+          "name": "created_by_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "otel_collectors_organization_idx": {
+          "name": "otel_collectors_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otel_collectors_default_idx": {
+          "name": "otel_collectors_default_idx",
+          "columns": [
+            {
+              "expression": "default",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otel_collectors_created_by_idx": {
+          "name": "otel_collectors_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otel_collectors_updated_at_idx": {
+          "name": "otel_collectors_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otel_collectors_created_at_idx": {
+          "name": "otel_collectors_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organization_default_1_idx": {
+          "name": "organization_default_1_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "default",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "otel_collectors_organization_id_organizations_id_fk": {
+          "name": "otel_collectors_organization_id_organizations_id_fk",
+          "tableFrom": "otel_collectors",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "otel_collectors_created_by_id_users_id_fk": {
+          "name": "otel_collectors_created_by_id_users_id_fk",
+          "tableFrom": "otel_collectors",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.payload_kv": {
       "name": "payload_kv",
       "schema": "",
@@ -12727,12 +12730,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "status_page_uptime_history_id": {
-          "name": "status_page_uptime_history_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "incidents_id": {
           "name": "incidents_id",
           "type": "integer",
@@ -12795,6 +12792,12 @@
         },
         "webhook_deliveries_id": {
           "name": "webhook_deliveries_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "otel_collectors_id": {
+          "name": "otel_collectors_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -13206,21 +13209,6 @@
           "method": "btree",
           "with": {}
         },
-        "payload_locked_documents_rels_status_page_uptime_history_idx": {
-          "name": "payload_locked_documents_rels_status_page_uptime_history_idx",
-          "columns": [
-            {
-              "expression": "status_page_uptime_history_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "payload_locked_documents_rels_incidents_id_idx": {
           "name": "payload_locked_documents_rels_incidents_id_idx",
           "columns": [
@@ -13376,6 +13364,21 @@
           "columns": [
             {
               "expression": "webhook_deliveries_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_otel_collectors_id_idx": {
+          "name": "payload_locked_documents_rels_otel_collectors_id_idx",
+          "columns": [
+            {
+              "expression": "otel_collectors_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -13713,19 +13716,6 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "payload_locked_documents_rels_status_page_uptime_history_fk": {
-          "name": "payload_locked_documents_rels_status_page_uptime_history_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "status_page_uptime_history",
-          "columnsFrom": [
-            "status_page_uptime_history_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "payload_locked_documents_rels_incidents_fk": {
           "name": "payload_locked_documents_rels_incidents_fk",
           "tableFrom": "payload_locked_documents_rels",
@@ -13862,6 +13852,19 @@
           "tableTo": "webhook_deliveries",
           "columnsFrom": [
             "webhook_deliveries_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_otel_collectors_fk": {
+          "name": "payload_locked_documents_rels_otel_collectors_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "otel_collectors",
+          "columnsFrom": [
+            "otel_collectors_id"
           ],
           "columnsTo": [
             "id"
@@ -14945,15 +14948,6 @@
         "ip-allowlist"
       ]
     },
-    "public.enum_status_pages_uptime_calculation": {
-      "name": "enum_status_pages_uptime_calculation",
-      "schema": "public",
-      "values": [
-        "checks",
-        "duration",
-        "manual"
-      ]
-    },
     "public.enum_status_pages_subscriptions_delivery_mode": {
       "name": "enum_status_pages_subscriptions_delivery_mode",
       "schema": "public",
@@ -14968,18 +14962,6 @@
       "values": [
         "active",
         "revoked"
-      ]
-    },
-    "public.enum_status_page_uptime_history_state": {
-      "name": "enum_status_page_uptime_history_state",
-      "schema": "public",
-      "values": [
-        "nodata",
-        "up",
-        "maintenance",
-        "degraded",
-        "partial",
-        "down"
       ]
     },
     "public.enum_incidents_updates_components_impact": {
@@ -15367,6 +15349,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "a60c9ad6-b51e-4882-97aa-58e4f6774cd5",
+  "id": "b1c70b4e-98ae-42db-941a-58ea7458c72a",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

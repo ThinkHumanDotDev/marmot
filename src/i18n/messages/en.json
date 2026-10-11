@@ -63,6 +63,14 @@
       "hour": "{count, plural, one {# hour} other {# hours}}",
       "minute": "{count, plural, one {# minute} other {# minutes}}",
       "second": "{count, plural, one {# second} other {# seconds}}"
+    },
+    "source": "Source",
+    "legal": {
+      "both": "By signing up you agree to the <terms>Terms of Service</terms> and the <privacy>Privacy Policy</privacy>.",
+      "terms": "By signing up you agree to the <terms>Terms of Service</terms>.",
+      "privacy": "By signing up you acknowledge the <privacy>Privacy Policy</privacy>.",
+      "termsLink": "Terms",
+      "privacyLink": "Privacy"
     }
   },
   "shell": {
@@ -1040,6 +1048,19 @@
         "active": "Active",
         "activeDescription": "Paused monitors keep their history but are not checked."
       },
+      "openTelemetry": {
+        "title": "OpenTelemetry",
+        "description": "Push each check's duration, status and errors as OTLP metrics.",
+        "export": "Export metrics",
+        "exportDescription": "Send this monitor's check results to an OpenTelemetry collector.",
+        "collector": "Collector",
+        "defaultCollector": "Organization default",
+        "defaultCollectorNamed": "Organization default ({name})",
+        "noDefaultCollector": "Organization default (none set)",
+        "collectorInactive": "{name} (inactive)",
+        "collectorDescription": "Empty uses the organization's default collector.",
+        "collectorEmpty": "No collectors yet; an admin can add one in <link>settings</link>."
+      },
       "push": {
         "title": "Schedule",
         "description": "When your job is expected to call the push URL, and how late it may be.",
@@ -1336,6 +1357,7 @@
       "notifications": "Notifications",
       "instance": "Instance",
       "webhooks": "Webhooks",
+      "openTelemetry": "OpenTelemetry",
       "locations": "Locations"
     },
     "pageTitles": {
@@ -1354,6 +1376,7 @@
       "notifications": "Notification settings",
       "instance": "Instance settings",
       "webhooks": "Webhooks",
+      "openTelemetry": "OpenTelemetry",
       "webhookDeliveries": "Webhook deliveries",
       "locations": "Locations"
     },
@@ -1647,7 +1670,8 @@
         "instance_settings": "Instance settings",
         "import": "Import",
         "webhook_endpoint": "Webhook endpoint",
-        "location": "Probe location"
+        "location": "Probe location",
+        "otel_collector": "OpenTelemetry collector"
       },
       "verbs": {
         "created": "created",
@@ -1723,7 +1747,12 @@
       "stripeMissing": "Stripe is not configured on this instance, so plans can only be changed by an instance administrator.",
       "checkoutSuccess": "Thanks! Your plan updates as soon as Stripe confirms the payment.",
       "checkoutCanceled": "Checkout canceled. Your plan is unchanged.",
-      "failed": "Something went wrong"
+      "failed": "Something went wrong",
+      "legal": {
+        "both": "Subscriptions are subject to the <terms>Terms of Service</terms> and the <privacy>Privacy Policy</privacy>.",
+        "terms": "Subscriptions are subject to the <terms>Terms of Service</terms>.",
+        "privacy": "See the <privacy>Privacy Policy</privacy> for how billing data is handled."
+      }
     },
     "defaultChannels": {
       "title": "Default notification channels",
@@ -1928,6 +1957,7 @@
         "subscriber": "Status page subscribers",
         "monitorIncident": "Monitor incidents",
         "webhook": "Webhooks",
+        "otelCollector": "OpenTelemetry collectors",
         "location": "Probe locations"
       },
       "actions": {
@@ -2413,6 +2443,61 @@
         "copied": "Copied",
         "copyFailed": "Copy failed. Select the text and copy it manually.",
         "done": "Done"
+      }
+    },
+    "openTelemetry": {
+      "membersOnlyTitle": "Members only",
+      "membersOnlyDescription": "OpenTelemetry collectors are visible to members and managed by admins of this organization.",
+      "title": "OpenTelemetry collectors",
+      "description": "Every check is pushed as OpenTelemetry metrics (OTLP/HTTP) to the monitor's collector, or to the default collector. Use it to see synthetic checks next to your other telemetry in Grafana, Datadog, Honeycomb or an OpenTelemetry Collector.",
+      "new": "New collector",
+      "emptyTitle": "No collectors",
+      "emptyDescription": "Add a collector and make it the default to export every monitor's checks.",
+      "emptyReadOnly": "Admins of this organization can add collectors.",
+      "badge": {
+        "default": "Default",
+        "inactive": "Inactive",
+        "headers": "{count, plural, one {# header} other {# headers}}"
+      },
+      "lastExport": "Last export {time}",
+      "neverExported": "Nothing exported yet",
+      "lastError": "Last export failed: {error}",
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "testLabel": "Send a test data point to {name}",
+      "testSucceeded": "The collector accepted the test data point",
+      "testFailed": "The test export failed: {error}",
+      "confirmDeleteTitle": "Delete collector {name}?",
+      "confirmDeleteDescription": "Monitors using it fall back to the default collector. This cannot be undone.",
+      "confirmDelete": "Delete collector",
+      "deleted": "Collector deleted",
+      "deleteFailed": "Could not delete the collector",
+      "form": {
+        "newTitle": "New collector",
+        "editTitle": "Edit collector",
+        "description": "An OTLP/HTTP metrics endpoint. Data is sent as JSON (application/json).",
+        "name": "Name",
+        "namePlaceholder": "Grafana Cloud",
+        "endpoint": "Endpoint",
+        "endpointPlaceholder": "https://otel-collector.example.com:4318",
+        "endpointHint": "A URL without a path gets /v1/metrics appended; any other path is used as-is.",
+        "headers": "Headers",
+        "headersHint": "Sent with every export, e.g. Authorization. Values are encrypted and never shown again.",
+        "headerName": "Header name",
+        "headerValue": "Value",
+        "headerKept": "Unchanged (stored)",
+        "addHeader": "Add header",
+        "removeHeader": "Remove header {name}",
+        "active": "Active",
+        "activeHint": "Inactive collectors receive nothing.",
+        "default": "Default",
+        "defaultHint": "Monitors without a collector of their own export here.",
+        "cancel": "Cancel",
+        "save": "Save",
+        "create": "Create collector",
+        "saved": "Collector saved",
+        "created": "Collector created",
+        "failed": "Could not save the collector"
       }
     }
   },
@@ -5271,9 +5356,11 @@
     "homeLabel": "Marmot home",
     "nav": {
       "features": "Features",
+      "pricing": "Pricing",
       "selfHost": "Self-host",
       "signIn": "Sign in",
-      "getStarted": "Get started"
+      "getStarted": "Get started",
+      "dashboard": "Dashboard"
     },
     "hero": {
       "eyebrow": "Uptime monitoring for teams",
@@ -5321,8 +5408,8 @@
     "footer": {
       "tagline": "Marmot · status monitoring for teams",
       "docs": "Docs",
-      "github": "GitHub",
-      "signIn": "Sign in"
+      "signIn": "Sign in",
+      "pricing": "Pricing"
     },
     "preview": {
       "title": "Monitors",
@@ -5650,6 +5737,15 @@
     "webhookEventsRequired": "Select at least one event.",
     "webhookEventUnknown": "Unknown event type: {event}",
     "webhookNotFound": "Webhook endpoint not found.",
+    "otelCollectorNotFound": "OpenTelemetry collector not found.",
+    "otelHeaderValueInvalid": "The value of \"{name}\" is too long or contains line breaks.",
+    "otelHeaderDuplicate": "The header \"{name}\" is listed twice.",
+    "otelHeaderReserved": "The header \"{name}\" is set by Marmot.",
+    "otelHeaderNameInvalid": "\"{name}\" is not a valid header name.",
+    "otelHeadersTooMany": "Use at most {max} headers.",
+    "otelEndpointBlocked": "This URL is not allowed: {reason}",
+    "otelEndpointCredentials": "Put credentials in a header instead of the URL.",
+    "otelEndpointInvalid": "Enter an http:// or https:// OTLP/HTTP URL.",
     "webhookDeliveryNotFound": "Webhook delivery not found.",
     "heartbeatNotFound": "Check not found",
     "locationNotFound": "Location not found",
@@ -5913,5 +6009,33 @@
       "apiError": "The Marmot API answered {status}: {message}",
       "networkError": "Could not reach {url}: {message}"
     }
+  },
+  "pricing": {
+    "pageTitle": "Pricing",
+    "title": "Simple plans that grow with your team",
+    "description": "Start free, upgrade when you need more monitors, people or history. Every plan includes all monitor types and notification providers.",
+    "perMonth": "/ month",
+    "perYear": "or {price} / year",
+    "free": "Free",
+    "limits": {
+      "monitors": "{count, plural, one {# monitor} other {# monitors}}",
+      "monitorsUnlimited": "Unlimited monitors",
+      "members": "{count, plural, one {# member} other {# members}}",
+      "membersUnlimited": "Unlimited members",
+      "statusPages": "{count, plural, one {# status page} other {# status pages}}",
+      "statusPagesUnlimited": "Unlimited status pages",
+      "interval": "Checks every {seconds} seconds",
+      "retention": "{days, plural, one {# day} other {# days}} of history",
+      "retentionUnlimited": "Unlimited history",
+      "customDomains": "Status pages on your own domain",
+      "noCustomDomains": "Status pages on this instance's domain"
+    },
+    "cta": {
+      "signUp": "Get started",
+      "signIn": "Sign in",
+      "billing": "Manage plan"
+    },
+    "selfHost": "Prefer to run it yourself? Marmot is open source and free to self-host with no limits.",
+    "selfHostLink": "Self-hosting guide"
   }
 }

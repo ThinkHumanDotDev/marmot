@@ -1,0 +1,29 @@
+# OpenTelemetry Collector for the OTLP export integration test (#99, tests/int/otel-export.int.spec.ts).
+# Receives Marmot's OTLP/HTTP JSON on 127.0.0.1:4318 and forwards what it accepted, re-encoded by the
+# Collector, to the test's receiver on 127.0.0.1:4319. CI runs it with `--network host`; locally:
+#   otelcol --config tests/fixtures/otel/collector.yaml
+#   OTEL_COLLECTOR_URL=http://127.0.0.1:4318 pnpm test:int tests/int/otel-export.int.spec.ts
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 127.0.0.1:4318
+
+exporters:
+  otlphttp:
+    endpoint: http://127.0.0.1:4319
+    encoding: json
+    compression: none
+    retry_on_failure:
+      initial_interval: 500ms
+      max_interval: 2s
+      max_elapsed_time: 30s
+
+service:
+  telemetry:
+    metrics:
+      level: none
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      exporters: [otlphttp]
