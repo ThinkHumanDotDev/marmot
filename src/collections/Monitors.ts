@@ -34,6 +34,7 @@ import {
   REMINDER_BACKOFFS,
 } from '@/lib/reminder-backoff'
 import { relId } from './shared'
+import { PUSH_EMAIL_KEYWORD_MAX_LENGTH, type PushEmailUnmatched } from '@/lib/push-email'
 import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 import {
@@ -1262,6 +1263,48 @@ export const Monitors: CollectionConfig = {
               admin: { description: adminT('marmot:monitors:pushMaxDurationDescription') },
             },
           ],
+        },
+      ],
+    },
+
+    {
+      // Ping-by-email (#135): rules for mail sent to `<pushToken>@INBOUND_EMAIL_DOMAIN`.
+      type: 'collapsible',
+      label: adminT('marmot:labels:pushEmail'),
+      admin: { condition: (data) => data?.type === 'push', initCollapsed: true },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'pushEmailFailureKeyword',
+              type: 'text',
+              maxLength: PUSH_EMAIL_KEYWORD_MAX_LENGTH,
+              admin: { description: adminT('marmot:monitors:pushEmailFailureKeywordDescription') },
+            },
+            {
+              name: 'pushEmailSuccessKeyword',
+              type: 'text',
+              maxLength: PUSH_EMAIL_KEYWORD_MAX_LENGTH,
+              admin: { description: adminT('marmot:monitors:pushEmailSuccessKeywordDescription') },
+            },
+            {
+              name: 'pushEmailStartKeyword',
+              type: 'text',
+              maxLength: PUSH_EMAIL_KEYWORD_MAX_LENGTH,
+              admin: { description: adminT('marmot:monitors:pushEmailStartKeywordDescription') },
+            },
+          ],
+        },
+        {
+          name: 'pushEmailUnmatched',
+          type: 'select',
+          defaultValue: 'ignore',
+          options: [
+            { label: adminT('marmot:labels:pushEmailUnmatchedIgnore'), value: 'ignore' },
+            { label: adminT('marmot:labels:pushEmailUnmatchedFail'), value: 'fail' },
+          ] satisfies { label: unknown; value: PushEmailUnmatched }[],
+          admin: { description: adminT('marmot:monitors:pushEmailUnmatchedDescription') },
         },
       ],
     },

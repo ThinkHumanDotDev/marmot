@@ -140,6 +140,7 @@ const EMPTY_RESOURCES: MonitorFormResources = {
   locations: [],
   notifications: [],
   otelCollectors: [],
+  inboundEmail: false,
 }
 
 type Name = FieldPath<MonitorFormInput>
@@ -1583,6 +1584,50 @@ export function MonitorForm({
                   description={t('push.maxDurationDescription')}
                 />
               </div>
+              {resources?.inboundEmail && (
+                <div className="grid gap-5 border-t pt-5" data-testid="push-email-rules">
+                  <div className="grid gap-1">
+                    <p className="text-sm font-medium">{t('push.email.title')}</p>
+                    <p className="text-sm text-muted-foreground">{t('push.email.description')}</p>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-3">
+                    <TextField
+                      control={control}
+                      name="pushEmailFailureKeyword"
+                      label={t('push.email.failure')}
+                      placeholder={t('push.email.failurePlaceholder')}
+                      autoComplete="off"
+                      description={t('push.email.failureDescription')}
+                    />
+                    <TextField
+                      control={control}
+                      name="pushEmailSuccessKeyword"
+                      label={t('push.email.success')}
+                      placeholder={t('push.email.successPlaceholder')}
+                      autoComplete="off"
+                      description={t('push.email.successDescription')}
+                    />
+                    <TextField
+                      control={control}
+                      name="pushEmailStartKeyword"
+                      label={t('push.email.start')}
+                      placeholder={t('push.email.startPlaceholder')}
+                      autoComplete="off"
+                      description={t('push.email.startDescription')}
+                    />
+                  </div>
+                  <SelectField
+                    control={control}
+                    name="pushEmailUnmatched"
+                    label={t('push.email.unmatched')}
+                    description={t('push.email.unmatchedDescription')}
+                    options={[
+                      { value: 'ignore', label: t('push.email.unmatchedIgnore') },
+                      { value: 'fail', label: t('push.email.unmatchedFail') },
+                    ]}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

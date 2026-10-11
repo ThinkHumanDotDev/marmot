@@ -202,6 +202,9 @@ finish within the grace period, or a reported failure, keeps it DOWN until the n
 configured grace the window is `interval + 10 %`, as before. See
 [Monitor types](Monitor-Types.md#push-schedules-and-signals) for the fields and the exact rules.
 
+Push monitors can also be pinged by email, through the worker's SMTP listener or the inbound-parse webhook
+`POST /api/inbound-email`: see [Ping-by-email](Monitors.md#ping-by-email).
+
 ## Prometheus metrics
 
 `GET /api/metrics` with an API key returns the organization's monitors in Prometheus text format. The
