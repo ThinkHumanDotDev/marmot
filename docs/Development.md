@@ -90,6 +90,10 @@ handlers. Files run serially (`fileParallelism: false`) because they share one d
 - Redis is not required: `vitest.setup.ts` sets `MARMOT_DISABLE_ENGINE_HOOKS=1` so collection hooks skip the
   scheduler sync; engine behaviour is tested directly.
 - Run one file with `pnpm test:int tests/int/members.int.spec.ts`.
+- The OTLP export test also sends its checks through a real OpenTelemetry Collector when
+  `OTEL_COLLECTOR_URL` is set (CI always does, and fails without it). Locally run the Collector with
+  `tests/fixtures/otel/collector.yaml` (`otelcol --config …`, or the `otel/opentelemetry-collector`
+  image with `--network host`) and set `OTEL_COLLECTOR_URL=http://127.0.0.1:4318`.
 - On MongoDB ids are strings, so fixtures must not assume numbers: cast through `unknown`
   (`as unknown as Monitor`) or create real documents.
 

@@ -31,7 +31,8 @@ import { invalidateOtelCollectors } from '@/server/otel/resolve'
 /**
  * OpenTelemetry metrics export (#99) against a local mock OTLP/HTTP collector: collector RBAC and
  * write-only sealed headers, audit redaction, default-collector inheritance, the exported metrics,
- * batching through one reused exporter, failure bookkeeping and the test route.
+ * batching through one reused exporter, failure bookkeeping and the test route. The last block sends
+ * the same checks through a real OpenTelemetry Collector (`OTEL_COLLECTOR_URL`, run by CI).
  */
 
 let payload: Payload
@@ -39,6 +40,10 @@ const run = Date.now().toString(36)
 const email = (name: string) => `${name}+otelint-${run}@marmot.test`
 const PASSWORD = 'password-123'
 const TOKEN = `glc_secret_${run}`
+/** OTLP/HTTP base URL of a running Collector (tests/fixtures/otel/collector.yaml); CI sets it. */
+const OTEL_COLLECTOR_URL = process.env.OTEL_COLLECTOR_URL ?? ''
+/** Where that Collector forwards what it received (its `otlphttp` exporter). */
+const COLLECTOR_FORWARD_PORT = 4319
 
 type Session = { user: User; cookie: string }
 type Id = string | number
@@ -593,6 +598,122 @@ describe('OpenTelemetry metrics export', () => {
       // 503 then 200: retried once, delivered once.
       expect(exportsAt('/flaky')).toHaveLength(2)
       expect(metricsOf(exportsAt('/flaky')[1].body).length).toBeGreaterThan(0)
+    })
+  })
+
+  // A real OpenTelemetry Collector (tests/fixtures/otel/collector.yaml, started by CI) receives the
+  // export and forwards what it accepted to a receiver here, so the hand-written JSON encoding is
+  // checked by the reference implementation rather than by our own mock.
+  describe('against an OpenTelemetry Collector', () => {
+    it.runIf(process.env.CI)('has a Collector in CI', () => {
+      expect(OTEL_COLLECTOR_URL, 'start the Collector and set OTEL_COLLECTOR_URL').toBeTruthy()
+    })
+
+    it.skipIf(!OTEL_COLLECTOR_URL)('delivers every documented metric', async () => {
+      const forwarded: OtlpMetricsRequest[] = []
+      const receiver = http.createServer((req, res) => {
+        const chunks: Buffer[] = []
+        req.on('data', (chunk: Buffer) => chunks.push(chunk))
+        req.on('end', () => {
+          try {
+            forwarded.push(JSON.parse(Buffer.concat(chunks).toString('utf8')) as OtlpMetricsRequest)
+          } catch {
+            // not JSON: nothing recorded, the assertions below fail
+          }
+          res.writeHead(200, { 'content-type': 'application/json' }).end('{}')
+        })
+      })
+      await new Promise<void>((resolve) =>
+        receiver.listen(COLLECTOR_FORWARD_PORT, '127.0.0.1', resolve),
+      )
+      try {
+        const created = await createCollector(admin, {
+          name: 'OpenTelemetry Collector',
+          endpoint: OTEL_COLLECTOR_URL, // base URL: /v1/metrics is appended
+          headers: [{ name: 'X-Marmot-Test', value: run }],
+        })
+        expect(created.status).toBe(201)
+        const collectorId = (created.json.doc as OtelCollectorRow).id
+        const http200 = await createMonitor({
+          name: 'Collector HTTP',
+          otlpCollector: docId(collectorId) as never,
+        })
+        const ping = await createMonitor({
+          name: 'Collector ping',
+          type: 'ping',
+          url: null,
+          hostname: '192.0.2.10',
+          otlpCollector: docId(collectorId) as never,
+        })
+        const timing = { dns: 2, connect: 5, tls: 11, ttfb: 30, transfer: 1 }
+        await exportHeartbeat(payload, beat(http200, 'up', { timing, statusCode: 200 }))
+        await exportHeartbeat(payload, beat(http200, 'down', { statusCode: 500 }))
+        await exportHeartbeat(payload, beat(ping, 'down'))
+        await flushOtelExports()
+
+        // The Collector answered 2xx without rejecting data points.
+        const stored = (await payload.findByID({
+          collection: 'otel-collectors',
+          id: docId(collectorId),
+          overrideAccess: true,
+          depth: 0,
+        })) as OtelCollector
+        expect(stored.lastError ?? null).toBeNull()
+        expect(stored.lastExportAt).toBeTruthy()
+
+        const metricNames = () =>
+          new Set(forwarded.flatMap((body) => metricsOf(body)).map((metric) => metric.name))
+        const deadline = Date.now() + 20_000
+        while (metricNames().size < Object.keys(OTEL_METRICS).length && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 200))
+        }
+        const metrics = forwarded.flatMap((body) => metricsOf(body))
+        const points = (name: string) =>
+          metrics
+            .filter((metric) => metric.name === name)
+            .flatMap((metric) => metric.gauge?.dataPoints ?? metric.sum?.dataPoints ?? [])
+        const resource = forwarded[0]?.resourceMetrics[0]?.resource.attributes ?? []
+        expect(attr(resource, 'service.name')).toBe('marmot-synthetic-check')
+
+        const duration = points(OTEL_METRICS.duration)
+        expect(duration.map((p) => p.asDouble)).toEqual([42])
+        expect(attr(duration[0].attributes, 'marmot.monitor.name')).toBe('Collector HTTP')
+        expect(attr(duration[0].attributes, 'marmot.monitor.type')).toBe('http')
+        expect(attr(duration[0].attributes, 'marmot.monitor.target')).toBe(
+          'https://shop.example.com/health',
+        )
+        expect(attr(duration[0].attributes, 'marmot.location')).toBe('local')
+        expect(String(attr(duration[0].attributes, 'http.response.status_code'))).toBe('200')
+        expect(
+          Object.fromEntries(
+            points(OTEL_METRICS.phaseDuration).map((p) => [
+              attr(p.attributes, 'marmot.check.phase'),
+              p.asDouble,
+            ]),
+          ),
+        ).toEqual(timing)
+
+        const status = points(OTEL_METRICS.status)
+        const statusOf = (monitor: Monitor) =>
+          status
+            .filter((p) => attr(p.attributes, 'marmot.monitor.id') === String(monitor.id))
+            .map((p) => p.asDouble)
+        expect(statusOf(http200)).toEqual([1, 0])
+        expect(statusOf(ping)).toEqual([0])
+
+        const errors = metrics.find((metric) => metric.name === OTEL_METRICS.errors)?.sum
+        expect(errors?.isMonotonic).toBe(true)
+        expect(errors?.aggregationTemporality).toBe(2)
+        expect(
+          points(OTEL_METRICS.errors)
+            .filter((p) => attr(p.attributes, 'marmot.monitor.id') === String(http200.id))
+            .map((p) => String(p.asInt)),
+        ).toEqual(['0', '1'])
+
+        expect(points(OTEL_METRICS.packetLoss).map((p) => p.asDouble)).toEqual([1])
+      } finally {
+        await new Promise<void>((resolve) => receiver.close(() => resolve()))
+      }
     })
   })
 })
