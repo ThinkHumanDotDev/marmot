@@ -49,7 +49,8 @@ import * as migration_20261008_013406_heartbeat_timing from './20261008_013406_h
 import * as migration_20261008_023424_location_quorum from './20261008_023424_location_quorum';
 import * as migration_20261008_030613_response_log from './20261008_030613_response_log';
 import * as migration_20261008_035336_email_verification from './20261008_035336_email_verification';
-import * as migration_20261011_144545_ssh_tunnels from './20261011_144545_ssh_tunnels';
+import * as migration_20261008_054355_otel_collectors from './20261008_054355_otel_collectors';
+import * as migration_20261011_155849_ssh_tunnels from './20261011_155849_ssh_tunnels';
 
 export const migrations = [
   {
@@ -308,8 +309,13 @@ export const migrations = [
     name: '20261008_035336_email_verification',
   },
   {
-    up: migration_20261011_144545_ssh_tunnels.up,
-    down: migration_20261011_144545_ssh_tunnels.down,
-    name: '20261011_144545_ssh_tunnels'
+    up: migration_20261008_054355_otel_collectors.up,
+    down: migration_20261008_054355_otel_collectors.down,
+    name: '20261008_054355_otel_collectors',
+  },
+  {
+    up: migration_20261011_155849_ssh_tunnels.up,
+    down: migration_20261011_155849_ssh_tunnels.down,
+    name: '20261011_155849_ssh_tunnels'
   },
 ];

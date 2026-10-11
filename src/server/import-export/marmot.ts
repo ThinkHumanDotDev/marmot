@@ -594,6 +594,8 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
       proxy: null,
       sshTunnel: null,
       dockerHost: null,
+      // Collectors are organization resources too; imported monitors use the default collector.
+      otlpCollector: null,
       locations: [],
       parent: null,
     })

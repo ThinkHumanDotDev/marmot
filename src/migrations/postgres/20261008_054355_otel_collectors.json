@@ -2012,6 +2012,19 @@
           "primaryKey": false,
           "notNull": false
         },
+        "otlp_export": {
+          "name": "otlp_export",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "otlp_collector_id": {
+          "name": "otlp_collector_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "include_local": {
           "name": "include_local",
           "type": "boolean",
@@ -2042,12 +2055,6 @@
         },
         "proxy_id": {
           "name": "proxy_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ssh_tunnel_id": {
-          "name": "ssh_tunnel_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -2845,11 +2852,11 @@
           "method": "btree",
           "with": {}
         },
-        "monitors_proxy_idx": {
-          "name": "monitors_proxy_idx",
+        "monitors_otlp_collector_idx": {
+          "name": "monitors_otlp_collector_idx",
           "columns": [
             {
-              "expression": "proxy_id",
+              "expression": "otlp_collector_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2860,11 +2867,11 @@
           "method": "btree",
           "with": {}
         },
-        "monitors_ssh_tunnel_idx": {
-          "name": "monitors_ssh_tunnel_idx",
+        "monitors_proxy_idx": {
+          "name": "monitors_proxy_idx",
           "columns": [
             {
-              "expression": "ssh_tunnel_id",
+              "expression": "proxy_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3005,12 +3012,12 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
-        "monitors_proxy_id_proxies_id_fk": {
-          "name": "monitors_proxy_id_proxies_id_fk",
+        "monitors_otlp_collector_id_otel_collectors_id_fk": {
+          "name": "monitors_otlp_collector_id_otel_collectors_id_fk",
           "tableFrom": "monitors",
-          "tableTo": "proxies",
+          "tableTo": "otel_collectors",
           "columnsFrom": [
-            "proxy_id"
+            "otlp_collector_id"
           ],
           "columnsTo": [
             "id"
@@ -3018,12 +3025,12 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
-        "monitors_ssh_tunnel_id_ssh_tunnels_id_fk": {
-          "name": "monitors_ssh_tunnel_id_ssh_tunnels_id_fk",
+        "monitors_proxy_id_proxies_id_fk": {
+          "name": "monitors_proxy_id_proxies_id_fk",
           "tableFrom": "monitors",
-          "tableTo": "ssh_tunnels",
+          "tableTo": "proxies",
           "columnsFrom": [
-            "ssh_tunnel_id"
+            "proxy_id"
           ],
           "columnsTo": [
             "id"
@@ -4018,183 +4025,6 @@
         "docker_hosts_organization_id_organizations_id_fk": {
           "name": "docker_hosts_organization_id_organizations_id_fk",
           "tableFrom": "docker_hosts",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.ssh_tunnels": {
-      "name": "ssh_tunnels",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "host": {
-          "name": "host",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "port": {
-          "name": "port",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 22
-        },
-        "username": {
-          "name": "username",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "auth_method": {
-          "name": "auth_method",
-          "type": "enum_ssh_tunnels_auth_method",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'password'"
-        },
-        "password": {
-          "name": "password",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "private_key": {
-          "name": "private_key",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "passphrase": {
-          "name": "passphrase",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "known_host_fingerprint": {
-          "name": "known_host_fingerprint",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "has_password": {
-          "name": "has_password",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "has_private_key": {
-          "name": "has_private_key",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "has_passphrase": {
-          "name": "has_passphrase",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "ssh_tunnels_organization_idx": {
-          "name": "ssh_tunnels_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "ssh_tunnels_updated_at_idx": {
-          "name": "ssh_tunnels_updated_at_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "ssh_tunnels_created_at_idx": {
-          "name": "ssh_tunnels_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "ssh_tunnels_organization_id_organizations_id_fk": {
-          "name": "ssh_tunnels_organization_id_organizations_id_fk",
-          "tableFrom": "ssh_tunnels",
           "tableTo": "organizations",
           "columnsFrom": [
             "organization_id"
@@ -12377,6 +12207,225 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.otel_collectors": {
+      "name": "otel_collectors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "endpoint": {
+          "name": "endpoint",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "headers": {
+          "name": "headers",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "header_names": {
+          "name": "header_names",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "default": {
+          "name": "default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "last_export_at": {
+          "name": "last_export_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_id": {
+          "name": "created_by_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "otel_collectors_organization_idx": {
+          "name": "otel_collectors_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otel_collectors_default_idx": {
+          "name": "otel_collectors_default_idx",
+          "columns": [
+            {
+              "expression": "default",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otel_collectors_created_by_idx": {
+          "name": "otel_collectors_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otel_collectors_updated_at_idx": {
+          "name": "otel_collectors_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otel_collectors_created_at_idx": {
+          "name": "otel_collectors_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organization_default_1_idx": {
+          "name": "organization_default_1_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "default",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "otel_collectors_organization_id_organizations_id_fk": {
+          "name": "otel_collectors_organization_id_organizations_id_fk",
+          "tableFrom": "otel_collectors",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "otel_collectors_created_by_id_users_id_fk": {
+          "name": "otel_collectors_created_by_id_users_id_fk",
+          "tableFrom": "otel_collectors",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.payload_kv": {
       "name": "payload_kv",
       "schema": "",
@@ -12609,12 +12658,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "ssh_tunnels_id": {
-          "name": "ssh_tunnels_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "locations_id": {
           "name": "locations_id",
           "type": "integer",
@@ -12749,6 +12792,12 @@
         },
         "webhook_deliveries_id": {
           "name": "webhook_deliveries_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "otel_collectors_id": {
+          "name": "otel_collectors_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -12970,21 +13019,6 @@
           "columns": [
             {
               "expression": "docker_hosts_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "payload_locked_documents_rels_ssh_tunnels_id_idx": {
-          "name": "payload_locked_documents_rels_ssh_tunnels_id_idx",
-          "columns": [
-            {
-              "expression": "ssh_tunnels_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -13339,6 +13373,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "payload_locked_documents_rels_otel_collectors_id_idx": {
+          "name": "payload_locked_documents_rels_otel_collectors_id_idx",
+          "columns": [
+            {
+              "expression": "otel_collectors_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -13504,19 +13553,6 @@
           "tableTo": "docker_hosts",
           "columnsFrom": [
             "docker_hosts_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_ssh_tunnels_fk": {
-          "name": "payload_locked_documents_rels_ssh_tunnels_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "ssh_tunnels",
-          "columnsFrom": [
-            "ssh_tunnels_id"
           ],
           "columnsTo": [
             "id"
@@ -13816,6 +13852,19 @@
           "tableTo": "webhook_deliveries",
           "columnsFrom": [
             "webhook_deliveries_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_otel_collectors_fk": {
+          "name": "payload_locked_documents_rels_otel_collectors_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "otel_collectors",
+          "columnsFrom": [
+            "otel_collectors_id"
           ],
           "columnsTo": [
             "id"
@@ -14729,14 +14778,6 @@
         "tcp"
       ]
     },
-    "public.enum_ssh_tunnels_auth_method": {
-      "name": "enum_ssh_tunnels_auth_method",
-      "schema": "public",
-      "values": [
-        "password",
-        "privateKey"
-      ]
-    },
     "public.enum_locations_status": {
       "name": "enum_locations_status",
       "schema": "public",
@@ -15308,6 +15349,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "eea38251-9a67-472c-9c2d-7966cef866e6",
+  "id": "b1c70b4e-98ae-42db-941a-58ea7458c72a",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

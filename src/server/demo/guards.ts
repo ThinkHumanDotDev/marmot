@@ -24,6 +24,8 @@ export const DEMO_LOCKED_COLLECTIONS: Readonly<Record<string, DemoFeature>> = {
   'api-keys': 'apiKeys',
   // Outbound webhooks (#228): arbitrary URLs the instance would POST to.
   'webhook-endpoints': 'webhooks',
+  // OpenTelemetry collectors (#99): the same, plus header secrets visitors would leave behind.
+  'otel-collectors': 'otelExport',
   // Single sign-on: identity provider URLs the server would call, and SSO enforcement locks out.
   'sso-connections': 'sso',
   'sso-domains': 'sso',
