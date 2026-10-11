@@ -53,6 +53,8 @@ export async function startInboundSmtp(
     // Never wait on reverse DNS for a banner nobody reads.
     disableReverseLookup: true,
     socketTimeout: 60_000,
+    // A receive-only endpoint for job reports: plenty, and bounded.
+    maxClients: 100,
     onRcptTo(address, _session, callback) {
       findPushMonitorByAddress(payload, address.address)
         .then((monitor) =>
