@@ -60,6 +60,7 @@ Monitors visitors create get a default profile and a message saying the check wa
 | Notifications (every provider, test messages, SMS)      | Rendered as usual, then logged to the sink (`demoSink` log lines) instead of sent.                             |
 | Email (invitations, subscriber mail, password reset, …) | The email adapter is the sink, whatever `SMTP_*` says. The SMTP test route answers 403.                        |
 | Outbound and subscriber webhooks                        | Logged to the sink. Webhook endpoints cannot be created.                                                       |
+| OpenTelemetry collectors                                | Cannot be created or changed, so no metrics are exported.                                                      |
 | Any other outbound connection                           | The outbound address guard refuses every target before resolving it (`Blocked: … (DEMO_MODE)`).                |
 | Monitor targets                                         | Never contacted (simulated checks); the domain expiry lookup is off; Docker host tests answer 403.             |
 | Demo account                                            | Password, email, password reset, account deletion and two-factor setup are refused.                            |

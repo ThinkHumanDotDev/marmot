@@ -2012,6 +2012,19 @@
           "primaryKey": false,
           "notNull": false
         },
+        "otlp_export": {
+          "name": "otlp_export",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "otlp_collector_id": {
+          "name": "otlp_collector_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "include_local": {
           "name": "include_local",
           "type": "boolean",
@@ -2859,6 +2872,21 @@
           "method": "btree",
           "with": {}
         },
+        "monitors_otlp_collector_idx": {
+          "name": "monitors_otlp_collector_idx",
+          "columns": [
+            {
+              "expression": "otlp_collector_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "monitors_proxy_idx": {
           "name": "monitors_proxy_idx",
           "columns": [
@@ -2997,6 +3025,19 @@
           "tableTo": "monitors",
           "columnsFrom": [
             "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitors_otlp_collector_id_otel_collectors_id_fk": {
+          "name": "monitors_otlp_collector_id_otel_collectors_id_fk",
+          "tableFrom": "monitors",
+          "tableTo": "otel_collectors",
+          "columnsFrom": [
+            "otlp_collector_id"
           ],
           "columnsTo": [
             "id"
@@ -12186,6 +12227,225 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.otel_collectors": {
+      "name": "otel_collectors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "endpoint": {
+          "name": "endpoint",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "headers": {
+          "name": "headers",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "header_names": {
+          "name": "header_names",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "default": {
+          "name": "default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "last_export_at": {
+          "name": "last_export_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_id": {
+          "name": "created_by_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "otel_collectors_organization_idx": {
+          "name": "otel_collectors_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otel_collectors_default_idx": {
+          "name": "otel_collectors_default_idx",
+          "columns": [
+            {
+              "expression": "default",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otel_collectors_created_by_idx": {
+          "name": "otel_collectors_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otel_collectors_updated_at_idx": {
+          "name": "otel_collectors_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "otel_collectors_created_at_idx": {
+          "name": "otel_collectors_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organization_default_1_idx": {
+          "name": "organization_default_1_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "default",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "otel_collectors_organization_id_organizations_id_fk": {
+          "name": "otel_collectors_organization_id_organizations_id_fk",
+          "tableFrom": "otel_collectors",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "otel_collectors_created_by_id_users_id_fk": {
+          "name": "otel_collectors_created_by_id_users_id_fk",
+          "tableFrom": "otel_collectors",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.payload_kv": {
       "name": "payload_kv",
       "schema": "",
@@ -12552,6 +12812,12 @@
         },
         "webhook_deliveries_id": {
           "name": "webhook_deliveries_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "otel_collectors_id": {
+          "name": "otel_collectors_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -13127,6 +13393,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "payload_locked_documents_rels_otel_collectors_id_idx": {
+          "name": "payload_locked_documents_rels_otel_collectors_id_idx",
+          "columns": [
+            {
+              "expression": "otel_collectors_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -13591,6 +13872,19 @@
           "tableTo": "webhook_deliveries",
           "columnsFrom": [
             "webhook_deliveries_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_otel_collectors_fk": {
+          "name": "payload_locked_documents_rels_otel_collectors_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "otel_collectors",
+          "columnsFrom": [
+            "otel_collectors_id"
           ],
           "columnsTo": [
             "id"
@@ -15088,6 +15382,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "0235da8d-42ac-445c-8768-43f95e446180",
+  "id": "39f4cf39-28f2-4470-9820-8bcfc73b4d2e",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
