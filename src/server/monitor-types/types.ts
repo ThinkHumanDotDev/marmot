@@ -53,6 +53,12 @@ export interface MonitorCheckContext {
    * only for failed or degraded beats.
    */
   response?: CapturedResponse | null
+  /**
+   * Freshness lifetime in seconds of the document the check read (third-party status pages, #125:
+   * `Cache-Control: max-age` / `Expires`). The worker stores it in `monitors.status.cacheSeconds`
+   * and the scheduler never polls more often than that.
+   */
+  cacheSeconds?: number | null
 }
 
 /** One probe of a multi-location check (`heartbeats.probes`). */

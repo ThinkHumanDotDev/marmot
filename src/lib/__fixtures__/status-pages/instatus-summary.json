@@ -1,0 +1,29 @@
+{
+  "page": {
+    "name": "Acme Cloud",
+    "url": "https://status.acme-cloud.example",
+    "status": "HASISSUES"
+  },
+  "activeIncidents": [
+    {
+      "id": "clx9k2m3n0001abcd",
+      "name": "Elevated error rates on the EU API",
+      "started": "2026-10-11T13:10:00.000Z",
+      "status": "IDENTIFIED",
+      "impact": "MAJOROUTAGE",
+      "url": "https://status.acme-cloud.example/incident/clx9k2m3n0001abcd",
+      "updatedAt": "2026-10-11T13:25:41.512Z"
+    }
+  ],
+  "activeMaintenances": [
+    {
+      "id": "clx9k2m3n0002efgh",
+      "name": "Dashboard deploy window",
+      "start": "2026-10-11T18:00:00.000Z",
+      "status": "NOTSTARTEDYET",
+      "duration": "60",
+      "url": "https://status.acme-cloud.example/maintenance/clx9k2m3n0002efgh",
+      "updatedAt": "2026-10-10T09:00:00.000Z"
+    }
+  ]
+}
