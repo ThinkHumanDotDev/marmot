@@ -45,6 +45,12 @@ export interface MonitorSummary {
   hostname?: string | null
   tags?: MonitorTagChip[]
   organization?: string | number | null
+  description?: string | null
+  /** Attached notification channel ids. */
+  notifications?: string[]
+  /** Probe location ids (#91); empty: the local worker pool. */
+  locations?: string[]
+  includeLocal?: boolean
 }
 
 export type UptimePeriod = '24h' | '30d' | '1y'

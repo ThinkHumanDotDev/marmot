@@ -45,6 +45,7 @@ documentation remains the reference for the behaviour of the ported checks.
 | Per-check response log with filters: status code, headers, failed bodies, assertions           |      —      | **landing** (#97, [Monitors](Monitors.md#response-log))                      |
 | Data retention setting                                                                         |      ✓      | **done** (`KEEP_DATA_PERIOD_DAYS`, instance setting)                         |
 | Live dashboard over WebSockets                                                                 |      ✓      | **done** (socket.io, Redis adapter)                                          |
+| Monitor list search, filters (status, type, tags, channels, locations) and bulk actions        |      ✓      | **landing** (#124, [Monitors](Monitors.md#search-filters-and-bulk-actions))  |
 
 ## Alerting
 
