@@ -109,6 +109,8 @@ authorization server and request the `groups` scope (`OIDC_SCOPES=openid email p
 - password logins are refused with 403 on `POST /api/auth/login`, `POST /api/users/login` and the Local API;
 - sign-ups are disabled (`allowSignup` is ignored) and `POST /api/users/forgot-password` and
   `POST /api/users/reset-password` answer 403;
+- [email sign-in links](Organizations-and-Members.md#sign-in-links-passwordless) count as a local login and
+  are off (`POST /api/auth/magic-link` and links already sent answer 403), break-glass included;
 - `GET /api/auth/providers` reports `"local": false`.
 
 **Break-glass.** With `OIDC_BREAK_GLASS=true` a **superadmin** can still sign in with their password at
@@ -188,8 +190,10 @@ at the SSO page. Owners of the organization keep a **break-glass** password logi
 provider never locks everyone out; each such login is written to the audit log as `auth.break_glass`.
 Password resets follow the same rule: reset mails are only sent to people who could use the new
 password (owners, superadmins and users outside the verified domains; everybody gets the same answer), and a
-reset link of anyone else is refused with 403. Logins through a connection are unaffected, and turning enforcement off
-restores password login at once.
+reset link of anyone else is refused with 403. [Email sign-in links](Organizations-and-Members.md#sign-in-links-passwordless)
+follow the password rule too: nobody else on the verified domains receives one, a link sent earlier is refused with 403,
+and an owner's sign-in through a link is audited as `auth.break_glass`; addresses on those domains never get an account
+through a link. Logins through a connection are unaffected, and turning enforcement off restores password login at once.
 
 Connections, domains and enforcement are also available over the API (`/api/orgs/:orgId/sso/connections`,
 `/api/orgs/:orgId/sso/domains`, `POST /api/orgs/:orgId/sso/domains/:id/verify`,

@@ -2629,63 +2629,6 @@
           "notNull": false,
           "default": "'public'"
         },
-        "prometheus_query": {
-          "name": "prometheus_query",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "prometheus_down_operator": {
-          "name": "prometheus_down_operator",
-          "type": "enum_monitors_prometheus_down_operator",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'>'"
-        },
-        "prometheus_down_threshold": {
-          "name": "prometheus_down_threshold",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "prometheus_degraded_operator": {
-          "name": "prometheus_degraded_operator",
-          "type": "enum_monitors_prometheus_degraded_operator",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "prometheus_degraded_threshold": {
-          "name": "prometheus_degraded_threshold",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "prometheus_aggregate": {
-          "name": "prometheus_aggregate",
-          "type": "enum_monitors_prometheus_aggregate",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'worst'"
-        },
-        "prometheus_no_data_status": {
-          "name": "prometheus_no_data_status",
-          "type": "enum_monitors_prometheus_no_data_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'down'"
-        },
-        "prometheus_error_status": {
-          "name": "prometheus_error_status",
-          "type": "enum_monitors_prometheus_error_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'down'"
-        },
         "smtp_security": {
           "name": "smtp_security",
           "type": "enum_monitors_smtp_security",
@@ -4755,12 +4698,6 @@
         "probes": {
           "name": "probes",
           "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "value": {
-          "name": "value",
-          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -14268,6 +14205,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "magic_link_enabled": {
+          "name": "magic_link_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
         "entry_page": {
           "name": "entry_page",
           "type": "enum_instance_settings_entry_page",
@@ -14420,7 +14363,8 @@
         "local",
         "oidc",
         "oauth",
-        "saml"
+        "saml",
+        "magic-link"
       ]
     },
     "public.enum_users_theme": {
@@ -14569,7 +14513,6 @@
         "http",
         "keyword",
         "json-query",
-        "prometheus",
         "port",
         "ping",
         "dns",
@@ -14758,57 +14701,6 @@
       "values": [
         "1",
         "2c"
-      ]
-    },
-    "public.enum_monitors_prometheus_down_operator": {
-      "name": "enum_monitors_prometheus_down_operator",
-      "schema": "public",
-      "values": [
-        ">",
-        ">=",
-        "<",
-        "<=",
-        "==",
-        "!="
-      ]
-    },
-    "public.enum_monitors_prometheus_degraded_operator": {
-      "name": "enum_monitors_prometheus_degraded_operator",
-      "schema": "public",
-      "values": [
-        ">",
-        ">=",
-        "<",
-        "<=",
-        "==",
-        "!="
-      ]
-    },
-    "public.enum_monitors_prometheus_aggregate": {
-      "name": "enum_monitors_prometheus_aggregate",
-      "schema": "public",
-      "values": [
-        "worst",
-        "any",
-        "all"
-      ]
-    },
-    "public.enum_monitors_prometheus_no_data_status": {
-      "name": "enum_monitors_prometheus_no_data_status",
-      "schema": "public",
-      "values": [
-        "up",
-        "down",
-        "pending"
-      ]
-    },
-    "public.enum_monitors_prometheus_error_status": {
-      "name": "enum_monitors_prometheus_error_status",
-      "schema": "public",
-      "values": [
-        "up",
-        "down",
-        "pending"
       ]
     },
     "public.enum_monitors_smtp_security": {
@@ -15464,6 +15356,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "f3ed4c46-bf6b-4202-ad72-76127828ea49",
+  "id": "d1bc9b34-96d7-4fdc-aebc-9368a9abe9d8",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
