@@ -178,6 +178,7 @@ export interface InstanceSettingsInput {
   primaryBaseUrl?: string | null
   allowSignup?: boolean
   requireEmailVerification?: boolean
+  magicLinkEnabled?: boolean
   entryPage?: 'dashboard' | 'status-page'
   tlsExpiryNotifyDays?: number[]
   domainExpiryNotifyDays?: number[]

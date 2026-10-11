@@ -36,10 +36,10 @@ const serverOnlyField = {
 /**
  * How an account was created: password signup (`local`), the env-configured OpenID Connect client
  * (`oidc`), a social OAuth provider such as GitHub or Google (`oauth`) or a SAML identity provider
- * (`saml`). Accounts created through single sign-on have a random password nobody knows; see
- * `hasPassword`.
+ * (`saml`), or an email sign-in link (`magic-link`, #164). Accounts created through single sign-on
+ * or a sign-in link have a random password nobody knows; see `hasPassword`.
  */
-export const AUTH_PROVIDERS = ['local', 'oidc', 'oauth', 'saml'] as const
+export const AUTH_PROVIDERS = ['local', 'oidc', 'oauth', 'saml', 'magic-link'] as const
 export type AuthProvider = (typeof AUTH_PROVIDERS)[number]
 
 /** `true` for accounts that chose their own password (and can be asked for it). */
