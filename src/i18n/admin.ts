@@ -39,6 +39,7 @@ export const adminTranslations = {
         kafkaProducerType: 'Kafka Producer',
         tailscalePing: 'Tailscale Ping',
         realBrowser: 'HTTP(s) - Browser Engine (Chrome/Chromium)',
+        thirdPartyStatusPage: 'Third-party status page',
         steam: 'Steam Game Server',
         httpOptions: 'HTTP options',
         keyword: 'Keyword',
@@ -271,6 +272,8 @@ export const adminTranslations = {
         lastPushStatusDescription: 'Push monitors: outcome of that last success or failure.',
         pushRunsDescription:
           'Push monitors: runs announced with /start that have not reported success or failure yet.',
+        cacheSecondsDescription:
+          "Status page monitors: cache lifetime (max-age) of the vendor's last document; checks never run more often.",
         pushScheduleDescription:
           'When pings are expected: every interval, or at the times of a cron expression.',
         pushCronDescription: 'Five-field cron expression, e.g. 0 2 * * * for 02:00 every day.',
@@ -365,6 +368,10 @@ export const adminTranslations = {
           'Comma-separated Globalping locations, e.g. Europe, US+AWS, AS13335. Empty means anywhere.',
         globalpingSuccessRuleDescription:
           'all: every probe must succeed; any: one is enough; atLeast: the minimum below.',
+        statusPageProviderDescription:
+          'Format of the vendor page. auto tries Statuspage, Instatus, Better Stack, incident.io, then RSS/Atom.',
+        statusPageComponentsDescription:
+          'Components to follow, as [{ "id": "...", "name": "..." }]. Matched by id; empty follows the whole page.',
       },
       notificationSentHistory: {
         description:
