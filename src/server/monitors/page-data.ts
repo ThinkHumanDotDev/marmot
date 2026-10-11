@@ -100,6 +100,8 @@ export interface MonitorFormResources {
   tags: { id: string | number; name: string; color: string }[]
   proxies: { id: string | number; label: string; active: boolean; isDefault: boolean }[]
   dockerHosts: { id: string | number; name: string }[]
+  /** SSH tunnels (#160) the monitor can reach its target through. */
+  sshTunnels: { id: string | number; label: string }[]
   /** Probe locations (#91) a monitor can be checked from besides the local workers. */
   locations: { id: string | number; name: string; status: string }[]
   /** Channels of the organization (empty when the user may not read them). */
@@ -173,10 +175,16 @@ export async function getMonitorFormResources(ctx: OrgPageContext): Promise<Moni
     overrideAccess: false,
     disableErrors: true,
   } as const
-  const [tags, proxies, dockerHosts, locations, notifications] = await Promise.all([
+  const [tags, proxies, dockerHosts, sshTunnels, locations, notifications] = await Promise.all([
     ctx.payload.find({ collection: 'tags', sort: 'name', ...common }),
     ctx.payload.find({ collection: 'proxies', ...common }),
     ctx.payload.find({ collection: 'docker-hosts', sort: 'name', ...common }),
+    ctx.payload.find({
+      collection: 'ssh-tunnels',
+      sort: 'name',
+      select: { name: true, host: true, port: true },
+      ...common,
+    }),
     ctx.payload.find({
       collection: 'locations',
       sort: 'name',
@@ -201,6 +209,10 @@ export async function getMonitorFormResources(ctx: OrgPageContext): Promise<Moni
       isDefault: Boolean(doc.default),
     })),
     dockerHosts: dockerHosts.docs.map((doc) => ({ id: doc.id, name: doc.name })),
+    sshTunnels: sshTunnels.docs.map((doc) => ({
+      id: doc.id,
+      label: `${doc.name} (${doc.host}:${doc.port})`,
+    })),
     locations: locations.docs.map((doc) => ({
       id: doc.id,
       name: doc.name,

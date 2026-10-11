@@ -79,6 +79,7 @@ export interface Config {
     tags: Tag;
     proxies: MonitorProxy;
     'docker-hosts': DockerHost;
+    'ssh-tunnels': SshTunnel;
     locations: Location;
     'notification-sent-history': NotificationSentHistory;
     heartbeats: Heartbeat;
@@ -121,6 +122,7 @@ export interface Config {
     tags: TagsSelect<false> | TagsSelect<true>;
     proxies: ProxiesSelect<false> | ProxiesSelect<true>;
     'docker-hosts': DockerHostsSelect<false> | DockerHostsSelect<true>;
+    'ssh-tunnels': SshTunnelsSelect<false> | SshTunnelsSelect<true>;
     locations: LocationsSelect<false> | LocationsSelect<true>;
     'notification-sent-history': NotificationSentHistorySelect<false> | NotificationSentHistorySelect<true>;
     heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
@@ -441,6 +443,7 @@ export interface Monitor {
   weight?: number | null;
   url?: string | null;
   proxy?: (number | null) | MonitorProxy;
+  sshTunnel?: (number | null) | SshTunnel;
   dockerHost?: (number | null) | DockerHost;
   dockerContainer?: string | null;
   hostname?: string | null;
@@ -692,6 +695,28 @@ export interface MonitorProxy {
   password?: string | null;
   active?: boolean | null;
   default?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ssh-tunnels".
+ */
+export interface SshTunnel {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  host: string;
+  port: number;
+  username: string;
+  authMethod: 'password' | 'privateKey';
+  password?: string | null;
+  privateKey?: string | null;
+  passphrase?: string | null;
+  knownHostFingerprint: string;
+  hasPassword?: boolean | null;
+  hasPrivateKey?: boolean | null;
+  hasPassphrase?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1612,6 +1637,10 @@ export interface PayloadLockedDocument {
         value: number | DockerHost;
       } | null)
     | ({
+        relationTo: 'ssh-tunnels';
+        value: number | SshTunnel;
+      } | null)
+    | ({
         relationTo: 'locations';
         value: number | Location;
       } | null)
@@ -1936,6 +1965,7 @@ export interface MonitorsSelect<T extends boolean = true> {
   weight?: T;
   url?: T;
   proxy?: T;
+  sshTunnel?: T;
   dockerHost?: T;
   dockerContainer?: T;
   hostname?: T;
@@ -2123,6 +2153,27 @@ export interface DockerHostsSelect<T extends boolean = true> {
   connectionType?: T;
   socketPath?: T;
   url?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ssh-tunnels_select".
+ */
+export interface SshTunnelsSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  host?: T;
+  port?: T;
+  username?: T;
+  authMethod?: T;
+  password?: T;
+  privateKey?: T;
+  passphrase?: T;
+  knownHostFingerprint?: T;
+  hasPassword?: T;
+  hasPrivateKey?: T;
+  hasPassphrase?: T;
   updatedAt?: T;
   createdAt?: T;
 }

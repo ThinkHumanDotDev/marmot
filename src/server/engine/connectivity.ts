@@ -26,7 +26,8 @@ import { env } from '@/env'
 import { parseConnectivityTargets, type ConnectivityTarget } from '@/lib/connectivity-targets'
 import { checksLocally, monitorLocationIds } from '@/lib/probe-locations'
 import { childLogger } from '@/lib/logger'
-import type { DockerHost, Monitor } from '@/payload-types'
+import { supportsSshTunnel } from '@/lib/ssh-tunnels'
+import type { DockerHost, Monitor, SshTunnel } from '@/payload-types'
 import { AddressPolicy, stripAddress } from '@/server/security/address-policy'
 import { connectionTargets } from '@/server/security/connection-hosts'
 import { looseHost } from '@/server/security/monitor-targets'
@@ -345,6 +346,14 @@ async function monitorTargets(
     local: false as const,
     hosts: values.map((v) => looseHost(v)).filter((v): v is string => Boolean(v)),
   })
+  // Through an SSH tunnel (#160) the worker only connects to the bastion.
+  const tunnelId = supportsSshTunnel(monitor.type) ? relationId(monitor.sshTunnel) : null
+  if (tunnelId !== null) {
+    const tunnel = (await payload
+      .findByID({ collection: 'ssh-tunnels', id: tunnelId, depth: 0, overrideAccess: true })
+      .catch(() => null)) as SshTunnel | null
+    if (tunnel) return hosts(tunnel.host)
+  }
   switch (monitor.type) {
     case 'group':
     case 'manual':

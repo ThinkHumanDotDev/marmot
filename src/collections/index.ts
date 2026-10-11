@@ -22,6 +22,7 @@ import { NotificationSentHistory } from './NotificationSentHistory'
 import { Organizations } from './Organizations'
 import { Proxies } from './Proxies'
 import { PushEvents } from './PushEvents'
+import { SshTunnels } from './SshTunnels'
 import { SsoConnections } from './SsoConnections'
 import { SsoDomains } from './SsoDomains'
 import { StatDaily } from './StatDaily'
@@ -56,6 +57,7 @@ export const collections: CollectionConfig[] = [
   Tags,
   Proxies,
   DockerHosts,
+  SshTunnels,
   Locations,
   NotificationSentHistory,
   Heartbeats,

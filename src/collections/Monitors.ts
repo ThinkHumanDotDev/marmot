@@ -17,6 +17,7 @@ import {
   enforceMinIntervalOnChange,
 } from '@/server/billing/entitlements'
 import { MONITOR_TARGET_FIELDS, monitorTargetProblem } from '@/server/security/monitor-targets'
+import { SSH_TUNNEL_MONITOR_TYPES, supportsSshTunnel } from '@/lib/ssh-tunnels'
 import { outboundGuardActive } from '@/server/security/outbound-guard'
 
 import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
@@ -266,6 +267,10 @@ const validateOrgReferences: CollectionBeforeChangeHook<Monitor> = async ({
   }
   const proxy = relId(data.proxy)
   if (proxy !== null) checks.push({ collection: 'proxies', ids: [proxy], path: 'proxy' })
+  const sshTunnel = relId(data.sshTunnel)
+  if (sshTunnel !== null) {
+    checks.push({ collection: 'ssh-tunnels', ids: [sshTunnel], path: 'sshTunnel' })
+  }
   const dockerHost = relId(data.dockerHost)
   if (dockerHost !== null) {
     checks.push({ collection: 'docker-hosts', ids: [dockerHost], path: 'dockerHost' })
@@ -365,6 +370,32 @@ const validateLocations: CollectionBeforeChangeHook<Monitor> = ({ data, original
 }
 
 /**
+ * SSH tunnels (#160): only for the types that can use one (`SSH_TUNNEL_MONITOR_TYPES`; changing to
+ * another type drops the tunnel), never together with a proxy, and only for monitors the local
+ * workers check (probe agents do not open tunnels).
+ */
+const validateSshTunnel: CollectionBeforeChangeHook<Monitor> = ({ data, originalDoc, req }) => {
+  const tunnel = relId(data.sshTunnel !== undefined ? data.sshTunnel : originalDoc?.sshTunnel)
+  if (tunnel === null) return data
+  const type = data.type ?? originalDoc?.type
+  if (!supportsSshTunnel(type)) {
+    data.sshTunnel = null
+    return data
+  }
+  const fail = (key: 'monitorTunnelWithProxy' | 'monitorTunnelOnProbe') => {
+    throw new ValidationError({
+      collection: 'monitors',
+      errors: [{ message: userErrorText(req, key), path: 'sshTunnel' }],
+    })
+  }
+  const proxy = relId(data.proxy !== undefined ? data.proxy : originalDoc?.proxy)
+  if (proxy !== null && HTTP_TYPES.includes(type ?? '')) fail('monitorTunnelWithProxy')
+  const locations = data.locations !== undefined ? data.locations : originalDoc?.locations
+  if (monitorLocationIds({ locations }).length > 0) fail('monitorTunnelOnProbe')
+  return data
+}
+
+/**
  * Outbound address guard (`MONITOR_DENY_PRIVATE_ADDRESSES` & co.): refuse host-local types and
  * literally denied targets on save. Fast feedback only — names are vetted when the check connects.
  * Runs on create and when a target field changes, so status updates never trip over it.
@@ -433,6 +464,7 @@ export const Monitors: CollectionConfig = {
       validateOrgReferences,
       validateUniqueKey,
       validateLocations,
+      validateSshTunnel,
       enforceOutboundPolicy,
       // Plan limits (no-op unless BILLING_ENABLED).
       enforceEntitlementOnCreate('monitors'),
@@ -644,6 +676,16 @@ export const Monitors: CollectionConfig = {
       admin: {
         condition: typeIn(HTTP_TYPES),
         description: adminT('marmot:monitors:proxyDescription'),
+      },
+    },
+    {
+      name: 'sshTunnel',
+      type: 'relationship',
+      relationTo: 'ssh-tunnels',
+      filterOptions: sameOrganization,
+      admin: {
+        condition: typeIn([...SSH_TUNNEL_MONITOR_TYPES]),
+        description: adminT('marmot:monitors:sshTunnelDescription'),
       },
     },
     {

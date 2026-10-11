@@ -186,6 +186,9 @@ export function toProbeMonitor(
   doc.organization = relationId(monitor.organization)
   doc.proxy = relationId(monitor.proxy)
   doc.dockerHost = relationId(monitor.dockerHost)
+  // SSH tunnels (#160) are opened by the workers only (monitors with probe locations cannot have
+  // one); never hand a tunnel id to an agent.
+  doc.sshTunnel = null
   doc.locations = (monitor.locations ?? []).map(relationId)
   doc.status = {
     lastStatus:

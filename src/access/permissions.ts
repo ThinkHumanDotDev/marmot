@@ -80,6 +80,12 @@ export const PERMISSIONS = {
   'docker-host:update': 'admin',
   'docker-host:delete': 'admin',
 
+  // SSH tunnels (#160): members pick them for monitors, admins manage (and test) them.
+  'ssh-tunnel:read': 'member',
+  'ssh-tunnel:create': 'admin',
+  'ssh-tunnel:update': 'admin',
+  'ssh-tunnel:delete': 'admin',
+
   // Probe locations (#91): everyone sees where monitors are checked from; admins mint the tokens.
   'location:read': 'viewer',
   'location:create': 'admin',

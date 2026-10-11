@@ -140,6 +140,14 @@ export const adminTranslations = {
         connectionTypeSocket: 'Socket',
         connectionTypeTcp: 'TCP / HTTP',
       },
+      sshTunnels: {
+        authPassword: 'Password',
+        authPrivateKey: 'Private key',
+        secretDescription:
+          'Sealed at rest and never shown again. Leave empty to keep the current value.',
+        fingerprintDescription:
+          'SHA-256 host key fingerprint of the bastion (ssh-keygen -lf <host key>.pub), verified before every connection.',
+      },
       locations: {
         description:
           'Self-hosted probe locations. Manage them under Settings → Locations; the token is shown once.',
@@ -289,6 +297,8 @@ export const adminTranslations = {
         quorum_all: 'All locations',
         weightDescription: 'Sort order on status pages.',
         proxyDescription: 'Send the request through this proxy (inactive proxies are skipped).',
+        sshTunnelDescription:
+          'Reach the target through this SSH bastion; the bastion resolves and connects to it.',
         dockerContainerDescription: 'Container name or id.',
         portDescription: 'DNS monitors: port of the resolver (default 53).',
         intervalDescription: 'Seconds between checks (UI minimum 20).',

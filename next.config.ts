@@ -51,6 +51,8 @@ const monitorDriverPackages = [
   'radius',
   'ssh2-sftp-client',
   'ws',
+  // SSH tunnels (#160): a regular dependency, but with optional native bindings.
+  'ssh2',
 ]
 
 // Nothing but public status pages (`/status/<slug>`, embeddable in intranet dashboards) may be framed.

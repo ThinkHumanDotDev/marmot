@@ -50,6 +50,7 @@ export type DemoFeature =
   | 'instanceSettings'
   | 'setup'
   | 'smtp'
+  | 'sshTunnels'
   | 'sso'
   | 'twoFactor'
   | 'uploads'

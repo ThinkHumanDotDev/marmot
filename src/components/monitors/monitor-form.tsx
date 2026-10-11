@@ -39,6 +39,7 @@ import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
 import { supportsAdhocTest, type OnDemandCheckResult } from '@/lib/on-demand-check'
 import { probeSupportsType, quorumNeeded, QUORUM_MODES } from '@/lib/probe-locations'
 import { REMINDER_BACKOFFS } from '@/lib/reminder-backoff'
+import { supportsSshTunnel } from '@/lib/ssh-tunnels'
 import {
   AUTH_METHODS,
   BODY_ENCODINGS,
@@ -132,6 +133,7 @@ const EMPTY_RESOURCES: MonitorFormResources = {
   tags: [],
   proxies: [],
   dockerHosts: [],
+  sshTunnels: [],
   locations: [],
   notifications: [],
 }
@@ -919,6 +921,7 @@ export function MonitorForm({
     globalpingMeasurement,
     globalpingSuccessRule,
     globalpingProtocol,
+    sshTunnel,
   ] = useWatch({
     control,
     name: [
@@ -940,6 +943,7 @@ export function MonitorForm({
       'globalpingMeasurement',
       'globalpingSuccessRule',
       'globalpingProtocol',
+      'sshTunnel',
     ],
   })
   const orgTimeZone = useTimeZone() ?? 'UTC'
@@ -956,6 +960,14 @@ export function MonitorForm({
   )
 
   const isHttp = isHttpMonitorType(type)
+  // SSH tunnel (#160): replaces the proxy, so picking one clears it.
+  const canTunnel = supportsSshTunnel(type)
+  const usesTunnel = canTunnel && sshTunnel !== null && sshTunnel !== undefined
+  React.useEffect(() => {
+    if (usesTunnel && getValues('proxy') !== null) {
+      setValue('proxy', null, { shouldDirty: true })
+    }
+  }, [usesTunnel, getValues, setValue])
   const isUrl = isUrlMonitorType(type)
   const isHost = isHostMonitorType(type)
   const isPort = isPortMonitorType(type)
@@ -1316,6 +1328,30 @@ export function MonitorForm({
                   autoComplete="off"
                 />
               </div>
+            )}
+
+            {canTunnel && (
+              <RelationSelectField
+                control={control}
+                name="sshTunnel"
+                label={t('general.sshTunnel')}
+                noneLabel={t('general.noSshTunnel')}
+                options={resources.sshTunnels}
+                description={
+                  resources.sshTunnels.length === 0
+                    ? t.rich('general.sshTunnelEmpty', {
+                        link: (chunks) => (
+                          <Link
+                            href={`/${orgSlug}/settings/ssh-tunnels`}
+                            className="underline underline-offset-2"
+                          >
+                            {chunks}
+                          </Link>
+                        ),
+                      })
+                    : t('general.sshTunnelDescription')
+                }
+              />
             )}
 
             {type === 'push' && (
@@ -2285,30 +2321,35 @@ export function MonitorForm({
                 description={t('http.headersDescription')}
               />
               <StatusCodesField control={control} />
-              <RelationSelectField
-                control={control}
-                name="proxy"
-                label={t('http.proxy')}
-                noneLabel={t('http.noProxy')}
-                options={resources.proxies.map((p) => {
-                  const label = p.isDefault ? t('http.proxyDefault', { label: p.label }) : p.label
-                  return { id: p.id, label: p.active ? label : t('http.proxyInactive', { label }) }
-                })}
-                description={
-                  resources.proxies.length === 0
-                    ? t.rich('http.proxyEmpty', {
-                        link: (chunks) => (
-                          <Link
-                            href={`/${orgSlug}/settings/proxies`}
-                            className="underline underline-offset-2"
-                          >
-                            {chunks}
-                          </Link>
-                        ),
-                      })
-                    : t('http.proxyDescription')
-                }
-              />
+              {!usesTunnel && (
+                <RelationSelectField
+                  control={control}
+                  name="proxy"
+                  label={t('http.proxy')}
+                  noneLabel={t('http.noProxy')}
+                  options={resources.proxies.map((p) => {
+                    const label = p.isDefault ? t('http.proxyDefault', { label: p.label }) : p.label
+                    return {
+                      id: p.id,
+                      label: p.active ? label : t('http.proxyInactive', { label }),
+                    }
+                  })}
+                  description={
+                    resources.proxies.length === 0
+                      ? t.rich('http.proxyEmpty', {
+                          link: (chunks) => (
+                            <Link
+                              href={`/${orgSlug}/settings/proxies`}
+                              className="underline underline-offset-2"
+                            >
+                              {chunks}
+                            </Link>
+                          ),
+                        })
+                      : t('http.proxyDescription')
+                  }
+                />
+              )}
               <SwitchField
                 control={control}
                 name="ignoreTls"
