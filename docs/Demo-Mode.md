@@ -64,6 +64,7 @@ Monitors visitors create get a default profile and a message saying the check wa
 | Monitor targets                                         | Never contacted (simulated checks); the domain expiry lookup is off; Docker host tests answer 403.             |
 | Demo account                                            | Password, email, password reset, account deletion and two-factor setup are refused.                            |
 | Signups, first-run setup, email verification            | Off. The demo accounts are seeded verified; `REQUIRE_EMAIL_VERIFICATION` and the instance setting are ignored. |
+| Sign-in links (passwordless)                            | Off, whatever `MAGIC_LINK_ENABLED` or the instance setting says.                                               |
 | API keys, SSO connections and domains, SSO enforcement  | Refused.                                                                                                       |
 | Uploads (logos, avatars, favicons), custom domains      | Refused.                                                                                                       |
 | Imports (Marmot, Uptime Kuma, subscriber CSV), billing  | Refused.                                                                                                       |

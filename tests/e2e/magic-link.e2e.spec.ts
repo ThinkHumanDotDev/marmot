@@ -62,13 +62,21 @@ test.describe('magic-link sign-in', () => {
     await page.goto(link)
     await page.getByRole('button', { name: 'Continue' }).click()
     await page.waitForURL((url) => !url.pathname.startsWith('/login'))
-    const me = await page.request.get('/api/users/me')
-    expect(((await me.json()) as { user?: { email?: string } }).user?.email).toBe(user.email)
+    // Asked from the page: Payload only accepts the session cookie with `Origin` or
+    // `Sec-Fetch-Site`, which `page.request` does not send.
+    const me = await page.evaluate(async () => {
+      const res = await fetch('/api/users/me', { credentials: 'same-origin' })
+      return (await res.json()) as { user?: { email?: string } | null }
+    })
+    expect(me.user?.email).toBe(user.email)
 
     // The same link does not work twice.
     await page.context().clearCookies()
     await page.goto(link)
     await page.getByRole('button', { name: 'Continue' }).click()
-    await expect(page.getByRole('alert')).toContainText(/invalid, has expired or was already used/)
+    // Filtered: Next.js renders its own (empty) route announcer with the `alert` role.
+    await expect(
+      page.getByRole('alert').filter({ hasText: /invalid, has expired or was already used/ }),
+    ).toBeVisible()
   })
 })

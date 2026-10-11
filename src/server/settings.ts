@@ -23,11 +23,20 @@ export const DEFAULT_EXPIRY_NOTIFY_DAYS: readonly number[] = [7, 14, 21]
 
 export const INSTANCE_SETTINGS_CACHE_MS = 60_000
 
-let cached: { value: InstanceSettings; expiresAt: number } | undefined
+type CachedSettings = { value: InstanceSettings; expiresAt: number }
+const CACHE_KEY = Symbol.for('marmot.instance-settings.cache')
+type GlobalWithCache = typeof globalThis & { [CACHE_KEY]?: CachedSettings }
+
+/**
+ * The cache lives on `globalThis`: a production Next.js server evaluates this module once per
+ * route bundle and layer, so a module-level variable would give the login page its own copy that
+ * the global's `afterChange` (reached through the REST route) never resets.
+ */
+const cache = globalThis as GlobalWithCache
 
 /** Drops the in-memory copy so the next `getInstanceSettings()` reads the database. */
 export function resetInstanceSettingsCache(): void {
-  cached = undefined
+  delete cache[CACHE_KEY]
 }
 
 /**
@@ -91,6 +100,7 @@ export function resolveInstanceSettings(
  */
 export async function getInstanceSettings(payload: Payload): Promise<InstanceSettings> {
   const now = Date.now()
+  const cached = cache[CACHE_KEY]
   if (cached && cached.expiresAt > now) return cached.value
 
   let doc: InstanceSetting | null = null
@@ -101,7 +111,7 @@ export async function getInstanceSettings(payload: Payload): Promise<InstanceSet
   }
 
   const value = resolveInstanceSettings(doc)
-  cached = { value, expiresAt: now + INSTANCE_SETTINGS_CACHE_MS }
+  cache[CACHE_KEY] = { value, expiresAt: now + INSTANCE_SETTINGS_CACHE_MS }
   return value
 }
 
