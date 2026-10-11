@@ -1,0 +1,79 @@
+{
+  "data": {
+    "id": "123456",
+    "type": "status_page",
+    "attributes": {
+      "company_name": "Example Ltd",
+      "company_url": "https://example.com",
+      "contact_url": null,
+      "logo_url": null,
+      "timezone": "London",
+      "subdomain": "example",
+      "custom_domain": "status.example.com",
+      "announcement": null,
+      "aggregate_state": "degraded"
+    },
+    "relationships": {
+      "sections": { "data": [{ "id": "777", "type": "status_page_section" }] },
+      "resources": {
+        "data": [
+          { "id": "8001", "type": "status_page_resource" },
+          { "id": "8002", "type": "status_page_resource" }
+        ]
+      },
+      "status_reports": { "data": [{ "id": "9001", "type": "status_report" }] }
+    }
+  },
+  "included": [
+    {
+      "id": "777",
+      "type": "status_page_section",
+      "attributes": { "name": "Services", "position": 0 }
+    },
+    {
+      "id": "8001",
+      "type": "status_page_resource",
+      "attributes": {
+        "status_page_section_id": 777,
+        "resource_id": 2210,
+        "resource_type": "Monitor",
+        "public_name": "Website",
+        "explanation": "",
+        "widget_type": "history",
+        "position": 0,
+        "availability": 0.99987,
+        "status": "operational",
+        "status_history": []
+      }
+    },
+    {
+      "id": "8002",
+      "type": "status_page_resource",
+      "attributes": {
+        "status_page_section_id": 777,
+        "resource_id": 2211,
+        "resource_type": "Monitor",
+        "public_name": "Checkout API",
+        "explanation": "",
+        "widget_type": "history",
+        "position": 1,
+        "availability": 0.9931,
+        "status": "degraded",
+        "status_history": []
+      }
+    },
+    {
+      "id": "9001",
+      "type": "status_report",
+      "attributes": {
+        "title": "Slow checkout responses",
+        "report_type": "manual",
+        "starts_at": "2026-10-11T13:00:00.000Z",
+        "ends_at": null,
+        "status_page_id": 123456,
+        "affected_resources": [{ "status_page_resource_id": "8002", "status": "degraded" }],
+        "aggregate_state": "degraded"
+      }
+    }
+  ]
+}

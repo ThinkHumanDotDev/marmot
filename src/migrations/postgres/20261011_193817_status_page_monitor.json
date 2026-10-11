@@ -2047,43 +2047,6 @@
           "notNull": false,
           "default": 2000
         },
-        "aggregation": {
-          "name": "aggregation",
-          "type": "enum_monitors_aggregation",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'worst'"
-        },
-        "aggregation_quorum": {
-          "name": "aggregation_quorum",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "aggregation_quorum_unit": {
-          "name": "aggregation_quorum_unit",
-          "type": "enum_monitors_aggregation_quorum_unit",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'count'"
-        },
-        "aggregation_latency": {
-          "name": "aggregation_latency",
-          "type": "enum_monitors_aggregation_latency",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'none'"
-        },
-        "group_weight": {
-          "name": "group_weight",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 1
-        },
         "url": {
           "name": "url",
           "type": "varchar",
@@ -2449,6 +2412,20 @@
           "primaryKey": false,
           "notNull": false,
           "default": 3
+        },
+        "status_page_provider": {
+          "name": "status_page_provider",
+          "type": "enum_monitors_status_page_provider",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'auto'"
+        },
+        "status_page_components": {
+          "name": "status_page_components",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         },
         "push_token": {
           "name": "push_token",
@@ -2825,6 +2802,12 @@
         "status_push_runs": {
           "name": "status_push_runs",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_cache_seconds": {
+          "name": "status_cache_seconds",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -14554,6 +14537,7 @@
         "ping",
         "dns",
         "globalping",
+        "status-page",
         "push",
         "group",
         "manual",
@@ -14586,33 +14570,6 @@
         "any",
         "half",
         "all"
-      ]
-    },
-    "public.enum_monitors_aggregation": {
-      "name": "enum_monitors_aggregation",
-      "schema": "public",
-      "values": [
-        "worst",
-        "quorum",
-        "weighted"
-      ]
-    },
-    "public.enum_monitors_aggregation_quorum_unit": {
-      "name": "enum_monitors_aggregation_quorum_unit",
-      "schema": "public",
-      "values": [
-        "count",
-        "percent"
-      ]
-    },
-    "public.enum_monitors_aggregation_latency": {
-      "name": "enum_monitors_aggregation_latency",
-      "schema": "public",
-      "values": [
-        "none",
-        "avg",
-        "max",
-        "min"
       ]
     },
     "public.enum_monitors_reminder_backoff": {
@@ -14732,6 +14689,18 @@
         "all",
         "any",
         "atLeast"
+      ]
+    },
+    "public.enum_monitors_status_page_provider": {
+      "name": "enum_monitors_status_page_provider",
+      "schema": "public",
+      "values": [
+        "auto",
+        "atlassian",
+        "instatus",
+        "betterstack",
+        "incidentio",
+        "feed"
       ]
     },
     "public.enum_monitors_push_schedule": {
@@ -15420,6 +15389,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "8c9ae049-1cfd-4305-ae82-c3e8c4899219",
+  "id": "a64bc332-e302-4b43-9469-f879d54b8d99",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
