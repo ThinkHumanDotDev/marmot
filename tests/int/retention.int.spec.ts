@@ -4,10 +4,13 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import config from '@payload-config'
 import { deleteInBatches } from '@/db/delete-in-batches'
 import {
+  processRetentionJob,
+  RETENTION_JOB_NAME,
   runRetention,
   SUBSCRIBER_DELIVERY_KEEP_DAYS,
   type RetentionResult,
 } from '@/server/jobs/retention'
+import { resetInstanceSettingsCache } from '@/server/settings'
 import { getDailyKey, getHourlyKey, getMinutelyKey } from '@/server/stats/uptime-calculator'
 
 type Id = string | number
@@ -450,5 +453,27 @@ describe('runRetention in batches', () => {
       subscriberDeliveries: 0,
       webhookDeliveries: 0,
     })
+  })
+})
+
+describe('the retention job', () => {
+  it('follows the keepDataPeriodDays instance setting instead of the env default', async () => {
+    const before = await payload.findGlobal({ slug: 'instance-settings', depth: 0 })
+    const old = await createStats('stat-daily', [getDailyKey(daysAgo(9))])
+    const recent = await createStats('stat-daily', [getDailyKey(daysAgo(2))])
+    try {
+      await payload.updateGlobal({ slug: 'instance-settings', data: { keepDataPeriodDays: 5 } })
+      resetInstanceSettingsCache()
+      const result = await processRetentionJob(payload)({ name: RETENTION_JOB_NAME } as never)
+      expect(result?.daily).toBeGreaterThanOrEqual(1)
+      expect(await remaining('stat-daily', old)).toEqual([])
+      expect(await remaining('stat-daily', recent)).toEqual(recent.map(String))
+    } finally {
+      await payload.updateGlobal({
+        slug: 'instance-settings',
+        data: { keepDataPeriodDays: before.keepDataPeriodDays ?? null },
+      })
+      resetInstanceSettingsCache()
+    }
   })
 })

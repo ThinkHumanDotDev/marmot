@@ -4,6 +4,9 @@ import config from '@payload-config'
 import { isPercentile, PERCENTILES, type Percentile } from '@/server/stats/latency-histogram'
 import { getRangeStats } from '@/server/stats/range-stats'
 import { isStatsRange, STATS_RANGES } from '@/server/stats/uptime-calculator'
+import { periodDays } from '@/lib/entitlements'
+import { assertOrgRetention, relationId } from '@/server/billing/entitlements'
+import { payloadError } from '@/server/monitors/http'
 import { errorText, rememberRequestUser } from '@/server/request-locale'
 
 export const dynamic = 'force-dynamic'
@@ -61,16 +64,28 @@ export async function GET(request: Request, { params }: RouteContext) {
   // Postgres/SQLite use numeric ids, MongoDB uses strings.
   const monitorId = payload.db.defaultIDType === 'number' && /^\d+$/.test(id) ? Number(id) : id
 
+  let organization: unknown
   try {
-    await payload.findByID({
+    const monitor = await payload.findByID({
       collection: 'monitors',
       id: monitorId,
       user,
       overrideAccess: false,
       depth: 0,
     })
+    organization = monitor.organization
   } catch {
     return Response.json({ error: errorText(request, 'monitorNotFound') }, { status: 404 })
+  }
+
+  // Never a period longer than the history the organization's plan keeps (#161).
+  const orgId = relationId(organization)
+  if (orgId !== null) {
+    try {
+      await assertOrgRetention(payload, orgId, periodDays(range))
+    } catch (error) {
+      return payloadError(error, request)
+    }
   }
 
   const stats = await getRangeStats(payload, monitorId, range, { percentiles })

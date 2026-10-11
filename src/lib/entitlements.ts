@@ -151,14 +151,26 @@ export function getEntitlements(
   return { ...PLAN_LIMITS[effectivePlan(org)] }
 }
 
-/** Thrown by `assertEntitlement` when a create would exceed the plan. */
+/**
+ * Plan limits that are not counts: the smallest check interval, the history kept, custom domains.
+ * Each is reported under its `Entitlements` key (`resource: 'minIntervalSeconds'`, …).
+ */
+export const FEATURE_RESOURCES = ['minIntervalSeconds', 'retentionDays', 'customDomains'] as const
+export type FeatureResource = (typeof FEATURE_RESOURCES)[number]
+
+/** Everything a 402 `entitlement_exceeded` error can name in `data.resource`. */
+export type EntitlementResource = CountedResource | FeatureResource
+
+/** Thrown by `assertEntitlement` (and the feature checks) when a write would exceed the plan. */
 export class EntitlementError extends Error {
   readonly code = 'entitlement_exceeded' as const
-  readonly resource: CountedResource
+  readonly resource: EntitlementResource
+  /** The plan's value: a count, seconds, days, or `0` for a feature the plan lacks. */
   readonly limit: number
+  /** What was asked for: the current count, the requested seconds / days, `1` for a feature. */
   readonly current: number
 
-  constructor(resource: CountedResource, limit: number, current: number, message?: string) {
+  constructor(resource: EntitlementResource, limit: number, current: number, message?: string) {
     super(message ?? entitlementMessage(resource, limit))
     this.name = 'EntitlementError'
     this.resource = resource
@@ -167,8 +179,19 @@ export class EntitlementError extends Error {
   }
 }
 
-/** Human-readable explanation shown to the user when a limit is hit. */
-export function entitlementMessage(resource: CountedResource, limit: number): string {
+/**
+ * Human-readable explanation shown to the user when a limit is hit. Mirrors the `errors.plan*`
+ * messages of `src/i18n/messages/en.json` (the API renders those in the user's language).
+ */
+export function entitlementMessage(resource: EntitlementResource, limit: number): string {
+  switch (resource) {
+    case 'minIntervalSeconds':
+      return `Your plan checks monitors at most every ${limit} seconds. Choose an interval of at least ${limit} seconds or upgrade your plan.`
+    case 'retentionDays':
+      return `Your plan keeps ${limit} ${limit === 1 ? 'day' : 'days'} of history. Choose a shorter period or upgrade your plan.`
+    case 'customDomains':
+      return 'Your plan does not include custom domains. Upgrade your plan to serve status pages on your own domain.'
+  }
   const label = RESOURCE_LABEL[resource]
   const noun = limit === 1 ? label.singular : label.plural
   return `Your plan allows ${limit} ${noun}. Upgrade your plan to add more.`
@@ -197,6 +220,58 @@ export function assertEntitlement(
     throw new EntitlementError(resource, limitOf(entitlements, resource), currentCount)
   }
 }
+
+/** `seconds` raised to the plan's minimum interval (unchanged when the plan has none). */
+export function clampInterval(
+  seconds: number,
+  minIntervalSeconds: number | null | undefined,
+): number {
+  return minIntervalSeconds && minIntervalSeconds > 0
+    ? Math.max(seconds, minIntervalSeconds)
+    : seconds
+}
+
+/** Throws `EntitlementError` when `seconds` is below the plan's minimum check interval. */
+export function assertMinInterval(entitlements: Entitlements, seconds: number): void {
+  if (seconds < entitlements.minIntervalSeconds) {
+    throw new EntitlementError('minIntervalSeconds', entitlements.minIntervalSeconds, seconds)
+  }
+}
+
+/** Throws `EntitlementError` when a period of `days` reaches further back than the plan keeps. */
+export function assertRetention(entitlements: Entitlements, days: number): void {
+  if (days > entitlements.retentionDays) {
+    throw new EntitlementError('retentionDays', entitlements.retentionDays, days)
+  }
+}
+
+/** Throws `EntitlementError` unless the plan includes custom status page domains. */
+export function assertCustomDomains(entitlements: Entitlements): void {
+  if (!entitlements.customDomains) throw new EntitlementError('customDomains', 0, 1)
+}
+
+/**
+ * Days of daily aggregates and important heartbeats to keep for an organization: the instance's
+ * `keepDataPeriodDays` (below 1 = forever) capped by the plan's `retentionDays`. `Infinity` keeps
+ * everything.
+ */
+export function effectiveRetentionDays(keepDataPeriodDays: number, retentionDays: number): number {
+  const instance = keepDataPeriodDays >= 1 ? keepDataPeriodDays : Infinity
+  return Math.min(instance, retentionDays)
+}
+
+/** Days a stats period such as `24h`, `30d` or `1y` reaches back (`1y` = 365). */
+export function periodDays(period: string): number {
+  const match = /^(\d+)([hdy])$/.exec(period)
+  if (!match) return NaN
+  const value = Number(match[1])
+  if (match[2] === 'h') return Math.ceil(value / 24)
+  return match[2] === 'y' ? value * 365 : value
+}
+
+/** Whether a stats period fits the history the plan keeps (`retentionDays`, `null` = unlimited). */
+export const isPeriodWithinRetention = (period: string, retentionDays: number | null): boolean =>
+  retentionDays === null || periodDays(period) <= retentionDays
 
 /** Entitlements as JSON can carry them: `Infinity` becomes `null` ("unlimited"). */
 export type SerializedEntitlements = {

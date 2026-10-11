@@ -29,7 +29,10 @@ import {
   SUBSCRIBER_DELIVERY_MODES,
 } from '@/lib/status-page-subscribers'
 import { normalizeHostname, validateHostname } from '@/lib/status-page-hostnames'
-import { enforceEntitlementOnCreate } from '@/server/billing/entitlements'
+import {
+  enforceCustomDomainsOnChange,
+  enforceEntitlementOnCreate,
+} from '@/server/billing/entitlements'
 import { applyAccessPassword } from '@/server/status-pages/access-password'
 import { applyAccessRestrictions } from '@/server/status-pages/access-restrictions'
 
@@ -289,6 +292,7 @@ export const StatusPages: CollectionConfig = {
       applyAccessPassword,
       applyAccessRestrictions,
       enforceEntitlementOnCreate('statusPages'),
+      enforceCustomDomainsOnChange,
     ],
     beforeDelete: [removeSubscribers, removeViewers, detachTemplatesFromStatusPage],
   },

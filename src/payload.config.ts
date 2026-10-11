@@ -59,10 +59,16 @@ export default buildConfig({
   // in every process: incidents are posted by the web process, maintenance moves in both. Maintenance
   // starts and ends also reach channels that opted into the `maintenance` event (#126). Outbound
   // webhooks (#157) listen to the same events plus the audit bus and heartbeats.
-  onInit: () => {
+  onInit: async (payload) => {
     registerSubscriberListeners()
     registerMaintenanceChannelListener()
     registerWebhookListeners()
+    // Demo mode (#159) refuses to start against a database with real accounts: every reset deletes
+    // all data. Loaded lazily, so instances without demo mode never import the seed.
+    if (env.DEMO_MODE) {
+      const { refuseNonDemoDatabase } = await import('./server/demo/reset')
+      await refuseNonDemoDatabase(payload)
+    }
   },
   telemetry: false,
 })
