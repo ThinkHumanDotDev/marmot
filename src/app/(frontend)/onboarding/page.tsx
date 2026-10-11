@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server'
 
 import { Logo } from '@/components/logo'
 import { CreateOrganizationForm } from '@/components/onboarding/create-organization-form'
+import { PageTagline } from '@/components/page-tagline'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { getUserOrganizations, requireUser } from '@/lib/auth'
 
@@ -54,6 +55,7 @@ export default async function OnboardingPage() {
           </>
         )}
       </p>
+      <PageTagline />
     </main>
   )
 }

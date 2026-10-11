@@ -11,6 +11,7 @@ import { requireUser } from '@/lib/auth'
 import { getOrgBySlug } from '@/lib/org'
 import { isBillingEnabled } from '@/server/billing/entitlements'
 import { getBillingOverview } from '@/server/billing/overview'
+import { getSiteLinks } from '@/server/site-links'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('settings.pageTitles')
@@ -35,10 +36,16 @@ export default async function BillingSettingsPage({
 
   const payload = await getPayload({ config })
   const overview = await getBillingOverview(payload, org)
+  const { termsUrl, privacyUrl } = getSiteLinks()
 
   return (
     <Suspense>
-      <BillingPanel orgId={org.id} overview={overview} />
+      <BillingPanel
+        orgId={org.id}
+        overview={overview}
+        termsUrl={termsUrl}
+        privacyUrl={privacyUrl}
+      />
     </Suspense>
   )
 }
