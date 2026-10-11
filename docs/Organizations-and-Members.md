@@ -119,7 +119,36 @@ A signed-in user who changes their address has to confirm the new one while the 
 setting off lifts every restriction at once. Without `SMTP_HOST` the links are only written to the web
 process log; the setup screen and the Instance settings page warn about it. Sent links and confirmations
 are recorded in the audit log (`auth.email_verification_sent`, `auth.email_verified` with the method:
-`link`, `invitation` or `sso`).
+`link`, `invitation`, `sso` or `magic-link`).
+
+### Sign-in links (passwordless)
+
+People can sign in without a password when **Sign-in links** is on under **Settings → Instance**
+(`magicLinkEnabled`, default `MAGIC_LINK_ENABLED`, off). The login page then offers **Email me a sign-in
+link instead**: the person enters their address and gets a link (`/login/magic-link?token=…`) that is valid
+for **15 minutes** and works once; requesting another one revokes the previous link. Opening it shows a
+**Continue** button, so mail scanners that follow links cannot use it up.
+
+- **No account enumeration.** The answer ("if this address can sign in here, a link is on its way") is the
+  same whether or not an account exists, and the lookup and the email happen after the response.
+- **New accounts.** An address without an account gets a link that creates one when sign-up is allowed
+  (`allowSignup` / `DISABLE_SIGNUP`); while sign-up is off, only an address with a pending invitation does,
+  and the invitation is accepted with it, as for single sign-on. Such accounts have no password (they can
+  set one through **Forgot password**).
+- **Two-factor authentication still applies**: after the link, an account with 2FA enters its code
+  (or a backup code) like after a password.
+- **Email verification**: using a link confirms the address (#177).
+- **Policy**: a sign-in link counts as a local login, like a password. The SSO-only mode
+  (`OIDC_DISABLE_LOCAL_LOGIN`) turns links off, break-glass included, and an organization that
+  [requires single sign-on](Single-Sign-On.md) refuses them for its verified domains exactly as it refuses
+  passwords (owners keep their break-glass path, audited as `auth.break_glass`).
+- **Rate limits**: five links per address per quarter hour (like verification and reset mail) and twenty per
+  client IP behind a trusted proxy (`trustProxy`; without it, 100 per quarter hour for the whole instance).
+- **Audit log**: `auth.magic_link_sent` for every link mailed, `auth.login` with `method: magic-link` for
+  every sign-in, `auth.login_failed` for refused links and `auth.rate_limited`.
+
+Tokens are stored in Redis as SHA-256 digests only. Without `SMTP_HOST` the links are only written to the
+web process log, so configure SMTP before turning the setting on.
 
 ## API
 

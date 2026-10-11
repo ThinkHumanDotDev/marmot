@@ -12,7 +12,7 @@ import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth'
 import { DEMO_ACCOUNT, isDemoMode } from '@/server/demo/config'
 import { safeNextPath } from '@/lib/utils'
-import { isSignupAllowed } from '@/server/settings'
+import { isMagicLinkEnabled, isSignupAllowed } from '@/server/settings'
 import { hasAnyEnabledConnection } from '@/server/sso/connections'
 import { isBreakGlassEnabled, isLocalLoginDisabled } from '@/server/sso/local-login'
 
@@ -31,9 +31,10 @@ export default async function LoginPage({
   const user = await getCurrentUser()
   if (user) redirect(safeNextPath(next))
   const payload = await getPayload({ config })
-  const [signupEnabled, orgSso] = await Promise.all([
+  const [signupEnabled, orgSso, magicLinkEnabled] = await Promise.all([
     isSignupAllowed(payload),
     hasAnyEnabledConnection(payload),
+    isMagicLinkEnabled(payload),
   ])
   const t = await getTranslations('auth.login')
 
@@ -103,6 +104,8 @@ export default async function LoginPage({
             next={next}
             twoFactor={two_factor === '1'}
             local={breakGlass}
+            // Sign-in links count as a local login: never offered on the break-glass form.
+            magicLink={magicLinkEnabled && !breakGlass}
             defaultCredentials={demo}
           />
         ) : (
