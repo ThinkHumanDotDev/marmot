@@ -184,7 +184,8 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const showAssertions =
     assertionResults.length > 1 || assertionResults.some((result) => !result.legacy)
   // Request timing phases (#94): HTTP types and TCP port measure them.
-  const measuresTiming = isHttpMonitorType(monitor.type) || monitor.type === 'port'
+  const measuresTiming =
+    isHttpMonitorType(monitor.type) || monitor.type === 'port' || monitor.type === 'prometheus'
   const latestTiming = parseRequestTiming(latest.docs[0]?.timing)
   const parent =
     monitor.parent && typeof monitor.parent === 'object' ? (monitor.parent as Monitor) : null
@@ -362,6 +363,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
           }}
           lastCheckAt={monitor.status?.lastCheckAt}
           showTiming={measuresTiming}
+          showValue={monitor.type === 'prometheus'}
           retentionDays={retentionDays}
         />
 

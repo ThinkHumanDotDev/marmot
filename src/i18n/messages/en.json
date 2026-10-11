@@ -334,9 +334,17 @@
       "loadError": "Could not load the statistics for this period.",
       "checksTitle": "Checks",
       "checksDescription": "Up, degraded and down checks per interval.",
-      "checksEmpty": "No checks in this period."
+      "checksEmpty": "No checks in this period.",
+      "valueTitle": "Query value",
+      "valueDescription": "Average, minimum and maximum of the query's value per interval over the selected period.",
+      "valueEmpty": "No values yet. The chart fills in as checks complete.",
+      "valueAverage": "Average",
+      "valueMin": "Minimum",
+      "valueMax": "Maximum",
+      "valueTooltip": "avg {avg} · min {min} · max {max}"
     },
     "metrics": {
+      "averageValue": "Average value",
       "uptime": "Uptime",
       "percentileResponse": "p{value} response",
       "totalChecks": "Total checks",
@@ -510,6 +518,10 @@
         "label": "HTTP(s) - Json Query",
         "description": "UP when a JSONata expression over the JSON response matches."
       },
+      "prometheus": {
+        "label": "Prometheus Query",
+        "description": "Runs a PromQL query; DOWN or degraded when the value meets a threshold."
+      },
       "real-browser": {
         "label": "HTTP(s) - Browser Engine (Chrome/Chromium)",
         "description": "Loads the page in a real Chromium through a remote Playwright browser; UP on a 2xx/3xx navigation."
@@ -641,6 +653,9 @@
       "wsUrl": "Enter a ws(s):// URL",
       "closeCodeRequired": "Add at least one accepted close code",
       "wsAuthMethod": "WebSocket monitors support none, basic, bearer and mTLS",
+      "prometheusAuthMethod": "Prometheus monitors support none, basic and bearer authentication",
+      "queryRequired": "Query is required",
+      "thresholdRequired": "Enter a threshold",
       "keywordRequired": "Keyword is required",
       "jsonQueryRequired": "JSON query is required",
       "expectedValueRequired": "Expected value is required",
@@ -974,6 +989,33 @@
         "resolver": "Resolver (optional)",
         "resolverDescription": "Leave empty to use each probe's own resolver.",
         "rateLimit": "Rate limits never mark the monitor down: it stays pending until the limit resets."
+      },
+      "prometheus": {
+        "title": "Prometheus query",
+        "description": "A PromQL instant query and the conditions its value is judged by.",
+        "urlDescription": "Base URL of the Prometheus HTTP API (Prometheus, Thanos, Mimir, VictoriaMetrics); {path} is appended.",
+        "query": "PromQL query",
+        "queryDescription": "Evaluated as an instant query at the time of each check.",
+        "downOperator": "DOWN when the value is",
+        "downThreshold": "DOWN threshold",
+        "degradedOperator": "Degraded when the value is",
+        "degradedOff": "Never degraded",
+        "degradedThreshold": "Degraded threshold",
+        "aggregate": "Several series",
+        "aggregates": {
+          "worst": "Worst series decides",
+          "any": "Any series decides (reports the first)",
+          "all": "All series must agree"
+        },
+        "aggregateDescription": "When the query returns more than one series.",
+        "noDataStatus": "When there is no data",
+        "errorStatus": "When the query fails",
+        "statuses": {
+          "up": "Up",
+          "down": "Down",
+          "pending": "Keep the current status"
+        },
+        "errorStatusDescription": "HTTP or query errors and an unreachable endpoint. A blocked address is always DOWN."
       },
       "http": {
         "title": "HTTP options",

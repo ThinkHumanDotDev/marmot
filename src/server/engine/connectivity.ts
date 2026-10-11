@@ -358,6 +358,7 @@ async function monitorTargets(
     case 'http':
     case 'keyword':
     case 'json-query':
+    case 'prometheus':
     case 'websocket-upgrade':
     case 'real-browser':
       return hosts(monitor.url)

@@ -98,6 +98,8 @@ export interface CheckResult {
   probes?: ProbeResult[] | null
   /** Response received by the check (HTTP types), whatever the outcome (#97). */
   response?: CapturedResponse | null
+  /** Metric value judged by the check (Prometheus query monitors, #140), whatever the outcome. */
+  value?: number | null
   /**
    * Extra fields the type set on `ctx.heartbeat` besides status/msg/ping/duration (e.g.
    * `statusCode`). Not persisted; returned by on-demand checks.

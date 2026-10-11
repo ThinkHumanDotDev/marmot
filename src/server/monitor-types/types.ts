@@ -53,6 +53,11 @@ export interface MonitorCheckContext {
    * only for failed or degraded beats.
    */
   response?: CapturedResponse | null
+  /**
+   * The metric value the check judged (Prometheus query monitors, #140), whatever the verdict.
+   * The worker stores it on the heartbeat (`heartbeats.value`) and rolls it up for the chart.
+   */
+  value?: number | null
 }
 
 /** One probe of a multi-location check (`heartbeats.probes`). */
