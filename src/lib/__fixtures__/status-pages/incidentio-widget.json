@@ -1,0 +1,60 @@
+{
+  "summary": {
+    "id": "01FCNDV6P870EA6S7TK1DSYDG0",
+    "name": "incident.io",
+    "public_url": "https://status.incident.io",
+    "affected_components": [
+      { "component_id": "01GW2RH2J5WZQ6JEY8G4K3ZQ9F", "status": "full_outage" }
+    ],
+    "ongoing_incidents": [
+      {
+        "id": "01HZ8P4C7M2W6X1K9V3Q5R7T0Y",
+        "name": "Slack notifications are delayed",
+        "status": "identified",
+        "url": "https://status.incident.io/incidents/01HZ8P4C7M2W6X1K9V3Q5R7T0Y",
+        "last_update_at": "2026-10-11T13:30:12.000Z",
+        "last_update_message": "We have identified the cause and are rolling out a fix.",
+        "current_worst_impact": "full_outage",
+        "affected_components": [
+          {
+            "id": "01GW2RH2J5WZQ6JEY8G4K3ZQ9F",
+            "name": "Slack integration",
+            "group_name": "Integrations"
+          }
+        ]
+      }
+    ],
+    "in_progress_maintenances": [],
+    "scheduled_maintenances": [],
+    "structure": {
+      "items": [
+        {
+          "component": {
+            "component_id": "01GW2RGWJ9V1C6HT0W8Q0S3ZJP",
+            "name": "Web dashboard",
+            "hidden": false
+          }
+        },
+        {
+          "group": {
+            "id": "01GW2RH7D1N4Q2V8M6X3Y5Z7AB",
+            "name": "Integrations",
+            "hidden": false,
+            "components": [
+              {
+                "component_id": "01GW2RH2J5WZQ6JEY8G4K3ZQ9F",
+                "name": "Slack integration",
+                "hidden": false
+              },
+              {
+                "component_id": "01GW2RHB3K7M9P1R5T7V9X1Z3C",
+                "name": "Microsoft Teams integration",
+                "hidden": false
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

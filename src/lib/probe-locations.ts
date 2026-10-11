@@ -49,6 +49,8 @@ export type LocationStatus = (typeof LOCATION_STATUSES)[number]
  * Types a probe cannot run: `group` and `manual` are computed by the server, `push` waits for
  * requests that reach the server, `steam` needs the instance's Steam API key, and `globalping`
  * only calls the Globalping API (whose probes are the vantage points) with the instance's token.
+ * `status-page` reads what a vendor reports about itself, the same from every vantage point, and its
+ * cadence follows the vendor's cache headers, which only the server's scheduler applies.
  */
 export const PROBE_UNSUPPORTED_TYPES: readonly string[] = [
   'group',
@@ -56,6 +58,7 @@ export const PROBE_UNSUPPORTED_TYPES: readonly string[] = [
   'push',
   'steam',
   'globalping',
+  'status-page',
 ]
 
 export const probeSupportsType = (type: string | null | undefined): boolean =>

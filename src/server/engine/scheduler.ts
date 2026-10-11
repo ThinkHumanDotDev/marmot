@@ -14,6 +14,7 @@ import {
 } from '@/server/billing/entitlements'
 import { emitMonitorDeleted, emitMonitorUpdated } from '@/server/realtime/emitter'
 import { populateMonitorTags, relationId } from '@/server/realtime/serialize'
+import { STATUS_PAGE_MIN_INTERVAL_SECONDS } from '@/lib/validation/status-page-monitor'
 import { nextIntervalSeconds, type MonitorSettings } from './beat'
 import { CHECK_JOB_NAME, monitorSchedulerId } from './names'
 import { getChecksQueue, type ChecksQueue } from './queues'
@@ -26,7 +27,11 @@ const HOOK_REDIS_TIMEOUT_MS = 5_000
 /** Monitor fields the scheduler needs; accepts a full document or the status-cache subset. */
 export type SchedulableMonitor = Pick<Monitor, 'id' | 'interval' | 'retryInterval'> &
   Partial<Pick<Monitor, 'type' | 'pushSchedule' | 'locations' | 'includeLocal'>> & {
-    status?: Pick<NonNullable<Monitor['status']>, 'lastStatus'> | null
+    status?:
+      | (Pick<NonNullable<Monitor['status']>, 'lastStatus'> & {
+          cacheSeconds?: number | null
+        })
+      | null
     /**
      * Multi-location monitors (#92): status of the local location, which the workers' cadence
      * follows (`status.lastStatus` is the quorum). Unknown (`interval`) when unset.
@@ -47,7 +52,8 @@ export function engineHooksEnabled(): boolean {
 /**
  * Milliseconds between checks for the monitor's current state: `retryInterval` while PENDING,
  * `interval` otherwise (Uptime Kuma switches `beatInterval` the same way), never below the plan's
- * `minIntervalSeconds`.
+ * `minIntervalSeconds`. Third-party status page monitors (#125) also wait at least
+ * `STATUS_PAGE_MIN_INTERVAL_SECONDS` and the vendor document's cache lifetime.
  */
 export function effectiveIntervalMs(monitor: SchedulableMonitor): number {
   // Cron push monitors are due at wall-clock times, not every `interval`: check every minute.
@@ -59,9 +65,12 @@ export function effectiveIntervalMs(monitor: SchedulableMonitor): number {
     retryInterval: monitor.retryInterval,
   }
   const status = isMultiLocation(monitor) ? monitor.localStatus : monitor.status?.lastStatus
-  return (
-    clampInterval(nextIntervalSeconds(status ?? 'up', settings), monitor.minIntervalSeconds) * 1000
-  )
+  let seconds = nextIntervalSeconds(status ?? 'up', settings)
+  if (monitor.type === 'status-page') {
+    // Polling inside the vendor's cache window just re-reads the same document.
+    seconds = Math.max(seconds, STATUS_PAGE_MIN_INTERVAL_SECONDS, monitor.status?.cacheSeconds ?? 0)
+  }
+  return clampInterval(seconds, monitor.minIntervalSeconds) * 1000
 }
 
 /**

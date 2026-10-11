@@ -2413,6 +2413,20 @@
           "notNull": false,
           "default": 3
         },
+        "status_page_provider": {
+          "name": "status_page_provider",
+          "type": "enum_monitors_status_page_provider",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'auto'"
+        },
+        "status_page_components": {
+          "name": "status_page_components",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "push_token": {
           "name": "push_token",
           "type": "varchar",
@@ -2637,58 +2651,6 @@
           "notNull": false,
           "default": "'opportunistic'"
         },
-        "mail_username": {
-          "name": "mail_username",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mail_password": {
-          "name": "mail_password",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "udp_payload": {
-          "name": "udp_payload",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "udp_payload_encoding": {
-          "name": "udp_payload_encoding",
-          "type": "enum_monitors_udp_payload_encoding",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'text'"
-        },
-        "udp_response_match": {
-          "name": "udp_response_match",
-          "type": "enum_monitors_udp_response_match",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'none'"
-        },
-        "udp_response_pattern": {
-          "name": "udp_response_pattern",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "tls_servername": {
-          "name": "tls_servername",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "tls_alpn": {
-          "name": "tls_alpn",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
         "ssh_username": {
           "name": "ssh_username",
           "type": "varchar",
@@ -2723,25 +2685,6 @@
         },
         "sftp_path": {
           "name": "sftp_path",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ssh_command": {
-          "name": "ssh_command",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ssh_expected_exit_code": {
-          "name": "ssh_expected_exit_code",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0
-        },
-        "ssh_expected_output": {
-          "name": "ssh_expected_output",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
@@ -2859,6 +2802,12 @@
         "status_push_runs": {
           "name": "status_push_runs",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_cache_seconds": {
+          "name": "status_cache_seconds",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -14588,6 +14537,7 @@
         "ping",
         "dns",
         "globalping",
+        "status-page",
         "push",
         "group",
         "manual",
@@ -14601,11 +14551,6 @@
         "snmp",
         "ntp",
         "sftp",
-        "ssh",
-        "udp",
-        "tls",
-        "imap",
-        "pop3",
         "radius",
         "tailscale-ping",
         "real-browser",
@@ -14746,6 +14691,18 @@
         "atLeast"
       ]
     },
+    "public.enum_monitors_status_page_provider": {
+      "name": "enum_monitors_status_page_provider",
+      "schema": "public",
+      "values": [
+        "auto",
+        "atlassian",
+        "instatus",
+        "betterstack",
+        "incidentio",
+        "feed"
+      ]
+    },
     "public.enum_monitors_push_schedule": {
       "name": "enum_monitors_push_schedule",
       "schema": "public",
@@ -14787,24 +14744,6 @@
         "starttls",
         "secure",
         "nostarttls"
-      ]
-    },
-    "public.enum_monitors_udp_payload_encoding": {
-      "name": "enum_monitors_udp_payload_encoding",
-      "schema": "public",
-      "values": [
-        "text",
-        "hex"
-      ]
-    },
-    "public.enum_monitors_udp_response_match": {
-      "name": "enum_monitors_udp_response_match",
-      "schema": "public",
-      "values": [
-        "none",
-        "any",
-        "keyword",
-        "regex"
       ]
     },
     "public.enum_monitors_ssh_auth_method": {
@@ -15450,6 +15389,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "03dde6d8-f852-414f-9588-ba2e1a43a8a7",
+  "id": "a64bc332-e302-4b43-9469-f879d54b8d99",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

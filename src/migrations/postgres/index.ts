@@ -51,7 +51,8 @@ import * as migration_20261008_030613_response_log from './20261008_030613_respo
 import * as migration_20261008_035336_email_verification from './20261008_035336_email_verification';
 import * as migration_20261008_054355_otel_collectors from './20261008_054355_otel_collectors';
 import * as migration_20261011_162022_magic_link from './20261011_162022_magic_link';
-import * as migration_20261011_195445_protocol_monitors from './20261011_195445_protocol_monitors';
+import * as migration_20261011_193817_status_page_monitor from './20261011_193817_status_page_monitor';
+import * as migration_20261011_201541_protocol_monitors from './20261011_201541_protocol_monitors';
 
 export const migrations = [
   {
@@ -320,8 +321,13 @@ export const migrations = [
     name: '20261011_162022_magic_link',
   },
   {
-    up: migration_20261011_195445_protocol_monitors.up,
-    down: migration_20261011_195445_protocol_monitors.down,
-    name: '20261011_195445_protocol_monitors'
+    up: migration_20261011_193817_status_page_monitor.up,
+    down: migration_20261011_193817_status_page_monitor.down,
+    name: '20261011_193817_status_page_monitor',
+  },
+  {
+    up: migration_20261011_201541_protocol_monitors.up,
+    down: migration_20261011_201541_protocol_monitors.down,
+    name: '20261011_201541_protocol_monitors'
   },
 ];

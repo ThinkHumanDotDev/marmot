@@ -38,7 +38,7 @@ export function monitorTarget(
       ? `${monitor.hostname}${monitor.dnsResolveType ? ` (${monitor.dnsResolveType})` : ''}`
       : null
   }
-  if (isUrlMonitorType(monitor.type)) return monitor.url ?? null
+  if (isUrlMonitorType(monitor.type) || monitor.type === 'status-page') return monitor.url ?? null
   if (isPortMonitorType(monitor.type)) {
     return monitor.hostname ? `${monitor.hostname}:${monitor.port ?? ''}` : null
   }
