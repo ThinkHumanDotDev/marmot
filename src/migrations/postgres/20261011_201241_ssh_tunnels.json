@@ -2419,6 +2419,20 @@
           "notNull": false,
           "default": 3
         },
+        "status_page_provider": {
+          "name": "status_page_provider",
+          "type": "enum_monitors_status_page_provider",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'auto'"
+        },
+        "status_page_components": {
+          "name": "status_page_components",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "push_token": {
           "name": "push_token",
           "type": "varchar",
@@ -2794,6 +2808,12 @@
         "status_push_runs": {
           "name": "status_push_runs",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_cache_seconds": {
+          "name": "status_cache_seconds",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -14762,6 +14782,7 @@
         "ping",
         "dns",
         "globalping",
+        "status-page",
         "push",
         "group",
         "manual",
@@ -14913,6 +14934,18 @@
         "all",
         "any",
         "atLeast"
+      ]
+    },
+    "public.enum_monitors_status_page_provider": {
+      "name": "enum_monitors_status_page_provider",
+      "schema": "public",
+      "values": [
+        "auto",
+        "atlassian",
+        "instatus",
+        "betterstack",
+        "incidentio",
+        "feed"
       ]
     },
     "public.enum_monitors_push_schedule": {
@@ -15609,6 +15642,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "d60a8855-2395-42df-83d7-a64732e6b1fe",
+  "id": "c6c7c91e-fe85-424b-acf6-6c176dc58e61",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

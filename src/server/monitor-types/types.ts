@@ -54,6 +54,12 @@ export interface MonitorCheckContext {
    */
   response?: CapturedResponse | null
   /**
+   * Freshness lifetime in seconds of the document the check read (third-party status pages, #125:
+   * `Cache-Control: max-age` / `Expires`). The worker stores it in `monitors.status.cacheSeconds`
+   * and the scheduler never polls more often than that.
+   */
+  cacheSeconds?: number | null
+  /**
    * The monitor's SSH tunnel (#160), opened by the engine before the check when the monitor has
    * one and its type supports tunnels (`SSH_TUNNEL_MONITOR_TYPES`). Types then connect to the
    * target through it instead of directly (and without the outbound address guard, which vetted

@@ -95,7 +95,8 @@ export async function monitorTargetProblem(
     case 'keyword':
     case 'json-query':
     case 'websocket-upgrade':
-    case 'real-browser': {
+    case 'real-browser':
+    case 'status-page': {
       const problem = literal('url', looseHost(monitor.url))
       if (problem) return problem
       if (monitor.authMethod === 'oauth2-cc') {

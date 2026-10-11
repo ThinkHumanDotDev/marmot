@@ -403,6 +403,7 @@ export interface Monitor {
     | 'ping'
     | 'dns'
     | 'globalping'
+    | 'status-page'
     | 'push'
     | 'group'
     | 'manual'
@@ -539,6 +540,16 @@ export interface Monitor {
   globalpingSuccessRule?: ('all' | 'any' | 'atLeast') | null;
   globalpingMinSuccess?: number | null;
   globalpingPackets?: number | null;
+  statusPageProvider?: ('auto' | 'atlassian' | 'instatus' | 'betterstack' | 'incidentio' | 'feed') | null;
+  statusPageComponents?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   pushToken?: string | null;
   pushSchedule?: ('interval' | 'cron') | null;
   pushCron?: string | null;
@@ -609,6 +620,7 @@ export interface Monitor {
       | number
       | boolean
       | null;
+    cacheSeconds?: number | null;
   };
   updatedAt: string;
   createdAt: string;
@@ -2066,6 +2078,8 @@ export interface MonitorsSelect<T extends boolean = true> {
   globalpingSuccessRule?: T;
   globalpingMinSuccess?: T;
   globalpingPackets?: T;
+  statusPageProvider?: T;
+  statusPageComponents?: T;
   pushToken?: T;
   pushSchedule?: T;
   pushCron?: T;
@@ -2130,6 +2144,7 @@ export interface MonitorsSelect<T extends boolean = true> {
         lastPushAt?: T;
         lastPushStatus?: T;
         pushRuns?: T;
+        cacheSeconds?: T;
       };
   updatedAt?: T;
   createdAt?: T;

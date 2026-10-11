@@ -369,6 +369,7 @@ async function monitorTargets(
     case 'json-query':
     case 'websocket-upgrade':
     case 'real-browser':
+    case 'status-page':
       return hosts(monitor.url)
     case 'dns':
       return hosts(...(monitor.dnsResolveServer ?? '').split(','))

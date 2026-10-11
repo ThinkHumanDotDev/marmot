@@ -47,6 +47,7 @@ import {
   GLOBALPING_PROTOCOL_VALUES,
   GLOBALPING_SUCCESS_RULES,
 } from '@/lib/validation/globalping'
+import { STATUS_PAGE_PROVIDERS } from '@/lib/validation/status-page-monitor'
 import { adminGroup, adminT } from '@/i18n/admin'
 import {
   DEFAULT_QUORUM,
@@ -73,6 +74,7 @@ export const MONITOR_TYPES = [
   { label: 'Ping', value: 'ping' },
   { label: 'DNS', value: 'dns' },
   { label: 'Globalping', value: 'globalping' },
+  { label: adminT('marmot:labels:thirdPartyStatusPage'), value: 'status-page' },
   { label: adminT('marmot:labels:push'), value: 'push' },
   { label: adminT('marmot:labels:group'), value: 'group' },
   { label: adminT('marmot:labels:manual'), value: 'manual' },
@@ -197,6 +199,11 @@ const statusGroup: Field = {
       name: 'pushRuns',
       type: 'json',
       admin: { description: adminT('marmot:monitors:pushRunsDescription') },
+    },
+    {
+      name: 'cacheSeconds',
+      type: 'number',
+      admin: { description: adminT('marmot:monitors:cacheSecondsDescription') },
     },
   ],
 }
@@ -691,7 +698,8 @@ export const Monitors: CollectionConfig = {
       name: 'url',
       type: 'text',
       admin: {
-        condition: (data) => typeIn(URL_TYPES)(data) || isGlobalping(data, 'http'),
+        condition: (data) =>
+          typeIn(URL_TYPES)(data) || isGlobalping(data, 'http') || data?.type === 'status-page',
         placeholder: 'https://',
       },
     },
@@ -1194,6 +1202,26 @@ export const Monitors: CollectionConfig = {
               admin: { condition: (data) => isGlobalping(data, 'ping') },
             },
           ],
+        },
+      ],
+    },
+
+    // ---- Third-party status page (#125) ----------------------------------------------------------
+    {
+      type: 'row',
+      admin: { condition: (data) => data?.type === 'status-page' },
+      fields: [
+        {
+          name: 'statusPageProvider',
+          type: 'select',
+          defaultValue: 'auto',
+          options: STATUS_PAGE_PROVIDERS.map((value) => ({ label: value, value })),
+          admin: { description: adminT('marmot:monitors:statusPageProviderDescription') },
+        },
+        {
+          name: 'statusPageComponents',
+          type: 'json',
+          admin: { description: adminT('marmot:monitors:statusPageComponentsDescription') },
         },
       ],
     },

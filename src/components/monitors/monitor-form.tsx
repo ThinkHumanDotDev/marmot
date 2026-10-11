@@ -82,6 +82,10 @@ import {
   GLOBALPING_PROTOCOLS,
   GLOBALPING_SUCCESS_RULES,
 } from '@/lib/validation/globalping'
+import {
+  STATUS_PAGE_MIN_INTERVAL_SECONDS,
+  STATUS_PAGE_PROVIDERS,
+} from '@/lib/validation/status-page-monitor'
 import type { MonitorFormResources } from '@/server/monitors/page-data'
 
 import { TimezoneSelect } from '@/components/settings/timezone-select'
@@ -92,6 +96,7 @@ import { AssertionsField } from './assertions-field'
 import { useElapsedSeconds } from './check-now'
 import { CheckResultView } from './check-result'
 import { NotificationPicker } from './notification-picker'
+import { StatusPageComponentsField } from './status-page-components-field'
 import { pushScheduleZone, usePushScheduleText } from './push-schedule'
 import { TagChip } from './tag-chip'
 
@@ -916,6 +921,7 @@ function applyTypeDefaults(
   if (type === 'dns' && !get('dnsResolveServer')) set('dnsResolveServer', '1.1.1.1')
   if (type === 'manual' && !get('manualStatus')) set('manualStatus', 'up')
   if (type === 'snmp' && !get('snmpCommunity')) set('snmpCommunity', 'public')
+  if (type === 'status-page' && !get('url')) set('url', 'https://')
   if (type === 'globalping') {
     if (!get('url')) set('url', 'https://')
     for (const field of ['interval', 'retryInterval'] as const) {
@@ -1039,6 +1045,11 @@ export function MonitorForm({
   const isDatabase = isDatabaseMonitorType(type)
   const isWebSocket = type === 'websocket-upgrade'
   const isGlobalping = type === 'globalping'
+  const isStatusPage = type === 'status-page'
+  const [statusPageUrl, statusPageProvider] = useWatch({
+    control,
+    name: ['url', 'statusPageProvider'],
+  })
   const gpMeasurement = globalpingMeasurement ?? 'http'
   const minInterval = Math.max(isGlobalping ? GLOBALPING_MIN_INTERVAL_SECONDS : 20, planMinInterval)
   const planLimited = planMinInterval > (isGlobalping ? GLOBALPING_MIN_INTERVAL_SECONDS : 20)
@@ -1276,6 +1287,38 @@ export function MonitorForm({
                     autoComplete="off"
                   />
                 )}
+              </>
+            )}
+
+            {isStatusPage && (
+              <>
+                <TextField
+                  control={control}
+                  name="url"
+                  label={t('statusPage.url')}
+                  type="url"
+                  placeholder="https://www.githubstatus.com"
+                  autoComplete="off"
+                  description={t('statusPage.urlDescription', {
+                    seconds: STATUS_PAGE_MIN_INTERVAL_SECONDS,
+                  })}
+                />
+                <SelectField
+                  control={control}
+                  name="statusPageProvider"
+                  label={t('statusPage.format')}
+                  options={STATUS_PAGE_PROVIDERS.map((value) => ({
+                    value,
+                    label: t(`statusPage.provider.${value}`),
+                  }))}
+                />
+                <StatusPageComponentsField
+                  control={control}
+                  name="statusPageComponents"
+                  orgId={orgId}
+                  url={statusPageUrl}
+                  provider={statusPageProvider}
+                />
               </>
             )}
 
