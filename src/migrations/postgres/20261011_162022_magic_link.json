@@ -2452,32 +2452,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "push_email_failure_keyword": {
-          "name": "push_email_failure_keyword",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "push_email_success_keyword": {
-          "name": "push_email_success_keyword",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "push_email_start_keyword": {
-          "name": "push_email_start_keyword",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "push_email_unmatched": {
-          "name": "push_email_unmatched",
-          "type": "enum_monitors_push_email_unmatched",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'ignore'"
-        },
         "manual_status": {
           "name": "manual_status",
           "type": "enum_monitors_manual_status",
@@ -14231,6 +14205,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "magic_link_enabled": {
+          "name": "magic_link_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
         "entry_page": {
           "name": "entry_page",
           "type": "enum_instance_settings_entry_page",
@@ -14383,7 +14363,8 @@
         "local",
         "oidc",
         "oauth",
-        "saml"
+        "saml",
+        "magic-link"
       ]
     },
     "public.enum_users_theme": {
@@ -14695,14 +14676,6 @@
       "values": [
         "interval",
         "cron"
-      ]
-    },
-    "public.enum_monitors_push_email_unmatched": {
-      "name": "enum_monitors_push_email_unmatched",
-      "schema": "public",
-      "values": [
-        "ignore",
-        "fail"
       ]
     },
     "public.enum_monitors_manual_status": {
@@ -15383,6 +15356,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "5cde0243-c1c2-4b78-b3df-d39c6f72b2fc",
+  "id": "d1bc9b34-96d7-4fdc-aebc-9368a9abe9d8",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

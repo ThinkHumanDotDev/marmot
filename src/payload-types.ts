@@ -200,7 +200,7 @@ export interface User {
   superadmin?: boolean | null;
   emailVerified?: boolean | null;
   emailVerifiedAt?: string | null;
-  authProvider?: ('local' | 'oidc' | 'oauth' | 'saml') | null;
+  authProvider?: ('local' | 'oidc' | 'oauth' | 'saml' | 'magic-link') | null;
   oidcIssuer?: string | null;
   oidcSubject?: string | null;
   theme?: ('system' | 'light' | 'dark') | null;
@@ -2873,6 +2873,10 @@ export interface InstanceSetting {
    */
   requireEmailVerification?: boolean | null;
   /**
+   * Let people sign in with a single-use link sent to their email address (needs SMTP). Ignored while OIDC_DISABLE_LOCAL_LOGIN is on. Defaults to MAGIC_LINK_ENABLED.
+   */
+  magicLinkEnabled?: boolean | null;
+  /**
    * What visitors of the root URL see.
    */
   entryPage?: ('dashboard' | 'status-page') | null;
@@ -2911,6 +2915,7 @@ export interface InstanceSettingsSelect<T extends boolean = true> {
   primaryBaseUrl?: T;
   allowSignup?: T;
   requireEmailVerification?: T;
+  magicLinkEnabled?: T;
   entryPage?: T;
   tlsExpiryNotifyDays?: T;
   domainExpiryNotifyDays?: T;
