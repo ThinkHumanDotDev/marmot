@@ -1133,7 +1133,24 @@
         "grace": "Grace period",
         "graceDescription": "How late a ping may be, and how long a started run may take, before the monitor goes DOWN. Empty: automatic (10 % of the interval, 1 minute for cron).",
         "maxDuration": "Maximum run duration",
-        "maxDurationDescription": "Optional. Runs (from /start to success) that take longer are reported DOWN."
+        "maxDurationDescription": "Optional. Runs (from /start to success) that take longer are reported DOWN.",
+        "email": {
+          "title": "Email pings",
+          "description": "Mail sent to this monitor's address (shown on the monitor page) counts as a ping. Keywords are matched in the subject and body, ignoring case, in this order: failure, success, start.",
+          "failure": "Failure keyword",
+          "failureDescription": "Mail containing it records a failure.",
+          "failurePlaceholder": "FAILED",
+          "successPlaceholder": "OK",
+          "startPlaceholder": "started",
+          "success": "Success keyword",
+          "successDescription": "Empty: any other mail is a success.",
+          "start": "Start keyword",
+          "startDescription": "Mail containing it starts a run, like /start.",
+          "unmatched": "Mail that matches no keyword",
+          "unmatchedDescription": "Only applies when a success keyword is set.",
+          "unmatchedIgnore": "Ignore it (kept in the ping log)",
+          "unmatchedFail": "Record a failure"
+        }
       },
       "statusPage": {
         "url": "Status page URL",
@@ -1208,6 +1225,9 @@
         "nextExpectedValue": "By {when}",
         "overdue": "Overdue since {when}",
         "running": "{count, plural, one {Run in progress since {since}} other {# runs in progress, oldest since {since}}}",
+        "email": "Or send an email to",
+        "emailRulesDefault": "Every message counts as a success. Add keywords in the monitor settings to report failures and starts.",
+        "emailRules": "Failure: {failure} · success: {success} · start: {start} · other mail: {unmatched, select, fail {failure} ignore {ignored} other {success}}.",
         "signals": "Append <code>/start</code> when the job starts and <code>/fail</code> or the exit code (<code>/0</code>, <code>/1</code>, …) when it ends; <code>/log</code> records output without changing the status. Add <code>?rid=…</code> to pair overlapping runs. The first 10 000 bytes of a request body are kept in the ping log.",
         "tabs": {
           "url": "URL",

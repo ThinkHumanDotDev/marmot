@@ -555,6 +555,10 @@ export interface Monitor {
   pushTimezone?: string | null;
   pushGrace?: number | null;
   pushMaxDuration?: number | null;
+  pushEmailFailureKeyword?: string | null;
+  pushEmailSuccessKeyword?: string | null;
+  pushEmailStartKeyword?: string | null;
+  pushEmailUnmatched?: ('ignore' | 'fail') | null;
   manualStatus?: ('up' | 'down' | 'pending') | null;
   databaseConnectionString?: string | null;
   databaseQuery?: string | null;
@@ -2085,6 +2089,10 @@ export interface MonitorsSelect<T extends boolean = true> {
   pushTimezone?: T;
   pushGrace?: T;
   pushMaxDuration?: T;
+  pushEmailFailureKeyword?: T;
+  pushEmailSuccessKeyword?: T;
+  pushEmailStartKeyword?: T;
+  pushEmailUnmatched?: T;
   manualStatus?: T;
   databaseConnectionString?: T;
   databaseQuery?: T;

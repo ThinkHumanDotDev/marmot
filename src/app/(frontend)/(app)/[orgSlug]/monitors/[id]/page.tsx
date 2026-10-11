@@ -52,6 +52,7 @@ import { toRealtimeTags } from '@/server/realtime/serialize'
 import { listAuditEvents } from '@/server/audit/query'
 import { heartbeatLocationWhere, loadMonitorLocationView } from '@/server/monitors/location-view'
 import { getMonitorChannels, getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
+import { monitorPushEmailAddress } from '@/server/push/inbound-config'
 import { getRangeStats } from '@/server/stats/range-stats'
 import { getUptime } from '@/server/stats/uptime-calculator'
 
@@ -345,7 +346,15 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
           showYear={isPeriodWithinRetention('1y', retentionDays)}
         />
 
-        {pushUrl && <PushPanel monitor={monitor} pushUrl={pushUrl} timeZone={timeZone} now={now} />}
+        {pushUrl && (
+          <PushPanel
+            monitor={monitor}
+            pushUrl={pushUrl}
+            pushEmail={monitorPushEmailAddress(monitor)}
+            timeZone={timeZone}
+            now={now}
+          />
+        )}
 
         {showAssertions && <AssertionResultsCard results={assertionResults} />}
 

@@ -6,6 +6,7 @@ import 'dotenv/config'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
+import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
 import { MARMOT_VERSION } from '@/lib/version'
 import { captureServerEvent, shutdownServerAnalytics } from '@/server/analytics'
@@ -33,6 +34,8 @@ import {
 import { closeOtelExports, registerOtelListener } from '@/server/otel/listener'
 import { closeEmitter } from '@/server/realtime/emitter'
 import { registerRealtimeListener } from '@/server/realtime/listener'
+import { inboundEmailDomain } from '@/server/push/inbound-config'
+import { startInboundSmtp, type InboundSmtpListener } from '@/server/push/smtp'
 import { registerStatsListener } from '@/server/stats'
 
 const log = childLogger('worker')
@@ -104,6 +107,19 @@ async function main() {
   const notificationWorker = startNotificationWorker(payload)
   // Recomputes maintenance statuses every minute (and runs retention jobs on the same queue).
   const maintenanceWorker = await startMaintenanceWorker(payload)
+  // Ping-by-email (#135): the inbound SMTP listener for `<push token>@INBOUND_EMAIL_DOMAIN`.
+  let inboundSmtp: InboundSmtpListener | null = null
+  if (env.INBOUND_SMTP_PORT > 0) {
+    if (!inboundEmailDomain()) {
+      log.warn('INBOUND_SMTP_PORT is set without INBOUND_EMAIL_DOMAIN; ping-by-email stays off')
+    } else {
+      try {
+        inboundSmtp = await startInboundSmtp(payload)
+      } catch (err) {
+        log.error({ err }, 'cannot start the inbound SMTP listener; ping-by-email over SMTP is off')
+      }
+    }
+  }
 
   // Keep the process alive until a shutdown signal arrives.
   await new Promise<void>((resolve) => {
@@ -123,6 +139,7 @@ async function main() {
           maintenanceWorker.close(),
         ])
         await connectivity?.stop()
+        await inboundSmtp?.close()
         await closeOtelExports()
         await Promise.all([closeChecksQueue(), closeNotificationsQueue(), closeMaintenanceQueue()])
         await closeCheckerStateStore()
