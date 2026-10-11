@@ -51,11 +51,13 @@ test.describe('Monitors', () => {
     page,
   }) => {
     await page.goto(`/${SETUP_ORG.slug}/monitors/${prometheusId}`)
-    await expect(page.getByTestId('value-chart')).toBeVisible()
-    await expect(page.getByTestId('response-time-chart')).toHaveCount(0)
-    await expect(page.getByTestId('metric-average-value')).toBeVisible()
+    const main = page.locator('#main-content')
+    await expect(main.getByTestId('value-chart')).toBeVisible()
+    await expect(main.getByTestId('response-time-chart')).toHaveCount(0)
+    await expect(main.getByTestId('metric-average-value')).toBeVisible()
 
     await page.goto(`/${SETUP_ORG.slug}/monitors/${prometheusId}/edit`)
+    // Visible form only; see the note in critical-path.e2e.spec.ts.
     const fields = page.getByTestId('monitor-form').filter({ visible: true })
     await expect(fields.getByTestId('prometheus-card')).toBeVisible()
     await expect(fields.getByLabel('PromQL query')).toHaveValue(/http_requests_total/)

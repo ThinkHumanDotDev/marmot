@@ -260,11 +260,12 @@ function NumberField({
       render={({ field }) => (
         <FormItem>
           <FormLabel>{label}</FormLabel>
-          <FormControl>
-            <div className="relative">
+          {/* The control (id, aria) is the input itself, so the label names it. */}
+          <div className="relative">
+            <FormControl>
               <Input
                 type="number"
-                inputMode="numeric"
+                inputMode={step === 'any' ? 'decimal' : 'numeric'}
                 min={min}
                 max={max}
                 step={step}
@@ -279,13 +280,13 @@ function NumberField({
                 }
                 className={unit ? 'pr-16' : undefined}
               />
-              {unit && (
-                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
-                  {unit}
-                </span>
-              )}
-            </div>
-          </FormControl>
+            </FormControl>
+            {unit && (
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
+                {unit}
+              </span>
+            )}
+          </div>
           {description && <FormDescription>{description}</FormDescription>}
           <FormMessage />
         </FormItem>
