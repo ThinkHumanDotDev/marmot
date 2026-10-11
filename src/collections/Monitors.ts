@@ -21,6 +21,15 @@ import { outboundGuardActive } from '@/server/security/outbound-guard'
 
 import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
 import {
+  DEFAULT_GROUP_AGGREGATION,
+  DEFAULT_GROUP_WEIGHT,
+  GROUP_AGGREGATION_MODES,
+  GROUP_LATENCY_MODES,
+  GROUP_QUORUM_UNITS,
+  MAX_GROUP_QUORUM,
+  MAX_GROUP_WEIGHT,
+} from '@/lib/group-aggregation'
+import {
   ASSERTION_COMPARATORS,
   ASSERTION_KINDS,
   assertionProblems,
@@ -652,6 +661,70 @@ export const Monitors: CollectionConfig = {
       type: 'number',
       defaultValue: 2000,
       admin: { position: 'sidebar', description: adminT('marmot:monitors:weightDescription') },
+    },
+
+    // ---- Group aggregation (#144) ---------------------------------------------------------------
+    {
+      // How a group monitor turns its children's status into its own (`src/lib/group-aggregation.ts`).
+      // Existing groups get the default, `worst`, which is the behaviour before #144.
+      name: 'aggregation',
+      type: 'select',
+      defaultValue: DEFAULT_GROUP_AGGREGATION,
+      options: GROUP_AGGREGATION_MODES.map((value) => ({
+        label: adminT(`marmot:monitors:aggregation_${value}`),
+        value,
+      })),
+      admin: {
+        condition: (data) => data?.type === 'group',
+        description: adminT('marmot:monitors:aggregationDescription'),
+      },
+    },
+    {
+      name: 'aggregationQuorum',
+      type: 'number',
+      min: 1,
+      max: MAX_GROUP_QUORUM,
+      admin: {
+        condition: (data) => data?.type === 'group' && data?.aggregation === 'quorum',
+        description: adminT('marmot:monitors:aggregationQuorumDescription'),
+      },
+    },
+    {
+      name: 'aggregationQuorumUnit',
+      type: 'select',
+      defaultValue: 'count',
+      options: GROUP_QUORUM_UNITS.map((value) => ({
+        label: adminT(`marmot:monitors:aggregationQuorumUnit_${value}`),
+        value,
+      })),
+      admin: {
+        condition: (data) => data?.type === 'group' && data?.aggregation === 'quorum',
+      },
+    },
+    {
+      name: 'aggregationLatency',
+      type: 'select',
+      defaultValue: 'none',
+      options: GROUP_LATENCY_MODES.map((value) => ({
+        label: adminT(`marmot:monitors:aggregationLatency_${value}`),
+        value,
+      })),
+      admin: {
+        condition: (data) => data?.type === 'group',
+        description: adminT('marmot:monitors:aggregationLatencyDescription'),
+      },
+    },
+    {
+      // Weight of this monitor inside a `weighted` parent group; relative, normalised by the group.
+      name: 'groupWeight',
+      type: 'number',
+      min: 0,
+      max: MAX_GROUP_WEIGHT,
+      defaultValue: DEFAULT_GROUP_WEIGHT,
+      admin: {
+        condition: (data) => Boolean(data?.parent),
+        description: adminT('marmot:monitors:groupWeightDescription'),
+      },
     },
 
     // ---- Target ---------------------------------------------------------------------------------

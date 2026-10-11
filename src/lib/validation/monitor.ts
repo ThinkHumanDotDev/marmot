@@ -8,6 +8,15 @@
 import { z } from 'zod'
 
 import type { Messages } from '@/i18n/messages'
+import {
+  DEFAULT_GROUP_AGGREGATION,
+  DEFAULT_GROUP_WEIGHT,
+  GROUP_AGGREGATION_MODES,
+  GROUP_LATENCY_MODES,
+  GROUP_QUORUM_UNITS,
+  MAX_GROUP_QUORUM,
+  MAX_GROUP_WEIGHT,
+} from '@/lib/group-aggregation'
 import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
 import {
   DEFAULT_QUORUM,
@@ -343,7 +352,7 @@ export const MONITOR_TYPE_GROUPS: Record<
       {
         name: 'group',
         label: 'Group',
-        description: 'Aggregates child monitors: DOWN when any child is down.',
+        description: 'Aggregates child monitors: worst child, quorum or weighted score.',
       },
       {
         name: 'docker',
@@ -511,6 +520,21 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       otlpExport: z.boolean().default(true),
       /** OTLP collector (#99); `null` = the organization's default collector. */
       otlpCollector: relationId,
+      /** Group monitors (#144): how the children decide the group status. */
+      aggregation: z.enum(GROUP_AGGREGATION_MODES).default(DEFAULT_GROUP_AGGREGATION),
+      /** `quorum` groups: children (or percent of children) that must be up. */
+      aggregationQuorum: z
+        .number()
+        .int()
+        .min(1)
+        .max(MAX_GROUP_QUORUM)
+        .nullish()
+        .transform((value) => value ?? null),
+      aggregationQuorumUnit: z.enum(GROUP_QUORUM_UNITS).default('count'),
+      /** The group ping from its children's last ping. */
+      aggregationLatency: z.enum(GROUP_LATENCY_MODES).default('none'),
+      /** Weight of the monitor inside a `weighted` parent group. */
+      groupWeight: z.number().min(0).max(MAX_GROUP_WEIGHT).default(DEFAULT_GROUP_WEIGHT),
 
       // Target
       url: optionalText(2048),
@@ -825,6 +849,13 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       if (type === 'manual' && !values.manualStatus) {
         issue('manualStatus', message('manualStatusRequired'))
       }
+      if (type === 'group' && values.aggregation === 'quorum') {
+        if (values.aggregationQuorum === null) {
+          issue('aggregationQuorum', message('aggregationQuorumRequired'))
+        } else if (values.aggregationQuorumUnit === 'percent' && values.aggregationQuorum > 100) {
+          issue('aggregationQuorum', message('aggregationQuorumPercent'))
+        }
+      }
       if (values.type === 'docker') {
         if (values.dockerHost === null) issue('dockerHost', message('dockerHostRequired'))
         if (!values.dockerContainer) issue('dockerContainer', message('containerRequired'))
@@ -1008,6 +1039,11 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     quorum: DEFAULT_QUORUM,
     otlpExport: true,
     otlpCollector: null,
+    aggregation: DEFAULT_GROUP_AGGREGATION,
+    aggregationQuorum: null,
+    aggregationQuorumUnit: 'count',
+    aggregationLatency: 'none',
+    groupWeight: DEFAULT_GROUP_WEIGHT,
     url: defaultUrl(type),
     hostname: null,
     port: DEFAULT_PORTS[type] ?? null,

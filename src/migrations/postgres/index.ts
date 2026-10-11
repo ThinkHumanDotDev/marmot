@@ -50,6 +50,7 @@ import * as migration_20261008_023424_location_quorum from './20261008_023424_lo
 import * as migration_20261008_030613_response_log from './20261008_030613_response_log';
 import * as migration_20261008_035336_email_verification from './20261008_035336_email_verification';
 import * as migration_20261008_054355_otel_collectors from './20261008_054355_otel_collectors';
+import * as migration_20261011_160009_group_aggregation_modes from './20261011_160009_group_aggregation_modes';
 
 export const migrations = [
   {
@@ -310,6 +311,11 @@ export const migrations = [
   {
     up: migration_20261008_054355_otel_collectors.up,
     down: migration_20261008_054355_otel_collectors.down,
-    name: '20261008_054355_otel_collectors'
+    name: '20261008_054355_otel_collectors',
+  },
+  {
+    up: migration_20261011_160009_group_aggregation_modes.up,
+    down: migration_20261011_160009_group_aggregation_modes.down,
+    name: '20261011_160009_group_aggregation_modes'
   },
 ];
