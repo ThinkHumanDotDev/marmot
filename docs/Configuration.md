@@ -165,6 +165,18 @@ transparency logs by the worker's `ct-alerts` job.
 | `CT_CHECK_INTERVAL_MINUTES` | `180`                                                                 | worker  | Minutes between two lookups of a monitor (60–360). After a failed lookup the monitor and the source back off exponentially, up to 24 h.                                                                                                                                                          |
 | `CT_REQUESTS_PER_MINUTE`    | `6`                                                                   | worker  | Requests per minute sent to the source (1–120). A `429` or `503` answer pauses every lookup for its `Retry-After` (at least the backoff).                                                                                                                                                        |
 
+### Ping-by-email
+
+[Push monitors](Monitors.md#ping-by-email) can also be pinged by email. Off unless `INBOUND_EMAIL_DOMAIN` and at least one of the two transports below are set.
+
+| Variable                       | Default   | Read by     | Description                                                                                                                                                                                                                                                 |
+| ------------------------------ | --------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INBOUND_EMAIL_DOMAIN`         | —         | web, worker | Domain of the monitor addresses, `<push token>@<domain>` (e.g. `ping.status.example.com`). Point its MX record at the worker, or route it through a mail provider to the webhook.                                                                           |
+| `INBOUND_SMTP_PORT`            | `0`       | worker      | Port of the worker's inbound SMTP listener (plain SMTP, no AUTH, no relaying; only addresses of active push monitors are accepted). `0` turns the listener off. Use `25` when the worker is the domain's MX, or a high port behind a relay or port mapping. |
+| `INBOUND_SMTP_HOST`            | `0.0.0.0` | worker      | Address the listener binds to.                                                                                                                                                                                                                              |
+| `INBOUND_EMAIL_WEBHOOK_SECRET` | —         | web         | Turns on the inbound-parse webhook `POST /api/inbound-email` (Postmark, Mailgun, SendGrid, Cloudflare Email Workers) and is the secret it requires (at least 16 characters): `?secret=`, the Basic auth password or an `X-Marmot-Secret` header.            |
+| `INBOUND_EMAIL_MAX_BYTES`      | `1048576` | web, worker | Largest accepted message in bytes (1 KiB–50 MiB). Larger mail is refused (`552` over SMTP, `413` on the webhook).                                                                                                                                           |
+
 ### Self connectivity check
 
 When the worker's own uplink or DNS fails, every external monitor would go DOWN at once and every channel

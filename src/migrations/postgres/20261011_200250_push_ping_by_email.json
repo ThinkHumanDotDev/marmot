@@ -2209,26 +2209,6 @@
           "notNull": false,
           "default": false
         },
-        "ct_alerts": {
-          "name": "ct_alerts",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "ct_include_subdomains": {
-          "name": "ct_include_subdomains",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "ct_state": {
-          "name": "ct_state",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "cert_info": {
           "name": "cert_info",
           "type": "jsonb",
@@ -2485,6 +2465,32 @@
           "type": "numeric",
           "primaryKey": false,
           "notNull": false
+        },
+        "push_email_failure_keyword": {
+          "name": "push_email_failure_keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_email_success_keyword": {
+          "name": "push_email_success_keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_email_start_keyword": {
+          "name": "push_email_start_keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_email_unmatched": {
+          "name": "push_email_unmatched",
+          "type": "enum_monitors_push_email_unmatched",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'ignore'"
         },
         "manual_status": {
           "name": "manual_status",
@@ -4487,13 +4493,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "fingerprint": {
-          "name": "fingerprint",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "''"
-        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -4570,8 +4569,8 @@
           "method": "btree",
           "with": {}
         },
-        "type_monitor_days_fingerprint_idx": {
-          "name": "type_monitor_days_fingerprint_idx",
+        "type_monitor_days_idx": {
+          "name": "type_monitor_days_idx",
           "columns": [
             {
               "expression": "type",
@@ -4587,12 +4586,6 @@
             },
             {
               "expression": "days",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "fingerprint",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -14744,6 +14737,14 @@
         "cron"
       ]
     },
+    "public.enum_monitors_push_email_unmatched": {
+      "name": "enum_monitors_push_email_unmatched",
+      "schema": "public",
+      "values": [
+        "ignore",
+        "fail"
+      ]
+    },
     "public.enum_monitors_manual_status": {
       "name": "enum_monitors_manual_status",
       "schema": "public",
@@ -14865,8 +14866,7 @@
       "schema": "public",
       "values": [
         "certificate",
-        "domain",
-        "ct"
+        "domain"
       ]
     },
     "public.enum_heartbeats_location_status": {
@@ -15423,6 +15423,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "1860293f-67aa-4af1-9437-44d353b306ac",
+  "id": "8a8294ff-986c-45f2-83c7-3265f2592243",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
