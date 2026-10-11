@@ -12,7 +12,7 @@
  * The maths lives in `src/lib/uptime-history.ts`. Everything here reads with `overrideAccess: true`;
  * callers check access to the page first.
  */
-import type { Payload } from 'payload'
+import type { Payload, RequiredDataFromCollectionSlug } from 'payload'
 
 import { incidentTimeline } from '@/lib/incident-timeline'
 import { childLogger } from '@/lib/logger'
@@ -687,8 +687,10 @@ export async function snapshotUptimeHistory(
         try {
           await payload.create({
             collection: 'status-page-uptime-history',
+            // Ids are numbers on Postgres and strings on MongoDB; the generated types follow one
+            // adapter, so the adapter-neutral ids are cast (as in the stats rollups).
             data: {
-              organization: relationId(page.organization) as number,
+              organization: relationId(page.organization),
               statusPage: page.id,
               component: row.id,
               timestamp: day,
@@ -705,7 +707,7 @@ export async function snapshotUptimeHistory(
                 held: data.held,
                 degradedChecks: data.degraded,
               }),
-            },
+            } as unknown as RequiredDataFromCollectionSlug<'status-page-uptime-history'>,
             depth: 0,
             overrideAccess: true,
           })
