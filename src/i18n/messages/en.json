@@ -475,7 +475,8 @@
       "chain": "Chain",
       "noCommonName": "(no CN)",
       "emptyHttps": "No certificate captured yet. It appears after the first check of an https:// URL.",
-      "emptyOther": "Certificates are captured for HTTPS monitors.",
+      "emptyTls": "No certificate captured yet. It appears after the first TLS connection of a check.",
+      "emptyOther": "Certificates are captured for HTTPS, TLS, IMAP and POP3 monitors.",
       "tlsIgnored": "TLS errors are ignored for this monitor, so no expiry warnings are sent.",
       "notificationsOn": "Expiry notifications are switched on for this monitor.",
       "notificationsOff": "Turn on \"Certificate expiry notification\" in the monitor settings to be warned before it expires.",
@@ -582,6 +583,26 @@
         "label": "SFTP",
         "description": "Logs in over SFTP and optionally checks that a path exists."
       },
+      "ssh": {
+        "label": "SSH",
+        "description": "Reads the SSH banner; optionally logs in and runs a command with exit code and output checks."
+      },
+      "udp": {
+        "label": "UDP",
+        "description": "Sends a datagram; UP on a matching reply, or when no ICMP port unreachable comes back."
+      },
+      "tls": {
+        "label": "TLS Handshake",
+        "description": "Completes a TLS handshake (SNI, ALPN) and records the certificate for expiry warnings."
+      },
+      "imap": {
+        "label": "IMAP",
+        "description": "Reads the greeting, optionally upgrades with STARTTLS and logs in."
+      },
+      "pop3": {
+        "label": "POP3",
+        "description": "Reads the greeting, optionally upgrades with STLS and logs in."
+      },
       "radius": {
         "label": "Radius",
         "description": "Sends an Access-Request; UP unless the server rejects it."
@@ -668,6 +689,9 @@
       "oidRequired": "OID is required",
       "communityRequired": "Community string is required",
       "sshPrivateKeyRequired": "Private key is required for key-based authentication",
+      "udpHexPayload": "Enter pairs of hex digits, e.g. ff 00 1a",
+      "udpPatternRequired": "Enter the text or regular expression the response must match",
+      "regexInvalid": "Not a valid regular expression",
       "nodeRequired": "Add at least one node URL",
       "nodeUrl": "Nodes are management API URLs such as https://node1:15672",
       "gameRequired": "Game is required",
@@ -907,12 +931,46 @@
         "community": "Community string",
         "security": "Security",
         "securityDescription": "Use SMTPS for port 465; STARTTLS for 25/587.",
+        "mailSecurityDescription": "Implicit TLS on 993 (IMAP) or 995 (POP3); STARTTLS on 143 or 110. Credentials are only sent over TLS unless STARTTLS is ignored.",
         "smtpSecurity": {
           "opportunistic": "STARTTLS if offered",
           "starttls": "Require STARTTLS",
           "secure": "SMTPS (implicit TLS)",
           "nostarttls": "Ignore STARTTLS"
         },
+        "mailSecurity": {
+          "opportunistic": "STARTTLS if offered",
+          "starttls": "Require STARTTLS",
+          "secure": "Implicit TLS",
+          "nostarttls": "Plain text (ignore STARTTLS)"
+        },
+        "mailUsernameDescription": "Optional: leave empty to only check the greeting.",
+        "sshUsernameDescription": "Optional: leave empty to only read the server banner.",
+        "sshCommand": "Command",
+        "sshCommandDescription": "Optional command to run after logging in.",
+        "sshExpectedExitCode": "Expected exit code",
+        "sshExpectedOutput": "Expected output",
+        "sshExpectedOutputDescription": "Optional text the command output must contain.",
+        "udpPayload": "Payload",
+        "udpPayloadDescription": "Datagram to send; may be empty.",
+        "udpPayloadEncoding": "Encoding",
+        "udpPayloadEncodingOption": {
+          "text": "Text (UTF-8)",
+          "hex": "Hex"
+        },
+        "udpResponseMatch": "Expected response",
+        "udpResponseMatchOption": {
+          "none": "None (UP unless the port is unreachable)",
+          "any": "Any response",
+          "keyword": "Contains keyword",
+          "regex": "Matches regular expression"
+        },
+        "udpResponseMatchDescription": "Without an expected response the check listens for an ICMP port unreachable for up to 2 seconds.",
+        "udpResponsePattern": "Keyword or pattern",
+        "tlsServername": "Server name (SNI)",
+        "tlsServernameDescription": "Defaults to the hostname.",
+        "tlsAlpn": "ALPN protocols",
+        "tlsAlpnDescription": "Optional, comma-separated. The server must select one of them.",
         "authentication": "Authentication",
         "sshAuth": {
           "password": "Password",

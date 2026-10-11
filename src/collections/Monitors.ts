@@ -86,6 +86,11 @@ export const MONITOR_TYPES = [
   { label: 'SNMP', value: 'snmp' },
   { label: 'NTP', value: 'ntp' },
   { label: 'SFTP', value: 'sftp' },
+  { label: 'SSH', value: 'ssh' },
+  { label: 'UDP', value: 'udp' },
+  { label: adminT('marmot:labels:tlsHandshake'), value: 'tls' },
+  { label: 'IMAP', value: 'imap' },
+  { label: 'POP3', value: 'pop3' },
   { label: 'Radius', value: 'radius' },
   { label: adminT('marmot:labels:tailscalePing'), value: 'tailscale-ping' },
   { label: adminT('marmot:labels:realBrowser'), value: 'real-browser' },
@@ -113,6 +118,11 @@ export const HOST_TYPES = [
   'snmp',
   'ntp',
   'sftp',
+  'ssh',
+  'udp',
+  'tls',
+  'imap',
+  'pop3',
   'radius',
   'tailscale-ping',
   'steam',
@@ -123,6 +133,11 @@ export const DATABASE_TYPES = ['mysql', 'postgres', 'sqlserver', 'mongodb', 'red
 /** Types that evaluate a JSONata expression against their result. */
 export const JSON_QUERY_TYPES = ['json-query', 'mongodb', 'snmp', 'mqtt']
 export const KEYWORD_TYPES = ['keyword', 'grpc-keyword']
+
+/** Types that record the server's TLS certificate (`certInfo`) and can warn before it expires. */
+export const CERTIFICATE_TYPES = [...HTTP_TYPES, 'tls', 'imap', 'pop3']
+/** Mail types configured with `smtpSecurity`. */
+const MAIL_TYPES = ['smtp', 'imap', 'pop3']
 
 /** Types whose target names a domain (URL or hostname), i.e. domain expiry can be looked up. */
 export const DOMAIN_TYPES = [...HTTP_TYPES, 'port', 'ping', 'dns']
@@ -840,7 +855,7 @@ export const Monitors: CollectionConfig = {
           type: 'checkbox',
           defaultValue: false,
           admin: {
-            condition: typeIn(HTTP_TYPES),
+            condition: typeIn(CERTIFICATE_TYPES),
             description: adminT('marmot:monitors:expiryNotificationDescription'),
           },
         },
@@ -860,7 +875,7 @@ export const Monitors: CollectionConfig = {
       type: 'json',
       admin: {
         readOnly: true,
-        condition: typeIn(HTTP_TYPES),
+        condition: typeIn(CERTIFICATE_TYPES),
         description: adminT('marmot:monitors:certInfoDescription'),
       },
     },
@@ -1406,19 +1421,110 @@ export const Monitors: CollectionConfig = {
         { label: adminT('marmot:labels:smtps'), value: 'secure' },
         { label: adminT('marmot:labels:starttlsIgnore'), value: 'nostarttls' },
       ],
-      admin: { condition: (data) => data?.type === 'smtp' },
+      admin: {
+        condition: typeIn(MAIL_TYPES),
+        description: adminT('marmot:monitors:mailSecurityDescription'),
+      },
+    },
+    {
+      type: 'collapsible',
+      label: adminT('marmot:labels:mailLogin'),
+      admin: { condition: typeIn(['imap', 'pop3']), initCollapsed: false },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'mailUsername',
+              type: 'text',
+              admin: { description: adminT('marmot:monitors:mailUsernameDescription') },
+            },
+            { name: 'mailPassword', type: 'text' },
+          ],
+        },
+      ],
+    },
+
+    // ---- UDP ------------------------------------------------------------------------------------
+    {
+      type: 'collapsible',
+      label: 'UDP',
+      admin: { condition: (data) => data?.type === 'udp', initCollapsed: false },
+      fields: [
+        {
+          name: 'udpPayload',
+          type: 'textarea',
+          admin: { description: adminT('marmot:monitors:udpPayloadDescription') },
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'udpPayloadEncoding',
+              type: 'select',
+              defaultValue: 'text',
+              options: [
+                { label: adminT('marmot:labels:text'), value: 'text' },
+                { label: adminT('marmot:labels:hex'), value: 'hex' },
+              ],
+            },
+            {
+              name: 'udpResponseMatch',
+              type: 'select',
+              defaultValue: 'none',
+              options: [
+                { label: adminT('marmot:labels:udpNoResponse'), value: 'none' },
+                { label: adminT('marmot:labels:udpAnyResponse'), value: 'any' },
+                { label: adminT('marmot:labels:keyword'), value: 'keyword' },
+                { label: adminT('marmot:labels:regex'), value: 'regex' },
+              ],
+              admin: { description: adminT('marmot:monitors:udpResponseMatchDescription') },
+            },
+          ],
+        },
+        {
+          name: 'udpResponsePattern',
+          type: 'text',
+          admin: {
+            condition: (data) => ['keyword', 'regex'].includes(data?.udpResponseMatch),
+            description: adminT('marmot:monitors:udpResponsePatternDescription'),
+          },
+        },
+      ],
+    },
+
+    // ---- TLS handshake --------------------------------------------------------------------------
+    {
+      type: 'row',
+      admin: { condition: (data) => data?.type === 'tls' },
+      fields: [
+        {
+          name: 'tlsServername',
+          type: 'text',
+          admin: { description: adminT('marmot:monitors:tlsServernameDescription') },
+        },
+        {
+          name: 'tlsAlpn',
+          type: 'text',
+          admin: { description: adminT('marmot:monitors:tlsAlpnDescription') },
+        },
+      ],
     },
 
     // ---- SFTP -----------------------------------------------------------------------------------
     {
       type: 'collapsible',
-      label: 'SFTP',
-      admin: { condition: (data) => data?.type === 'sftp', initCollapsed: false },
+      label: 'SSH / SFTP',
+      admin: { condition: typeIn(['sftp', 'ssh']), initCollapsed: false },
       fields: [
         {
           type: 'row',
           fields: [
-            { name: 'sshUsername', type: 'text' },
+            {
+              name: 'sshUsername',
+              type: 'text',
+              admin: { description: adminT('marmot:monitors:sshUsernameDescription') },
+            },
             {
               name: 'sshAuthMethod',
               type: 'select',
@@ -1448,7 +1554,35 @@ export const Monitors: CollectionConfig = {
         {
           name: 'sftpPath',
           type: 'text',
-          admin: { description: adminT('marmot:monitors:sftpPathDescription') },
+          admin: {
+            condition: (data) => data?.type === 'sftp',
+            description: adminT('marmot:monitors:sftpPathDescription'),
+          },
+        },
+        {
+          name: 'sshCommand',
+          type: 'textarea',
+          admin: {
+            condition: (data) => data?.type === 'ssh',
+            description: adminT('marmot:monitors:sshCommandDescription'),
+          },
+        },
+        {
+          type: 'row',
+          admin: { condition: (data) => data?.type === 'ssh' },
+          fields: [
+            {
+              name: 'sshExpectedExitCode',
+              type: 'number',
+              defaultValue: 0,
+              admin: { description: adminT('marmot:monitors:sshExpectedExitCodeDescription') },
+            },
+            {
+              name: 'sshExpectedOutput',
+              type: 'text',
+              admin: { description: adminT('marmot:monitors:sshExpectedOutputDescription') },
+            },
+          ],
         },
       ],
     },

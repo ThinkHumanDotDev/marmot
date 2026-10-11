@@ -86,6 +86,11 @@ export const MONITOR_TYPE_NAMES = [
   'snmp',
   'ntp',
   'sftp',
+  'ssh',
+  'udp',
+  'tls',
+  'imap',
+  'pop3',
   'radius',
   'tailscale-ping',
   // Databases
@@ -118,6 +123,11 @@ export const HOST_MONITOR_TYPES: readonly MonitorTypeName[] = [
   'snmp',
   'ntp',
   'sftp',
+  'ssh',
+  'udp',
+  'tls',
+  'imap',
+  'pop3',
   'radius',
   'tailscale-ping',
   'steam',
@@ -127,6 +137,15 @@ export const HOST_MONITOR_TYPES: readonly MonitorTypeName[] = [
 export const PORT_MONITOR_TYPES: readonly MonitorTypeName[] = HOST_MONITOR_TYPES.filter(
   (t) => t !== 'ping' && t !== 'tailscale-ping',
 )
+/** Types that record the server's TLS certificate and can warn before it expires. */
+export const CERTIFICATE_MONITOR_TYPES: readonly MonitorTypeName[] = [
+  ...HTTP_MONITOR_TYPES,
+  'tls',
+  'imap',
+  'pop3',
+]
+/** Mail types configured with `smtpSecurity`. */
+export const MAIL_MONITOR_TYPES: readonly MonitorTypeName[] = ['smtp', 'imap', 'pop3']
 /** Types configured with a driver connection string. */
 export const DATABASE_MONITOR_TYPES: readonly MonitorTypeName[] = [
   'mysql',
@@ -153,6 +172,10 @@ export const DEFAULT_PORTS: Partial<Record<MonitorTypeName, number>> = {
   snmp: 161,
   ntp: 123,
   sftp: 22,
+  ssh: 22,
+  tls: 443,
+  imap: 143,
+  pop3: 110,
   radius: 1812,
   steam: 27015,
 }
@@ -168,6 +191,8 @@ export const isHostMonitorType = (type: string | undefined | null): boolean =>
   includes(HOST_MONITOR_TYPES, type)
 export const isPortMonitorType = (type: string | undefined | null): boolean =>
   includes(PORT_MONITOR_TYPES, type)
+export const isCertificateMonitorType = (type: string | undefined | null): boolean =>
+  includes(CERTIFICATE_MONITOR_TYPES, type)
 export const isDatabaseMonitorType = (type: string | undefined | null): boolean =>
   includes(DATABASE_MONITOR_TYPES, type)
 export const isKeywordMonitorType = (type: string | undefined | null): boolean =>
@@ -285,6 +310,34 @@ export const MONITOR_TYPE_GROUPS: Record<
         description: 'Logs in over SFTP and optionally checks that a path exists.',
       },
       {
+        name: 'ssh',
+        label: 'SSH',
+        description:
+          'Reads the SSH banner; optionally logs in and runs a command with exit code and output checks.',
+      },
+      {
+        name: 'udp',
+        label: 'UDP',
+        description:
+          'Sends a datagram; UP on a matching reply, or when no ICMP port unreachable comes back.',
+      },
+      {
+        name: 'tls',
+        label: 'TLS Handshake',
+        description:
+          'Completes a TLS handshake (SNI, ALPN) and records the certificate for expiry warnings.',
+      },
+      {
+        name: 'imap',
+        label: 'IMAP',
+        description: 'Reads the greeting, optionally upgrades with STARTTLS and logs in.',
+      },
+      {
+        name: 'pop3',
+        label: 'POP3',
+        description: 'Reads the greeting, optionally upgrades with STLS and logs in.',
+      },
+      {
         name: 'radius',
         label: 'Radius',
         description: 'Sends an Access-Request; UP unless the server rejects it.',
@@ -376,6 +429,21 @@ export const MQTT_CHECK_TYPES = ['keyword', 'json-query'] as const
 export const SNMP_VERSIONS = ['1', '2c'] as const
 export const SMTP_SECURITY_MODES = ['opportunistic', 'starttls', 'secure', 'nostarttls'] as const
 export const SSH_AUTH_METHODS = ['password', 'privateKey'] as const
+export const UDP_PAYLOAD_ENCODINGS = ['text', 'hex'] as const
+export const UDP_RESPONSE_MATCHES = ['none', 'any', 'keyword', 'regex'] as const
+
+/** UDP hex payload: pairs of hex digits, spaces, colons and a `0x` prefix allowed. */
+export const isHexPayloadText = (value: string | null | undefined): boolean =>
+  /^(?:[0-9a-f]{2})*$/i.test((value ?? '').replace(/^0x/i, '').replace(/[\s:]/g, ''))
+
+const isValidRegex = (value: string): boolean => {
+  try {
+    new RegExp(value)
+    return true
+  } catch {
+    return false
+  }
+}
 
 /** Uptime Kuma's UI minimum for `interval` and `retryInterval`. */
 export const MIN_INTERVAL_SECONDS = 20
@@ -663,6 +731,29 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       sshPassphrase: optionalText(500),
       sftpPath: optionalText(2048),
 
+      // SSH (credentials shared with SFTP)
+      sshCommand: optionalText(5000),
+      sshExpectedExitCode: z.number().int().min(0).max(255).default(0),
+      sshExpectedOutput: optionalText(2000),
+
+      // UDP
+      udpPayload: z
+        .string()
+        .max(8192)
+        .nullish()
+        .transform((v) => (v ? v : null)),
+      udpPayloadEncoding: z.enum(UDP_PAYLOAD_ENCODINGS).default('text'),
+      udpResponseMatch: z.enum(UDP_RESPONSE_MATCHES).default('none'),
+      udpResponsePattern: optionalText(1000),
+
+      // TLS handshake
+      tlsServername: optionalText(253),
+      tlsAlpn: optionalText(500),
+
+      // IMAP / POP3 (security mode shared with SMTP)
+      mailUsername: optionalText(500),
+      mailPassword: optionalText(500),
+
       // RabbitMQ
       rabbitmqNodes: textList(2048),
       rabbitmqUsername: optionalText(500),
@@ -807,7 +898,8 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       if (isHostMonitorType(type) && !values.hostname) {
         issue('hostname', message('hostnameRequired'))
       }
-      const portRequired = type === 'port' || type === 'steam' || type === 'gamedig'
+      const portRequired =
+        type === 'port' || type === 'steam' || type === 'gamedig' || type === 'udp'
       if (portRequired && (values.port === null || values.port === undefined)) {
         issue('port', message('portRequired'))
       }
@@ -898,6 +990,31 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         if (!values.sshUsername) issue('sshUsername', message('usernameRequired'))
         if (values.sshAuthMethod === 'privateKey' && !values.sshPrivateKey) {
           issue('sshPrivateKey', message('sshPrivateKeyRequired'))
+        }
+      }
+
+      if (type === 'ssh') {
+        if (values.sshCommand && !values.sshUsername) {
+          issue('sshUsername', message('usernameRequired'))
+        }
+        if (values.sshUsername && values.sshAuthMethod === 'privateKey' && !values.sshPrivateKey) {
+          issue('sshPrivateKey', message('sshPrivateKeyRequired'))
+        }
+      }
+
+      if (type === 'udp') {
+        if (values.udpPayloadEncoding === 'hex' && !isHexPayloadText(values.udpPayload)) {
+          issue('udpPayload', message('udpHexPayload'))
+        }
+        if (values.udpResponseMatch === 'keyword' || values.udpResponseMatch === 'regex') {
+          if (!values.udpResponsePattern) {
+            issue('udpResponsePattern', message('udpPatternRequired'))
+          } else if (
+            values.udpResponseMatch === 'regex' &&
+            !isValidRegex(values.udpResponsePattern)
+          ) {
+            issue('udpResponsePattern', message('regexInvalid'))
+          }
         }
       }
 
@@ -1090,6 +1207,17 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     sshPrivateKey: null,
     sshPassphrase: null,
     sftpPath: null,
+    sshCommand: null,
+    sshExpectedExitCode: 0,
+    sshExpectedOutput: null,
+    udpPayload: null,
+    udpPayloadEncoding: 'text',
+    udpResponseMatch: 'none',
+    udpResponsePattern: null,
+    tlsServername: null,
+    tlsAlpn: null,
+    mailUsername: null,
+    mailPassword: null,
     rabbitmqNodes: [],
     rabbitmqUsername: null,
     rabbitmqPassword: null,

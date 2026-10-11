@@ -108,3 +108,49 @@ describe('monitor assertions in the form schema', () => {
     expect(result.success).toBe(true)
   })
 })
+
+describe('protocol monitor validation (#141)', () => {
+  it('requires a port and a valid hex payload or pattern for UDP', () => {
+    const result = monitorFormSchema.safeParse({
+      ...defaultMonitorValues('udp'),
+      name: 'udp',
+      hostname: 'syslog.example.com',
+      udpPayload: 'xyz',
+      udpPayloadEncoding: 'hex',
+      udpResponseMatch: 'regex',
+      udpResponsePattern: '(',
+    })
+    expect(issuesOf(result)).toEqual({
+      port: 'Port is required',
+      udpPayload: 'Enter pairs of hex digits, e.g. ff 00 1a',
+      udpResponsePattern: 'Not a valid regular expression',
+    })
+    expect(
+      monitorFormSchema.safeParse({
+        ...defaultMonitorValues('udp'),
+        name: 'udp',
+        hostname: 'syslog.example.com',
+        port: 514,
+        udpPayload: 'de ad be ef',
+        udpPayloadEncoding: 'hex',
+        udpResponseMatch: 'keyword',
+        udpResponsePattern: 'ok',
+      }).success,
+    ).toBe(true)
+  })
+
+  it('needs an SSH username only to run a command', () => {
+    const base = { ...defaultMonitorValues('ssh'), name: 'ssh', hostname: 'host.example.com' }
+    expect(defaultMonitorValues('ssh').port).toBe(22)
+    expect(monitorFormSchema.safeParse(base).success).toBe(true)
+    expect(issuesOf(monitorFormSchema.safeParse({ ...base, sshCommand: 'uptime' }))).toEqual({
+      sshUsername: 'Username is required',
+    })
+  })
+
+  it('defaults the TLS and mail ports', () => {
+    expect(defaultMonitorValues('tls').port).toBe(443)
+    expect(defaultMonitorValues('imap').port).toBe(143)
+    expect(defaultMonitorValues('pop3').port).toBe(110)
+  })
+})

@@ -261,6 +261,9 @@ importers:
       '@types/react-dom':
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.14)
+      '@types/ssh2':
+        specifier: ^1.15.6
+        version: 1.15.6
       '@types/ssh2-sftp-client':
         specifier: ^9.0.6
         version: 9.0.6
@@ -349,6 +352,9 @@ importers:
       radius:
         specifier: ^1.1.4
         version: 1.1.4
+      ssh2:
+        specifier: ^1.17.0
+        version: 1.17.0
       ssh2-sftp-client:
         specifier: ^12.1.1
         version: 12.1.1
