@@ -2209,26 +2209,6 @@
           "notNull": false,
           "default": false
         },
-        "ct_alerts": {
-          "name": "ct_alerts",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "ct_include_subdomains": {
-          "name": "ct_include_subdomains",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "ct_state": {
-          "name": "ct_state",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "cert_info": {
           "name": "cert_info",
           "type": "jsonb",
@@ -2432,6 +2412,20 @@
           "primaryKey": false,
           "notNull": false,
           "default": 3
+        },
+        "status_page_provider": {
+          "name": "status_page_provider",
+          "type": "enum_monitors_status_page_provider",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'auto'"
+        },
+        "status_page_components": {
+          "name": "status_page_components",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         },
         "push_token": {
           "name": "push_token",
@@ -2808,6 +2802,12 @@
         "status_push_runs": {
           "name": "status_push_runs",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_cache_seconds": {
+          "name": "status_cache_seconds",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -4467,13 +4467,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "fingerprint": {
-          "name": "fingerprint",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "''"
-        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -4550,8 +4543,8 @@
           "method": "btree",
           "with": {}
         },
-        "type_monitor_days_fingerprint_idx": {
-          "name": "type_monitor_days_fingerprint_idx",
+        "type_monitor_days_idx": {
+          "name": "type_monitor_days_idx",
           "columns": [
             {
               "expression": "type",
@@ -4567,12 +4560,6 @@
             },
             {
               "expression": "days",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "fingerprint",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -14550,6 +14537,7 @@
         "ping",
         "dns",
         "globalping",
+        "status-page",
         "push",
         "group",
         "manual",
@@ -14703,6 +14691,18 @@
         "atLeast"
       ]
     },
+    "public.enum_monitors_status_page_provider": {
+      "name": "enum_monitors_status_page_provider",
+      "schema": "public",
+      "values": [
+        "auto",
+        "atlassian",
+        "instatus",
+        "betterstack",
+        "incidentio",
+        "feed"
+      ]
+    },
     "public.enum_monitors_push_schedule": {
       "name": "enum_monitors_push_schedule",
       "schema": "public",
@@ -14832,8 +14832,7 @@
       "schema": "public",
       "values": [
         "certificate",
-        "domain",
-        "ct"
+        "domain"
       ]
     },
     "public.enum_heartbeats_location_status": {
@@ -15390,6 +15389,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "414a8f74-60f4-4eff-be88-ab98bfeaf2dc",
+  "id": "a64bc332-e302-4b43-9469-f879d54b8d99",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

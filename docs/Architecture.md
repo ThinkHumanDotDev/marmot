@@ -99,7 +99,7 @@ After each beat the worker writes a `heartbeats` row, refreshes the monitor's `s
 them through `monitors.locations` (up to `MAX_MONITOR_LOCATIONS` = 10; none = the implicit `local` worker
 pool, which `includeLocal` adds to probe locations); `src/lib/probe-locations.ts` holds the shared rules
 (`monitorLocationKeys`, `checksLocally`, `isRemoteMonitor`, `isMultiLocation`, `quorumNeeded`,
-`PROBE_UNSUPPORTED_TYPES`: group, manual, push, steam, globalping).
+`PROBE_UNSUPPORTED_TYPES`: group, manual, push, steam, globalping, status-page).
 
 - **Token**: `mp_<prefix>_<secret>` (`src/server/probes/tokens.ts`), modelled on API keys: only the SHA-256
   is stored, the plaintext is returned once by `POST /api/orgs/:orgId/locations` and
