@@ -63,6 +63,14 @@
       "hour": "{count, plural, one {# hour} other {# hours}}",
       "minute": "{count, plural, one {# minute} other {# minutes}}",
       "second": "{count, plural, one {# second} other {# seconds}}"
+    },
+    "source": "Source",
+    "legal": {
+      "both": "By signing up you agree to the <terms>Terms of Service</terms> and the <privacy>Privacy Policy</privacy>.",
+      "terms": "By signing up you agree to the <terms>Terms of Service</terms>.",
+      "privacy": "By signing up you acknowledge the <privacy>Privacy Policy</privacy>.",
+      "termsLink": "Terms",
+      "privacyLink": "Privacy"
     }
   },
   "shell": {
@@ -1723,7 +1731,12 @@
       "stripeMissing": "Stripe is not configured on this instance, so plans can only be changed by an instance administrator.",
       "checkoutSuccess": "Thanks! Your plan updates as soon as Stripe confirms the payment.",
       "checkoutCanceled": "Checkout canceled. Your plan is unchanged.",
-      "failed": "Something went wrong"
+      "failed": "Something went wrong",
+      "legal": {
+        "both": "Subscriptions are subject to the <terms>Terms of Service</terms> and the <privacy>Privacy Policy</privacy>.",
+        "terms": "Subscriptions are subject to the <terms>Terms of Service</terms>.",
+        "privacy": "See the <privacy>Privacy Policy</privacy> for how billing data is handled."
+      }
     },
     "defaultChannels": {
       "title": "Default notification channels",
@@ -5211,6 +5224,7 @@
     "homeLabel": "Marmot home",
     "nav": {
       "features": "Features",
+      "pricing": "Pricing",
       "selfHost": "Self-host",
       "signIn": "Sign in",
       "getStarted": "Get started"
@@ -5261,8 +5275,8 @@
     "footer": {
       "tagline": "Marmot · status monitoring for teams",
       "docs": "Docs",
-      "github": "GitHub",
-      "signIn": "Sign in"
+      "signIn": "Sign in",
+      "pricing": "Pricing"
     },
     "preview": {
       "title": "Monitors",
@@ -5853,5 +5867,33 @@
       "apiError": "The Marmot API answered {status}: {message}",
       "networkError": "Could not reach {url}: {message}"
     }
+  },
+  "pricing": {
+    "pageTitle": "Pricing",
+    "title": "Simple plans that grow with your team",
+    "description": "Start free, upgrade when you need more monitors, people or history. Every plan includes all monitor types and notification providers.",
+    "perMonth": "/ month",
+    "perYear": "or {price} / year",
+    "free": "Free",
+    "limits": {
+      "monitors": "{count, plural, one {# monitor} other {# monitors}}",
+      "monitorsUnlimited": "Unlimited monitors",
+      "members": "{count, plural, one {# member} other {# members}}",
+      "membersUnlimited": "Unlimited members",
+      "statusPages": "{count, plural, one {# status page} other {# status pages}}",
+      "statusPagesUnlimited": "Unlimited status pages",
+      "interval": "Checks every {seconds} seconds",
+      "retention": "{days, plural, one {# day} other {# days}} of history",
+      "retentionUnlimited": "Unlimited history",
+      "customDomains": "Status pages on your own domain",
+      "noCustomDomains": "Status pages on this instance's domain"
+    },
+    "cta": {
+      "signUp": "Get started",
+      "signIn": "Sign in",
+      "billing": "Manage plan"
+    },
+    "selfHost": "Prefer to run it yourself? Marmot is open source and free to self-host with no limits.",
+    "selfHostLink": "Self-hosting guide"
   }
 }

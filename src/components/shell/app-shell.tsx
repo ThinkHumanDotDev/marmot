@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import * as React from 'react'
 
+import { SourceLink } from '@/components/legal-links'
 import { Logo, LogoMark } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -27,6 +28,8 @@ import { UserMenu } from './user-menu'
 
 interface AppShellProps extends ShellContext {
   children: React.ReactNode
+  /** Target of the footer "Source" link (`SOURCE_URL` or the release tag, AGPL-3.0 §13). */
+  sourceUrl: string
 }
 
 /**
@@ -34,7 +37,7 @@ interface AppShellProps extends ShellContext {
  * surface; the main content is a rounded, bordered panel floating inside it. On phones the
  * sidebar becomes a Sheet drawer behind a slim top bar.
  */
-export function AppShell({ user, organizations, currentOrg, children }: AppShellProps) {
+export function AppShell({ user, organizations, currentOrg, sourceUrl, children }: AppShellProps) {
   const t = useTranslations('shell')
   const collapsed = useUiStore((s) => s.sidebarCollapsed)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
@@ -189,7 +192,15 @@ export function AppShell({ user, organizations, currentOrg, children }: AppShell
         tabIndex={-1}
         className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground outline-none md:rounded-xl md:border md:shadow-xs"
       >
-        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="flex-1">{children}</div>
+          <footer className="flex justify-end px-4 py-3 text-xs text-muted-foreground sm:px-6">
+            <SourceLink
+              href={sourceUrl}
+              className="underline-offset-4 hover:text-foreground hover:underline"
+            />
+          </footer>
+        </div>
       </main>
 
       <CommandPalette organizations={organizations} currentOrg={currentOrg} />
