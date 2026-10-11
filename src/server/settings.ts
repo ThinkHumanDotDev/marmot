@@ -8,6 +8,7 @@ export interface InstanceSettings {
   primaryBaseUrl: string
   allowSignup: boolean
   requireEmailVerification: boolean
+  magicLinkEnabled: boolean
   entryPage: 'dashboard' | 'status-page'
   tlsExpiryNotifyDays: number[]
   domainExpiryNotifyDays: number[]
@@ -22,11 +23,20 @@ export const DEFAULT_EXPIRY_NOTIFY_DAYS: readonly number[] = [7, 14, 21]
 
 export const INSTANCE_SETTINGS_CACHE_MS = 60_000
 
-let cached: { value: InstanceSettings; expiresAt: number } | undefined
+type CachedSettings = { value: InstanceSettings; expiresAt: number }
+const CACHE_KEY = Symbol.for('marmot.instance-settings.cache')
+type GlobalWithCache = typeof globalThis & { [CACHE_KEY]?: CachedSettings }
+
+/**
+ * The cache lives on `globalThis`: a production Next.js server evaluates this module once per
+ * route bundle and layer, so a module-level variable would give the login page its own copy that
+ * the global's `afterChange` (reached through the REST route) never resets.
+ */
+const cache = globalThis as GlobalWithCache
 
 /** Drops the in-memory copy so the next `getInstanceSettings()` reads the database. */
 export function resetInstanceSettingsCache(): void {
-  cached = undefined
+  delete cache[CACHE_KEY]
 }
 
 /**
@@ -38,6 +48,7 @@ export function defaultInstanceSettings(): InstanceSettings {
     primaryBaseUrl: env.NEXT_PUBLIC_SERVER_URL,
     allowSignup: !env.DISABLE_SIGNUP,
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
+    magicLinkEnabled: env.MAGIC_LINK_ENABLED,
     entryPage: 'dashboard',
     tlsExpiryNotifyDays: [...DEFAULT_EXPIRY_NOTIFY_DAYS],
     domainExpiryNotifyDays: [...DEFAULT_EXPIRY_NOTIFY_DAYS],
@@ -67,6 +78,8 @@ export function resolveInstanceSettings(
       typeof doc.requireEmailVerification === 'boolean'
         ? doc.requireEmailVerification
         : defaults.requireEmailVerification,
+    magicLinkEnabled:
+      typeof doc.magicLinkEnabled === 'boolean' ? doc.magicLinkEnabled : defaults.magicLinkEnabled,
     entryPage: doc.entryPage === 'status-page' ? 'status-page' : 'dashboard',
     tlsExpiryNotifyDays: numbers(doc.tlsExpiryNotifyDays, defaults.tlsExpiryNotifyDays),
     domainExpiryNotifyDays: numbers(doc.domainExpiryNotifyDays, defaults.domainExpiryNotifyDays),
@@ -87,6 +100,7 @@ export function resolveInstanceSettings(
  */
 export async function getInstanceSettings(payload: Payload): Promise<InstanceSettings> {
   const now = Date.now()
+  const cached = cache[CACHE_KEY]
   if (cached && cached.expiresAt > now) return cached.value
 
   let doc: InstanceSetting | null = null
@@ -97,7 +111,7 @@ export async function getInstanceSettings(payload: Payload): Promise<InstanceSet
   }
 
   const value = resolveInstanceSettings(doc)
-  cached = { value, expiresAt: now + INSTANCE_SETTINGS_CACHE_MS }
+  cache[CACHE_KEY] = { value, expiresAt: now + INSTANCE_SETTINGS_CACHE_MS }
   return value
 }
 
@@ -122,4 +136,15 @@ export async function isEmailVerificationRequired(payload: Payload): Promise<boo
   // verification requirement could only lock the shared account out.
   if (env.DEMO_MODE) return false
   return (await getInstanceSettings(payload)).requireEmailVerification
+}
+
+/**
+ * Whether people may sign in with a link sent to their address (#164): `magicLinkEnabled`,
+ * defaulting to `MAGIC_LINK_ENABLED` (off). Sign-in links count as a local login, so the SSO-only
+ * mode (`OIDC_DISABLE_LOCAL_LOGIN`) turns them off whatever the setting says.
+ */
+export async function isMagicLinkEnabled(payload: Payload): Promise<boolean> {
+  // Demo mode (#159): the shared account's credentials stay fixed and no mail leaves the instance.
+  if (env.OIDC_DISABLE_LOCAL_LOGIN || env.DEMO_MODE) return false
+  return (await getInstanceSettings(payload)).magicLinkEnabled
 }

@@ -123,6 +123,17 @@ export interface TwoFactorLoginResponse {
 
 export interface AuthConfig {
   signupEnabled: boolean
+  /** "Email me a sign-in link" is offered (#164). */
+  magicLinkEnabled: boolean
+}
+
+/** `POST /api/auth/magic-link/verify`: signed in, or the code step of two-factor authentication. */
+export interface MagicLinkVerifyResponse {
+  user?: SessionUser
+  exp?: number
+  created?: boolean
+  requiresTwoFactor?: boolean
+  challenge?: string
 }
 
 /** `GET /api/auth/providers` (see `src/auth/sso`). */
@@ -163,6 +174,12 @@ export const authApi = {
       '/api/auth/verify-email',
       { token },
     ),
+  /** Mails a single-use sign-in link; the same answer whether or not the account exists. */
+  requestMagicLink: (data: { email: string; next?: string }) =>
+    api.post<{ sent: true }>('/api/auth/magic-link', data),
+  /** Redeems the link from the sign-in email (`/login/magic-link?token=…`). */
+  verifyMagicLink: (token: string) =>
+    api.post<MagicLinkVerifyResponse>('/api/auth/magic-link/verify', { token }),
   /** Mails the signed-in user a new verification link (rate limited). */
   resendVerification: () => api.post<{ sent: boolean }>('/api/auth/verify-email/resend'),
 }
