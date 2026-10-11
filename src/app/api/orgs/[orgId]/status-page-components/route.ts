@@ -1,8 +1,7 @@
 import { createLocalReq, getPayload } from 'payload'
-import { z } from 'zod'
 
 import config from '@payload-config'
-import { STATUS_PAGE_PROVIDERS } from '@/lib/validation/status-page-monitor'
+import { statusPageLookupSchema } from '@/lib/validation/status-page-monitor'
 import type { Monitor } from '@/payload-types'
 import { fetchVendorStatus } from '@/server/monitor-types/status-page-fetch'
 import { consumeCheckBudget, resolveCheckActor } from '@/server/monitors/checks'
@@ -14,14 +13,6 @@ import { monitorTargetProblem } from '@/server/security/monitor-targets'
 export const dynamic = 'force-dynamic'
 
 type RouteContext = { params: Promise<{ orgId: string }> }
-
-const bodySchema = z.object({
-  url: z
-    .string()
-    .trim()
-    .regex(/^https?:\/\/\S+$/i),
-  provider: z.enum(STATUS_PAGE_PROVIDERS).default('auto'),
-})
 
 /** How long the form waits for the vendor before giving up. */
 const LOOKUP_TIMEOUT_MS = 15_000
@@ -49,7 +40,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (!body || typeof body !== 'object') {
     return jsonError(400, errorText(request, 'expectedJsonBody'))
   }
-  const parsed = bodySchema.safeParse(body)
+  const parsed = statusPageLookupSchema.safeParse(body)
   if (!parsed.success) return validationError(parsed.error, request)
 
   const req = await createLocalReq({ user: actor.user }, payload)

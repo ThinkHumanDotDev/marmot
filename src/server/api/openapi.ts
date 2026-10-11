@@ -30,6 +30,7 @@ import { LOG_TRIGGERS } from '@/lib/response-log'
 import { SUBSCRIBER_CHANNELS } from '@/lib/status-page-subscribers'
 import { maintenanceFormSchema } from '@/lib/validation/maintenance'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
+import { statusPageLookupSchema } from '@/lib/validation/status-page-monitor'
 import { apiKeyCreateSchema, apiKeyPatchSchema } from '@/server/api-keys/schemas'
 import { locationCreateSchema, locationPatchSchema } from '@/server/probes/schemas'
 import { API_KEY_FORBIDDEN_SECTIONS, isWriteMethod } from '@/server/auth/request-auth'
@@ -375,6 +376,22 @@ export const OPERATIONS: OperationSpec[] = [
     permission: 'monitor:update',
     body: { schema: monitorFormSchema },
     response: { description: 'Check result', schema: anyObject },
+  },
+
+  {
+    method: 'POST',
+    path: `${ORG}/status-page-components`,
+    operationId: 'lookupStatusPageComponents',
+    summary: "Read a vendor status page's format, state and components",
+    description:
+      'For the component filter of third-party status page monitors. Nothing is stored; 422 when the page cannot be read or has no supported format. Shares the per-organization on-demand budget.',
+    tag: 'Monitors',
+    permission: 'monitor:update',
+    body: { schema: statusPageLookupSchema },
+    response: {
+      description: 'Detected format, page name, overall indicator and components',
+      schema: anyObject,
+    },
   },
 
   // Docker hosts

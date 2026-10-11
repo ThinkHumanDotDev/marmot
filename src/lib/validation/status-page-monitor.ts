@@ -2,6 +2,8 @@
  * Settings of the third-party status page monitor (#125), shared by the collection, the form schema
  * and the worker. Client-safe: no server imports.
  */
+import { z } from 'zod'
+
 import { VENDOR_PROVIDERS, type ComponentFilter } from '@/lib/vendor-status'
 
 /** `auto` tries every supported format; the others pin one. */
@@ -13,6 +15,16 @@ export type StatusPageProviderSetting = (typeof STATUS_PAGE_PROVIDERS)[number]
  * max-age` on the vendor's document raises the interval further.
  */
 export const STATUS_PAGE_MIN_INTERVAL_SECONDS = 120
+
+/** Body of `POST /api/orgs/:orgId/status-page-components` (the form's component lookup). */
+export const statusPageLookupSchema = z.object({
+  url: z
+    .string()
+    .trim()
+    .regex(/^https?:\/\/\S+$/i)
+    .describe("The vendor's status page (http or https)"),
+  provider: z.enum(STATUS_PAGE_PROVIDERS).default('auto').describe('Format; auto detects it'),
+})
 
 /** At most this many components per monitor. */
 export const STATUS_PAGE_MAX_COMPONENTS = 50
