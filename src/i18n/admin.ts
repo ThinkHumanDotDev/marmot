@@ -209,6 +209,14 @@ export const adminTranslations = {
       statusPageViewers: {
         statusDescription: 'revoked: the visitor is signed out and cannot request new links.',
       },
+      statusPageUptimeHistory: {
+        label: 'Status page uptime history',
+        description:
+          'Daily uptime of status page components, preserved after retention prunes the statistics.',
+        timestampDescription: 'Unix seconds of the start of the day (UTC).',
+        downSecondsDescription: 'Seconds the monitor spent DOWN that day.',
+        knownSecondsDescription: 'Seconds of the day whose monitor status is known.',
+      },
       maintenance: {
         descriptionDescription: 'Shown on status pages.',
         activeDescription: 'Paused maintenances never run.',
@@ -471,6 +479,10 @@ export const adminTranslations = {
         contactUrlDescription:
           'Contact link in the page header: an http(s) URL or mailto: address.',
         showValuesDescription: 'Show uptime percentages and response times to visitors.',
+        uptimeBarDaysDescription: 'Number of daily uptime bars per component (30, 45 or 90).',
+        uptimeCalculationDescription:
+          'checks: successful / all checks. duration: time not DOWN / total time. manual: from incident impacts only.',
+        showUptimePercentageDescription: 'Show the uptime percentage next to the daily bars.',
         defaultOpenDescription: 'Expanded when the page loads; visitors can still collapse it.',
         componentsDescription:
           'Components of the group: monitors, or static entries set by incidents.',

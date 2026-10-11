@@ -47,6 +47,8 @@ export const PERMISSIONS = {
   'status-page:create': 'member',
   'status-page:update': 'member',
   'status-page:delete': 'member',
+  // Monthly uptime history and its CSV export for SLA reporting (#112).
+  'status-page:history': 'admin',
 
   // Status page subscribers (#104): addresses are personal data, so viewers do not see them.
   'subscriber:read': 'member',
