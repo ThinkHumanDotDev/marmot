@@ -507,7 +507,7 @@ describe('demo mode', () => {
       await expect(demoSession()).resolves.toBeTruthy()
     })
 
-    it('locks API keys, webhooks, SSO, uploads, custom domains and instance settings', async () => {
+    it('locks API keys, webhooks, OpenTelemetry collectors, SSO, uploads, custom domains and instance settings', async () => {
       const { user } = await demoSession()
       const org = await demoOrg()
       const asDemo = { user, overrideAccess: false } as const
@@ -524,6 +524,13 @@ describe('demo mode', () => {
         payload.create({
           collection: 'webhook-endpoints',
           data: { organization: org.id, url: 'https://example.com', events: ['*'] } as never,
+          ...asDemo,
+        }),
+      ).rejects.toMatchObject(refused)
+      await expect(
+        payload.create({
+          collection: 'otel-collectors',
+          data: { organization: org.id, name: 'o', endpoint: 'https://otlp.example.com' } as never,
           ...asDemo,
         }),
       ).rejects.toMatchObject(refused)

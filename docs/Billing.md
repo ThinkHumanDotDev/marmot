@@ -124,6 +124,20 @@ missing or no price matches the plan.
 
 Renaming an organization updates the Stripe customer's name (`afterChange` hook, best effort).
 
+### Pricing page
+
+With `LANDING_PAGE_ENABLED` and `BILLING_ENABLED` both on, `/pricing` shows the free plan and every plan in
+`PURCHASABLE_PLANS` with its limits from `PLAN_LIMITS`, and the landing page links to it. Prices are the
+active recurring Stripe prices tagged `metadata.plan` (on the price or its product), the same ones Checkout
+uses: the monthly price is the headline, the yearly one is shown below it. Prices are cached for five
+minutes; without `STRIPE_SECRET_KEY`, or while Stripe is unreachable, the page shows the limits without
+prices. Signed-out visitors are sent to sign-up (or sign-in when sign-up is closed), signed-in users to the
+Billing tab of an organization they administer. With either flag off, `/pricing` answers 404.
+
+Set `TERMS_URL` and `PRIVACY_URL` to link your terms of service and privacy policy from the landing and
+pricing footers, the sign-up form and the Billing tab. Marmot does not ship or host that text; see
+[Configuration](Configuration.md#hosted-instance).
+
 ### Why the Stripe plugin's `sync` option is not used
 
 `@payloadcms/plugin-stripe` can mirror a collection to Stripe customers, but it does so by adding
@@ -141,6 +155,7 @@ the plugin is used for webhook verification and dispatch.
 | `src/server/billing/webhooks.ts`            | `stripeWebhookHandlers`, `handleSubscriptionEvent`, `planFromSubscription`                 |
 | `src/server/billing/stripe.ts`              | Lazy Stripe client, `ensureStripeCustomer`, `createCheckoutSession`, `createPortalSession` |
 | `src/server/billing/overview.ts`            | `getBillingOverview` (settings page + `GET /billing`)                                      |
+| `src/server/billing/pricing.ts`             | `isPricingEnabled`, `getPricingPlans` (`/pricing`)                                         |
 | `src/server/billing/http.ts`                | Route plumbing: 501 gate, auth, admin check                                                |
 | `src/app/api/orgs/[orgId]/billing/**`       | Route handlers                                                                             |
 | `src/components/settings/billing-panel.tsx` | Billing tab UI                                                                             |
