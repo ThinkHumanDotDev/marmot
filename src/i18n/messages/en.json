@@ -5227,7 +5227,8 @@
       "pricing": "Pricing",
       "selfHost": "Self-host",
       "signIn": "Sign in",
-      "getStarted": "Get started"
+      "getStarted": "Get started",
+      "dashboard": "Dashboard"
     },
     "hero": {
       "eyebrow": "Uptime monitoring for teams",

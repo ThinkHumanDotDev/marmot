@@ -42,12 +42,15 @@ export default async function PricingPage() {
     getFormatter(),
     isSignupAllowed(await getPayload({ config })),
   ])
+  const organizations = user ? await getUserOrganizations(user) : []
   const cta = user
-    ? { href: billingPathFor(await getUserOrganizations(user)), label: t('cta.billing') }
+    ? { href: billingPathFor(organizations), label: t('cta.billing') }
     : signupEnabled
       ? { href: '/signup', label: t('cta.signUp') }
       : { href: '/login', label: t('cta.signIn') }
 
+  // Without Stripe prices the cards skip the empty price row instead of reserving space for it.
+  const anyPrice = plans.some((plan) => plan.prices.month || plan.prices.year)
   const money = (price: PlanPrice) =>
     format.number(price.amount, {
       style: 'currency',
@@ -77,7 +80,11 @@ export default async function PricingPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-sidebar">
-      <LandingHeader signupEnabled={signupEnabled} pricingEnabled />
+      <LandingHeader
+        signupEnabled={signupEnabled}
+        pricingEnabled
+        dashboardHref={user ? homePathFor(organizations) : null}
+      />
       <main className="flex-1">
         <section className="mx-auto w-full max-w-6xl px-4 pt-12 pb-20 sm:px-6 lg:pt-20">
           <div className="max-w-2xl">
@@ -104,7 +111,7 @@ export default async function PricingPage() {
                   )}
                 >
                   <h2 className="text-lg font-semibold">{plan.label}</h2>
-                  <div className="mt-4 min-h-16">
+                  <div className={cn('mt-4', anyPrice && 'min-h-16')}>
                     {!plan.purchasable ? (
                       <p className="text-3xl font-semibold tracking-tight">{t('free')}</p>
                     ) : plan.prices.month ? (

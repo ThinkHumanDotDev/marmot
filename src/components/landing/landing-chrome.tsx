@@ -15,6 +15,8 @@ interface LandingHeaderProps {
   pricingEnabled: boolean
   /** On `/` the section anchors are local; elsewhere they point back to the landing page. */
   onLandingPage?: boolean
+  /** Signed-in visitors get a link to their dashboard instead of sign-in and sign-up. */
+  dashboardHref?: string | null
 }
 
 /** Top bar shared by the landing page and `/pricing`. */
@@ -22,6 +24,7 @@ export async function LandingHeader({
   signupEnabled,
   pricingEnabled,
   onLandingPage = false,
+  dashboardHref = null,
 }: LandingHeaderProps) {
   const t = await getTranslations('landing')
   const anchor = (id: string) => (onLandingPage ? `#${id}` : `/#${id}`)
@@ -42,13 +45,21 @@ export async function LandingHeader({
         <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
           <a href={anchor('self-host')}>{t('nav.selfHost')}</a>
         </Button>
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/login">{t('nav.signIn')}</Link>
-        </Button>
-        {signupEnabled && (
+        {dashboardHref ? (
           <Button asChild size="sm">
-            <Link href="/signup">{t('nav.getStarted')}</Link>
+            <Link href={dashboardHref}>{t('nav.dashboard')}</Link>
           </Button>
+        ) : (
+          <>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/login">{t('nav.signIn')}</Link>
+            </Button>
+            {signupEnabled && (
+              <Button asChild size="sm">
+                <Link href="/signup">{t('nav.getStarted')}</Link>
+              </Button>
+            )}
+          </>
         )}
       </nav>
     </header>
