@@ -507,6 +507,10 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       includeLocal: z.boolean().default(false),
       /** How many locations must agree before the monitor changes status (#92). */
       quorum: z.enum(QUORUM_MODES).default(DEFAULT_QUORUM),
+      /** Export check results as OpenTelemetry metrics (#99). */
+      otlpExport: z.boolean().default(true),
+      /** OTLP collector (#99); `null` = the organization's default collector. */
+      otlpCollector: relationId,
 
       // Target
       url: optionalText(2048),
@@ -1002,6 +1006,8 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     locations: [],
     includeLocal: false,
     quorum: DEFAULT_QUORUM,
+    otlpExport: true,
+    otlpCollector: null,
     url: defaultUrl(type),
     hostname: null,
     port: DEFAULT_PORTS[type] ?? null,
@@ -1132,6 +1138,7 @@ export function monitorToFormValues(doc: MonitorLike): MonitorFormValues {
     parent: toId(doc.parent),
     proxy: toId(doc.proxy),
     dockerHost: toId(doc.dockerHost),
+    otlpCollector: toId(doc.otlpCollector),
   }
   const tags = Array.isArray(doc.tags)
     ? (doc.tags as { tag?: unknown; value?: string | null }[]).flatMap((row) => {
