@@ -70,5 +70,9 @@ export function toStoreMonitor(monitor: RealtimeMonitor): MonitorSummary {
       color: tag.color,
       value: tag.value,
     })),
+    description: monitor.description ?? null,
+    notifications: (monitor.notifications ?? []).map(String),
+    locations: (monitor.locations ?? []).map(String),
+    includeLocal: monitor.includeLocal === true,
   }
 }
