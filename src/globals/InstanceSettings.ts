@@ -93,6 +93,15 @@ export const InstanceSettings: GlobalConfig = {
       },
     },
     {
+      name: 'magicLinkEnabled',
+      type: 'checkbox',
+      defaultValue: () => env.MAGIC_LINK_ENABLED,
+      admin: {
+        description:
+          'Let people sign in with a single-use link sent to their email address (needs SMTP). Ignored while OIDC_DISABLE_LOCAL_LOGIN is on. Defaults to MAGIC_LINK_ENABLED.',
+      },
+    },
+    {
       name: 'entryPage',
       type: 'select',
       defaultValue: 'dashboard',

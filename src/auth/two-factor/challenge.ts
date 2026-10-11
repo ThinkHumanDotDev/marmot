@@ -16,9 +16,14 @@ export const TWO_FACTOR_CHALLENGE_COOKIE_PATH = '/api/auth'
 /** Wrong codes allowed per challenge before the user has to enter their password again. */
 export const TWO_FACTOR_MAX_ATTEMPTS = 5
 
+/** How the first factor was proven (`auth.login` metadata once the code is verified). */
+export type FirstFactor = 'password' | 'magic-link'
+
 export interface TwoFactorChallenge {
   userId: string
   attempts: number
+  /** Defaults to `password` (challenges sealed before #164 carry none). */
+  method?: FirstFactor
 }
 
 const PURPOSE = 'marmot:2fa-challenge'
@@ -33,7 +38,11 @@ export async function sealChallenge(
   { ttlSeconds = TWO_FACTOR_CHALLENGE_TTL_SECONDS, now = Date.now() } = {},
 ): Promise<string> {
   const issuedAt = Math.floor(now / 1000)
-  return new EncryptJWT({ u: challenge.userId, a: challenge.attempts })
+  return new EncryptJWT({
+    u: challenge.userId,
+    a: challenge.attempts,
+    ...(challenge.method && challenge.method !== 'password' ? { m: challenge.method } : {}),
+  })
     .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
     .setSubject(PURPOSE)
     .setIssuedAt(issuedAt)
@@ -53,9 +62,13 @@ export async function openChallenge(
       subject: PURPOSE,
       currentDate: new Date(now),
     })
-    const { u, a } = payload as Record<string, unknown>
+    const { u, a, m } = payload as Record<string, unknown>
     if (typeof u !== 'string' || u.length === 0) return null
-    return { userId: u, attempts: typeof a === 'number' && a >= 0 ? a : 0 }
+    return {
+      userId: u,
+      attempts: typeof a === 'number' && a >= 0 ? a : 0,
+      method: m === 'magic-link' ? 'magic-link' : 'password',
+    }
   } catch {
     return null
   }

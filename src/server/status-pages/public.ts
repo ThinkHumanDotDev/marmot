@@ -110,6 +110,11 @@ export interface PublicMonitor {
    */
   uptime?: number | null
   tags?: { name: string; color?: string | null; value?: string | null }[]
+  /**
+   * A third-party status page monitor (#125): shown like a static component, its state written out
+   * ("Major outage") instead of a beat bar, since it mirrors what the vendor reports.
+   */
+  vendor?: boolean
 }
 
 export type PublicComponent = PublicMonitor
@@ -510,6 +515,7 @@ async function toPublicMonitor(
     beats,
     ...publicUptime(page, row, 'monitor', uptime),
     ...(showTags ? { tags } : {}),
+    ...(monitor.type === 'status-page' ? { vendor: true } : {}),
   }
 }
 
