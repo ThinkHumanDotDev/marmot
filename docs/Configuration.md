@@ -213,9 +213,16 @@ the `MONITOR_*` address guard and the `CONNECTIVITY_CHECK_*` variables ([its own
 
 Switches for running Marmot as a hosted service. Self-hosted installs leave them off.
 
-| Variable               | Default | Read by | Description                                                                                                                                                       |
-| ---------------------- | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LANDING_PAGE_ENABLED` | `false` | web     | Show a marketing landing page at `/` to signed-out visitors instead of redirecting to `/login`. Signed-in users and fresh installs (setup wizard) are unaffected. |
+| Variable               | Default | Read by | Description                                                                                                                                                                                |
+| ---------------------- | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `LANDING_PAGE_ENABLED` | `false` | web     | Show a marketing landing page at `/` to signed-out visitors instead of redirecting to `/login`. Signed-in users and fresh installs (setup wizard) are unaffected.                          |
+| `TERMS_URL`            | —       | web     | Your terms of service. When set, linked from the landing and pricing footers, the sign-up form ("By signing up you agree to…") and the Billing tab. Marmot does not host the text.         |
+| `PRIVACY_URL`          | —       | web     | Your privacy policy; linked in the same places as `TERMS_URL` when set.                                                                                                                    |
+| `SOURCE_URL`           | —       | web     | Target of the "Source" link in the app, sign-in and landing footers (AGPL-3.0 §13). Set it when you run a modified build; unset, it links to this repository at the running version's tag. |
+
+With `LANDING_PAGE_ENABLED` and `BILLING_ENABLED` both on, `/pricing` lists the purchasable plans with
+their limits and their monthly and yearly Stripe prices (limits only without `STRIPE_SECRET_KEY`); it
+returns 404 otherwise. See [Billing](Billing.md#pricing-page).
 
 ## Demo mode
 
