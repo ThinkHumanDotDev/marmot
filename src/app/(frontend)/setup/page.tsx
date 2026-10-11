@@ -6,6 +6,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { AuthCard } from '@/components/auth/auth-card'
 import { SetupForm } from '@/components/auth/setup-form'
+import { PageTagline } from '@/components/page-tagline'
 import { env } from '@/env'
 import { isEmailVerificationRequired } from '@/server/settings'
 import { needsSetup } from '@/server/setup'
@@ -23,7 +24,7 @@ export const dynamic = 'force-dynamic'
 export default async function SetupPage() {
   const payload = await getPayload({ config })
   if (!(await needsSetup(payload))) redirect('/login')
-  const [t, tc] = await Promise.all([getTranslations('auth.setup'), getTranslations('common')])
+  const t = await getTranslations('auth.setup')
   // The admin created here is verified, but later sign-ups need the links (#177).
   const warnVerificationWithoutSmtp = !env.SMTP_HOST && (await isEmailVerificationRequired(payload))
 
@@ -41,7 +42,7 @@ export default async function SetupPage() {
         ) : null}
         <SetupForm />
       </AuthCard>
-      <p className="mt-10 text-xs text-muted-foreground">{tc('tagline')}</p>
+      <PageTagline className="mt-10" />
     </main>
   )
 }

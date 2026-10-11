@@ -103,6 +103,16 @@ export async function syncStripeCustomerName(org: Organization): Promise<void> {
 
 export type BillingInterval = 'month' | 'year'
 
+/** The plan a price is tagged with: its own `metadata.plan`, else its (expanded) product's. */
+export function planOfPrice(price: Stripe.Price): string | undefined {
+  const product = price.product
+  const productPlan =
+    product && typeof product === 'object' && 'metadata' in product
+      ? product.metadata?.plan
+      : undefined
+  return price.metadata?.plan ?? productPlan
+}
+
 /**
  * Finds the active recurring price whose `metadata.plan` (or its product's) is `plan`. Prices are
  * configured in the Stripe dashboard; no price ids live in the environment.
@@ -119,13 +129,7 @@ export async function findPriceForPlan(
     expand: ['data.product'],
   })
   const matches = prices.data.filter((price) => {
-    const product = price.product
-    const productPlan =
-      product && typeof product === 'object' && 'metadata' in product
-        ? product.metadata?.plan
-        : undefined
-    const priced = price.metadata?.plan ?? productPlan
-    if (priced !== plan) return false
+    if (planOfPrice(price) !== plan) return false
     return interval ? price.recurring?.interval === interval : true
   })
   // Prefer monthly when no interval was requested so the default upgrade is the cheaper commitment.
