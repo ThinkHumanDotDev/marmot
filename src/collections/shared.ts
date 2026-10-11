@@ -29,11 +29,11 @@ export const secretReadAccess =
 
 /**
  * `beforeDelete` hook for collections monitors point at with a single relationship (`proxy`,
- * `dockerHost`): clear the reference on every monitor first, so no dangling id is left behind on
+ * `dockerHost`, `otlpCollector`): clear the reference on every monitor first, so no dangling id is left behind on
  * either database.
  */
 export const detachMonitorRelation =
-  (field: 'proxy' | 'dockerHost'): CollectionBeforeDeleteHook =>
+  (field: 'proxy' | 'dockerHost' | 'otlpCollector'): CollectionBeforeDeleteHook =>
   async ({ id, req }) => {
     await req.payload.update({
       collection: 'monitors' as CollectionSlug,
