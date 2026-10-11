@@ -5,9 +5,11 @@ import config from '@payload-config'
 import { LandingPage } from '@/components/landing/landing-page'
 import { env } from '@/env'
 import { getCurrentUser, getUserOrganizations, homePathFor } from '@/lib/auth'
+import { isPricingEnabled } from '@/server/billing/pricing'
 import { resolveHomeRoute } from '@/server/home'
 import { isSignupAllowed } from '@/server/settings'
 import { needsSetup } from '@/server/setup'
+import { getSiteLinks } from '@/server/site-links'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,5 +26,11 @@ export default async function HomePage() {
     landingEnabled: env.LANDING_PAGE_ENABLED,
   })
   if (route.kind === 'redirect') redirect(route.to)
-  return <LandingPage signupEnabled={await isSignupAllowed(payload)} />
+  return (
+    <LandingPage
+      signupEnabled={await isSignupAllowed(payload)}
+      pricingEnabled={isPricingEnabled()}
+      links={getSiteLinks()}
+    />
+  )
 }
