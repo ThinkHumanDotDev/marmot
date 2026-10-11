@@ -37,7 +37,12 @@ import { runCheck } from '@/server/engine/run-check'
 import { scheduleDemoJobs } from '@/server/maintenance/job'
 import { sendNotification } from '@/server/notifications/send'
 import { findBlockedMessage, guardedFetch } from '@/server/security/outbound-guard'
-import { isEmailVerificationRequired, isSignupAllowed } from '@/server/settings'
+import {
+  isEmailVerificationRequired,
+  isMagicLinkEnabled,
+  isSignupAllowed,
+  resetInstanceSettingsCache,
+} from '@/server/settings'
 import { runSetup, SetupError } from '@/server/setup'
 import { postSubscriberWebhook } from '@/server/status-pages/subscribers/deliver'
 import { postWebhook } from '@/server/webhooks/deliver'
@@ -51,7 +56,13 @@ import { postWebhook } from '@/server/webhooks/deliver'
 type Id = string | number
 
 let payload: Payload
-const ENV_KEYS = ['DEMO_MODE', 'DEMO_MODE_FORCE', 'SMTP_HOST', 'BILLING_ENABLED'] as const
+const ENV_KEYS = [
+  'DEMO_MODE',
+  'DEMO_MODE_FORCE',
+  'SMTP_HOST',
+  'BILLING_ENABLED',
+  'MAGIC_LINK_ENABLED',
+] as const
 const savedEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]))
 
 function setEnv(values: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>>) {
@@ -452,6 +463,15 @@ describe('demo mode', () => {
     it('turns signups, email verification and first-run setup off', async () => {
       expect(await isSignupAllowed(payload)).toBe(false)
       expect(await isEmailVerificationRequired(payload)).toBe(false)
+      // Sign-in links (#164) stay off even when the instance would otherwise offer them.
+      setEnv({ MAGIC_LINK_ENABLED: 'true' })
+      resetInstanceSettingsCache()
+      try {
+        expect(await isMagicLinkEnabled(payload)).toBe(false)
+      } finally {
+        setEnv({ MAGIC_LINK_ENABLED: undefined })
+        resetInstanceSettingsCache()
+      }
       await expect(
         runSetup(payload, {
           name: 'x',

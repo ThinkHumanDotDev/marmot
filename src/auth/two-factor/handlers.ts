@@ -23,6 +23,7 @@ import type { User } from '@/payload-types'
 import {
   challengeCookie,
   clearChallengeCookie,
+  type FirstFactor,
   openChallenge,
   sealChallenge,
   TWO_FACTOR_CHALLENGE_COOKIE,
@@ -73,11 +74,18 @@ export const publicUser = (user: Pick<User, 'id' | 'email' | 'name'>) => ({
   name: user.name ?? null,
 })
 
-/** Issues the challenge cookie for `userId`: the browser now has to present a code. */
+/**
+ * Issues the challenge cookie for `userId`: the browser now has to present a code. `method` is
+ * the first factor (a password, or an email sign-in link), recorded with the login.
+ */
 export async function issueTwoFactorChallenge(
   userId: User['id'],
+  method: FirstFactor = 'password',
 ): Promise<{ challenge: string; cookie: string }> {
-  const challenge = await sealChallenge({ userId: String(userId), attempts: 0 }, env.PAYLOAD_SECRET)
+  const challenge = await sealChallenge(
+    { userId: String(userId), attempts: 0, method },
+    env.PAYLOAD_SECRET,
+  )
   return { challenge, cookie: challengeCookie(challenge, { secure: cookiesAreSecure() }) }
 }
 
@@ -235,7 +243,10 @@ export async function handleTwoFactorLogin(request: Request): Promise<Response> 
       log.warn({ user: userId }, 'two-factor challenge exhausted')
       return jsonError(errorText(request, 'tooManyCodes'), 429, [clear])
     }
-    const resealed = await sealChallenge({ userId: challenge.userId, attempts }, env.PAYLOAD_SECRET)
+    const resealed = await sealChallenge(
+      { userId: challenge.userId, attempts, method: challenge.method },
+      env.PAYLOAD_SECRET,
+    )
     return jsonError(errorText(request, 'invalidCode'), 401, [
       challengeCookie(resealed, { secure }),
     ])
@@ -255,7 +266,7 @@ export async function handleTwoFactorLogin(request: Request): Promise<Response> 
   })
   log.info({ user: userId, method }, 'two-factor login succeeded')
   await recordUserAuditEvent(payload, request, user, 'auth.login', {
-    metadata: { method: 'password', secondFactor: method },
+    metadata: { method: challenge.method ?? 'password', secondFactor: method },
   })
   return json({ user: publicUser(user), exp: session.exp, method }, [session.cookie, clear])
 }
