@@ -9,12 +9,19 @@ import { create } from 'zustand'
 /** Bulk actions the command palette can start on the list's selection. */
 export type PaletteBulkAction = 'pause' | 'resume' | 'check' | 'delete'
 
+const NO_PERMISSIONS = { update: false, delete: false } as const
+
 export interface MonitorSelectionState {
   selected: Record<string, true>
   /** Last row toggled without Shift: one end of a Shift range. */
   anchor: string | null
   /** The list is on screen (the palette offers its actions only then). */
   listMounted: boolean
+  /**
+   * What the list on screen lets the user do with a selection: the organization's permissions
+   * with its overrides applied, as resolved by the server (the palette only knows the role).
+   */
+  listPermissions: { update: boolean; delete: boolean }
   /** The palette asked the list to focus its search box. */
   searchFocusPending: boolean
   /** The palette asked the list to run a bulk action on the selection. */
@@ -28,7 +35,7 @@ export interface MonitorSelectionState {
   retain: (visible: readonly string[]) => void
   clear: () => void
 
-  setListMounted: (mounted: boolean) => void
+  setListMounted: (mounted: boolean, permissions?: { update: boolean; delete: boolean }) => void
   requestSearchFocus: () => void
   takeSearchFocus: () => boolean
   requestBulk: (action: PaletteBulkAction) => void
@@ -39,6 +46,7 @@ export const useMonitorSelection = create<MonitorSelectionState>()((set, get) =>
   selected: {},
   anchor: null,
   listMounted: false,
+  listPermissions: NO_PERMISSIONS,
   searchFocusPending: false,
   bulkRequest: null,
 
@@ -86,7 +94,11 @@ export const useMonitorSelection = create<MonitorSelectionState>()((set, get) =>
 
   clear: () => set({ selected: {}, anchor: null }),
 
-  setListMounted: (listMounted) => set({ listMounted }),
+  setListMounted: (listMounted, permissions) =>
+    set({
+      listMounted,
+      listPermissions: listMounted && permissions ? permissions : NO_PERMISSIONS,
+    }),
   requestSearchFocus: () => set({ searchFocusPending: true }),
   takeSearchFocus: () => {
     const pending = get().searchFocusPending

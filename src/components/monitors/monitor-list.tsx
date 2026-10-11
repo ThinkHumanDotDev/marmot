@@ -204,12 +204,12 @@ export function MonitorList({
   React.useEffect(() => () => cancelFocus.current(), [])
   React.useEffect(() => {
     const store = useMonitorSelection.getState()
-    store.setListMounted(true)
+    store.setListMounted(true, { update: bulk.update, delete: bulk.delete })
     return () => {
       store.setListMounted(false)
       store.clear()
     }
-  }, [])
+  }, [bulk.update, bulk.delete])
 
   const onSelect = React.useCallback<RowSelectHandler>((id, { range }) => {
     const store = useMonitorSelection.getState()

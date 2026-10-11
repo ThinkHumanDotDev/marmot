@@ -202,9 +202,10 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
   }
 
   const canWriteMonitors = roleCan(currentOrg.role, 'monitor:update')
-  const canDeleteMonitors = roleCan(currentOrg.role, 'monitor:delete')
   // Bulk actions on the monitor list's selection (#124), while the list is on screen.
+  // The list's own permissions (organization overrides applied), not the bare role.
   const listMounted = useMonitorSelection((s) => s.listMounted)
+  const listPermissions = useMonitorSelection((s) => s.listPermissions)
   const selectedCount = useMonitorSelection(selectSelectionCount)
   const bulkCount = listMounted ? selectedCount : 0
 
@@ -291,7 +292,7 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
             <Search aria-hidden /> {t('searchMonitors')}
             <CommandShortcut aria-hidden>/</CommandShortcut>
           </CommandItem>
-          {bulkCount > 0 && canWriteMonitors && (
+          {bulkCount > 0 && listPermissions.update && (
             <>
               <CommandItem
                 value="pause selected monitors bulk"
@@ -316,7 +317,7 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
               </CommandItem>
             </>
           )}
-          {bulkCount > 0 && canDeleteMonitors && (
+          {bulkCount > 0 && listPermissions.delete && (
             <CommandItem
               value="delete selected monitors bulk"
               keywords={[t('bulkDelete', { count: bulkCount })]}
