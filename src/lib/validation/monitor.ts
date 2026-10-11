@@ -21,6 +21,7 @@ import {
   probeSupportsType,
   QUORUM_MODES,
 } from '@/lib/probe-locations'
+import { PUSH_EMAIL_KEYWORD_MAX_LENGTH, PUSH_EMAIL_UNMATCHED } from '@/lib/push-email'
 import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
@@ -638,6 +639,11 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         .refine(isValidTimezone, message('timezoneInvalid')),
       pushGrace: z.number().int().min(0).max(MAX_PUSH_SECONDS).nullish().default(null),
       pushMaxDuration: z.number().int().min(1).max(MAX_PUSH_SECONDS).nullish().default(null),
+      // Ping-by-email (#135)
+      pushEmailFailureKeyword: optionalText(PUSH_EMAIL_KEYWORD_MAX_LENGTH),
+      pushEmailSuccessKeyword: optionalText(PUSH_EMAIL_KEYWORD_MAX_LENGTH),
+      pushEmailStartKeyword: optionalText(PUSH_EMAIL_KEYWORD_MAX_LENGTH),
+      pushEmailUnmatched: z.enum(PUSH_EMAIL_UNMATCHED).default('ignore'),
 
       // Manual
       manualStatus: z.enum(MANUAL_STATUSES).nullish(),
@@ -1142,6 +1148,10 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     pushTimezone: SAME_AS_SERVER,
     pushGrace: null,
     pushMaxDuration: null,
+    pushEmailFailureKeyword: null,
+    pushEmailSuccessKeyword: null,
+    pushEmailStartKeyword: null,
+    pushEmailUnmatched: 'ignore',
     manualStatus: type === 'manual' ? 'up' : null,
     dockerHost: null,
     dockerContainer: null,

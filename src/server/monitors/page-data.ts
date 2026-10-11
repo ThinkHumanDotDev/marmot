@@ -13,6 +13,7 @@ import {
   type NotificationProviderGroup,
 } from '@/server/notification-providers'
 import { findOrganizationBySlug } from '@/server/organizations/resolve'
+import { isPushEmailEnabled } from '@/server/push/inbound-config'
 
 export interface OrgPageContext {
   payload: Payload
@@ -106,6 +107,8 @@ export interface MonitorFormResources {
   notifications: MonitorChannelOption[]
   /** OpenTelemetry collectors (#99; empty when the user may not read them). */
   otelCollectors: { id: string | number; name: string; active: boolean; isDefault: boolean }[]
+  /** Ping-by-email (#135) is configured: the push form offers the email keyword rules. */
+  inboundEmail: boolean
 }
 
 const toChannelOption = (doc: {
@@ -223,6 +226,7 @@ export async function getMonitorFormResources(ctx: OrgPageContext): Promise<Moni
       active: doc.active !== false,
       isDefault: Boolean(doc.default),
     })),
+    inboundEmail: isPushEmailEnabled(),
   }
 }
 

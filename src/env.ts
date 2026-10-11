@@ -160,6 +160,31 @@ const schema = z.object({
   // Skip the Redis side effects of the `monitors` hooks (tests without Redis).
   MARMOT_DISABLE_ENGINE_HOOKS: booleanish.default(false),
 
+  // Ping-by-email for push monitors (#135, docs/Monitors.md#ping-by-email): each push monitor
+  // receives mail at `<push token>@INBOUND_EMAIL_DOMAIN`. Mail arrives through the worker's SMTP
+  // listener (INBOUND_SMTP_PORT) and/or the inbound-parse webhook `/api/inbound-email`
+  // (INBOUND_EMAIL_WEBHOOK_SECRET). Without the domain and at least one of the two, it is off.
+  INBOUND_EMAIL_DOMAIN: z.preprocess(
+    (value) => (typeof value === 'string' ? value.trim().toLowerCase() || undefined : value),
+    z
+      .string()
+      .regex(/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z0-9-]{2,}$/, 'not a domain name')
+      .optional(),
+  ),
+  INBOUND_SMTP_PORT: z.coerce.number().int().min(0).max(65_535).default(0),
+  INBOUND_SMTP_HOST: z.string().trim().default('0.0.0.0'),
+  INBOUND_EMAIL_WEBHOOK_SECRET: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().min(16, 'INBOUND_EMAIL_WEBHOOK_SECRET must be at least 16 characters').optional(),
+  ),
+  // Largest accepted message (headers, body and attachments), bytes.
+  INBOUND_EMAIL_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1024)
+    .max(50 * 1024 * 1024)
+    .default(1024 * 1024),
+
   // Management API (#115): requests per minute per organization API key, and how many of them may
   // be writes (POST/PUT/PATCH/DELETE). 0 turns the respective limit off.
   API_KEY_RATE_LIMIT: z.coerce.number().int().min(0).default(600),

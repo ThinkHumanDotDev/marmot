@@ -29,6 +29,9 @@ export const adminTranslations = {
         pushSchedule: 'Push schedule',
         pushScheduleInterval: 'Interval',
         pushScheduleCron: 'Cron expression',
+        pushEmail: 'Email pings',
+        pushEmailUnmatchedIgnore: 'Ignore it',
+        pushEmailUnmatchedFail: 'Record a failure',
         group: 'Group',
         manual: 'Manual',
         dockerContainer: 'Docker Container',
@@ -285,6 +288,14 @@ export const adminTranslations = {
           'Seconds a ping may be late (and a started run may take) before the monitor goes DOWN. Empty: 10 % of the interval, 60 s for cron.',
         pushMaxDurationDescription:
           'Optional: runs (from /start to success) longer than this many seconds are reported DOWN.',
+        pushEmailFailureKeywordDescription:
+          'Mail to the monitor address whose subject or body contains this text records a failure. Checked first.',
+        pushEmailSuccessKeywordDescription:
+          'Text that marks a success. Empty: every message that is not a failure or start counts as a success.',
+        pushEmailStartKeywordDescription:
+          'Text that marks the start of a run (like /start). Checked after the failure and success keywords.',
+        pushEmailUnmatchedDescription:
+          'Mail that matches no keyword (only possible with a success keyword set): ignore it or record a failure.',
         activeDescription: 'Paused monitors are not checked.',
         parentDescription: 'Group this monitor belongs to.',
         publicNameDescription: 'Name shown on status pages instead of the monitor name.',
