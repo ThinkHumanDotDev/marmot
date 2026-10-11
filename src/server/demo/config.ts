@@ -48,6 +48,7 @@ export type DemoFeature =
   | 'dockerHosts'
   | 'imports'
   | 'instanceSettings'
+  | 'otelExport'
   | 'setup'
   | 'smtp'
   | 'sso'
