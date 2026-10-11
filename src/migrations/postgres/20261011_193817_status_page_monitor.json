@@ -2413,6 +2413,20 @@
           "notNull": false,
           "default": 3
         },
+        "status_page_provider": {
+          "name": "status_page_provider",
+          "type": "enum_monitors_status_page_provider",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'auto'"
+        },
+        "status_page_components": {
+          "name": "status_page_components",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "push_token": {
           "name": "push_token",
           "type": "varchar",
@@ -2629,63 +2643,6 @@
           "notNull": false,
           "default": "'public'"
         },
-        "prometheus_query": {
-          "name": "prometheus_query",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "prometheus_down_operator": {
-          "name": "prometheus_down_operator",
-          "type": "enum_monitors_prometheus_down_operator",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'>'"
-        },
-        "prometheus_down_threshold": {
-          "name": "prometheus_down_threshold",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "prometheus_degraded_operator": {
-          "name": "prometheus_degraded_operator",
-          "type": "enum_monitors_prometheus_degraded_operator",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "prometheus_degraded_threshold": {
-          "name": "prometheus_degraded_threshold",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "prometheus_aggregate": {
-          "name": "prometheus_aggregate",
-          "type": "enum_monitors_prometheus_aggregate",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'worst'"
-        },
-        "prometheus_no_data_status": {
-          "name": "prometheus_no_data_status",
-          "type": "enum_monitors_prometheus_no_data_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'down'"
-        },
-        "prometheus_error_status": {
-          "name": "prometheus_error_status",
-          "type": "enum_monitors_prometheus_error_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'down'"
-        },
         "smtp_security": {
           "name": "smtp_security",
           "type": "enum_monitors_smtp_security",
@@ -2845,6 +2802,12 @@
         "status_push_runs": {
           "name": "status_push_runs",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_cache_seconds": {
+          "name": "status_cache_seconds",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -4755,12 +4718,6 @@
         "probes": {
           "name": "probes",
           "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "value": {
-          "name": "value",
-          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -14576,11 +14533,11 @@
         "http",
         "keyword",
         "json-query",
-        "prometheus",
         "port",
         "ping",
         "dns",
         "globalping",
+        "status-page",
         "push",
         "group",
         "manual",
@@ -14734,6 +14691,18 @@
         "atLeast"
       ]
     },
+    "public.enum_monitors_status_page_provider": {
+      "name": "enum_monitors_status_page_provider",
+      "schema": "public",
+      "values": [
+        "auto",
+        "atlassian",
+        "instatus",
+        "betterstack",
+        "incidentio",
+        "feed"
+      ]
+    },
     "public.enum_monitors_push_schedule": {
       "name": "enum_monitors_push_schedule",
       "schema": "public",
@@ -14765,57 +14734,6 @@
       "values": [
         "1",
         "2c"
-      ]
-    },
-    "public.enum_monitors_prometheus_down_operator": {
-      "name": "enum_monitors_prometheus_down_operator",
-      "schema": "public",
-      "values": [
-        ">",
-        ">=",
-        "<",
-        "<=",
-        "==",
-        "!="
-      ]
-    },
-    "public.enum_monitors_prometheus_degraded_operator": {
-      "name": "enum_monitors_prometheus_degraded_operator",
-      "schema": "public",
-      "values": [
-        ">",
-        ">=",
-        "<",
-        "<=",
-        "==",
-        "!="
-      ]
-    },
-    "public.enum_monitors_prometheus_aggregate": {
-      "name": "enum_monitors_prometheus_aggregate",
-      "schema": "public",
-      "values": [
-        "worst",
-        "any",
-        "all"
-      ]
-    },
-    "public.enum_monitors_prometheus_no_data_status": {
-      "name": "enum_monitors_prometheus_no_data_status",
-      "schema": "public",
-      "values": [
-        "up",
-        "down",
-        "pending"
-      ]
-    },
-    "public.enum_monitors_prometheus_error_status": {
-      "name": "enum_monitors_prometheus_error_status",
-      "schema": "public",
-      "values": [
-        "up",
-        "down",
-        "pending"
       ]
     },
     "public.enum_monitors_smtp_security": {
@@ -15471,6 +15389,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "09150c89-a329-42cf-b5d2-223cfd793731",
+  "id": "a64bc332-e302-4b43-9469-f879d54b8d99",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

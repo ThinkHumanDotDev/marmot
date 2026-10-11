@@ -11,6 +11,7 @@ import './group'
 import './manual'
 import './docker'
 import './globalping'
+import './status-page'
 // Protocols
 import './grpc-keyword'
 import './websocket-upgrade'

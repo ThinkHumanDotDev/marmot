@@ -252,6 +252,8 @@ export async function recordBeat(
           ? { lastStatus: monitor.status?.lastStatus, lastPing: monitor.status?.lastPing }
           : {}),
         recoveries: next.recoveries,
+        // Vendor cache lifetime (status page monitors, #125): stretches the interval.
+        ...(result.cacheSeconds !== undefined ? { cacheSeconds: result.cacheSeconds } : {}),
         ...options.statusPatch,
       },
       ...(tlsInfo ? { certInfo: tlsInfo as unknown as Monitor['certInfo'] } : {}),

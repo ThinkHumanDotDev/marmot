@@ -24,6 +24,7 @@ keyword, JSON query, TCP port, ping, DNS, gRPC and Globalping monitors.
 | `ping`              | Ping                                       | `hostname`                                                                                                                                                                                                                                                                                                       | system `ping` binary                 |
 | `dns`               | DNS                                        | `hostname`, `port` (53), `dnsResolveServer`, `dnsResolveType`, `assertions` (dnsRecord)                                                                                                                                                                                                                          | —                                    |
 | `globalping`        | Globalping                                 | `globalpingMeasurement` ping \| http \| dns \| traceroute, `url` or `hostname`, `globalpingLocations`, `globalpingProbes`, `globalpingSuccessRule`; see [Globalping](#globalping)                                                                                                                                | Globalping API                       |
+| `status-page`       | Third-party status page                    | `url` (the vendor's status page), `statusPageProvider` auto \| atlassian \| instatus \| betterstack \| incidentio \| feed, `statusPageComponents` (`[{ id, name }]`); see [Third-party status pages](#third-party-status-pages)                                                                                  | — (fetch)                            |
 | `push`              | Push                                       | `pushToken` (generated), `pushSchedule` interval \| cron, `pushCron`, `pushTimezone`, `pushGrace`, `pushMaxDuration`; the client calls `/api/push/<token>[/start\|/fail\|/log\|/<code>]` (see below)                                                                                                             | —                                    |
 | `manual`            | Manual                                     | `manualStatus`                                                                                                                                                                                                                                                                                                   | —                                    |
 | `group`             | Group                                      | children via `parent`                                                                                                                                                                                                                                                                                            | —                                    |
@@ -75,6 +76,40 @@ the worker: a cheap way to see a service from many places before Marmot has prob
   DOWN with the API's message.
 - The private-address guard does not apply: the worker only talks to `api.globalping.io`, and Globalping
   itself refuses private targets.
+
+## Third-party status pages
+
+`status-page` monitors follow a vendor's hosted status page (#125), so a cloud provider, payment processor
+or email API shows up on the dashboard, on your status pages and in your alerts when the vendor reports an
+incident.
+
+- **Formats** (`statusPageProvider`, `auto` by default tries them in this order and remembers the one that
+  answered): Atlassian Statuspage (`/api/v2/summary.json`; also incident.io pages that serve it and Marmot's
+  own status pages, `/status/<slug>`), Instatus (`/summary.json` + `/v2/components.json`), Better Stack
+  (`/index.json`), incident.io (`/proxy/<host>`), and an RSS / Atom fallback (a feed URL, the feed the page
+  advertises with `<link rel="alternate">`, or `/history.rss` / `/history.atom` / `/feed.rss`). Paste the
+  page (`https://www.githubstatus.com`) or one of these documents.
+- **Status**: the vendor's indicator `none` → UP, `minor` (degraded performance, partial outage) →
+  DEGRADED, `major` / `critical` (major outage) → DOWN, maintenance in progress → MAINTENANCE. DOWN goes
+  through `maxRetries` like any failed check. The heartbeat message names the vendor's current incident and
+  its link, e.g. `Actions · Major outage: Disruption with some GitHub Actions workflows (https://stspg.io/…)`.
+- **Component filter**: `statusPageComponents` stores the vendor's component **ids**; the name is only a
+  label, so a component the vendor renames keeps matching. The form's **Load components** button reads the
+  page once (`POST /api/orgs/:orgId/status-page-components`, same budget as "Check now") and lets you pick.
+  With a filter, the status is the worst of the picked components and of the incidents naming them. An id
+  the vendor no longer lists is reported in the heartbeat message (`component no longer on the status page:
+Webhooks (abc123)`) instead of silently reading as up; when every picked id is gone the check is DOWN.
+  RSS / Atom feeds have no components, so the filter does not apply to them: the newest entry counts as an
+  open incident (DEGRADED, or MAINTENANCE when its title says so) while it is less than 24 hours old and
+  does not say resolved or completed.
+- **Interval**: checks run every `interval`, but never more often than every 120 seconds, and never inside
+  the vendor document's cache lifetime (`Cache-Control: max-age`, else `Expires` − `Date`, capped at an
+  hour): polling inside that window just re-reads the same document. The lifetime of the last response is
+  kept in `monitors.status.cacheSeconds`.
+- **On status pages** the monitor reads like a static component: its state written out ("Major outage",
+  "Degraded performance", "Operational") instead of a beat bar.
+- The private-address guard applies to the URL and every redirect. The type is not available on probe
+  locations.
 
 ## Prometheus query
 

@@ -88,7 +88,8 @@ export async function monitorTargetProblem(
     case 'json-query':
     case 'prometheus':
     case 'websocket-upgrade':
-    case 'real-browser': {
+    case 'real-browser':
+    case 'status-page': {
       const problem = literal('url', looseHost(monitor.url))
       if (problem) return problem
       if (monitor.authMethod === 'oauth2-cc') {

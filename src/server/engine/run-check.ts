@@ -108,6 +108,7 @@ export async function runCheck(
       probes: ctx.probes ?? null,
       response: ctx.response ?? null,
       value: ctx.value ?? null,
+      ...(ctx.cacheSeconds !== undefined ? { cacheSeconds: ctx.cacheSeconds } : {}),
     }
   }
 
@@ -132,5 +133,6 @@ export async function runCheck(
     probes: ctx.probes ?? null,
     response: ctx.response ?? null,
     value: ctx.value ?? null,
+    ...(ctx.cacheSeconds !== undefined ? { cacheSeconds: ctx.cacheSeconds } : {}),
   }
 }

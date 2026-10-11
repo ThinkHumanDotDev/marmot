@@ -100,6 +100,8 @@ export interface CheckResult {
   response?: CapturedResponse | null
   /** Metric value judged by the check (Prometheus query monitors, #140), whatever the outcome. */
   value?: number | null
+  /** Cache lifetime of the document the check read (status page monitors, #125); unset otherwise. */
+  cacheSeconds?: number | null
   /**
    * Extra fields the type set on `ctx.heartbeat` besides status/msg/ping/duration (e.g.
    * `statusCode`). Not persisted; returned by on-demand checks.

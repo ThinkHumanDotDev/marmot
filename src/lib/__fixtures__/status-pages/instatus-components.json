@@ -1,0 +1,49 @@
+{
+  "components": [
+    {
+      "id": "cl7a1b2c3d0001",
+      "name": "Dashboard",
+      "nameTranslationId": null,
+      "description": "",
+      "descriptionTranslationId": null,
+      "status": "OPERATIONAL",
+      "order": 1,
+      "showUptime": true,
+      "isParent": false,
+      "parentId": null,
+      "children": []
+    },
+    {
+      "id": "cl7a1b2c3d0010",
+      "name": "API",
+      "nameTranslationId": null,
+      "description": "",
+      "descriptionTranslationId": null,
+      "status": "MAJOROUTAGE",
+      "order": 2,
+      "showUptime": true,
+      "isParent": true,
+      "parentId": null,
+      "children": [
+        {
+          "id": "cl7a1b2c3d0011",
+          "name": "API (EU)",
+          "status": "MAJOROUTAGE",
+          "order": 1,
+          "showUptime": true,
+          "isParent": false,
+          "parentId": "cl7a1b2c3d0010"
+        },
+        {
+          "id": "cl7a1b2c3d0012",
+          "name": "API (US)",
+          "status": "OPERATIONAL",
+          "order": 2,
+          "showUptime": true,
+          "isParent": false,
+          "parentId": "cl7a1b2c3d0010"
+        }
+      ]
+    }
+  ]
+}

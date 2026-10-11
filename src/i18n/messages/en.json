@@ -603,6 +603,10 @@
         "label": "Globalping",
         "description": "Ping, HTTP, DNS or traceroute from Globalping community probes in the chosen locations."
       },
+      "status-page": {
+        "label": "Third-party status page",
+        "description": "Follows a vendor's hosted status page (Statuspage, Instatus, Better Stack, incident.io, RSS) and alerts when it reports an incident."
+      },
       "docker": {
         "label": "Docker Container",
         "description": "UP when the container is running (and healthy, if it has a health check)."
@@ -1172,6 +1176,35 @@
         "graceDescription": "How late a ping may be, and how long a started run may take, before the monitor goes DOWN. Empty: automatic (10 % of the interval, 1 minute for cron).",
         "maxDuration": "Maximum run duration",
         "maxDurationDescription": "Optional. Runs (from /start to success) that take longer are reported DOWN."
+      },
+      "statusPage": {
+        "url": "Status page URL",
+        "urlDescription": "The vendor's public status page. Checked at most every {seconds} seconds, or less often when the vendor's cache headers ask for it.",
+        "format": "Format",
+        "provider": {
+          "auto": "Detect automatically",
+          "atlassian": "Atlassian Statuspage (and Marmot)",
+          "instatus": "Instatus",
+          "betterstack": "Better Stack",
+          "incidentio": "incident.io",
+          "feed": "RSS / Atom feed"
+        },
+        "components": "Components",
+        "componentsDescription": "Follow only some of the vendor’s components. Leave empty to follow the whole page.",
+        "load": "Load components",
+        "reload": "Reload",
+        "loadFailed": "Could not read the status page.",
+        "detected": "{provider}: {name}",
+        "noComponents": "This status page lists no components.",
+        "wholePage": "Following the whole page. Load the components to pick some.",
+        "missing": "No longer on the page",
+        "indicator": {
+          "none": "Operational",
+          "minor": "Degraded",
+          "major": "Outage",
+          "critical": "Critical",
+          "maintenance": "Maintenance"
+        }
       }
     },
     "channels": {

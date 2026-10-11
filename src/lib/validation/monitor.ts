@@ -24,6 +24,7 @@ import {
 import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
+import { STATUS_PAGE_MAX_COMPONENTS, STATUS_PAGE_PROVIDERS } from './status-page-monitor'
 import {
   GLOBALPING_DEFAULT_PACKETS,
   GLOBALPING_DEFAULT_PROBES,
@@ -77,6 +78,7 @@ export const MONITOR_TYPE_NAMES = [
   'dns',
   'real-browser',
   'globalping',
+  'status-page',
   // Passive
   'push',
   'manual',
@@ -230,6 +232,12 @@ export const MONITOR_TYPE_GROUPS: Record<
         label: 'Globalping',
         description:
           'Ping, HTTP, DNS or traceroute from Globalping community probes in the chosen locations.',
+      },
+      {
+        name: 'status-page',
+        label: 'Third-party status page',
+        description:
+          "Follows a vendor's hosted status page (Statuspage, Instatus, Better Stack, incident.io, RSS).",
       },
       {
         name: 'docker',
@@ -749,6 +757,24 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         .enum(GLOBALPING_IP_VERSIONS)
         .nullish()
         .transform((value) => value ?? null),
+
+      // Third-party status page (#125); the page is `url`
+      statusPageProvider: z.enum(STATUS_PAGE_PROVIDERS).default('auto'),
+      statusPageComponents: z
+        .array(
+          z.object({
+            id: z.string().trim().min(1).max(200),
+            name: z
+              .string()
+              .trim()
+              .max(200)
+              .nullish()
+              .transform((value) => value || null),
+          }),
+        )
+        .max(STATUS_PAGE_MAX_COMPONENTS)
+        .nullish()
+        .transform((value) => value ?? []),
     })
     .superRefine((values, ctx) => {
       const issue = (path: string, message: string) =>
@@ -968,6 +994,11 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
 
       if (type === 'gamedig' && !values.game) issue('game', message('gameRequired'))
 
+      if (type === 'status-page') {
+        if (!values.url) issue('url', message('urlRequired'))
+        else if (!/^https?:\/\/\S+$/i.test(values.url)) issue('url', message('httpUrl'))
+      }
+
       if (type === 'globalping') {
         const measurement = values.globalpingMeasurement
         for (const field of ['interval', 'retryInterval'] as const) {
@@ -1173,6 +1204,8 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     globalpingProtocol: null,
     globalpingPackets: GLOBALPING_DEFAULT_PACKETS,
     globalpingIpVersion: null,
+    statusPageProvider: 'auto',
+    statusPageComponents: [],
   }
 }
 
