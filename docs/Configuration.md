@@ -152,6 +152,18 @@ Full setup guide with provider walkthroughs: [Single sign-on](Single-Sign-On.md)
 | `MONITOR_DENY_CIDRS`                 | —                                                             | web, worker | Comma-separated CIDRs that are always refused, guard on or off (e.g. `203.0.113.0/24, 2001:db8::/32`). Wins over `MONITOR_ALLOW_CIDRS`.                                                                                             |
 | `MONITOR_ALLOW_CIDRS`                | —                                                             | web, worker | Comma-separated CIDRs exempt from the private-address deny list, for internal subnets you do want to monitor (e.g. `10.20.0.0/16`).                                                                                                 |
 
+### Ping-by-email
+
+[Push monitors](Monitors.md#ping-by-email) can also be pinged by email. Off unless `INBOUND_EMAIL_DOMAIN` and at least one of the two transports below are set.
+
+| Variable                       | Default   | Read by     | Description                                                                                                                                                                                                                                                 |
+| ------------------------------ | --------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INBOUND_EMAIL_DOMAIN`         | —         | web, worker | Domain of the monitor addresses, `<push token>@<domain>` (e.g. `ping.status.example.com`). Point its MX record at the worker, or route it through a mail provider to the webhook.                                                                           |
+| `INBOUND_SMTP_PORT`            | `0`       | worker      | Port of the worker's inbound SMTP listener (plain SMTP, no AUTH, no relaying; only addresses of active push monitors are accepted). `0` turns the listener off. Use `25` when the worker is the domain's MX, or a high port behind a relay or port mapping. |
+| `INBOUND_SMTP_HOST`            | `0.0.0.0` | worker      | Address the listener binds to.                                                                                                                                                                                                                              |
+| `INBOUND_EMAIL_WEBHOOK_SECRET` | —         | web         | Turns on the inbound-parse webhook `POST /api/inbound-email` (Postmark, Mailgun, SendGrid, Cloudflare Email Workers) and is the secret it requires (at least 16 characters): `?secret=`, the Basic auth password or an `X-Marmot-Secret` header.            |
+| `INBOUND_EMAIL_MAX_BYTES`      | `1048576` | web, worker | Largest accepted message in bytes (1 KiB–50 MiB). Larger mail is refused (`552` over SMTP, `413` on the webhook).                                                                                                                                           |
+
 ### Self connectivity check
 
 When the worker's own uplink or DNS fails, every external monitor would go DOWN at once and every channel
