@@ -185,9 +185,13 @@ function MonitorRow({ monitor }: { monitor: PublicMonitor }) {
   ) : (
     <span className="font-medium">{monitor.name}</span>
   )
-  const isStatic = monitor.type === 'static'
-  // A degraded monitor reads as "Degraded performance" like an incident with that impact.
-  const shown = effectiveImpact(monitor.status, monitor.impact)
+  // Third-party status page monitors (#125) read like static components.
+  const isStatic = monitor.type === 'static' || monitor.vendor === true
+  // A degraded monitor reads as "Degraded performance" like an incident with that impact, and a
+  // vendor that is down as a major outage.
+  const shown =
+    effectiveImpact(monitor.status, monitor.impact) ??
+    (monitor.vendor && monitor.status === 'down' ? 'major_outage' : null)
   const impact = shown && shown !== 'operational' ? shown : null
   const showValues =
     monitor.showValues && monitor.uptime24h !== undefined && monitor.uptime30d !== undefined

@@ -2413,6 +2413,20 @@
           "notNull": false,
           "default": 3
         },
+        "status_page_provider": {
+          "name": "status_page_provider",
+          "type": "enum_monitors_status_page_provider",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'auto'"
+        },
+        "status_page_components": {
+          "name": "status_page_components",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "push_token": {
           "name": "push_token",
           "type": "varchar",
@@ -2451,32 +2465,6 @@
           "type": "numeric",
           "primaryKey": false,
           "notNull": false
-        },
-        "push_email_failure_keyword": {
-          "name": "push_email_failure_keyword",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "push_email_success_keyword": {
-          "name": "push_email_success_keyword",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "push_email_start_keyword": {
-          "name": "push_email_start_keyword",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "push_email_unmatched": {
-          "name": "push_email_unmatched",
-          "type": "enum_monitors_push_email_unmatched",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'ignore'"
         },
         "manual_status": {
           "name": "manual_status",
@@ -2814,6 +2802,12 @@
         "status_push_runs": {
           "name": "status_push_runs",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_cache_seconds": {
+          "name": "status_cache_seconds",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -14543,6 +14537,7 @@
         "ping",
         "dns",
         "globalping",
+        "status-page",
         "push",
         "group",
         "manual",
@@ -14696,20 +14691,24 @@
         "atLeast"
       ]
     },
+    "public.enum_monitors_status_page_provider": {
+      "name": "enum_monitors_status_page_provider",
+      "schema": "public",
+      "values": [
+        "auto",
+        "atlassian",
+        "instatus",
+        "betterstack",
+        "incidentio",
+        "feed"
+      ]
+    },
     "public.enum_monitors_push_schedule": {
       "name": "enum_monitors_push_schedule",
       "schema": "public",
       "values": [
         "interval",
         "cron"
-      ]
-    },
-    "public.enum_monitors_push_email_unmatched": {
-      "name": "enum_monitors_push_email_unmatched",
-      "schema": "public",
-      "values": [
-        "ignore",
-        "fail"
       ]
     },
     "public.enum_monitors_manual_status": {
@@ -15390,6 +15389,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "ff5c81bf-a8c0-4802-b272-743de1642c02",
+  "id": "a64bc332-e302-4b43-9469-f879d54b8d99",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
