@@ -103,10 +103,21 @@ jobs:
       - name: Create integration test database
         if: matrix.db == 'postgres'
         run: psql "$DATABASE_URL" -c 'CREATE DATABASE marmot_test'
+      # A real OpenTelemetry Collector for tests/int/otel-export.int.spec.ts (#99). Host networking:
+      # it forwards what it receives to the test's receiver on 127.0.0.1:4319.
+      - name: Start OpenTelemetry Collector
+        run: >-
+          docker run -d --name otelcol --network host
+          -v "$PWD/tests/fixtures/otel/collector.yaml:/etc/otelcol/config.yaml:ro"
+          otel/opentelemetry-collector:0.115.0
       - name: Integration tests
         run: pnpm test:int --reporter=default --reporter=junit --outputFile=test-results/int-junit.xml
         env:
           DATABASE_URL: ${{ env.INT_DATABASE_URL }}
+          OTEL_COLLECTOR_URL: http://127.0.0.1:4318
+      - name: OpenTelemetry Collector logs
+        if: failure()
+        run: docker logs otelcol
       # Turbopack's persistent cache cuts `next build` from about a minute to seconds when little changed.
       # Only pushes to main save it, so pull requests restore main's cache without filling the
       # repository's cache quota with one ~500 MB entry per PR commit.

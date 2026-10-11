@@ -25,6 +25,12 @@ const cidrList = z
     if (message) ctx.addIssue({ code: 'custom', message })
   })
 
+/** An optional URL where an empty string (the `.env.example` default) means "not set". */
+const optionalUrl = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().trim().url().optional(),
+)
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   // `probe` runs a remote probe agent (#91) instead of a Marmot server: see MARMOT_URL below.
@@ -108,6 +114,14 @@ const schema = z.object({
     .default('https://crt.sh/?q={query}&output=json&exclude=expired&deduplicate=Y'),
   CT_CHECK_INTERVAL_MINUTES: z.coerce.number().int().min(60).max(360).default(180),
   CT_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(6),
+  // OpenTelemetry metrics export (#99): instance switch, how long data points wait to be batched,
+  // data points per request, data points buffered per collector (oldest dropped beyond) and the
+  // request timeout.
+  OTLP_EXPORT_ENABLED: booleanish.default(true),
+  OTLP_EXPORT_INTERVAL_MS: z.coerce.number().int().min(100).max(300_000).default(5_000),
+  OTLP_EXPORT_MAX_BATCH: z.coerce.number().int().min(1).max(100_000).default(1_000),
+  OTLP_EXPORT_MAX_QUEUE: z.coerce.number().int().min(100).max(1_000_000).default(20_000),
+  OTLP_EXPORT_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(10_000),
   // Polling engine (worker): parallel checks per worker process.
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(10),
   // On-demand checks ("Check now" and ad-hoc tests) allowed per organization and minute.
@@ -163,6 +177,13 @@ const schema = z.object({
   // Marketing landing page at `/` for signed-out visitors (hosted instance). Off on self-host:
   // `/` then routes straight to the setup wizard or the login page.
   LANDING_PAGE_ENABLED: booleanish.default(false),
+  // Hosted instances (#178): the operator's own terms of service and privacy policy, linked from the
+  // landing footer, the sign-up form and the Billing tab when set. Marmot does not host the text.
+  TERMS_URL: optionalUrl,
+  PRIVACY_URL: optionalUrl,
+  // Where the footer "Source" link points (AGPL-3.0 §13). Set it when running a modified build;
+  // unset, it links to this repository at the running version's tag.
+  SOURCE_URL: optionalUrl,
 
   // Demo mode (#159, docs/Demo-Mode.md): the instance wipes itself and reseeds a fixed dataset on
   // boot and every DEMO_RESET_INTERVAL_MINUTES; checks are simulated and nothing leaves the

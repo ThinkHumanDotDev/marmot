@@ -11,13 +11,12 @@ import {
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 
-import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
+import type { SiteLinks } from '@/server/site-links'
 
+import { LandingFooter, LandingHeader, REPO_URL } from './landing-chrome'
 import { MonitorPreview } from './monitor-preview'
 
-const REPO_URL = 'https://github.com/ThinkHumanDotDev/marmot'
-const DOCS_URL = `${REPO_URL}/blob/main/docs/Home.md`
 const GETTING_STARTED_URL = `${REPO_URL}/blob/main/docs/Getting-Started.md`
 
 /** Feature cards; title and body come from `landing.features.<key>`. */
@@ -34,31 +33,17 @@ const FEATURES = [
  * Marketing page shown at `/` to signed-out visitors when `LANDING_PAGE_ENABLED` is on (the hosted
  * instance). Self-hosted installs never render it: `/` redirects to the login page instead.
  */
-export async function LandingPage({ signupEnabled }: { signupEnabled: boolean }) {
+interface LandingPageProps {
+  signupEnabled: boolean
+  pricingEnabled: boolean
+  links: SiteLinks
+}
+
+export async function LandingPage({ signupEnabled, pricingEnabled, links }: LandingPageProps) {
   const t = await getTranslations('landing')
   return (
     <div className="flex min-h-dvh flex-col bg-sidebar">
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-        <Link href="/" aria-label={t('homeLabel')}>
-          <Logo />
-        </Link>
-        <nav className="flex items-center gap-1 sm:gap-2">
-          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-            <a href="#features">{t('nav.features')}</a>
-          </Button>
-          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-            <a href="#self-host">{t('nav.selfHost')}</a>
-          </Button>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/login">{t('nav.signIn')}</Link>
-          </Button>
-          {signupEnabled && (
-            <Button asChild size="sm">
-              <Link href="/signup">{t('nav.getStarted')}</Link>
-            </Button>
-          )}
-        </nav>
-      </header>
+      <LandingHeader signupEnabled={signupEnabled} pricingEnabled={pricingEnabled} onLandingPage />
 
       <main className="flex-1">
         <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 pt-12 pb-20 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:pt-20">
@@ -146,22 +131,7 @@ export async function LandingPage({ signupEnabled }: { signupEnabled: boolean })
         </section>
       </main>
 
-      <footer className="border-t">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>{t('footer.tagline')}</p>
-          <nav className="flex gap-5">
-            <a className="hover:text-foreground" href={DOCS_URL}>
-              {t('footer.docs')}
-            </a>
-            <a className="hover:text-foreground" href={REPO_URL}>
-              {t('footer.github')}
-            </a>
-            <Link className="hover:text-foreground" href="/login">
-              {t('footer.signIn')}
-            </Link>
-          </nav>
-        </div>
-      </footer>
+      <LandingFooter links={links} pricingEnabled={pricingEnabled} />
     </div>
   )
 }

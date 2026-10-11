@@ -120,6 +120,15 @@ export const adminTranslations = {
         consecutiveFailuresDescription:
           'Deliveries in a row that failed for good; the endpoint is disabled at WEBHOOK_DISABLE_AFTER_FAILURES.',
       },
+      otelCollectors: {
+        description:
+          'OpenTelemetry (OTLP/HTTP) metrics collectors of an organization. Manage them under Settings → OpenTelemetry; header values are sealed and write-only.',
+        endpointDescription:
+          'OTLP/HTTP metrics URL. A URL without a path gets /v1/metrics appended.',
+        defaultDescription:
+          'Monitors that export without a collector of their own use this one. One per organization.',
+        activeDescription: 'Inactive collectors receive nothing.',
+      },
       webhookDeliveries: {
         description:
           'Delivery log of outbound webhooks, pruned after WEBHOOK_DELIVERY_RETENTION_DAYS.',
@@ -289,6 +298,10 @@ export const adminTranslations = {
         quorum_all: 'All locations',
         weightDescription: 'Sort order on status pages.',
         proxyDescription: 'Send the request through this proxy (inactive proxies are skipped).',
+        otlpExportDescription:
+          "Export this monitor's check results as OpenTelemetry metrics (when a collector applies).",
+        otlpCollectorDescription:
+          "OTLP collector to export to. Empty: the organization's default collector.",
         dockerContainerDescription: 'Container name or id.',
         portDescription: 'DNS monitors: port of the resolver (default 53).',
         intervalDescription: 'Seconds between checks (UI minimum 20).',
