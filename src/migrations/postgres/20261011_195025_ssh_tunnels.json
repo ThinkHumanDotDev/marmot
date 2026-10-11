@@ -14450,6 +14450,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "magic_link_enabled": {
+          "name": "magic_link_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
         "entry_page": {
           "name": "entry_page",
           "type": "enum_instance_settings_entry_page",
@@ -14602,7 +14608,8 @@
         "local",
         "oidc",
         "oauth",
-        "saml"
+        "saml",
+        "magic-link"
       ]
     },
     "public.enum_users_theme": {
@@ -15602,6 +15609,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "5e7f8bcd-b46c-4f2c-9af0-b880c6906ca8",
+  "id": "d60a8855-2395-42df-83d7-a64732e6b1fe",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
