@@ -99,6 +99,15 @@ const schema = z.object({
   // row must fail (after their retries) before an endpoint is disabled (0 never disables).
   WEBHOOK_DELIVERY_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(14),
   WEBHOOK_DISABLE_AFTER_FAILURES: z.coerce.number().int().min(0).default(5),
+  // Certificate transparency alerts (#143): source of the CT lookups (crt.sh JSON by default, or a
+  // URL template with `{domain}`, `{query}` and `{subdomains}`), minutes between two lookups of a
+  // monitor (1–6 h) and requests per minute sent to the source.
+  CT_SOURCE_URL: z
+    .string()
+    .url()
+    .default('https://crt.sh/?q={query}&output=json&exclude=expired&deduplicate=Y'),
+  CT_CHECK_INTERVAL_MINUTES: z.coerce.number().int().min(60).max(360).default(180),
+  CT_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(6),
   // Polling engine (worker): parallel checks per worker process.
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(10),
   // On-demand checks ("Check now" and ad-hoc tests) allowed per organization and minute.

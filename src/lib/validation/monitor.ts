@@ -464,6 +464,9 @@ const assertionRow = z.object({
 
 const nonNegativeInt = (max = 1_000_000) => z.number().int().min(0).max(max)
 
+/** Expected certificate issuers of a CT-watched monitor (`monitors.ctExpectedIssuers` maxRows). */
+export const MAX_CT_EXPECTED_ISSUERS = 20
+
 /** List of non-empty strings (brokers, nodes); blanks are dropped. */
 const textList = (max = 500) =>
   z
@@ -558,6 +561,11 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       expiryNotification: z.boolean().default(false),
       proxy: relationId,
       domainExpiryNotification: z.boolean().default(false),
+      // Certificate transparency alerts (#143): hostname (and optionally subdomains) watched in the
+      // CT logs; certificates from issuers outside `ctExpectedIssuers` are flagged.
+      ctAlerts: z.boolean().default(false),
+      ctIncludeSubdomains: z.boolean().default(false),
+      ctExpectedIssuers: textList(200).pipe(z.array(z.string()).max(MAX_CT_EXPECTED_ISSUERS)),
 
       // Keyword / JSON query
       keyword: optionalText(1000),
@@ -1025,6 +1033,9 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     expiryNotification: false,
     proxy: null,
     domainExpiryNotification: false,
+    ctAlerts: false,
+    ctIncludeSubdomains: false,
+    ctExpectedIssuers: [],
     keyword: null,
     invertKeyword: false,
     jsonPath: null,

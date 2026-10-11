@@ -23,6 +23,7 @@ import {
 import { registerIncidentListener } from '@/server/incidents/listener'
 import { startConnectivityCheck } from '@/server/engine/connectivity-runtime'
 import { closeCheckerStateStore } from '@/server/engine/connectivity-state'
+import { closeCtQueue, startCtAlertsWorker } from '@/server/jobs/ct-alerts'
 import { registerExpiryNotificationListener } from '@/server/jobs/expiry-notifications'
 import { listMonitorTypes } from '@/server/monitor-types'
 import {
@@ -100,6 +101,8 @@ async function main() {
   const notificationWorker = startNotificationWorker(payload)
   // Recomputes maintenance statuses every minute (and runs retention jobs on the same queue).
   const maintenanceWorker = await startMaintenanceWorker(payload)
+  // Certificate transparency alerts (#143): looks due monitors up in the CT logs every 5 minutes.
+  const ctWorker = await startCtAlertsWorker(payload)
 
   // Keep the process alive until a shutdown signal arrives.
   await new Promise<void>((resolve) => {
@@ -117,9 +120,15 @@ async function main() {
           checkWorker.close(),
           notificationWorker.close(),
           maintenanceWorker.close(),
+          ctWorker.close(),
         ])
         await connectivity?.stop()
-        await Promise.all([closeChecksQueue(), closeNotificationsQueue(), closeMaintenanceQueue()])
+        await Promise.all([
+          closeChecksQueue(),
+          closeNotificationsQueue(),
+          closeMaintenanceQueue(),
+          closeCtQueue(),
+        ])
         await closeCheckerStateStore()
         await closeEmitter()
         await shutdownServerAnalytics()

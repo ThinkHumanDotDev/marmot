@@ -68,7 +68,7 @@ the events it selected:
 | `up`           | it recovered from DOWN (the message carries the downtime)                             |   on    |
 | `degraded`     | it became DEGRADED or went back from DEGRADED to UP                                   |   off   |
 | `reminder`     | the `resendInterval` repeat while still DOWN                                          |   on    |
-| `certificate`  | a TLS certificate or domain expiry warning (monitors with the expiry options on)      |   on    |
+| `certificate`  | a TLS certificate or domain expiry warning, or a new certificate in the CT logs       |   on    |
 | `maintenance`  | a maintenance window covering the monitor starts or ends (once per channel and event) |   off   |
 | `acknowledged` | a member acknowledged the monitor's [incident](Monitors.md#incidents)                 |   on    |
 | `resolved`     | a member resolved the monitor's incident by hand (automatic resolution is `up`)       |   on    |
@@ -128,6 +128,40 @@ and the `{{ status }}` template variable follow it, and so do provider-specific 
 (Discord embeds, Slack blocks, Teams cards and the like). Product names, payload keys and identifiers
 (`source`, `alias`, dedup keys) stay as they are. The channel form shows provider and field labels in
 the user's language.
+
+### Certificate transparency alerts
+
+Monitors with a hostname (HTTP family, TCP port, ping, DNS) can watch the public
+[certificate transparency](https://certificate.transparency.dev/) logs: **Certificate transparency alerts**
+in the monitor form's _Advanced_ card (`ctAlerts`), optionally with **Include subdomains**
+(`ctIncludeSubdomains`, every `*.hostname`) and **Expected issuers** (`ctExpectedIssuers`, e.g.
+`Let's Encrypt`). Each new certificate for the name is announced once, as the `certificate` event:
+
+```
+[Shop] New certificate for shop.example.com issued by C=US, O=Let's Encrypt, CN=R11. Names: shop.example.com, www.shop.example.com. Valid from Oct 1, 2026, 9:00 AM UTC to Dec 30, 2026, 9:00 AM UTC. https://crt.sh/?id=…
+```
+
+A certificate whose issuer contains none of the expected issuers (case-insensitive) is flagged:
+`[Shop] ⚠️ Unexpected issuer: new certificate for … issued by …, which is not an expected issuer. …`
+
+The worker's `ct-alerts` job (`src/server/jobs/ct-alerts.ts`, every 5 minutes on its own `marmot:ct` queue)
+looks each watched monitor up every `CT_CHECK_INTERVAL_MINUTES` (3 h by default) in crt.sh, or in the source
+set with `CT_SOURCE_URL` ([Configuration](Configuration.md#certificate-transparency-alerts)):
+
+- **Baseline.** The first lookup after the option is turned on (or after the hostname or the subdomain option
+  changed) only records the moment; certificates logged before it are never announced. Turning the option
+  off forgets it, so turning it on again does not announce the time in between.
+- **Once.** Announced certificates are kept in `notification-sent-history` (type `ct`, keyed by
+  `fingerprint`: issuer and serial number, so a precertificate and its certificate count once). A certificate
+  is claimed there before it is sent; when every channel fails the claim is released and the next lookup
+  retries. Without a channel that accepts `certificate` the certificate is only recorded. At most 10
+  certificates per monitor are sent per run; the rest follow on the next run.
+- **Rate limits.** Requests are spaced by `CT_REQUESTS_PER_MINUTE` and the same lookup is made once per run.
+  A failed lookup (network error, `429`, `5xx`, invalid JSON) ends the run: the source pauses for an
+  exponential backoff from 5 minutes up to a day, or its `Retry-After` when longer, and the monitor's next
+  lookup moves back the same way. The last error is shown in `ctState`.
+
+CT alerts are off in [demo mode](Demo-Mode.md), which never queries third parties.
 
 ### Testing a channel
 

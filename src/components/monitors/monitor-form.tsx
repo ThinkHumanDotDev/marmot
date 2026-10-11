@@ -919,6 +919,7 @@ export function MonitorForm({
     globalpingMeasurement,
     globalpingSuccessRule,
     globalpingProtocol,
+    ctAlerts,
   ] = useWatch({
     control,
     name: [
@@ -940,6 +941,7 @@ export function MonitorForm({
       'globalpingMeasurement',
       'globalpingSuccessRule',
       'globalpingProtocol',
+      'ctAlerts',
     ],
   })
   const orgTimeZone = useTimeZone() ?? 'UTC'
@@ -2508,6 +2510,31 @@ export function MonitorForm({
                   label={t('advanced.domainExpiry')}
                   description={t('advanced.domainExpiryDescription')}
                 />
+              )}
+              {(isHttp || isHost) && (
+                <SwitchField
+                  control={control}
+                  name="ctAlerts"
+                  label={t('advanced.ctAlerts')}
+                  description={t('advanced.ctAlertsDescription')}
+                />
+              )}
+              {(isHttp || isHost) && ctAlerts && (
+                <div className="grid gap-3 border-l-2 pl-3">
+                  <SwitchField
+                    control={control}
+                    name="ctIncludeSubdomains"
+                    label={t('advanced.ctIncludeSubdomains')}
+                    description={t('advanced.ctIncludeSubdomainsDescription')}
+                  />
+                  <ListField
+                    control={control}
+                    name="ctExpectedIssuers"
+                    label={t('advanced.ctExpectedIssuers')}
+                    description={t('advanced.ctExpectedIssuersDescription')}
+                    placeholder={t('advanced.ctExpectedIssuersPlaceholder')}
+                  />
+                </div>
               )}
               <SwitchField
                 control={control}

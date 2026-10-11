@@ -41,6 +41,27 @@ test.describe('Monitors', () => {
     await expect(page).toHaveURL(new RegExp(`/${SETUP_ORG.slug}/monitors/new$`))
   })
 
+  test('turns on certificate transparency alerts with expected issuers', async ({
+    page,
+    adminApi,
+  }) => {
+    await page.goto(`/${SETUP_ORG.slug}/monitors/${monitorId}/edit`)
+    const fields = page.getByTestId('monitor-form').filter({ visible: true })
+    // The sub-options only show once the alerts are on.
+    await expect(fields.getByLabel('Expected issuers')).toHaveCount(0)
+    await fields.getByLabel('Certificate transparency alerts').click()
+    await fields.getByLabel('Include subdomains').click()
+    await fields.getByLabel('Expected issuers').fill("Let's Encrypt\nDigiCert")
+    await fields.getByTestId('monitor-submit').click()
+    await page.waitForURL((url) => url.pathname === `/${SETUP_ORG.slug}/monitors/${monitorId}`)
+    const [monitor] = await adminApi.find('monitors', { id: { equals: String(monitorId) } })
+    expect(monitor).toMatchObject({
+      ctAlerts: true,
+      ctIncludeSubdomains: true,
+      ctExpectedIssuers: ["Let's Encrypt", 'DigiCert'],
+    })
+  })
+
   test('pauses and resumes from the detail page', async ({ page }) => {
     await page.goto(`/${SETUP_ORG.slug}/monitors/${monitorId}`)
     await expect(page.getByTestId('monitor-name')).toHaveText(monitorName)
