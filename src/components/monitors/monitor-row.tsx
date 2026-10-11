@@ -16,6 +16,7 @@ import {
   type MonitorSummary,
 } from '@/stores/monitor-store'
 import { useMonitorStore } from '@/stores/monitor-store'
+import { useMonitorSelection } from '@/stores/monitor-selection-store'
 
 import { TagList } from './tag-chip'
 import { UptimeBar } from './uptime-bar'
@@ -27,15 +28,85 @@ export function monitorTarget(monitor: Pick<MonitorSummary, 'type' | 'url' | 'ho
   return null
 }
 
+/** How a row reports a click (or Space) on its checkbox; `range` when Shift was held. */
+export type RowSelectHandler = (id: string, options: { range: boolean }) => void
+
+/** Keyboard moves between row checkboxes (↑/↓, Shift extends the selection). */
+export type RowNavigateHandler = (
+  id: string,
+  direction: 1 | -1,
+  options: { extend: boolean },
+) => void
+
+export interface RowSelection {
+  selected: boolean
+  onSelect: RowSelectHandler
+  onNavigate: RowNavigateHandler
+}
+
 interface MonitorRowViewProps {
   monitor: MonitorSummary
   beats: readonly Heartbeat[]
   uptime24h: number | undefined
   href: string
+  /** Multi-select checkbox (members with bulk permissions only). */
+  selection?: RowSelection
+}
+
+/** Data attribute of row checkboxes, used to move focus between them. */
+export const ROW_CHECKBOX_ATTR = 'data-monitor-select'
+
+function RowCheckbox({
+  id,
+  name,
+  selection,
+}: {
+  id: string
+  name: string
+  selection: RowSelection
+}) {
+  const t = useTranslations('monitors.list.selection')
+  return (
+    <div className="flex items-center pl-4">
+      <input
+        type="checkbox"
+        className="size-4 cursor-pointer accent-primary"
+        checked={selection.selected}
+        aria-label={t('selectMonitor', { name })}
+        {...{ [ROW_CHECKBOX_ATTR]: id }}
+        // Toggling happens in `onClick`, which knows whether Shift was held.
+        onChange={() => undefined}
+        onClick={(event) => selection.onSelect(id, { range: event.shiftKey })}
+        onKeyDown={(event) => {
+          if (event.key === ' ' && event.shiftKey) {
+            // Shift+Space selects a range on key up; cancelling both halves suppresses the click.
+            event.preventDefault()
+          } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault()
+            selection.onNavigate(id, event.key === 'ArrowDown' ? 1 : -1, {
+              extend: event.shiftKey,
+            })
+          }
+        }}
+        onKeyUp={(event) => {
+          if (event.key === ' ' && event.shiftKey) {
+            event.preventDefault()
+            selection.onSelect(id, { range: true })
+          }
+        }}
+      />
+    </div>
+  )
 }
 
 /** Presentational row; `MonitorRow` feeds it from the store, the server page from props. */
-export function MonitorRowView({ monitor, beats, uptime24h, href }: MonitorRowViewProps) {
+export function MonitorRowView({
+  monitor,
+  beats,
+  uptime24h,
+  href,
+  selection,
+}: MonitorRowViewProps) {
   const t = useTranslations('monitors')
   const tStatus = useTranslations('common.status')
   const format = useFormatter()
@@ -44,11 +115,15 @@ export function MonitorRowView({ monitor, beats, uptime24h, href }: MonitorRowVi
   const target = monitorTarget(monitor)
 
   return (
-    <li>
+    <li
+      className={cn('flex items-stretch', selection?.selected && 'bg-accent/40')}
+      data-selected={selection ? selection.selected : undefined}
+    >
+      {selection && <RowCheckbox id={monitor.id} name={monitor.name} selection={selection} />}
       <Link
         href={href}
         className={cn(
-          'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-3 transition-colors outline-none',
+          'grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-3 transition-colors outline-none',
           'hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:grid-cols-[auto_minmax(0,1fr)_minmax(8rem,14rem)_5rem_5rem]',
         )}
         data-status={status}
@@ -97,13 +172,22 @@ export function MonitorRowView({ monitor, beats, uptime24h, href }: MonitorRowVi
 interface MonitorRowProps {
   id: string
   orgSlug: string
+  /** Selection handlers; rows are selectable when set. */
+  onSelect?: RowSelectHandler
+  onNavigate?: RowNavigateHandler
 }
 
-/** Store-connected row: re-renders only when this monitor's data changes. */
-export function MonitorRow({ id, orgSlug }: MonitorRowProps) {
+/** Store-connected row: re-renders only when this monitor's data or selection changes. */
+export const MonitorRow = React.memo(function MonitorRow({
+  id,
+  orgSlug,
+  onSelect,
+  onNavigate,
+}: MonitorRowProps) {
   const monitor = useMonitorStore(selectMonitor(id))
   const beats = useMonitorStore(selectHeartbeats(id))
   const uptime24h = useMonitorStore(selectUptime(id, '24h'))
+  const selected = useMonitorSelection((s) => Boolean(s.selected[id]))
   if (!monitor) return null
   return (
     <MonitorRowView
@@ -111,6 +195,7 @@ export function MonitorRow({ id, orgSlug }: MonitorRowProps) {
       beats={beats.toArray()}
       uptime24h={uptime24h}
       href={`/${orgSlug}/monitors/${id}`}
+      selection={onSelect && onNavigate ? { selected, onSelect, onNavigate } : undefined}
     />
   )
-}
+})
