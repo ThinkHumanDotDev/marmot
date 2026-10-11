@@ -6,10 +6,12 @@ import { getPayload } from 'payload'
 
 import { AuthCard } from '@/components/auth/auth-card'
 import { SignupForm } from '@/components/auth/signup-form'
+import { LegalNotice } from '@/components/legal-links'
 import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth'
 import { safeNextPath } from '@/lib/utils'
 import { isSignupAllowed } from '@/server/settings'
+import { getSiteLinks } from '@/server/site-links'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('auth.signup')
@@ -27,6 +29,7 @@ export default async function SignupPage({
   const user = await getCurrentUser()
   if (user) redirect(safeNextPath(next))
   const t = await getTranslations('auth.signup')
+  const { termsUrl, privacyUrl } = getSiteLinks()
 
   return (
     <AuthCard
@@ -44,6 +47,12 @@ export default async function SignupPage({
       })}
     >
       <SignupForm next={next} />
+      <LegalNotice
+        termsUrl={termsUrl}
+        privacyUrl={privacyUrl}
+        context="signup"
+        className="mt-4 text-center"
+      />
     </AuthCard>
   )
 }
