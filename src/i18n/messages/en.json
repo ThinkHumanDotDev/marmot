@@ -157,6 +157,13 @@
       "since": "Marmot lost its own internet connectivity at {time}.",
       "now": "Marmot lost its own internet connectivity.",
       "description": "Checks of external targets are paused and do not count as downtime; they resume automatically when connectivity returns."
+    },
+    "demo": {
+      "label": "Demo instance",
+      "description": "Checks are simulated and nothing is sent. All data resets every {minutes, plural, one {minute} other {# minutes}}.",
+      "nextReset": "Next reset {time}.",
+      "resetting": "Resetting now…",
+      "credentials": "Sign in as <code>{email}</code> with the password <code>{password}</code>."
     }
   },
   "dashboard": {
@@ -874,6 +881,7 @@
         "interval": "Heartbeat interval",
         "seconds": "seconds",
         "intervalHint": "Check every {duration}",
+        "planMinimum": "Your plan checks monitors at most every {seconds} seconds.",
         "retries": "Retries",
         "retriesDescription": "Failed checks before the monitor is marked DOWN.",
         "retryInterval": "Heartbeat retry interval",
@@ -3762,7 +3770,8 @@
         "degradedMessage": "Response time 2400 ms is above the 1000 ms threshold",
         "maintenanceTitle": "Database upgrade"
       }
-    }
+    },
+    "demoSinkDelivered": "Demo instance: the message went to the demo sink, nothing was sent."
   },
   "consent": {
     "privacyPolicy": "What is collected",
@@ -4181,6 +4190,7 @@
     },
     "domains": {
       "title": "Custom domains",
+      "planUnavailable": "Your plan does not include custom domains. Upgrade your plan to serve this page on your own hostname; until then it stays available at <code>{path}</code>.",
       "description": "Serve this page at the root of your own hostname, e.g. <code>status.example.com</code>.",
       "hostname": "Hostname",
       "add": "Add",
@@ -5245,7 +5255,9 @@
       "channelExists": "A channel with this name already exists; monitors are linked to it",
       "invalidSlug": "Invalid slug \"{slug}\": {reason}",
       "slugInUse": "\"{title}\": slug \"{slug}\" is already in use; imported as \"{imported}\"",
-      "domainInUse": "\"{title}\": custom domain {hostname} is already used by another status page and was dropped"
+      "domainInUse": "\"{title}\": custom domain {hostname} is already used by another status page and was dropped",
+      "planIntervalRaised": "\"{name}\": check interval raised to {seconds} seconds, the minimum of your plan",
+      "domainsNotInPlan": "\"{title}\": your plan does not include custom domains, so {count, plural, one {# domain was} other {# domains were}} dropped"
     }
   },
   "landing": {
@@ -5549,6 +5561,9 @@
     "planInvalid": "plan must be one of: {plans}",
     "planNotPurchasable": "The {plan} plan cannot be purchased online.",
     "planLimit": "Your plan allows {limit, plural, one {{limit} {resource, select, monitors {monitor} members {member} other {status page}}} other {{limit} {resource, select, monitors {monitors} members {members} other {status pages}}}}. Upgrade your plan to add more.",
+    "planMinInterval": "Your plan checks monitors at most every {limit} seconds. Choose an interval of at least {limit} seconds or upgrade your plan.",
+    "planRetention": "Your plan keeps {limit, plural, one {# day} other {# days}} of history. Choose a shorter period or upgrade your plan.",
+    "planCustomDomains": "Your plan does not include custom domains. Upgrade your plan to serve status pages on your own domain.",
     "stripeNotConfigured": "Stripe is not configured.",
     "stripePriceMissing": "No active Stripe price is tagged with metadata plan={plan}.",
     "stripeNoCheckoutUrl": "Stripe did not return a checkout URL.",
@@ -5641,6 +5656,7 @@
     "bulkTooManyMonitors": "At most {max} monitors per bulk request.",
     "unknownTags": "{count, plural, one {Unknown tag} other {Unknown tags}}: {ids}",
     "unknownNotificationChannels": "{count, plural, one {Unknown notification channel} other {Unknown notification channels}}: {ids}",
+    "demoModeRestricted": "This is turned off on the demo instance. Install Marmot to use it.",
     "emailNotVerified": "Confirm your email address first: open the link we sent you, or request a new one.",
     "verificationLinkInvalid": "This confirmation link is invalid or has expired. Sign in and request a new one."
   },

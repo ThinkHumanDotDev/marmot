@@ -6,11 +6,13 @@
  */
 import type { Payload } from 'payload'
 
+import { clampInterval } from '@/lib/entitlements'
 import { childLogger } from '@/lib/logger'
 import { isMultiLocation, monitorLocationIds, probeSupportsType } from '@/lib/probe-locations'
 import type { Location, Monitor } from '@/payload-types'
 import { parseRequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
+import { getOrgMinIntervalSeconds } from '@/server/billing/entitlements'
 import { nextIntervalSeconds, type CheckResult } from '@/server/engine/beat'
 import type { TlsInfo } from '@/server/engine/tls'
 import { locationLastCheckAt } from '@/server/engine/quorum-store'
@@ -73,6 +75,13 @@ export async function ingestProbeResults(
   )
   const monitors = new Map<string, Monitor | null>()
   const outcomes: ProbeResultOutcome[] = []
+  // The plan's minimum interval (#161) caps the cadence handed back to the agent.
+  let minInterval: Promise<number> | undefined
+  const planFloor = () =>
+    (minInterval ??= getOrgMinIntervalSeconds(
+      payload,
+      typeof location.organization === 'object' ? location.organization.id : location.organization,
+    ))
 
   const load = async (id: string | number): Promise<Monitor | null> => {
     const key = String(id)
@@ -142,9 +151,12 @@ export async function ingestProbeResults(
         accepted: true,
         // The location's own beat on a multi-location monitor (#92): its cadence is the location's.
         status: (recorded.locationNext ?? recorded.next).status,
-        nextCheckSeconds: recorded.locationNext
-          ? recorded.locationNext.nextIntervalSeconds
-          : nextIntervalSeconds(recorded.next.status, recorded.monitor),
+        nextCheckSeconds: clampInterval(
+          recorded.locationNext
+            ? recorded.locationNext.nextIntervalSeconds
+            : nextIntervalSeconds(recorded.next.status, recorded.monitor),
+          await planFloor(),
+        ),
       })
     } catch (err) {
       log.error({ err, monitorId, locationId: location.id }, 'failed to record a probe result')

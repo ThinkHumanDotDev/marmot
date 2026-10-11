@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { api } from '@/lib/api'
+import { isPeriodWithinRetention } from '@/lib/entitlements'
 import { cn } from '@/lib/utils'
 
 import { useMonitorFormat } from './format'
@@ -168,12 +169,15 @@ export function MonitorStatsPanel({
   initial,
   lastCheckAt,
   showTiming = false,
+  retentionDays = null,
 }: {
   monitorId: string
   initial: StatsPanelData
   lastCheckAt: string | null | undefined
   /** Add the request timing phase chart (#94) for the selected period (HTTP and TCP monitors). */
   showTiming?: boolean
+  /** Days of history the organization's plan keeps; longer periods are not offered (`null` = all). */
+  retentionDays?: number | null
 }) {
   const t = useTranslations('monitors.chart')
   const tMetrics = useTranslations('monitors.metrics')
@@ -248,19 +252,21 @@ export function MonitorStatsPanel({
     <div className="flex flex-col gap-6" data-testid="monitor-stats-panel" aria-busy={loading}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div role="group" aria-label={t('period')} className="flex flex-wrap gap-1.5">
-          {STATS_PANEL_RANGES.map((value) => (
-            <Button
-              key={value}
-              type="button"
-              size="sm"
-              variant={range === value ? 'default' : 'outline'}
-              aria-pressed={range === value}
-              data-testid={`stats-range-${value}`}
-              onClick={() => setRange(value)}
-            >
-              {t(`periods.${value}`)}
-            </Button>
-          ))}
+          {STATS_PANEL_RANGES.filter((value) => isPeriodWithinRetention(value, retentionDays)).map(
+            (value) => (
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant={range === value ? 'default' : 'outline'}
+                aria-pressed={range === value}
+                data-testid={`stats-range-${value}`}
+                onClick={() => setRange(value)}
+              >
+                {t(`periods.${value}`)}
+              </Button>
+            ),
+          )}
         </div>
         <div role="group" aria-label={t('percentiles')} className="flex flex-wrap gap-1.5">
           {PERCENTILE_KEYS.map((key) => (

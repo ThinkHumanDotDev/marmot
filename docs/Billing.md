@@ -8,8 +8,9 @@ columns on `organizations`.
 ## How it is switched off
 
 `BILLING_ENABLED=false` (the default) makes `getEntitlements()` return `Infinity` for every limit and `true`
-for every feature flag, regardless of the organization's `plan`. The create hooks on monitors, invitations
-and status pages return before running a single query, the billing routes answer `501 { "error": "billing
+for every feature flag, regardless of the organization's `plan`. Every check (the hooks on monitors,
+invitations, status pages and organizations, the scheduler, the retention job, the stats routes, imports,
+invite links and single sign-on) returns before running a single query, the billing routes answer `501 { "error": "billing
 disabled" }` and the **Billing** settings tab is not rendered. Nothing imports the Stripe SDK unless
 `STRIPE_SECRET_KEY` is set.
 
@@ -27,9 +28,8 @@ props (`SettingsTabs showBilling`), so there is no `NEXT_PUBLIC_BILLING_ENABLED`
 
 ## Plans
 
-Limits live in `PLAN_LIMITS` in `src/lib/entitlements.ts` (client-safe, no I/O). Only `maxMonitors`,
-`maxMembers` and `maxStatusPages` are enforced today; the other values are exposed to the UI and the API for
-future use (minimum interval, retention and custom domains are not gated yet).
+Limits live in `PLAN_LIMITS` in `src/lib/entitlements.ts` (client-safe, no I/O). Every key is enforced
+(see [Enforcement](#enforcement)).
 
 | Plan         | Monitors | Members | Status pages | Min. interval | Retention | Custom domains |
 | ------------ | -------: | ------: | -----------: | ------------: | --------: | :------------: |
@@ -52,15 +52,41 @@ cannot add more until it is under the limit again.
 
 ### Enforcement
 
-`enforceEntitlementOnCreate(resource)` (`src/server/billing/entitlements.ts`) is a `beforeChange` hook on
-`monitors` (`monitors`), `invitations` (`members`: current members **plus pending invitations**) and
-`status-pages` (`statusPages`). It counts through the Local API inside the request's transaction and throws
-a Payload `APIError` with status **402** and
-`data: { code: 'entitlement_exceeded', resource, limit, current, plan }`; the message is user-readable
-("Your plan allows 10 monitors. Upgrade your plan to add more."). REST, the Local API and the custom route
-handlers all surface it unchanged.
+Every limit answers with a Payload `APIError` with status **402** and
+`data: { code: 'entitlement_exceeded', resource, limit, current, plan }`. The message is user-readable and
+comes from next-intl (`errors.planLimit`, `errors.planMinInterval`, `errors.planRetention`,
+`errors.planCustomDomains`), e.g. "Your plan allows 10 monitors. Upgrade your plan to add more.". REST, the
+Local API and Marmot's route handlers (`withErrors`, `payloadError`) all surface it with its `data`, so
+API keys, the CLI (`marmot apply`), the MCP tools and the UI see the same answer. The checks live in
+`src/server/billing/entitlements.ts`.
 
-Joining through the shareable invite link (`/invite/<code>`) is not metered yet.
+| Resource             | Where                                                                                                                                                                                                                                                                       |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `monitors`           | `beforeChange` of `monitors` on create (UI, REST, API keys, CLI, clone, imports).                                                                                                                                                                                           |
+| `statusPages`        | `beforeChange` of `status-pages` on create.                                                                                                                                                                                                                                 |
+| `members`            | Current members **plus pending invitations**: the `invitations` create hook, joins through the shareable invite link (`acceptInviteCode`), SSO group mapping and just-in-time SSO membership. Accepting an invitation uses the seat it reserved.                            |
+| `minIntervalSeconds` | `beforeChange` of `monitors`: a create, or an update that **changes** `interval` / `retryInterval`, below the minimum fails. The scheduler checks every monitor at `max(interval, minIntervalSeconds)`; probe agents get the same floor in their configuration and cadence. |
+| `retentionDays`      | The retention job prunes daily aggregates and important heartbeats per organization at `min(keepDataPeriodDays, retentionDays)`. The stats routes refuse longer ranges (402) and the monitor page does not offer them.                                                      |
+| `customDomains`      | `beforeChange` of `status-pages`: adding a hostname needs the feature. `/api/status-pages/resolve-domain` stops resolving the hostnames of an organization without it.                                                                                                      |
+
+**Downgrades.** An organization whose plan drops (e.g. `active` → `canceled`) keeps everything it has:
+
+- monitors keep their stored `interval`, but are checked no faster than the new minimum. The schedulers of
+  the organization are re-planned as soon as `plan` or `subscriptionStatus` changes (Stripe webhook or
+  superadmin edit, `resyncSchedulesOnPlanChange`), and again on every worker boot. Editing a monitor
+  without touching its interval keeps working;
+- status pages keep their custom hostnames, which stop resolving; the page stays reachable at
+  `/status/<slug>`, and an upgrade restores the hostnames without re-entering them;
+- history beyond the new `retentionDays` is pruned by the next hourly retention run.
+
+**Paths that cannot fail hard.** Single sign-on never refuses a sign-in because an organization is full: SSO
+group mapping and just-in-time membership skip that organization and write a `member.sync_skipped` audit
+row with `reason: 'plan_limit'`. Imports check monitor and status page counts before writing anything (so
+MongoDB without transactions never ends up with half an import), raise intervals below the plan minimum to
+it and drop custom domains the plan does not include, each with a warning in the report.
+
+Probe locations and multi-location monitors are not limited by plan yet (no entitlement key exists for them;
+see the pricing discussion).
 
 ## API
 
@@ -111,7 +137,7 @@ the plugin is used for webhook verification and dispatch.
 | File                                        | Role                                                                                       |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `src/lib/entitlements.ts`                   | `PLANS`, `PLAN_LIMITS`, `getEntitlements`, `effectivePlan`, `assertEntitlement`, errors    |
-| `src/server/billing/entitlements.ts`        | `isBillingEnabled`, usage counters, `assertOrgEntitlement`, `enforceEntitlementOnCreate`   |
+| `src/server/billing/entitlements.ts`        | `isBillingEnabled`, usage counters, `assertOrg*` checks and the collection hooks           |
 | `src/server/billing/webhooks.ts`            | `stripeWebhookHandlers`, `handleSubscriptionEvent`, `planFromSubscription`                 |
 | `src/server/billing/stripe.ts`              | Lazy Stripe client, `ensureStripeCustomer`, `createCheckoutSession`, `createPortalSession` |
 | `src/server/billing/overview.ts`            | `getBillingOverview` (settings page + `GET /billing`)                                      |

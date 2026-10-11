@@ -1,3 +1,4 @@
+import { demoRefusal } from '@/server/demo/config'
 import { DOCKER_CONNECTION_TYPES, type DockerConnectionType } from '@/lib/monitor-resources'
 import type { DockerHost } from '@/payload-types'
 import { testDockerHost, type DockerHostConfig } from '@/server/docker/client'
@@ -23,6 +24,9 @@ type TestBody = {
  * one. Responds `{ ok: true, containers }` or 400 `{ ok: false, error }`.
  */
 export async function POST(request: Request, { params }: RouteContext) {
+  // Demo mode (#159): the server would connect to a user-supplied Docker daemon.
+  const refused = demoRefusal(request, 'dockerHosts')
+  if (refused) return refused
   const { orgId } = await params
   const ctx = await resolveOrgRequest(request, orgId, 'docker-host:update')
   if (ctx instanceof Response) return ctx

@@ -14,7 +14,12 @@ import {
 } from './beat'
 import { emitHeartbeat, isUnderMaintenance } from './hooks'
 import type { CheckJobData, QueueFactoryOptions } from './queues'
-import { effectiveIntervalMs, removeMonitorSchedule, syncMonitor } from './scheduler'
+import {
+  effectiveIntervalMs,
+  removeMonitorSchedule,
+  syncMonitor,
+  withPlanCadence,
+} from './scheduler'
 import { DEFAULT_LOCATION, guardAgainstOfflineChecker } from './connectivity'
 import { certificateChanged } from './tls'
 import {
@@ -260,7 +265,10 @@ export async function recordBeat(
   if (replan) {
     try {
       await syncMonitor(
-        quorum ? { ...updated, localStatus: quorum.location.next.status } : updated,
+        await withPlanCadence(
+          payload,
+          quorum ? { ...updated, localStatus: quorum.location.next.status } : updated,
+        ),
         options.queue,
       )
     } catch (err) {

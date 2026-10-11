@@ -198,7 +198,8 @@ percentiles.
 
 Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ job scheduler on the
 `marmot:maintenance` queue: minutely rows older than 24 h, hourly and per-location hourly older than 30 d, daily and important
-heartbeats older than `KEEP_DATA_PERIOD_DAYS` (long-term pruning is disabled when the value is `< 1`), and
+heartbeats older than the `keepDataPeriodDays` instance setting (default `KEEP_DATA_PERIOD_DAYS`; long-term
+pruning is disabled when the value is `< 1`), and
 non-important heartbeats older than 24 h. It deletes in batches of 1,000 rows (`deleteInBatches` in
 `src/db/delete-in-batches.ts`: fetch one batch of ids, delete them with `id in [...]`, repeat), so a large
 backlog never has to fit in the worker's memory. Telemetry and log collections have no delete hooks and
@@ -655,3 +656,15 @@ implemented in `src/server/auth/email-verification.ts` on top of reusable email-
 `organizations.plan` + `src/lib/entitlements.ts` express limits. On self-hosted installs everything is
 unlimited and `BILLING_ENABLED=false`. When enabled, `@payloadcms/plugin-stripe` is registered and the Billing
 settings tab appears.
+
+## Demo mode
+
+`DEMO_MODE` (#159, `src/server/demo/`) turns an instance into a self-resetting demo
+([Demo mode](Demo-Mode.md)). The `demo-reset` job scheduler on `marmot:maintenance` (plus a boot job)
+wipes every collection in batches (`deleteInBatches`, in an order that never leaves a required reference
+dangling) and reseeds `dataset.ts` through the Local API, then back-fills heartbeats and stat roll-ups
+through `payload.db.create`. `runCheck` returns `simulateCheck()` instead of running the type's check, and
+the `demo-probes` job feeds the seeded probe locations' results through `ingestProbeResults`. Guard rails
+are collection hooks added by `withDemoGuards` in the collection registry, route refusals
+(`demoRefusal`), the sink (notifications, email adapter, webhooks) and a deny-all outbound address policy.
+Payload's `onInit` refuses to start against a database with non-demo accounts.

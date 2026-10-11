@@ -4,6 +4,7 @@
  */
 import type { Payload } from 'payload'
 
+import { demoRefusal } from '@/server/demo/config'
 import { MAX_IMPORT_BYTES, type ImportFormat } from '@/lib/import-export'
 import { authenticate, authorize, jsonError, parseId, payloadError } from '@/server/monitors/http'
 import { errorText, requestLocale } from '@/server/request-locale'
@@ -24,6 +25,9 @@ export async function handleImportRequest(
   rawOrgId: string,
   format?: ImportFormat,
 ): Promise<Response> {
+  // Demo mode (#159): imports would bring arbitrary data (and targets) into the shared demo.
+  const refused = demoRefusal(request, 'imports')
+  if (refused) return refused
   const orgId = parseId(payload, rawOrgId)
   const auth = await authenticate(payload, request)
   if (auth.response) return auth.response

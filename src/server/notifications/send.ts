@@ -7,6 +7,8 @@ import { toLocale } from '@/i18n/translator'
 import { childLogger } from '@/lib/logger'
 import { normalizeChannelEvents, type ChannelEvent } from '@/lib/notification-events'
 import type { Heartbeat, Media, Monitor, Notification, Organization } from '@/payload-types'
+import { isDemoMode } from '@/server/demo/config'
+import { deliverToDemoSink } from '@/server/demo/sink'
 import { getOrganizationI18n, serverTranslator } from '@/server/i18n'
 import { getNotificationProvider } from '@/server/notification-providers'
 import { TemplateError, validateTemplate, TEMPLATE_MAX_LENGTH, TEMPLATE_MAX_OUTPUT } from './liquid'
@@ -257,6 +259,19 @@ export async function sendNotification(
     { type: notification.type, notificationId: notification.id, monitorId: monitor?.id, event },
     'sending notification',
   )
+  // Demo mode (#159): the message is rendered and validated as usual, then handed to the sink
+  // instead of the provider, so nothing ever reaches Slack, Twilio, SMTP or a webhook.
+  if (isDemoMode()) {
+    deliverToDemoSink('notification', {
+      type: notification.type,
+      notificationId: notification.id,
+      monitorId: monitor?.id,
+      event,
+      message: text,
+    })
+    return serverTranslator(locale)('notifications.demoSinkDelivered')
+  }
+
   return provider.send({
     config,
     message: text,

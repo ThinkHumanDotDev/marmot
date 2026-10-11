@@ -5,6 +5,7 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import React from 'react'
 
 import { ConsentManager } from '@/components/consent/consent-manager'
+import { DemoBannerSlot } from '@/components/demo/demo-banner-slot'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -46,6 +47,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Inherits locale, messages, formats and time zone from the request config. */}
         <NextIntlClientProvider>
           <ThemeProvider>
+            {/* Demo mode (#159) only: renders nothing otherwise. */}
+            <DemoBannerSlot />
             <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
             <Toaster position="bottom-right" richColors closeButton />
             {analytics && <ConsentManager />}

@@ -6,6 +6,7 @@ import { childLogger } from '@/lib/logger'
 import { desiredRoles, orgKey, type GroupRule } from '@/lib/sso-groups'
 import type { User } from '@/payload-types'
 import type { AuditAction } from '@/server/audit/actions'
+import { hasMemberSeat } from '@/server/billing/entitlements'
 import { countOwners, listOrgMembers } from '@/server/members'
 import { auditTarget, recordRequestAuditEvent } from '@/server/security/audit'
 
@@ -48,6 +49,7 @@ type Change =
   | { kind: 'role_changed'; orgId: OrgId; from: Role; role: Role }
   | { kind: 'removed'; orgId: OrgId; from: Role }
   | { kind: 'skipped'; orgId: OrgId; from: Role; wanted: Role | null }
+  | { kind: 'seat_skipped'; orgId: OrgId; wanted: Role }
   | { kind: 'superadmin'; granted: boolean }
   | { kind: 'superadmin_skipped' }
 
@@ -100,6 +102,9 @@ async function isLastSuperadmin(payload: Payload): Promise<boolean> {
  *   member yet is added with it, a member whose role differs is moved to it (up or down);
  * - with `remove`, a membership in an organization some rule names is removed when none of the
  *   user's groups maps to it any more; organizations no rule names are never touched;
+ * - a user who is not a member yet is not added to an organization whose plan has no free seat
+ *   (`maxMembers`, with billing on): the change is skipped and audited as `member.sync_skipped`
+ *   with reason `plan_limit`, and the sign-in goes on;
  * - the last owner of an organization is never demoted or removed (the change is skipped and
  *   audited as `member.sync_skipped`), so a mapping can never orphan an organization;
  * - superadmin is granted by a matching `{"role": "superadmin"}` rule and, with `remove`, revoked
@@ -133,11 +138,20 @@ export async function applyGroupMapping(input: GroupMappingInput): Promise<Group
   for (const [key, orgId] of orgIds) {
     const wanted = desired.roles.get(key) ?? null
     const current = roleIn(orgId)
-    if (wanted) roles.set(String(orgId), wanted)
     if (wanted && !current) {
+      // A new membership takes a seat (#161): an organization whose plan is full is skipped (and
+      // audited) instead of failing the sign-in. No-op without billing.
+      if (!(await hasMemberSeat(payload, orgId))) {
+        changes.push({ kind: 'seat_skipped', orgId, wanted })
+        continue
+      }
+      roles.set(String(orgId), wanted)
       rows = [...rows, { id: undefined, organization: orgId, role: wanted }]
       changes.push({ kind: 'added', orgId, role: wanted })
-    } else if (wanted && current && wanted !== current) {
+      continue
+    }
+    if (wanted) roles.set(String(orgId), wanted)
+    if (wanted && current && wanted !== current) {
       if (current === 'owner' && (await isLastOwner(payload, orgId))) {
         roles.set(String(orgId), current)
         changes.push({ kind: 'skipped', orgId, from: current, wanted })
@@ -168,7 +182,9 @@ export async function applyGroupMapping(input: GroupMappingInput): Promise<Group
     }
   }
 
-  const writes = changes.filter((c) => c.kind !== 'skipped' && c.kind !== 'superadmin_skipped')
+  const writes = changes.filter(
+    (c) => c.kind !== 'skipped' && c.kind !== 'seat_skipped' && c.kind !== 'superadmin_skipped',
+  )
   if (writes.length > 0) {
     await payload.update({
       collection: 'users',
@@ -257,6 +273,17 @@ async function auditChange(input: GroupMappingInput, user: User, change: Change)
         after: { role: change.wanted },
         changedFields: null,
         metadata: { ...metadata, reason: 'last_owner' },
+      }
+      break
+    case 'seat_skipped':
+      event = {
+        action: 'member.sync_skipped',
+        organization: change.orgId,
+        entityType: 'member',
+        before: null,
+        after: { role: change.wanted },
+        changedFields: null,
+        metadata: { ...metadata, reason: 'plan_limit' },
       }
       break
     case 'superadmin':
