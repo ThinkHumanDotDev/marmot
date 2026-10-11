@@ -48,16 +48,19 @@ test.describe('Monitors', () => {
     await page.goto(`/${SETUP_ORG.slug}/monitors/new?type=tls`)
     const fields = page.getByTestId('monitor-form').filter({ visible: true })
     await expect(fields.getByTestId('monitor-type')).toContainText('TLS Handshake')
-    await fields.getByLabel('Friendly name').fill(`TLS ${runId()}`)
+    const name = `TLS ${runId()}`
+    await fields.getByLabel('Friendly name').fill(name)
     await fields.getByLabel('Hostname').fill('127.0.0.1')
     await fields.getByLabel('Server name (SNI)').fill('localhost')
     await fields.getByLabel('ALPN protocols').fill('h2, http/1.1')
     await expect(fields.getByLabel('Certificate expiry notification')).toBeVisible()
     await fields.getByTestId('monitor-submit').click()
 
-    await expect(page).toHaveURL(new RegExp(`/${SETUP_ORG.slug}/monitors/[^/]+$`))
-    const id = page.url().split('/').pop()!
+    // The detail page of the new monitor (not the form's own `/monitors/new?type=tls`).
+    await expect(page).toHaveURL(new RegExp(`/${SETUP_ORG.slug}/monitors/(?!new)[^/?]+$`))
+    const id = new URL(page.url()).pathname.split('/').pop()!
     try {
+      await expect(page.getByTestId('monitor-name')).toHaveText(name)
       await expect(page.getByTestId('certificate-panel')).toBeVisible()
     } finally {
       await adminApi.delete('monitors', id)
