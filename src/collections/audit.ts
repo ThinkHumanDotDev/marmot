@@ -45,6 +45,11 @@ export const AUDITED: Partial<Record<CollectionSlug, AuditCollectionOptions>> = 
   },
   'status-page-audiences': { entityType: 'status_page_audience' },
   incidents: { entityType: 'incident' },
+  'declared-incidents': {
+    entityType: 'declared_incident',
+    // Reminder bookkeeping of the worker and the activity stamp of every write.
+    ignore: ['remindersSent', 'lastReminderAt', 'nextReminderAt', 'lastActivityAt'],
+  },
   'status-page-subscribers': {
     entityType: 'subscriber',
     label: (doc) => (typeof doc.target === 'string' ? doc.target : null),

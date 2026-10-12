@@ -25,6 +25,11 @@ import {
 import { processSubscriberJob } from '@/server/status-pages/subscribers/worker'
 import { ackLinkUrl } from '@/server/incidents/ack-link'
 import {
+  isDeclaredJobName,
+  processDeclaredNotificationJob,
+  type DeclaredNotificationJobData,
+} from '@/server/declared-incidents/notify'
+import {
   isIncidentJobName,
   processIncidentNotificationJob,
   type IncidentNotificationJobData,
@@ -283,6 +288,14 @@ export function startNotificationWorker(
         await processIncidentNotificationJob(
           payload,
           job as unknown as Job<IncidentNotificationJobData>,
+        )
+        return
+      }
+      // Declared incidents (#101): channels and the commander.
+      if (isDeclaredJobName(job.name)) {
+        await processDeclaredNotificationJob(
+          payload,
+          job as unknown as Job<DeclaredNotificationJobData>,
         )
         return
       }

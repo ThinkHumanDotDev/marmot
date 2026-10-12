@@ -21,6 +21,7 @@ import {
   type RealtimeRange,
   type ServerToClientEvents,
 } from './events'
+import type { DeclaredIncidentSummary } from '@/lib/declared-incidents'
 import type { MonitorIncidentSummary } from '@/lib/monitor-incidents'
 import { toRealtimeMonitor, type MonitorSummarySource } from './serialize'
 
@@ -242,6 +243,17 @@ export function emitMonitorIncident(
   incident: MonitorIncidentSummary,
 ): void {
   emitToOrg(organizationId, RealtimeEvents.monitorIncident, {
+    organizationId: id(organizationId),
+    incident,
+  })
+}
+
+/** A declared incident was declared or changed (`declaredIncident`, #101). */
+export function emitDeclaredIncident(
+  organizationId: string | number,
+  incident: DeclaredIncidentSummary,
+): void {
+  emitToOrg(organizationId, RealtimeEvents.declaredIncident, {
     organizationId: id(organizationId),
     incident,
   })

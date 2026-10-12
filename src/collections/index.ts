@@ -7,6 +7,7 @@ import { withAuditHooks } from './audit'
 import { AuthAccounts } from './AuthAccounts'
 import { DockerHosts } from './DockerHosts'
 import { AuditLogs } from './AuditLogs'
+import { DeclaredIncidents } from './DeclaredIncidents'
 import { Heartbeats } from './Heartbeats'
 import { Incidents } from './Incidents'
 import { Invitations } from './Invitations'
@@ -68,6 +69,7 @@ export const collections: CollectionConfig[] = [
   NotificationSentHistory,
   Heartbeats,
   MonitorIncidents,
+  DeclaredIncidents,
   MonitorLocationStates,
   PushEvents,
   StatMinutely,

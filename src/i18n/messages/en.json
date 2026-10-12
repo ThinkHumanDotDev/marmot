@@ -94,7 +94,8 @@
       "members": "Members",
       "settings": "Settings",
       "incidents": "Incidents",
-      "sla": "SLA"
+      "sla": "SLA",
+      "declaredIncidents": "Response"
     },
     "orgSwitcher": {
       "trigger": "Organization: {name}. Switch organization",
@@ -1957,7 +1958,8 @@
         "sla_target": "SLA target",
         "sla_report": "SLA report",
         "sla_report_share": "SLA report link",
-        "metric": "Metric"
+        "metric": "Metric",
+        "declared_incident": "Declared incident"
       },
       "verbs": {
         "created": "created",
@@ -2305,7 +2307,8 @@
         "otelCollector": "OpenTelemetry collectors",
         "location": "Probe locations",
         "sla": "SLA targets and reports",
-        "metric": "Status page metrics"
+        "metric": "Status page metrics",
+        "declaredIncident": "Declared incidents"
       },
       "actions": {
         "read": "View",
@@ -2320,7 +2323,8 @@
         "acknowledge": "Acknowledge",
         "resolve": "Resolve",
         "history": "Uptime history",
-        "push": "Push values"
+        "push": "Push values",
+        "skipPostmortem": "Close without postmortem"
       },
       "custom": "Custom",
       "fixed": "(fixed)",
@@ -3197,6 +3201,10 @@
       "resolved": {
         "label": "Incident resolved by hand",
         "description": "A member resolved an incident before the monitor recovered."
+      },
+      "incident": {
+        "label": "Declared incidents",
+        "description": "An incident is declared, changes status or commander, or its commander is reminded of it."
       }
     },
     "messages": {
@@ -3286,6 +3294,20 @@
         "resolvedBy": "Resolved by {name} after {duration}.",
         "note": "Note: {note}",
         "ackLink": "Acknowledge: {url}"
+      },
+      "declaredIncident": {
+        "label": {
+          "declared": "🚨 Incident declared",
+          "status": "🔄 Status changed",
+          "commander": "🧑‍🚒 Commander assigned",
+          "reminder": "⏰ Reminder"
+        },
+        "declared": "{severity} incident declared.",
+        "status": "Status is now {status}.",
+        "commander": "{name} is the incident commander.",
+        "commanderIs": "Commander: {name}.",
+        "reminder": "No activity for {duration}. Post an update or change the status.",
+        "emailSubject": "[Marmot] {label}: {title}"
       }
     },
     "providers": {
@@ -5887,6 +5909,143 @@
       "openDashboard": "Open Marmot"
     }
   },
+  "declaredIncidents": {
+    "metaTitle": "Incident response",
+    "title": "Incident response",
+    "description": "Declared incidents: who is in charge, what happened and what we learned.",
+    "severity": {
+      "critical": "Critical",
+      "major": "Major",
+      "minor": "Minor"
+    },
+    "status": {
+      "open": "Open",
+      "mitigated": "Mitigated",
+      "resolved": "Resolved",
+      "closed": "Closed",
+      "canceled": "Canceled"
+    },
+    "filters": {
+      "active": "Active",
+      "all": "All"
+    },
+    "list": {
+      "declare": "Declare incident",
+      "empty": "No incidents here.",
+      "emptyHint": "Declare an incident to coordinate the response, the timeline and the postmortem.",
+      "incident": "Incident",
+      "severity": "Severity",
+      "status": "Status",
+      "commander": "Commander",
+      "started": "Started",
+      "noCommander": "Unassigned"
+    },
+    "declare": {
+      "title": "Declare an incident",
+      "description": "Everyone in the organization can follow it; channels that follow declared incidents are notified.",
+      "name": "Title",
+      "namePlaceholder": "Checkout fails for EU customers",
+      "severity": "Severity",
+      "commander": "Commander",
+      "noCommander": "Nobody yet",
+      "summary": "Summary",
+      "summaryPlaceholder": "What is happening and who is affected?",
+      "startedAt": "Started at",
+      "startedAtHint": "Leave empty for now; backdate it if the impact began earlier.",
+      "submit": "Declare",
+      "declared": "Incident declared",
+      "cancel": "Cancel"
+    },
+    "detail": {
+      "breadcrumb": "Incident response",
+      "declaredBy": "Declared by {name}",
+      "facts": "Details",
+      "severity": "Severity",
+      "commander": "Commander",
+      "noCommander": "Unassigned",
+      "started": "Started",
+      "mitigated": "Mitigated",
+      "resolved": "Resolved",
+      "closed": "Closed",
+      "canceled": "Canceled",
+      "summary": "Summary",
+      "noSummary": "No summary yet.",
+      "monitorIncident": "Monitor incident",
+      "openMonitorIncident": "{monitor} outage",
+      "statusPageIncident": "Public status-page incident",
+      "notLinked": "Not linked",
+      "unlink": "Unlink",
+      "readOnly": "This incident is {status} and read-only.",
+      "skippedPostmortem": "Closed without a postmortem.",
+      "saved": "Saved",
+      "failed": "Could not save the change."
+    },
+    "actions": {
+      "to": {
+        "open": "Reopen",
+        "mitigated": "Mark mitigated",
+        "resolved": "Mark resolved",
+        "closed": "Close",
+        "canceled": "Cancel incident"
+      },
+      "closeTitle": "Close the incident?",
+      "closeDescription": "A closed incident is read-only.",
+      "closeNeedsPostmortem": "The postmortem is not approved yet.",
+      "skipPostmortem": "Close without a postmortem",
+      "cancelTitle": "Cancel the incident?",
+      "cancelDescription": "Use this for a false alarm. A canceled incident is read-only.",
+      "confirm": "Confirm",
+      "back": "Back"
+    },
+    "notes": {
+      "label": "Add a note",
+      "placeholder": "What changed, what was tried, what is next?",
+      "submit": "Add note",
+      "added": "Note added"
+    },
+    "timeline": {
+      "title": "Timeline",
+      "declared": "Declared the incident ({severity})",
+      "severity_changed": "Changed severity from {from} to {to}",
+      "status_changed": "Changed status from {from} to {to}",
+      "commander_changed": "Made {to} the commander",
+      "commander_cleared": "Removed the commander",
+      "note": "Note",
+      "linked": "Linked the status-page incident “{title}”",
+      "unlinked": "Unlinked the status-page incident",
+      "postmortem_drafted": "Drafted the postmortem",
+      "postmortem_approved": "Approved the postmortem",
+      "closed": "Closed the incident",
+      "closedSkipped": "Closed the incident without a postmortem",
+      "system": "Marmot"
+    },
+    "postmortem": {
+      "title": "Postmortem",
+      "status": {
+        "none": "Not started",
+        "draft": "Draft",
+        "approved": "Approved"
+      },
+      "approvedBy": "Approved by {name}",
+      "start": "Start from the template",
+      "placeholder": "Markdown",
+      "save": "Save draft",
+      "saved": "Postmortem saved",
+      "approve": "Approve",
+      "approved": "Postmortem approved",
+      "editApproved": "Editing an approved postmortem turns it back into a draft.",
+      "empty": "No postmortem yet.",
+      "sections": {
+        "summary": "Summary",
+        "impact": "Impact",
+        "timeline": "Timeline",
+        "rootCause": "Root cause",
+        "wentWell": "What went well",
+        "wentWrong": "What went wrong",
+        "actionItems": "Action items"
+      }
+    }
+  },
   "templates": {
     "kinds": {
       "incident": "New incident",
@@ -6535,7 +6694,15 @@
     "metricPointTooOld": "Point {index} is older than 24 hours or has an invalid timestamp.",
     "metricPointInFuture": "Point {index} is more than 5 minutes in the future.",
     "metricMonitorRequired": "Choose a monitor of this organization for a monitor-backed metric.",
-    "metricStatusPagesInvalid": "Choose status pages of this organization."
+    "metricStatusPagesInvalid": "Choose status pages of this organization.",
+    "declaredIncidentNotFound": "Incident not found.",
+    "declaredIncidentReadOnly": "This incident is closed and can no longer be changed.",
+    "declaredIncidentInvalidTransition": "An incident cannot go from {from} to {to}.",
+    "declaredIncidentPostmortemRequired": "Approve the postmortem before closing the incident.",
+    "declaredIncidentPostmortemEmpty": "Write the postmortem before approving it.",
+    "declaredIncidentCommanderNotMember": "The commander must be a member of this organization.",
+    "declaredIncidentLinkInvalid": "The linked incident does not belong to this organization.",
+    "declaredIncidentStartInFuture": "The start time cannot be in the future."
   },
   "subscriberMessages": {
     "sms": {

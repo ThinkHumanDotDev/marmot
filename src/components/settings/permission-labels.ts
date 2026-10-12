@@ -8,6 +8,7 @@ export const PERMISSION_RESOURCE_KEYS = {
   member: 'member',
   monitor: 'monitor',
   'monitor-incident': 'monitorIncident',
+  'declared-incident': 'declaredIncident',
   notification: 'notification',
   'status-page': 'statusPage',
   subscriber: 'subscriber',
@@ -39,6 +40,7 @@ export const PERMISSION_ACTION_KEYS = {
   send: 'send',
   acknowledge: 'acknowledge',
   resolve: 'resolve',
+  'skip-postmortem': 'skipPostmortem',
   history: 'history',
   push: 'push',
 } as const
