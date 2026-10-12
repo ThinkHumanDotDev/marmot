@@ -317,6 +317,26 @@ export function CommandPalette({ organizations, currentOrg }: CommandPaletteProp
               </CommandItem>
             </>
           )}
+          {bulkCount > 0 && listPermissions.maintenance && (
+            <CommandItem
+              value="add selected monitors to maintenance window bulk"
+              keywords={[t('bulkAddToMaintenance', { count: bulkCount })]}
+              onSelect={run(() => useMonitorSelection.getState().requestBulk('addToMaintenance'))}
+            >
+              <Wrench aria-hidden /> {t('bulkAddToMaintenance', { count: bulkCount })}
+            </CommandItem>
+          )}
+          {bulkCount > 0 && listPermissions.statusPage && (
+            <CommandItem
+              value="add selected monitors to status page group bulk"
+              keywords={[t('bulkAddToStatusPageGroup', { count: bulkCount })]}
+              onSelect={run(() =>
+                useMonitorSelection.getState().requestBulk('addToStatusPageGroup'),
+              )}
+            >
+              <Globe aria-hidden /> {t('bulkAddToStatusPageGroup', { count: bulkCount })}
+            </CommandItem>
+          )}
           {bulkCount > 0 && listPermissions.delete && (
             <CommandItem
               value="delete selected monitors bulk"
