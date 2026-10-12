@@ -6,9 +6,9 @@
 /*
  * Marmot design tokens — the single source of truth for colour, radius and type.
  *
- * Surfaces are warm neutrals (a touch of amber in the greys) so the UI reads as "paper",
- * not as default shadcn slate. One accent (ember orange) is used for primary actions and
- * focus; everything else is neutral. Status colours are reserved for monitor state only.
+ * Light surfaces are true neutrals (Tailwind zinc: #FAFAFA background, white cards). One accent
+ * (ember orange) is used for primary actions and focus; everything else is neutral. Status
+ * colours are reserved for monitor state only.
  *
  * Layout follows kan.bn: the sidebar sits on the muted `--sidebar` background and the main
  * content is a rounded `--background` panel floating inside it.
@@ -17,39 +17,39 @@
   --radius: 0.75rem;
 
   /* Surfaces */
-  --background: oklch(0.995 0.003 85);
-  --foreground: oklch(0.2 0.012 60);
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.21 0.006 285.885);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.012 60);
+  --card-foreground: oklch(0.21 0.006 285.885);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.012 60);
+  --popover-foreground: oklch(0.21 0.006 285.885);
 
   /* Accent: ember orange. Deep enough for white labels and orange text on light surfaces (WCAG AA 4.5:1). */
   --primary: oklch(0.56 0.18 40);
   --primary-foreground: oklch(0.99 0.01 80);
 
-  --secondary: oklch(0.955 0.008 80);
-  --secondary-foreground: oklch(0.28 0.012 60);
-  --muted: oklch(0.955 0.008 80);
-  --muted-foreground: oklch(0.5 0.015 65);
-  --accent: oklch(0.945 0.012 75);
-  --accent-foreground: oklch(0.22 0.012 60);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.274 0.006 286.033);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
 
   --destructive: oklch(0.58 0.22 27);
   --destructive-foreground: oklch(0.985 0.01 20);
 
-  --border: oklch(0.9 0.01 80);
-  --input: oklch(0.88 0.01 80);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
   --ring: oklch(0.56 0.18 40);
 
   /* Sidebar = the muted frame around the main panel */
-  --sidebar: oklch(0.965 0.008 82);
-  --sidebar-foreground: oklch(0.3 0.012 60);
+  --sidebar: oklch(0.967 0.001 286.375);
+  --sidebar-foreground: oklch(0.37 0.013 285.805);
   --sidebar-primary: oklch(0.56 0.18 40);
   --sidebar-primary-foreground: oklch(0.99 0.01 80);
-  --sidebar-accent: oklch(0.92 0.012 78);
-  --sidebar-accent-foreground: oklch(0.2 0.012 60);
-  --sidebar-border: oklch(0.89 0.01 80);
+  --sidebar-accent: oklch(0.92 0.004 286.32);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.56 0.18 40);
 
   /* Monitor status. Fills (dots, bars) keep >= 3:1 against the surfaces where it is achievable;
