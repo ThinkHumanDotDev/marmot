@@ -675,6 +675,17 @@ export const StatusPages: CollectionConfig = {
               admin: { description: adminT('marmot:statusPages:componentShowValuesDescription') },
             },
             {
+              // Public latency charts (#113): off by default because it exposes performance data.
+              name: 'showChart',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: {
+                description: adminT('marmot:statusPages:componentShowChartDescription'),
+                condition: (_data, siblingData) =>
+                  (siblingData as { type?: string } | undefined)?.type !== 'static',
+              },
+            },
+            {
               type: 'row',
               fields: [
                 {

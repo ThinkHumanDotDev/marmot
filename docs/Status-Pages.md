@@ -158,6 +158,7 @@ a `monitor` component with values shown, every group starts expanded).
 | `name`                 | Public display name. Required for `static`. For monitors it overrides the monitor's name.        |
 | `description`          | Shown to visitors as a tooltip next to the name.                                                 |
 | `showValues`           | Default `true`. Off hides this component's uptime and response times (needs the page toggle on). |
+| `showChart`            | Default `false`. Publishes [latency charts](#latency-charts) for a monitor component.            |
 | `sendUrl`, `customUrl` | Link shown to visitors (the monitor URL, or a custom link).                                      |
 
 - **Display name**: component `name` → the monitor's `publicName` (Monitor form → _Public name_) → the
@@ -236,6 +237,66 @@ read from the snapshot. The rows go with their page.
 each component per month (3 to 24 months, newest first) in the page's mode, with an **Export CSV** button
 (`month,component_id,component,uptime_percent,downtime_seconds,days`) for SLA reports.
 
+### Latency charts
+
+Some teams want to show response-time performance publicly, not just up and down (#113). Turn on
+**Public latency chart** for a monitor component in **Groups & monitors** (`showChart`, off by default
+because it exposes performance data). Visitors then get a **Response time** link under the component's
+bars that opens `/status/<slug>/monitors/<componentId>`; `/status/<slug>/monitors` shows every
+published component (on a custom domain: `/monitors` and `/monitors/<componentId>`). Each shows, over
+24 hours, 7 days or 30 days (`?range=1d|7d|30d`):
+
+- the uptime (unless `showUptimePercentage` is off) and the p50, p95 and p99 response time of the period;
+- a **response time** chart with p50, p95 and p99 lines per interval (5 minutes for 24 hours, 1 hour for
+  7 days, 4 hours for 30 days);
+- a **checks** chart with the successful, degraded and failed checks per interval;
+- for monitors checked from several [locations](Monitors.md) (#92), a table of each location's uptime,
+  average and p95 response time; the local workers read as "Primary".
+
+Charts need the component's values to be public: with `showValues` off on the page or the component
+there is no chart, whatever `showChart` says. Static components and third-party status page monitors
+have none, and paused monitors are hidden as on the page. Everything is read from the statistics rollups
+(`getRangeStats()`, `stat-location-hourly`), never from raw heartbeats, and the JSON
+(`GET /api/status-pages/:slug/charts`, `src/server/status-pages/latency-charts.ts`) carries aggregates
+only: the component id and public name, no monitor id, URL, hostname, location id or check message.
+Protected pages need access like the page itself. Responses are cached for 30 seconds, like the page's
+JSON.
+
+```jsonc
+{
+  "range": "1d",
+  "components": [
+    {
+      "componentId": "6702f1c4e1b2a3d4e5f60718",
+      "name": "API",
+      "description": "Public REST API", // only when set
+      "status": "up",
+      "range": "1d",
+      "step": 300, // interval width in seconds
+      "uptime": 0.9989, // only with showUptimePercentage; null without checks
+      "avgPing": 48.2,
+      "percentiles": { "p50": 41, "p95": 97, "p99": 180 }, // ms, null without data
+      "checks": { "total": 1440, "up": 1438, "failed": 2, "degraded": 3 },
+      "series": [
+        // oldest first; empty intervals have zero counts and null pings
+        {
+          "timestamp": 1760227200,
+          "up": 5,
+          "degraded": 0,
+          "down": 0,
+          "ping": 44,
+          "p50": 40,
+          "p95": 61,
+          "p99": 61,
+        },
+      ],
+      "locations": [{ "name": "Frankfurt", "uptime": 1, "avgPing": 31.5, "p95": 52 }], // multi-location monitors only
+    },
+  ],
+  "generatedAt": "2026-10-12T09:00:00.000Z",
+}
+```
+
 ## Public endpoints
 
 All of these are anonymous and return 404 for unknown or unpublished slugs. Protected pages also need
@@ -257,6 +318,8 @@ in the IP allow-list (403 otherwise).
 | `GET /status/:slug/manifest.json`                    | Web app manifest.                                                                                   |
 | `GET /status/:slug/badge.svg`                        | Overall status badge ([below](#status-badge)).                                                      |
 | `GET /status/:slug/events`                           | History page ([below](#history-and-permalinks)).                                                    |
+| `GET /status/:slug/monitors[/:componentId]`          | [Latency charts](#latency-charts) of the published components (404 when there are none).            |
+| `GET /api/status-pages/:slug/charts`                 | Their data as JSON (`?range=1d\|7d\|30d`, `?component=`); `Cache-Control: public, max-age=30`.      |
 | `GET /status/:slug/events/incident/:id`              | Permalink of an incident (`:id` is its `publicId`).                                                 |
 | `GET /status/:slug/events/maintenance/:id`           | Permalink of a maintenance window (occurrence `publicId`).                                          |
 | `GET /api/status-pages/:slug/events`                 | History as JSON (filters as on the page).                                                           |
@@ -311,6 +374,7 @@ in the IP allow-list (403 otherwise).
           "status": "up", // up | down | pending | maintenance | unknown
           "impact": null, // worst active incident impact, or null
           "showValues": true,
+          "showChart": false, // public latency charts at <page>/monitors/<componentId> (only with showValues)
           "uptime24h": 0.9993, // only when showValues
           "uptime30d": 0.9981, // only when showValues
           "beats": [{ "status": "up", "time": "2026-10-05T03:00:00.000Z", "ping": 42 }], // oldest first, ≤ 50; ping only when showValues
@@ -336,6 +400,7 @@ in the IP allow-list (403 otherwise).
           "status": "pending",
           "impact": "partial_outage",
           "showValues": true,
+          "showChart": false, // always false for static components
           "beats": [], // always empty for static components
           "days": [], // daily bars as above, from incidents only
         },
@@ -550,8 +615,8 @@ nine tabs (ten for admins): **Settings** (title, slug, description, language onc
 custom CSS, analytics id, header links, display toggles, uptime bars and calculation mode, delete), **Theme** (colour mode, preset, colour
 overrides, banner headline, logos and favicon, with a live preview; see [Themes](#themes)), **Groups &
 monitors** (drag-and-drop groups and components with
-`dnd-kit`, static components, per-component public name, description, values toggle, "show URL" / custom
-link, per-group "expanded by default"), **Incidents** (post, edit, pin, resolve, reopen, delete, affected
+`dnd-kit`, static components, per-component public name, description, values toggle, public latency chart toggle, "show URL" /
+custom link, per-group "expanded by default"), **Incidents** (post, edit, pin, resolve, reopen, delete, affected
 components and their impact, [templates](#templates)), **Subscribers** and **Notifications** (see [Subscribers](#subscribers)),
 **Domains**, **Access** (public, password, email domain or IP allow-list, with the list of signed-in
 visitors for email-domain pages; see below) and **Share** (the [status badge](#status-badge) with

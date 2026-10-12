@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronRight, ExternalLink, Info, Mail, Rss } from 'lucide-react'
+import { ChartLine, ChevronRight, ExternalLink, Info, Mail, Rss } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 
@@ -11,6 +11,7 @@ import { MaintenanceCard } from '@/components/status-pages/public/maintenance-ca
 import { StatusDot } from '@/components/status-dot'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { renderMarkdown } from '@/lib/markdown'
+import { componentChartPath } from '@/lib/status-page-charts'
 import { effectiveImpact } from '@/lib/status-page-components'
 import { EVENTS_PATH, eventPath, type EventKind } from '@/lib/status-page-events'
 import { cn } from '@/lib/utils'
@@ -171,6 +172,7 @@ function DescriptionTooltip({ name, description }: { name: string; description: 
 
 function MonitorRow({ monitor, basePath }: { monitor: PublicMonitor; basePath: string }) {
   const tPublic = useTranslations('statusPages.public')
+  const tCharts = useTranslations('statusPages.charts')
   const name = monitor.url ? (
     <a
       href={monitor.url}
@@ -259,6 +261,17 @@ function MonitorRow({ monitor, basePath }: { monitor: PublicMonitor; basePath: s
         <UptimeBars days={days} uptime={monitor.uptime} basePath={basePath} />
       ) : (
         !isStatic && <BeatBar beats={monitor.beats} />
+      )}
+      {monitor.showChart && monitor.componentId && (
+        <a
+          href={`${basePath}${componentChartPath(monitor.componentId)}`}
+          className="inline-flex w-fit items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          aria-label={tCharts('viewChartLabel', { name: monitor.name })}
+          data-component-chart-link
+        >
+          <ChartLine className="size-3.5" aria-hidden />
+          {tCharts('viewChart')}
+        </a>
       )}
     </li>
   )

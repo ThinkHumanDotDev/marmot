@@ -35,6 +35,8 @@ export const config = {
     '/badge.svg',
     '/events',
     '/events/:kind/:id',
+    '/monitors',
+    '/monitors/:id',
     '/sitemap.xml',
     '/robots.txt',
     '/index.md',
@@ -55,6 +57,7 @@ const REWRITES: Record<string, string> = {
   '/login': '/login',
   '/badge.svg': '/badge.svg',
   '/events': '/events',
+  '/monitors': '/monitors',
   '/sitemap.xml': '/sitemap.xml',
   '/robots.txt': '/robots.txt',
   '/index.md': '/index.md',
@@ -72,6 +75,8 @@ const REWRITES: Record<string, string> = {
 
 /** Permalinks of incidents and maintenance windows (`src/lib/status-page-events.ts`). */
 const EVENT_PERMALINK = /^\/events\/(incident|maintenance)\/[0-9a-z]{8}$/
+/** Latency charts of one component (#113; component ids are array row ids). */
+const COMPONENT_CHART = /^\/monitors\/[0-9a-f]{24}$/
 /** Their Markdown versions. */
 const EVENT_MARKDOWN = /^\/events\/(incident|maintenance)\/([0-9a-z]{8})\.md$/
 const PAGE_MARKDOWN = /^\/status\/([a-z0-9-]+)\.md$/
@@ -91,6 +96,7 @@ export function markdownAliasRewrite(pathname: string): string | undefined {
 export function customDomainSuffix(pathname: string): string | undefined {
   if (Object.hasOwn(REWRITES, pathname)) return REWRITES[pathname]
   if (EVENT_PERMALINK.test(pathname)) return pathname
+  if (COMPONENT_CHART.test(pathname)) return pathname
   const markdown = EVENT_MARKDOWN.exec(pathname)
   if (markdown) return `/event-md/${markdown[1]}/${markdown[2]}`
   return undefined

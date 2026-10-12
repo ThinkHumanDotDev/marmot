@@ -217,8 +217,8 @@ not contain. The "default enabled" flag is kept; "apply to all existing monitors
 
 Ids are the exporting instance's document ids and only serve to link documents inside the file; the
 importer remaps them. Component rows carry their `id` so templates can reference them; the importer maps
-them to the rows it creates (`templates` is optional, files from before templates import unchanged). Status page components keep their type, public name, description and
-`showValues`; incident impacts on components (`affectedComponents`) are not exported because component ids
+them to the rows it creates (`templates` is optional, files from before templates import unchanged). Status page components keep their type, public name, description,
+`showValues` and `showChart`; incident impacts on components (`affectedComponents`) are not exported because component ids
 are regenerated on import. Push monitors keep their token and schedule (`pushSchedule`, `pushCron`,
 `pushTimezone`, `pushGrace`, `pushMaxDuration`); their ping log and open runs are not exported. A page's subscription settings (`subscriptions`: enabled, channels, review or
 automatic sending, SMS templates) travel with it, and its SMS sender when that Twilio channel is in the

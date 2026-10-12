@@ -36,6 +36,7 @@ import {
 } from '@/server/maintenance/status-page'
 import { populateMonitorTags, toRealtimeTags } from '@/server/realtime/serialize'
 import { pastIncidentDays, type PublicIncidentDay } from '@/server/status-pages/event-summary'
+import { rowShowsChart } from '@/server/status-pages/latency-charts'
 import { publicIdOf } from '@/server/status-pages/public-ids'
 import { getUptime } from '@/server/stats/uptime-calculator'
 import {
@@ -93,6 +94,11 @@ export interface PublicMonitor {
   impact: ComponentImpact | null
   /** False when the page or the component hides uptime and response times. */
   showValues: boolean
+  /**
+   * The owner published latency charts for this component (#113): `componentId`'s charts are at
+   * `<page>/monitors/<componentId>` and `GET /api/status-pages/:slug/charts`. Only with `showValues`.
+   */
+  showChart: boolean
   /** 0..1; only present when `showValues`. */
   uptime24h?: number
   /** 0..1; only present when `showValues`. */
@@ -511,6 +517,7 @@ async function toPublicMonitor(
     status: monitor.status?.lastStatus ?? 'unknown',
     impact,
     showValues,
+    showChart: rowShowsChart(page, row) && monitor.type !== 'status-page',
     ...(showValues ? { uptime24h, uptime30d } : {}),
     beats,
     ...publicUptime(page, row, 'monitor', uptime),
@@ -540,6 +547,7 @@ function toPublicStaticComponent(
     status: staticComponentStatus(impact, underMaintenance),
     impact,
     showValues: rowShowsValues(page, row),
+    showChart: false,
     beats: [],
     ...publicUptime(page, row, 'static', uptime),
   }
