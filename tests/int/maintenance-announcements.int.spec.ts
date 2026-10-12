@@ -376,7 +376,7 @@ describe('maintenance announcements', () => {
         statusPages: [page.id],
         dateRange: { start: iso(2 * HOUR, now), end: iso(3 * HOUR, now) },
       })
-      const before = await getActiveMaintenanceForStatusPage(payload, page.id)
+      const before = await getActiveMaintenanceForStatusPage(payload, page)
       expect(before.map((m) => [m.title, m.status, m.state])).toEqual([
         ['to cancel', 'scheduled', 'scheduled'],
       ])
@@ -459,14 +459,14 @@ describe('maintenance announcements', () => {
       const [occurrence] = await occurrencesOf(doc.id)
       expect(occurrence.state).toBe('completed')
 
-      const visible = await getActiveMaintenanceForStatusPage(payload, page.id, {
+      const visible = await getActiveMaintenanceForStatusPage(payload, page, {
         now: new Date(end + HOUR),
         visibilityHours: page.maintenanceVisibilityHours,
       })
       expect(visible.map((m) => [m.title, m.status])).toEqual([['finished', 'completed']])
       expect(visible[0].updates.map((u) => u.status)).toEqual(['completed', 'in-progress'])
 
-      const gone = await getActiveMaintenanceForStatusPage(payload, page.id, {
+      const gone = await getActiveMaintenanceForStatusPage(payload, page, {
         now: new Date(end + 3 * HOUR),
         visibilityHours: page.maintenanceVisibilityHours,
       })

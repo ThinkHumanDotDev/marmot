@@ -26,7 +26,10 @@ import {
   type ComponentImpact,
   type IncidentStatus,
 } from '@/lib/incident-timeline'
+import { worstImpact } from '@/lib/status-page-components'
 import type { Incident, StatusPage } from '@/payload-types'
+
+import { isAudiencePage } from './audiences'
 
 import { findFeedIncidents, statusSince } from './feed'
 import {
@@ -254,11 +257,18 @@ export function toSpComponents(page: StatusPage, groups: readonly PublicGroup[])
   return out
 }
 
-/** Peak impact over the incident's whole timeline (Statuspage keeps it after resolution). */
-export function peakImpact(incident: Incident): ComponentImpact {
+/**
+ * Peak impact over the incident's whole timeline (Statuspage keeps it after resolution). With
+ * `visible` (audience pages, #151) only the impacts on those components count.
+ */
+export function peakImpact(
+  incident: Incident,
+  visible?: { has(component: string): boolean },
+): ComponentImpact {
   const { updates } = incidentTimeline(incident)
-  const impacts = updates.flatMap((u) => (u.components ?? []).map((c) => c.impact))
-  if (impacts.length === 0) {
+  const named = updates.flatMap((u) => u.components ?? [])
+  const impacts = named.filter((c) => !visible || visible.has(c.component)).map((c) => c.impact)
+  if (named.length === 0) {
     impacts.push(incident.impact ?? 'operational')
   }
   let worst: ComponentImpact = 'operational'
@@ -266,6 +276,20 @@ export function peakImpact(incident: Incident): ComponentImpact {
     if (COMPONENT_IMPACTS.indexOf(impact) > COMPONENT_IMPACTS.indexOf(worst)) worst = impact
   }
   return worst
+}
+
+/** The visible component names on audience pages (impacts are limited to them), else undefined. */
+const scopedNames = (ctx: StatuspageContext) => (isAudiencePage(ctx.page) ? ctx.names : undefined)
+
+/** Current impact of an active incident, limited to the visible components on audience pages. */
+function currentImpact(incident: Incident, ctx: StatuspageContext): ComponentImpact {
+  const { state } = incidentTimeline(incident)
+  const visible = scopedNames(ctx)
+  if (!visible || state.components.length === 0) return state.impact
+  return (
+    worstImpact(state.components.filter((c) => visible.has(c.component)).map((c) => c.impact)) ??
+    'operational'
+  )
 }
 
 export function toSpIncident(incident: Incident, ctx: StatuspageContext): SpIncident {
@@ -316,7 +340,7 @@ export function toSpIncident(incident: Incident, ctx: StatuspageContext): SpInci
       return monitoring ? iso(monitoring.postedAt) : null
     })(),
     resolved_at: state.resolvedAt ? iso(state.resolvedAt) : null,
-    impact: impactIndicator(peakImpact(incident)),
+    impact: impactIndicator(peakImpact(incident, scopedNames(ctx))),
     shortlink: ctx.links.event('incident', publicIdOf('incidents', incident)),
     started_at: iso(startedAt),
     page_id: String(ctx.page.id),
@@ -469,13 +493,13 @@ const spPage = (ctx: StatuspageContext, ...changes: (string | null | undefined)[
 export async function buildSummary(input: StatuspageInput): Promise<SpSummary> {
   const now = input.now ?? new Date()
   const [active, events] = await Promise.all([
-    findActiveIncidents(input.payload, input.page.id),
-    listMaintenanceEvents(input.payload, input.page.id, { now }),
+    findActiveIncidents(input.payload, input.page),
+    listMaintenanceEvents(input.payload, input.page, { now }),
   ])
   const ctx = await loadContext(input, active)
   const incidents = active.map((incident) => toSpIncident(incident, ctx))
   const announced = await announcedMaintenance(input.payload, input.page, events, now)
-  const activeImpacts = active.map((incident) => incidentTimeline(incident).state.impact)
+  const activeImpacts = active.map((incident) => currentImpact(incident, ctx))
   return {
     page: spPage(
       ctx,
@@ -505,7 +529,7 @@ export async function buildStatus(
 export async function buildComponents(
   input: StatuspageInput,
 ): Promise<Pick<SpSummary, 'page' | 'components'>> {
-  const active = await findActiveIncidents(input.payload, input.page.id)
+  const active = await findActiveIncidents(input.payload, input.page)
   const ctx = await loadContext(input, active)
   return {
     page: spPage(ctx, ...ctx.components.map((c) => c.updated_at)),
@@ -518,8 +542,8 @@ export async function buildIncidents(
   input: StatuspageInput,
 ): Promise<{ page: SpPage; incidents: SpIncident[] }> {
   const [active, recent] = await Promise.all([
-    findActiveIncidents(input.payload, input.page.id),
-    findFeedIncidents(input.payload, input.page.id, 50),
+    findActiveIncidents(input.payload, input.page),
+    findFeedIncidents(input.payload, input.page, 50),
   ])
   const ctx = await loadContext(input, active)
   return {
@@ -537,8 +561,8 @@ export async function buildScheduledMaintenances(
 ): Promise<{ page: SpPage; scheduled_maintenances: SpScheduledMaintenance[] }> {
   const now = input.now ?? new Date()
   const [active, events] = await Promise.all([
-    findActiveIncidents(input.payload, input.page.id),
-    listMaintenanceEvents(input.payload, input.page.id, { now }),
+    findActiveIncidents(input.payload, input.page),
+    listMaintenanceEvents(input.payload, input.page, { now }),
   ])
   const ctx = await loadContext(input, active)
   return {

@@ -21,7 +21,7 @@ import {
   statusPageUrlForHeaders,
 } from '@/server/status-pages/urls'
 
-import { loadPageAccess, loadPublicData, loadPublishedPage } from './data'
+import { loadPageAccess, loadPublicData, loadPublishedPage, loadVisiblePage } from './data'
 import { StatusPageExtras } from './extras'
 
 export const dynamic = 'force-dynamic'
@@ -77,7 +77,9 @@ export default async function PublicStatusPage({ params, searchParams }: PagePro
   if (!data) notFound()
 
   const { config: publicConfig } = data
-  const metrics = embed ? [] : await buildPublicMetrics(await getPayload({ config }), page)
+  // Audience pages (#151): metrics of the visitor's components only.
+  const visiblePage = (await loadVisiblePage(slug)) ?? page
+  const metrics = embed ? [] : await buildPublicMetrics(await getPayload({ config }), visiblePage)
   const locale = await getStatusPageLocale(publicConfig)
   const t = await getTranslations({ locale, namespace: 'statusPages.overall' })
 

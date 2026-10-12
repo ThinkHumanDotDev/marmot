@@ -13,6 +13,8 @@
  */
 import type { Payload } from 'payload'
 
+import { isMaintenanceVisibleOn, type AudienceScopedPage } from '@/server/status-pages/audiences'
+
 import {
   DEFAULT_MAINTENANCE_VISIBILITY_HOURS,
   isFinishedState,
@@ -115,10 +117,13 @@ export async function maintenanceTimezone(payload: Payload, doc: Maintenance): P
   return resolveTimezone(doc.timezone, serverTimezone)
 }
 
-/** Maintenance entries of a status page: running first, then upcoming, then recently finished. */
+/**
+ * Maintenance entries of a status page: running first, then upcoming, then recently finished. On
+ * an `audience` page (#151) only the maintenance visible to the scoped page.
+ */
 export async function getActiveMaintenanceForStatusPage(
   payload: Payload,
-  statusPageId: string | number,
+  page: AudienceScopedPage,
   nowOrOptions: Date | PublicMaintenanceOptions = {},
 ): Promise<PublicMaintenance[]> {
   const options = nowOrOptions instanceof Date ? { now: nowOrOptions } : nowOrOptions
@@ -128,14 +133,15 @@ export async function getActiveMaintenanceForStatusPage(
     options.visibilityHours ?? DEFAULT_MAINTENANCE_VISIBILITY_HOURS,
   )
 
-  const { docs: maintenances } = await payload.find({
+  const { docs: found } = await payload.find({
     collection: 'maintenance',
-    where: { statusPages: { equals: statusPageId } },
+    where: { statusPages: { equals: page.id } },
     depth: 0,
     limit: 100,
     pagination: false,
     overrideAccess: true,
   })
+  const maintenances = (found as Maintenance[]).filter((doc) => isMaintenanceVisibleOn(page, doc))
   if (maintenances.length === 0) return []
   const byId = new Map((maintenances as Maintenance[]).map((m) => [String(m.id), m]))
 

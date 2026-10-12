@@ -16,6 +16,7 @@ import {
   findPublishedStatusPage,
   type PublicStatusPageData,
 } from '@/server/status-pages/public'
+import { isAudiencePage, scopePageForVisitor } from '@/server/status-pages/audiences'
 import { statusPageBasePath } from '@/server/status-pages/urls'
 
 import type { StatusPage } from '@/payload-types'
@@ -26,8 +27,20 @@ export const loadPublishedPage = cache(async (slug: string): Promise<StatusPage 
   return findPublishedStatusPage(payload, slug)
 })
 
-export const loadPublicData = cache(async (slug: string): Promise<PublicStatusPageData | null> => {
+/**
+ * The published page as the current visitor may see it: on `audience` pages (#151) narrowed to the
+ * components of the visitor's audiences (none without access); every other page unchanged. Use it
+ * for anything that shows components, incidents or maintenance.
+ */
+export const loadVisiblePage = cache(async (slug: string): Promise<StatusPage | null> => {
   const page = await loadPublishedPage(slug)
+  if (!page || !isAudiencePage(page)) return page
+  const access = await loadPageAccess(slug)
+  return scopePageForVisitor(page, access ?? { allowed: false })
+})
+
+export const loadPublicData = cache(async (slug: string): Promise<PublicStatusPageData | null> => {
+  const page = await loadVisiblePage(slug)
   if (!page) return null
   const payload = await getPayload({ config })
   return buildPublicStatusPageData(payload, page)
@@ -60,12 +73,13 @@ export async function requireVisiblePage(
   slug: string,
   returnPath: string,
 ): Promise<{ page: StatusPage; basePath: string; restricted: boolean }> {
-  const page = await loadPublishedPage(slug)
-  if (!page) notFound()
-  const basePath = statusPageBasePath(page, await headers())
-  const restricted = isProtectedPage(page)
+  const published = await loadPublishedPage(slug)
+  if (!published) notFound()
+  const basePath = statusPageBasePath(published, await headers())
+  const restricted = isProtectedPage(published)
   if (restricted && !(await loadPageAccess(slug))?.allowed) {
     redirect(`${basePath}/login?next=${encodeURIComponent(returnPath)}`)
   }
+  const page = (await loadVisiblePage(slug)) ?? published
   return { page, basePath, restricted }
 }

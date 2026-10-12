@@ -30,6 +30,7 @@ import { serverTranslator } from '@/server/i18n'
 import { createRateLimiter, type RateLimiter } from '@/server/security/rate-limit'
 import { requestMeta } from '@/server/security/request'
 import { statusPageComponentIds } from '@/collections/StatusPageSubscribers'
+import { isAudiencePage } from '@/server/status-pages/audiences'
 
 import { loadPageContext } from './batches'
 import { slackMessage, welcomeWebhookBody } from './content'
@@ -87,6 +88,11 @@ export interface SubscribeInput {
   channel: unknown
   target: unknown
   components?: unknown
+  /**
+   * Audience pages (#151): the visitor's audiences from the access check (never from the request
+   * body). The subscriber hears only about their components.
+   */
+  audiences?: readonly string[]
 }
 
 export type SubscribeResult =
@@ -116,6 +122,8 @@ export async function subscribe(
   if (!isSubscriberChannel(channel) || !offeredChannels(page).includes(channel)) {
     return { ok: false, error: 'unavailable' }
   }
+  const audiences = [...(input.audiences ?? [])]
+  if (isAudiencePage(page) && audiences.length === 0) return { ok: false, error: 'unavailable' }
   const check = normalizeTarget(channel, input.target)
   if (!check.ok) return { ok: false, error: 'invalid-target' }
   const target = check.target
@@ -161,6 +169,9 @@ export async function subscribe(
           channel,
           target,
           components,
+          ...(isAudiencePage(page)
+            ? { audiences: audiences as unknown as StatusPageSubscriber['audiences'] }
+            : {}),
           source: 'self_signup',
           locale,
           // Webhook and Slack URLs need no opt-in: their first message carries the links.
@@ -179,7 +190,13 @@ export async function subscribe(
     subscriber = (await payload.update({
       collection: 'status-page-subscribers',
       id: subscriber.id,
-      data: { components, locale },
+      data: {
+        components,
+        locale,
+        ...(isAudiencePage(page)
+          ? { audiences: audiences as unknown as StatusPageSubscriber['audiences'] }
+          : {}),
+      },
       depth: 0,
       overrideAccess: true,
     })) as StatusPageSubscriber

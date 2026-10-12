@@ -26,8 +26,14 @@ import type {
   SubscriberDelivery,
   SubscriberNotification,
 } from '@/payload-types'
+import { audienceSubscriberWants } from '@/lib/status-page-audiences'
 import { renderAnnouncementEmail, type RenderedEmail } from '@/server/email/subscriber-emails'
 import { getOrganizationI18n, type OrganizationI18n } from '@/server/i18n'
+import {
+  audienceComponentMap,
+  componentsOfAudiences,
+  isAudiencePage,
+} from '@/server/status-pages/audiences'
 
 import { componentNames, renderSms, toAnnouncement, type Announcement } from './content'
 import { loadSmsChannel } from './deliver'
@@ -76,16 +82,43 @@ export async function* confirmedSubscribers(
   }
 }
 
+export type RecipientFilter = (
+  subscriber: Pick<StatusPageSubscriber, 'components' | 'audiences'>,
+) => boolean
+
+/**
+ * Which subscribers an announcement about `components` reaches: their component choice and, on
+ * `audience` pages (#151), only when the components overlap their audiences' (page-wide
+ * announcements reach every subscriber with an audience; one without receives nothing).
+ */
+export async function recipientFilter(
+  payload: Payload,
+  page: Pick<StatusPage, 'id' | 'access'>,
+  components: readonly string[] | null | undefined,
+): Promise<RecipientFilter> {
+  if (!isAudiencePage(page)) {
+    return (subscriber) => subscriberWantsComponents(subscriber.components, components)
+  }
+  const audiences = await audienceComponentMap(payload, page.id)
+  return (subscriber) =>
+    audienceSubscriberWants(
+      subscriber.components,
+      componentsOfAudiences(audiences, subscriber.audiences),
+      components,
+    )
+}
+
 /** Confirmed subscribers an announcement about `components` reaches, per channel. */
 export async function countRecipients(
   payload: Payload,
-  pageId: Id,
+  page: Pick<StatusPage, 'id' | 'access'>,
   components: readonly string[] | null | undefined,
 ): Promise<RecipientCounts> {
   const counts = emptyCounts()
-  for await (const batch of confirmedSubscribers(payload, pageId)) {
+  const reaches = await recipientFilter(payload, page, components)
+  for await (const batch of confirmedSubscribers(payload, page.id)) {
     for (const subscriber of batch) {
-      if (!subscriberWantsComponents(subscriber.components, components)) continue
+      if (!reaches(subscriber)) continue
       counts[subscriber.channel] += 1
       counts.total += 1
     }
@@ -130,7 +163,7 @@ export async function createNotificationBatch(
   })
   if (existing.totalDocs > 0) return null
 
-  const recipients = await countRecipients(payload, page.id, input.components)
+  const recipients = await countRecipients(payload, page, input.components)
   if (recipients.total === 0) {
     log.debug({ pageId: page.id, event: input.event }, 'no subscriber to notify')
     return null
@@ -335,6 +368,8 @@ export interface PageContext {
   page: StatusPage
   i18n: OrganizationI18n
   names: Map<string, string>
+  /** Audience pages (#151): component ids per audience id. */
+  audiences: Map<string, Set<string>> | null
 }
 
 export async function loadPageContext(payload: Payload, pageId: Id): Promise<PageContext | null> {
@@ -346,11 +381,25 @@ export async function loadPageContext(payload: Payload, pageId: Id): Promise<Pag
     disableErrors: true,
   })) as StatusPage | null
   if (!page) return null
-  const [i18n, names] = await Promise.all([
+  const [i18n, names, audiences] = await Promise.all([
     getOrganizationI18n(payload, relId(page.organization)),
     componentNames(payload, page),
+    isAudiencePage(page) ? audienceComponentMap(payload, page.id) : Promise.resolve(null),
   ])
-  return { page, i18n, names }
+  return { page, i18n, names, audiences }
+}
+
+/**
+ * Component names a subscriber may read in an announcement: on audience pages (#151) only those of
+ * its audiences, so a message never names another audience's components.
+ */
+export function namesForSubscriber(
+  ctx: PageContext,
+  subscriber: Pick<StatusPageSubscriber, 'audiences'>,
+): Map<string, string> {
+  if (!ctx.audiences) return ctx.names
+  const allowed = componentsOfAudiences(ctx.audiences, subscriber.audiences) ?? new Set<string>()
+  return new Map([...ctx.names].filter(([id]) => allowed.has(id)))
 }
 
 /**
@@ -388,7 +437,7 @@ export async function previewBatch(
     token: '',
   })
   const [recipients, smsChannel] = await Promise.all([
-    countRecipients(payload, ctx.page.id, notification.components),
+    countRecipients(payload, ctx.page, notification.components),
     loadSmsChannel(payload, ctx.page),
   ])
   return {

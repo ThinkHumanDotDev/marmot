@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 /** GET /status/:slug/maintenance.ics — iCalendar feed of recent and upcoming maintenance. */
 export const GET = publicStatusPageRoute(async ({ payload, page, links, locale }) => {
-  const events = await listMaintenanceEvents(payload, page.id)
+  const events = await listMaintenanceEvents(payload, page)
   return {
     body: renderMaintenanceCalendar({ page, pageUrl: links.page, locale, events }),
     contentType: 'text/calendar; charset=utf-8',

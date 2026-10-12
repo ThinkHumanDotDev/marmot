@@ -403,6 +403,15 @@ incidents naming it and computes `overall` from both: a `major_outage` component
 partial one as not fully up, a degraded one (incident impact or degraded monitor, `effectiveImpact()`) as
 degraded, and incidents without components raise the page to `degraded`, `partial` or `down`. See [Status pages](Status-Pages.md) for the routes and payload.
 
+**Audience pages** (#151, access mode `audience`) show each visitor only the components of their
+audiences (`status-page-audiences`). The scope is attached to the page object itself
+(`src/server/status-pages/audiences.ts`): `findPublishedStatusPage` returns such a page without groups,
+the access check's grant (`decision.audience`) feeds `scopePageForVisitor`, which puts back only the
+visitor's rows, and the incident and maintenance loaders (`findActiveIncidents`, `findRecentIncidents`,
+`findFeedIncidents`, `getActiveMaintenanceForStatusPage`, `listMaintenanceEvents`, the history index)
+take that page and drop what names only invisible components. Subscriber fan-out applies the same rule
+per subscriber through its `audiences` (`recipientFilter`, `namesForSubscriber`).
+
 ### Outbound webhooks
 
 `registerWebhookListeners()` (`src/server/webhooks/events.ts`) also runs from `onInit` and turns four

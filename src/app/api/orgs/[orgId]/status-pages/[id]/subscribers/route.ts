@@ -77,7 +77,8 @@ export async function GET(request: Request, { params }: RouteContext) {
 }
 
 /**
- * POST /api/orgs/:orgId/status-pages/:id/subscribers — `{ channel, target, components?, headers? }`.
+ * POST /api/orgs/:orgId/status-pages/:id/subscribers — `{ channel, target, components?, headers?,
+ * audiences? }` (`audiences`: ids of the page's audiences, #151, which audience pages need).
  * Owner-added subscribers are confirmed at once (no opt-in); webhook and Slack subscribers get a
  * welcome message with their manage link (and the webhook signing secret). Needs `subscriber:manage`.
  */
@@ -101,6 +102,9 @@ export async function POST(request: Request, { params }: RouteContext) {
         channel: body.channel,
         target: String(body.target ?? ''),
         components: Array.isArray(body.components) ? body.components.map(String) : [],
+        audiences: (Array.isArray(body.audiences)
+          ? body.audiences.map(String)
+          : []) as unknown as StatusPageSubscriber['audiences'],
         headers: Array.isArray(body.headers)
           ? (body.headers as { name?: unknown; value?: unknown }[]).map((h) => ({
               name: String(h?.name ?? ''),

@@ -241,6 +241,9 @@
         "confirmDescription": "Continúa para acceder a esta página de estado en este dispositivo.",
         "confirm": "Continuar a la página de estado"
       },
+      "audience": {
+        "description": "Esta página de estado solo está disponible para clientes y equipos invitados. Introduce tu dirección de correo electrónico para recibir un enlace de inicio de sesión."
+      },
       "ipAllowlist": {
         "description": "Esta página de estado solo está disponible desde redes autorizadas. Conéctate a la red o VPN de tu organización y vuelve a cargar la página."
       }
