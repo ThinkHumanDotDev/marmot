@@ -1,0 +1,44 @@
+{
+  "data": [
+    {
+      "id": "801",
+      "type": "status_report",
+      "attributes": {
+        "title": "Checkout failures",
+        "report_type": "manual",
+        "starts_at": "2026-09-02T12:00:00.000Z",
+        "ends_at": "2026-09-02T13:15:00.000Z",
+        "status_page_id": 123,
+        "affected_resources": [{ "status_page_resource_id": "701", "status": "resolved" }],
+        "aggregate_state": "operational"
+      }
+    },
+    {
+      "id": "802",
+      "type": "status_report",
+      "attributes": {
+        "title": "Backend upgrade",
+        "report_type": "maintenance",
+        "starts_at": "2099-02-01T01:00:00.000Z",
+        "ends_at": "2099-02-01T02:00:00.000Z",
+        "status_page_id": 123,
+        "affected_resources": [{ "status_page_resource_id": "702", "status": "maintenance" }],
+        "aggregate_state": "maintenance"
+      }
+    },
+    {
+      "id": "803",
+      "type": "status_report",
+      "attributes": {
+        "title": "Old maintenance",
+        "report_type": "maintenance",
+        "starts_at": "2026-01-01T01:00:00.000Z",
+        "ends_at": "2026-01-01T02:00:00.000Z",
+        "status_page_id": 123,
+        "affected_resources": [],
+        "aggregate_state": "operational"
+      }
+    }
+  ],
+  "pagination": { "first": null, "last": null, "prev": null, "next": null }
+}

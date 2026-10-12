@@ -1,0 +1,15 @@
+{
+  "data": [
+    {
+      "id": "501",
+      "type": "status_page_section",
+      "attributes": { "name": "Storefront", "position": 0, "status_page_id": 123 }
+    },
+    {
+      "id": "502",
+      "type": "status_page_section",
+      "attributes": { "name": "Backend", "position": 1, "status_page_id": 123 }
+    }
+  ],
+  "pagination": { "first": null, "last": null, "prev": null, "next": null }
+}

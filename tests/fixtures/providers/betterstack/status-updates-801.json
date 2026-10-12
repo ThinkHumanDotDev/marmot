@@ -1,0 +1,27 @@
+{
+  "data": [
+    {
+      "id": "9102",
+      "type": "status_update",
+      "attributes": {
+        "message": "Payments are processed again. All good.",
+        "published_at": "2026-09-02T13:15:00.000Z",
+        "notify_subscribers": true,
+        "status_report_id": 801,
+        "affected_resources": [{ "status_page_resource_id": "701", "status": "resolved" }]
+      }
+    },
+    {
+      "id": "9101",
+      "type": "status_update",
+      "attributes": {
+        "message": "Some checkouts fail with a payment error. We are on it.",
+        "published_at": "2026-09-02T12:00:00.000Z",
+        "notify_subscribers": true,
+        "status_report_id": 801,
+        "affected_resources": [{ "status_page_resource_id": "701", "status": "downtime" }]
+      }
+    }
+  ],
+  "pagination": { "first": null, "last": null, "prev": null, "next": null }
+}

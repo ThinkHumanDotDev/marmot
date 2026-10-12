@@ -1,0 +1,51 @@
+{
+  "data": [
+    {
+      "id": "701",
+      "type": "status_page_resource",
+      "attributes": {
+        "status_page_section_id": 501,
+        "resource_id": 2001,
+        "resource_type": "Monitor",
+        "history": true,
+        "widget_type": "response_times",
+        "public_name": "Shop",
+        "explanation": "Product pages and checkout",
+        "position": 0,
+        "availability": 0.9998,
+        "status": "operational"
+      }
+    },
+    {
+      "id": "702",
+      "type": "status_page_resource",
+      "attributes": {
+        "status_page_section_id": 502,
+        "resource_id": 2002,
+        "resource_type": "Monitor",
+        "history": true,
+        "widget_type": "history",
+        "public_name": "Public API",
+        "explanation": "",
+        "position": 0,
+        "status": "operational"
+      }
+    },
+    {
+      "id": "703",
+      "type": "status_page_resource",
+      "attributes": {
+        "status_page_section_id": 502,
+        "resource_id": 9001,
+        "resource_type": "Heartbeat",
+        "history": true,
+        "widget_type": "plain",
+        "public_name": "Nightly exports",
+        "explanation": "Data exports to partners",
+        "position": 1,
+        "status": "operational"
+      }
+    }
+  ],
+  "pagination": { "first": null, "last": null, "prev": null, "next": null }
+}

@@ -5818,7 +5818,9 @@
   "importExport": {
     "formats": {
       "uptime-kuma": "Uptime Kuma backup",
-      "marmot": "Marmot export"
+      "marmot": "Marmot export",
+      "statuspage": "Atlassian Statuspage",
+      "betterstack": "Better Stack"
     },
     "import": {
       "title": "Import",
@@ -5831,6 +5833,7 @@
       "checking": "Checking {fileName}…",
       "imported": "Imported",
       "goToMonitors": "Go to monitors",
+      "goToStatusPages": "Go to status pages",
       "another": "Import another file",
       "submit": "Import {count, plural, one {# item} other {# items}}",
       "cancel": "Cancel",
@@ -5860,7 +5863,10 @@
         "notifications": "Notification channels",
         "statusPages": "Status pages",
         "templates": "Templates",
-        "tags": "Tags"
+        "tags": "Tags",
+        "incidents": "Incidents",
+        "maintenance": "Maintenance windows",
+        "subscribers": "Subscribers"
       }
     },
     "messages": {
@@ -5868,7 +5874,7 @@
       "notKumaBackup": "Not an Uptime Kuma backup: expected a JSON object with \"monitorList\" and \"notificationList\".",
       "notMarmotExport": "Not a Marmot export (format \"{format}\" version {version}): {issues}",
       "kumaVersion": "Uptime Kuma backup version {version}",
-      "unnamed": "{kind, select, monitor {monitor} notification {notification} statusPage {status page} template {template} other {tag}} #{id}",
+      "unnamed": "{kind, select, monitor {monitor} notification {notification} statusPage {status page} template {template} incident {incident} other {tag}} #{id}",
       "notificationConfigNotJson": "Notification config is not valid JSON",
       "notificationNoType": "Notification has no provider type",
       "notificationProviderUnsupported": "Notification provider \"{type}\" is not supported by Marmot",
@@ -5913,7 +5919,55 @@
       "slugInUse": "\"{title}\": slug \"{slug}\" is already in use; imported as \"{imported}\"",
       "domainInUse": "\"{title}\": custom domain {hostname} is already used by another status page and was dropped",
       "planIntervalRaised": "\"{name}\": check interval raised to {seconds} seconds, the minimum of your plan",
-      "domainsNotInPlan": "\"{title}\": your plan does not include custom domains, so {count, plural, one {# domain was} other {# domains were}} dropped"
+      "domainsNotInPlan": "\"{title}\": your plan does not include custom domains, so {count, plural, one {# domain was} other {# domains were}} dropped",
+      "providerUnknown": "Unknown import source.",
+      "providerCredentials": "Enter the credentials for {provider}.",
+      "providerAuth": "{provider} rejected the API key. Check that it is valid and may read this page.",
+      "providerNotFound": "{provider} did not find that page. Check the ID.",
+      "providerUnreachable": "The {provider} API could not be reached or returned an error. Try again later.",
+      "providerInvalidResponse": "The {provider} API returned a response Marmot does not understand.",
+      "providerTooMany": "The {provider} account is too large to import in one go.",
+      "providerNoResources": "Choose at least one thing to import.",
+      "ungroupedComponents": "Services",
+      "pageUnpublished": "\"{title}\" is imported unpublished; publish it once you have reviewed it.",
+      "requiresStatusPage": "Its status page is not imported",
+      "maintenanceNoSchedule": "No start and end time",
+      "maintenanceFinished": "Finished maintenance windows are not imported",
+      "subscriberInvalid": "Not a valid {channel} address",
+      "subscriberDuplicate": "Duplicate subscription",
+      "subscriberQuarantined": "Quarantined by the source (deliveries bounced)",
+      "subscriberChannelUnsupported": "{channel} subscriptions are not supported",
+      "noIncidentPermission": "You may not post incidents in this organization",
+      "noMaintenancePermission": "You may not create maintenance windows in this organization",
+      "noSubscriberPermission": "You may not manage subscribers in this organization"
+    },
+    "providers": {
+      "title": "Import from a service",
+      "description": "Move status pages, incident history, maintenance and monitors from Atlassian Statuspage or Better Stack. Marmot reads them through the service’s API with a key you paste here; the key is used for this import only and never stored.",
+      "provider": "Service",
+      "fields": {
+        "apiKey": "API key",
+        "pageId": "Page ID",
+        "apiToken": "API token",
+        "statusPageId": "Status page ID"
+      },
+      "optional": "(optional)",
+      "hints": {
+        "statuspage": "Create an API key under your Statuspage profile → API info; the page ID is listed on the same screen.",
+        "betterstack": "Use a read-only Uptime API token (Integrations → API). Leave the status page ID empty to import every status page."
+      },
+      "resourcesLabel": "What to import",
+      "resources": {
+        "monitors": "Monitors",
+        "components": "Status page and components",
+        "incidents": "Incident history",
+        "maintenance": "Upcoming maintenance",
+        "subscribers": "Subscribers"
+      },
+      "resourcesHint": "Incidents and subscribers belong to the imported status page. Subscribers keep their confirmation and receive no opt-in message.",
+      "preview": "Connect and preview",
+      "previewing": "Reading {provider}…",
+      "previewFailed": "Could not read the account."
     }
   },
   "landing": {
