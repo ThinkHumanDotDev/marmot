@@ -9,6 +9,8 @@ export const QUEUE_NAMES = {
   checks: 'checks',
   notifications: 'notifications',
   maintenance: 'maintenance',
+  /** Certificate transparency lookups (`src/server/jobs/ct-alerts.ts`). */
+  ct: 'ct',
 } as const
 
 /** Job name of a monitor check on the checks queue. */

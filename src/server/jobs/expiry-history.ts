@@ -55,6 +55,7 @@ export function createPayloadSentHistory(
             type,
             monitor: monitorId,
             days,
+            fingerprint: '',
             organization: organizationId ?? null,
           } as never,
         })

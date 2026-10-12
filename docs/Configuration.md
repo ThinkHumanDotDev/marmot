@@ -153,6 +153,18 @@ Full setup guide with provider walkthroughs: [Single sign-on](Single-Sign-On.md)
 | `MONITOR_DENY_CIDRS`                 | —                                                             | web, worker | Comma-separated CIDRs that are always refused, guard on or off (e.g. `203.0.113.0/24, 2001:db8::/32`). Wins over `MONITOR_ALLOW_CIDRS`.                                                                                             |
 | `MONITOR_ALLOW_CIDRS`                | —                                                             | web, worker | Comma-separated CIDRs exempt from the private-address deny list, for internal subnets you do want to monitor (e.g. `10.20.0.0/16`).                                                                                                 |
 
+### Certificate transparency alerts
+
+Monitors with **Certificate transparency alerts** turned on (`ctAlerts`, see
+[Notifications](Notifications.md#certificate-transparency-alerts)) are looked up in the certificate
+transparency logs by the worker's `ct-alerts` job.
+
+| Variable                    | Default                                                               | Read by | Description                                                                                                                                                                                                                                                                                      |
+| --------------------------- | --------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CT_SOURCE_URL`             | `https://crt.sh/?q={query}&output=json&exclude=expired&deduplicate=Y` | worker  | CT source, a URL template. `{query}` is the crt.sh identity (`example.com`, or `%.example.com` for the subdomains, looked up separately), `{domain}` the hostname, `{subdomains}` `true` or `false`. The answer may be crt.sh JSON or Cert Spotter issuances (`expand=dns_names&expand=issuer`). |
+| `CT_CHECK_INTERVAL_MINUTES` | `180`                                                                 | worker  | Minutes between two lookups of a monitor (60–360). After a failed lookup the monitor and the source back off exponentially, up to 24 h.                                                                                                                                                          |
+| `CT_REQUESTS_PER_MINUTE`    | `6`                                                                   | worker  | Requests per minute sent to the source (1–120). A `429` or `503` answer pauses every lookup for its `Retry-After` (at least the backoff).                                                                                                                                                        |
+
 ### Ping-by-email
 
 [Push monitors](Monitors.md#ping-by-email) can also be pinged by email. Off unless `INBOUND_EMAIL_DOMAIN` and at least one of the two transports below are set.
