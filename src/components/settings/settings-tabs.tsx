@@ -5,6 +5,7 @@ import {
   Bell,
   Building2,
   Cable,
+  ChartLine,
   Container,
   CreditCard,
   FileText,
@@ -63,6 +64,7 @@ export function SettingsTabs({
       label: t('openTelemetry'),
       icon: Telescope,
     },
+    { href: `/${orgSlug}/settings/metrics`, label: t('metrics'), icon: ChartLine },
     { href: `/${orgSlug}/settings/audit-log`, label: t('auditLog'), icon: ScrollText },
     { href: `/${orgSlug}/settings/import-export`, label: t('importExport'), icon: ArrowDownUp },
     ...(showBilling

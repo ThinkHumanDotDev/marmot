@@ -11,7 +11,8 @@
  *   cancelled ones always, `scheduled` ones only while the maintenance is active. Unannounced
  *   occurrences that were dropped are deleted (`syncMaintenance`), so they never show up.
  * Components are named only when they are visible on the page (active monitors of the page's
- * organization and static components).
+ * organization and static components). On audience pages (#151) `page` is the scoped page: only
+ * incidents and maintenance visible to the visitor's audiences are listed or found.
  */
 import type { Payload, Where } from 'payload'
 
@@ -44,6 +45,12 @@ import {
   type PublicEventSummary,
 } from './event-summary'
 import { toPublicIncident, type PublicIncident } from './public'
+import {
+  isAudiencePage,
+  isIncidentVisibleOn,
+  isMaintenanceVisibleOn,
+  visibleIncidents,
+} from './audiences'
 import { derivePublicId, publicIdOf } from './public-ids'
 
 import type {
@@ -163,7 +170,7 @@ function maintenanceComponents(
 
 // ---- Maintenance of the page -------------------------------------------------------------------
 
-/** Maintenances that announce on the page. */
+/** Maintenances that announce on the page (on audience pages, those visible to the scope). */
 async function pageMaintenances(payload: Payload, page: StatusPage): Promise<Maintenance[]> {
   const { docs } = await payload.find({
     collection: 'maintenance',
@@ -173,8 +180,23 @@ async function pageMaintenances(payload: Payload, page: StatusPage): Promise<Mai
     pagination: false,
     overrideAccess: true,
   })
-  return docs as Maintenance[]
+  return (docs as Maintenance[]).filter((doc) => isMaintenanceVisibleOn(page, doc))
 }
+
+/**
+ * What the incident index reads: the creation time, plus the components on audience pages (#151),
+ * where incidents of other audiences are filtered out after the query.
+ */
+const incidentIndexSelect = (page: StatusPage) =>
+  isAudiencePage(page)
+    ? ({
+        createdAt: true,
+        publicId: true,
+        updatedAt: true,
+        affectedComponents: true,
+        updates: true,
+      } as const)
+    : ({ createdAt: true, publicId: true, updatedAt: true } as const)
 
 /** Is this occurrence of `doc` public on the page? */
 export const isPublicOccurrence = (
@@ -287,7 +309,7 @@ export async function listStatusPageEvents(
           limit: MAX_HISTORY_EVENTS,
           depth: 0,
           overrideAccess: true,
-          select: { createdAt: true },
+          select: incidentIndexSelect(page),
         })
       : null,
     wantMaintenance && covering.length > 0
@@ -305,10 +327,10 @@ export async function listStatusPageEvents(
       collection: 'incidents',
       where: { statusPage: { equals: page.id } },
       sort: 'createdAt',
-      limit: 1,
+      limit: isAudiencePage(page) ? MAX_HISTORY_EVENTS : 1,
       depth: 0,
       overrideAccess: true,
-      select: { createdAt: true },
+      select: incidentIndexSelect(page),
     }),
     maintenances.length > 0
       ? payload.find({
@@ -329,7 +351,7 @@ export async function listStatusPageEvents(
   ])
 
   const index: IndexEntry[] = [
-    ...(incidentIndex?.docs ?? []).map((doc) => ({
+    ...visibleIncidents(page, incidentIndex?.docs ?? []).map((doc) => ({
       kind: 'incident' as const,
       id: doc.id,
       time: Date.parse(doc.createdAt) || 0,
@@ -376,6 +398,7 @@ export async function listStatusPageEvents(
   ])
 
   const names = namesOf(components)
+  const scoped = { scoped: isAudiencePage(page) }
   const maintenanceById = new Map(maintenances.map((doc) => [String(doc.id), doc]))
   const incidentsById = new Map(incidentDocs.map((doc) => [String(doc.id), doc]))
   const occurrencesById = new Map(occurrenceDocs.map((doc) => [String(doc.id), doc]))
@@ -390,7 +413,7 @@ export async function listStatusPageEvents(
   for (const entry of slice) {
     if (entry.kind === 'incident') {
       const doc = incidentsById.get(String(entry.id))
-      if (doc) events.push(incidentSummary(toPublicIncident(doc, names)))
+      if (doc) events.push(incidentSummary(toPublicIncident(doc, names, scoped)))
       continue
     }
     const occurrence = occurrencesById.get(String(entry.id))
@@ -404,9 +427,10 @@ export async function listStatusPageEvents(
     )
   }
 
-  const oldestTimes = [oldestIncident.docs[0]?.createdAt, oldestOccurrence?.docs[0]?.start].flatMap(
-    (value) => (value ? [new Date(value)] : []),
-  )
+  const oldestTimes = [
+    visibleIncidents(page, oldestIncident.docs)[0]?.createdAt,
+    oldestOccurrence?.docs[0]?.start,
+  ].flatMap((value) => (value ? [new Date(value)] : []))
   const oldest = oldestTimes.length
     ? new Date(Math.min(...oldestTimes.map((d) => d.getTime())))
     : null
@@ -488,9 +512,10 @@ export async function getIncidentEvent(
     { statusPage: { equals: page.id } },
     publicId,
   )
-  if (!doc) return null
+  // Audience pages (#151): an incident of another audience does not exist for this visitor.
+  if (!doc || !isIncidentVisibleOn(page, doc)) return null
   const components = await pageComponents(payload, page)
-  const incident = toPublicIncident(doc, namesOf(components))
+  const incident = toPublicIncident(doc, namesOf(components), { scoped: isAudiencePage(page) })
   return { incident, summary: incidentSummary(incident) }
 }
 
@@ -549,7 +574,7 @@ export async function sitemapEvents(payload: Payload, page: StatusPage): Promise
       limit: MAX_HISTORY_EVENTS,
       depth: 0,
       overrideAccess: true,
-      select: { publicId: true, updatedAt: true },
+      select: incidentIndexSelect(page),
     }),
     maintenances.length > 0
       ? payload.find({
@@ -565,7 +590,7 @@ export async function sitemapEvents(payload: Payload, page: StatusPage): Promise
   ])
   const byId = new Map(maintenances.map((doc) => [String(doc.id), doc]))
   return [
-    ...incidents.docs.map((doc) => ({
+    ...visibleIncidents(page, incidents.docs).map((doc) => ({
       kind: 'incident' as const,
       publicId: publicIdOf('incidents', doc),
       lastModified: doc.updatedAt,

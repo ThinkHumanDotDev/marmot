@@ -203,6 +203,14 @@ Status pages keep their own long-term copy (#112): the daily `status-page-uptime
 important heartbeats (check counts, seconds DOWN, seconds with a known state). Retention never prunes
 it; the daily bars and the monthly history read it for the days whose statistics are gone
 ([Status pages](Status-Pages.md#daily-uptime-bars)).
+Public latency charts (#113, `src/server/status-pages/latency-charts.ts`) read `getRangeStats()` and
+`stat-location-hourly` for the components whose owner set `showChart`, and expose aggregates only
+([Status pages](Status-Pages.md#latency-charts)).
+Custom metrics (#155, `src/server/metrics/`) keep no raw points: a push folds its batch into
+`metric-stats` rows (one per metric, granularity and minute/hour/day bucket with count, sum, min, max
+and latest value), pruned by the retention job with the same cutoffs as the `stat-*` rows.
+Monitor-backed metrics read the value their monitor records in `stat-*` (`extras.value`)
+([Status pages](Status-Pages.md#custom-metrics)).
 
 Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ job scheduler on the
 `marmot:maintenance` queue: minutely rows older than 24 h, hourly and per-location hourly older than 30 d, daily and important
@@ -419,6 +427,15 @@ The public payload (`buildPublicStatusPageData`) maps each monitor to the worst 
 incidents naming it and computes `overall` from both: a `major_outage` component counts as down, a
 partial one as not fully up, a degraded one (incident impact or degraded monitor, `effectiveImpact()`) as
 degraded, and incidents without components raise the page to `degraded`, `partial` or `down`. See [Status pages](Status-Pages.md) for the routes and payload.
+
+**Audience pages** (#151, access mode `audience`) show each visitor only the components of their
+audiences (`status-page-audiences`). The scope is attached to the page object itself
+(`src/server/status-pages/audiences.ts`): `findPublishedStatusPage` returns such a page without groups,
+the access check's grant (`decision.audience`) feeds `scopePageForVisitor`, which puts back only the
+visitor's rows, and the incident and maintenance loaders (`findActiveIncidents`, `findRecentIncidents`,
+`findFeedIncidents`, `getActiveMaintenanceForStatusPage`, `listMaintenanceEvents`, the history index)
+take that page and drop what names only invisible components. Subscriber fan-out applies the same rule
+per subscriber through its `audiences` (`recipientFilter`, `namesForSubscriber`).
 
 ### Outbound webhooks
 

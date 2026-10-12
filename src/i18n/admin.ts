@@ -138,6 +138,19 @@ export const adminTranslations = {
           'Monitors that export without a collector of their own use this one. One per organization.',
         activeDescription: 'Inactive collectors receive nothing.',
       },
+      metrics: {
+        description:
+          'Custom metrics shown on status pages. Manage them under Settings → Metrics; points are pushed to POST /api/orgs/:orgId/metrics/:id/points.',
+        suffixDescription: 'Unit shown after the value, e.g. % or ms.',
+        aggregationDescription:
+          'How the points of one chart interval are combined: average, sum, last value or maximum.',
+        thresholdsDescription: 'Optional reference lines drawn on the chart.',
+        sourceDescription:
+          'push: points arrive through the API. monitor: the value a monitor records (Prometheus query monitors).',
+        visibleDescription: 'Only visible metrics are shown on the status pages listed below.',
+        statsDescription:
+          'Rollups of pushed metric points; minutely rows are kept 24 hours, hourly 30 days, daily for the data period.',
+      },
       webhookDeliveries: {
         description:
           'Delivery log of outbound webhooks, pruned after WEBHOOK_DELIVERY_RETENTION_DAYS.',
@@ -235,6 +248,12 @@ export const adminTranslations = {
       },
       statusPageViewers: {
         statusDescription: 'revoked: the visitor is signed out and cannot request new links.',
+      },
+      statusPageAudiences: {
+        componentsDescription: 'Component ids (group row ids) of the page this audience sees.',
+        emailsDescription: 'Addresses of the members; they sign in with a one-time link.',
+        emailDomainsDescription:
+          'Domains such as example.com; every address at these domains is a member.',
       },
       statusPageUptimeHistory: {
         label: 'Status page uptime history',
@@ -562,7 +581,7 @@ export const adminTranslations = {
           "IANA time zone such as Europe/Berlin. Empty uses the organization's time zone.",
         publishedDescription: 'Unpublished pages return 404 to visitors.',
         accessDescription:
-          'password: visitors enter the page password. email-domain: visitors get a one-time link at an allowed email domain. ip-allowlist: only requests from the listed IP ranges.',
+          'password: visitors enter the page password. email-domain: visitors get a one-time link at an allowed email domain. ip-allowlist: only requests from the listed IP ranges. audience: signed-in members of the page audiences see only their components.',
         passwordDescription:
           'Set or change the page password. Changing it signs every visitor out.',
         allowedEmailDomainsDescription:
@@ -603,6 +622,8 @@ export const adminTranslations = {
         componentDescriptionDescription: 'Shown to visitors as a tooltip.',
         componentShowValuesDescription:
           'Show uptime and response time for this component (the page setting must be on too).',
+        componentShowChartDescription:
+          'Publish latency percentile and check charts for this monitor (off by default; needs values shown).',
         logoDescription: 'Shown in light mode, and in dark mode when there is no dark logo.',
         themeDescription:
           'auto lets visitors pick (system, light or dark); light and dark force that mode.',
@@ -625,6 +646,8 @@ export const adminTranslations = {
       subscribers: {
         targetDescription: 'Email address, phone number (E.164), webhook URL or Slack webhook URL.',
         componentsDescription: 'Component ids of the page; empty means every component.',
+        audiencesDescription:
+          'Audiences of an audience-mode page whose components this subscriber hears about.',
         confirmedAtDescription: 'Unconfirmed self sign-ups receive nothing.',
         localeDescription: 'Language of the messages.',
         secretDescription: 'Signs every webhook delivery (X-Marmot-Signature).',

@@ -23,6 +23,7 @@ export const PERMISSION_RESOURCE_KEYS = {
   'audit-log': 'auditLog',
   webhook: 'webhook',
   'otel-collector': 'otelCollector',
+  metric: 'metric',
   sso: 'sso',
 } as const
 
@@ -39,6 +40,7 @@ export const PERMISSION_ACTION_KEYS = {
   acknowledge: 'acknowledge',
   resolve: 'resolve',
   history: 'history',
+  push: 'push',
 } as const
 
 export type PermissionResourceKey =

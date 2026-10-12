@@ -159,6 +159,7 @@ a `monitor` component with values shown, every group starts expanded).
 | `name`                 | Public display name. Required for `static`. For monitors it overrides the monitor's name.        |
 | `description`          | Shown to visitors as a tooltip next to the name.                                                 |
 | `showValues`           | Default `true`. Off hides this component's uptime and response times (needs the page toggle on). |
+| `showChart`            | Default `false`. Publishes [latency charts](#latency-charts) for a monitor component.            |
 | `sendUrl`, `customUrl` | Link shown to visitors (the monitor URL, or a custom link).                                      |
 
 - **Display name**: component `name` → the monitor's `publicName` (Monitor form → _Public name_) → the
@@ -237,6 +238,103 @@ read from the snapshot. The rows go with their page.
 each component per month (3 to 24 months, newest first) in the page's mode, with an **Export CSV** button
 (`month,component_id,component,uptime_percent,downtime_seconds,days`) for SLA reports.
 
+### Latency charts
+
+Some teams want to show response-time performance publicly, not just up and down (#113). Turn on
+**Public latency chart** for a monitor component in **Groups & monitors** (`showChart`, off by default
+because it exposes performance data). Visitors then get a **Response time** link under the component's
+bars that opens `/status/<slug>/monitors/<componentId>`; `/status/<slug>/monitors` shows every
+published component (on a custom domain: `/monitors` and `/monitors/<componentId>`). Each shows, over
+24 hours, 7 days or 30 days (`?range=1d|7d|30d`):
+
+- the uptime (unless `showUptimePercentage` is off) and the p50, p95 and p99 response time of the period;
+- a **response time** chart with p50, p95 and p99 lines per interval (5 minutes for 24 hours, 1 hour for
+  7 days, 4 hours for 30 days);
+- a **checks** chart with the successful, degraded and failed checks per interval;
+- for monitors checked from several [locations](Monitors.md) (#92), a table of each location's uptime
+  and average response time; the local workers read as "Primary".
+
+Charts need the component's values to be public: with `showValues` off on the page or the component
+there is no chart, whatever `showChart` says. Static components and third-party status page monitors
+have none, and paused monitors are hidden as on the page. Everything is read from the statistics rollups
+(`getRangeStats()`, `stat-location-hourly`), never from raw heartbeats, and the JSON
+(`GET /api/status-pages/:slug/charts`, `src/server/status-pages/latency-charts.ts`) carries aggregates
+only: the component id and public name, no monitor id, URL, hostname, location id or check message.
+Protected pages need access like the page itself. Responses are cached for 30 seconds, like the page's
+JSON.
+
+```jsonc
+{
+  "range": "1d",
+  "components": [
+    {
+      "componentId": "6702f1c4e1b2a3d4e5f60718",
+      "name": "API",
+      "description": "Public REST API", // only when set
+      "status": "up",
+      "range": "1d",
+      "step": 300, // interval width in seconds
+      "uptime": 0.9989, // only with showUptimePercentage; null without checks
+      "avgPing": 48.2,
+      "percentiles": { "p50": 41, "p95": 97, "p99": 180 }, // ms, null without data
+      "checks": { "total": 1440, "up": 1438, "failed": 2, "degraded": 3 },
+      "series": [
+        // oldest first; empty intervals have zero counts and null pings
+        {
+          "timestamp": 1760227200,
+          "up": 5,
+          "degraded": 0,
+          "down": 0,
+          "ping": 44,
+          "p50": 40,
+          "p95": 61,
+          "p99": 61,
+        },
+      ],
+      "locations": [{ "name": "Frankfurt", "uptime": 1, "avgPing": 31.5 }], // multi-location monitors only
+    },
+  ],
+  "generatedAt": "2026-10-12T09:00:00.000Z",
+}
+```
+
+### Custom metrics
+
+Beyond up/down and latency, a page can chart business figures such as an API error rate or a queue
+backlog (#155). Define them under **Settings → Metrics** (or `/api/orgs/:orgId/metrics`, `metric:*`
+permissions, members by default): a name, description, unit (`suffix`, e.g. `%` or `ms`), `decimals`,
+how the values of one interval are combined (`aggregation`: `average`, `sum`, `last` or `max`), the
+period it opens with (`defaultView`: `hour`, `day`, `week` or `month`), optional warning and critical
+`thresholds` drawn as reference lines, and an `order`.
+
+A metric gets its values in one of two ways (`source`):
+
+- **push** (default): a script sends points with an API key that has write scope:
+
+  ```sh
+  curl -X POST https://status.example.com/api/orgs/<orgId>/metrics/<metricId>/points \
+    -H "Authorization: Bearer mk_…" -H "Content-Type: application/json" \
+    -d '{"points":[{"value":0.42},{"value":0.40,"timestamp":"2026-10-12T09:59:00Z"}]}'
+  ```
+
+  `{ "value": 0.42 }` works for a single point. A request carries up to 1 000 points from the last 24
+  hours (`timestamp` in unix seconds, milliseconds or ISO 8601; default now) and answers
+  `202 { "accepted": n }`; a bad point rejects the whole batch with `400`. Pushes are rate limited per
+  key and metric (`METRIC_PUSH_RATE_LIMIT`, 60 a minute) on top of the key's write budget
+  (`API_KEY_WRITE_RATE_LIMIT`).
+
+- **monitor**: the value a [Prometheus query monitor](Monitors.md) records, read from its statistics.
+
+Points are never stored one by one: each push is folded into minutely, hourly and daily rollups
+(`metric-stats`) that follow the monitor statistics' retention (24 hours, 30 days, the data period). The
+`hour` view draws 1-minute intervals, `day` 5 minutes, `week` 1 hour and `month` 4 hours.
+
+A metric appears in the **Metrics** section of a page only when it is **published** (`visible`) and the
+page is one of its `statusPages`; hidden metrics never reach visitors. Visitors switch the period per
+metric; the data comes from `GET /api/status-pages/:slug/metrics[?metric=<id>&view=hour|day|week|month]`,
+which carries the display settings and aggregates only (no source monitor, push time or organization),
+follows the page's access control and is cached for 30 seconds.
+
 ## Public endpoints
 
 All of these are anonymous and return 404 for unknown or unpublished slugs. Protected pages also need
@@ -258,6 +356,9 @@ in the IP allow-list (403 otherwise).
 | `GET /status/:slug/manifest.json`                    | Web app manifest.                                                                                   |
 | `GET /status/:slug/badge.svg`                        | Overall status badge ([below](#status-badge)).                                                      |
 | `GET /status/:slug/events`                           | History page ([below](#history-and-permalinks)).                                                    |
+| `GET /status/:slug/monitors[/:componentId]`          | [Latency charts](#latency-charts) of the published components (404 when there are none).            |
+| `GET /api/status-pages/:slug/charts`                 | Their data as JSON (`?range=1d\|7d\|30d`, `?component=`); `Cache-Control: public, max-age=30`.      |
+| `GET /api/status-pages/:slug/metrics`                | [Custom metrics](#custom-metrics) of the page (`?metric=`, `?view=hour\|day\|week\|month`).         |
 | `GET /status/:slug/events/incident/:id`              | Permalink of an incident (`:id` is its `publicId`).                                                 |
 | `GET /status/:slug/events/maintenance/:id`           | Permalink of a maintenance window (occurrence `publicId`).                                          |
 | `GET /api/status-pages/:slug/events`                 | History as JSON (filters as on the page).                                                           |
@@ -312,6 +413,7 @@ in the IP allow-list (403 otherwise).
           "status": "up", // up | down | pending | maintenance | unknown
           "impact": null, // worst active incident impact, or null
           "showValues": true,
+          "showChart": false, // public latency charts at <page>/monitors/<componentId> (only with showValues)
           "uptime24h": 0.9993, // only when showValues
           "uptime30d": 0.9981, // only when showValues
           "beats": [{ "status": "up", "time": "2026-10-05T03:00:00.000Z", "ping": 42 }], // oldest first, ≤ 50; ping only when showValues
@@ -337,6 +439,7 @@ in the IP allow-list (403 otherwise).
           "status": "pending",
           "impact": "partial_outage",
           "showValues": true,
+          "showChart": false, // always false for static components
           "beats": [], // always empty for static components
           "days": [], // daily bars as above, from incidents only
         },
@@ -580,8 +683,8 @@ nine tabs (ten for admins): **Settings** (title, slug, description, languages an
 custom CSS, analytics id, header links, display toggles, uptime bars and calculation mode, delete), **Theme** (colour mode, preset, colour
 overrides, banner headline, logos and favicon, with a live preview; see [Themes](#themes)), **Groups &
 monitors** (drag-and-drop groups and components with
-`dnd-kit`, static components, per-component public name, description, values toggle, "show URL" / custom
-link, per-group "expanded by default"), **Incidents** (post, edit, pin, resolve, reopen, delete, affected
+`dnd-kit`, static components, per-component public name, description, values toggle, public latency chart toggle, "show URL" /
+custom link, per-group "expanded by default"), **Incidents** (post, edit, pin, resolve, reopen, delete, affected
 components and their impact, [templates](#templates)), **Subscribers** and **Notifications** (see [Subscribers](#subscribers)),
 **Domains**, **Access** (public, password, email domain or IP allow-list, with the list of signed-in
 visitors for email-domain pages; see below) and **Share** (the [status badge](#status-badge) with
@@ -953,8 +1056,8 @@ allow-list, so an intranet status never reaches another site through a visitor's
 
 ## Access
 
-A page's **Access** tab switches it between **Public** (default), **Password**, **Email domain** and
-**IP allow-list**. Protection applies to published pages; signed-in members still preview their pages
+A page's **Access** tab switches it between **Public** (default), **Password**, **Email domain**,
+**IP allow-list** and **Audiences**. Protection applies to published pages; signed-in members still preview their pages
 from the builder. Whatever the mode, every public surface checks access through
 `checkStatusPageAccess` (`src/server/status-pages/access.ts`), which dispatches to one strategy per mode
 and denies modes it does not know: the HTML page, `/api/status-pages/:slug/public`, `/rss` and the
@@ -1045,6 +1148,58 @@ only behind a proxy that **overwrites** those headers (the bundled Caddy does; n
 first hop). With `trustProxy` off, nobody is admitted (the Access tab warns), because a client could
 otherwise claim any address. If a CDN or load balancer sits in front of the proxy, make sure the
 address that reaches Marmot is the visitor's, not the CDN's.
+
+### Audiences
+
+For B2B products with per-customer or per-region infrastructure (#151): one page, several
+**audiences**, each seeing only its own components. An incident on the EU-2 cluster is written once and
+reaches only the customers on EU-2, on the page and in their notifications.
+
+**Setting it up.** On the **Audiences** tab add an audience per customer or region: a name ("Acme
+Corp", "EU customers"), the components it sees, and its members as addresses (`ops@acme.com`) and/or
+email domains (`acme.com`, exact match as for [email domain](#email-domain) pages). Then set the
+Access tab to **Audiences**. You can prepare audiences before switching; **View as audience** on the
+same tab renders the page exactly as an audience sees it (drafts too), from
+`GET /api/orgs/:orgId/status-pages/:id/audiences/:audienceId/preview`.
+
+**Signing in.** Visitors use the same one-time email links as [email domain](#email-domain) pages (same
+form, rate limits, single use, `status-page-viewers` rows you can revoke). A link is only sent to
+addresses that some audience lists. On every request the viewer's address is matched against the page's
+audiences again (`audienceGrantFor`), so editing or deleting an audience applies at once; a signed-in
+visitor no audience lists any more is sent back to the sign-in form. A visitor in several audiences
+sees the union of their components.
+
+**What a visitor sees.**
+
+- Components: only those of their audiences; groups left empty are hidden.
+- Incidents: those naming (in any update, or in their current state) at least one visible component.
+  An incident that names **no component** is page-wide and every audience sees it. Component lists,
+  impacts and the overall status only count visible components, so an incident shared by two audiences
+  says nothing about the other audience's components.
+- Maintenance: windows covering a monitor of a visible component, and page-wide ones (no monitor).
+- Nothing in the URL widens this: the scope comes only from the signed session, and filters such as
+  `?component=` ignore components the visitor cannot see. An event of another audience answers `404`.
+
+This holds for every public surface: the HTML page, history and permalinks, `/api/status-pages/:slug/public`
+and `/events`, the RSS/Atom/JSON feeds, `maintenance.ics`, the Statuspage-compatible JSON, Markdown
+and `llms.txt`, the [latency charts](#latency-charts) (page and JSON), the [custom metrics](#custom-metrics)
+(page and JSON: a monitor-backed metric only for the audiences that see its monitor, a pushed metric for
+every audience, like a page-wide incident), the page badge and monitor badges (a monitor of another
+audience answers `404`). Like
+every protected page, an audience page has no embed mode, no widget, no sitemap and is never cached
+publicly. The filtering is in `src/server/status-pages/audiences.ts`: `findPublishedStatusPage` returns
+audience pages **without groups** until `scopePageForVisitor` narrows them to the visitor's
+components, and the incident and maintenance loaders take the scoped page, so a code path that forgets
+to scope shows nothing rather than everything.
+
+**Subscribers.** A visitor who subscribes is bound to their audiences (from the session, never from the
+request) and can only pick, and later manage, their audiences' components. An announcement reaches a
+subscriber only when its components overlap the subscriber's audiences (page-wide announcements reach
+every audience), and the message names only components the subscriber's audiences see. Subscribers you
+add on the Subscribers tab need an audience; without one an audience page sends them nothing. Removing
+someone from an audience does not remove their subscriptions; remove those on the Subscribers tab.
+
+SSO groups as members (with [SSO](Single-Sign-On.md)) are not supported yet.
 
 ## Themes
 

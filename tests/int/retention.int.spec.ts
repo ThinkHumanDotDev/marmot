@@ -446,6 +446,7 @@ describe('runRetention in batches', () => {
       hourly: 0,
       locationHourly: 0,
       daily: 0,
+      metricStats: 0,
       heartbeats: 0,
       importantHeartbeats: 0,
       auditLogs: 0,

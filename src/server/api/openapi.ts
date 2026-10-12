@@ -28,6 +28,7 @@ import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
 import { DOCKER_CONNECTION_TYPES } from '@/lib/monitor-resources'
 import { SSH_TUNNEL_AUTH_METHODS } from '@/lib/ssh-tunnels'
 import { LOG_TRIGGERS } from '@/lib/response-log'
+import { STATUS_PAGE_ACCESS_MODES } from '@/lib/status-page-access'
 import { SUBSCRIBER_CHANNELS } from '@/lib/status-page-subscribers'
 import { maintenanceFormSchema } from '@/lib/validation/maintenance'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
@@ -39,6 +40,12 @@ import { API_KEY_FORBIDDEN_SECTIONS, isWriteMethod } from '@/server/auth/request
 import { STATS_RANGES } from '@/server/stats/uptime-calculator'
 import { createEndpointSchema, updateEndpointSchema } from '@/server/webhooks/manage'
 import { createCollectorSchema, updateCollectorSchema } from '@/server/otel/manage'
+import {
+  metricCreateSchema,
+  metricPointsSchema,
+  metricUpdateSchema,
+} from '@/server/metrics/schemas'
+import { METRIC_VIEWS } from '@/lib/metrics'
 
 /** Version of the management API contract. Breaking changes bump the major version. */
 export const MANAGEMENT_API_VERSION = '1.0.0'
@@ -126,7 +133,7 @@ const statusPageBody = z
     slug: z.string().min(1),
     description: z.string().nullable().optional(),
     published: z.boolean().optional(),
-    access: z.enum(['public', 'password', 'email', 'ip']).optional(),
+    access: z.enum(STATUS_PAGE_ACCESS_MODES).optional(),
     password: z.string().optional().describe('Write-only; stored hashed'),
     groups: z.array(z.record(z.string(), z.unknown())).optional().describe('Component groups'),
     domains: z.array(z.record(z.string(), z.unknown())).optional(),
@@ -160,6 +167,10 @@ const subscriberCreateBody = z.object({
   channel: z.enum(SUBSCRIBER_CHANNELS),
   target: z.string().describe('Address, phone number or URL'),
   components: z.array(z.string()).optional(),
+  audiences: z
+    .array(id)
+    .optional()
+    .describe('Audiences of an audience page (#151) whose components the subscriber hears about'),
   headers: subscriberHeaders.optional().describe('Webhook headers'),
 })
 
@@ -170,6 +181,12 @@ const subscriberPatchBody = z.object({
 
 const batchActionBody = z.object({ action: z.enum(['send', 'discard', 'retry']) })
 const viewerPatchBody = z.object({ status: z.enum(['active', 'revoked']) })
+const audienceBody = z.object({
+  name: z.string().min(1).max(100),
+  components: z.array(z.string()).optional().describe('Component (group row) ids of the page'),
+  emails: z.array(z.string()).optional().describe('Member addresses'),
+  emailDomains: z.array(z.string()).optional().describe('Member email domains'),
+})
 const updateMessageBody = z.object({ message: z.string() })
 
 const dockerTestBody = z.object({
@@ -793,7 +810,7 @@ export const OPERATIONS: OperationSpec[] = [
     operationId: 'bulkMonitors',
     summary: 'Run one action on many monitors',
     description:
-      '`pause`, `resume`, `check` (queues a recorded check per monitor, spending the organization’s on-demand budget), `delete`, `addTags` / `removeTags` (`payload.tags`) and `addNotifications` / `removeNotifications` (`payload.notifications`), up to 500 ids. Each monitor is written on its own and audited on its own; the response has one result per id. `delete` needs `monitor:delete`. An API key spends one write per monitor and may name at most `API_KEY_WRITE_RATE_LIMIT` ids.',
+      '`pause`, `resume`, `check` (queues a recorded check per monitor, spending the organization’s on-demand budget), `delete`, `addTags` / `removeTags` (`payload.tags`) and `addNotifications` / `removeNotifications` (`payload.notifications`), `addToMaintenance` (`payload.maintenance`, also needs `maintenance:update`) and `addToStatusPageGroup` (`payload.statusPage` and `payload.group`, the group row id, also needs `status-page:update`), up to 500 ids. The last two write the maintenance window or the status page once, as the caller; monitors already listed there are `unchanged`. Every other action writes each monitor on its own and audited on its own; the response has one result per id. `delete` needs `monitor:delete`. An API key spends one write per monitor and may name at most `API_KEY_WRITE_RATE_LIMIT` ids.',
     tag: 'Monitors',
     permission: 'monitor:update',
     body: { schema: monitorBulkBody },
@@ -1457,6 +1474,50 @@ export const OPERATIONS: OperationSpec[] = [
     permission: 'status-page:update',
   },
 
+  // Audiences of audience pages (#151)
+  {
+    method: 'GET',
+    path: `${ORG}/status-pages/{id}/audiences`,
+    operationId: 'listStatusPageAudiences',
+    summary: 'Audiences of a status page',
+    tag: 'Status pages',
+    permission: 'status-page:read',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/status-pages/{id}/audiences`,
+    operationId: 'createStatusPageAudience',
+    summary: 'Create an audience',
+    tag: 'Status pages',
+    permission: 'status-page:update',
+    body: { schema: audienceBody },
+  },
+  {
+    method: 'PATCH',
+    path: `${ORG}/status-pages/{id}/audiences/{audienceId}`,
+    operationId: 'updateStatusPageAudience',
+    summary: 'Edit an audience',
+    tag: 'Status pages',
+    permission: 'status-page:update',
+    body: { schema: audienceBody.partial() },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/status-pages/{id}/audiences/{audienceId}`,
+    operationId: 'deleteStatusPageAudience',
+    summary: 'Delete an audience',
+    tag: 'Status pages',
+    permission: 'status-page:update',
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/status-pages/{id}/audiences/{audienceId}/preview`,
+    operationId: 'previewStatusPageAudience',
+    summary: 'The public payload as members of an audience see it',
+    tag: 'Status pages',
+    permission: 'status-page:read',
+  },
+
   // Uptime history (#112)
   {
     method: 'GET',
@@ -1664,6 +1725,82 @@ export const OPERATIONS: OperationSpec[] = [
     tag: 'OpenTelemetry',
     permission: 'otel-collector:manage',
     response: { description: '`{ ok, status, error }`', schema: anyObject },
+  },
+
+  // Custom status page metrics (#155)
+  {
+    method: 'GET',
+    path: `${ORG}/metrics`,
+    operationId: 'listMetrics',
+    summary: 'Custom metrics',
+    tag: 'Metrics',
+    permission: 'metric:read',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/metrics`,
+    operationId: 'createMetric',
+    summary: 'Create a custom metric',
+    description:
+      'Published on the `statusPages` listed when `visible`. A `monitor` source charts the value the monitor records.',
+    tag: 'Metrics',
+    permission: 'metric:create',
+    body: { schema: metricCreateSchema },
+    status: 201,
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/metrics/{id}`,
+    operationId: 'getMetric',
+    summary: 'A custom metric',
+    tag: 'Metrics',
+    permission: 'metric:read',
+  },
+  {
+    method: 'PATCH',
+    path: `${ORG}/metrics/{id}`,
+    operationId: 'updateMetric',
+    summary: 'Update a custom metric',
+    tag: 'Metrics',
+    permission: 'metric:update',
+    body: { schema: metricUpdateSchema },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/metrics/{id}`,
+    operationId: 'deleteMetric',
+    summary: 'Delete a custom metric and its recorded values',
+    tag: 'Metrics',
+    permission: 'metric:delete',
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/metrics/{id}/points`,
+    operationId: 'getMetricSeries',
+    summary: 'The metric chart of a period',
+    tag: 'Metrics',
+    permission: 'metric:read',
+    query: [
+      {
+        name: 'view',
+        description: 'Period (defaults to the metric’s `defaultView`)',
+        schema: { type: 'string', enum: [...METRIC_VIEWS] },
+      },
+    ],
+    response: { description: '`{ view, step, series, current, summary }`', schema: anyObject },
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/metrics/{id}/points`,
+    operationId: 'pushMetricPoints',
+    summary: 'Push values to a metric',
+    description:
+      'Up to 1 000 points from the last 24 hours, rolled up into minutely, hourly and daily buckets. Rate limited per key and metric (`METRIC_PUSH_RATE_LIMIT`). `409` for monitor-backed metrics.',
+    tag: 'Metrics',
+    permission: 'metric:push',
+    body: { schema: metricPointsSchema },
+    status: 202,
+    response: { description: '`{ accepted }`', schema: anyObject },
   },
 
   // Not organization-scoped

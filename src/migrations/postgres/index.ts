@@ -61,7 +61,10 @@ import * as migration_20261012_012757_ssh_tunnels from './20261012_012757_ssh_tu
 import * as migration_20261012_015900_status_page_embedding from './20261012_015900_status_page_embedding';
 import * as migration_20261012_023207_status_page_translations from './20261012_023207_status_page_translations';
 import * as migration_20261012_030104_ct_alerts from './20261012_030104_ct_alerts';
-import * as migration_20261012_032706_sla_reports from './20261012_032706_sla_reports';
+import * as migration_20261012_033317_status_page_latency_charts from './20261012_033317_status_page_latency_charts';
+import * as migration_20261012_041041_status_page_custom_metrics from './20261012_041041_status_page_custom_metrics';
+import * as migration_20261012_203433_status_page_audiences from './20261012_203433_status_page_audiences';
+import * as migration_20261012_213002_sla_reports from './20261012_213002_sla_reports';
 
 export const migrations = [
   {
@@ -380,8 +383,23 @@ export const migrations = [
     name: '20261012_030104_ct_alerts',
   },
   {
-    up: migration_20261012_032706_sla_reports.up,
-    down: migration_20261012_032706_sla_reports.down,
-    name: '20261012_032706_sla_reports'
+    up: migration_20261012_033317_status_page_latency_charts.up,
+    down: migration_20261012_033317_status_page_latency_charts.down,
+    name: '20261012_033317_status_page_latency_charts',
+  },
+  {
+    up: migration_20261012_041041_status_page_custom_metrics.up,
+    down: migration_20261012_041041_status_page_custom_metrics.down,
+    name: '20261012_041041_status_page_custom_metrics',
+  },
+  {
+    up: migration_20261012_203433_status_page_audiences.up,
+    down: migration_20261012_203433_status_page_audiences.down,
+    name: '20261012_203433_status_page_audiences',
+  },
+  {
+    up: migration_20261012_213002_sla_reports.up,
+    down: migration_20261012_213002_sla_reports.down,
+    name: '20261012_213002_sla_reports'
   },
 ];

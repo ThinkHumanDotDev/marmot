@@ -241,6 +241,9 @@
         "confirmDescription": "Continuez pour vous connecter à cette page d’état sur cet appareil.",
         "confirm": "Continuer vers la page d’état"
       },
+      "audience": {
+        "description": "Cette page d’état est réservée aux clients et équipes invités. Saisissez votre adresse e-mail pour recevoir un lien de connexion."
+      },
       "ipAllowlist": {
         "description": "Cette page d’état n’est accessible que depuis des réseaux autorisés. Connectez-vous au réseau ou au VPN de votre organisation puis rechargez la page."
       }
@@ -305,7 +308,11 @@
       "incidentTitle": "{title} · {siteName}",
       "incidentDescription": "Incident sur {siteName} : {status}, {dateRange}.",
       "maintenanceTitle": "{title} · {siteName}",
-      "maintenanceDescription": "Maintenance sur {siteName} : {status}, {dateRange}."
+      "maintenanceDescription": "Maintenance sur {siteName} : {status}, {dateRange}.",
+      "chartsTitle": "Temps de réponse · {siteName}",
+      "chartsDescription": "Temps de réponse et vérifications de {siteName}.",
+      "componentChartTitle": "Temps de réponse de {name} · {siteName}",
+      "componentChartDescription": "Percentiles de latence et vérifications de {name} sur {siteName}."
     },
     "subscribe": {
       "button": "S’abonner",
@@ -370,6 +377,76 @@
       "unsubscribeDescription": "Ne plus recevoir les mises à jour de {title} à l’adresse {target} ?",
       "unsubscribe": "Se désabonner",
       "unsubscribed": "Vous êtes désabonné et ne recevrez plus de mises à jour de {title}."
+    },
+    "charts": {
+      "heading": "Temps de réponse",
+      "description": "Percentiles de latence et vérifications, issus des données de surveillance.",
+      "viewChart": "Temps de réponse",
+      "viewChartLabel": "Temps de réponse de {name}",
+      "allCharts": "Tous les temps de réponse",
+      "period": "Période",
+      "periods": {
+        "1d": "24 heures",
+        "7d": "7 jours",
+        "30d": "30 jours"
+      },
+      "latencyTitle": "Temps de réponse",
+      "latencyDescription": "Temps de réponse p50, p95 et p99 par intervalle, en millisecondes.",
+      "latencyEmpty": "Aucune donnée de temps de réponse sur cette période.",
+      "latencySummary": "Temps de réponse de {name} : p50 {p50}, p95 {p95}, p99 {p99} sur la période.",
+      "checksTitle": "Vérifications",
+      "checksDescription": "Vérifications réussies, dégradées et en échec par intervalle.",
+      "checksEmpty": "Aucune vérification sur cette période.",
+      "checksSummary": "{total} vérifications de {name} : {failed} en échec, {degraded} dégradées.",
+      "countsDegraded": "{up} réussies · {degraded} dégradées · {down} en échec",
+      "percentile": "p{value}",
+      "ms": "{ms} ms",
+      "noValue": "–",
+      "metrics": {
+        "uptime": "Disponibilité",
+        "p50": "p50",
+        "p95": "p95",
+        "p99": "p99",
+        "checks": "Vérifications"
+      },
+      "series": {
+        "up": "Réussies",
+        "degraded": "Dégradées",
+        "down": "En échec"
+      },
+      "locations": {
+        "title": "Par emplacement",
+        "description": "Chaque emplacement de vérification sur la période.",
+        "location": "Emplacement",
+        "primary": "Principal",
+        "uptime": "Disponibilité",
+        "average": "Moyenne"
+      },
+      "empty": "Aucun graphique de temps de réponse n’est publié sur cette page."
+    },
+    "metrics": {
+      "heading": "Métriques",
+      "period": "Période",
+      "views": {
+        "hour": "1 heure",
+        "day": "24 heures",
+        "week": "7 jours",
+        "month": "30 jours"
+      },
+      "aggregations": {
+        "average": "Moyenne",
+        "sum": "Total",
+        "last": "Dernière valeur",
+        "max": "Maximum"
+      },
+      "thresholds": {
+        "warning": "Avertissement {value}",
+        "critical": "Critique {value}"
+      },
+      "summary": "{name} sur {period} : {value}.",
+      "empty": "Aucune donnée sur cette période.",
+      "loadFailed": "Impossible de charger cette période. Réessayez.",
+      "noValue": "–"
     }
   },
   "email": {

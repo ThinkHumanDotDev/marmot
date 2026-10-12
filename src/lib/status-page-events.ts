@@ -44,11 +44,16 @@ export const eventPath = (kind: EventKind, publicId: string): string =>
 
 /**
  * Paths below a status page that the login form may return to after signing in (`?next=`):
- * the history page and permalinks. Anything else returns to the page itself.
+ * the history page, permalinks and the public latency charts (#113). Anything else returns to the
+ * page itself.
  */
 export function isEventsReturnPath(value: unknown): value is string {
   if (typeof value !== 'string') return false
-  return value === EVENTS_PATH || /^\/events\/(incident|maintenance)\/[0-9a-z]{8}$/.test(value)
+  return (
+    value === EVENTS_PATH ||
+    /^\/events\/(incident|maintenance)\/[0-9a-z]{8}$/.test(value) ||
+    /^\/monitors(\/[0-9a-f]{24})?$/.test(value)
+  )
 }
 
 /** `YYYY-MM`, the month filter of the history page. */

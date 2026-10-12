@@ -58,6 +58,8 @@ interface DraftMonitor {
   name: string
   description: string
   showValues: boolean
+  /** Public latency charts (#113); off by default. */
+  showChart: boolean
   sendUrl: boolean
   customUrl: string
 }
@@ -87,6 +89,7 @@ function fromPage(page: StatusPage): DraftGroup[] {
       name: row.name ?? '',
       description: row.description ?? '',
       showValues: row.showValues !== false,
+      showChart: row.type !== 'static' && row.showChart === true,
       sendUrl: Boolean(row.sendUrl),
       customUrl: row.customUrl ?? '',
     })),
@@ -112,9 +115,13 @@ function toPatch(
         showValues: row.showValues,
         customUrl: row.customUrl.trim() || null,
       }
-      if (row.type === 'static') return [{ ...common, monitor: null, sendUrl: false }]
+      if (row.type === 'static') {
+        return [{ ...common, monitor: null, sendUrl: false, showChart: false }]
+      }
       const id = byId.get(row.monitorId)
-      return id === undefined ? [] : [{ ...common, monitor: id, sendUrl: row.sendUrl }]
+      return id === undefined
+        ? []
+        : [{ ...common, monitor: id, sendUrl: row.sendUrl, showChart: row.showChart }]
     }),
   }))
 }
@@ -261,6 +268,18 @@ function SortableMonitorRow({
               {t('showValues')}
             </label>
           )}
+          {!isStatic && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Switch
+                size="sm"
+                checked={row.showChart && row.showValues}
+                disabled={disabled || !row.showValues}
+                data-testid="component-show-chart"
+                onCheckedChange={(v) => onChange({ ...row, showChart: v })}
+              />
+              {t('showChart')}
+            </label>
+          )}
         </div>
       </div>
     </li>
@@ -305,7 +324,14 @@ function SortableGroup({
     onChange({ ...group, monitors: arrayMove(group.monitors, from, to) })
   }
 
-  const blank = { name: '', description: '', showValues: true, sendUrl: false, customUrl: '' }
+  const blank = {
+    name: '',
+    description: '',
+    showValues: true,
+    showChart: false,
+    sendUrl: false,
+    customUrl: '',
+  }
 
   function addMonitor(id: string) {
     if (!id) return

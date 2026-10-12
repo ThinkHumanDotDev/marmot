@@ -21,7 +21,7 @@ import {
 } from '@/server/status-pages/urls'
 import type { StatusPage } from '@/payload-types'
 
-import { loadPageAccess, loadPublishedPage, requireVisiblePage } from '../data'
+import { loadPageAccess, loadPublishedPage, loadVisiblePage, requireVisiblePage } from '../data'
 import { StatusPageExtras } from '../extras'
 
 export const dynamic = 'force-dynamic'
@@ -31,7 +31,7 @@ type PageProps = { params: Promise<{ slug: string }>; searchParams: Promise<Sear
 
 /** The history for these filters, memoised per request (metadata and page share it). */
 const loadHistoryFor = cache(async (slug: string, query: string): Promise<EventHistory | null> => {
-  const page = await loadPublishedPage(slug)
+  const page = await loadVisiblePage(slug)
   if (!page) return null
   const payload = await getPayload({ config })
   return listStatusPageEvents(payload, page, parseEventFilters(new URLSearchParams(query)))

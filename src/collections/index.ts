@@ -14,6 +14,8 @@ import { Locations } from './Locations'
 import { Maintenance } from './Maintenance'
 import { MaintenanceOccurrences } from './MaintenanceOccurrences'
 import { Media } from './Media'
+import { Metrics } from './Metrics'
+import { MetricStats } from './MetricStats'
 import { MonitorIncidents } from './MonitorIncidents'
 import { MonitorLocationStates } from './MonitorLocationStates'
 import { Monitors } from './Monitors'
@@ -37,6 +39,7 @@ import { SubscriberDeliveries } from './SubscriberDeliveries'
 import { SubscriberNotifications } from './SubscriberNotifications'
 import { StatusPageUptimeHistory } from './StatusPageUptimeHistory'
 import { StatusPageViewers } from './StatusPageViewers'
+import { StatusPageAudiences } from './StatusPageAudiences'
 import { Tags } from './Tags'
 import { Templates } from './Templates'
 import { Users } from './Users'
@@ -73,6 +76,7 @@ export const collections: CollectionConfig[] = [
   StatLocationHourly,
   StatusPages,
   StatusPageViewers,
+  StatusPageAudiences,
   StatusPageUptimeHistory,
   SlaTargets,
   SlaReports,
@@ -89,6 +93,8 @@ export const collections: CollectionConfig[] = [
   WebhookEndpoints,
   WebhookDeliveries,
   OtelCollectors,
+  Metrics,
+  MetricStats,
 ]
   .map(withAuditHooks)
   // Demo mode guard rails (#159): no-ops unless DEMO_MODE is set.

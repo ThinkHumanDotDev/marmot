@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronRight, ExternalLink, Info, Mail, Rss } from 'lucide-react'
+import { ChartLine, ChevronRight, ExternalLink, Info, Mail, Rss } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 
@@ -11,6 +11,8 @@ import { MaintenanceCard } from '@/components/status-pages/public/maintenance-ca
 import { StatusDot } from '@/components/status-dot'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { renderMarkdown } from '@/lib/markdown'
+import type { PublicMetric } from '@/lib/metrics'
+import { componentChartPath } from '@/lib/status-page-charts'
 import { effectiveImpact } from '@/lib/status-page-components'
 import { EVENTS_PATH, eventPath, type EventKind } from '@/lib/status-page-events'
 import { cn } from '@/lib/utils'
@@ -18,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { SubscribeDialog } from './subscribe-dialog'
 import { ImpactBadge, IncidentUpdateEntry, impactStyles, StatusPageLogo } from './parts'
 import { LocaleSwitcher, TimeZoneSwitcher } from './footer-controls'
+import { MetricsSection } from './metrics-section'
 import { ThemeToggle } from './theme-toggle'
 import { useLiveStatus } from './use-live-status'
 
@@ -173,6 +176,7 @@ function DescriptionTooltip({ name, description }: { name: string; description: 
 
 function MonitorRow({ monitor, basePath }: { monitor: PublicMonitor; basePath: string }) {
   const tPublic = useTranslations('statusPages.public')
+  const tCharts = useTranslations('statusPages.charts')
   const name = monitor.url ? (
     <a
       href={monitor.url}
@@ -262,6 +266,17 @@ function MonitorRow({ monitor, basePath }: { monitor: PublicMonitor; basePath: s
       ) : (
         !isStatic && <BeatBar beats={monitor.beats} />
       )}
+      {monitor.showChart && monitor.componentId && (
+        <a
+          href={`${basePath}${componentChartPath(monitor.componentId)}`}
+          className="inline-flex w-fit items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          aria-label={tCharts('viewChartLabel', { name: monitor.name })}
+          data-component-chart-link
+        >
+          <ChartLine className="size-3.5" aria-hidden />
+          {tCharts('viewChart')}
+        </a>
+      )}
     </li>
   )
 }
@@ -329,13 +344,15 @@ interface StatusPageViewProps {
    * to the history and permalinks start with it.
    */
   basePath?: string
+  /** Published custom metrics (#155), in their default views. */
+  metrics?: PublicMetric[]
 }
 
 /**
  * The whole public status page. Server-rendered with `initial`, then — when the page's
  * `autoRefreshInterval` is non-zero — re-fetched from the public API on that interval.
  */
-export function StatusPageView({ slug, initial, basePath }: StatusPageViewProps) {
+export function StatusPageView({ slug, initial, basePath, metrics = [] }: StatusPageViewProps) {
   const t = useTranslations('statusPages')
   const format = useFormatter()
   const { data, refreshing } = useLiveStatus(slug, initial)
@@ -444,6 +461,8 @@ export function StatusPageView({ slug, initial, basePath }: StatusPageViewProps)
             ))}
           </section>
         )}
+
+        <MetricsSection slug={slug} metrics={metrics} />
 
         {others.length > 0 && (
           <section aria-label={t('sections.otherIncidents')} className="flex flex-col gap-3">

@@ -121,6 +121,7 @@ const WIPE_FIRST = [
   'subscriber-notifications',
   'status-page-subscribers',
   'status-page-viewers',
+  'status-page-audiences',
   'status-page-uptime-history',
   'sla-report-shares',
   'sla-reports',

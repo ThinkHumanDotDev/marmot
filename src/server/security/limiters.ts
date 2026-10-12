@@ -31,3 +31,12 @@ export const apiKeyWriteLimiter: RateLimiter | null =
   env.API_KEY_WRITE_RATE_LIMIT > 0
     ? createRateLimiter('api-key-write', { points: env.API_KEY_WRITE_RATE_LIMIT, duration: 60 })
     : null
+
+/**
+ * Custom metric pushes (#155) per API key (or user) and metric (`METRIC_PUSH_RATE_LIMIT` per minute).
+ * `null` when the limit is turned off (`0`).
+ */
+export const metricPushLimiter: RateLimiter | null =
+  env.METRIC_PUSH_RATE_LIMIT > 0
+    ? createRateLimiter('metric-push', { points: env.METRIC_PUSH_RATE_LIMIT, duration: 60 })
+    : null

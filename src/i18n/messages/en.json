@@ -159,7 +159,9 @@
       "bulkPause": "Pause {count, plural, one {# selected monitor} other {# selected monitors}}",
       "bulkResume": "Resume {count, plural, one {# selected monitor} other {# selected monitors}}",
       "bulkCheck": "Check {count, plural, one {# selected monitor} other {# selected monitors}} now",
-      "bulkDelete": "Delete {count, plural, one {# selected monitor} other {# selected monitors}}…"
+      "bulkDelete": "Delete {count, plural, one {# selected monitor} other {# selected monitors}}…",
+      "bulkAddToMaintenance": "Add {count, plural, one {# selected monitor} other {# selected monitors}} to a maintenance window…",
+      "bulkAddToStatusPageGroup": "Add {count, plural, one {# selected monitor} other {# selected monitors}} to a status page group…"
     },
     "checkerOffline": {
       "title": "Checker offline",
@@ -263,8 +265,13 @@
         "channels": "Channels",
         "attachChannel": "Attach channel",
         "detachChannel": "Detach channel",
+        "maintenance": "Maintenance",
+        "addToMaintenance": "Add to maintenance window",
+        "statusPage": "Status page",
+        "addToStatusPageGroup": "Add to status page group",
         "working": "Working…",
         "result": "{action, select, pause {Paused} resume {Resumed} check {Queued a check for} delete {Deleted} addTags {Tagged} removeTags {Removed the tag from} addNotifications {Attached the channel to} removeNotifications {Detached the channel from} other {Updated}} {changed, plural, one {# monitor} other {# monitors}}{unchanged, plural, =0 {} other { ({unchanged} already done)}}.",
+        "resultAdded": "Added {changed, plural, one {# monitor} other {# monitors}} to the {action, select, addToMaintenance {maintenance window} other {status page group}}{unchanged, plural, =0 {} other { ({unchanged} already there)}}.",
         "partial": "{failed, plural, one {# monitor was} other {# monitors were}} not changed: {message}",
         "failed": "The bulk action failed",
         "deleteTitle": "Delete {count, plural, one {# monitor} other {# monitors}}?",
@@ -1628,6 +1635,7 @@
       "instance": "Instance",
       "webhooks": "Webhooks",
       "openTelemetry": "OpenTelemetry",
+      "metrics": "Metrics",
       "locations": "Locations"
     },
     "pageTitles": {
@@ -1648,6 +1656,7 @@
       "instance": "Instance settings",
       "webhooks": "Webhooks",
       "openTelemetry": "OpenTelemetry",
+      "metrics": "Metrics",
       "webhookDeliveries": "Webhook deliveries",
       "locations": "Locations"
     },
@@ -1925,6 +1934,7 @@
         "ssh_tunnel": "SSH tunnel",
         "status_page": "Status page",
         "status_page_viewer": "Status page viewer",
+        "status_page_audience": "Status page audience",
         "incident": "Incident",
         "subscriber": "Subscriber",
         "subscriber_notification": "Subscriber notification",
@@ -1946,7 +1956,8 @@
         "otel_collector": "OpenTelemetry collector",
         "sla_target": "SLA target",
         "sla_report": "SLA report",
-        "sla_report_share": "SLA report link"
+        "sla_report_share": "SLA report link",
+        "metric": "Metric"
       },
       "verbs": {
         "created": "created",
@@ -2293,7 +2304,8 @@
         "webhook": "Webhooks",
         "otelCollector": "OpenTelemetry collectors",
         "location": "Probe locations",
-        "sla": "SLA targets and reports"
+        "sla": "SLA targets and reports",
+        "metric": "Status page metrics"
       },
       "actions": {
         "read": "View",
@@ -2307,7 +2319,8 @@
         "send": "Send",
         "acknowledge": "Acknowledge",
         "resolve": "Resolve",
-        "history": "Uptime history"
+        "history": "Uptime history",
+        "push": "Push values"
       },
       "custom": "Custom",
       "fixed": "(fixed)",
@@ -2833,6 +2846,74 @@
         "saved": "Collector saved",
         "created": "Collector created",
         "failed": "Could not save the collector"
+      }
+    },
+    "metrics": {
+      "forbiddenTitle": "Metrics are not available",
+      "forbidden": "You need permission to view metrics in this organization.",
+      "title": "Metrics",
+      "description": "Custom figures such as an error rate or a queue backlog, charted on your status pages. Push values through the API or use the value a monitor records.",
+      "new": "New metric",
+      "emptyTitle": "No metrics yet",
+      "emptyDescription": "Create a metric, push values to it with an API key and publish it on a status page.",
+      "emptyReadOnly": "No metrics have been created in this organization.",
+      "sources": {
+        "push": "Pushed",
+        "monitor": "From a monitor"
+      },
+      "aggregations": {
+        "average": "Average",
+        "sum": "Sum",
+        "last": "Last value",
+        "max": "Maximum"
+      },
+      "views": {
+        "hour": "Hour",
+        "day": "Day",
+        "week": "Week",
+        "month": "Month"
+      },
+      "badgePublished": "{count, plural, one {On # status page} other {On # status pages}}",
+      "badgeHidden": "Not published",
+      "lastValue": "Last value {value} at {time}",
+      "neverPushed": "No values pushed yet.",
+      "monitorBacked": "Values come from the monitor's checks.",
+      "pushHint": "Push values with an API key that has write access: POST a JSON body with points, each a value and an optional timestamp (up to 1,000 points from the last 24 hours), to the address shown under a metric.",
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "confirmDeleteTitle": "Delete {name}?",
+      "confirmDeleteDescription": "The metric and its recorded values are removed from every status page.",
+      "confirmDelete": "Delete metric",
+      "deleted": "Metric deleted.",
+      "deleteFailed": "The metric could not be deleted.",
+      "form": {
+        "newTitle": "New metric",
+        "editTitle": "Edit metric",
+        "description": "How the metric is shown on status pages.",
+        "name": "Name",
+        "namePlaceholder": "API error rate",
+        "descriptionLabel": "Description",
+        "suffix": "Unit",
+        "suffixPlaceholder": "%",
+        "decimals": "Decimals",
+        "aggregation": "Combine values by",
+        "defaultView": "Default period",
+        "warning": "Warning threshold",
+        "critical": "Critical threshold",
+        "source": "Source",
+        "sourceHint": "Pushed metrics receive values through the API. Monitor metrics chart the value a Prometheus query monitor records.",
+        "monitor": "Monitor",
+        "monitorPlaceholder": "Choose a monitor",
+        "visible": "Publish",
+        "visibleHint": "Show the metric on the status pages selected below. Hidden metrics are never public.",
+        "statusPages": "Status pages",
+        "order": "Order",
+        "cancel": "Cancel",
+        "save": "Save",
+        "create": "Create metric",
+        "saved": "Metric saved.",
+        "created": "Metric created.",
+        "failed": "The metric could not be saved."
       }
     }
   },
@@ -4401,7 +4482,8 @@
         "share": "Share",
         "subscribers": "Subscribers",
         "notifications": "Notifications",
-        "history": "History"
+        "history": "History",
+        "audiences": "Audiences"
       }
     },
     "settings": {
@@ -4526,7 +4608,8 @@
       "componentFallback": "component",
       "removeComponent": "Remove component from group",
       "componentCount": "{count, plural, one {# component} other {# components}}",
-      "staticNameRequired": "Static components need a name."
+      "staticNameRequired": "Static components need a name.",
+      "showChart": "Public latency chart"
     },
     "incidents": {
       "title": "Incidents",
@@ -4767,6 +4850,9 @@
         "confirmDescription": "Continue to sign in to this status page on this device.",
         "confirm": "Continue to the status page"
       },
+      "audience": {
+        "description": "This status page is only available to invited customers and teams. Enter your email address to receive a sign-in link."
+      },
       "ipAllowlist": {
         "description": "This status page is only available from approved networks. Connect to your organization’s network or VPN and reload the page."
       },
@@ -4790,6 +4876,10 @@
           "ip-allowlist": {
             "label": "IP allow-list",
             "hint": "Only visitors from the listed IPv4 and IPv6 ranges can view the page."
+          },
+          "audience": {
+            "label": "Audiences",
+            "hint": "Visitors sign in with an email link and see only the components, incidents and maintenance of their audiences."
           }
         },
         "password": "Password",
@@ -4835,7 +4925,8 @@
           "remove": "Remove",
           "loadFailed": "Could not load the visitors",
           "updateFailed": "Could not update the visitor"
-        }
+        },
+        "audienceNote": "Members are listed on the Audiences tab. Anyone not in an audience is turned away, even when signed in."
       }
     },
     "share": {
@@ -4995,7 +5086,11 @@
       "incidentTitle": "{title} · {siteName}",
       "incidentDescription": "Incident on {siteName}: {status}, {dateRange}.",
       "maintenanceTitle": "{title} · {siteName}",
-      "maintenanceDescription": "Maintenance on {siteName}: {status}, {dateRange}."
+      "maintenanceDescription": "Maintenance on {siteName}: {status}, {dateRange}.",
+      "chartsTitle": "Response times · {siteName}",
+      "chartsDescription": "Response times and checks of {siteName}.",
+      "componentChartTitle": "{name} response time · {siteName}",
+      "componentChartDescription": "Latency percentiles and checks of {name} on {siteName}."
     },
     "subscribe": {
       "button": "Subscribe",
@@ -5149,7 +5244,10 @@
         "added": "Subscriber added",
         "addFailed": "Could not add the subscriber.",
         "secretTitle": "Signing secret",
-        "secretHint": "Deliveries are signed with this secret in X-Marmot-Signature. It was also sent in the first request."
+        "secretHint": "Deliveries are signed with this secret in X-Marmot-Signature. It was also sent in the first request.",
+        "audiences": "Audiences",
+        "audiencesHint": "The subscriber only hears about incidents and maintenance of these audiences’ components.",
+        "noAudiences": "Create an audience on the Audiences tab first: on an audience page, subscribers without one receive nothing."
       },
       "notifications": {
         "title": "Notifications",
@@ -5243,6 +5341,109 @@
       "component": "Component",
       "noData": "No data",
       "downtime": "Down {duration}"
+    },
+    "audiences": {
+      "title": "Audiences",
+      "description": "Show each customer or region only its own components. A signed-in visitor sees the components of every audience that lists their address or its domain, and only the incidents and maintenance affecting those components. Incidents and maintenance that name no component are shown to every audience.",
+      "modeOff": "Audiences apply once the page’s access is set to “Audiences” on the Access tab. You can prepare and preview them before.",
+      "empty": "No audience yet.",
+      "add": "Add audience",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteTitle": "Delete the audience “{name}”?",
+      "deleteDescription": "Its members lose access unless another audience lists them. Subscribers bound to it stop receiving its announcements.",
+      "deleted": "Audience deleted",
+      "saved": "Audience saved",
+      "saveFailed": "Could not save the audience",
+      "loadFailed": "Could not load the audiences",
+      "name": "Name",
+      "namePlaceholder": "Acme Corp",
+      "components": "Components it sees",
+      "noComponents": "Add components on the Groups tab first.",
+      "emails": "Member addresses",
+      "emailsHint": "One address per line.",
+      "domains": "Member email domains",
+      "domainsHint": "One domain per line, such as acme.com. Every address at these domains is a member.",
+      "summary": "{components, plural, one {# component} other {# components}} · {members, plural, one {# member rule} other {# member rules}}",
+      "cancel": "Cancel",
+      "save": "Save audience",
+      "saving": "Saving…",
+      "preview": {
+        "title": "View as audience",
+        "description": "The page exactly as members of the chosen audience see it.",
+        "choose": "Choose an audience",
+        "loadFailed": "Could not load the preview"
+      }
+    },
+    "charts": {
+      "heading": "Response times",
+      "description": "Latency percentiles and checks, from the monitoring data.",
+      "viewChart": "Response time",
+      "viewChartLabel": "Response time of {name}",
+      "allCharts": "All response times",
+      "period": "Period",
+      "periods": {
+        "1d": "24 hours",
+        "7d": "7 days",
+        "30d": "30 days"
+      },
+      "latencyTitle": "Response time",
+      "latencyDescription": "p50, p95 and p99 response time per interval, in milliseconds.",
+      "latencyEmpty": "No response-time data in this period.",
+      "latencySummary": "Response time of {name}: p50 {p50}, p95 {p95}, p99 {p99} over the period.",
+      "checksTitle": "Checks",
+      "checksDescription": "Successful, degraded and failed checks per interval.",
+      "checksEmpty": "No checks in this period.",
+      "checksSummary": "{total} checks of {name}: {failed} failed, {degraded} degraded.",
+      "countsDegraded": "{up} up · {degraded} degraded · {down} failed",
+      "percentile": "p{value}",
+      "ms": "{ms} ms",
+      "noValue": "–",
+      "metrics": {
+        "uptime": "Uptime",
+        "p50": "p50",
+        "p95": "p95",
+        "p99": "p99",
+        "checks": "Checks"
+      },
+      "series": {
+        "up": "Up",
+        "degraded": "Degraded",
+        "down": "Failed"
+      },
+      "locations": {
+        "title": "By location",
+        "description": "Each check location over the period.",
+        "location": "Location",
+        "primary": "Primary",
+        "uptime": "Uptime",
+        "average": "Average"
+      },
+      "empty": "No response-time charts are published on this page."
+    },
+    "metrics": {
+      "heading": "Metrics",
+      "period": "Period",
+      "views": {
+        "hour": "1 hour",
+        "day": "24 hours",
+        "week": "7 days",
+        "month": "30 days"
+      },
+      "aggregations": {
+        "average": "Average",
+        "sum": "Total",
+        "last": "Latest",
+        "max": "Maximum"
+      },
+      "thresholds": {
+        "warning": "Warning {value}",
+        "critical": "Critical {value}"
+      },
+      "summary": "{name} over {period}: {value}.",
+      "empty": "No data in this period.",
+      "loadFailed": "This period could not be loaded. Try again.",
+      "noValue": "–"
     }
   },
   "maintenance": {
@@ -6034,6 +6235,8 @@
     "maintenanceOccurrenceRequired": "A maintenance window belongs to a maintenance.",
     "maintenanceTransitionInvalid": "Cannot post “{to}” on a maintenance window that is {from}.",
     "statusPageNotFound": "Status page not found",
+    "statusPageGroupNotFound": "Status page group not found",
+    "statusPageChartNotFound": "This component has no public charts.",
     "statusPageForeignMonitors": "Every monitor on a status page must belong to the same organization.",
     "hostnameDuplicate": "Each hostname may only be listed once.",
     "hostnameTaken": "One of these hostnames is already used by another status page.",
@@ -6154,6 +6357,15 @@
     "statusPageEmbedOriginsTooMany": "List at most {max} origins.",
     "statusPageViewerNotFound": "Visitor not found.",
     "statusPageViewerStatusInvalid": "The status must be \"active\" or \"revoked\".",
+    "statusPageAudiencePageRequired": "An audience needs a status page, and cannot move to another one.",
+    "statusPageAudienceNameRequired": "Give the audience a name.",
+    "statusPageAudienceComponentsInvalid": "Choose components of this status page.",
+    "statusPageAudienceEmailInvalid": "\"{email}\" is not a valid email address.",
+    "statusPageAudienceEmailsTooMany": "List at most {max} addresses.",
+    "statusPageAudiencesTooMany": "A status page can have at most {max} audiences.",
+    "statusPageAudienceNotFound": "Audience not found.",
+    "statusPageAudienceNameTaken": "This page already has an audience with that name.",
+    "subscriberAudiencesInvalid": "Choose audiences of this status page.",
     "subscriberStatusPageRequired": "A subscriber needs a status page, and cannot move to another one.",
     "subscriberTargetInvalid": "Enter a valid email address, phone number in international format (+15551234567), webhook URL or Slack incoming-webhook URL.",
     "subscriberComponentsInvalid": "Choose components of this status page.",
@@ -6209,7 +6421,14 @@
     "slaRecipientsRequired": "A scheduled report needs at least one recipient.",
     "slaReportNotFound": "SLA report not found.",
     "slaShareNotFound": "This report link does not exist or was revoked.",
-    "slaRangeInvalid": "Choose a valid range of at most 400 days (YYYY-MM-DD)."
+    "slaRangeInvalid": "Choose a valid range of at most 400 days (YYYY-MM-DD).",
+    "metricNotFound": "Metric not found.",
+    "metricNotPushable": "This metric takes its values from a monitor; values cannot be pushed to it.",
+    "metricViewInvalid": "The period must be one of {views}.",
+    "metricPointTooOld": "Point {index} is older than 24 hours or has an invalid timestamp.",
+    "metricPointInFuture": "Point {index} is more than 5 minutes in the future.",
+    "metricMonitorRequired": "Choose a monitor of this organization for a monitor-backed metric.",
+    "metricStatusPagesInvalid": "Choose status pages of this organization."
   },
   "subscriberMessages": {
     "sms": {

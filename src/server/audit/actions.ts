@@ -17,6 +17,7 @@ export const AUDIT_RESOURCE_TYPES = [
   'ssh_tunnel',
   'status_page',
   'status_page_viewer',
+  'status_page_audience',
   'incident',
   'subscriber',
   'subscriber_notification',
@@ -33,6 +34,7 @@ export const AUDIT_RESOURCE_TYPES = [
   'sla_target',
   'sla_report',
   'sla_report_share',
+  'metric',
 ] as const
 export type AuditResourceType = (typeof AUDIT_RESOURCE_TYPES)[number]
 

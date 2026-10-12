@@ -8,6 +8,7 @@ import {
   accessRequestFrom,
   checkStatusPageAccess,
 } from '@/server/status-pages/access'
+import { scopePageForVisitor } from '@/server/status-pages/audiences'
 import { getIncidentEvent, getMaintenanceEvent } from '@/server/status-pages/events'
 import { findPublishedStatusPage } from '@/server/status-pages/public'
 import { robotsHeader } from '@/server/status-pages/seo'
@@ -40,10 +41,11 @@ export async function GET(request: Request, { params }: RouteContext) {
   if (!access.allowed) return accessDeniedResponse(access, 'json', requestLocale(request))
 
   if (!isEventKind(kind)) return notFound()
+  const visible = scopePageForVisitor(page, access)
   const event =
     kind === 'incident'
-      ? await getIncidentEvent(payload, page, id)
-      : await getMaintenanceEvent(payload, page, id)
+      ? await getIncidentEvent(payload, visible, id)
+      : await getMaintenanceEvent(payload, visible, id)
   if (!event) return notFound()
 
   return Response.json(event, {

@@ -150,6 +150,8 @@ export interface ExportedComponent {
   name?: string | null
   description?: string | null
   showValues?: boolean
+  /** Public latency charts (#113). */
+  showChart?: boolean
   sendUrl: boolean
   customUrl: string | null
 }
@@ -250,6 +252,7 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
         name: row.name ?? null,
         description: row.description ?? null,
         showValues: row.showValues ?? true,
+        showChart: row.type !== 'static' && row.showChart === true,
         sendUrl: row.sendUrl ?? false,
         customUrl: row.customUrl ?? null,
       }))
@@ -451,6 +454,7 @@ const statusPageSchema = z.object({
                 name: z.string().nullish(),
                 description: z.string().nullish(),
                 showValues: z.boolean().nullish(),
+                showChart: z.boolean().nullish(),
                 sendUrl: z.boolean().nullish(),
                 customUrl: z.string().nullish(),
               }),
@@ -714,6 +718,7 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
             name: asText(row.name),
             description: asText(row.description),
             showValues: asBool(row.showValues) ?? true,
+            showChart: row.type === 'static' ? false : (asBool(row.showChart) ?? false),
             sendUrl: asBool(row.sendUrl) ?? false,
             customUrl: asText(row.customUrl),
           })),
