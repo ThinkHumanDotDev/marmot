@@ -19,7 +19,11 @@ import {
   type PublicMaintenanceEvent,
 } from '@/server/status-pages/events'
 import { NOINDEX, statusPageMetadata, truncateDescription } from '@/server/status-pages/seo'
-import { statusPageUrlForHeaders } from '@/server/status-pages/urls'
+import {
+  localeAlternates,
+  statusPageLocalePath,
+  statusPageUrlForHeaders,
+} from '@/server/status-pages/urls'
 
 import { loadPageAccess, loadPublishedPage } from '../data'
 
@@ -85,8 +89,11 @@ export async function eventMetadata(
       ? t('seo.incidentDescription', values)
       : t('seo.maintenanceDescription', values)
 
-  const base = statusPageUrlForHeaders(page, await headers())
+  const requestHeaders = await headers()
+  const base = statusPageUrlForHeaders(page, requestHeaders)
   return statusPageMetadata(page, {
+    languages: localeAlternates(page, requestHeaders, eventPath(kind, summary.publicId)),
+    feedBase: statusPageLocalePath(page, requestHeaders),
     title: kind === 'incident' ? t('seo.incidentTitle', values) : t('seo.maintenanceTitle', values),
     description,
     url: `${base}${eventPath(kind, summary.publicId)}`,

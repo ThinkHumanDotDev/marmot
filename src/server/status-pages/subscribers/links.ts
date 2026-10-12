@@ -1,3 +1,5 @@
+import { isLocale } from '@/i18n/locales'
+import { localePrefix, offeredLocales, type LocalizedPage } from '@/lib/status-page-locales'
 import type { StatusPage, StatusPageSubscriber } from '@/payload-types'
 import { serverUrl, statusPageUrl } from '@/server/status-pages/urls'
 
@@ -14,16 +16,24 @@ export interface SubscriptionLinks {
   oneClickUrl: string
 }
 
-type PageLike = Pick<StatusPage, 'slug'>
-type SubscriberLike = Pick<StatusPageSubscriber, 'id'> & { token?: string | null }
+type PageLike = Pick<StatusPage, 'slug'> & LocalizedPage
+type SubscriberLike = Pick<StatusPageSubscriber, 'id'> & {
+  token?: string | null
+  locale?: string | null
+}
+
+/** The language prefix of a subscriber's pages: theirs when the page offers it (#114). */
+export const subscriberPrefix = (page: PageLike, subscriber: SubscriberLike): string =>
+  isLocale(subscriber.locale, offeredLocales(page)) ? localePrefix(page, subscriber.locale) : ''
 
 /**
  * Links carried by every message. They always point at Marmot's own host (custom domains only
  * serve the page itself) and work without the page's access cookie: the token is the credential.
+ * The manage, unsubscribe and confirmation pages open in the subscriber's language.
  */
 export function subscriptionLinks(page: PageLike, subscriber: SubscriberLike): SubscriptionLinks {
   const token = encodeURIComponent(subscriberLinkToken(subscriber))
-  const base = statusPageUrl(page.slug)
+  const base = `${statusPageUrl(page.slug)}${subscriberPrefix(page, subscriber)}`
   return {
     manageUrl: `${base}/manage/${token}`,
     unsubscribeUrl: `${base}/unsubscribe/${token}`,

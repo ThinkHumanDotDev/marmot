@@ -63,7 +63,7 @@ describe('API error locale', () => {
 
   it("prefers the authenticated user's language over the headers", () => {
     const req = request({ 'accept-language': 'en' })
-    rememberRequestUser(req, { language: XX })
+    rememberRequestUser(req, { language: XX as never })
     expect(errorText(req, 'unauthenticated')).toBe('XX Unauthorized')
   })
 

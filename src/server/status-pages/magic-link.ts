@@ -205,7 +205,7 @@ export type MagicLinkRequest =
   | { ok: false; reason: 'invalid-email' }
   | { ok: false; reason: 'rate-limited'; retryAfterSeconds?: number }
 
-type LinkPage = AccessFields & Pick<StatusPage, 'slug' | 'title' | 'language' | 'domains'>
+type LinkPage = AccessFields & Pick<StatusPage, 'slug' | 'title' | 'defaultLocale' | 'locales' | 'domains'>
 
 async function deliver(
   payload: Payload,

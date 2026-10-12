@@ -77,7 +77,7 @@ export default async function StatusPageLogin({ params, searchParams }: PageProp
   const locale = await getStatusPageLocale(page)
   const t = await getTranslations({ locale, namespace: 'statusPages.access' })
   const logo = page.logo && typeof page.logo === 'object' ? page.logo.url : null
-  const action = `/api/status-pages/${encodeURIComponent(page.slug)}/access`
+  const action = `/api/status-pages/${encodeURIComponent(page.slug)}/access?locale=${locale}`
   const mode = page.access ?? 'public'
 
   let description: string

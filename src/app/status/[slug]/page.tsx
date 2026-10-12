@@ -8,7 +8,12 @@ import { getStatusPageLocale } from '@/i18n/server'
 import { markdownToText } from '@/lib/markdown'
 import { isProtectedPage } from '@/server/status-pages/access'
 import { NOINDEX, statusPageMetadata } from '@/server/status-pages/seo'
-import { statusPageBasePath, statusPageUrlForHeaders } from '@/server/status-pages/urls'
+import {
+  localeAlternates,
+  statusPageBasePath,
+  statusPageLocalePath,
+  statusPageUrlForHeaders,
+} from '@/server/status-pages/urls'
 
 import { loadPageAccess, loadPublicData, loadPublishedPage } from './data'
 import { StatusPageExtras } from './extras'
@@ -31,10 +36,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: page.title, robots: NOINDEX }
   }
 
+  const requestHeaders = await headers()
   return statusPageMetadata(page, {
     title: page.title,
     description: page.description ? markdownToText(page.description) : undefined,
-    url: statusPageUrlForHeaders(page, await headers()),
+    url: statusPageUrlForHeaders(page, requestHeaders),
+    languages: localeAlternates(page, requestHeaders),
+    feedBase: statusPageLocalePath(page, requestHeaders),
   })
 }
 

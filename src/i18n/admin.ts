@@ -19,9 +19,6 @@ export const adminTranslations = {
         'Language of the Marmot interface, emails and notifications for this user.',
       organizationLanguageDescription:
         'Default language of notifications and emails sent on behalf of this organization.',
-      statusPageLanguageDescription:
-        'Language visitors see the page in. "Follow the visitor" uses the browser language.',
-      followVisitor: 'Follow the visitor',
       // Select options and field group labels that are words, not product names.
       labels: {
         tcpPort: 'TCP Port',
@@ -477,6 +474,14 @@ export const adminTranslations = {
       },
       statusPages: {
         slugDescription: 'Public URL: /status/<slug>. Lowercase letters, numbers, hyphens.',
+        defaultLocaleDescription:
+          'Language of the page at its plain URL. Other offered languages live under /<language>/.',
+        localesDescription:
+          'Languages visitors can switch to. First visits pick the best match for the browser language.',
+        timeZoneModeDescription:
+          "visitor: times follow the visitor's browser. page: every time is shown in the page time zone.",
+        timeZoneDescription:
+          "IANA time zone such as Europe/Berlin. Empty uses the organization's time zone.",
         publishedDescription: 'Unpublished pages return 404 to visitors.',
         accessDescription:
           'password: visitors enter the page password. email-domain: visitors get a one-time link at an allowed email domain. ip-allowlist: only requests from the listed IP ranges.',

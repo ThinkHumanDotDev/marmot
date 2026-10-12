@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 
 import { SubscribeDialog } from './subscribe-dialog'
 import { ImpactBadge, IncidentUpdateEntry, impactStyles, StatusPageLogo } from './parts'
+import { LocaleSwitcher, TimeZoneSwitcher } from './footer-controls'
 import { ThemeToggle } from './theme-toggle'
 
 export { ImpactBadge, IncidentUpdateEntry, impactStyles, StatusPageLogo }
@@ -391,8 +392,8 @@ export function StatusPageView({ slug, initial, basePath }: StatusPageViewProps)
   const { config, groups, incidents, overall, maintenance } = data
   const pinned = incidents.filter((i) => i.pinned)
   const others = incidents.filter((i) => !i.pinned)
-  const feedHref = `/status/${encodeURIComponent(slug)}/rss`
   const base = basePath ?? `/status/${encodeURIComponent(slug)}`
+  const feedHref = `${base}/rss`
   const link = (kind: EventKind, publicId: string) => `${base}${eventPath(kind, publicId)}`
 
   return (
@@ -544,6 +545,10 @@ export function StatusPageView({ slug, initial, basePath }: StatusPageViewProps)
                 </a>
               )}
             </span>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <TimeZoneSwitcher />
+            <LocaleSwitcher />
           </div>
         </footer>
       </div>

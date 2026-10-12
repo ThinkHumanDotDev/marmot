@@ -91,7 +91,10 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'themePreset',
   'themeOverrides',
   'bannerText',
-  'language',
+  'defaultLocale',
+  'locales',
+  'timeZoneMode',
+  'timeZone',
   'published',
   'access',
   // Write-only; hashed by the collection hook (`applyAccessPassword`).
