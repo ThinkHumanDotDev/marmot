@@ -31,7 +31,7 @@ const MAIN_HOST = '__main__'
 const noopSubscribe = () => () => {}
 
 /** Origin of the app in the browser; empty during server rendering. */
-function useOrigin(): string {
+export function useOrigin(): string {
   return React.useSyncExternalStore(
     noopSubscribe,
     () => window.location.origin,
@@ -39,7 +39,17 @@ function useOrigin(): string {
   )
 }
 
-function CopyField({ id, label, value }: { id: string; label: string; value: string }) {
+export function CopyField({
+  id,
+  label,
+  value,
+  rows = 2,
+}: {
+  id: string
+  label: string
+  value: string
+  rows?: number
+}) {
   const t = useTranslations('statusPages.share')
   const [copied, setCopied] = React.useState(false)
 
@@ -65,7 +75,7 @@ function CopyField({ id, label, value }: { id: string; label: string; value: str
       <Textarea
         id={id}
         readOnly
-        rows={2}
+        rows={rows}
         spellCheck={false}
         className="font-mono text-xs break-all"
         value={value}

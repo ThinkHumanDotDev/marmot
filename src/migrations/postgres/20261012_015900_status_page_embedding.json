@@ -2252,26 +2252,6 @@
           "notNull": false,
           "default": false
         },
-        "ct_alerts": {
-          "name": "ct_alerts",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "ct_include_subdomains": {
-          "name": "ct_include_subdomains",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "ct_state": {
-          "name": "ct_state",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "cert_info": {
           "name": "cert_info",
           "type": "jsonb",
@@ -4889,13 +4869,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "fingerprint": {
-          "name": "fingerprint",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "''"
-        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -4972,8 +4945,8 @@
           "method": "btree",
           "with": {}
         },
-        "type_monitor_days_fingerprint_idx": {
-          "name": "type_monitor_days_fingerprint_idx",
+        "type_monitor_days_idx": {
+          "name": "type_monitor_days_idx",
           "columns": [
             {
               "expression": "type",
@@ -4989,12 +4962,6 @@
             },
             {
               "expression": "days",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "fingerprint",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7157,6 +7124,88 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.status_pages_embed_origins": {
+      "name": "status_pages_embed_origins",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "origin": {
+          "name": "origin",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "status_pages_embed_origins_order_idx": {
+          "name": "status_pages_embed_origins_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_pages_embed_origins_parent_id_idx": {
+          "name": "status_pages_embed_origins_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "status_pages_embed_origins_parent_id_fk": {
+          "name": "status_pages_embed_origins_parent_id_fk",
+          "tableFrom": "status_pages_embed_origins",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.status_pages_subscriptions_channels": {
       "name": "status_pages_subscriptions_channels",
       "schema": "",
@@ -7695,6 +7744,14 @@
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
+        },
+        "allow_embedding": {
+          "name": "allow_embedding",
+          "type": "enum_status_pages_allow_embedding",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'off'"
         },
         "search_engine_index": {
           "name": "search_engine_index",
@@ -15716,8 +15773,7 @@
       "schema": "public",
       "values": [
         "certificate",
-        "domain",
-        "ct"
+        "domain"
       ]
     },
     "public.enum_heartbeats_location_status": {
@@ -15871,6 +15927,15 @@
         "password",
         "email-domain",
         "ip-allowlist"
+      ]
+    },
+    "public.enum_status_pages_allow_embedding": {
+      "name": "enum_status_pages_allow_embedding",
+      "schema": "public",
+      "values": [
+        "off",
+        "any",
+        "origins"
       ]
     },
     "public.enum_status_pages_uptime_calculation": {
@@ -16295,6 +16360,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "52cf93c6-5c67-4432-8776-0b34cd594df0",
+  "id": "d2694976-fcb1-4ec8-bd93-d24ffdb35a23",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
