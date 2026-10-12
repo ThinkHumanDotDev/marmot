@@ -55,6 +55,7 @@ import * as migration_20261011_193817_status_page_monitor from './20261011_19381
 import * as migration_20261011_200250_push_ping_by_email from './20261011_200250_push_ping_by_email';
 import * as migration_20261011_202905_prometheus_monitor from './20261011_202905_prometheus_monitor';
 import * as migration_20261012_000555_group_aggregation_modes from './20261012_000555_group_aggregation_modes';
+import * as migration_20261012_004250_status_page_uptime_history from './20261012_004250_status_page_uptime_history';
 
 export const migrations = [
   {
@@ -340,6 +341,11 @@ export const migrations = [
   {
     up: migration_20261012_000555_group_aggregation_modes.up,
     down: migration_20261012_000555_group_aggregation_modes.down,
-    name: '20261012_000555_group_aggregation_modes'
+    name: '20261012_000555_group_aggregation_modes',
+  },
+  {
+    up: migration_20261012_004250_status_page_uptime_history.up,
+    down: migration_20261012_004250_status_page_uptime_history.down,
+    name: '20261012_004250_status_page_uptime_history'
   },
 ];

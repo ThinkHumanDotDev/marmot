@@ -122,6 +122,7 @@ export default async function StatusPageEditorPage({
       smsChannels={twilioChannels.map((channel) => ({ id: channel.id, name: channel.name }))}
       trustProxy={settings.trustProxy}
       customDomains={await orgAllowsCustomDomains(payload, org.id)}
+      canViewHistory={can('status-page:history')}
     />
   )
 }

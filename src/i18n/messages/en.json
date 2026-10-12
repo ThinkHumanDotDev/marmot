@@ -2173,7 +2173,8 @@
         "manage": "Manage",
         "send": "Send",
         "acknowledge": "Acknowledge",
-        "resolve": "Resolve"
+        "resolve": "Resolve",
+        "history": "Uptime history"
       },
       "custom": "Custom",
       "fixed": "(fixed)",
@@ -4257,7 +4258,8 @@
         "domains": "Domains",
         "share": "Share",
         "subscribers": "Subscribers",
-        "notifications": "Notifications"
+        "notifications": "Notifications",
+        "history": "History"
       }
     },
     "settings": {
@@ -4310,7 +4312,26 @@
         "contactUrlHint": "Shown as a “Contact us” button. An https:// URL or mailto: address."
       },
       "pastIncidentsDays": "Past incidents shown (days)",
-      "pastIncidentsDaysHint": "Incidents of the last days are listed by day below the components; 0 hides the list. All of them stay on the history page."
+      "pastIncidentsDaysHint": "Incidents of the last days are listed by day below the components; 0 hides the list. All of them stay on the history page.",
+      "uptime": {
+        "title": "Uptime bars",
+        "description": "Daily bars per component and how their uptime is calculated.",
+        "days": "Days shown",
+        "daysOption": "{days} days",
+        "calculation": "Uptime calculation",
+        "modes": {
+          "checks": "Checks",
+          "duration": "Duration",
+          "manual": "Incidents only"
+        },
+        "modeHints": {
+          "checks": "Successful checks divided by all checks.",
+          "duration": "Time not spent down divided by the total time, from the monitors' status changes.",
+          "manual": "Only incidents count: a major outage is down, a partial outage half down, degraded performance up."
+        },
+        "showPercentage": "Show uptime percentage",
+        "showPercentageHint": "Off keeps the bars but hides the percentages."
+      }
     },
     "groups": {
       "title": "Groups & monitors",
@@ -4972,6 +4993,45 @@
         "created": "Created {time}",
         "listMeta": "{event} · {time}"
       }
+    },
+    "uptime": {
+      "groupLabel": "Daily uptime of the last {days} days",
+      "daysAgo": "{days} days ago",
+      "today": "Today",
+      "percent": "{value} uptime",
+      "noData": "No data",
+      "barLabel": "{date}: {state}",
+      "barLabelWithUptime": "{date}: {state}, {uptime} uptime",
+      "state": {
+        "nodata": "No data",
+        "up": "Operational",
+        "maintenance": "Maintenance",
+        "degraded": "Degraded performance",
+        "partial": "Partial outage",
+        "down": "Outage"
+      },
+      "downFor": "Down for {duration}",
+      "noDowntime": "No downtime recorded",
+      "duration": {
+        "hours": "{hours} h {minutes} min",
+        "minutes": "{minutes} min",
+        "lessThanMinute": "less than a minute"
+      },
+      "incidents": "Incidents",
+      "maintenance": "Maintenance"
+    },
+    "history": {
+      "title": "Uptime history",
+      "description": "Monthly uptime of each component, calculated like the page ({mode}). Days are UTC days; the figures stay available after the raw statistics are pruned.",
+      "months": "Months",
+      "monthsOption": "{months} months",
+      "export": "Export CSV",
+      "loading": "Loading history…",
+      "failed": "Could not load the history.",
+      "empty": "This page has no components yet.",
+      "component": "Component",
+      "noData": "No data",
+      "downtime": "Down {duration}"
     }
   },
   "maintenance": {

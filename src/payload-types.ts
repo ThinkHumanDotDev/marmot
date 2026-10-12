@@ -91,6 +91,7 @@ export interface Config {
     'stat-location-hourly': StatLocationHourly;
     'status-pages': StatusPage;
     'status-page-viewers': StatusPageViewer;
+    'status-page-uptime-history': StatusPageUptimeHistory;
     incidents: Incident;
     'status-page-subscribers': StatusPageSubscriber;
     'subscriber-notifications': SubscriberNotification;
@@ -134,6 +135,7 @@ export interface Config {
     'stat-location-hourly': StatLocationHourlySelect<false> | StatLocationHourlySelect<true>;
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
     'status-page-viewers': StatusPageViewersSelect<false> | StatusPageViewersSelect<true>;
+    'status-page-uptime-history': StatusPageUptimeHistorySelect<false> | StatusPageUptimeHistorySelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
     'status-page-subscribers': StatusPageSubscribersSelect<false> | StatusPageSubscribersSelect<true>;
     'subscriber-notifications': SubscriberNotificationsSelect<false> | SubscriberNotificationsSelect<true>;
@@ -1003,6 +1005,9 @@ export interface StatusPage {
   showCertificateExpiry?: boolean | null;
   showPoweredBy?: boolean | null;
   showValues?: boolean | null;
+  uptimeBarDays?: number | null;
+  uptimeCalculation?: ('checks' | 'duration' | 'manual') | null;
+  showUptimePercentage?: boolean | null;
   autoRefreshInterval?: number | null;
   maintenanceVisibilityHours?: number | null;
   pastIncidentsDays?: number | null;
@@ -1224,6 +1229,26 @@ export interface StatusPageViewer {
   lastSeenAt?: string | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "status-page-uptime-history".
+ */
+export interface StatusPageUptimeHistory {
+  id: number;
+  organization: number | Organization;
+  statusPage: number | StatusPage;
+  component: string;
+  timestamp: number;
+  day: string;
+  month: string;
+  up: number;
+  down: number;
+  degraded?: number | null;
+  maintenance?: number | null;
+  downSeconds?: number | null;
+  knownSeconds?: number | null;
+  state: 'nodata' | 'up' | 'maintenance' | 'degraded' | 'partial' | 'down';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1720,6 +1745,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'status-page-viewers';
         value: number | StatusPageViewer;
+      } | null)
+    | ({
+        relationTo: 'status-page-uptime-history';
+        value: number | StatusPageUptimeHistory;
       } | null)
     | ({
         relationTo: 'incidents';
@@ -2471,6 +2500,9 @@ export interface StatusPagesSelect<T extends boolean = true> {
   showCertificateExpiry?: T;
   showPoweredBy?: T;
   showValues?: T;
+  uptimeBarDays?: T;
+  uptimeCalculation?: T;
+  showUptimePercentage?: T;
   autoRefreshInterval?: T;
   maintenanceVisibilityHours?: T;
   pastIncidentsDays?: T;
@@ -2534,6 +2566,25 @@ export interface StatusPageViewersSelect<T extends boolean = true> {
   lastSeenAt?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "status-page-uptime-history_select".
+ */
+export interface StatusPageUptimeHistorySelect<T extends boolean = true> {
+  organization?: T;
+  statusPage?: T;
+  component?: T;
+  timestamp?: T;
+  day?: T;
+  month?: T;
+  up?: T;
+  down?: T;
+  degraded?: T;
+  maintenance?: T;
+  downSeconds?: T;
+  knownSeconds?: T;
+  state?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
