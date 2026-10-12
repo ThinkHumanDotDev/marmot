@@ -199,9 +199,7 @@ describe('custom status page metrics', () => {
         points: [{ value: 1 }, { value: 2, timestamp: Math.floor(Date.now() / 1000) - 2 * 86400 }],
       })
       expect(old.status).toBe(400)
-      expect(((await old.json()) as { errors: { message: string }[] }).errors[0].message).toContain(
-        'Point 1',
-      )
+      expect(((await old.json()) as { error: string }).error).toContain('Point 1')
       const future = await push(metric.id, {
         value: 1,
         timestamp: new Date(Date.now() + 3600 * 1000).toISOString(),
@@ -286,7 +284,8 @@ describe('custom status page metrics', () => {
       }
 
       const stored = (await payload.findByID({ collection: 'metrics', id: metric.id })) as Metric
-      expect(stored.lastValue).toBe(9)
+      // The value of the latest push.
+      expect(stored.lastValue).toBe(6)
       expect(stored.lastPushAt).toBeTruthy()
 
       const series = await seriesRoute(
@@ -324,11 +323,13 @@ describe('custom status page metrics', () => {
       expect(pick('average')).toEqual([2, 6, null, 4])
       expect(pick('sum')).toEqual([4, 12, null, 16])
       expect(pick('max')).toEqual([3, 10, null, 10])
-      expect(pick('last')).toEqual([3, 10, null, 10])
+      // Equal times: the row merged last wins.
+      expect(pick('last')).toEqual([3, 2, null, 2])
     })
 
     it('expires rollups with the stat retention', async () => {
       const metric = await create({ name: 'Retention' })
+      const metricId = (await payload.findByID({ collection: 'metrics', id: metric.id })).id
       // Rows of two days ago: past the minutely retention, within the hourly and daily ones.
       const old = Math.floor(Date.now() / 1000) - 2 * 86400
       for (const [granularity, size] of [
@@ -339,7 +340,7 @@ describe('custom status page metrics', () => {
         await payload.create({
           collection: 'metric-stats',
           data: {
-            metric: metric.id,
+            metric: metricId,
             organization: org.id,
             granularity,
             timestamp: Math.floor(old / size) * size,

@@ -206,6 +206,11 @@ it; the daily bars and the monthly history read it for the days whose statistics
 Public latency charts (#113, `src/server/status-pages/latency-charts.ts`) read `getRangeStats()` and
 `stat-location-hourly` for the components whose owner set `showChart`, and expose aggregates only
 ([Status pages](Status-Pages.md#latency-charts)).
+Custom metrics (#155, `src/server/metrics/`) keep no raw points: a push folds its batch into
+`metric-stats` rows (one per metric, granularity and minute/hour/day bucket with count, sum, min, max
+and latest value), pruned by the retention job with the same cutoffs as the `stat-*` rows.
+Monitor-backed metrics read the value their monitor records in `stat-*` (`extras.value`)
+([Status pages](Status-Pages.md#custom-metrics)).
 
 Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ job scheduler on the
 `marmot:maintenance` queue: minutely rows older than 24 h, hourly and per-location hourly older than 30 d, daily and important
