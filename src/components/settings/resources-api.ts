@@ -4,6 +4,7 @@
  */
 import { api } from '@/lib/api'
 import type { DockerConnectionType, ProxyProtocol } from '@/lib/monitor-resources'
+import type { SshTunnelAuthMethod } from '@/lib/ssh-tunnels'
 import { toTemplateRow } from '@/lib/templates'
 
 type Id = string | number
@@ -33,6 +34,20 @@ export interface DockerHostRow {
   connectionType: DockerConnectionType
   socketPath: string | null
   url: string | null
+}
+
+/** An SSH tunnel as the settings list it: credentials are never readable, only whether they are set. */
+export interface SshTunnelRow {
+  id: string
+  name: string
+  host: string
+  port: number
+  username: string
+  authMethod: SshTunnelAuthMethod
+  knownHostFingerprint: string
+  hasPassword: boolean
+  hasPrivateKey: boolean
+  hasPassphrase: boolean
 }
 
 type Doc = { id: Id } & Record<string, unknown>
@@ -69,13 +84,38 @@ export const toDockerHostRow = (input: object): DockerHostRow =>
     url: (doc.url as string | null | undefined) ?? null,
   }))
 
+export const toSshTunnelRow = (input: object): SshTunnelRow =>
+  fields(input, (doc) => ({
+    id: String(doc.id),
+    name: String(doc.name ?? ''),
+    host: String(doc.host ?? ''),
+    port: Number(doc.port ?? 22),
+    username: String(doc.username ?? ''),
+    authMethod: (doc.authMethod as SshTunnelAuthMethod) ?? 'password',
+    knownHostFingerprint: String(doc.knownHostFingerprint ?? ''),
+    hasPassword: Boolean(doc.hasPassword),
+    hasPrivateKey: Boolean(doc.hasPrivateKey),
+    hasPassphrase: Boolean(doc.hasPassphrase),
+  }))
+
+/**
+ * Relationship value for an organization id the page passed as a string: Postgres ids are numbers
+ * and Payload refuses `"1"` for them; MongoDB ids (24 hex characters) stay strings.
+ */
+const orgRef = (id: Id): Id => (typeof id === 'string' && /^\d{1,15}$/.test(id) ? Number(id) : id)
+
 function collectionApi<Row>(slug: string, toRow: (doc: Doc) => Row) {
   const query = { depth: 0 }
   return {
     create: async (orgId: Id, data: Record<string, unknown>) =>
       toRow(
-        (await api.post<{ doc: Doc }>(`/api/${slug}`, { ...data, organization: orgId }, { query }))
-          .doc,
+        (
+          await api.post<{ doc: Doc }>(
+            `/api/${slug}`,
+            { ...data, organization: orgRef(orgId) },
+            { query },
+          )
+        ).doc,
       ),
     update: async (id: Id, data: Record<string, unknown>) =>
       toRow((await api.patch<{ doc: Doc }>(`/api/${slug}/${id}`, data, { query })).doc),
@@ -94,6 +134,29 @@ export const dockerHostsApi = {
       | { dockerHostId: Id }
       | { connectionType: DockerConnectionType; socketPath?: string | null; url?: string | null },
   ) => api.post<{ ok: true; containers: number }>(`/api/orgs/${orgId}/docker-hosts/test`, body),
+}
+
+/** Connection fields of the SSH tunnel test (`POST /api/orgs/:orgId/ssh-tunnels/test`). */
+export type SshTunnelTestBody = {
+  sshTunnelId?: Id
+  fetchFingerprint?: boolean
+  host?: string
+  port?: number
+  username?: string
+  authMethod?: SshTunnelAuthMethod
+  password?: string
+  privateKey?: string
+  passphrase?: string
+  knownHostFingerprint?: string
+}
+
+export const sshTunnelsApi = {
+  ...collectionApi('ssh-tunnels', toSshTunnelRow),
+  test: (orgId: Id, body: SshTunnelTestBody) =>
+    api.post<{ ok: true; fingerprint: string; ms?: number }>(
+      `/api/orgs/${orgId}/ssh-tunnels/test`,
+      body,
+    ),
 }
 
 export const proxyLabel = (proxy: Pick<ProxyRow, 'protocol' | 'host' | 'port'>) =>

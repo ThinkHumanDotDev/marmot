@@ -30,7 +30,8 @@ import {
 import { describeAssertionResult, evaluateHttpAssertions, passedSuffix } from './assertions'
 import { HttpTimingCapture } from './http-timing'
 import { captureResponse, requestSecrets } from './response-capture'
-import type { MonitorCheckContext } from './types'
+import { tunnelConnector } from './tunnel'
+import type { CheckTunnel, MonitorCheckContext } from './types'
 
 const DEFAULT_ACCEPT =
   'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'
@@ -108,6 +109,7 @@ export function capturingAgent(
   connectOptions: buildConnector.BuildOptions,
   capture: TlsCapture,
   timing?: HttpTimingCapture,
+  tunnel?: CheckTunnel | null,
 ): Agent {
   const connector = buildConnector({ ...connectOptions, maxCachedSessions: 0 })
   const capturing: buildConnector.connector = (opts, callback) =>
@@ -122,10 +124,13 @@ export function capturingAgent(
       if (err) callback(err, null)
       else callback(null, socket as NonNullable<typeof socket>)
     })
+  // Through an SSH tunnel (#160) every connection goes to the tunnel's endpoint instead of
+  // passing the guard (which vetted the bastion).
+  const wrap = tunnel ? tunnelConnector(tunnel) : guardConnector
   return new Agent({
     allowH2: false,
     // The timing probe wraps the guard, so the guard's DNS resolution counts as the DNS phase.
-    connect: timing ? timing.connector(guardConnector, capturing) : guardConnector(capturing),
+    connect: timing ? timing.connector(wrap, capturing) : wrap(capturing),
   })
 }
 
@@ -161,9 +166,13 @@ export async function recordTlsInfo(
   if (target.protocol !== 'https:') return
   const host = target.hostname.replace(/^\[|\]$/g, '')
   try {
-    // Same guard as the request: connect to the vetted address, verify against the name.
-    const vetted = await resolveGuardedTarget(host)
-    const info = await fetchCertificate(vetted?.address ?? host, Number(target.port) || 443, {
+    // Same route as the request: through the SSH tunnel, or to the vetted address (verified
+    // against the name either way).
+    const port = Number(target.port) || 443
+    const via = ctx.tunnel
+      ? await ctx.tunnel.endpoint(host, port)
+      : { host: (await resolveGuardedTarget(host))?.address ?? host, port }
+    const info = await fetchCertificate(via.host, via.port, {
       servername: target.hostname,
       rejectUnauthorized: false,
       ca: ctx.monitor.authMethod === 'mtls' ? ctx.monitor.tlsCa : null,
@@ -262,7 +271,7 @@ export async function loadMonitorProxy(
 export async function buildHttpRequest(
   monitor: Monitor,
   signal: AbortSignal,
-  { proxy = null }: { proxy?: ProxyConfig | null } = {},
+  { proxy = null, tunnel = null }: { proxy?: ProxyConfig | null; tunnel?: CheckTunnel | null } = {},
 ): Promise<{
   url: string
   options: Parameters<typeof request>[1]
@@ -359,9 +368,10 @@ export async function buildHttpRequest(
         }
       : {}),
   }
+  if (proxy && tunnel) throw new Error('A monitor uses either a proxy or an SSH tunnel, not both')
   const agent: Dispatcher = proxy
     ? createProxyDispatcher(await guardProxyAddress(proxy), tlsOptions)
-    : capturingAgent(tlsOptions, capture, timing)
+    : capturingAgent(tlsOptions, capture, timing, tunnel)
   const cleanup = async () => {
     await agent.close()
   }
@@ -419,14 +429,15 @@ export async function performHttpCheck(
   ctx: MonitorCheckContext,
   options: HttpCheckOptions = {},
 ): Promise<HttpCheckResponse> {
-  const proxy = await loadMonitorProxy(ctx.payload, ctx.monitor)
+  // A tunnelled monitor never uses a proxy (refused on save); a stale reference is ignored.
+  const proxy = ctx.tunnel ? null : await loadMonitorProxy(ctx.payload, ctx.monitor)
   const {
     url,
     options: requestOptions,
     cleanup,
     capture,
     timing,
-  } = await buildHttpRequest(ctx.monitor, ctx.signal, { proxy })
+  } = await buildHttpRequest(ctx.monitor, ctx.signal, { proxy, tunnel: ctx.tunnel })
   const startTime = Date.now()
   let response: HttpCheckResponse
   try {

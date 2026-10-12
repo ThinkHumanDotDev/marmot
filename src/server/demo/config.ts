@@ -51,6 +51,7 @@ export type DemoFeature =
   | 'otelExport'
   | 'setup'
   | 'smtp'
+  | 'sshTunnels'
   | 'sso'
   | 'twoFactor'
   | 'uploads'

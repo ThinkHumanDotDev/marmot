@@ -9,6 +9,7 @@
 import { guardedNetConnect, outboundGuardActive } from '@/server/security/outbound-guard'
 
 import { registerMonitorType } from './registry'
+import { tunnelSocket } from './tunnel'
 import { describeRows, sqlQueryOf } from './sql'
 import { checkTimeoutMs, errorMessage, loadOptionalDriver, requireField, withAbort } from './util'
 
@@ -21,6 +22,7 @@ registerMonitorType({
     const query = sqlQueryOf(ctx.monitor)
     const mysql = await loadOptionalDriver(() => import('mysql2/promise'), 'mysql2', 'MySQL')
     const timeout = checkTimeoutMs(ctx.monitor)
+    const tunnel = ctx.tunnel
 
     const startTime = Date.now()
     let connection: Awaited<ReturnType<typeof mysql.createConnection>> | undefined
@@ -29,18 +31,36 @@ registerMonitorType({
         mysql.createConnection({
           uri,
           connectTimeout: timeout,
-          // Outbound address guard: open the socket ourselves through the guard (vetted at
-          // connect time; unix sockets refused). TLS upgrades keep verifying the configured name.
-          ...(outboundGuardActive()
+          // SSH tunnel (#160): the socket goes through the bastion. Otherwise the outbound
+          // address guard: open the socket ourselves through the guard (vetted at connect time;
+          // unix sockets refused). TLS upgrades keep verifying the configured name.
+          ...(tunnel
             ? {
-                stream: (opts: { config: { host?: string; port?: number; socketPath?: string } }) =>
-                  guardedNetConnect({
-                    host: opts.config.host,
-                    port: opts.config.port,
-                    path: opts.config.socketPath,
-                  }),
+                stream: (opts: {
+                  config: { host?: string; port?: number; socketPath?: string }
+                }) => {
+                  if (opts.config.socketPath) {
+                    throw new Error('Unix sockets cannot be reached through an SSH tunnel')
+                  }
+                  return tunnelSocket(
+                    tunnel,
+                    opts.config.host ?? 'localhost',
+                    opts.config.port ?? 3306,
+                  )
+                },
               }
-            : {}),
+            : outboundGuardActive()
+              ? {
+                  stream: (opts: {
+                    config: { host?: string; port?: number; socketPath?: string }
+                  }) =>
+                    guardedNetConnect({
+                      host: opts.config.host,
+                      port: opts.config.port,
+                      path: opts.config.socketPath,
+                    }),
+                }
+              : {}),
         }),
         ctx.signal,
       )

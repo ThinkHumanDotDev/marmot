@@ -52,6 +52,8 @@ const monitorDriverPackages = [
   'ssh2',
   'ssh2-sftp-client',
   'ws',
+  // SSH tunnels (#160): a regular dependency, but with optional native bindings.
+  'ssh2',
 ]
 
 // Nothing outside `/status/` may be framed. Below it, `src/proxy.ts` sends the frame headers: a page

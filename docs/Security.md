@@ -89,7 +89,8 @@ members under Settings → Permissions. Superadmins also see instance-level rows
    automatically when `DOMAIN` is set. HSTS is only meaningful over https.
 2. **Turn on `trustProxy`** in instance settings once a reverse proxy sits in front of Marmot (see above).
 3. **Use a strong `PAYLOAD_SECRET`** (`openssl rand -hex 32`) and rotate it if it ever leaks: every session
-   is invalidated.
+   is invalidated. Secrets sealed with a key derived from it (two-factor secrets, single sign-on client
+   secrets, [SSH tunnel](Monitors.md#ssh-tunnels) credentials) must then be entered again.
 4. **Keep the database, Redis and the realtime port private.** Only Caddy (80/443) needs to be reachable
    from the internet; `REALTIME_PORT` is proxied under `/socket.io`.
 5. **Disable open signup** (`DISABLE_SIGNUP=true` or the `allowSignup` instance setting) and invite people
