@@ -275,8 +275,10 @@ checks keys and placeholders). To make a language complete:
 
 ## Migrations
 
-Postgres uses Payload migrations in `src/migrations/postgres` (chained in `index.ts`); MongoDB needs none
-(indexes are created on boot). After changing a collection, global or field:
+Postgres uses Payload migrations in `src/migrations/postgres` (chained in `index.ts`); MongoDB creates
+indexes on boot and only needs a migration (`src/migrations/mongodb`, chained the same way) to drop an index
+that changed or to fix data, since Mongoose never drops an index by itself. After changing a collection,
+global or field:
 
 ```bash
 pnpm generate:types

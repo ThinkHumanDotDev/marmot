@@ -24,6 +24,7 @@ import {
 import { registerIncidentListener } from '@/server/incidents/listener'
 import { startConnectivityCheck } from '@/server/engine/connectivity-runtime'
 import { closeCheckerStateStore } from '@/server/engine/connectivity-state'
+import { closeCtQueue, startCtAlertsWorker } from '@/server/jobs/ct-alerts'
 import { registerExpiryNotificationListener } from '@/server/jobs/expiry-notifications'
 import { listMonitorTypes } from '@/server/monitor-types'
 import {
@@ -107,6 +108,9 @@ async function main() {
   const notificationWorker = startNotificationWorker(payload)
   // Recomputes maintenance statuses every minute (and runs retention jobs on the same queue).
   const maintenanceWorker = await startMaintenanceWorker(payload)
+  // Certificate transparency alerts (#143): looks due monitors up in the CT logs every 5 minutes.
+  const ctWorker = await startCtAlertsWorker(payload)
+
   // Ping-by-email (#135): the inbound SMTP listener for `<push token>@INBOUND_EMAIL_DOMAIN`.
   let inboundSmtp: InboundSmtpListener | null = null
   if (env.INBOUND_SMTP_PORT > 0) {
@@ -137,11 +141,17 @@ async function main() {
           checkWorker.close(),
           notificationWorker.close(),
           maintenanceWorker.close(),
+          ctWorker.close(),
         ])
         await connectivity?.stop()
         await inboundSmtp?.close()
         await closeOtelExports()
-        await Promise.all([closeChecksQueue(), closeNotificationsQueue(), closeMaintenanceQueue()])
+        await Promise.all([
+          closeChecksQueue(),
+          closeNotificationsQueue(),
+          closeMaintenanceQueue(),
+          closeCtQueue(),
+        ])
         await closeCheckerStateStore()
         await closeEmitter()
         await shutdownServerAnalytics()

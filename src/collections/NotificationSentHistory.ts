@@ -9,15 +9,21 @@ import { adminGroup, adminT } from '@/i18n/admin'
  * (`src/server/jobs/expiry-history.ts`); the compound unique index is what dedupes a threshold that
  * two concurrent checks try to record at the same time. Rows of a monitor are deleted with it and
  * whenever a new certificate (or a renewed domain) is seen.
+ *
+ * Certificate transparency alerts (#143, `src/server/jobs/ct-alerts.ts`) keep one `ct` row per
+ * certificate already announced, keyed by `fingerprint` (`days` is 0). Expiry rows store an empty
+ * fingerprint so the unique index works the same on Postgres and MongoDB.
  */
 export const EXPIRY_NOTIFICATION_TYPES = ['certificate', 'domain'] as const
 export type ExpiryNotificationType = (typeof EXPIRY_NOTIFICATION_TYPES)[number]
+export const SENT_HISTORY_TYPES = [...EXPIRY_NOTIFICATION_TYPES, 'ct'] as const
+export type SentHistoryType = (typeof SENT_HISTORY_TYPES)[number]
 
 export const NotificationSentHistory: CollectionConfig = {
   slug: 'notification-sent-history',
   admin: {
     group: adminGroup('monitoring'),
-    defaultColumns: ['monitor', 'type', 'days', 'createdAt'],
+    defaultColumns: ['monitor', 'type', 'days', 'fingerprint', 'createdAt'],
     description: adminT('marmot:notificationSentHistory:description'),
   },
   access: {
@@ -26,7 +32,7 @@ export const NotificationSentHistory: CollectionConfig = {
     update: () => false,
     delete: () => false,
   },
-  indexes: [{ fields: ['type', 'monitor', 'days'], unique: true }],
+  indexes: [{ fields: ['type', 'monitor', 'days', 'fingerprint'], unique: true }],
   fields: [
     {
       name: 'organization',
@@ -46,7 +52,7 @@ export const NotificationSentHistory: CollectionConfig = {
       name: 'type',
       type: 'select',
       required: true,
-      options: EXPIRY_NOTIFICATION_TYPES.map((value) => ({ label: value, value })),
+      options: SENT_HISTORY_TYPES.map((value) => ({ label: value, value })),
     },
     {
       name: 'days',
@@ -54,6 +60,12 @@ export const NotificationSentHistory: CollectionConfig = {
       required: true,
       min: 0,
       admin: { description: adminT('marmot:notificationSentHistory:daysDescription') },
+    },
+    {
+      name: 'fingerprint',
+      type: 'text',
+      defaultValue: '',
+      admin: { description: adminT('marmot:notificationSentHistory:fingerprintDescription') },
     },
   ],
   timestamps: true,

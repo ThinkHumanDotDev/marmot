@@ -508,6 +508,13 @@ export const Monitors: CollectionConfig = {
         }
         return data
       },
+      ({ data, originalDoc }) => {
+        // Certificate transparency alerts (#143): turning them off forgets the baseline, so
+        // turning them on again starts from that moment instead of announcing the gap.
+        const enabled = data?.ctAlerts ?? originalDoc?.ctAlerts
+        if (data && !enabled && (data.ctState || originalDoc?.ctState)) data.ctState = null
+        return data
+      },
       // New monitors without explicit channels get the organization's default channels.
       attachDefaultNotifications,
       validateOrgReferences,
@@ -1033,6 +1040,49 @@ export const Monitors: CollectionConfig = {
           },
         },
       ],
+    },
+    // ---- Certificate transparency alerts (#143, src/server/jobs/ct-alerts.ts) -----------------
+    {
+      type: 'row',
+      fields: [
+        {
+          name: 'ctAlerts',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: {
+            condition: (data) => isDomainType(data),
+            description: adminT('marmot:monitors:ctAlertsDescription'),
+          },
+        },
+        {
+          name: 'ctIncludeSubdomains',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: {
+            condition: (data) => isDomainType(data) && Boolean(data?.ctAlerts),
+            description: adminT('marmot:monitors:ctIncludeSubdomainsDescription'),
+          },
+        },
+      ],
+    },
+    {
+      name: 'ctExpectedIssuers',
+      type: 'text',
+      hasMany: true,
+      maxRows: 20,
+      admin: {
+        condition: (data) => isDomainType(data) && Boolean(data?.ctAlerts),
+        description: adminT('marmot:monitors:ctExpectedIssuersDescription'),
+      },
+    },
+    {
+      name: 'ctState',
+      type: 'json',
+      admin: {
+        readOnly: true,
+        condition: (data) => isDomainType(data) && Boolean(data?.ctAlerts),
+        description: adminT('marmot:monitors:ctStateDescription'),
+      },
     },
     {
       name: 'certInfo',

@@ -485,6 +485,18 @@ export interface Monitor {
   ignoreTls?: boolean | null;
   expiryNotification?: boolean | null;
   domainExpiryNotification?: boolean | null;
+  ctAlerts?: boolean | null;
+  ctIncludeSubdomains?: boolean | null;
+  ctExpectedIssuers?: string[] | null;
+  ctState?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   certInfo?:
     | {
         [k: string]: unknown;
@@ -821,8 +833,9 @@ export interface NotificationSentHistory {
   id: number;
   organization?: (number | null) | Organization;
   monitor: number | Monitor;
-  type: 'certificate' | 'domain';
+  type: 'certificate' | 'domain' | 'ct';
   days: number;
+  fingerprint?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2118,6 +2131,10 @@ export interface MonitorsSelect<T extends boolean = true> {
   ignoreTls?: T;
   expiryNotification?: T;
   domainExpiryNotification?: T;
+  ctAlerts?: T;
+  ctIncludeSubdomains?: T;
+  ctExpectedIssuers?: T;
+  ctState?: T;
   certInfo?: T;
   domainExpiry?: T;
   keyword?: T;
@@ -2373,6 +2390,7 @@ export interface NotificationSentHistorySelect<T extends boolean = true> {
   monitor?: T;
   type?: T;
   days?: T;
+  fingerprint?: T;
   updatedAt?: T;
   createdAt?: T;
 }
