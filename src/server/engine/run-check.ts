@@ -12,6 +12,8 @@ import {
 } from '@/server/monitor-types'
 import type { Monitor } from '@/payload-types'
 import { findBlockedMessage } from '@/server/security/outbound-guard'
+import { supportsSshTunnel } from '@/lib/ssh-tunnels'
+import type { TunnelSession } from '@/server/ssh-tunnels/connection'
 import type { Payload } from 'payload'
 
 import type { CheckResult } from './beat'
@@ -61,6 +63,35 @@ export async function runCheck(
     signal,
     payload,
   }
+
+  // SSH tunnel (#160): opened before the check (within its timeout). A bastion that cannot be
+  // reached makes the check fail with "SSH tunnel <name> unreachable", not with a target error.
+  const tunnelRef = supportsSshTunnel(monitor.type) ? monitor.sshTunnel : null
+  let tunnel: TunnelSession | null = null
+  if (tunnelRef !== null && tunnelRef !== undefined && String(tunnelRef) !== '') {
+    const { openCheckTunnel } = await import('@/server/ssh-tunnels')
+    try {
+      tunnel = await openCheckTunnel(payload, tunnelRef, { timeoutMs, signal })
+    } catch (err) {
+      return { ok: false, msg: err instanceof Error ? err.message : String(err) }
+    }
+    ctx.tunnel = tunnel
+  }
+  try {
+    return await runTypeCheck(type, ctx, timeoutMs, tunnel)
+  } finally {
+    await tunnel?.close()
+  }
+}
+
+/** The type's `check()` raced against the timeout, its outcome as a `CheckResult`. */
+async function runTypeCheck(
+  type: NonNullable<ReturnType<typeof getMonitorType>>,
+  ctx: MonitorCheckContext,
+  timeoutMs: number,
+  tunnel: Pick<TunnelSession, 'name' | 'forwardError'> | null,
+): Promise<CheckResult> {
+  const { signal } = ctx
   const startedAt = Date.now()
 
   const timeout = new Promise<never>((_, reject) => {
@@ -88,13 +119,18 @@ export async function runCheck(
     }
     // A target refused by the outbound address guard reads the same for every type and driver.
     const blocked = findBlockedMessage(err)
-    const msg = blocked
+    let msg = blocked
       ? blocked
       : isTimeoutError(err)
         ? `timeout by AbortSignal (${Math.round(timeoutMs / 1000)}s)`
         : err instanceof Error
           ? err.message
           : String(err)
+    // The bastion is up but refused to connect to the target: say so (the driver itself only
+    // sees its connection closed).
+    if (tunnel?.forwardError) {
+      msg = `${msg} (SSH tunnel ${tunnel.name} could not reach ${tunnel.forwardError})`
+    }
     return {
       ok: false,
       msg,

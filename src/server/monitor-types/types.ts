@@ -64,6 +64,26 @@ export interface MonitorCheckContext {
    * and the scheduler never polls more often than that.
    */
   cacheSeconds?: number | null
+  /**
+   * The monitor's SSH tunnel (#160), opened by the engine before the check when the monitor has
+   * one and its type supports tunnels (`SSH_TUNNEL_MONITOR_TYPES`). Types then connect to the
+   * target through it instead of directly (and without the outbound address guard, which vetted
+   * the bastion instead).
+   */
+  tunnel?: CheckTunnel | null
+}
+
+/** A monitor's SSH tunnel as a check uses it (see `src/server/ssh-tunnels/connection.ts`). */
+export interface CheckTunnel {
+  /** The tunnel's name, for messages. */
+  readonly name: string
+  /**
+   * A loopback address (`127.0.0.1:<port>`) whose connections are forwarded to `host:port`
+   * through the bastion. Resolved by the bastion, so internal names work.
+   */
+  endpoint(host: string, port: number): Promise<{ host: string; port: number }>
+  /** Open one forwarded connection to `host:port` and close it again (TCP port checks). */
+  probe(host: string, port: number): Promise<void>
 }
 
 /** One probe of a multi-location check (`heartbeats.probes`). */

@@ -126,7 +126,7 @@ export function canonicalJson(value: unknown): string {
 }
 
 /** Ids compare as strings (numbers on Postgres, strings on MongoDB). */
-const ID_FIELDS = new Set(['proxy', 'dockerHost'])
+const ID_FIELDS = new Set(['proxy', 'sshTunnel', 'dockerHost'])
 
 const comparable = (field: string, value: unknown): string =>
   canonicalJson(

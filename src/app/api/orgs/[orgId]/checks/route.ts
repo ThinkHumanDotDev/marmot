@@ -23,6 +23,7 @@ type RouteContext = { params: Promise<{ orgId: string }> }
 const REFERENCES = [
   { field: 'proxy', collection: 'proxies' },
   { field: 'dockerHost', collection: 'docker-hosts' },
+  { field: 'sshTunnel', collection: 'ssh-tunnels' },
 ] as const
 
 /**
@@ -58,7 +59,8 @@ export async function POST(request: Request, { params }: RouteContext) {
     return jsonError(400, errorText(request, 'adhocTypeNotSupported'))
   }
 
-  // Another organization's proxy (with its credentials) or Docker host is not available.
+  // Another organization's proxy (with its credentials), Docker host or SSH tunnel is not
+  // available.
   for (const { field, collection } of REFERENCES) {
     const refId = relationId(values[field])
     if (refId === null) continue

@@ -161,6 +161,14 @@ export const adminTranslations = {
         connectionTypeSocket: 'Socket',
         connectionTypeTcp: 'TCP / HTTP',
       },
+      sshTunnels: {
+        authPassword: 'Password',
+        authPrivateKey: 'Private key',
+        secretDescription:
+          'Sealed at rest and never shown again. Leave empty to keep the current value.',
+        fingerprintDescription:
+          'SHA-256 host key fingerprint of the bastion (ssh-keygen -lf <host key>.pub), verified before every connection.',
+      },
       locations: {
         description:
           'Self-hosted probe locations. Manage them under Settings → Locations; the token is shown once.',
@@ -345,6 +353,8 @@ export const adminTranslations = {
         groupWeightDescription:
           'Weight of this monitor in a weighted parent group (relative to its siblings; 0 = ignored).',
         proxyDescription: 'Send the request through this proxy (inactive proxies are skipped).',
+        sshTunnelDescription:
+          'Reach the target through this SSH bastion; the bastion resolves and connects to it.',
         otlpExportDescription:
           "Export this monitor's check results as OpenTelemetry metrics (when a collector applies).",
         otlpCollectorDescription:

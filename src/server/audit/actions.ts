@@ -14,6 +14,7 @@ export const AUDIT_RESOURCE_TYPES = [
   'tag',
   'proxy',
   'docker_host',
+  'ssh_tunnel',
   'status_page',
   'status_page_viewer',
   'incident',

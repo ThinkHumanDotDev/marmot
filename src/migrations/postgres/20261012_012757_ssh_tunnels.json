@@ -2096,6 +2096,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "ssh_tunnel_id": {
+          "name": "ssh_tunnel_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "docker_host_id": {
           "name": "docker_host_id",
           "type": "integer",
@@ -3093,6 +3099,21 @@
           "method": "btree",
           "with": {}
         },
+        "monitors_ssh_tunnel_idx": {
+          "name": "monitors_ssh_tunnel_idx",
+          "columns": [
+            {
+              "expression": "ssh_tunnel_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "monitors_docker_host_idx": {
           "name": "monitors_docker_host_idx",
           "columns": [
@@ -3242,6 +3263,19 @@
           "tableTo": "proxies",
           "columnsFrom": [
             "proxy_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitors_ssh_tunnel_id_ssh_tunnels_id_fk": {
+          "name": "monitors_ssh_tunnel_id_ssh_tunnels_id_fk",
+          "tableFrom": "monitors",
+          "tableTo": "ssh_tunnels",
+          "columnsFrom": [
+            "ssh_tunnel_id"
           ],
           "columnsTo": [
             "id"
@@ -4236,6 +4270,183 @@
         "docker_hosts_organization_id_organizations_id_fk": {
           "name": "docker_hosts_organization_id_organizations_id_fk",
           "tableFrom": "docker_hosts",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ssh_tunnels": {
+      "name": "ssh_tunnels",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "host": {
+          "name": "host",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "port": {
+          "name": "port",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 22
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "auth_method": {
+          "name": "auth_method",
+          "type": "enum_ssh_tunnels_auth_method",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'password'"
+        },
+        "password": {
+          "name": "password",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "private_key": {
+          "name": "private_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "passphrase": {
+          "name": "passphrase",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "known_host_fingerprint": {
+          "name": "known_host_fingerprint",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "has_password": {
+          "name": "has_password",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "has_private_key": {
+          "name": "has_private_key",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "has_passphrase": {
+          "name": "has_passphrase",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "ssh_tunnels_organization_idx": {
+          "name": "ssh_tunnels_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ssh_tunnels_updated_at_idx": {
+          "name": "ssh_tunnels_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ssh_tunnels_created_at_idx": {
+          "name": "ssh_tunnels_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ssh_tunnels_organization_id_organizations_id_fk": {
+          "name": "ssh_tunnels_organization_id_organizations_id_fk",
+          "tableFrom": "ssh_tunnels",
           "tableTo": "organizations",
           "columnsFrom": [
             "organization_id"
@@ -7147,13 +7358,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": true
-        },
-        "show_chart": {
-          "name": "show_chart",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
         },
         "send_url": {
           "name": "send_url",
@@ -13139,6 +13343,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "ssh_tunnels_id": {
+          "name": "ssh_tunnels_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "locations_id": {
           "name": "locations_id",
           "type": "integer",
@@ -13506,6 +13716,21 @@
           "columns": [
             {
               "expression": "docker_hosts_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_ssh_tunnels_id_idx": {
+          "name": "payload_locked_documents_rels_ssh_tunnels_id_idx",
+          "columns": [
+            {
+              "expression": "ssh_tunnels_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -14055,6 +14280,19 @@
           "tableTo": "docker_hosts",
           "columnsFrom": [
             "docker_hosts_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_ssh_tunnels_fk": {
+          "name": "payload_locked_documents_rels_ssh_tunnels_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "ssh_tunnels",
+          "columnsFrom": [
+            "ssh_tunnels_id"
           ],
           "columnsTo": [
             "id"
@@ -15423,6 +15661,14 @@
         "tcp"
       ]
     },
+    "public.enum_ssh_tunnels_auth_method": {
+      "name": "enum_ssh_tunnels_auth_method",
+      "schema": "public",
+      "values": [
+        "password",
+        "privateKey"
+      ]
+    },
     "public.enum_locations_status": {
       "name": "enum_locations_status",
       "schema": "public",
@@ -16015,6 +16261,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "2deceb05-0e28-4327-b225-30556f973d2f",
+  "id": "ed853666-6a73-4a01-9c55-610afb8798d6",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
