@@ -358,7 +358,7 @@ describe('i18n', () => {
       const organization = { settings: { timezone: 'Asia/Tokyo' } } as never
       expect(statusPageTimeZone({ timeZone: 'Europe/Berlin', organization })).toBe('Europe/Berlin')
       expect(statusPageTimeZone({ timeZone: null, organization })).toBe('Asia/Tokyo')
-      expect(statusPageTimeZone({ timeZone: 'nope', organization: 1 })).toBe('UTC')
+      expect(statusPageTimeZone({ timeZone: 'nope', organization: null as never })).toBe('UTC')
     })
   })
 })
