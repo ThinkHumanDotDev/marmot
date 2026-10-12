@@ -484,7 +484,8 @@ working. The OpenAPI document at `/api/openapi.json` describes them (`src/server
 - **Validation**: a weak `ETag` of the body; `If-None-Match` with a matching tag returns `304`. Bodies
   contain no "generated at" timestamps, so the tag only changes when the data does.
 - **CORS**: `Access-Control-Allow-Origin: *` with `ETag` exposed; `OPTIONS` answers the preflight that
-  `If-None-Match` triggers.
+  `If-None-Match` triggers. Responses to visitors admitted by an IP allow-list carry no CORS header: the
+  network position is shared by every site the visitor opens, so no other site's script may read them.
 - **Errors**: RFC 9457 `application/problem+json` with `type: about:blank`, the HTTP status phrase as
   `title`, a localised `detail` and a `code` (`not-found`, `login-required`, `invalid-password`,
   `rate-limited`, `ip-not-allowed`).
@@ -805,6 +806,61 @@ through one access check (`statusPageBadgeAccess` → `checkStatusPageAccess`): 
 (access cookie, `?pw=`, or a client address in the IP allow-list), and granted responses of protected
 pages are `private, no-store` too.
 
+## Embedding
+
+The **Share** tab also offers two ways to show the status inside another site (#109), each with
+copy-to-clipboard snippets.
+
+### iframe embed mode
+
+`/status/<slug>?embed=all` (or `https://status.example.com/?embed=all` on a custom domain) renders the
+page without its header and footer. `embed` takes `all` or a comma-separated list of sections:
+`banner` (overall status), `maintenance`, `incidents` (active incidents), `components` (the groups) and
+`history` (past incidents); unknown names are ignored and a list without a known section shows them all.
+`&theme=light` or `&theme=dark` overrides the page's theme. Every link of the embed opens in a new tab,
+the page refreshes on its auto-refresh interval like the full page, and the embed is `noindex`.
+
+Framing is **opt-in per page** with **Allow embedding** (`allowEmbedding`):
+
+| Setting                   | `Content-Security-Policy` of the page                         | `X-Frame-Options` |
+| ------------------------- | ------------------------------------------------------------- | ----------------- |
+| Off (default)             | `frame-ancestors 'none'`                                      | `DENY`            |
+| On any website (`any`)    | `frame-ancestors *`                                           | none              |
+| Only on listed (`origins`) | `frame-ancestors https://docs.acme.com https://*.acme.com …` | none              |
+
+Origins (`embedOrigins`, at most 50) are a scheme, a host (or `*.` plus a domain) and an optional port,
+nothing else; the server normalizes them and rejects anything else, and `origins` needs at least one.
+Only the page itself follows the setting: every other response under `/status/` (login, subscription
+management, history, feeds, …) is sent with `frame-ancestors 'none'` and `X-Frame-Options: DENY`, as is
+everything outside `/status/`.
+
+**Only public pages can be framed.** A draft or a page with any [access](#access) mode but public always
+answers `frame-ancestors 'none'`, whatever the setting, and its embed mode answers `404`, so the access
+cookie (and the IP allow-list) is never used inside a frame. The headers are set by `src/proxy.ts`, which
+looks the policy up through `GET /api/status-pages/:slug/embed-policy` (on custom domains through
+`resolve-domain`); lookups are cached for 60 seconds, so switching embedding off takes up to a minute, and
+a failed lookup refuses framing. The snippet's `sandbox` attribute keeps the frame from navigating the host
+page; links still open in a new tab.
+
+### Status widget
+
+```html
+<script async src="https://marmot.example.com/status/acme/widget.js" data-theme="light" data-size="md"></script>
+```
+
+`GET /status/:slug/widget.js` (also `/widget.js` on a custom domain) is a dependency-free script (well
+under 5 KB gzipped) that renders a status pill ("All Systems Operational", "Partial System Outage", …)
+right after its `<script>` element, linking to the page. It reads the page's cached
+[`status.json`](#feeds-and-machine-readable-output) without credentials and re-reads it on the page's
+auto-refresh interval (at least every 30 seconds, never when auto-refresh is off). `data-theme` is
+`light` (default), `dark` or `auto` (the visitor's system setting), `data-size` `sm`, `md` (default) or
+`lg`; the pill lives in a shadow root, so the host site's CSS does not affect it. The Share tab also has a
+React component that appends the script to its own element. The widget does not need **Allow embedding**.
+
+Only public pages have a widget: for a draft or a protected page `widget.js` answers `404` whatever
+credentials the request carries, and `status.json` sends no CORS header to visitors admitted by an IP
+allow-list, so an intranet status never reaches another site through a visitor's browser.
+
 ## Access
 
 A page's **Access** tab switches it between **Public** (default), **Password**, **Email domain** and
@@ -975,7 +1031,7 @@ real state.
 
 A page can be served at the root of its own hostnames (`domains[].hostname`). `src/proxy.ts` (the
 Next.js 16 proxy, formerly middleware) runs for the page's public paths only: `/`, `/rss`,
-`/manifest.json`, `/login`, `/badge.svg`, `/events`, `/events/incident/:id[.md]`,
+`/manifest.json`, `/login`, `/badge.svg`, `/widget.js`, `/events`, `/events/incident/:id[.md]`,
 `/events/maintenance/:id[.md]`, `/sitemap.xml`, `/robots.txt`, `/feed/atom`, `/feed/json`,
 `/maintenance.ics`, `/api/v2/*.json`, `/api/openapi.json`, `/index.md` and `/llms.txt`:
 

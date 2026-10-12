@@ -1,5 +1,6 @@
 import type { Viewport } from 'next'
 import { Inter } from 'next/font/google'
+import { headers } from 'next/headers'
 import { NextIntlClientProvider } from 'next-intl'
 import React from 'react'
 
@@ -9,6 +10,7 @@ import { visitorThemeScript } from '@/components/status-pages/public/theme-stora
 import { formats } from '@/i18n/formats'
 import { getMessages } from '@/i18n/messages'
 import { getStatusPageLocale, statusPageTimeZone } from '@/i18n/server'
+import { EMBED_THEME_HEADER, parseEmbedTheme } from '@/lib/status-page-embed'
 import { buildThemeCss } from '@/lib/status-page-themes'
 
 import { loadPublishedPage } from './data'
@@ -43,7 +45,9 @@ export default async function StatusLayout({
 }) {
   const { slug } = await params
   const page = await loadPublishedPage(slug)
-  const theme = page?.theme ?? 'auto'
+  // `?embed=…&theme=light|dark` (#109), passed on by the proxy, which strips visitors' own header.
+  const embedTheme = parseEmbedTheme((await headers()).get(EMBED_THEME_HEADER))
+  const theme = embedTheme ?? page?.theme ?? 'auto'
   const themeCss = page ? buildThemeCss(page.themePreset, page.themeOverrides) : ''
   const locale = await getStatusPageLocale(page)
   const timeZone = statusPageTimeZone(page)

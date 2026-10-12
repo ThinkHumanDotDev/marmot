@@ -59,6 +59,8 @@ export type StatusPagePatch = Partial<
     | 'subscriptions'
     | 'allowedEmailDomains'
     | 'allowedIpRanges'
+    | 'allowEmbedding'
+    | 'embedOrigins'
   >
 > & {
   /** New page password (write-only; never returned). */

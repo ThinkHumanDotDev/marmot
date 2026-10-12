@@ -7,7 +7,8 @@
  *   stored by shared caches;
  * - answers errors as RFC 9457 `application/problem+json`;
  * - sends `Cache-Control` matched to the page's auto-refresh interval plus `stale-while-revalidate`,
- *   a weak `ETag` of the body (`If-None-Match` → 304), and CORS `*` with the `ETag` exposed.
+ *   a weak `ETag` of the body (`If-None-Match` → 304), and CORS `*` with the `ETag` exposed (not for
+ *   visitors admitted by an IP allow-list, whose network position other sites share).
  *
  * Bodies must be deterministic for unchanged data (no "generated at now" fields), otherwise the
  * `ETag` changes on every request.
@@ -211,7 +212,9 @@ export function documentResponse(
     ETag: etag,
     // `auto` pages render in the visitor's language; the access cookie decides protected pages.
     Vary: 'Accept-Language, Cookie',
-    ...CORS_HEADERS,
+    // An IP allow-list admits by network position, which every site the visitor opens shares: no
+    // CORS, so another site's script (or the status widget, #109) cannot read the page from inside.
+    ...(access.via === 'ip' ? {} : CORS_HEADERS),
     ...(access.restricted ? { 'X-Robots-Tag': 'noindex, nofollow' } : {}),
   }
   if (etagMatches(request.headers.get('if-none-match'), etag)) {

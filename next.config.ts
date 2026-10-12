@@ -53,7 +53,8 @@ const monitorDriverPackages = [
   'ws',
 ]
 
-// Nothing but public status pages (`/status/<slug>`, embeddable in intranet dashboards) may be framed.
+// Nothing outside `/status/` may be framed. Below it, `src/proxy.ts` sends the frame headers: a page
+// opted into embedding (#109) gets its `frame-ancestors`, everything else `'none'`.
 const frameHeaders = [{ key: 'X-Frame-Options', value: 'DENY' }]
 
 const nextConfig: NextConfig = {

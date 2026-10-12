@@ -4611,6 +4611,59 @@
       "copyFailed": "Could not copy to the clipboard",
       "altText": "{title} status"
     },
+    "embed": {
+      "title": "Embed the page",
+      "description": "Show this page inside your app, docs or help center without its header and footer. Links in the embed open in a new tab.",
+      "protectedNotice": "Only public pages can be embedded. This page has restricted access, so browsers refuse to show it in a frame whatever you choose here.",
+      "mode": "Allow embedding",
+      "modes": {
+        "off": "Off",
+        "any": "On any website",
+        "origins": "Only on listed websites"
+      },
+      "modeHints": {
+        "off": "Browsers refuse to show the page in a frame (CSP frame-ancestors 'none').",
+        "any": "Any website may show the page in a frame.",
+        "origins": "Only the listed origins may show the page in a frame; browsers refuse it everywhere else."
+      },
+      "origins": "Allowed origins",
+      "originsHint": "One origin per line: scheme and host, optionally a port, no path. *.example.com allows every subdomain.",
+      "save": "Save embedding",
+      "saving": "Saving…",
+      "saved": "Embedding settings saved",
+      "saveFailed": "Could not save the embedding settings",
+      "sections": "Sections",
+      "sectionNames": {
+        "banner": "Overall status",
+        "maintenance": "Maintenance",
+        "incidents": "Active incidents",
+        "components": "Components",
+        "history": "Past incidents"
+      },
+      "theme": "Theme",
+      "themes": {
+        "page": "Page theme",
+        "light": "Light",
+        "dark": "Dark",
+        "auto": "Visitor's system setting"
+      },
+      "height": "Height (px)",
+      "iframe": "iframe",
+      "widget": {
+        "title": "Status widget",
+        "description": "A small script that shows the overall status as a pill linking to this page. It has no dependencies, works on any website without allowing embedding, and refreshes with the page's auto-refresh interval. Pages with restricted access have no widget.",
+        "size": "Size",
+        "sizes": {
+          "sm": "Small",
+          "md": "Medium",
+          "lg": "Large"
+        },
+        "preview": "Preview",
+        "unavailable": "The widget is available once the page is published with public access.",
+        "html": "HTML",
+        "react": "React"
+      }
+    },
     "events": {
       "viewHistory": "View history",
       "historyHeading": "History",
@@ -5777,6 +5830,9 @@
     "statusPageIpRangeInvalid": "\"{entry}\" is not an IP address or CIDR range such as 203.0.113.0/24.",
     "statusPageIpRangesRequired": "Add at least one IP range to restrict this page.",
     "statusPageIpRangesTooMany": "List at most {max} IP ranges.",
+    "statusPageEmbedOriginInvalid": "\"{origin}\" is not an origin such as https://docs.example.com or https://*.example.com.",
+    "statusPageEmbedOriginsRequired": "Add at least one origin that may embed this page.",
+    "statusPageEmbedOriginsTooMany": "List at most {max} origins.",
     "statusPageViewerNotFound": "Visitor not found.",
     "statusPageViewerStatusInvalid": "The status must be \"active\" or \"revoked\".",
     "subscriberStatusPageRequired": "A subscriber needs a status page, and cannot move to another one.",

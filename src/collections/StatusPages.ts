@@ -18,6 +18,7 @@ import {
 } from '@/lib/maintenance-announcements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { STATUS_PAGE_ACCESS_MODES } from '@/lib/status-page-access'
+import { EMBED_MODES } from '@/lib/status-page-embed'
 import { DEFAULT_PAST_INCIDENTS_DAYS, MAX_PAST_INCIDENTS_DAYS } from '@/lib/status-page-events'
 import { COMPONENT_TYPES, isContactUrl, isHttpUrl } from '@/lib/status-page-components'
 import {
@@ -35,6 +36,7 @@ import {
 } from '@/server/billing/entitlements'
 import { applyAccessPassword } from '@/server/status-pages/access-password'
 import { applyAccessRestrictions } from '@/server/status-pages/access-restrictions'
+import { applyEmbedSettings } from '@/server/status-pages/embed-settings'
 
 import { statusPageThemeFields } from './status-page-theme'
 import { detachTemplatesFromStatusPage } from './Templates'
@@ -291,6 +293,7 @@ export const StatusPages: CollectionConfig = {
       validateReferences,
       applyAccessPassword,
       applyAccessRestrictions,
+      applyEmbedSettings,
       enforceEntitlementOnCreate('statusPages'),
       enforceCustomDomainsOnChange,
     ],
@@ -429,6 +432,28 @@ export const StatusPages: CollectionConfig = {
         { name: 'cidr', type: 'text', required: true },
         { name: 'label', type: 'text' },
       ],
+    },
+    {
+      // Embedding (#109): `frame-ancestors` of the page (src/lib/status-page-embed.ts). Opt-in.
+      name: 'allowEmbedding',
+      type: 'select',
+      defaultValue: 'off',
+      options: EMBED_MODES.map((mode) => ({ label: mode, value: mode })),
+      admin: {
+        position: 'sidebar',
+        description: adminT('marmot:statusPages:allowEmbeddingDescription'),
+      },
+    },
+    {
+      // `allowEmbedding: origins`: normalized and validated by `applyEmbedSettings`.
+      name: 'embedOrigins',
+      type: 'array',
+      admin: {
+        position: 'sidebar',
+        condition: (data) => data?.allowEmbedding === 'origins',
+        description: adminT('marmot:statusPages:embedOriginsDescription'),
+      },
+      fields: [{ name: 'origin', type: 'text', required: true }],
     },
     {
       type: 'row',
