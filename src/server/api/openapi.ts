@@ -26,6 +26,11 @@ import { API_KEY_SCOPES } from '@/lib/api-key-scopes'
 import { COMPONENT_IMPACTS, INCIDENT_STATUSES } from '@/lib/incident-timeline'
 import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
 import { DOCKER_CONNECTION_TYPES } from '@/lib/monitor-resources'
+import {
+  declaredNoteSchema,
+  declareIncidentSchema,
+  updateDeclaredIncidentSchema,
+} from '@/lib/validation/declared-incident'
 import { SSH_TUNNEL_AUTH_METHODS } from '@/lib/ssh-tunnels'
 import { LOG_TRIGGERS } from '@/lib/response-log'
 import { STATUS_PAGE_ACCESS_MODES } from '@/lib/status-page-access'
@@ -763,6 +768,73 @@ export const OPERATIONS: OperationSpec[] = [
     tag: 'Monitor incidents',
     permission: 'status-page:update',
     body: { schema: publishIncidentBody },
+    status: 201,
+  },
+
+  // Declared incidents (#101)
+  {
+    method: 'GET',
+    path: `${ORG}/declared-incidents`,
+    operationId: 'listDeclaredIncidents',
+    summary: 'Declared incidents, newest first',
+    tag: 'Declared incidents',
+    permission: 'declared-incident:read',
+    query: [
+      {
+        name: 'status',
+        description: 'active, all, open, mitigated, resolved, closed or canceled',
+        schema: { type: 'string' },
+      },
+      { name: 'page', description: 'Page number', schema: { type: 'integer' } },
+      { name: 'limit', description: 'At most 100', schema: { type: 'integer' } },
+    ],
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/declared-incidents`,
+    operationId: 'declareIncident',
+    summary: 'Declare an incident',
+    tag: 'Declared incidents',
+    permission: 'declared-incident:create',
+    body: { schema: declareIncidentSchema },
+    status: 201,
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/declared-incidents/{id}`,
+    operationId: 'getDeclaredIncident',
+    summary: 'A declared incident with its timeline and postmortem',
+    tag: 'Declared incidents',
+    permission: 'declared-incident:read',
+  },
+  {
+    method: 'PATCH',
+    path: `${ORG}/declared-incidents/{id}`,
+    operationId: 'updateDeclaredIncident',
+    summary: 'Change severity, commander, status, link or postmortem',
+    description:
+      'Status changes follow open → mitigated → resolved → closed (or canceled); others answer 409. Closing needs an approved postmortem unless an admin sends skipPostmortem. Closed and canceled incidents are read-only.',
+    tag: 'Declared incidents',
+    permission: 'declared-incident:update',
+    body: { schema: updateDeclaredIncidentSchema },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/declared-incidents/{id}`,
+    operationId: 'deleteDeclaredIncident',
+    summary: 'Delete a declared incident',
+    tag: 'Declared incidents',
+    permission: 'declared-incident:delete',
+    status: 204,
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/declared-incidents/{id}/notes`,
+    operationId: 'addDeclaredIncidentNote',
+    summary: 'Append a note to the timeline',
+    tag: 'Declared incidents',
+    permission: 'declared-incident:update',
+    body: { schema: declaredNoteSchema },
     status: 201,
   },
 

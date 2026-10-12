@@ -6,6 +6,7 @@
  *
  * This module must stay free of Node-only imports: it is bundled into client components.
  */
+import type { DeclaredIncidentSummary } from '@/lib/declared-incidents'
 import type { MonitorIncidentSummary } from '@/lib/monitor-incidents'
 
 /** Server → client events. */
@@ -22,6 +23,7 @@ export const RealtimeEvents = {
   maintenanceList: 'maintenanceList',
   notificationList: 'notificationList',
   monitorIncident: 'monitorIncident',
+  declaredIncident: 'declaredIncident',
   info: 'info',
   checkerStatus: 'checkerStatus',
 } as const
@@ -126,6 +128,8 @@ export interface RealtimePayloads {
   notificationList: { organizationId: RealtimeId; items: unknown[] }
   /** A monitor incident was opened, acknowledged, resolved or published (#100). */
   monitorIncident: { organizationId: RealtimeId; incident: MonitorIncidentSummary }
+  /** A declared incident was declared or changed (#101). */
+  declaredIncident: { organizationId: RealtimeId; incident: DeclaredIncidentSummary }
   /** Server information, sent once per connection. */
   info: { version: string; serverTime: string }
   /**

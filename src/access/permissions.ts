@@ -38,6 +38,14 @@ export const PERMISSIONS = {
   'monitor-incident:acknowledge': 'member',
   'monitor-incident:resolve': 'member',
 
+  // Declared incidents (#101): everyone follows them; members run them; admins may close one
+  // without an approved postmortem and delete one.
+  'declared-incident:read': 'viewer',
+  'declared-incident:create': 'member',
+  'declared-incident:update': 'member',
+  'declared-incident:delete': 'admin',
+  'declared-incident:skip-postmortem': 'admin',
+
   'notification:read': 'member',
   'notification:create': 'admin',
   'notification:update': 'admin',

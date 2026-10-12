@@ -299,6 +299,16 @@ export const adminTranslations = {
         statusPageIncidentDescription: 'Public status-page incident created from this incident.',
         timelineDescription: 'What happened, oldest first.',
       },
+      declaredIncidents: {
+        description:
+          'Incidents declared by members: severity, commander, timeline and postmortem. The workflow is enforced on every write.',
+        statusDescription: 'open → mitigated → resolved → closed, or canceled.',
+        monitorIncidentDescription: 'Monitor incident this incident was declared from.',
+        statusPageIncidentDescription:
+          'Public status-page incident that carries the communication.',
+        postmortemSkippedDescription: 'Closed by an admin without an approved postmortem.',
+        timelineDescription: 'Append-only history of the incident, oldest first.',
+      },
       maintenanceOccurrences: {
         description:
           'Concrete windows of maintenances with their state and public update timeline. Managed by the server.',
