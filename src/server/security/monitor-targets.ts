@@ -8,6 +8,8 @@ import type { PayloadRequest } from 'payload'
 
 import type { DockerHost, Monitor } from '@/payload-types'
 
+import { supportsSshTunnel } from '@/lib/ssh-tunnels'
+
 import { connectionStringDenial } from './connection-hosts'
 import {
   blockedLocalError,
@@ -27,6 +29,7 @@ export const MONITOR_TARGET_FIELDS = [
   'rabbitmqNodes',
   'grpcUrl',
   'dockerHost',
+  'sshTunnel',
   'oauthTokenUrl',
   'authMethod',
 ] as const
@@ -73,6 +76,11 @@ export async function monitorTargetProblem(
     return { path: 'type', message: blockedLocalError(HOST_LOCAL_MONITOR_TYPES[type]).message }
   }
 
+  // Through an SSH tunnel (#160) the bastion resolves and connects to the target, which is
+  // internal by design; the bastion's own address is what the guard vets (when the tunnel is
+  // saved and when the worker connects to it).
+  if (relationId(monitor.sshTunnel) !== null && supportsSshTunnel(type)) return null
+
   const literal = (path: string, host: string | null | undefined): MonitorTargetProblem | null => {
     const message = literalTargetDenial(host)
     return message ? { path, message } : null
@@ -86,6 +94,7 @@ export async function monitorTargetProblem(
     case 'http':
     case 'keyword':
     case 'json-query':
+    case 'prometheus':
     case 'websocket-upgrade':
     case 'real-browser':
     case 'status-page': {

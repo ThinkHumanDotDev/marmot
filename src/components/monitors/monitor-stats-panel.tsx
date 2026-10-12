@@ -54,6 +54,8 @@ export type StatsPanelPoint = {
   ping: number | null
   /** Average request timing phases of the interval (#94), when measured. */
   timing?: unknown
+  /** Query value of the interval (Prometheus query monitors, #140), when recorded. */
+  value?: { avg: number; min: number; max: number; count: number }
 } & Partial<Record<PercentileKey, number | null>>
 
 /** The part of `GET /api/monitors/:id/stats` (`RangeStats`) the panel uses. */
@@ -67,7 +69,13 @@ export interface StatsPanelData {
   series: StatsPanelPoint[]
 }
 
-type ChartPoint = StatsPanelPoint & { t: number; healthy: number }
+type ChartPoint = StatsPanelPoint & {
+  t: number
+  healthy: number
+  valueAvg: number | null
+  valueMin: number | null
+  valueMax: number | null
+}
 
 const toPoints = (series: StatsPanelPoint[]): ChartPoint[] =>
   series.map((point) => ({
@@ -75,7 +83,48 @@ const toPoints = (series: StatsPanelPoint[]): ChartPoint[] =>
     t: point.timestamp * 1000,
     // Degraded checks are counted in `up`; the bar shows them as their own segment.
     healthy: Math.max(0, point.up - point.degraded),
+    valueAvg: point.value?.avg ?? null,
+    valueMin: point.value?.min ?? null,
+    valueMax: point.value?.max ?? null,
   }))
+
+/** Average query value over the window, weighted by the checks of each interval. */
+function averageValue(series: readonly StatsPanelPoint[]): number | null {
+  let total = 0
+  let count = 0
+  for (const point of series) {
+    if (!point.value) continue
+    total += point.value.avg * point.value.count
+    count += point.value.count
+  }
+  return count > 0 ? total / count : null
+}
+
+function ValueTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean
+  payload?: ReadonlyArray<{ payload?: ChartPoint }>
+}) {
+  const t = useTranslations('monitors.chart')
+  const formatter = useFormatter()
+  const point = payload?.[0]?.payload
+  if (!active || !point || point.valueAvg === null) return null
+  const value = (v: number | null) => (v === null ? '–' : formatter.number(v, 'metricValue'))
+  return (
+    <div className="rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
+      <div className="font-medium">{formatter.dateTime(new Date(point.t), 'short')}</div>
+      <div className="mt-1 tabular-nums">
+        {t('valueTooltip', {
+          avg: value(point.valueAvg),
+          min: value(point.valueMin),
+          max: value(point.valueMax),
+        })}
+      </div>
+    </div>
+  )
+}
 
 function LatencyTooltip({
   active,
@@ -169,6 +218,7 @@ export function MonitorStatsPanel({
   initial,
   lastCheckAt,
   showTiming = false,
+  showValue = false,
   retentionDays = null,
 }: {
   monitorId: string
@@ -176,6 +226,11 @@ export function MonitorStatsPanel({
   lastCheckAt: string | null | undefined
   /** Add the request timing phase chart (#94) for the selected period (HTTP and TCP monitors). */
   showTiming?: boolean
+  /**
+   * Prometheus query monitors (#140): chart the query value instead of the response time, and
+   * report its average instead of a latency percentile.
+   */
+  showValue?: boolean
   /** Days of history the organization's plan keeps; longer periods are not offered (`null` = all). */
   retentionDays?: number | null
 }) {
@@ -222,6 +277,8 @@ export function MonitorStatsPanel({
 
   const points = React.useMemo(() => toPoints(data.series), [data.series])
   const hasPing = points.some((p) => p.ping !== null)
+  const hasValue = points.some((p) => p.valueAvg !== null)
+  const windowAverage = showValue ? averageValue(data.series) : null
   const hasChecks = points.some((p) => p.up + p.down > 0)
   const active = PERCENTILE_KEYS.filter((key) => selected.includes(key))
   const headline = active.at(-1) ?? 'p95'
@@ -268,7 +325,11 @@ export function MonitorStatsPanel({
             ),
           )}
         </div>
-        <div role="group" aria-label={t('percentiles')} className="flex flex-wrap gap-1.5">
+        <div
+          role="group"
+          aria-label={t('percentiles')}
+          className={cn('flex flex-wrap gap-1.5', showValue && 'hidden')}
+        >
           {PERCENTILE_KEYS.map((key) => (
             <Button
               key={key}
@@ -303,11 +364,19 @@ export function MonitorStatsPanel({
             value={data.checks.total > 0 ? format.uptime(data.uptime) : '–'}
             testId="metric-uptime"
           />
-          <Metric
-            label={tMetrics('percentileResponse', { value: PERCENTILE_NUMBER[headline] })}
-            value={format.ping(data.percentiles[headline])}
-            testId="metric-percentile"
-          />
+          {showValue ? (
+            <Metric
+              label={tMetrics('averageValue')}
+              value={windowAverage === null ? '–' : formatter.number(windowAverage, 'metricValue')}
+              testId="metric-average-value"
+            />
+          ) : (
+            <Metric
+              label={tMetrics('percentileResponse', { value: PERCENTILE_NUMBER[headline] })}
+              value={format.ping(data.percentiles[headline])}
+              testId="metric-percentile"
+            />
+          )}
           <Metric
             label={tMetrics('totalChecks')}
             value={formatter.number(data.checks.total, 'integer')}
@@ -333,72 +402,151 @@ export function MonitorStatsPanel({
         </CardContent>
       </Card>
 
-      <Card className="gap-3" data-testid="response-time-chart">
-        <CardHeader>
-          <CardTitle className="text-base">{t('title')}</CardTitle>
-          <CardDescription>{t('description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {hasPing ? (
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                  <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
-                  {xAxis}
-                  <YAxis
-                    width={56}
-                    tickFormatter={(v: number) => format.ping(v)}
-                    tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    content={<LatencyTooltip selected={active} />}
-                    cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1 }}
-                  />
-                  <Legend
-                    verticalAlign="top"
-                    height={28}
-                    iconType="plainline"
-                    wrapperStyle={{ fontSize: 12, color: 'var(--muted-foreground)' }}
-                  />
-                  <Line
-                    dataKey="ping"
-                    name={t('averageLegend')}
-                    type="monotone"
-                    stroke="var(--muted-foreground)"
-                    strokeDasharray="4 3"
-                    strokeWidth={1.5}
-                    dot={false}
-                    activeDot={false}
-                    connectNulls={false}
-                    isAnimationActive={false}
-                  />
-                  {active.map((key) => (
+      {showValue && (
+        <Card className="gap-3" data-testid="value-chart">
+          <CardHeader>
+            <CardTitle className="text-base">{t('valueTitle')}</CardTitle>
+            <CardDescription>{t('valueDescription')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {hasValue ? (
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                    <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
+                    {xAxis}
+                    <YAxis
+                      width={56}
+                      tickFormatter={(v: number) => formatter.number(v, 'metricValue')}
+                      tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      content={<ValueTooltip />}
+                      cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1 }}
+                    />
+                    <Legend
+                      verticalAlign="top"
+                      height={28}
+                      iconType="plainline"
+                      wrapperStyle={{ fontSize: 12, color: 'var(--muted-foreground)' }}
+                    />
                     <Line
-                      key={key}
-                      dataKey={key}
-                      name={t('percentile', { value: PERCENTILE_NUMBER[key] })}
+                      dataKey="valueMax"
+                      name={t('valueMax')}
                       type="monotone"
-                      stroke={PERCENTILE_COLOR[key]}
+                      stroke="var(--chart-4)"
+                      strokeDasharray="4 3"
+                      strokeWidth={1.5}
+                      dot={false}
+                      activeDot={false}
+                      connectNulls={false}
+                      isAnimationActive={false}
+                    />
+                    <Line
+                      dataKey="valueAvg"
+                      name={t('valueAverage')}
+                      type="monotone"
+                      stroke="var(--chart-1)"
                       strokeWidth={2}
                       dot={false}
                       activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--card)' }}
                       connectNulls={false}
                       isAnimationActive={false}
                     />
-                  ))}
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="flex h-64 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
-              {t('empty')}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    <Line
+                      dataKey="valueMin"
+                      name={t('valueMin')}
+                      type="monotone"
+                      stroke="var(--chart-3)"
+                      strokeDasharray="4 3"
+                      strokeWidth={1.5}
+                      dot={false}
+                      activeDot={false}
+                      connectNulls={false}
+                      isAnimationActive={false}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex h-64 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+                {t('valueEmpty')}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {!showValue && (
+        <Card className="gap-3" data-testid="response-time-chart">
+          <CardHeader>
+            <CardTitle className="text-base">{t('title')}</CardTitle>
+            <CardDescription>{t('description')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {hasPing ? (
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                    <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
+                    {xAxis}
+                    <YAxis
+                      width={56}
+                      tickFormatter={(v: number) => format.ping(v)}
+                      tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      content={<LatencyTooltip selected={active} />}
+                      cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1 }}
+                    />
+                    <Legend
+                      verticalAlign="top"
+                      height={28}
+                      iconType="plainline"
+                      wrapperStyle={{ fontSize: 12, color: 'var(--muted-foreground)' }}
+                    />
+                    <Line
+                      dataKey="ping"
+                      name={t('averageLegend')}
+                      type="monotone"
+                      stroke="var(--muted-foreground)"
+                      strokeDasharray="4 3"
+                      strokeWidth={1.5}
+                      dot={false}
+                      activeDot={false}
+                      connectNulls={false}
+                      isAnimationActive={false}
+                    />
+                    {active.map((key) => (
+                      <Line
+                        key={key}
+                        dataKey={key}
+                        name={t('percentile', { value: PERCENTILE_NUMBER[key] })}
+                        type="monotone"
+                        stroke={PERCENTILE_COLOR[key]}
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--card)' }}
+                        connectNulls={false}
+                        isAnimationActive={false}
+                      />
+                    ))}
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex h-64 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+                {t('empty')}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="gap-3" data-testid="checks-chart">
         <CardHeader>

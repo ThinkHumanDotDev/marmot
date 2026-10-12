@@ -11,6 +11,7 @@ import net from 'node:net'
 import { guardNetSocket, outboundGuardActive } from '@/server/security/outbound-guard'
 
 import { registerMonitorType } from './registry'
+import { tunnelNetSocket } from './tunnel'
 import { describeRows, sqlQueryOf } from './sql'
 import { checkTimeoutMs, errorMessage, loadOptionalDriver, requireField, withAbort } from './util'
 
@@ -23,15 +24,21 @@ registerMonitorType({
     const query = sqlQueryOf(ctx.monitor)
     const { Client } = await loadOptionalDriver(() => import('pg'), 'pg', 'PostgreSQL')
     const timeout = checkTimeoutMs(ctx.monitor)
+    const tunnel = ctx.tunnel
 
     const client = new Client({
       connectionString,
       connectionTimeoutMillis: timeout,
       query_timeout: timeout,
       statement_timeout: timeout,
-      // Outbound address guard: pg calls `connect(port, host)` on this socket for every host it
+      // SSH tunnel (#160): every host pg tries is reached through the bastion. Otherwise the
+      // outbound address guard: pg calls `connect(port, host)` on this socket for every host it
       // tries, so each one is resolved, vetted and connected to by address (unix sockets refused).
-      ...(outboundGuardActive() ? { stream: () => guardNetSocket(new net.Socket()) } : {}),
+      ...(tunnel
+        ? { stream: () => tunnelNetSocket(new net.Socket(), tunnel) }
+        : outboundGuardActive()
+          ? { stream: () => guardNetSocket(new net.Socket()) }
+          : {}),
     })
     // `pg` emits connection errors as events as well; without a listener they would crash the worker.
     client.on('error', () => undefined)

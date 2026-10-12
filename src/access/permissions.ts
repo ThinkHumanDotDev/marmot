@@ -47,6 +47,8 @@ export const PERMISSIONS = {
   'status-page:create': 'member',
   'status-page:update': 'member',
   'status-page:delete': 'member',
+  // Monthly uptime history and its CSV export for SLA reporting (#112).
+  'status-page:history': 'admin',
 
   // Status page subscribers (#104): addresses are personal data, so viewers do not see them.
   'subscriber:read': 'member',
@@ -79,6 +81,12 @@ export const PERMISSIONS = {
   'docker-host:create': 'admin',
   'docker-host:update': 'admin',
   'docker-host:delete': 'admin',
+
+  // SSH tunnels (#160): members pick them for monitors, admins manage (and test) them.
+  'ssh-tunnel:read': 'member',
+  'ssh-tunnel:create': 'admin',
+  'ssh-tunnel:update': 'admin',
+  'ssh-tunnel:delete': 'admin',
 
   // Probe locations (#91): everyone sees where monitors are checked from; admins mint the tokens.
   'location:read': 'viewer',

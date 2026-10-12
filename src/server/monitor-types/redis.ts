@@ -11,6 +11,8 @@ import { Redis } from 'ioredis'
 import { outboundGuardActive, resolveGuardedTarget } from '@/server/security/outbound-guard'
 
 import { registerMonitorType } from './registry'
+import { tlsServername } from './tunnel'
+import type { CheckTunnel } from './types'
 import { checkTimeoutMs, errorMessage, requireField, withAbort } from './util'
 
 /** PING a Redis server once and resolve with its reply (`PONG`). */
@@ -28,11 +30,31 @@ export async function pinRedisUrl(url: string): Promise<{ url: string; servernam
   return { url: parsed.toString(), servername: host }
 }
 
+/** SSH tunnel (#160): rewrite the URL to the tunnel's loopback endpoint for its host and port. */
+export async function tunnelRedisUrl(
+  url: string,
+  tunnel: CheckTunnel,
+): Promise<{ url: string; servername?: string }> {
+  const parsed = new URL(url)
+  const host = parsed.hostname.replace(/^\[|\]$/g, '') || 'localhost'
+  const endpoint = await tunnel.endpoint(host, Number(parsed.port) || 6379)
+  parsed.hostname = endpoint.host
+  parsed.port = String(endpoint.port)
+  return { url: parsed.toString(), servername: tlsServername(host) }
+}
+
 export async function redisPing(
   rawUrl: string,
-  options: { timeoutMs: number; rejectUnauthorized?: boolean; signal?: AbortSignal },
+  options: {
+    timeoutMs: number
+    rejectUnauthorized?: boolean
+    signal?: AbortSignal
+    tunnel?: CheckTunnel | null
+  },
 ): Promise<string> {
-  const { url, servername } = await pinRedisUrl(rawUrl)
+  const { url, servername } = options.tunnel
+    ? await tunnelRedisUrl(rawUrl, options.tunnel)
+    : await pinRedisUrl(rawUrl)
   const client = new Redis(url, {
     lazyConnect: true,
     connectTimeout: options.timeoutMs,
@@ -75,6 +97,7 @@ registerMonitorType({
         timeoutMs: checkTimeoutMs(ctx.monitor),
         rejectUnauthorized: !ctx.monitor.ignoreTls,
         signal: ctx.signal,
+        tunnel: ctx.tunnel,
       })
     } catch (err) {
       throw new Error(`Redis connection failed: ${errorMessage(err)}`)

@@ -21,7 +21,7 @@ The type decides what a check does and which fields the form shows. The built-in
 | General | DNS                  | the resolver returns a record of `dnsResolveType` for `hostname`                  |
 | Passive | Push                 | your system called `/api/push/<token>` on schedule (interval or cron, plus grace) |
 | Passive | Manual               | you set the status by hand; nothing is checked                                    |
-| Special | Group                | every child monitor is UP                                                         |
+| Special | Group                | its children are UP by its aggregation mode (worst, quorum or weighted)           |
 | Special | Docker Container     | the container is running (and healthy, when it has a health check)                |
 
 HTTP monitors also support request method and body, extra headers, redirects, `ignoreTls`, basic/bearer/
@@ -321,13 +321,82 @@ The monitor page then shows a **Locations** table (each location's status, respo
 bar, the events and the chart. The uptime cards and the main chart are the monitor-wide figures, computed
 from the quorum status.
 
+## SSH tunnels
+
+Internal databases and services that are only reachable through a bastion host can be monitored through
+an **SSH tunnel** instead of deploying a [probe agent](Probe-Locations.md). Admins add tunnels under
+**Settings → SSH tunnels** (`ssh-tunnel:create|update|delete`; members can pick them, `ssh-tunnel:read`):
+
+| Field                | Notes                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| Name                 | Shown in the monitor form and in error messages                                       |
+| Host, port           | The bastion (port 22 by default)                                                      |
+| Username             | The account the worker signs in with; give it port forwarding and nothing else        |
+| Authentication       | Password, or private key (OpenSSH, PEM or PuTTY format) with an optional passphrase   |
+| Host key fingerprint | Required. `SHA256:…` as printed by `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` |
+
+Then pick the tunnel under **SSH tunnel** in a monitor of one of these types: HTTP(s), HTTP(s) - Keyword,
+HTTP(s) - Json Query, TCP Port, PostgreSQL, MySQL/MariaDB, Microsoft SQL Server, Redis and SMTP. Write the
+target as the bastion sees it: host names are resolved by the bastion (`postgres://monitor@db.internal/app`,
+`http://10.0.3.7:8080/health`). TLS still verifies the target's own name.
+
+- **Host key pinning.** The worker verifies the bastion's host key against the fingerprint before it
+  authenticates; a different key refuses the connection (`host key mismatch: the server presented
+SHA256:…, expected SHA256:…`). **Fetch from host** in the tunnel dialog reads the key the bastion
+  presents; compare it with the bastion's own before using it. **Test connection** connects, verifies
+  the key and signs in.
+- **Credentials** are encrypted at rest (AES-256-GCM, key derived from `PAYLOAD_SECRET`, like two-factor
+  and single sign-on secrets) and are write-only: no API returns them, not even to admins (`hasPassword`,
+  `hasPrivateKey` and `hasPassphrase` say whether one is set), the audit log redacts them, and the dialog
+  keeps a stored value when its field is left empty. Rotating `PAYLOAD_SECRET` means re-entering them.
+- **Connections** are pooled: each worker keeps one SSH connection per tunnel, shared by every monitor
+  using it, with a keepalive every 15 s (dropped after 3 unanswered). A dropped connection is re-opened by
+  the next check; one unused for 5 minutes is closed; editing the tunnel replaces it. Each check forwards
+  its connections with `forwardOut` (direct-tcpip) through short-lived listeners on `127.0.0.1` that
+  only exist while the check runs.
+- **Failures.** When the bastion cannot be reached or refuses the worker, the dependent monitors fail with
+  `SSH tunnel <name> unreachable: <reason>`, so a bastion outage is not mistaken for an outage of the
+  targets. When the bastion is up but cannot reach the target, the message says so:
+  `… (SSH tunnel <name> could not reach db.internal:5432: …)`.
+- **Limits.** A monitor uses either a proxy or a tunnel, and tunnels are opened by the server's workers
+  only: monitors with probe locations cannot use one. UDP (DNS, SNMP, RADIUS, the SQL Server Browser of
+  named instances), ICMP and multi-host protocols (MongoDB replica sets, Kafka) are not tunnelled. With the
+  [outbound address guard](Security.md) on, the bastion's address is vetted; targets behind it are the
+  bastion's network and are not. Request timing then measures the connect phase to the local listener;
+  the time through the tunnel shows up in TTFB.
+
 ## Groups
 
-A **Group** monitor has no target of its own; set `parent` on other monitors to put them inside it. The
-group is UP when all children are UP, DOWN as soon as one child is DOWN, PENDING while a child is
-retrying, and DEGRADED when a child is degraded and none is worse. Groups nest, show as a tree in the monitor list and can be placed on status pages like any other
-monitor, which is the easy way to publish "API: operational" over a dozen internal checks. Deleting a group
-detaches its children instead of deleting them.
+A **Group** monitor has no target of its own. To put other monitors inside a group, set their `parent`.
+Groups nest, and they can be placed on status pages like any other monitor. This is the easy way to
+publish "API: operational" over a dozen internal checks. Deleting a group detaches its children instead
+of deleting them.
+
+### Aggregation modes
+
+The group's **aggregation** setting (`aggregation`, #144) decides how the children's last status becomes
+the group's status. In every mode:
+
+- paused children are ignored;
+- children in maintenance count as UP;
+- a child with no beat yet, or one that is retrying, counts as pending.
+
+| Mode              | The group is                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `worst` (default) | DOWN as soon as one child is DOWN, PENDING while a child is pending, DEGRADED when a child is degraded and none is worse, otherwise UP. Groups created before #144 use this mode.                                                                                                                                                                                                            |
+| `quorum`          | DOWN only when fewer than `aggregationQuorum` children are up. The quorum is a number of children, or a percentage of the active children when `aggregationQuorumUnit` is `percent` (rounded up). Degraded children count as up. When the quorum is met but some children are not up, the group is DEGRADED. When the pending children could still make up the quorum, the group is PENDING. |
+| `weighted`        | Each child scores 1 when up, 0.5 when degraded and 0 when down, multiplied by its weight. The weights are normalised to sum to 1. A score of 100 % is UP, 0 % is DOWN, and anything between is DEGRADED. Pending children are left out of the score.                                                                                                                                         |
+
+- **Weights**: each child sets its own weight (`groupWeight`, default 1). Weights are relative, so
+  `3` and `1` give a 75/25 split. A weight of 0 means the child has no say. If every weight is 0, the
+  children count equally.
+- **Example**: a quorum group of five replicas with a quorum of 3 stays up (DEGRADED) with two replicas
+  down, with the message `3/5 children up (quorum 3); 2/5 children down: api-3, api-5`. With a third
+  replica down, it is DOWN. The usual retries and notifications apply.
+- **Group response time**: `aggregationLatency` sets it. `none` (default) is the time the group check took.
+  `avg`, `max` and `min` are the average, the slowest and the fastest last ping of the active children.
+- **Status pages**: a group placed on a status page shows the group's own status, so its component follows
+  the same aggregation.
 
 ## Push monitors
 
@@ -434,6 +503,8 @@ import drops keys that are already in use.
   monitor list, on the detail page and on status pages with `showTags` on.
 - **Proxies**: HTTP-type monitors can send their requests through an HTTP(S) or SOCKS proxy (Settings →
   Proxies); the organization's default proxy is preselected for new monitors.
+- **SSH tunnels**: HTTP-type, TCP port, SQL database, Redis and SMTP monitors can reach internal targets
+  through a bastion; see [SSH tunnels](#ssh-tunnels).
 - **Docker**: the `docker` type checks a container's state on a Docker host (Settings → Docker hosts; local
   socket or `tcp://`/`https://`). `DOCKER_SOCKET_ENABLED=false` forbids socket hosts on shared instances.
   Details in [Architecture](Architecture.md#tags-proxies-and-docker-hosts).

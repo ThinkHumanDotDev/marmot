@@ -23,6 +23,7 @@ import { Organizations } from './Organizations'
 import { OtelCollectors } from './OtelCollectors'
 import { Proxies } from './Proxies'
 import { PushEvents } from './PushEvents'
+import { SshTunnels } from './SshTunnels'
 import { SsoConnections } from './SsoConnections'
 import { SsoDomains } from './SsoDomains'
 import { StatDaily } from './StatDaily'
@@ -33,6 +34,7 @@ import { StatusPages } from './StatusPages'
 import { StatusPageSubscribers } from './StatusPageSubscribers'
 import { SubscriberDeliveries } from './SubscriberDeliveries'
 import { SubscriberNotifications } from './SubscriberNotifications'
+import { StatusPageUptimeHistory } from './StatusPageUptimeHistory'
 import { StatusPageViewers } from './StatusPageViewers'
 import { Tags } from './Tags'
 import { Templates } from './Templates'
@@ -57,6 +59,7 @@ export const collections: CollectionConfig[] = [
   Tags,
   Proxies,
   DockerHosts,
+  SshTunnels,
   Locations,
   NotificationSentHistory,
   Heartbeats,
@@ -69,6 +72,7 @@ export const collections: CollectionConfig[] = [
   StatLocationHourly,
   StatusPages,
   StatusPageViewers,
+  StatusPageUptimeHistory,
   Incidents,
   StatusPageSubscribers,
   SubscriberNotifications,

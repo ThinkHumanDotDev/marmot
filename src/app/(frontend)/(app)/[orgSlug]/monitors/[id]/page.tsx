@@ -37,7 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { env } from '@/env'
 import { timeZoneOrDefault } from '@/i18n/formats'
 import { parseRequestTiming } from '@/lib/request-timing'
-import { isHttpMonitorType } from '@/lib/validation/monitor'
+import { isCertificateMonitorType, isHttpMonitorType } from '@/lib/validation/monitor'
 import {
   DEFAULT_QUORUM,
   isMultiLocation,
@@ -184,8 +184,12 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const assertionResults = parseAssertionResults(latest.docs[0]?.assertions)
   const showAssertions =
     assertionResults.length > 1 || assertionResults.some((result) => !result.legacy)
-  // Request timing phases (#94): HTTP types and TCP port measure them.
-  const measuresTiming = isHttpMonitorType(monitor.type) || monitor.type === 'port'
+  // Request timing phases (#94): HTTP types, TCP port, the TLS handshake and Prometheus measure them.
+  const measuresTiming =
+    isHttpMonitorType(monitor.type) ||
+    monitor.type === 'port' ||
+    monitor.type === 'tls' ||
+    monitor.type === 'prometheus'
   const latestTiming = parseRequestTiming(latest.docs[0]?.timing)
   const parent =
     monitor.parent && typeof monitor.parent === 'object' ? (monitor.parent as Monitor) : null
@@ -371,6 +375,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
           }}
           lastCheckAt={monitor.status?.lastCheckAt}
           showTiming={measuresTiming}
+          showValue={monitor.type === 'prometheus'}
           retentionDays={retentionDays}
         />
 
@@ -446,7 +451,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
                 </CardContent>
               </Card>
             )}
-            {(isHttpMonitorType(monitor.type) ||
+            {(isCertificateMonitorType(monitor.type) ||
               monitor.certInfo ||
               monitor.domainExpiry ||
               monitor.domainExpiryNotification) && (

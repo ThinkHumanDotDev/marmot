@@ -175,7 +175,8 @@ and latency chart read.
 Each row stores `up`, `down`, `ping` (average of UP beats), `pingMin`, `pingMax` and an `extras` JSON with
 `maintenance` (beats during maintenance, also counted as `up`), `degraded` (slow successful checks, also
 counted as `up`, their ping included), `pingCount` (weight of `ping`) and `timing` (per-phase running
-averages of the request timing, `{ dns: { avg, count }, … }`, from successful checks), plus
+averages of the request timing, `{ dns: { avg, count }, … }`, from successful checks) and `value`
+(`{ avg, min, max, count }` of the metric values of Prometheus query monitors, #140, any status), plus
 `latencyHistogram`, a JSON number array counting the pings of UP and DEGRADED beats per log-spaced bucket
 (four per doubling, from `[0, 1)` ms to an overflow bucket at 2^17 ms;
 `src/server/stats/latency-histogram.ts`). `pending`
@@ -195,6 +196,13 @@ the buckets into a fixed number of chart intervals (5 min for 1 d, 1 h for 7 d, 
 1 day for 90 d) with up / degraded / down counts, the average and the percentiles, so the detail page's
 chart never reads raw heartbeats. Rows written before the histogram existed have none and contribute no
 percentiles.
+
+Status pages keep their own long-term copy (#112): the daily `status-page-uptime-snapshot` job
+(`src/server/status-pages/uptime-history.ts`, 00:20 UTC on `marmot:maintenance`) writes one
+`status-page-uptime-history` row per page, component and complete UTC day from `stat-daily` and the
+important heartbeats (check counts, seconds DOWN, seconds with a known state). Retention never prunes
+it; the daily bars and the monthly history read it for the days whose statistics are gone
+([Status pages](Status-Pages.md#daily-uptime-bars)).
 
 Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ job scheduler on the
 `marmot:maintenance` queue: minutely rows older than 24 h, hourly and per-location hourly older than 30 d, daily and important
@@ -462,8 +470,8 @@ render it, seed the store and let the socket take over.
 
 ## Tags, proxies and Docker hosts
 
-Three org-scoped collections hold resources that monitors reference (managed under
-`/{orgSlug}/settings/tags|proxies|docker-hosts`):
+Four org-scoped collections hold resources that monitors reference (managed under
+`/{orgSlug}/settings/tags|proxies|docker-hosts|ssh-tunnels`):
 
 - **`tags`** (`name`, unique per organization; `color`, hex). Monitors carry a `tags` array of
   `{ tag, value }` rows (`env: prod`). Chips appear in the monitor list (the realtime `monitorList` /
@@ -490,9 +498,29 @@ Three org-scoped collections hold resources that monitors reference (managed und
   daemon's containers for a saved host (`{ dockerHostId }`) or unsaved settings and answers
   `{ ok, containers }`. Socket paths are resolved on the worker; `DOCKER_SOCKET_ENABLED=false` rejects socket
   hosts on shared instances. Deleting a host clears `monitor.dockerHost`.
+- **`ssh-tunnels`** (#160: `name`, `host`, `port`, `username`, `authMethod` = `password | privateKey`,
+  `password` / `privateKey` / `passphrase`, `knownHostFingerprint`, `hasPassword` / `hasPrivateKey` /
+  `hasPassphrase`). The credentials are sealed in `beforeChange` (`src/server/ssh-tunnels/secrets.ts`,
+  AES-256-GCM keyed from `PAYLOAD_SECRET`, purpose `marmot:ssh-tunnel-secret`) and have field read access
+  `() => false`, so only server code reading with `overrideAccess` ever sees them; an empty value on update
+  keeps the stored one. `monitor.sshTunnel` is allowed for `SSH_TUNNEL_MONITOR_TYPES`
+  (`src/lib/ssh-tunnels.ts`), never together with a proxy or probe locations. `runCheck()` opens the
+  tunnel before the type's `check()` (`openCheckTunnel()`, `src/server/ssh-tunnels`): the worker's pool
+  holds one ssh2 connection per tunnel (host key verified against the SHA-256 fingerprint before
+  authenticating, keepalive 15 s × 3, dropped from the pool on close, re-opened by the next check, closed
+  after 5 idle minutes, replaced when the tunnel's settings change), and a per-check `TunnelSession`
+  exposes `ctx.tunnel`: `endpoint(host, port)` returns a `127.0.0.1` listener whose connections are
+  forwarded with `forwardOut`, `probe(host, port)` opens and closes one channel (TCP port type). Types
+  point their driver at the endpoint in place of the outbound guard's hooks (undici connector, pg/mysql2
+  `stream`, tedious `connector`, rewritten Redis URL and SMTP host, keeping the TLS server name). A tunnel
+  that cannot be opened fails the check with `SSH tunnel <name> unreachable: <reason>`; a refused
+  `forwardOut` is appended to the driver's error. `POST /api/orgs/:orgId/ssh-tunnels/test`
+  (`ssh-tunnel:update`) connects once without the pool (`{ sshTunnelId }`, unsaved values, or
+  `fetchFingerprint` to read the presented host key). Deleting a tunnel clears `monitor.sshTunnel`.
 
-A `monitors` `beforeChange` hook rejects tags, proxies and Docker hosts of another organization, so a
-member cannot borrow another tenant's proxy credentials or Docker daemon through the API.
+A `monitors` `beforeChange` hook rejects tags, proxies, Docker hosts and SSH tunnels of another
+organization, so a member cannot borrow another tenant's proxy credentials, Docker daemon or bastion
+through the API.
 
 ## Organizations and RBAC
 
@@ -557,6 +585,7 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `notification:create`, `notification:update`, `notification:delete` |        |        |   ✓   |   ✓   |
 | `status-page:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
 | `status-page:create`, `status-page:update`, `status-page:delete`    |        |   ✓    |   ✓   |   ✓   |
+| `status-page:history` (monthly uptime history and CSV export)       |        |        |   ✓   |   ✓   |
 | `subscriber:read`, `subscriber:manage`                              |        |   ✓    |   ✓   |   ✓   |
 | `subscriber:send`                                                   |        |        |   ✓   |   ✓   |
 | `maintenance:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |

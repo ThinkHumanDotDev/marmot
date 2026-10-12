@@ -16,6 +16,7 @@ export const PERMISSION_RESOURCE_KEYS = {
   tag: 'tag',
   proxy: 'proxy',
   'docker-host': 'dockerHost',
+  'ssh-tunnel': 'sshTunnel',
   location: 'location',
   'api-key': 'apiKey',
   'audit-log': 'auditLog',
@@ -36,6 +37,7 @@ export const PERMISSION_ACTION_KEYS = {
   send: 'send',
   acknowledge: 'acknowledge',
   resolve: 'resolve',
+  history: 'history',
 } as const
 
 export type PermissionResourceKey =

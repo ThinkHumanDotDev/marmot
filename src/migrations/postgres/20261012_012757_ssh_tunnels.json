@@ -2047,6 +2047,43 @@
           "notNull": false,
           "default": 2000
         },
+        "aggregation": {
+          "name": "aggregation",
+          "type": "enum_monitors_aggregation",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'worst'"
+        },
+        "aggregation_quorum": {
+          "name": "aggregation_quorum",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "aggregation_quorum_unit": {
+          "name": "aggregation_quorum_unit",
+          "type": "enum_monitors_aggregation_quorum_unit",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'count'"
+        },
+        "aggregation_latency": {
+          "name": "aggregation_latency",
+          "type": "enum_monitors_aggregation_latency",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'none'"
+        },
+        "group_weight": {
+          "name": "group_weight",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 1
+        },
         "url": {
           "name": "url",
           "type": "varchar",
@@ -2055,6 +2092,12 @@
         },
         "proxy_id": {
           "name": "proxy_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ssh_tunnel_id": {
+          "name": "ssh_tunnel_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -2208,26 +2251,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": false
-        },
-        "ct_alerts": {
-          "name": "ct_alerts",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "ct_include_subdomains": {
-          "name": "ct_include_subdomains",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "ct_state": {
-          "name": "ct_state",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
         },
         "cert_info": {
           "name": "cert_info",
@@ -2689,6 +2712,63 @@
           "notNull": false,
           "default": "'public'"
         },
+        "prometheus_query": {
+          "name": "prometheus_query",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prometheus_down_operator": {
+          "name": "prometheus_down_operator",
+          "type": "enum_monitors_prometheus_down_operator",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'>'"
+        },
+        "prometheus_down_threshold": {
+          "name": "prometheus_down_threshold",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prometheus_degraded_operator": {
+          "name": "prometheus_degraded_operator",
+          "type": "enum_monitors_prometheus_degraded_operator",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prometheus_degraded_threshold": {
+          "name": "prometheus_degraded_threshold",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prometheus_aggregate": {
+          "name": "prometheus_aggregate",
+          "type": "enum_monitors_prometheus_aggregate",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'worst'"
+        },
+        "prometheus_no_data_status": {
+          "name": "prometheus_no_data_status",
+          "type": "enum_monitors_prometheus_no_data_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'down'"
+        },
+        "prometheus_error_status": {
+          "name": "prometheus_error_status",
+          "type": "enum_monitors_prometheus_error_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'down'"
+        },
         "smtp_security": {
           "name": "smtp_security",
           "type": "enum_monitors_smtp_security",
@@ -2696,6 +2776,58 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'opportunistic'"
+        },
+        "mail_username": {
+          "name": "mail_username",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mail_password": {
+          "name": "mail_password",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "udp_payload": {
+          "name": "udp_payload",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "udp_payload_encoding": {
+          "name": "udp_payload_encoding",
+          "type": "enum_monitors_udp_payload_encoding",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'text'"
+        },
+        "udp_response_match": {
+          "name": "udp_response_match",
+          "type": "enum_monitors_udp_response_match",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'none'"
+        },
+        "udp_response_pattern": {
+          "name": "udp_response_pattern",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tls_servername": {
+          "name": "tls_servername",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tls_alpn": {
+          "name": "tls_alpn",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
         },
         "ssh_username": {
           "name": "ssh_username",
@@ -2731,6 +2863,25 @@
         },
         "sftp_path": {
           "name": "sftp_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ssh_command": {
+          "name": "ssh_command",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ssh_expected_exit_code": {
+          "name": "ssh_expected_exit_code",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "ssh_expected_output": {
+          "name": "ssh_expected_output",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
@@ -2948,6 +3099,21 @@
           "method": "btree",
           "with": {}
         },
+        "monitors_ssh_tunnel_idx": {
+          "name": "monitors_ssh_tunnel_idx",
+          "columns": [
+            {
+              "expression": "ssh_tunnel_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "monitors_docker_host_idx": {
           "name": "monitors_docker_host_idx",
           "columns": [
@@ -3097,6 +3263,19 @@
           "tableTo": "proxies",
           "columnsFrom": [
             "proxy_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitors_ssh_tunnel_id_ssh_tunnels_id_fk": {
+          "name": "monitors_ssh_tunnel_id_ssh_tunnels_id_fk",
+          "tableFrom": "monitors",
+          "tableTo": "ssh_tunnels",
+          "columnsFrom": [
+            "ssh_tunnel_id"
           ],
           "columnsTo": [
             "id"
@@ -4108,6 +4287,183 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.ssh_tunnels": {
+      "name": "ssh_tunnels",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "host": {
+          "name": "host",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "port": {
+          "name": "port",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 22
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "auth_method": {
+          "name": "auth_method",
+          "type": "enum_ssh_tunnels_auth_method",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'password'"
+        },
+        "password": {
+          "name": "password",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "private_key": {
+          "name": "private_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "passphrase": {
+          "name": "passphrase",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "known_host_fingerprint": {
+          "name": "known_host_fingerprint",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "has_password": {
+          "name": "has_password",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "has_private_key": {
+          "name": "has_private_key",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "has_passphrase": {
+          "name": "has_passphrase",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "ssh_tunnels_organization_idx": {
+          "name": "ssh_tunnels_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ssh_tunnels_updated_at_idx": {
+          "name": "ssh_tunnels_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ssh_tunnels_created_at_idx": {
+          "name": "ssh_tunnels_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ssh_tunnels_organization_id_organizations_id_fk": {
+          "name": "ssh_tunnels_organization_id_organizations_id_fk",
+          "tableFrom": "ssh_tunnels",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.locations_labels": {
       "name": "locations_labels",
       "schema": "",
@@ -4513,13 +4869,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "fingerprint": {
-          "name": "fingerprint",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "''"
-        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -4596,8 +4945,8 @@
           "method": "btree",
           "with": {}
         },
-        "type_monitor_days_fingerprint_idx": {
-          "name": "type_monitor_days_fingerprint_idx",
+        "type_monitor_days_idx": {
+          "name": "type_monitor_days_idx",
           "columns": [
             {
               "expression": "type",
@@ -4613,12 +4962,6 @@
             },
             {
               "expression": "days",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "fingerprint",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -4777,6 +5120,12 @@
         "probes": {
           "name": "probes",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "value": {
+          "name": "value",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -7349,6 +7698,28 @@
           "notNull": false,
           "default": true
         },
+        "uptime_bar_days": {
+          "name": "uptime_bar_days",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 90
+        },
+        "uptime_calculation": {
+          "name": "uptime_calculation",
+          "type": "enum_status_pages_uptime_calculation",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'checks'"
+        },
+        "show_uptime_percentage": {
+          "name": "show_uptime_percentage",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
         "auto_refresh_interval": {
           "name": "auto_refresh_interval",
           "type": "numeric",
@@ -7846,6 +8217,241 @@
           "tableTo": "status_pages",
           "columnsFrom": [
             "page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.status_page_uptime_history": {
+      "name": "status_page_uptime_history",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status_page_id": {
+          "name": "status_page_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "component": {
+          "name": "component",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day": {
+          "name": "day",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "month": {
+          "name": "month",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "up": {
+          "name": "up",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "down": {
+          "name": "down",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "degraded": {
+          "name": "degraded",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "maintenance": {
+          "name": "maintenance",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "down_seconds": {
+          "name": "down_seconds",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "known_seconds": {
+          "name": "known_seconds",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "state": {
+          "name": "state",
+          "type": "enum_status_page_uptime_history_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'up'"
+        }
+      },
+      "indexes": {
+        "status_page_uptime_history_organization_idx": {
+          "name": "status_page_uptime_history_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_uptime_history_status_page_idx": {
+          "name": "status_page_uptime_history_status_page_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_uptime_history_component_idx": {
+          "name": "status_page_uptime_history_component_idx",
+          "columns": [
+            {
+              "expression": "component",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_uptime_history_timestamp_idx": {
+          "name": "status_page_uptime_history_timestamp_idx",
+          "columns": [
+            {
+              "expression": "timestamp",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_uptime_history_month_idx": {
+          "name": "status_page_uptime_history_month_idx",
+          "columns": [
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "statusPage_component_timestamp_idx": {
+          "name": "statusPage_component_timestamp_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "component",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "timestamp",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "status_page_uptime_history_organization_id_organizations_id_fk": {
+          "name": "status_page_uptime_history_organization_id_organizations_id_fk",
+          "tableFrom": "status_page_uptime_history",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "status_page_uptime_history_status_page_id_status_pages_id_fk": {
+          "name": "status_page_uptime_history_status_page_id_status_pages_id_fk",
+          "tableFrom": "status_page_uptime_history",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "status_page_id"
           ],
           "columnsTo": [
             "id"
@@ -12737,6 +13343,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "ssh_tunnels_id": {
+          "name": "ssh_tunnels_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "locations_id": {
           "name": "locations_id",
           "type": "integer",
@@ -12805,6 +13417,12 @@
         },
         "status_page_viewers_id": {
           "name": "status_page_viewers_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_page_uptime_history_id": {
+          "name": "status_page_uptime_history_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -13108,6 +13726,21 @@
           "method": "btree",
           "with": {}
         },
+        "payload_locked_documents_rels_ssh_tunnels_id_idx": {
+          "name": "payload_locked_documents_rels_ssh_tunnels_id_idx",
+          "columns": [
+            {
+              "expression": "ssh_tunnels_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "payload_locked_documents_rels_locations_id_idx": {
           "name": "payload_locked_documents_rels_locations_id_idx",
           "columns": [
@@ -13278,6 +13911,21 @@
           "columns": [
             {
               "expression": "status_page_viewers_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_status_page_uptime_history_idx": {
+          "name": "payload_locked_documents_rels_status_page_uptime_history_idx",
+          "columns": [
+            {
+              "expression": "status_page_uptime_history_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -13639,6 +14287,19 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
+        "payload_locked_documents_rels_ssh_tunnels_fk": {
+          "name": "payload_locked_documents_rels_ssh_tunnels_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "ssh_tunnels",
+          "columnsFrom": [
+            "ssh_tunnels_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "payload_locked_documents_rels_locations_fk": {
           "name": "payload_locked_documents_rels_locations_fk",
           "tableFrom": "payload_locked_documents_rels",
@@ -13788,6 +14449,19 @@
           "tableTo": "status_page_viewers",
           "columnsFrom": [
             "status_page_viewers_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_status_page_uptime_history_fk": {
+          "name": "payload_locked_documents_rels_status_page_uptime_history_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "status_page_uptime_history",
+          "columnsFrom": [
+            "status_page_uptime_history_id"
           ],
           "columnsTo": [
             "id"
@@ -14592,6 +15266,7 @@
         "http",
         "keyword",
         "json-query",
+        "prometheus",
         "port",
         "ping",
         "dns",
@@ -14610,6 +15285,11 @@
         "snmp",
         "ntp",
         "sftp",
+        "ssh",
+        "udp",
+        "tls",
+        "imap",
+        "pop3",
         "radius",
         "tailscale-ping",
         "real-browser",
@@ -14629,6 +15309,33 @@
         "any",
         "half",
         "all"
+      ]
+    },
+    "public.enum_monitors_aggregation": {
+      "name": "enum_monitors_aggregation",
+      "schema": "public",
+      "values": [
+        "worst",
+        "quorum",
+        "weighted"
+      ]
+    },
+    "public.enum_monitors_aggregation_quorum_unit": {
+      "name": "enum_monitors_aggregation_quorum_unit",
+      "schema": "public",
+      "values": [
+        "count",
+        "percent"
+      ]
+    },
+    "public.enum_monitors_aggregation_latency": {
+      "name": "enum_monitors_aggregation_latency",
+      "schema": "public",
+      "values": [
+        "none",
+        "avg",
+        "max",
+        "min"
       ]
     },
     "public.enum_monitors_reminder_backoff": {
@@ -14803,6 +15510,57 @@
         "2c"
       ]
     },
+    "public.enum_monitors_prometheus_down_operator": {
+      "name": "enum_monitors_prometheus_down_operator",
+      "schema": "public",
+      "values": [
+        ">",
+        ">=",
+        "<",
+        "<=",
+        "==",
+        "!="
+      ]
+    },
+    "public.enum_monitors_prometheus_degraded_operator": {
+      "name": "enum_monitors_prometheus_degraded_operator",
+      "schema": "public",
+      "values": [
+        ">",
+        ">=",
+        "<",
+        "<=",
+        "==",
+        "!="
+      ]
+    },
+    "public.enum_monitors_prometheus_aggregate": {
+      "name": "enum_monitors_prometheus_aggregate",
+      "schema": "public",
+      "values": [
+        "worst",
+        "any",
+        "all"
+      ]
+    },
+    "public.enum_monitors_prometheus_no_data_status": {
+      "name": "enum_monitors_prometheus_no_data_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending"
+      ]
+    },
+    "public.enum_monitors_prometheus_error_status": {
+      "name": "enum_monitors_prometheus_error_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending"
+      ]
+    },
     "public.enum_monitors_smtp_security": {
       "name": "enum_monitors_smtp_security",
       "schema": "public",
@@ -14811,6 +15569,24 @@
         "starttls",
         "secure",
         "nostarttls"
+      ]
+    },
+    "public.enum_monitors_udp_payload_encoding": {
+      "name": "enum_monitors_udp_payload_encoding",
+      "schema": "public",
+      "values": [
+        "text",
+        "hex"
+      ]
+    },
+    "public.enum_monitors_udp_response_match": {
+      "name": "enum_monitors_udp_response_match",
+      "schema": "public",
+      "values": [
+        "none",
+        "any",
+        "keyword",
+        "regex"
       ]
     },
     "public.enum_monitors_ssh_auth_method": {
@@ -14885,6 +15661,14 @@
         "tcp"
       ]
     },
+    "public.enum_ssh_tunnels_auth_method": {
+      "name": "enum_ssh_tunnels_auth_method",
+      "schema": "public",
+      "values": [
+        "password",
+        "privateKey"
+      ]
+    },
     "public.enum_locations_status": {
       "name": "enum_locations_status",
       "schema": "public",
@@ -14899,8 +15683,7 @@
       "schema": "public",
       "values": [
         "certificate",
-        "domain",
-        "ct"
+        "domain"
       ]
     },
     "public.enum_heartbeats_location_status": {
@@ -15056,6 +15839,15 @@
         "ip-allowlist"
       ]
     },
+    "public.enum_status_pages_uptime_calculation": {
+      "name": "enum_status_pages_uptime_calculation",
+      "schema": "public",
+      "values": [
+        "checks",
+        "duration",
+        "manual"
+      ]
+    },
     "public.enum_status_pages_subscriptions_delivery_mode": {
       "name": "enum_status_pages_subscriptions_delivery_mode",
       "schema": "public",
@@ -15070,6 +15862,18 @@
       "values": [
         "active",
         "revoked"
+      ]
+    },
+    "public.enum_status_page_uptime_history_state": {
+      "name": "enum_status_page_uptime_history_state",
+      "schema": "public",
+      "values": [
+        "nodata",
+        "up",
+        "maintenance",
+        "degraded",
+        "partial",
+        "down"
       ]
     },
     "public.enum_incidents_updates_components_impact": {
@@ -15457,6 +16261,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "931bc941-eb41-4ac2-86be-1633b0dee726",
+  "id": "ed853666-6a73-4a01-9c55-610afb8798d6",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

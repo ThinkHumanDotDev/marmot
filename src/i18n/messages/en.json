@@ -395,9 +395,17 @@
       "loadError": "Could not load the statistics for this period.",
       "checksTitle": "Checks",
       "checksDescription": "Up, degraded and down checks per interval.",
-      "checksEmpty": "No checks in this period."
+      "checksEmpty": "No checks in this period.",
+      "valueTitle": "Query value",
+      "valueDescription": "Average, minimum and maximum of the query's value per interval over the selected period.",
+      "valueEmpty": "No values yet. The chart fills in as checks complete.",
+      "valueAverage": "Average",
+      "valueMin": "Minimum",
+      "valueMax": "Maximum",
+      "valueTooltip": "avg {avg} · min {min} · max {max}"
     },
     "metrics": {
+      "averageValue": "Average value",
       "uptime": "Uptime",
       "percentileResponse": "p{value} response",
       "totalChecks": "Total checks",
@@ -536,7 +544,8 @@
       "chain": "Chain",
       "noCommonName": "(no CN)",
       "emptyHttps": "No certificate captured yet. It appears after the first check of an https:// URL.",
-      "emptyOther": "Certificates are captured for HTTPS monitors.",
+      "emptyTls": "No certificate captured yet. It appears after the first TLS connection of a check.",
+      "emptyOther": "Certificates are captured for HTTPS, TLS, IMAP and POP3 monitors.",
       "tlsIgnored": "TLS errors are ignored for this monitor, so no expiry warnings are sent.",
       "notificationsOn": "Expiry notifications are switched on for this monitor.",
       "notificationsOff": "Turn on \"Certificate expiry notification\" in the monitor settings to be warned before it expires.",
@@ -570,6 +579,10 @@
       "json-query": {
         "label": "HTTP(s) - Json Query",
         "description": "UP when a JSONata expression over the JSON response matches."
+      },
+      "prometheus": {
+        "label": "Prometheus Query",
+        "description": "Runs a PromQL query; DOWN or degraded when the value meets a threshold."
       },
       "real-browser": {
         "label": "HTTP(s) - Browser Engine (Chrome/Chromium)",
@@ -609,7 +622,7 @@
       },
       "group": {
         "label": "Group",
-        "description": "Aggregates child monitors: DOWN when any child is down."
+        "description": "Aggregates child monitors: worst child, quorum or weighted score."
       },
       "grpc-keyword": {
         "label": "gRPC(s) - Keyword",
@@ -646,6 +659,26 @@
       "sftp": {
         "label": "SFTP",
         "description": "Logs in over SFTP and optionally checks that a path exists."
+      },
+      "ssh": {
+        "label": "SSH",
+        "description": "Reads the SSH banner; optionally logs in and runs a command with exit code and output checks."
+      },
+      "udp": {
+        "label": "UDP",
+        "description": "Sends a datagram; UP on a matching reply, or when no ICMP port unreachable comes back."
+      },
+      "tls": {
+        "label": "TLS Handshake",
+        "description": "Completes a TLS handshake (SNI, ALPN) and records the certificate for expiry warnings."
+      },
+      "imap": {
+        "label": "IMAP",
+        "description": "Reads the greeting, optionally upgrades with STARTTLS and logs in."
+      },
+      "pop3": {
+        "label": "POP3",
+        "description": "Reads the greeting, optionally upgrades with STLS and logs in."
       },
       "radius": {
         "label": "Radius",
@@ -706,6 +739,9 @@
       "wsUrl": "Enter a ws(s):// URL",
       "closeCodeRequired": "Add at least one accepted close code",
       "wsAuthMethod": "WebSocket monitors support none, basic, bearer and mTLS",
+      "prometheusAuthMethod": "Prometheus monitors support none, basic and bearer authentication",
+      "queryRequired": "Query is required",
+      "thresholdRequired": "Enter a threshold",
       "keywordRequired": "Keyword is required",
       "jsonQueryRequired": "JSON query is required",
       "expectedValueRequired": "Expected value is required",
@@ -713,6 +749,8 @@
       "portRequired": "Port is required",
       "recordTypeRequired": "Record type is required",
       "manualStatusRequired": "Choose the status to report",
+      "aggregationQuorumRequired": "Enter how many children must be up",
+      "aggregationQuorumPercent": "A percentage is at most 100",
       "dockerHostRequired": "Choose a Docker host",
       "containerRequired": "Container name or id is required",
       "containerInvalid": "Use the container name or id, e.g. my-app or 3f2a…",
@@ -733,6 +771,9 @@
       "oidRequired": "OID is required",
       "communityRequired": "Community string is required",
       "sshPrivateKeyRequired": "Private key is required for key-based authentication",
+      "udpHexPayload": "Enter pairs of hex digits, e.g. ff 00 1a",
+      "udpPatternRequired": "Enter the text or regular expression the response must match",
+      "regexInvalid": "Not a valid regular expression",
       "nodeRequired": "Add at least one node URL",
       "nodeUrl": "Nodes are management API URLs such as https://node1:15672",
       "gameRequired": "Game is required",
@@ -866,11 +907,43 @@
         },
         "dockerHost": "Docker host",
         "dockerHostEmpty": "No Docker hosts yet; an admin can add one in <link>settings</link>.",
+        "sshTunnel": "SSH tunnel",
+        "noSshTunnel": "No tunnel (direct connection)",
+        "sshTunnelEmpty": "No SSH tunnels yet; an admin can add one in <link>settings</link>.",
+        "sshTunnelDescription": "Reach an internal target through an SSH bastion. Host names are resolved by the bastion.",
         "dockerContainer": "Container name / id",
         "push": "A push URL is generated when the monitor is saved. Call it on the schedule below; a late ping or a reported failure marks the monitor DOWN.",
         "group": "Monitor group",
         "groupEmpty": "Create a Group monitor to nest monitors under it.",
         "groupDescription": "Groups aggregate the status of their children.",
+        "groupWeight": "Weight in the group",
+        "groupWeightDescription": "Used when the group scores its children by weight: relative to the other children, 0 ignores this monitor.",
+        "aggregation": "Status from the children",
+        "aggregationOption": {
+          "worst": "Worst child",
+          "quorum": "Quorum",
+          "weighted": "Weighted score"
+        },
+        "aggregationDescription": {
+          "worst": "Down as soon as one child is down, pending while one retries, degraded while one is degraded.",
+          "quorum": "Down only when fewer children than the quorum are up; degraded while some are not up.",
+          "weighted": "Children score up 1, degraded 0.5 and down 0, by weight: 100 % is up, 0 % is down, anything between is degraded."
+        },
+        "aggregationQuorum": "Quorum",
+        "aggregationQuorumDescription": "Children that must be up. Degraded children and children in maintenance count as up.",
+        "aggregationQuorumUnit": "Quorum unit",
+        "aggregationQuorumUnitOption": {
+          "count": "Children",
+          "percent": "Percent of the children"
+        },
+        "aggregationLatency": "Group response time",
+        "aggregationLatencyDescription": "Derived from the children's last response time.",
+        "aggregationLatencyOption": {
+          "none": "Time of the group check",
+          "avg": "Average of the children",
+          "max": "Slowest child",
+          "min": "Fastest child"
+        },
         "publicName": "Public name",
         "publicNameDescription": "Shown on status pages instead of the friendly name. Leave empty to use the friendly name.",
         "descriptionLabel": "Description",
@@ -972,12 +1045,46 @@
         "community": "Community string",
         "security": "Security",
         "securityDescription": "Use SMTPS for port 465; STARTTLS for 25/587.",
+        "mailSecurityDescription": "Implicit TLS on 993 (IMAP) or 995 (POP3); STARTTLS on 143 or 110. Credentials are only sent over TLS unless STARTTLS is ignored.",
         "smtpSecurity": {
           "opportunistic": "STARTTLS if offered",
           "starttls": "Require STARTTLS",
           "secure": "SMTPS (implicit TLS)",
           "nostarttls": "Ignore STARTTLS"
         },
+        "mailSecurity": {
+          "opportunistic": "STARTTLS if offered",
+          "starttls": "Require STARTTLS",
+          "secure": "Implicit TLS",
+          "nostarttls": "Plain text (ignore STARTTLS)"
+        },
+        "mailUsernameDescription": "Optional: leave empty to only check the greeting.",
+        "sshUsernameDescription": "Optional: leave empty to only read the server banner.",
+        "sshCommand": "Command",
+        "sshCommandDescription": "Optional command to run after logging in.",
+        "sshExpectedExitCode": "Expected exit code",
+        "sshExpectedOutput": "Expected output",
+        "sshExpectedOutputDescription": "Optional text the command output must contain.",
+        "udpPayload": "Payload",
+        "udpPayloadDescription": "Datagram to send; may be empty.",
+        "udpPayloadEncoding": "Encoding",
+        "udpPayloadEncodingOption": {
+          "text": "Text (UTF-8)",
+          "hex": "Hex"
+        },
+        "udpResponseMatch": "Expected response",
+        "udpResponseMatchOption": {
+          "none": "None (UP unless the port is unreachable)",
+          "any": "Any response",
+          "keyword": "Contains keyword",
+          "regex": "Matches regular expression"
+        },
+        "udpResponseMatchDescription": "Without an expected response the check listens for an ICMP port unreachable for up to 2 seconds.",
+        "udpResponsePattern": "Keyword or pattern",
+        "tlsServername": "Server name (SNI)",
+        "tlsServernameDescription": "Defaults to the hostname.",
+        "tlsAlpn": "ALPN protocols",
+        "tlsAlpnDescription": "Optional, comma-separated. The server must select one of them.",
         "authentication": "Authentication",
         "sshAuth": {
           "password": "Password",
@@ -1039,6 +1146,33 @@
         "resolver": "Resolver (optional)",
         "resolverDescription": "Leave empty to use each probe's own resolver.",
         "rateLimit": "Rate limits never mark the monitor down: it stays pending until the limit resets."
+      },
+      "prometheus": {
+        "title": "Prometheus query",
+        "description": "A PromQL instant query and the conditions its value is judged by.",
+        "urlDescription": "Base URL of the Prometheus HTTP API (Prometheus, Thanos, Mimir, VictoriaMetrics); {path} is appended.",
+        "query": "PromQL query",
+        "queryDescription": "Evaluated as an instant query at the time of each check.",
+        "downOperator": "DOWN when the value is",
+        "downThreshold": "DOWN threshold",
+        "degradedOperator": "Degraded when the value is",
+        "degradedOff": "Never degraded",
+        "degradedThreshold": "Degraded threshold",
+        "aggregate": "Several series",
+        "aggregates": {
+          "worst": "Worst series decides",
+          "any": "Any series decides (reports the first)",
+          "all": "All series must agree"
+        },
+        "aggregateDescription": "When the query returns more than one series.",
+        "noDataStatus": "When there is no data",
+        "errorStatus": "When the query fails",
+        "statuses": {
+          "up": "Up",
+          "down": "Down",
+          "pending": "Keep the current status"
+        },
+        "errorStatusDescription": "HTTP or query errors and an unreachable endpoint. A blocked address is always DOWN."
       },
       "http": {
         "title": "HTTP options",
@@ -1482,6 +1616,7 @@
       "templates": "Templates",
       "proxies": "Proxies",
       "dockerHosts": "Docker hosts",
+      "sshTunnels": "SSH tunnels",
       "apiKeys": "API keys",
       "auditLog": "Audit log",
       "importExport": "Import / Export",
@@ -1501,6 +1636,7 @@
       "templates": "Templates",
       "proxies": "Proxies",
       "dockerHosts": "Docker hosts",
+      "sshTunnels": "SSH tunnels",
       "apiKeys": "API keys",
       "auditLog": "Audit log",
       "importExport": "Import / Export",
@@ -1785,6 +1921,7 @@
         "tag": "Tag",
         "proxy": "Proxy",
         "docker_host": "Docker host",
+        "ssh_tunnel": "SSH tunnel",
         "status_page": "Status page",
         "status_page_viewer": "Status page viewer",
         "incident": "Incident",
@@ -1948,6 +2085,61 @@
         "failed": "Could not save the Docker host"
       }
     },
+    "sshTunnels": {
+      "membersOnlyTitle": "Members only",
+      "membersOnlyDescription": "SSH tunnels are visible to members and managed by admins of this organization.",
+      "title": "SSH tunnels",
+      "description": "Bastion hosts that monitors reach internal targets through. The worker keeps one SSH connection per tunnel and forwards each check's connections over it.",
+      "new": "New SSH tunnel",
+      "emptyTitle": "No SSH tunnels",
+      "emptyDescription": "Add a bastion host, then pick it in a monitor's settings.",
+      "emptyReadOnly": "Admins of this organization can add SSH tunnels.",
+      "badge": {
+        "password": "Password",
+        "privateKey": "Private key"
+      },
+      "testLabel": "Test {name}",
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "confirmDeleteTitle": "Delete SSH tunnel “{name}”?",
+      "confirmDeleteDescription": "Monitors using it connect directly to their targets afterwards.",
+      "confirmDelete": "Delete tunnel",
+      "deleted": "SSH tunnel deleted",
+      "deleteFailed": "Could not delete the tunnel",
+      "test": {
+        "connected": "Connected to the bastion",
+        "connectedIn": "Host key verified and signed in ({ms, number} ms).",
+        "failed": "Connection failed"
+      },
+      "form": {
+        "newTitle": "New SSH tunnel",
+        "editTitle": "Edit SSH tunnel",
+        "description": "Credentials are encrypted at rest and never shown again after saving.",
+        "name": "Name",
+        "namePlaceholder": "Production bastion",
+        "host": "Host",
+        "port": "Port",
+        "username": "Username",
+        "authMethod": "Authentication",
+        "password": "Password",
+        "privateKey": "Private key",
+        "passphrase": "Passphrase (optional)",
+        "keepSecret": "Stored. Leave empty to keep it.",
+        "fingerprint": "Host key fingerprint",
+        "fingerprintHint": "Compare with <code>ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub</code> on the bastion. Connections are refused when the key differs.",
+        "fetchFingerprint": "Fetch from host",
+        "presentedFingerprint": "The bastion presents {fingerprint}. Use it only after checking it on the bastion.",
+        "useFingerprint": "Use this fingerprint",
+        "fingerprintFailed": "Could not read the host key",
+        "test": "Test connection",
+        "cancel": "Cancel",
+        "save": "Save",
+        "create": "Create tunnel",
+        "saved": "SSH tunnel saved",
+        "created": "SSH tunnel created",
+        "failed": "Could not save the SSH tunnel"
+      }
+    },
     "instance": {
       "privateAddressWarning": {
         "title": "Open sign-up without the private-address guard",
@@ -2088,6 +2280,7 @@
         "tag": "Tags",
         "proxy": "Proxies",
         "dockerHost": "Docker hosts",
+        "sshTunnel": "SSH tunnels",
         "apiKey": "API keys",
         "auditLog": "Audit log",
         "sso": "Single sign-on",
@@ -2108,7 +2301,8 @@
         "manage": "Manage",
         "send": "Send",
         "acknowledge": "Acknowledge",
-        "resolve": "Resolve"
+        "resolve": "Resolve",
+        "history": "Uptime history"
       },
       "custom": "Custom",
       "fixed": "(fixed)",
@@ -4196,7 +4390,8 @@
         "domains": "Domains",
         "share": "Share",
         "subscribers": "Subscribers",
-        "notifications": "Notifications"
+        "notifications": "Notifications",
+        "history": "History"
       }
     },
     "settings": {
@@ -4249,7 +4444,26 @@
         "contactUrlHint": "Shown as a “Contact us” button. An https:// URL or mailto: address."
       },
       "pastIncidentsDays": "Past incidents shown (days)",
-      "pastIncidentsDaysHint": "Incidents of the last days are listed by day below the components; 0 hides the list. All of them stay on the history page."
+      "pastIncidentsDaysHint": "Incidents of the last days are listed by day below the components; 0 hides the list. All of them stay on the history page.",
+      "uptime": {
+        "title": "Uptime bars",
+        "description": "Daily bars per component and how their uptime is calculated.",
+        "days": "Days shown",
+        "daysOption": "{days} days",
+        "calculation": "Uptime calculation",
+        "modes": {
+          "checks": "Checks",
+          "duration": "Duration",
+          "manual": "Incidents only"
+        },
+        "modeHints": {
+          "checks": "Successful checks divided by all checks.",
+          "duration": "Time not spent down divided by the total time, from the monitors' status changes.",
+          "manual": "Only incidents count: a major outage is down, a partial outage half down, degraded performance up."
+        },
+        "showPercentage": "Show uptime percentage",
+        "showPercentageHint": "Off keeps the bars but hides the percentages."
+      }
     },
     "groups": {
       "title": "Groups & monitors",
@@ -4911,6 +5125,45 @@
         "created": "Created {time}",
         "listMeta": "{event} · {time}"
       }
+    },
+    "uptime": {
+      "groupLabel": "Daily uptime of the last {days} days",
+      "daysAgo": "{days} days ago",
+      "today": "Today",
+      "percent": "{value} uptime",
+      "noData": "No data",
+      "barLabel": "{date}: {state}",
+      "barLabelWithUptime": "{date}: {state}, {uptime} uptime",
+      "state": {
+        "nodata": "No data",
+        "up": "Operational",
+        "maintenance": "Maintenance",
+        "degraded": "Degraded performance",
+        "partial": "Partial outage",
+        "down": "Outage"
+      },
+      "downFor": "Down for {duration}",
+      "noDowntime": "No downtime recorded",
+      "duration": {
+        "hours": "{hours} h {minutes} min",
+        "minutes": "{minutes} min",
+        "lessThanMinute": "less than a minute"
+      },
+      "incidents": "Incidents",
+      "maintenance": "Maintenance"
+    },
+    "history": {
+      "title": "Uptime history",
+      "description": "Monthly uptime of each component, calculated like the page ({mode}). Days are UTC days; the figures stay available after the raw statistics are pruned.",
+      "months": "Months",
+      "monthsOption": "{months} months",
+      "export": "Export CSV",
+      "loading": "Loading history…",
+      "failed": "Could not load the history.",
+      "empty": "This page has no components yet.",
+      "component": "Component",
+      "noData": "No data",
+      "downtime": "Down {duration}"
     }
   },
   "maintenance": {
@@ -5416,6 +5669,7 @@
       "linksDropped": "{count} monitor → notification {count, plural, one {link} other {links}} dropped because the notification was not imported",
       "monitorKeyDropped": "\"{name}\": the key \"{key}\" is already used by another monitor; imported without a key",
       "resourcesDropped": "\"{name}\": {resources, select, tags {tags} proxy {proxy} other {tags and proxy}} not imported; assign them again after the import",
+      "sshTunnelDropped": "\"{name}\": SSH tunnel not imported; assign it again after the import",
       "rowsDropped": "\"{title}\": {count} monitor {count, plural, one {row} other {rows}} dropped because the monitor was not imported",
       "tagsUnsupported": "Tags are not supported yet",
       "tagsUnsupportedCount": "Tags are not supported yet ({count} monitor {count, plural, one {assignment} other {assignments}} skipped)",
@@ -5678,6 +5932,8 @@
     "checkTimedOut": "No result arrived in time. Check that the worker is running.",
     "checkFailed": "The check could not be run.",
     "monitorForeignReference": "Must belong to the same organization as the monitor.",
+    "monitorTunnelWithProxy": "A monitor uses either a proxy or an SSH tunnel, not both.",
+    "monitorTunnelOnProbe": "SSH tunnels are opened by this server's workers; remove the probe locations to use one.",
     "tagDuplicate": "Each tag may only be added once.",
     "monitorKeyTaken": "Another monitor of this organization already uses the key “{key}”.",
     "tagNameTaken": "A tag named “{name}” already exists.",
@@ -5730,6 +5986,12 @@
     "dockerSocketDisabled": "Socket connections are disabled on this instance (DOCKER_SOCKET_ENABLED).",
     "dockerUrlInvalid": "Enter the daemon URL, e.g. tcp://docker.example.com:2375.",
     "proxyUsernameRequired": "A username is required when authentication is on.",
+    "sshFingerprintInvalid": "Enter the SHA256 host key fingerprint, e.g. SHA256:uNiVztksCsDhcc0u9e8BujQXVUpKZIDTMczCvj3tD2s.",
+    "sshPasswordRequired": "A password is required for password authentication.",
+    "sshPrivateKeyRequired": "A private key is required for key authentication.",
+    "sshPrivateKeyInvalid": "The private key cannot be used: {problem}",
+    "sshTunnelNotFound": "SSH tunnel not found",
+    "sshTunnelTestTargetRequired": "Provide sshTunnelId, or host, port, username, credentials and knownHostFingerprint",
     "cannotInviteHigherRole": "You cannot invite a role above your own.",
     "samlMetadataRequired": "Provide a metadata URL or the metadata XML",
     "samlMetadataHttps": "Metadata URL must use https",
