@@ -308,7 +308,11 @@
       "incidentTitle": "{title} · {siteName}",
       "incidentDescription": "Incidente en {siteName}: {status}, {dateRange}.",
       "maintenanceTitle": "{title} · {siteName}",
-      "maintenanceDescription": "Mantenimiento en {siteName}: {status}, {dateRange}."
+      "maintenanceDescription": "Mantenimiento en {siteName}: {status}, {dateRange}.",
+      "chartsTitle": "Tiempos de respuesta · {siteName}",
+      "chartsDescription": "Tiempos de respuesta y comprobaciones de {siteName}.",
+      "componentChartTitle": "Tiempo de respuesta de {name} · {siteName}",
+      "componentChartDescription": "Percentiles de latencia y comprobaciones de {name} en {siteName}."
     },
     "subscribe": {
       "button": "Suscribirse",
@@ -373,6 +377,52 @@
       "unsubscribeDescription": "¿Dejar de recibir actualizaciones de {title} en {target}?",
       "unsubscribe": "Darse de baja",
       "unsubscribed": "Te has dado de baja y no recibirás más actualizaciones de {title}."
+    },
+    "charts": {
+      "heading": "Tiempos de respuesta",
+      "description": "Percentiles de latencia y comprobaciones, a partir de los datos de monitorización.",
+      "viewChart": "Tiempo de respuesta",
+      "viewChartLabel": "Tiempo de respuesta de {name}",
+      "allCharts": "Todos los tiempos de respuesta",
+      "period": "Periodo",
+      "periods": {
+        "1d": "24 horas",
+        "7d": "7 días",
+        "30d": "30 días"
+      },
+      "latencyTitle": "Tiempo de respuesta",
+      "latencyDescription": "Tiempo de respuesta p50, p95 y p99 por intervalo, en milisegundos.",
+      "latencyEmpty": "No hay datos de tiempo de respuesta en este periodo.",
+      "latencySummary": "Tiempo de respuesta de {name}: p50 {p50}, p95 {p95}, p99 {p99} en el periodo.",
+      "checksTitle": "Comprobaciones",
+      "checksDescription": "Comprobaciones correctas, degradadas y fallidas por intervalo.",
+      "checksEmpty": "No hay comprobaciones en este periodo.",
+      "checksSummary": "{total} comprobaciones de {name}: {failed} fallidas, {degraded} degradadas.",
+      "countsDegraded": "{up} correctas · {degraded} degradadas · {down} fallidas",
+      "percentile": "p{value}",
+      "ms": "{ms} ms",
+      "noValue": "–",
+      "metrics": {
+        "uptime": "Disponibilidad",
+        "p50": "p50",
+        "p95": "p95",
+        "p99": "p99",
+        "checks": "Comprobaciones"
+      },
+      "series": {
+        "up": "Correctas",
+        "degraded": "Degradadas",
+        "down": "Fallidas"
+      },
+      "locations": {
+        "title": "Por ubicación",
+        "description": "Cada ubicación de comprobación en el periodo.",
+        "location": "Ubicación",
+        "primary": "Principal",
+        "uptime": "Disponibilidad",
+        "average": "Media"
+      },
+      "empty": "Esta página no publica gráficos de tiempo de respuesta."
     }
   },
   "email": {

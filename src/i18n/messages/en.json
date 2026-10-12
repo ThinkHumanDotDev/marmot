@@ -4523,7 +4523,8 @@
       "componentFallback": "component",
       "removeComponent": "Remove component from group",
       "componentCount": "{count, plural, one {# component} other {# components}}",
-      "staticNameRequired": "Static components need a name."
+      "staticNameRequired": "Static components need a name.",
+      "showChart": "Public latency chart"
     },
     "incidents": {
       "title": "Incidents",
@@ -5000,7 +5001,11 @@
       "incidentTitle": "{title} · {siteName}",
       "incidentDescription": "Incident on {siteName}: {status}, {dateRange}.",
       "maintenanceTitle": "{title} · {siteName}",
-      "maintenanceDescription": "Maintenance on {siteName}: {status}, {dateRange}."
+      "maintenanceDescription": "Maintenance on {siteName}: {status}, {dateRange}.",
+      "chartsTitle": "Response times · {siteName}",
+      "chartsDescription": "Response times and checks of {siteName}.",
+      "componentChartTitle": "{name} response time · {siteName}",
+      "componentChartDescription": "Latency percentiles and checks of {name} on {siteName}."
     },
     "subscribe": {
       "button": "Subscribe",
@@ -5284,6 +5289,52 @@
         "choose": "Choose an audience",
         "loadFailed": "Could not load the preview"
       }
+    },
+    "charts": {
+      "heading": "Response times",
+      "description": "Latency percentiles and checks, from the monitoring data.",
+      "viewChart": "Response time",
+      "viewChartLabel": "Response time of {name}",
+      "allCharts": "All response times",
+      "period": "Period",
+      "periods": {
+        "1d": "24 hours",
+        "7d": "7 days",
+        "30d": "30 days"
+      },
+      "latencyTitle": "Response time",
+      "latencyDescription": "p50, p95 and p99 response time per interval, in milliseconds.",
+      "latencyEmpty": "No response-time data in this period.",
+      "latencySummary": "Response time of {name}: p50 {p50}, p95 {p95}, p99 {p99} over the period.",
+      "checksTitle": "Checks",
+      "checksDescription": "Successful, degraded and failed checks per interval.",
+      "checksEmpty": "No checks in this period.",
+      "checksSummary": "{total} checks of {name}: {failed} failed, {degraded} degraded.",
+      "countsDegraded": "{up} up · {degraded} degraded · {down} failed",
+      "percentile": "p{value}",
+      "ms": "{ms} ms",
+      "noValue": "–",
+      "metrics": {
+        "uptime": "Uptime",
+        "p50": "p50",
+        "p95": "p95",
+        "p99": "p99",
+        "checks": "Checks"
+      },
+      "series": {
+        "up": "Up",
+        "degraded": "Degraded",
+        "down": "Failed"
+      },
+      "locations": {
+        "title": "By location",
+        "description": "Each check location over the period.",
+        "location": "Location",
+        "primary": "Primary",
+        "uptime": "Uptime",
+        "average": "Average"
+      },
+      "empty": "No response-time charts are published on this page."
     }
   },
   "maintenance": {
@@ -6075,6 +6126,7 @@
     "maintenanceOccurrenceRequired": "A maintenance window belongs to a maintenance.",
     "maintenanceTransitionInvalid": "Cannot post “{to}” on a maintenance window that is {from}.",
     "statusPageNotFound": "Status page not found",
+    "statusPageChartNotFound": "This component has no public charts.",
     "statusPageForeignMonitors": "Every monitor on a status page must belong to the same organization.",
     "hostnameDuplicate": "Each hostname may only be listed once.",
     "hostnameTaken": "One of these hostnames is already used by another status page.",

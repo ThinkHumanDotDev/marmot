@@ -8,6 +8,7 @@ import {
   POST as createAudienceRoute,
 } from '@/app/api/orgs/[orgId]/status-pages/[id]/audiences/route'
 import { POST as accessRoute } from '@/app/api/status-pages/[slug]/access/route'
+import { GET as chartsRoute } from '@/app/api/status-pages/[slug]/charts/route'
 import { GET as eventRoute } from '@/app/api/status-pages/[slug]/events/[kind]/[id]/route'
 import { GET as eventsRoute } from '@/app/api/status-pages/[slug]/events/route'
 import { GET as publicRoute } from '@/app/api/status-pages/[slug]/public/route'
@@ -246,8 +247,8 @@ describe('audience-specific status pages (#151)', () => {
         access: 'audience',
         subscriptions: { enabled: true, channels: ['email'], deliveryMode: 'review' },
         groups: [
-          { name: 'Acme cluster', monitors: [{ monitor: acmeMonitor.id }] },
-          { name: 'Beta cluster', monitors: [{ monitor: betaMonitor.id }] },
+          { name: 'Acme cluster', monitors: [{ monitor: acmeMonitor.id, showChart: true }] },
+          { name: 'Beta cluster', monitors: [{ monitor: betaMonitor.id, showChart: true }] },
           { name: 'Shared', monitors: [{ type: 'static', name: 'Docs site' }] },
         ],
       } as never,
@@ -607,6 +608,23 @@ describe('audience-specific status pages (#151)', () => {
       ).json()) as { components: { name: string }[] }
       expect(components.components.map((c) => c.name)).toContain('Beta API')
       expect(components.components.map((c) => c.name)).not.toContain('Acme API')
+    })
+
+    it('latency charts', async () => {
+      const charts = (cookie: string, query = '') =>
+        call(
+          chartsRoute,
+          `${BASE}/api/status-pages/${page.slug}/charts${query}`,
+          { slug: page.slug },
+          {
+            headers: { Cookie: cookie },
+          },
+        )
+      const all = await charts(aliceCookie)
+      expect(all.status).toBe(200)
+      expectOnly(await all.text(), ['Acme API'], ['Beta API'], 'charts')
+      expect((await charts(aliceCookie, `?component=${betaC}`)).status).toBe(404)
+      expect((await charts(bobCookie, `?component=${betaC}`)).status).toBe(200)
     })
 
     it('badges and the widget', async () => {

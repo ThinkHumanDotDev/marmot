@@ -69,6 +69,7 @@ export interface PlannedStatusPageComponent {
   name?: string | null
   description?: string | null
   showValues?: boolean
+  showChart?: boolean
   sendUrl: boolean
   customUrl: string | null
 }

@@ -609,6 +609,8 @@ export const adminTranslations = {
         componentDescriptionDescription: 'Shown to visitors as a tooltip.',
         componentShowValuesDescription:
           'Show uptime and response time for this component (the page setting must be on too).',
+        componentShowChartDescription:
+          'Publish latency percentile and check charts for this monitor (off by default; needs values shown).',
         logoDescription: 'Shown in light mode, and in dark mode when there is no dark logo.',
         themeDescription:
           'auto lets visitors pick (system, light or dark); light and dark force that mode.',
