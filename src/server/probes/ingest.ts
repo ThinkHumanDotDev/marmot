@@ -44,6 +44,7 @@ export function toCheckResult(result: ParsedResult): CheckResult {
     tlsInfo: (result.tlsInfo as TlsInfo | null | undefined) ?? null,
     assertions: (result.assertions as AssertionResult[] | null | undefined) ?? null,
     timing: parseRequestTiming(result.timing),
+    value: result.value ?? null,
     ...(result.blocked ? { blocked: true } : {}),
     ...(result.checkerOffline ? { checkerOffline: true } : {}),
     ...(result.deferred ? { deferred: true } : {}),

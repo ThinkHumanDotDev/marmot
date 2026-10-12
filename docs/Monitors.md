@@ -21,7 +21,7 @@ The type decides what a check does and which fields the form shows. The built-in
 | General | DNS                  | the resolver returns a record of `dnsResolveType` for `hostname`                  |
 | Passive | Push                 | your system called `/api/push/<token>` on schedule (interval or cron, plus grace) |
 | Passive | Manual               | you set the status by hand; nothing is checked                                    |
-| Special | Group                | every child monitor is UP                                                         |
+| Special | Group                | its children are UP by its aggregation mode (worst, quorum or weighted)           |
 | Special | Docker Container     | the container is running (and healthy, when it has a health check)                |
 
 HTTP monitors also support request method and body, extra headers, redirects, `ignoreTls`, basic/bearer/
@@ -367,11 +367,36 @@ SHA256:…, expected SHA256:…`). **Fetch from host** in the tunnel dialog read
 
 ## Groups
 
-A **Group** monitor has no target of its own; set `parent` on other monitors to put them inside it. The
-group is UP when all children are UP, DOWN as soon as one child is DOWN, PENDING while a child is
-retrying, and DEGRADED when a child is degraded and none is worse. Groups nest, show as a tree in the monitor list and can be placed on status pages like any other
-monitor, which is the easy way to publish "API: operational" over a dozen internal checks. Deleting a group
-detaches its children instead of deleting them.
+A **Group** monitor has no target of its own. To put other monitors inside a group, set their `parent`.
+Groups nest, and they can be placed on status pages like any other monitor. This is the easy way to
+publish "API: operational" over a dozen internal checks. Deleting a group detaches its children instead
+of deleting them.
+
+### Aggregation modes
+
+The group's **aggregation** setting (`aggregation`, #144) decides how the children's last status becomes
+the group's status. In every mode:
+
+- paused children are ignored;
+- children in maintenance count as UP;
+- a child with no beat yet, or one that is retrying, counts as pending.
+
+| Mode              | The group is                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `worst` (default) | DOWN as soon as one child is DOWN, PENDING while a child is pending, DEGRADED when a child is degraded and none is worse, otherwise UP. Groups created before #144 use this mode.                                                                                                                                                                                                            |
+| `quorum`          | DOWN only when fewer than `aggregationQuorum` children are up. The quorum is a number of children, or a percentage of the active children when `aggregationQuorumUnit` is `percent` (rounded up). Degraded children count as up. When the quorum is met but some children are not up, the group is DEGRADED. When the pending children could still make up the quorum, the group is PENDING. |
+| `weighted`        | Each child scores 1 when up, 0.5 when degraded and 0 when down, multiplied by its weight. The weights are normalised to sum to 1. A score of 100 % is UP, 0 % is DOWN, and anything between is DEGRADED. Pending children are left out of the score.                                                                                                                                         |
+
+- **Weights**: each child sets its own weight (`groupWeight`, default 1). Weights are relative, so
+  `3` and `1` give a 75/25 split. A weight of 0 means the child has no say. If every weight is 0, the
+  children count equally.
+- **Example**: a quorum group of five replicas with a quorum of 3 stays up (DEGRADED) with two replicas
+  down, with the message `3/5 children up (quorum 3); 2/5 children down: api-3, api-5`. With a third
+  replica down, it is DOWN. The usual retries and notifications apply.
+- **Group response time**: `aggregationLatency` sets it. `none` (default) is the time the group check took.
+  `avg`, `max` and `min` are the average, the slowest and the fastest last ping of the active children.
+- **Status pages**: a group placed on a status page shows the group's own status, so its component follows
+  the same aggregation.
 
 ## Push monitors
 
@@ -397,6 +422,41 @@ curl -fsS "https://status.example.com/api/push/<token>/start"
 
 See [Integrations](Integrations.md#push-monitors) for the endpoint reference and
 [Monitor types](Monitor-Types.md#push-schedules-and-signals) for the scheduling rules.
+
+### Ping-by-email
+
+Systems that can send mail but not make HTTP requests (NAS appliances, backup software, cron with
+`MAILTO`, network devices) can ping a push monitor by email. Once the instance is
+[configured](Configuration.md#ping-by-email), every push monitor receives mail at
+`<push token>@<INBOUND_EMAIL_DOMAIN>`, shown on the monitor page. A `+tag` after the token is ignored
+(`<token>+nas1@…`).
+
+Mail arrives through the worker's SMTP listener (`INBOUND_SMTP_PORT`; make it the MX of the inbound domain,
+or put a relay in front of it) or through the inbound-parse webhook `POST /api/inbound-email`
+(`INBOUND_EMAIL_WEBHOOK_SECRET`):
+
+| Provider                 | Setup                                                                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Postmark                 | Inbound webhook URL `https://marmot:<secret>@status.example.com/api/inbound-email` (JSON).                                                                    |
+| Mailgun                  | A route for the domain that forwards to `https://status.example.com/api/inbound-email?secret=<secret>` (parsed fields, or `body-mime` for the MIME endpoint). |
+| SendGrid Inbound Parse   | Destination URL `https://status.example.com/api/inbound-email?secret=<secret>`, with or without "POST the raw, full MIME message".                            |
+| Cloudflare Email Routing | An Email Worker that posts `message.raw` with `Content-Type: message/rfc822`, `X-Marmot-Secret: <secret>` and `X-Marmot-Recipient: message.to`.               |
+| Anything else            | POST the raw message (`message/rfc822`), Postmark-style JSON or `{ "to", "subject", "text" }` with the secret.                                                |
+
+Each message is matched, ignoring case, against its subject and plain-text body using the monitor's
+**Email pings** keywords, in this order:
+
+1. the **failure keyword** records a failure (e.g. `FAILED`);
+2. the **success keyword** records a success;
+3. the **start keyword** starts a run, like `/start`;
+4. without a success keyword, any other message is a success, so "Backup OK" works with no setup at all;
+5. with one, a message that matches nothing is **ignored** (kept in the ping log as a `log` entry) or
+   recorded as a **failure**, as configured.
+
+The subject becomes the heartbeat message and the first 2 000 characters of the body the ping log entry
+(source `email`). Mail to unknown tokens, paused monitors or other domains is refused (`550` over SMTP,
+dropped with `accepted: 0` on the webhook), and mail over `INBOUND_EMAIL_MAX_BYTES` is refused without
+being parsed.
 
 ## Public name
 

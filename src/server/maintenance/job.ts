@@ -12,6 +12,8 @@
  *   online again (#91); the single consumer makes it the only writer of `locations.status`.
  * - `quorum-recompute` (every minute, `src/server/jobs/quorum-recompute.ts`): repairs the status of
  *   multi-location monitors that drifted from their per-location states (#92).
+ * - `status-page-uptime-snapshot` (daily at 00:20 UTC, `src/server/status-pages/uptime-history.ts`):
+ *   preserves the daily uptime of status page components before retention prunes it (#112).
  * - Demo mode only (#159): `demo-reset` (on boot and every `DEMO_RESET_INTERVAL_MINUTES`,
  *   `src/server/demo/reset.ts`) wipes and reseeds the demo dataset; `demo-probes` (every minute,
  *   `src/server/demo/probes.ts`) plays the simulated probe agents.
@@ -41,6 +43,11 @@ import {
   recomputeQuorumStatuses,
 } from '@/server/jobs/quorum-recompute'
 import { processRetentionJob, RETENTION_JOB_NAME } from '@/server/jobs/retention'
+import {
+  snapshotUptimeHistory,
+  UPTIME_SNAPSHOT_JOB_NAME,
+  UPTIME_SNAPSHOT_PATTERN,
+} from '@/server/status-pages/uptime-history'
 import {
   PROBE_HEALTH_INTERVAL_MS,
   PROBE_HEALTH_JOB_NAME,
@@ -175,6 +182,7 @@ export const processMaintenanceJob =
     if (job.name === RETENTION_JOB_NAME) return processRetentionJob(payload)(job)
     if (job.name === PROBE_HEALTH_JOB_NAME) return refreshLocationStatuses(payload)
     if (job.name === QUORUM_RECOMPUTE_JOB_NAME) return recomputeQuorumStatuses(payload)
+    if (job.name === UPTIME_SNAPSHOT_JOB_NAME) return snapshotUptimeHistory(payload)
     if (job.name === DEMO_RESET_JOB_NAME) {
       demoLockClient ??= createRedis()
       return processDemoResetJob(payload, job, {
@@ -202,6 +210,15 @@ export async function scheduleQuorumRecomputeJob(queue: Queue): Promise<void> {
     QUORUM_RECOMPUTE_JOB_NAME,
     { every: QUORUM_RECOMPUTE_INTERVAL_MS },
     { name: QUORUM_RECOMPUTE_JOB_NAME, opts: { removeOnComplete: 10, removeOnFail: 50 } },
+  )
+}
+
+/** Upsert the daily `status-page-uptime-snapshot` scheduler (#112). Idempotent. */
+export async function scheduleUptimeSnapshotJob(queue: Queue): Promise<void> {
+  await queue.upsertJobScheduler(
+    UPTIME_SNAPSHOT_JOB_NAME,
+    { pattern: UPTIME_SNAPSHOT_PATTERN, tz: 'UTC' },
+    { name: UPTIME_SNAPSHOT_JOB_NAME, opts: { removeOnComplete: 10, removeOnFail: 50 } },
   )
 }
 
@@ -235,6 +252,7 @@ export async function startMaintenanceWorker(
   await scheduleMaintenanceStatusJob(getMaintenanceQueue(options))
   await scheduleProbeHealthJob(getMaintenanceQueue(options))
   await scheduleQuorumRecomputeJob(getMaintenanceQueue(options))
+  await scheduleUptimeSnapshotJob(getMaintenanceQueue(options))
   await scheduleDemoJobs(getMaintenanceQueue(options))
   // Re-plan every wake-up once per boot (they may have been lost with Redis).
   try {

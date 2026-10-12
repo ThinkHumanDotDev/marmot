@@ -29,11 +29,15 @@ export const adminTranslations = {
         pushSchedule: 'Push schedule',
         pushScheduleInterval: 'Interval',
         pushScheduleCron: 'Cron expression',
+        pushEmail: 'Email pings',
+        pushEmailUnmatchedIgnore: 'Ignore it',
+        pushEmailUnmatchedFail: 'Record a failure',
         group: 'Group',
         manual: 'Manual',
         dockerContainer: 'Docker Container',
         httpKeyword: 'HTTP(s) - Keyword',
         httpJsonQuery: 'HTTP(s) - Json Query',
+        prometheusQuery: 'Prometheus query',
         grpcKeyword: 'gRPC(s) - Keyword',
         websocketUpgrade: 'WebSocket Upgrade',
         kafkaProducerType: 'Kafka Producer',
@@ -60,6 +64,13 @@ export const adminTranslations = {
         starttlsIgnore: 'Ignore STARTTLS',
         password: 'Password',
         privateKey: 'Private key',
+        tlsHandshake: 'TLS Handshake',
+        text: 'Text',
+        hex: 'Hex',
+        udpNoResponse: 'No response expected',
+        udpAnyResponse: 'Any response',
+        regex: 'Regular expression',
+        mailLogin: 'Mail login',
         formBody: 'Form (x-www-form-urlencoded)',
         instanceSettings: 'Instance settings',
         dashboard: 'Dashboard',
@@ -180,6 +191,7 @@ export const adminTranslations = {
         timingDescription:
           'Request phases in ms: DNS, connect, TLS, time to first byte and transfer (HTTP and TCP monitors).',
         statusCodeDescription: 'HTTP status code of the response (HTTP monitors).',
+        valueDescription: 'Metric value the check judged (Prometheus query monitors).',
         responseDescription:
           'Response headers (cookies redacted, about 8 KB) and, for failed or degraded checks, the first 16 KB of the body.',
         locationDescription: 'Probe location that ran the check; empty for the local workers.',
@@ -226,6 +238,14 @@ export const adminTranslations = {
       },
       statusPageViewers: {
         statusDescription: 'revoked: the visitor is signed out and cannot request new links.',
+      },
+      statusPageUptimeHistory: {
+        label: 'Status page uptime history',
+        description:
+          'Daily uptime of status page components, preserved after retention prunes the statistics.',
+        timestampDescription: 'Unix seconds of the start of the day (UTC).',
+        downSecondsDescription: 'Seconds the monitor spent DOWN that day.',
+        knownSecondsDescription: 'Seconds of the day whose monitor status is known.',
       },
       maintenance: {
         descriptionDescription: 'Shown on status pages.',
@@ -291,6 +311,14 @@ export const adminTranslations = {
           'Seconds a ping may be late (and a started run may take) before the monitor goes DOWN. Empty: 10 % of the interval, 60 s for cron.',
         pushMaxDurationDescription:
           'Optional: runs (from /start to success) longer than this many seconds are reported DOWN.',
+        pushEmailFailureKeywordDescription:
+          'Mail to the monitor address whose subject or body contains this text records a failure. Checked first.',
+        pushEmailSuccessKeywordDescription:
+          'Text that marks a success. Empty: every message that is not a failure or start counts as a success.',
+        pushEmailStartKeywordDescription:
+          'Text that marks the start of a run (like /start). Checked after the failure and success keywords.',
+        pushEmailUnmatchedDescription:
+          'Mail that matches no keyword (only possible with a success keyword set): ignore it or record a failure.',
         activeDescription: 'Paused monitors are not checked.',
         parentDescription: 'Group this monitor belongs to.',
         publicNameDescription: 'Name shown on status pages instead of the monitor name.',
@@ -308,6 +336,22 @@ export const adminTranslations = {
         quorum_half: 'At least half of the locations',
         quorum_all: 'All locations',
         weightDescription: 'Sort order on status pages.',
+        aggregationDescription:
+          'Group monitors: how the children decide the group status. Worst: any child down makes the group down.',
+        aggregation_worst: 'Worst child',
+        aggregation_quorum: 'Quorum',
+        aggregation_weighted: 'Weighted score',
+        aggregationQuorumDescription:
+          'Quorum groups: children (or percent of the children) that must be up; below it the group is down.',
+        aggregationQuorumUnit_count: 'Children',
+        aggregationQuorumUnit_percent: 'Percent',
+        aggregationLatencyDescription: "The group's response time from its children's last ping.",
+        aggregationLatency_none: 'None',
+        aggregationLatency_avg: 'Average',
+        aggregationLatency_max: 'Maximum',
+        aggregationLatency_min: 'Minimum',
+        groupWeightDescription:
+          'Weight of this monitor in a weighted parent group (relative to its siblings; 0 = ignored).',
         proxyDescription: 'Send the request through this proxy (inactive proxies are skipped).',
         sshTunnelDescription:
           'Reach the target through this SSH bastion; the bastion resolves and connects to it.',
@@ -365,6 +409,21 @@ export const adminTranslations = {
         grpcBodyDescription: 'JSON request body.',
         grpcMetadataDescription: 'JSON object of request metadata.',
         sftpPathDescription: 'Optional remote path that must exist.',
+        sshUsernameDescription:
+          'SSH monitors: leave empty to only read the server banner; set it to log in.',
+        sshCommandDescription: 'Optional command to run after logging in.',
+        sshExpectedExitCodeDescription: 'Exit code the command must return (default 0).',
+        sshExpectedOutputDescription: 'Optional text the command output must contain.',
+        udpPayloadDescription: 'Datagram to send (text, or hex pairs such as "ff 00 1a").',
+        udpResponseMatchDescription:
+          'Without an expected response the check is UP unless an ICMP port unreachable comes back.',
+        udpResponsePatternDescription: 'Keyword the response must contain, or regular expression.',
+        tlsServernameDescription: 'SNI server name (defaults to the hostname).',
+        tlsAlpnDescription: 'Comma-separated ALPN protocols to offer, e.g. h2, http/1.1.',
+        mailSecurityDescription:
+          'SMTP, IMAP and POP3: STARTTLS when offered, required STARTTLS, implicit TLS, or plain text.',
+        mailUsernameDescription:
+          'Optional IMAP/POP3 login; credentials are only sent over TLS unless STARTTLS is ignored.',
         rabbitmqNodesDescription: 'Management API base URLs, e.g. https://node1:15672.',
         wsSubprotocolDescription: 'Comma-separated Sec-WebSocket-Protocol values.',
         wsIgnoreSecWebsocketAcceptHeaderDescription:
@@ -376,6 +435,17 @@ export const adminTranslations = {
           'Ping: ICMP or TCP; HTTP: HTTP, HTTPS or HTTP2; DNS: UDP or TCP; traceroute: ICMP, TCP or UDP. Empty uses the default.',
         globalpingLocationsDescription:
           'Comma-separated Globalping locations, e.g. Europe, US+AWS, AS13335. Empty means anywhere.',
+        prometheusQueryDescription:
+          'PromQL instant query, sent to <url>/api/v1/query (Prometheus, Thanos, Mimir, VictoriaMetrics).',
+        prometheusDownDescription: 'The monitor is DOWN when the value meets this condition.',
+        prometheusDegradedDescription:
+          'Optional: DEGRADED when the value meets this condition (and not the DOWN one).',
+        prometheusAggregateDescription:
+          'Several series: worst (the worst series decides), any (same, reports the first), all (every series must meet a condition).',
+        prometheusNoDataStatusDescription:
+          'Status when the query returns no data. Pending keeps the current status.',
+        prometheusErrorStatusDescription:
+          'Status when the query fails (HTTP error, query error, unreachable). Pending keeps the current status.',
         globalpingSuccessRuleDescription:
           'all: every probe must succeed; any: one is enough; atLeast: the minimum below.',
         statusPageProviderDescription:
@@ -501,6 +571,10 @@ export const adminTranslations = {
         contactUrlDescription:
           'Contact link in the page header: an http(s) URL or mailto: address.',
         showValuesDescription: 'Show uptime percentages and response times to visitors.',
+        uptimeBarDaysDescription: 'Number of daily uptime bars per component (30, 45 or 90).',
+        uptimeCalculationDescription:
+          'checks: successful / all checks. duration: time not DOWN / total time. manual: from incident impacts only.',
+        showUptimePercentageDescription: 'Show the uptime percentage next to the daily bars.',
         defaultOpenDescription: 'Expanded when the page loads; visitors can still collapse it.',
         componentsDescription:
           'Components of the group: monitors, or static entries set by incidents.',

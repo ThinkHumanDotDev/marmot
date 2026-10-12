@@ -106,6 +106,7 @@ export const SECRET_FIELDS: ReadonlySet<string> = new Set([
   'sshPassword',
   'sshPrivateKey',
   'sshPassphrase',
+  'mailPassword',
   'rabbitmqPassword',
 ])
 

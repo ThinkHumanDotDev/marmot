@@ -54,6 +54,11 @@ export interface MonitorCheckContext {
    */
   response?: CapturedResponse | null
   /**
+   * The metric value the check judged (Prometheus query monitors, #140), whatever the verdict.
+   * The worker stores it on the heartbeat (`heartbeats.value`) and rolls it up for the chart.
+   */
+  value?: number | null
+  /**
    * Freshness lifetime in seconds of the document the check read (third-party status pages, #125:
    * `Cache-Control: max-age` / `Expires`). The worker stores it in `monitors.status.cacheSeconds`
    * and the scheduler never polls more often than that.

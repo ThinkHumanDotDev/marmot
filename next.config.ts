@@ -49,6 +49,7 @@ const monitorDriverPackages = [
   'playwright-core',
   'protobufjs',
   'radius',
+  'ssh2',
   'ssh2-sftp-client',
   'ws',
   // SSH tunnels (#160): a regular dependency, but with optional native bindings.

@@ -8,13 +8,29 @@
 import { z } from 'zod'
 
 import type { Messages } from '@/i18n/messages'
+import {
+  DEFAULT_GROUP_AGGREGATION,
+  DEFAULT_GROUP_WEIGHT,
+  GROUP_AGGREGATION_MODES,
+  GROUP_LATENCY_MODES,
+  GROUP_QUORUM_UNITS,
+  MAX_GROUP_QUORUM,
+  MAX_GROUP_WEIGHT,
+} from '@/lib/group-aggregation'
 import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
+import {
+  PROMETHEUS_AGGREGATES,
+  PROMETHEUS_FALLBACK_STATUSES,
+  PROMETHEUS_OPERATORS,
+  PROMETHEUS_QUERY_MAX_LENGTH,
+} from '@/lib/prometheus'
 import {
   DEFAULT_QUORUM,
   MAX_MONITOR_LOCATIONS,
   probeSupportsType,
   QUORUM_MODES,
 } from '@/lib/probe-locations'
+import { PUSH_EMAIL_KEYWORD_MAX_LENGTH, PUSH_EMAIL_UNMATCHED } from '@/lib/push-email'
 import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
@@ -66,6 +82,7 @@ export const MONITOR_TYPE_NAMES = [
   'http',
   'keyword',
   'json-query',
+  'prometheus',
   'port',
   'ping',
   'dns',
@@ -88,6 +105,11 @@ export const MONITOR_TYPE_NAMES = [
   'snmp',
   'ntp',
   'sftp',
+  'ssh',
+  'udp',
+  'tls',
+  'imap',
+  'pop3',
   'radius',
   'tailscale-ping',
   // Databases
@@ -109,6 +131,7 @@ export const URL_MONITOR_TYPES: readonly MonitorTypeName[] = [
   ...HTTP_MONITOR_TYPES,
   'websocket-upgrade',
   'real-browser',
+  'prometheus',
 ]
 /** Types whose target is `hostname` (and usually `port`). */
 export const HOST_MONITOR_TYPES: readonly MonitorTypeName[] = [
@@ -120,6 +143,11 @@ export const HOST_MONITOR_TYPES: readonly MonitorTypeName[] = [
   'snmp',
   'ntp',
   'sftp',
+  'ssh',
+  'udp',
+  'tls',
+  'imap',
+  'pop3',
   'radius',
   'tailscale-ping',
   'steam',
@@ -129,6 +157,15 @@ export const HOST_MONITOR_TYPES: readonly MonitorTypeName[] = [
 export const PORT_MONITOR_TYPES: readonly MonitorTypeName[] = HOST_MONITOR_TYPES.filter(
   (t) => t !== 'ping' && t !== 'tailscale-ping',
 )
+/** Types that record the server's TLS certificate and can warn before it expires. */
+export const CERTIFICATE_MONITOR_TYPES: readonly MonitorTypeName[] = [
+  ...HTTP_MONITOR_TYPES,
+  'tls',
+  'imap',
+  'pop3',
+]
+/** Mail types configured with `smtpSecurity`. */
+export const MAIL_MONITOR_TYPES: readonly MonitorTypeName[] = ['smtp', 'imap', 'pop3']
 /** Types configured with a driver connection string. */
 export const DATABASE_MONITOR_TYPES: readonly MonitorTypeName[] = [
   'mysql',
@@ -155,6 +192,10 @@ export const DEFAULT_PORTS: Partial<Record<MonitorTypeName, number>> = {
   snmp: 161,
   ntp: 123,
   sftp: 22,
+  ssh: 22,
+  tls: 443,
+  imap: 143,
+  pop3: 110,
   radius: 1812,
   steam: 27015,
 }
@@ -170,6 +211,8 @@ export const isHostMonitorType = (type: string | undefined | null): boolean =>
   includes(HOST_MONITOR_TYPES, type)
 export const isPortMonitorType = (type: string | undefined | null): boolean =>
   includes(PORT_MONITOR_TYPES, type)
+export const isCertificateMonitorType = (type: string | undefined | null): boolean =>
+  includes(CERTIFICATE_MONITOR_TYPES, type)
 export const isDatabaseMonitorType = (type: string | undefined | null): boolean =>
   includes(DATABASE_MONITOR_TYPES, type)
 export const isKeywordMonitorType = (type: string | undefined | null): boolean =>
@@ -204,6 +247,11 @@ export const MONITOR_TYPE_GROUPS: Record<
         name: 'json-query',
         label: 'HTTP(s) - Json Query',
         description: 'UP when a JSONata expression over the JSON response matches.',
+      },
+      {
+        name: 'prometheus',
+        label: 'Prometheus Query',
+        description: 'Runs a PromQL query; DOWN or degraded when the value meets a threshold.',
       },
       {
         name: 'real-browser',
@@ -293,6 +341,34 @@ export const MONITOR_TYPE_GROUPS: Record<
         description: 'Logs in over SFTP and optionally checks that a path exists.',
       },
       {
+        name: 'ssh',
+        label: 'SSH',
+        description:
+          'Reads the SSH banner; optionally logs in and runs a command with exit code and output checks.',
+      },
+      {
+        name: 'udp',
+        label: 'UDP',
+        description:
+          'Sends a datagram; UP on a matching reply, or when no ICMP port unreachable comes back.',
+      },
+      {
+        name: 'tls',
+        label: 'TLS Handshake',
+        description:
+          'Completes a TLS handshake (SNI, ALPN) and records the certificate for expiry warnings.',
+      },
+      {
+        name: 'imap',
+        label: 'IMAP',
+        description: 'Reads the greeting, optionally upgrades with STARTTLS and logs in.',
+      },
+      {
+        name: 'pop3',
+        label: 'POP3',
+        description: 'Reads the greeting, optionally upgrades with STLS and logs in.',
+      },
+      {
         name: 'radius',
         label: 'Radius',
         description: 'Sends an Access-Request; UP unless the server rejects it.',
@@ -351,7 +427,7 @@ export const MONITOR_TYPE_GROUPS: Record<
       {
         name: 'group',
         label: 'Group',
-        description: 'Aggregates child monitors: DOWN when any child is down.',
+        description: 'Aggregates child monitors: worst child, quorum or weighted score.',
       },
       {
         name: 'docker',
@@ -384,6 +460,23 @@ export const MQTT_CHECK_TYPES = ['keyword', 'json-query'] as const
 export const SNMP_VERSIONS = ['1', '2c'] as const
 export const SMTP_SECURITY_MODES = ['opportunistic', 'starttls', 'secure', 'nostarttls'] as const
 export const SSH_AUTH_METHODS = ['password', 'privateKey'] as const
+export const UDP_PAYLOAD_ENCODINGS = ['text', 'hex'] as const
+export const UDP_RESPONSE_MATCHES = ['none', 'any', 'keyword', 'regex'] as const
+
+/** UDP hex payload: pairs of hex digits, spaces, colons and a `0x` prefix allowed. */
+export const isHexPayloadText = (value: string | null | undefined): boolean =>
+  /^(?:[0-9a-f]{2})*$/i.test((value ?? '').replace(/^0x/i, '').replace(/[\s:]/g, ''))
+
+const isValidRegex = (value: string): boolean => {
+  try {
+    new RegExp(value)
+    return true
+  } catch {
+    return false
+  }
+}
+/** Authentication of the Prometheus query monitor (#140). */
+export const PROMETHEUS_AUTH_METHODS = ['none', 'basic', 'bearer'] as const
 
 /** Uptime Kuma's UI minimum for `interval` and `retryInterval`. */
 export const MIN_INTERVAL_SECONDS = 20
@@ -472,6 +565,13 @@ const assertionRow = z.object({
 
 const nonNegativeInt = (max = 1_000_000) => z.number().int().min(0).max(max)
 
+/** An optional finite number (thresholds); empty is `null`. */
+const finiteNumber = z
+  .number()
+  .finite()
+  .nullish()
+  .transform((v) => (v === undefined ? null : v))
+
 /** List of non-empty strings (brokers, nodes); blanks are dropped. */
 const textList = (max = 500) =>
   z
@@ -519,6 +619,21 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       otlpExport: z.boolean().default(true),
       /** OTLP collector (#99); `null` = the organization's default collector. */
       otlpCollector: relationId,
+      /** Group monitors (#144): how the children decide the group status. */
+      aggregation: z.enum(GROUP_AGGREGATION_MODES).default(DEFAULT_GROUP_AGGREGATION),
+      /** `quorum` groups: children (or percent of children) that must be up. */
+      aggregationQuorum: z
+        .number()
+        .int()
+        .min(1)
+        .max(MAX_GROUP_QUORUM)
+        .nullish()
+        .transform((value) => value ?? null),
+      aggregationQuorumUnit: z.enum(GROUP_QUORUM_UNITS).default('count'),
+      /** The group ping from its children's last ping. */
+      aggregationLatency: z.enum(GROUP_LATENCY_MODES).default('none'),
+      /** Weight of the monitor inside a `weighted` parent group. */
+      groupWeight: z.number().min(0).max(MAX_GROUP_WEIGHT).default(DEFAULT_GROUP_WEIGHT),
 
       // Target
       url: optionalText(2048),
@@ -618,6 +733,11 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         .refine(isValidTimezone, message('timezoneInvalid')),
       pushGrace: z.number().int().min(0).max(MAX_PUSH_SECONDS).nullish().default(null),
       pushMaxDuration: z.number().int().min(1).max(MAX_PUSH_SECONDS).nullish().default(null),
+      // Ping-by-email (#135)
+      pushEmailFailureKeyword: optionalText(PUSH_EMAIL_KEYWORD_MAX_LENGTH),
+      pushEmailSuccessKeyword: optionalText(PUSH_EMAIL_KEYWORD_MAX_LENGTH),
+      pushEmailStartKeyword: optionalText(PUSH_EMAIL_KEYWORD_MAX_LENGTH),
+      pushEmailUnmatched: z.enum(PUSH_EMAIL_UNMATCHED).default('ignore'),
 
       // Manual
       manualStatus: z.enum(MANUAL_STATUSES).nullish(),
@@ -666,6 +786,19 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       snmpVersion: z.enum(SNMP_VERSIONS).default('2c'),
       snmpCommunity: optionalText(500),
 
+      // Prometheus query (#140)
+      prometheusQuery: optionalText(PROMETHEUS_QUERY_MAX_LENGTH),
+      prometheusDownOperator: z.enum(PROMETHEUS_OPERATORS).default('>'),
+      prometheusDownThreshold: finiteNumber,
+      prometheusDegradedOperator: z
+        .enum(PROMETHEUS_OPERATORS)
+        .nullish()
+        .transform((value) => value ?? null),
+      prometheusDegradedThreshold: finiteNumber,
+      prometheusAggregate: z.enum(PROMETHEUS_AGGREGATES).default('worst'),
+      prometheusNoDataStatus: z.enum(PROMETHEUS_FALLBACK_STATUSES).default('down'),
+      prometheusErrorStatus: z.enum(PROMETHEUS_FALLBACK_STATUSES).default('down'),
+
       // SMTP
       smtpSecurity: z.enum(SMTP_SECURITY_MODES).default('opportunistic'),
 
@@ -676,6 +809,29 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       sshPrivateKey: optionalText(20_000),
       sshPassphrase: optionalText(500),
       sftpPath: optionalText(2048),
+
+      // SSH (credentials shared with SFTP)
+      sshCommand: optionalText(5000),
+      sshExpectedExitCode: z.number().int().min(0).max(255).default(0),
+      sshExpectedOutput: optionalText(2000),
+
+      // UDP
+      udpPayload: z
+        .string()
+        .max(8192)
+        .nullish()
+        .transform((v) => (v ? v : null)),
+      udpPayloadEncoding: z.enum(UDP_PAYLOAD_ENCODINGS).default('text'),
+      udpResponseMatch: z.enum(UDP_RESPONSE_MATCHES).default('none'),
+      udpResponsePattern: optionalText(1000),
+
+      // TLS handshake
+      tlsServername: optionalText(253),
+      tlsAlpn: optionalText(500),
+
+      // IMAP / POP3 (security mode shared with SMTP)
+      mailUsername: optionalText(500),
+      mailPassword: optionalText(500),
 
       // RabbitMQ
       rabbitmqNodes: textList(2048),
@@ -802,6 +958,24 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         }
       }
 
+      if (type === 'prometheus') {
+        if (!values.url) issue('url', message('urlRequired'))
+        else if (!/^https?:\/\/\S+$/i.test(values.url)) issue('url', message('httpUrl'))
+        checkHeaders()
+        if (!values.prometheusQuery) issue('prometheusQuery', message('queryRequired'))
+        if (values.prometheusDownThreshold === null) {
+          issue('prometheusDownThreshold', message('thresholdRequired'))
+        }
+        if (values.prometheusDegradedOperator && values.prometheusDegradedThreshold === null) {
+          issue('prometheusDegradedThreshold', message('thresholdRequired'))
+        }
+        if (!(PROMETHEUS_AUTH_METHODS as readonly string[]).includes(values.authMethod)) {
+          issue('authMethod', message('prometheusAuthMethod'))
+        } else {
+          checkAuth()
+        }
+      }
+
       if (type === 'websocket-upgrade') {
         if (!values.url) issue('url', message('urlRequired'))
         else if (!/^wss?:\/\/\S+$/i.test(values.url)) issue('url', message('wsUrl'))
@@ -839,7 +1013,8 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       if (isHostMonitorType(type) && !values.hostname) {
         issue('hostname', message('hostnameRequired'))
       }
-      const portRequired = type === 'port' || type === 'steam' || type === 'gamedig'
+      const portRequired =
+        type === 'port' || type === 'steam' || type === 'gamedig' || type === 'udp'
       if (portRequired && (values.port === null || values.port === undefined)) {
         issue('port', message('portRequired'))
       }
@@ -852,6 +1027,13 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       }
       if (type === 'manual' && !values.manualStatus) {
         issue('manualStatus', message('manualStatusRequired'))
+      }
+      if (type === 'group' && values.aggregation === 'quorum') {
+        if (values.aggregationQuorum === null) {
+          issue('aggregationQuorum', message('aggregationQuorumRequired'))
+        } else if (values.aggregationQuorumUnit === 'percent' && values.aggregationQuorum > 100) {
+          issue('aggregationQuorum', message('aggregationQuorumPercent'))
+        }
       }
       if (values.type === 'docker') {
         if (values.dockerHost === null) issue('dockerHost', message('dockerHostRequired'))
@@ -930,6 +1112,31 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         if (!values.sshUsername) issue('sshUsername', message('usernameRequired'))
         if (values.sshAuthMethod === 'privateKey' && !values.sshPrivateKey) {
           issue('sshPrivateKey', message('sshPrivateKeyRequired'))
+        }
+      }
+
+      if (type === 'ssh') {
+        if (values.sshCommand && !values.sshUsername) {
+          issue('sshUsername', message('usernameRequired'))
+        }
+        if (values.sshUsername && values.sshAuthMethod === 'privateKey' && !values.sshPrivateKey) {
+          issue('sshPrivateKey', message('sshPrivateKeyRequired'))
+        }
+      }
+
+      if (type === 'udp') {
+        if (values.udpPayloadEncoding === 'hex' && !isHexPayloadText(values.udpPayload)) {
+          issue('udpPayload', message('udpHexPayload'))
+        }
+        if (values.udpResponseMatch === 'keyword' || values.udpResponseMatch === 'regex') {
+          if (!values.udpResponsePattern) {
+            issue('udpResponsePattern', message('udpPatternRequired'))
+          } else if (
+            values.udpResponseMatch === 'regex' &&
+            !isValidRegex(values.udpResponsePattern)
+          ) {
+            issue('udpResponsePattern', message('regexInvalid'))
+          }
         }
       }
 
@@ -1019,7 +1226,7 @@ export const DATABASE_CONNECTION_PLACEHOLDERS: Record<string, string> = {
 /** Starting value of `url` for the URL-based types. */
 export function defaultUrl(type: MonitorTypeName): string | null {
   if (type === 'websocket-upgrade') return 'wss://'
-  if (isHttpMonitorType(type) || type === 'real-browser') return 'https://'
+  if (isHttpMonitorType(type) || type === 'real-browser' || type === 'prometheus') return 'https://'
   return null
 }
 
@@ -1041,6 +1248,11 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     quorum: DEFAULT_QUORUM,
     otlpExport: true,
     otlpCollector: null,
+    aggregation: DEFAULT_GROUP_AGGREGATION,
+    aggregationQuorum: null,
+    aggregationQuorumUnit: 'count',
+    aggregationLatency: 'none',
+    groupWeight: DEFAULT_GROUP_WEIGHT,
     url: defaultUrl(type),
     hostname: null,
     port: DEFAULT_PORTS[type] ?? null,
@@ -1092,6 +1304,10 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     pushTimezone: SAME_AS_SERVER,
     pushGrace: null,
     pushMaxDuration: null,
+    pushEmailFailureKeyword: null,
+    pushEmailSuccessKeyword: null,
+    pushEmailStartKeyword: null,
+    pushEmailUnmatched: 'ignore',
     manualStatus: type === 'manual' ? 'up' : null,
     dockerHost: null,
     dockerContainer: null,
@@ -1120,6 +1336,14 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     radiusSecret: null,
     radiusCalledStationId: null,
     radiusCallingStationId: null,
+    prometheusQuery: null,
+    prometheusDownOperator: '>',
+    prometheusDownThreshold: null,
+    prometheusDegradedOperator: null,
+    prometheusDegradedThreshold: null,
+    prometheusAggregate: 'worst',
+    prometheusNoDataStatus: 'down',
+    prometheusErrorStatus: 'down',
     snmpOid: null,
     snmpVersion: '2c',
     snmpCommunity: type === 'snmp' ? 'public' : null,
@@ -1130,6 +1354,17 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     sshPrivateKey: null,
     sshPassphrase: null,
     sftpPath: null,
+    sshCommand: null,
+    sshExpectedExitCode: 0,
+    sshExpectedOutput: null,
+    udpPayload: null,
+    udpPayloadEncoding: 'text',
+    udpResponseMatch: 'none',
+    udpResponsePattern: null,
+    tlsServername: null,
+    tlsAlpn: null,
+    mailUsername: null,
+    mailPassword: null,
     rabbitmqNodes: [],
     rabbitmqUsername: null,
     rabbitmqPassword: null,

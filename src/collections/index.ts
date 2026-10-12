@@ -34,6 +34,7 @@ import { StatusPages } from './StatusPages'
 import { StatusPageSubscribers } from './StatusPageSubscribers'
 import { SubscriberDeliveries } from './SubscriberDeliveries'
 import { SubscriberNotifications } from './SubscriberNotifications'
+import { StatusPageUptimeHistory } from './StatusPageUptimeHistory'
 import { StatusPageViewers } from './StatusPageViewers'
 import { Tags } from './Tags'
 import { Templates } from './Templates'
@@ -71,6 +72,7 @@ export const collections: CollectionConfig[] = [
   StatLocationHourly,
   StatusPages,
   StatusPageViewers,
+  StatusPageUptimeHistory,
   Incidents,
   StatusPageSubscribers,
   SubscriberNotifications,

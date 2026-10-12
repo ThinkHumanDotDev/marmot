@@ -27,6 +27,7 @@ import {
 import { AccessPanel } from './access-panel'
 import { DomainsPanel } from './domains-panel'
 import { GroupsEditor } from './groups-editor'
+import { HistoryPanel } from './history-panel'
 import { IncidentsPanel, type IncidentComponentOption } from './incidents-panel'
 import { NotificationsPanel } from './notifications-panel'
 import { SettingsForm } from './settings-form'
@@ -58,6 +59,8 @@ export interface EditorProps {
   trustProxy: boolean
   /** The organization's plan serves custom domains (always without billing, #161). */
   customDomains?: boolean
+  /** `status-page:history`: the monthly uptime history and its CSV export (#112). */
+  canViewHistory?: boolean
 }
 
 /** The page's components (group rows, by row id) in display order: what an incident can affect. */
@@ -91,6 +94,7 @@ export function StatusPageEditor({
   smsChannels,
   trustProxy,
   customDomains = true,
+  canViewHistory = false,
 }: EditorProps) {
   const t = useTranslations('statusPages.editorPage')
   const ta = useTranslations('statusPages.access.editor')
@@ -186,6 +190,7 @@ export function StatusPageEditor({
             <TabsTrigger value="domains">{t('tabs.domains')}</TabsTrigger>
             <TabsTrigger value="access">{ta('tab')}</TabsTrigger>
             <TabsTrigger value="share">{t('tabs.share')}</TabsTrigger>
+            {canViewHistory && <TabsTrigger value="history">{t('tabs.history')}</TabsTrigger>}
           </TabsList>
           <TabsContent value="settings" className="pt-6">
             <SettingsForm
@@ -259,6 +264,11 @@ export function StatusPageEditor({
           <TabsContent value="share" className="pt-6">
             <SharePanel page={page} />
           </TabsContent>
+          {canViewHistory && (
+            <TabsContent value="history" className="pt-6">
+              <HistoryPanel orgId={orgId} pageId={page.id} />
+            </TabsContent>
+          )}
         </Tabs>
       </section>
     </>

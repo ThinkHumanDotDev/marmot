@@ -37,7 +37,19 @@ import { track } from '@/lib/analytics'
 import { api, ApiError } from '@/lib/api'
 import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
 import { supportsAdhocTest, type OnDemandCheckResult } from '@/lib/on-demand-check'
+import {
+  GROUP_AGGREGATION_MODES,
+  GROUP_LATENCY_MODES,
+  GROUP_QUORUM_UNITS,
+  MAX_GROUP_QUORUM,
+  MAX_GROUP_WEIGHT,
+} from '@/lib/group-aggregation'
 import { probeSupportsType, quorumNeeded, QUORUM_MODES } from '@/lib/probe-locations'
+import {
+  PROMETHEUS_AGGREGATES,
+  PROMETHEUS_FALLBACK_STATUSES,
+  PROMETHEUS_OPERATORS,
+} from '@/lib/prometheus'
 import { REMINDER_BACKOFFS } from '@/lib/reminder-backoff'
 import { supportsSshTunnel } from '@/lib/ssh-tunnels'
 import {
@@ -49,6 +61,7 @@ import {
   DNS_RECORD_TYPES,
   HTTP_METHODS,
   humanDuration,
+  isCertificateMonitorType,
   isDatabaseMonitorType,
   isHostMonitorType,
   isHttpMonitorType,
@@ -63,9 +76,12 @@ import {
   createMonitorFormSchema,
   MQTT_CHECK_TYPES,
   OAUTH_AUTH_METHODS,
+  PROMETHEUS_AUTH_METHODS,
   SMTP_SECURITY_MODES,
   SNMP_VERSIONS,
   SSH_AUTH_METHODS,
+  UDP_PAYLOAD_ENCODINGS,
+  UDP_RESPONSE_MATCHES,
   type MonitorFormInput,
   type MonitorFormValues,
   type MonitorTypeName,
@@ -142,6 +158,7 @@ const EMPTY_RESOURCES: MonitorFormResources = {
   locations: [],
   notifications: [],
   otelCollectors: [],
+  inboundEmail: false,
 }
 
 type Name = FieldPath<MonitorFormInput>
@@ -184,6 +201,11 @@ const hasConnectionSection = (type: MonitorTypeName | undefined): boolean =>
         'snmp',
         'smtp',
         'sftp',
+        'ssh',
+        'udp',
+        'tls',
+        'imap',
+        'pop3',
         'rabbitmq',
         'websocket-upgrade',
         'gamedig',
@@ -251,7 +273,7 @@ function NumberField({
   description?: React.ReactNode
   min?: number
   max?: number
-  step?: number
+  step?: number | 'any'
   unit?: string
 }) {
   return (
@@ -261,11 +283,12 @@ function NumberField({
       render={({ field }) => (
         <FormItem>
           <FormLabel>{label}</FormLabel>
-          <FormControl>
-            <div className="relative">
+          {/* The control (id, aria) is the input itself, so the label names it. */}
+          <div className="relative">
+            <FormControl>
               <Input
                 type="number"
-                inputMode="numeric"
+                inputMode={step === 'any' ? 'decimal' : 'numeric'}
                 min={min}
                 max={max}
                 step={step}
@@ -280,13 +303,13 @@ function NumberField({
                 }
                 className={unit ? 'pr-16' : undefined}
               />
-              {unit && (
-                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
-                  {unit}
-                </span>
-              )}
-            </div>
-          </FormControl>
+            </FormControl>
+            {unit && (
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
+                {unit}
+              </span>
+            )}
+          </div>
           {description && <FormDescription>{description}</FormDescription>}
           <FormMessage />
         </FormItem>
@@ -337,6 +360,64 @@ function SelectField<T extends string>({
         </FormItem>
       )}
     />
+  )
+}
+
+/**
+ * Group monitors (#144): how the children decide the group status (worst child, quorum or weighted
+ * score) and the group's response time from its children.
+ */
+function GroupAggregationFields({ control }: { control: FormControlType }) {
+  const t = useTranslations('monitors.form.general')
+  const [aggregation, unit] = useWatch({
+    control,
+    name: ['aggregation', 'aggregationQuorumUnit'],
+  })
+  return (
+    <div className="grid gap-5 sm:grid-cols-2">
+      <SelectField
+        control={control}
+        name="aggregation"
+        label={t('aggregation')}
+        description={t(`aggregationDescription.${aggregation ?? 'worst'}`)}
+        options={GROUP_AGGREGATION_MODES.map((value) => ({
+          value,
+          label: t(`aggregationOption.${value}`),
+        }))}
+      />
+      <SelectField
+        control={control}
+        name="aggregationLatency"
+        label={t('aggregationLatency')}
+        description={t('aggregationLatencyDescription')}
+        options={GROUP_LATENCY_MODES.map((value) => ({
+          value,
+          label: t(`aggregationLatencyOption.${value}`),
+        }))}
+      />
+      {aggregation === 'quorum' && (
+        <>
+          <NumberField
+            control={control}
+            name="aggregationQuorum"
+            label={t('aggregationQuorum')}
+            description={t('aggregationQuorumDescription')}
+            min={1}
+            max={unit === 'percent' ? 100 : MAX_GROUP_QUORUM}
+            unit={unit === 'percent' ? '%' : undefined}
+          />
+          <SelectField
+            control={control}
+            name="aggregationQuorumUnit"
+            label={t('aggregationQuorumUnit')}
+            options={GROUP_QUORUM_UNITS.map((value) => ({
+              value,
+              label: t(`aggregationQuorumUnitOption.${value}`),
+            }))}
+          />
+        </>
+      )}
+    </div>
   )
 }
 
@@ -993,6 +1074,10 @@ export function MonitorForm({
     globalpingSuccessRule,
     globalpingProtocol,
     sshTunnel,
+    udpResponseMatch,
+    smtpSecurity,
+    parent,
+    prometheusDegradedOperator,
   ] = useWatch({
     control,
     name: [
@@ -1015,6 +1100,10 @@ export function MonitorForm({
       'globalpingSuccessRule',
       'globalpingProtocol',
       'sshTunnel',
+      'udpResponseMatch',
+      'smtpSecurity',
+      'parent',
+      'prometheusDegradedOperator',
     ],
   })
   const orgTimeZone = useTimeZone() ?? 'UTC'
@@ -1039,6 +1128,20 @@ export function MonitorForm({
       setValue('proxy', null, { shouldDirty: true })
     }
   }, [usesTunnel, getValues, setValue])
+  const capturesCertificate = isCertificateMonitorType(type)
+  // IMAP / POP3: follow the security mode with the well-known port while it is still a default one.
+  React.useEffect(() => {
+    const ports: Partial<Record<MonitorTypeName, [number, number]>> = {
+      imap: [143, 993],
+      pop3: [110, 995],
+    }
+    const pair = ports[type]
+    if (!pair) return
+    const port = getValues('port')
+    const [plain, implicit] = pair
+    if (smtpSecurity === 'secure' && port === plain) setValue('port', implicit)
+    else if (smtpSecurity !== 'secure' && port === implicit) setValue('port', plain)
+  }, [type, smtpSecurity, getValues, setValue])
   const isUrl = isUrlMonitorType(type)
   const isHost = isHostMonitorType(type)
   const isPort = isPortMonitorType(type)
@@ -1094,6 +1197,35 @@ export function MonitorForm({
     .find((t) => t.name === type)?.description
 
   const otherGroups = groups.filter((g) => String(g.id) !== String(monitorId))
+  const isPrometheus = type === 'prometheus'
+
+  // The proxy picker of the HTTP options, also offered by the Prometheus query card.
+  const proxyField = (
+    <RelationSelectField
+      control={control}
+      name="proxy"
+      label={t('http.proxy')}
+      noneLabel={t('http.noProxy')}
+      options={resources.proxies.map((p) => {
+        const label = p.isDefault ? t('http.proxyDefault', { label: p.label }) : p.label
+        return { id: p.id, label: p.active ? label : t('http.proxyInactive', { label }) }
+      })}
+      description={
+        resources.proxies.length === 0
+          ? t.rich('http.proxyEmpty', {
+              link: (chunks) => (
+                <Link
+                  href={`/${orgSlug}/settings/proxies`}
+                  className="underline underline-offset-2"
+                >
+                  {chunks}
+                </Link>
+              ),
+            })
+          : t('http.proxyDescription')
+      }
+    />
+  )
 
   async function onSubmit(formValues: MonitorFormValues) {
     setPending(true)
@@ -1231,7 +1363,16 @@ export function MonitorForm({
                 label={t('general.url')}
                 type="url"
                 placeholder={
-                  isWebSocket ? 'wss://example.com/socket' : 'https://example.com/health'
+                  isWebSocket
+                    ? 'wss://example.com/socket'
+                    : isPrometheus
+                      ? 'https://prometheus.example.com'
+                      : 'https://example.com/health'
+                }
+                description={
+                  isPrometheus
+                    ? t('prometheus.urlDescription', { path: '/api/v1/query' })
+                    : undefined
                 }
                 autoComplete="off"
               />
@@ -1405,6 +1546,8 @@ export function MonitorForm({
               />
             )}
 
+            {type === 'group' && <GroupAggregationFields control={control} />}
+
             {type === 'docker' && (
               <div className="grid gap-5 sm:grid-cols-2">
                 <RelationSelectField
@@ -1513,6 +1656,18 @@ export function MonitorForm({
               )}
             />
 
+            {parent !== null && parent !== undefined && parent !== '' && (
+              <NumberField
+                control={control}
+                name="groupWeight"
+                label={t('general.groupWeight')}
+                description={t('general.groupWeightDescription')}
+                min={0}
+                max={MAX_GROUP_WEIGHT}
+                step={0.1}
+              />
+            )}
+
             <TextField
               control={control}
               name="publicName"
@@ -1619,6 +1774,50 @@ export function MonitorForm({
                   description={t('push.maxDurationDescription')}
                 />
               </div>
+              {resources?.inboundEmail && (
+                <div className="grid gap-5 border-t pt-5" data-testid="push-email-rules">
+                  <div className="grid gap-1">
+                    <p className="text-sm font-medium">{t('push.email.title')}</p>
+                    <p className="text-sm text-muted-foreground">{t('push.email.description')}</p>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-3">
+                    <TextField
+                      control={control}
+                      name="pushEmailFailureKeyword"
+                      label={t('push.email.failure')}
+                      placeholder={t('push.email.failurePlaceholder')}
+                      autoComplete="off"
+                      description={t('push.email.failureDescription')}
+                    />
+                    <TextField
+                      control={control}
+                      name="pushEmailSuccessKeyword"
+                      label={t('push.email.success')}
+                      placeholder={t('push.email.successPlaceholder')}
+                      autoComplete="off"
+                      description={t('push.email.successDescription')}
+                    />
+                    <TextField
+                      control={control}
+                      name="pushEmailStartKeyword"
+                      label={t('push.email.start')}
+                      placeholder={t('push.email.startPlaceholder')}
+                      autoComplete="off"
+                      description={t('push.email.startDescription')}
+                    />
+                  </div>
+                  <SelectField
+                    control={control}
+                    name="pushEmailUnmatched"
+                    label={t('push.email.unmatched')}
+                    description={t('push.email.unmatchedDescription')}
+                    options={[
+                      { value: 'ignore', label: t('push.email.unmatchedIgnore') },
+                      { value: 'fail', label: t('push.email.unmatchedFail') },
+                    ]}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -2017,7 +2216,107 @@ export function MonitorForm({
                 />
               )}
 
-              {type === 'sftp' && (
+              {(type === 'imap' || type === 'pop3') && (
+                <>
+                  <SelectField
+                    control={control}
+                    name="smtpSecurity"
+                    label={t('connection.security')}
+                    options={SMTP_SECURITY_MODES.map((m) => ({
+                      value: m,
+                      label: t(`connection.mailSecurity.${m}`),
+                    }))}
+                    description={t('connection.mailSecurityDescription')}
+                  />
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <TextField
+                      control={control}
+                      name="mailUsername"
+                      label={t('connection.username')}
+                      autoComplete="off"
+                      description={t('connection.mailUsernameDescription')}
+                    />
+                    <TextField
+                      control={control}
+                      name="mailPassword"
+                      label={t('connection.password')}
+                      type="password"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </>
+              )}
+
+              {type === 'tls' && (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <TextField
+                    control={control}
+                    name="tlsServername"
+                    label={t('connection.tlsServername')}
+                    placeholder="ldap.example.com"
+                    description={t('connection.tlsServernameDescription')}
+                  />
+                  <TextField
+                    control={control}
+                    name="tlsAlpn"
+                    label={t('connection.tlsAlpn')}
+                    placeholder="h2, http/1.1"
+                    description={t('connection.tlsAlpnDescription')}
+                  />
+                </div>
+              )}
+
+              {(type === 'tls' || type === 'imap' || type === 'pop3') && (
+                <SwitchField
+                  control={control}
+                  name="ignoreTls"
+                  label={t('connection.ignoreTls')}
+                  description={t('http.ignoreTlsDescription')}
+                />
+              )}
+
+              {type === 'udp' && (
+                <>
+                  <div className="grid gap-5 sm:grid-cols-[1fr_12rem]">
+                    <TextareaField
+                      control={control}
+                      name="udpPayload"
+                      label={t('connection.udpPayload')}
+                      mono
+                      rows={3}
+                      description={t('connection.udpPayloadDescription')}
+                    />
+                    <SelectField
+                      control={control}
+                      name="udpPayloadEncoding"
+                      label={t('connection.udpPayloadEncoding')}
+                      options={UDP_PAYLOAD_ENCODINGS.map((m) => ({
+                        value: m,
+                        label: t(`connection.udpPayloadEncodingOption.${m}`),
+                      }))}
+                    />
+                  </div>
+                  <SelectField
+                    control={control}
+                    name="udpResponseMatch"
+                    label={t('connection.udpResponseMatch')}
+                    options={UDP_RESPONSE_MATCHES.map((m) => ({
+                      value: m,
+                      label: t(`connection.udpResponseMatchOption.${m}`),
+                    }))}
+                    description={t('connection.udpResponseMatchDescription')}
+                  />
+                  {(udpResponseMatch === 'keyword' || udpResponseMatch === 'regex') && (
+                    <TextField
+                      control={control}
+                      name="udpResponsePattern"
+                      label={t('connection.udpResponsePattern')}
+                    />
+                  )}
+                </>
+              )}
+
+              {(type === 'sftp' || type === 'ssh') && (
                 <>
                   <div className="grid gap-5 sm:grid-cols-2">
                     <TextField
@@ -2025,6 +2324,9 @@ export function MonitorForm({
                       name="sshUsername"
                       label={t('connection.username')}
                       autoComplete="off"
+                      description={
+                        type === 'ssh' ? t('connection.sshUsernameDescription') : undefined
+                      }
                     />
                     <SelectField
                       control={control}
@@ -2063,13 +2365,43 @@ export function MonitorForm({
                       autoComplete="new-password"
                     />
                   )}
-                  <TextField
-                    control={control}
-                    name="sftpPath"
-                    label={t('connection.remotePath')}
-                    placeholder="/var/backups"
-                    description={t('connection.remotePathDescription')}
-                  />
+                  {type === 'sftp' ? (
+                    <TextField
+                      control={control}
+                      name="sftpPath"
+                      label={t('connection.remotePath')}
+                      placeholder="/var/backups"
+                      description={t('connection.remotePathDescription')}
+                    />
+                  ) : (
+                    <>
+                      <TextareaField
+                        control={control}
+                        name="sshCommand"
+                        label={t('connection.sshCommand')}
+                        mono
+                        rows={2}
+                        // eslint-disable-next-line marmot/no-literal-jsx-text -- example value, not prose
+                        placeholder="systemctl is-active nginx"
+                        description={t('connection.sshCommandDescription')}
+                      />
+                      <div className="grid gap-5 sm:grid-cols-[12rem_1fr]">
+                        <NumberField
+                          control={control}
+                          name="sshExpectedExitCode"
+                          label={t('connection.sshExpectedExitCode')}
+                          min={0}
+                          max={255}
+                        />
+                        <TextField
+                          control={control}
+                          name="sshExpectedOutput"
+                          label={t('connection.sshExpectedOutput')}
+                          description={t('connection.sshExpectedOutputDescription')}
+                        />
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
@@ -2429,35 +2761,127 @@ export function MonitorForm({
                 description={t('http.headersDescription')}
               />
               <StatusCodesField control={control} />
-              {!usesTunnel && (
-                <RelationSelectField
+              {!usesTunnel && proxyField}
+              <SwitchField
+                control={control}
+                name="ignoreTls"
+                label={t('http.ignoreTls')}
+                description={t('http.ignoreTlsDescription')}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Prometheus query (#140) --------------------------------------------------------- */}
+        {isPrometheus && (
+          <Card data-testid="prometheus-card">
+            <CardHeader>
+              <CardTitle>{t('prometheus.title')}</CardTitle>
+              <CardDescription>{t('prometheus.description')}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-5">
+              <TextareaField
+                control={control}
+                name="prometheusQuery"
+                label={t('prometheus.query')}
+                mono
+                placeholder={
+                  'sum(rate(http_requests_total{code=~"5.."}[5m]))\n  / sum(rate(http_requests_total[5m]))'
+                }
+                description={t('prometheus.queryDescription')}
+              />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <SelectField
                   control={control}
-                  name="proxy"
-                  label={t('http.proxy')}
-                  noneLabel={t('http.noProxy')}
-                  options={resources.proxies.map((p) => {
-                    const label = p.isDefault ? t('http.proxyDefault', { label: p.label }) : p.label
-                    return {
-                      id: p.id,
-                      label: p.active ? label : t('http.proxyInactive', { label }),
-                    }
-                  })}
-                  description={
-                    resources.proxies.length === 0
-                      ? t.rich('http.proxyEmpty', {
-                          link: (chunks) => (
-                            <Link
-                              href={`/${orgSlug}/settings/proxies`}
-                              className="underline underline-offset-2"
-                            >
-                              {chunks}
-                            </Link>
-                          ),
-                        })
-                      : t('http.proxyDescription')
-                  }
+                  name="prometheusDownOperator"
+                  label={t('prometheus.downOperator')}
+                  options={PROMETHEUS_OPERATORS.map((op) => ({ value: op, label: op }))}
                 />
-              )}
+                <NumberField
+                  control={control}
+                  name="prometheusDownThreshold"
+                  label={t('prometheus.downThreshold')}
+                  step="any"
+                />
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <FormField
+                  control={control}
+                  name="prometheusDegradedOperator"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('prometheus.degradedOperator')}</FormLabel>
+                      <Select
+                        value={(field.value as string | null | undefined) ?? NONE}
+                        onValueChange={(value) => field.onChange(value === NONE ? null : value)}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={NONE}>{t('prometheus.degradedOff')}</SelectItem>
+                          {PROMETHEUS_OPERATORS.map((op) => (
+                            <SelectItem key={op} value={op}>
+                              {op}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {prometheusDegradedOperator && (
+                  <NumberField
+                    control={control}
+                    name="prometheusDegradedThreshold"
+                    label={t('prometheus.degradedThreshold')}
+                    step="any"
+                  />
+                )}
+              </div>
+              <div className="grid gap-5 sm:grid-cols-3">
+                <SelectField
+                  control={control}
+                  name="prometheusAggregate"
+                  label={t('prometheus.aggregate')}
+                  description={t('prometheus.aggregateDescription')}
+                  options={PROMETHEUS_AGGREGATES.map((value) => ({
+                    value,
+                    label: t(`prometheus.aggregates.${value}`),
+                  }))}
+                />
+                <SelectField
+                  control={control}
+                  name="prometheusNoDataStatus"
+                  label={t('prometheus.noDataStatus')}
+                  options={PROMETHEUS_FALLBACK_STATUSES.map((value) => ({
+                    value,
+                    label: t(`prometheus.statuses.${value}`),
+                  }))}
+                />
+                <SelectField
+                  control={control}
+                  name="prometheusErrorStatus"
+                  label={t('prometheus.errorStatus')}
+                  description={t('prometheus.errorStatusDescription')}
+                  options={PROMETHEUS_FALLBACK_STATUSES.map((value) => ({
+                    value,
+                    label: t(`prometheus.statuses.${value}`),
+                  }))}
+                />
+              </div>
+              <TextareaField
+                control={control}
+                name="headers"
+                label={t('http.headers')}
+                mono
+                placeholder={'{\n  "X-Scope-OrgID": "tenant-1"\n}'}
+                description={t('http.headersDescription')}
+              />
+              {!usesTunnel && proxyField}
               <SwitchField
                 control={control}
                 name="ignoreTls"
@@ -2489,7 +2913,7 @@ export function MonitorForm({
         )}
 
         {/* Authentication ------------------------------------------------------------------ */}
-        {(isHttp || isWebSocket) && (
+        {(isHttp || isWebSocket || isPrometheus) && (
           <Card>
             <CardHeader>
               <CardTitle>{t('auth.title')}</CardTitle>
@@ -2500,7 +2924,12 @@ export function MonitorForm({
                 control={control}
                 name="authMethod"
                 label={t('auth.method')}
-                options={(isWebSocket ? WS_AUTH_METHODS : AUTH_METHODS).map((m) => ({
+                options={(isWebSocket
+                  ? WS_AUTH_METHODS
+                  : isPrometheus
+                    ? PROMETHEUS_AUTH_METHODS
+                    : AUTH_METHODS
+                ).map((m) => ({
                   value: m,
                   label: t(`auth.methods.${m}`),
                 }))}
@@ -2642,7 +3071,7 @@ export function MonitorForm({
                 label={t('advanced.upsideDown')}
                 description={t('advanced.upsideDownDescription')}
               />
-              {isHttp && (
+              {capturesCertificate && (
                 <SwitchField
                   control={control}
                   name="expiryNotification"

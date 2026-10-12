@@ -2,8 +2,12 @@
  * Group monitor: aggregates the cached status of its active children.
  * Ported from Uptime Kuma 2.5.5 `server/monitor-types/group.js` — Copyright (c) 2021 Louis Lam,
  * MIT License. See THIRD_PARTY_NOTICES.md.
- * Marmot addition (#93): a degraded child (and no worse one) makes the group degraded.
+ * Marmot additions: a degraded child (and no worse one) makes the group degraded (#93); the
+ * `aggregation` setting picks worst (the ported behaviour), quorum or weighted, and
+ * `aggregationLatency` derives the group ping from the children (#144, `src/lib/group-aggregation.ts`).
  */
+import { aggregateGroup, type ChildStatus } from '@/lib/group-aggregation'
+
 import { registerMonitorType } from './registry'
 
 registerMonitorType({
@@ -19,67 +23,31 @@ registerMonitorType({
       limit: 0,
       pagination: false,
       overrideAccess: true,
-      select: { name: true, active: true, status: true },
+      // A stable order, so the message lists the children the same way on every beat.
+      sort: 'name',
+      select: { name: true, active: true, status: true, groupWeight: true },
     })
 
-    if (children.length === 0) {
-      ctx.heartbeat.status = 'pending'
-      ctx.heartbeat.msg = 'Group empty'
-      return
-    }
+    const verdict = aggregateGroup(
+      children.map((child) => ({
+        name: child.name || `#${child.id}`,
+        active: Boolean(child.active),
+        status: (child.status?.lastStatus ?? null) as ChildStatus | null,
+        weight: child.groupWeight ?? null,
+        ping: child.status?.lastPing ?? null,
+      })),
+      {
+        mode: ctx.monitor.aggregation,
+        quorum: ctx.monitor.aggregationQuorum,
+        quorumUnit: ctx.monitor.aggregationQuorumUnit,
+        latency: ctx.monitor.aggregationLatency,
+      },
+    )
 
-    let worstStatus: 'up' | 'degraded' | 'pending' | 'down' = 'up'
-    const downChildren: string[] = []
-    const pendingChildren: string[] = []
-    const degradedChildren: string[] = []
-
-    for (const child of children) {
-      if (!child.active) continue // ignore paused children
-
-      const label = child.name || `#${child.id}`
-      const lastStatus = child.status?.lastStatus
-
-      if (!lastStatus) {
-        if (worstStatus === 'up') worstStatus = 'pending'
-        pendingChildren.push(label)
-        continue
-      }
-
-      if (lastStatus === 'down') {
-        worstStatus = 'down'
-        downChildren.push(label)
-      } else if (lastStatus === 'pending') {
-        if (worstStatus !== 'down') worstStatus = 'pending'
-        pendingChildren.push(label)
-      } else if (lastStatus === 'degraded') {
-        if (worstStatus === 'up') worstStatus = 'degraded'
-        degradedChildren.push(label)
-      }
-    }
-
-    if (worstStatus === 'up') {
-      ctx.heartbeat.status = 'up'
-      ctx.heartbeat.msg = 'All children up and running'
-      return
-    }
-
-    if (worstStatus === 'degraded') {
-      ctx.heartbeat.status = 'degraded'
-      ctx.heartbeat.msg = `Degraded child monitors: ${degradedChildren.join(', ')}`
-      return
-    }
-
-    if (worstStatus === 'pending') {
-      ctx.heartbeat.status = 'pending'
-      ctx.heartbeat.msg = `Pending child monitors: ${pendingChildren.join(', ')}`
-      return
-    }
-
-    let message = `Child monitors down: ${downChildren.join(', ')}`
-    if (pendingChildren.length > 0) {
-      message += `; pending: ${pendingChildren.join(', ')}`
-    }
+    if (verdict.ping !== null) ctx.heartbeat.ping = verdict.ping
     // Throw to leverage the generic retry handling and notification flow.
-    throw new Error(message)
+    if (verdict.status === 'down') throw new Error(verdict.msg)
+    ctx.heartbeat.status = verdict.status
+    ctx.heartbeat.msg = verdict.msg
   },
 })

@@ -37,6 +37,7 @@ export const PERMISSION_ACTION_KEYS = {
   send: 'send',
   acknowledge: 'acknowledge',
   resolve: 'resolve',
+  history: 'history',
 } as const
 
 export type PermissionResourceKey =

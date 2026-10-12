@@ -1452,6 +1452,17 @@ export const OPERATIONS: OperationSpec[] = [
     permission: 'status-page:update',
   },
 
+  // Uptime history (#112)
+  {
+    method: 'GET',
+    path: `${ORG}/status-pages/{id}/uptime-history`,
+    operationId: 'getStatusPageUptimeHistory',
+    summary:
+      'Monthly uptime per component (`?months=1..24`, default 12); `?format=csv` downloads it as CSV',
+    tag: 'Status pages',
+    permission: 'status-page:history',
+  },
+
   // Outbound webhooks (admins by default; keys only where the organization lowered `webhook:*`)
   {
     method: 'GET',

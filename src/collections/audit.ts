@@ -122,6 +122,7 @@ export const NOT_AUDITED: Partial<Record<CollectionSlug, string>> = {
   'stat-hourly': 'high-volume rollups',
   'stat-daily': 'high-volume rollups',
   'stat-location-hourly': 'high-volume rollups',
+  'status-page-uptime-history': 'daily rollups written by the snapshot job',
   'monitor-location-states': 'engine state, rewritten after every check',
   'notification-sent-history': 'delivery log',
   'subscriber-deliveries': 'delivery log',

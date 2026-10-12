@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { isCertificateMonitorType, isHttpMonitorType } from '@/lib/validation/monitor'
 import type { Monitor } from '@/payload-types'
 import { certificateChain, daysUntil, isTlsInfo, type CertificateInfo } from '@/server/engine/tls'
 import { isDomainExpiryInfo } from '@/server/jobs/domain-expiry'
@@ -180,7 +181,8 @@ export function CertificatePanel({
   const formatDaysRemaining = useDaysRemaining()
   const tls = isTlsInfo(monitor.certInfo) ? monitor.certInfo : null
   const domain = isDomainExpiryInfo(monitor.domainExpiry) ? monitor.domainExpiry : null
-  const isHttps = ['http', 'keyword', 'json-query'].includes(monitor.type)
+  const isHttps = isHttpMonitorType(monitor.type)
+  const capturesTls = isCertificateMonitorType(monitor.type)
   const domainDays = domain?.expiresAt ? daysUntil(domain.expiresAt, now) : null
 
   return (
@@ -205,7 +207,7 @@ export function CertificatePanel({
           />
         ) : (
           <p className="text-sm text-muted-foreground" data-testid="certificate-empty">
-            {isHttps ? t('emptyHttps') : t('emptyOther')}
+            {isHttps ? t('emptyHttps') : capturesTls ? t('emptyTls') : t('emptyOther')}
           </p>
         )}
 
