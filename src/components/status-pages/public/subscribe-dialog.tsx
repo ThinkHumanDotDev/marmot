@@ -1,7 +1,7 @@
 'use client'
 
 import { BellRing } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -46,6 +46,7 @@ export function SubscribeDialog({
   groups: PublicGroup[]
 }) {
   const t = useTranslations('statusPages.subscribe')
+  const locale = useLocale()
   const [open, setOpen] = React.useState(false)
   const [channel, setChannel] = React.useState<SubscriberChannel>(channels[0] ?? 'email')
   const [target, setTarget] = React.useState('')
@@ -87,6 +88,7 @@ export function SubscribeDialog({
       const json = await post('/subscribe', {
         channel,
         target,
+        locale,
         components: scoped ? components : [],
       })
       if (json.next === 'enter-code') setStep({ kind: 'code', target })

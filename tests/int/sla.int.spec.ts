@@ -462,7 +462,11 @@ describe('SLA targets and reports', () => {
       const csv = await call(publicRoute, `/api/sla/${token}?format=csv`, { token })
       expect(csv.status).toBe(200)
 
-      for (const guess of ['x'.repeat(43), 'short', `${token.slice(0, -1)}A`]) {
+      for (const guess of [
+        'x'.repeat(43),
+        'short',
+        `${token.slice(0, -1)}${token.endsWith('A') ? 'B' : 'A'}`,
+      ]) {
         expect((await call(publicRoute, `/api/sla/${guess}`, { token: guess })).status).toBe(404)
       }
     })

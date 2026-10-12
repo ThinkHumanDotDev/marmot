@@ -20,7 +20,7 @@ import {
   ROLES,
 } from '@/access/permissions'
 import { adminGroup, adminT } from '@/i18n/admin'
-import { defaultLocale, localeNames, locales, type Locale } from '@/i18n/locales'
+import { appLocales, defaultLocale, localeNames, type Locale } from '@/i18n/locales'
 import { PLANS, SUBSCRIPTION_STATUSES } from '@/lib/entitlements'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
 import { captureServerEvent, hashAnalyticsId } from '@/server/analytics'
@@ -475,7 +475,7 @@ export const Organizations: CollectionConfig = {
           type: 'select',
           label: adminT('marmot:language'),
           defaultValue: defaultLocale,
-          options: locales.map((locale) => ({ label: localeNames[locale], value: locale })),
+          options: appLocales.map((locale) => ({ label: localeNames[locale], value: locale })),
           admin: { description: adminT('marmot:organizationLanguageDescription') },
         },
       ],

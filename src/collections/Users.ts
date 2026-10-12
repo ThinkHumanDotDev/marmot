@@ -9,7 +9,7 @@ import { authenticated, selfOrSuperadmin, superadminOnly } from '@/access/org-sc
 import { isSuperadmin, type UserLike } from '@/access/permissions'
 import { AUTH_ACCOUNTS_SLUG } from '@/collections/AuthAccounts'
 import { adminGroup, adminT } from '@/i18n/admin'
-import { defaultLocale, localeNames, locales } from '@/i18n/locales'
+import { appLocales, defaultLocale, localeNames } from '@/i18n/locales'
 import {
   auditAuthFailure,
   auditLogin,
@@ -238,7 +238,7 @@ export const Users: CollectionConfig = {
       type: 'select',
       label: adminT('marmot:language'),
       defaultValue: defaultLocale,
-      options: locales.map((locale) => ({ label: localeNames[locale], value: locale })),
+      options: appLocales.map((locale) => ({ label: localeNames[locale], value: locale })),
       admin: {
         position: 'sidebar',
         description: adminT('marmot:userLanguageDescription'),

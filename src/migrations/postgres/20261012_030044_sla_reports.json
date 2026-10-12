@@ -6954,6 +6954,89 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.status_pages_additional_locales": {
+      "name": "status_pages_additional_locales",
+      "schema": "",
+      "columns": {
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "enum_status_pages_additional_locales",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "status_pages_additional_locales_order_idx": {
+          "name": "status_pages_additional_locales_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_pages_additional_locales_parent_idx": {
+          "name": "status_pages_additional_locales_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "status_pages_additional_locales_parent_fk": {
+          "name": "status_pages_additional_locales_parent_fk",
+          "tableFrom": "status_pages_additional_locales",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.status_pages_allowed_email_domains": {
       "name": "status_pages_allowed_email_domains",
       "schema": "",
@@ -7716,13 +7799,27 @@
           "primaryKey": false,
           "notNull": false
         },
-        "language": {
-          "name": "language",
-          "type": "enum_status_pages_language",
+        "default_locale": {
+          "name": "default_locale",
+          "type": "enum_status_pages_default_locale",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": false,
           "default": "'en'"
+        },
+        "time_zone_mode": {
+          "name": "time_zone_mode",
+          "type": "enum_status_pages_time_zone_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'visitor'"
+        },
+        "time_zone": {
+          "name": "time_zone",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
         },
         "published": {
           "name": "published",
@@ -16713,6 +16810,16 @@
         "email"
       ]
     },
+    "public.enum_status_pages_additional_locales": {
+      "name": "enum_status_pages_additional_locales",
+      "schema": "public",
+      "values": [
+        "en",
+        "fr",
+        "de",
+        "es"
+      ]
+    },
     "public.enum_status_pages_subscriptions_channels": {
       "name": "enum_status_pages_subscriptions_channels",
       "schema": "public",
@@ -16740,12 +16847,22 @@
         "dark"
       ]
     },
-    "public.enum_status_pages_language": {
-      "name": "enum_status_pages_language",
+    "public.enum_status_pages_default_locale": {
+      "name": "enum_status_pages_default_locale",
       "schema": "public",
       "values": [
-        "auto",
-        "en"
+        "en",
+        "fr",
+        "de",
+        "es"
+      ]
+    },
+    "public.enum_status_pages_time_zone_mode": {
+      "name": "enum_status_pages_time_zone_mode",
+      "schema": "public",
+      "values": [
+        "visitor",
+        "page"
       ]
     },
     "public.enum_status_pages_access": {
@@ -16913,7 +17030,10 @@
       "name": "enum_status_page_subscribers_locale",
       "schema": "public",
       "values": [
-        "en"
+        "en",
+        "fr",
+        "de",
+        "es"
       ]
     },
     "public.enum_subscriber_notifications_channels": {
@@ -17215,6 +17335,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "604cb18f-d6a6-4285-a1b8-99c65042c8db",
+  "id": "74603140-d1d5-4e89-afb4-8faee0b9854c",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

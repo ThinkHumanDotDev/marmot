@@ -52,6 +52,13 @@ export interface StatusPageMetadataOptions {
   type?: 'website' | 'article'
   publishedTime?: string
   modifiedTime?: string
+  /**
+   * `hreflang` alternates of this view (`localeAlternates`), when the page offers more than one
+   * language (#114).
+   */
+  languages?: Record<string, string>
+  /** `/status/<slug>` with the request's language prefix: feeds are linked in that language. */
+  feedBase?: string
 }
 
 /**
@@ -70,7 +77,8 @@ export function statusPageMetadata(page: StatusPage, options: StatusPageMetadata
       : null
   const restricted = isProtectedPage(page)
   const base = statusPagePath(page.slug)
-  const { title, description, url } = options
+  const feeds = options.feedBase ?? base
+  const { title, description, url, languages } = options
   return {
     title,
     description,
@@ -79,13 +87,14 @@ export function statusPageMetadata(page: StatusPage, options: StatusPageMetadata
     ...(restricted ? {} : { manifest: `${base}/manifest.json` }),
     alternates: {
       canonical: url,
+      ...(languages && Object.keys(languages).length > 2 ? { languages } : {}),
       // Feed discovery (RSS, Atom, JSON Feed, the maintenance calendar and Markdown, #108).
       types: {
-        'application/rss+xml': `${base}/rss`,
-        'application/atom+xml': `${base}/feed/atom`,
-        'application/feed+json': `${base}/feed/json`,
-        'text/calendar': `${base}/maintenance.ics`,
-        'text/markdown': `${base}.md`,
+        'application/rss+xml': `${feeds}/rss`,
+        'application/atom+xml': `${feeds}/feed/atom`,
+        'application/feed+json': `${feeds}/feed/json`,
+        'text/calendar': `${feeds}/maintenance.ics`,
+        'text/markdown': feeds === base ? `${base}.md` : `${feeds}/index.md`,
       },
     },
     openGraph: {

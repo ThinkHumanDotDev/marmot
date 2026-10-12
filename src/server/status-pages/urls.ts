@@ -1,5 +1,13 @@
 import { env } from '@/env'
+import { isLocale, type Locale } from '@/i18n/locales'
 import { EVENTS_PATH, eventPath, type EventKind } from '@/lib/status-page-events'
+import {
+  localePrefix,
+  offeredLocales,
+  prefixedLocale,
+  STATUS_LOCALE_HEADER,
+  type LocalizedPage,
+} from '@/lib/status-page-locales'
 
 /** `NEXT_PUBLIC_SERVER_URL` without a trailing slash. */
 export const serverUrl = (): string => env.NEXT_PUBLIC_SERVER_URL.replace(/\/$/, '')
@@ -15,7 +23,7 @@ export const statusPageUrl = (slug: string): string => `${serverUrl()}${statusPa
 export const statusPageEventUrl = (slug: string, kind: EventKind, publicId: string): string =>
   `${statusPageUrl(slug)}${eventPath(kind, publicId)}`
 
-type PageWithDomains = { slug: string; domains?: { hostname: string }[] | null }
+type PageWithDomains = LocalizedPage & { slug: string; domains?: { hostname: string }[] | null }
 
 /** Hostname the visitor used (behind a proxy: `X-Forwarded-Host`), lower-cased, without port. */
 export function requestHostname(headers: Headers): string {
@@ -29,13 +37,31 @@ export const isCustomDomainRequest = (page: PageWithDomains, headers: Headers): 
   return (page.domains ?? []).some((d) => d.hostname === host)
 }
 
+/** The language prefix of the request (`/fr`), or `''` for the page's default language. */
+const requestLocalePrefix = (page: PageWithDomains, headers: Headers): string => {
+  const locale = prefixedLocale(page, headers)
+  return locale ? localePrefix(page, locale) : ''
+}
+
+/** `/status/<slug>` with the request's language prefix (`/status/<slug>/fr`), on any host. */
+export const statusPageLocalePath = (page: PageWithDomains, headers: Headers): string =>
+  `${statusPagePath(page.slug)}${requestLocalePrefix(page, headers)}`
+
 /**
- * Path of the page as the visitor sees it: `''` (the root) on a custom domain, where the proxy
- * rewrites `/`, `/rss`, `/login`, `/events/…` and the other page paths (`src/proxy.ts`);
+ * Path of the page without its language prefix: `''` (the root) on a custom domain, where the
+ * proxy rewrites `/`, `/rss`, `/login`, `/events/…` and the other page paths (`src/proxy.ts`);
  * `/status/<slug>` everywhere else.
  */
-export const statusPageBasePath = (page: PageWithDomains, headers: Headers): string =>
+export const statusPageRootPath = (page: PageWithDomains, headers: Headers): string =>
   isCustomDomainRequest(page, headers) ? '' : statusPagePath(page.slug)
+
+/**
+ * Path of the page as the visitor sees it, in the request's language: `statusPageRootPath`
+ * followed by the language prefix (`/status/<slug>/fr`, `/fr` on a custom domain). Links built on
+ * it keep the visitor in their language.
+ */
+export const statusPageBasePath = (page: PageWithDomains, headers: Headers): string =>
+  `${statusPageRootPath(page, headers)}${requestLocalePrefix(page, headers)}`
 
 /**
  * Public URL of a status page for the request at hand: when the request arrived on one of the
@@ -48,6 +74,15 @@ export function statusPageUrlForHeaders(
   headers: Headers,
   fallbackProtocol = 'https:',
 ): string {
+  return `${statusPageRootUrl(page, headers, fallbackProtocol)}${requestLocalePrefix(page, headers)}`
+}
+
+/** `statusPageUrlForHeaders` without the language prefix (the page in its default language). */
+export function statusPageRootUrl(
+  page: PageWithDomains,
+  headers: Headers,
+  fallbackProtocol = 'https:',
+): string {
   if (isCustomDomainRequest(page, headers)) {
     const forwarded = headers.get('x-forwarded-proto')?.split(',')[0]?.trim()
     const protocol = forwarded ? `${forwarded}:` : fallbackProtocol
@@ -56,9 +91,40 @@ export function statusPageUrlForHeaders(
   return statusPageUrl(page.slug)
 }
 
+/**
+ * The headers of an API request to a page's endpoints (`/api/status-pages/:slug/…`, which the
+ * proxy does not see) with the language of its `?locale=` parameter, so links and emails built
+ * from them stay in the language of the page the visitor came from.
+ */
+export function headersWithRequestedLocale(request: Request): Headers {
+  const headers = new Headers(request.headers)
+  const locale = new URL(request.url).searchParams.get('locale')
+  if (isLocale(locale)) headers.set(STATUS_LOCALE_HEADER, locale)
+  else headers.delete(STATUS_LOCALE_HEADER)
+  return headers
+}
+
 /** `statusPageUrlForHeaders` for a route handler's request. */
 export const statusPageUrlFor = (page: PageWithDomains, request: Request): string =>
   statusPageUrlForHeaders(page, request.headers, new URL(request.url).protocol)
+
+/**
+ * `hreflang` alternates of a page path (`''`, `/events`, a permalink) for every offered language,
+ * plus `x-default` (the default language, which has no prefix), as absolute URLs.
+ */
+export function localeAlternates(
+  page: PageWithDomains,
+  headers: Headers,
+  path = '',
+): Record<string, string> {
+  const root = statusPageRootUrl(page, headers)
+  const offered = offeredLocales(page)
+  const url = (locale: Locale) => `${root}${localePrefix(page, locale)}${path}`
+  return {
+    ...Object.fromEntries(offered.map((locale) => [locale, url(locale)])),
+    'x-default': url(offered[0]!),
+  }
+}
 
 /**
  * Permalink of an incident below a page URL (`statusPageUrlFor` / `statusPageUrl`):
@@ -103,9 +169,10 @@ export interface StatusPageLinks {
 
 /**
  * Links of a page: on its custom domain everything hangs off the root (the proxy rewrites these
- * paths), elsewhere off `/status/<slug>`.
+ * paths), elsewhere off `/status/<slug>`. `indexMarkdown` links the Markdown version as
+ * `<page>/index.md` instead of `<page>.md` (custom domains and language prefixes).
  */
-export function statusPageLinks(pageUrl: string, customDomain: boolean): StatusPageLinks {
+export function statusPageLinks(pageUrl: string, indexMarkdown: boolean): StatusPageLinks {
   return {
     page: pageUrl,
     events: `${pageUrl}${EVENTS_PATH}`,
@@ -113,7 +180,7 @@ export function statusPageLinks(pageUrl: string, customDomain: boolean): StatusP
     atom: `${pageUrl}/feed/atom`,
     jsonFeed: `${pageUrl}/feed/json`,
     calendar: `${pageUrl}/maintenance.ics`,
-    markdown: customDomain ? `${pageUrl}/index.md` : `${pageUrl}.md`,
+    markdown: indexMarkdown ? `${pageUrl}/index.md` : `${pageUrl}.md`,
     llms: `${pageUrl}/llms.txt`,
     openapi: `${pageUrl}/api/openapi.json`,
     api: (name) => `${pageUrl}/api/v2/${name}.json`,
@@ -122,6 +189,13 @@ export function statusPageLinks(pageUrl: string, customDomain: boolean): StatusP
   }
 }
 
-/** `statusPageLinks` for the request at hand. */
+/**
+ * `statusPageLinks` for the request at hand. Below a language prefix the Markdown version is
+ * `…/fr/index.md`, like on a custom domain (`/status/<slug>/fr.md` is not a page path).
+ */
 export const statusPageLinksFor = (page: PageWithDomains, request: Request): StatusPageLinks =>
-  statusPageLinks(statusPageUrlFor(page, request), isCustomDomainRequest(page, request.headers))
+  statusPageLinks(
+    statusPageUrlFor(page, request),
+    isCustomDomainRequest(page, request.headers) ||
+      requestLocalePrefix(page, request.headers) !== '',
+  )

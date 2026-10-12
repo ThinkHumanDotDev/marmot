@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { defaultLocale, hasMultipleLocales, localeNames, locales } from '@/i18n/locales'
+import { defaultLocale, localeNames, locales, type Locale } from '@/i18n/locales'
 import {
   DEFAULT_MAINTENANCE_VISIBILITY_HOURS,
   MAX_MAINTENANCE_VISIBILITY_HOURS,
@@ -45,7 +45,10 @@ type Values = Required<
     | 'description'
     | 'homepageUrl'
     | 'contactUrl'
-    | 'language'
+    | 'defaultLocale'
+    | 'additionalLocales'
+    | 'timeZoneMode'
+    | 'timeZone'
     | 'searchEngineIndex'
     | 'showTags'
     | 'showCertificateExpiry'
@@ -69,7 +72,10 @@ const fromPage = (page: StatusPage): Values => ({
   description: page.description ?? '',
   homepageUrl: page.homepageUrl ?? '',
   contactUrl: page.contactUrl ?? '',
-  language: page.language ?? defaultLocale,
+  defaultLocale: page.defaultLocale ?? defaultLocale,
+  additionalLocales: page.additionalLocales ?? [],
+  timeZoneMode: page.timeZoneMode ?? 'visitor',
+  timeZone: page.timeZone ?? '',
   searchEngineIndex: Boolean(page.searchEngineIndex),
   showTags: Boolean(page.showTags),
   showCertificateExpiry: Boolean(page.showCertificateExpiry),
@@ -130,7 +136,7 @@ export function SettingsForm({
   canEdit: boolean
   canDelete: boolean
 }) {
-  const t = useTranslations('statusPages.editor')
+  const tl = useTranslations('statusPages.settings.localization')
   const ts = useTranslations('statusPages.settings')
   const tm = useTranslations('maintenance.announcements')
   const router = useRouter()
@@ -154,6 +160,10 @@ export function SettingsForm({
         footerText: values.footerText || null,
         customCSS: values.customCSS || null,
         googleAnalyticsId: values.googleAnalyticsId || null,
+        timeZone: values.timeZone?.trim() || null,
+        additionalLocales: (values.additionalLocales ?? []).filter(
+          (locale) => locale !== values.defaultLocale,
+        ),
       })
       onSaved(doc)
       setValues(fromPage(doc))
@@ -268,33 +278,101 @@ export function SettingsForm({
 
         <Card>
           <CardHeader>
+            <CardTitle>{tl('title')}</CardTitle>
+            <CardDescription>{tl('description')}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="defaultLocale">{tl('defaultLocale')}</Label>
+                <Select
+                  value={values.defaultLocale ?? defaultLocale}
+                  disabled={!canEdit}
+                  onValueChange={(v) => set('defaultLocale', v as Locale)}
+                >
+                  <SelectTrigger id="defaultLocale">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locales.map((locale) => (
+                      <SelectItem key={locale} value={locale} lang={locale}>
+                        {localeNames[locale]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">{tl('defaultLocaleHint')}</p>
+              </div>
+              <fieldset className="grid gap-2" data-offered-locales>
+                <legend className="mb-2 text-sm leading-none font-medium">{tl('locales')}</legend>
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  {locales
+                    .filter((locale) => locale !== values.defaultLocale)
+                    .map((locale) => {
+                      const id = `locale-${locale}`
+                      const checked = (values.additionalLocales ?? []).includes(locale)
+                      return (
+                        <div key={locale} className="flex items-center gap-2">
+                          <Switch
+                            id={id}
+                            checked={checked}
+                            disabled={!canEdit}
+                            onCheckedChange={(on) =>
+                              set(
+                                'additionalLocales',
+                                on
+                                  ? [...(values.additionalLocales ?? []), locale]
+                                  : (values.additionalLocales ?? []).filter((l) => l !== locale),
+                              )
+                            }
+                          />
+                          <Label htmlFor={id} lang={locale}>
+                            {localeNames[locale]}
+                          </Label>
+                        </div>
+                      )
+                    })}
+                </div>
+                <p className="text-xs text-muted-foreground">{tl('localesHint')}</p>
+              </fieldset>
+              <div className="grid gap-2">
+                <Label htmlFor="timeZoneMode">{tl('timeZoneMode')}</Label>
+                <Select
+                  value={values.timeZoneMode ?? 'visitor'}
+                  disabled={!canEdit}
+                  onValueChange={(v) => set('timeZoneMode', v as 'visitor' | 'page')}
+                >
+                  <SelectTrigger id="timeZoneMode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="visitor">{tl('timeZoneModes.visitor')}</SelectItem>
+                    <SelectItem value="page">{tl('timeZoneModes.page')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="timeZone">{tl('timeZone')}</Label>
+                <Input
+                  id="timeZone"
+                  placeholder={tl('timeZonePlaceholder')}
+                  value={values.timeZone ?? ''}
+                  disabled={!canEdit}
+                  onChange={(e) => set('timeZone', e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">{tl('timeZoneHint')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>{ts('appearance.title')}</CardTitle>
             <CardDescription>{ts('appearance.description')}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              {hasMultipleLocales() && (
-                <div className="grid gap-2">
-                  <Label htmlFor="language">{t('language')}</Label>
-                  <Select
-                    value={values.language ?? defaultLocale}
-                    disabled={!canEdit}
-                    onValueChange={(v) => set('language', v as Values['language'])}
-                  >
-                    <SelectTrigger id="language">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">{t('languageAuto')}</SelectItem>
-                      {locales.map((locale) => (
-                        <SelectItem key={locale} value={locale} lang={locale}>
-                          {localeNames[locale]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
               <div className="grid gap-2">
                 <Label htmlFor="autoRefreshInterval">{ts('autoRefresh')}</Label>
                 <Input
