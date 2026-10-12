@@ -3,7 +3,56 @@
  * Keep this module free of server-only imports: it is bundled into client components.
  */
 
-export type ImportFormat = 'uptime-kuma' | 'marmot'
+export type ImportFormat = 'uptime-kuma' | 'marmot' | ImportProviderId
+
+/**
+ * Hosted services Marmot imports from through their API (#120). The credentials a user pastes are
+ * sent with one request and never stored (`src/server/import-export/providers`).
+ */
+export const IMPORT_PROVIDERS = ['statuspage', 'betterstack'] as const
+export type ImportProviderId = (typeof IMPORT_PROVIDERS)[number]
+
+export const isImportProvider = (value: unknown): value is ImportProviderId =>
+  typeof value === 'string' && (IMPORT_PROVIDERS as readonly string[]).includes(value)
+
+/** What a provider import can bring over, in the order it is written. */
+export const IMPORT_RESOURCES = [
+  'monitors',
+  'components',
+  'incidents',
+  'maintenance',
+  'subscribers',
+] as const
+export type ImportResource = (typeof IMPORT_RESOURCES)[number]
+
+export const isImportResource = (value: unknown): value is ImportResource =>
+  typeof value === 'string' && (IMPORT_RESOURCES as readonly string[]).includes(value)
+
+export interface ImportProviderInfo {
+  id: ImportProviderId
+  /** Credential fields of the connect form; `secret` fields are rendered as password inputs. */
+  credentials: { name: string; secret: boolean; required: boolean }[]
+  resources: ImportResource[]
+}
+
+export const IMPORT_PROVIDER_INFO: Record<ImportProviderId, ImportProviderInfo> = {
+  statuspage: {
+    id: 'statuspage',
+    credentials: [
+      { name: 'apiKey', secret: true, required: true },
+      { name: 'pageId', secret: false, required: true },
+    ],
+    resources: ['components', 'incidents', 'maintenance', 'subscribers'],
+  },
+  betterstack: {
+    id: 'betterstack',
+    credentials: [
+      { name: 'apiToken', secret: true, required: true },
+      { name: 'statusPageId', secret: false, required: false },
+    ],
+    resources: ['monitors', 'components', 'incidents', 'maintenance'],
+  },
+}
 
 export const MARMOT_EXPORT_FORMAT = 'marmot'
 export const MARMOT_EXPORT_VERSION = 1
@@ -34,6 +83,12 @@ export interface ImportReport {
   templates: ImportSectionReport
   /** Uptime Kuma tags are reported but not imported until the tags collection exists. */
   tags: ImportSectionReport
+  /** Incidents of the imported status pages (Marmot exports and provider imports). */
+  incidents: ImportSectionReport
+  /** Maintenance windows (provider imports). */
+  maintenance: ImportSectionReport
+  /** Status page subscribers (provider imports). */
+  subscribers: ImportSectionReport
   warnings: string[]
 }
 
@@ -57,4 +112,7 @@ export const totalCreates = (report: ImportReport): number =>
   report.monitors.create +
   report.notifications.create +
   report.statusPages.create +
-  report.templates.create
+  report.templates.create +
+  report.incidents.create +
+  report.maintenance.create +
+  report.subscribers.create

@@ -26,6 +26,7 @@ import {
 
 import { importExportApi } from './api'
 import { ImportReportView } from './import-report'
+import { ProviderImport } from './provider-import'
 
 interface ImportExportViewProps {
   orgId: string | number
@@ -217,6 +218,8 @@ export function ImportExportView({
           </CardFooter>
         )}
       </Card>
+
+      {canImport && <ProviderImport orgId={orgId} orgSlug={orgSlug} />}
 
       <Card>
         <CardHeader>

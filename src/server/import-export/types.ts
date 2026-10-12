@@ -10,6 +10,7 @@ import type {
  * writes it (or only reports, on a dry run).
  */
 import type { ImportFormat, SkippedItem } from '@/lib/import-export'
+import type { ComponentImpact, IncidentStatus } from '@/lib/incident-timeline'
 import type { ChannelEvent } from '@/lib/notification-events'
 import type { MonitorFormValues } from '@/lib/validation/monitor'
 import type { TemplateKind } from '@/lib/templates'
@@ -80,10 +81,44 @@ export interface PlannedStatusPageGroup {
   monitors: PlannedStatusPageComponent[]
 }
 
+/** One timeline entry of an imported incident (provider imports keep the whole history). */
+export interface PlannedIncidentUpdate {
+  status: IncidentStatus
+  message: string
+  /** ISO time; times in the future are clamped to the import time. */
+  postedAt: string
+  /** Impacts by component row key (`PlannedStatusPageComponent.key`). */
+  components: { componentKey: string; impact: ComponentImpact }[]
+}
+
 export type PlannedIncident = Pick<
   Incident,
   'title' | 'content' | 'style' | 'pinned' | 'active' | 'resolvedAt'
->
+> & {
+  /** Full timeline; without it the incident is created from the legacy `content`/`style`. */
+  updates?: PlannedIncidentUpdate[]
+  impact?: ComponentImpact
+  /** Original creation time (ISO), kept so the history sorts as it did on the source. */
+  createdAt?: string
+}
+
+/** A one-off maintenance window (provider imports). Times are ISO instants. */
+export interface PlannedMaintenance {
+  key: string
+  title: string
+  description: string | null
+  start: string
+  end: string
+  statusPageKeys: string[]
+  monitorKeys: string[]
+}
+
+/** A confirmed subscriber of a planned status page; `componentKeys: null` means every component. */
+export interface PlannedSubscriber {
+  channel: SubscriberChannel
+  target: string
+  componentKeys: string[] | null
+}
 
 /** Subscription settings of a page; the SMS channel is referenced by its key in the file. */
 export interface PlannedSubscriptions {
@@ -103,6 +138,8 @@ export interface PlannedStatusPage {
   domains: string[]
   groups: PlannedStatusPageGroup[]
   incidents: PlannedIncident[]
+  /** Provider imports only; imported as confirmed (`source: import`) without an opt-in. */
+  subscribers?: PlannedSubscriber[]
 }
 
 export interface PlannedTemplate {
@@ -128,12 +165,16 @@ export interface ImportPlan {
   notifications: PlannedNotification[]
   statusPages: PlannedStatusPage[]
   templates: PlannedTemplate[]
+  maintenance: PlannedMaintenance[]
   skipped: {
     monitors: SkippedItem[]
     notifications: SkippedItem[]
     statusPages: SkippedItem[]
     templates: SkippedItem[]
     tags: SkippedItem[]
+    incidents: SkippedItem[]
+    maintenance: SkippedItem[]
+    subscribers: SkippedItem[]
   }
   warnings: string[]
 }
@@ -144,7 +185,17 @@ export const emptyPlan = (format: ImportFormat): ImportPlan => ({
   notifications: [],
   statusPages: [],
   templates: [],
-  skipped: { monitors: [], notifications: [], statusPages: [], templates: [], tags: [] },
+  maintenance: [],
+  skipped: {
+    monitors: [],
+    notifications: [],
+    statusPages: [],
+    templates: [],
+    tags: [],
+    incidents: [],
+    maintenance: [],
+    subscribers: [],
+  },
   warnings: [],
 })
 
