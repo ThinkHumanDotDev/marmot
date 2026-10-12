@@ -1041,6 +1041,13 @@ export interface StatusPage {
         id?: string | null;
       }[]
     | null;
+  allowEmbedding?: ('off' | 'any' | 'origins') | null;
+  embedOrigins?:
+    | {
+        origin: string;
+        id?: string | null;
+      }[]
+    | null;
   searchEngineIndex?: boolean | null;
   showTags?: boolean | null;
   showCertificateExpiry?: boolean | null;
@@ -2571,6 +2578,13 @@ export interface StatusPagesSelect<T extends boolean = true> {
     | {
         cidr?: T;
         label?: T;
+        id?: T;
+      };
+  allowEmbedding?: T;
+  embedOrigins?:
+    | T
+    | {
+        origin?: T;
         id?: T;
       };
   searchEngineIndex?: T;

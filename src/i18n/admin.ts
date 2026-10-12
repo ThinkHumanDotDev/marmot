@@ -555,6 +555,10 @@ export const adminTranslations = {
           'Domains such as example.com; addresses at these domains can request a sign-in link.',
         allowedIpRangesDescription:
           'IPv4 or IPv6 addresses and CIDR ranges. Needs the trustProxy instance setting behind a reverse proxy.',
+        allowEmbeddingDescription:
+          'Who may show the page in an iframe (CSP frame-ancestors). off: nobody; any: every site; origins: only the listed origins. Only public pages can be embedded.',
+        embedOriginsDescription:
+          'Origins such as https://docs.example.com or https://*.example.com that may embed the page.',
         autoRefreshIntervalDescription:
           'Seconds between client refreshes; 0 disables auto refresh.',
         customCSSDescription: 'Injected into the public page as a <style> tag.',
