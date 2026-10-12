@@ -445,6 +445,11 @@ export interface Monitor {
   includeLocal?: boolean | null;
   quorum?: ('any' | 'half' | 'all') | null;
   weight?: number | null;
+  aggregation?: ('worst' | 'quorum' | 'weighted') | null;
+  aggregationQuorum?: number | null;
+  aggregationQuorumUnit?: ('count' | 'percent') | null;
+  aggregationLatency?: ('none' | 'avg' | 'max' | 'min') | null;
+  groupWeight?: number | null;
   url?: string | null;
   proxy?: (number | null) | MonitorProxy;
   dockerHost?: (number | null) | DockerHost;
@@ -1997,6 +2002,11 @@ export interface MonitorsSelect<T extends boolean = true> {
   includeLocal?: T;
   quorum?: T;
   weight?: T;
+  aggregation?: T;
+  aggregationQuorum?: T;
+  aggregationQuorumUnit?: T;
+  aggregationLatency?: T;
+  groupWeight?: T;
   url?: T;
   proxy?: T;
   dockerHost?: T;

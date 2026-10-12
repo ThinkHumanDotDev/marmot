@@ -621,7 +621,7 @@
       },
       "group": {
         "label": "Group",
-        "description": "Aggregates child monitors: DOWN when any child is down."
+        "description": "Aggregates child monitors: worst child, quorum or weighted score."
       },
       "grpc-keyword": {
         "label": "gRPC(s) - Keyword",
@@ -728,6 +728,8 @@
       "portRequired": "Port is required",
       "recordTypeRequired": "Record type is required",
       "manualStatusRequired": "Choose the status to report",
+      "aggregationQuorumRequired": "Enter how many children must be up",
+      "aggregationQuorumPercent": "A percentage is at most 100",
       "dockerHostRequired": "Choose a Docker host",
       "containerRequired": "Container name or id is required",
       "containerInvalid": "Use the container name or id, e.g. my-app or 3f2a…",
@@ -886,6 +888,34 @@
         "group": "Monitor group",
         "groupEmpty": "Create a Group monitor to nest monitors under it.",
         "groupDescription": "Groups aggregate the status of their children.",
+        "groupWeight": "Weight in the group",
+        "groupWeightDescription": "Used when the group scores its children by weight: relative to the other children, 0 ignores this monitor.",
+        "aggregation": "Status from the children",
+        "aggregationOption": {
+          "worst": "Worst child",
+          "quorum": "Quorum",
+          "weighted": "Weighted score"
+        },
+        "aggregationDescription": {
+          "worst": "Down as soon as one child is down, pending while one retries, degraded while one is degraded.",
+          "quorum": "Down only when fewer children than the quorum are up; degraded while some are not up.",
+          "weighted": "Children score up 1, degraded 0.5 and down 0, by weight: 100 % is up, 0 % is down, anything between is degraded."
+        },
+        "aggregationQuorum": "Quorum",
+        "aggregationQuorumDescription": "Children that must be up. Degraded children and children in maintenance count as up.",
+        "aggregationQuorumUnit": "Quorum unit",
+        "aggregationQuorumUnitOption": {
+          "count": "Children",
+          "percent": "Percent of the children"
+        },
+        "aggregationLatency": "Group response time",
+        "aggregationLatencyDescription": "Derived from the children's last response time.",
+        "aggregationLatencyOption": {
+          "none": "Time of the group check",
+          "avg": "Average of the children",
+          "max": "Slowest child",
+          "min": "Fastest child"
+        },
         "publicName": "Public name",
         "publicNameDescription": "Shown on status pages instead of the friendly name. Leave empty to use the friendly name.",
         "descriptionLabel": "Description",

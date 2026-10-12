@@ -37,6 +37,13 @@ import { track } from '@/lib/analytics'
 import { api, ApiError } from '@/lib/api'
 import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
 import { supportsAdhocTest, type OnDemandCheckResult } from '@/lib/on-demand-check'
+import {
+  GROUP_AGGREGATION_MODES,
+  GROUP_LATENCY_MODES,
+  GROUP_QUORUM_UNITS,
+  MAX_GROUP_QUORUM,
+  MAX_GROUP_WEIGHT,
+} from '@/lib/group-aggregation'
 import { probeSupportsType, quorumNeeded, QUORUM_MODES } from '@/lib/probe-locations'
 import {
   PROMETHEUS_AGGREGATES,
@@ -343,6 +350,64 @@ function SelectField<T extends string>({
         </FormItem>
       )}
     />
+  )
+}
+
+/**
+ * Group monitors (#144): how the children decide the group status (worst child, quorum or weighted
+ * score) and the group's response time from its children.
+ */
+function GroupAggregationFields({ control }: { control: FormControlType }) {
+  const t = useTranslations('monitors.form.general')
+  const [aggregation, unit] = useWatch({
+    control,
+    name: ['aggregation', 'aggregationQuorumUnit'],
+  })
+  return (
+    <div className="grid gap-5 sm:grid-cols-2">
+      <SelectField
+        control={control}
+        name="aggregation"
+        label={t('aggregation')}
+        description={t(`aggregationDescription.${aggregation ?? 'worst'}`)}
+        options={GROUP_AGGREGATION_MODES.map((value) => ({
+          value,
+          label: t(`aggregationOption.${value}`),
+        }))}
+      />
+      <SelectField
+        control={control}
+        name="aggregationLatency"
+        label={t('aggregationLatency')}
+        description={t('aggregationLatencyDescription')}
+        options={GROUP_LATENCY_MODES.map((value) => ({
+          value,
+          label: t(`aggregationLatencyOption.${value}`),
+        }))}
+      />
+      {aggregation === 'quorum' && (
+        <>
+          <NumberField
+            control={control}
+            name="aggregationQuorum"
+            label={t('aggregationQuorum')}
+            description={t('aggregationQuorumDescription')}
+            min={1}
+            max={unit === 'percent' ? 100 : MAX_GROUP_QUORUM}
+            unit={unit === 'percent' ? '%' : undefined}
+          />
+          <SelectField
+            control={control}
+            name="aggregationQuorumUnit"
+            label={t('aggregationQuorumUnit')}
+            options={GROUP_QUORUM_UNITS.map((value) => ({
+              value,
+              label: t(`aggregationQuorumUnitOption.${value}`),
+            }))}
+          />
+        </>
+      )}
+    </div>
   )
 }
 
@@ -998,6 +1063,7 @@ export function MonitorForm({
     globalpingMeasurement,
     globalpingSuccessRule,
     globalpingProtocol,
+    parent,
     prometheusDegradedOperator,
   ] = useWatch({
     control,
@@ -1020,6 +1086,7 @@ export function MonitorForm({
       'globalpingMeasurement',
       'globalpingSuccessRule',
       'globalpingProtocol',
+      'parent',
       'prometheusDegradedOperator',
     ],
   })
@@ -1441,6 +1508,8 @@ export function MonitorForm({
               />
             )}
 
+            {type === 'group' && <GroupAggregationFields control={control} />}
+
             {type === 'docker' && (
               <div className="grid gap-5 sm:grid-cols-2">
                 <RelationSelectField
@@ -1524,6 +1593,18 @@ export function MonitorForm({
                 </FormItem>
               )}
             />
+
+            {parent !== null && parent !== undefined && parent !== '' && (
+              <NumberField
+                control={control}
+                name="groupWeight"
+                label={t('general.groupWeight')}
+                description={t('general.groupWeightDescription')}
+                min={0}
+                max={MAX_GROUP_WEIGHT}
+                step={0.1}
+              />
+            )}
 
             <TextField
               control={control}
