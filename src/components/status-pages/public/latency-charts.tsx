@@ -117,6 +117,9 @@ function Metric({ label, value, testId }: { label: string; value: string; testId
 
 const axisTick = { fill: 'var(--muted-foreground)', fontSize: 11 }
 
+/** Legend labels in the text colour; the swatch beside them carries the series colour. */
+const legendText = (value: string) => <span className="text-muted-foreground">{value}</span>
+
 /**
  * One component's public charts (#113): headline figures, the p50/p95/p99 latency lines, the
  * check bars and, for multi-location monitors, a per-location table. `href` links the title to
@@ -224,8 +227,8 @@ export function ComponentCharts({
                 {grid}
                 {xAxis}
                 <YAxis
-                  width={52}
-                  tickFormatter={(v: number) => ms(v)}
+                  width={44}
+                  tickFormatter={(v: number) => format.number(v, 'integer')}
                   tick={axisTick}
                   axisLine={false}
                   tickLine={false}
@@ -239,7 +242,9 @@ export function ComponentCharts({
                   verticalAlign="top"
                   height={28}
                   iconType="plainline"
-                  wrapperStyle={{ fontSize: 12, color: 'var(--muted-foreground)' }}
+                  itemSorter={null}
+                  formatter={legendText}
+                  wrapperStyle={{ fontSize: 12 }}
                 />
                 {PUBLIC_PERCENTILES.map((key) => (
                   <Line
@@ -285,12 +290,13 @@ export function ComponentCharts({
               <BarChart
                 data={points}
                 margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
-                barCategoryGap={1}
+                // A 1px gap only while the bars are wide enough to show it (not 288 of them).
+                barCategoryGap={points.length > 120 ? 0 : 1}
               >
                 {grid}
                 {xAxis}
                 <YAxis
-                  width={52}
+                  width={44}
                   tick={axisTick}
                   axisLine={false}
                   tickLine={false}
@@ -301,7 +307,9 @@ export function ComponentCharts({
                   verticalAlign="top"
                   height={28}
                   iconType="square"
-                  wrapperStyle={{ fontSize: 12, color: 'var(--muted-foreground)' }}
+                  itemSorter={null}
+                  formatter={legendText}
+                  wrapperStyle={{ fontSize: 12 }}
                 />
                 <Bar
                   dataKey="healthy"
@@ -352,11 +360,8 @@ export function ComponentCharts({
                       {t('locations.uptime')}
                     </th>
                   )}
-                  <th scope="col" className="py-1.5 pr-3 text-right font-medium">
-                    {t('locations.average')}
-                  </th>
                   <th scope="col" className="py-1.5 text-right font-medium">
-                    {t('locations.p95')}
+                    {t('locations.average')}
                   </th>
                 </tr>
               </thead>
@@ -373,8 +378,7 @@ export function ComponentCharts({
                           : formatUptime(format, location.uptime)}
                       </td>
                     )}
-                    <td className="py-1.5 pr-3 text-right">{ms(location.avgPing)}</td>
-                    <td className="py-1.5 text-right">{ms(location.p95)}</td>
+                    <td className="py-1.5 text-right">{ms(location.avgPing)}</td>
                   </tr>
                 ))}
               </tbody>

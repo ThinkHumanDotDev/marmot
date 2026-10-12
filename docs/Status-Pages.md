@@ -250,8 +250,8 @@ published component (on a custom domain: `/monitors` and `/monitors/<componentId
 - a **response time** chart with p50, p95 and p99 lines per interval (5 minutes for 24 hours, 1 hour for
   7 days, 4 hours for 30 days);
 - a **checks** chart with the successful, degraded and failed checks per interval;
-- for monitors checked from several [locations](Monitors.md) (#92), a table of each location's uptime,
-  average and p95 response time; the local workers read as "Primary".
+- for monitors checked from several [locations](Monitors.md) (#92), a table of each location's uptime
+  and average response time; the local workers read as "Primary".
 
 Charts need the component's values to be public: with `showValues` off on the page or the component
 there is no chart, whatever `showChart` says. Static components and third-party status page monitors
@@ -290,7 +290,7 @@ JSON.
           "p99": 61,
         },
       ],
-      "locations": [{ "name": "Frankfurt", "uptime": 1, "avgPing": 31.5, "p95": 52 }], // multi-location monitors only
+      "locations": [{ "name": "Frankfurt", "uptime": 1, "avgPing": 31.5 }], // multi-location monitors only
     },
   ],
   "generatedAt": "2026-10-12T09:00:00.000Z",

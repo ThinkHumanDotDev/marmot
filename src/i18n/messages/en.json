@@ -5051,7 +5051,7 @@
         "30d": "30 days"
       },
       "latencyTitle": "Response time",
-      "latencyDescription": "p50, p95 and p99 response time per interval.",
+      "latencyDescription": "p50, p95 and p99 response time per interval, in milliseconds.",
       "latencyEmpty": "No response-time data in this period.",
       "latencySummary": "Response time of {name}: p50 {p50}, p95 {p95}, p99 {p99} over the period.",
       "checksTitle": "Checks",
@@ -5080,8 +5080,7 @@
         "location": "Location",
         "primary": "Primary",
         "uptime": "Uptime",
-        "average": "Average",
-        "p95": "p95"
+        "average": "Average"
       },
       "empty": "No response-time charts are published on this page."
     }

@@ -16,7 +16,7 @@ import { componentDisplayName } from '@/lib/status-page-components'
 import { LOCAL_LOCATION, isMultiLocation, monitorLocationKeys } from '@/lib/probe-locations'
 import type { Location, Monitor, StatusPage } from '@/payload-types'
 import { getLocationStats } from '@/server/stats/location-stats'
-import { bucketPercentiles, countChecks, getRangeStats } from '@/server/stats/range-stats'
+import { countChecks, getRangeStats } from '@/server/stats/range-stats'
 import { summarize, type Bucket } from '@/server/stats/uptime-calculator'
 
 import type { MonitorPublicStatus } from './public'
@@ -34,14 +34,16 @@ export interface PublicChartPoint extends PublicPercentiles {
   ping: number | null
 }
 
-/** Figures of one check location of a multi-location monitor over the period. */
+/**
+ * Figures of one check location of a multi-location monitor over the period (the per-location
+ * rollup keeps no latency histogram, so no percentiles).
+ */
 export interface PublicChartLocation {
   /** Location name; null for the built-in workers (the page labels them). */
   name: string | null
   /** 0..1; only with `showUptimePercentage`, null without checks. */
   uptime?: number | null
   avgPing: number | null
-  p95: number | null
 }
 
 export interface PublicComponentChart {
@@ -194,7 +196,6 @@ async function locationBreakdown(
         name: key === LOCAL_LOCATION ? null : (names.get(key) ?? null),
         ...(showPercentage ? { uptime: total > 0 ? summary.uptime : null } : {}),
         avgPing: summary.avgPing,
-        p95: bucketPercentiles(buckets, ['p95']).p95 ?? null,
       },
     ]
   })
