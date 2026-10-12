@@ -41,7 +41,7 @@ export type StatusPagePatch = Partial<
     | 'themeOverrides'
     | 'bannerText'
     | 'defaultLocale'
-    | 'locales'
+    | 'additionalLocales'
     | 'timeZoneMode'
     | 'timeZone'
     | 'published'

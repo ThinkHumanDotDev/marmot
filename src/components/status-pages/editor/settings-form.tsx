@@ -38,7 +38,7 @@ type Values = Required<
     | 'homepageUrl'
     | 'contactUrl'
     | 'defaultLocale'
-    | 'locales'
+    | 'additionalLocales'
     | 'timeZoneMode'
     | 'timeZone'
     | 'searchEngineIndex'
@@ -62,7 +62,7 @@ const fromPage = (page: StatusPage): Values => ({
   homepageUrl: page.homepageUrl ?? '',
   contactUrl: page.contactUrl ?? '',
   defaultLocale: page.defaultLocale ?? defaultLocale,
-  locales: page.locales ?? [],
+  additionalLocales: page.additionalLocales ?? [],
   timeZoneMode: page.timeZoneMode ?? 'visitor',
   timeZone: page.timeZone ?? '',
   searchEngineIndex: Boolean(page.searchEngineIndex),
@@ -145,7 +145,9 @@ export function SettingsForm({
         customCSS: values.customCSS || null,
         googleAnalyticsId: values.googleAnalyticsId || null,
         timeZone: values.timeZone?.trim() || null,
-        locales: (values.locales ?? []).filter((locale) => locale !== values.defaultLocale),
+        additionalLocales: (values.additionalLocales ?? []).filter(
+          (locale) => locale !== values.defaultLocale,
+        ),
       })
       onSaved(doc)
       setValues(fromPage(doc))
@@ -292,7 +294,7 @@ export function SettingsForm({
                     .filter((locale) => locale !== values.defaultLocale)
                     .map((locale) => {
                       const id = `locale-${locale}`
-                      const checked = (values.locales ?? []).includes(locale)
+                      const checked = (values.additionalLocales ?? []).includes(locale)
                       return (
                         <div key={locale} className="flex items-center gap-2">
                           <Switch
@@ -301,10 +303,10 @@ export function SettingsForm({
                             disabled={!canEdit}
                             onCheckedChange={(on) =>
                               set(
-                                'locales',
+                                'additionalLocales',
                                 on
-                                  ? [...(values.locales ?? []), locale]
-                                  : (values.locales ?? []).filter((l) => l !== locale),
+                                  ? [...(values.additionalLocales ?? []), locale]
+                                  : (values.additionalLocales ?? []).filter((l) => l !== locale),
                               )
                             }
                           />

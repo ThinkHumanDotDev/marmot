@@ -976,7 +976,7 @@ export interface StatusPage {
   logoDark?: (number | null) | Media;
   favicon?: (number | null) | Media;
   defaultLocale?: ('en' | 'fr' | 'de' | 'es') | null;
-  locales?: ('en' | 'fr' | 'de' | 'es')[] | null;
+  additionalLocales?: ('en' | 'fr' | 'de' | 'es')[] | null;
   timeZoneMode?: ('visitor' | 'page') | null;
   timeZone?: string | null;
   published?: boolean | null;
@@ -2442,7 +2442,7 @@ export interface StatusPagesSelect<T extends boolean = true> {
   logoDark?: T;
   favicon?: T;
   defaultLocale?: T;
-  locales?: T;
+  additionalLocales?: T;
   timeZoneMode?: T;
   timeZone?: T;
   published?: T;

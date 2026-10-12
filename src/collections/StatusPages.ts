@@ -98,7 +98,9 @@ const normalize: CollectionBeforeValidateHook<StatusPage> = ({ data }) => {
     if (typeof data[key] === 'string') data[key] = data[key].trim() || null
   }
   if (typeof data.timeZone === 'string') data.timeZone = data.timeZone.trim() || null
-  if (Array.isArray(data.locales)) data.locales = [...new Set(data.locales)]
+  if (Array.isArray(data.additionalLocales)) {
+    data.additionalLocales = [...new Set(data.additionalLocales)]
+  }
   if (Array.isArray(data.groups)) {
     for (const group of data.groups) {
       for (const row of group?.monitors ?? []) {
@@ -375,7 +377,7 @@ export const StatusPages: CollectionConfig = {
           admin: { description: adminT('marmot:statusPages:defaultLocaleDescription') },
         },
         {
-          name: 'locales',
+          name: 'additionalLocales',
           type: 'select',
           hasMany: true,
           options: locales.map((locale) => ({ label: localeNames[locale], value: locale })),

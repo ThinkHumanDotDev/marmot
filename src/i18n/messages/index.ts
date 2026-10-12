@@ -22,10 +22,7 @@ export type Messages = typeof en
  * (`PUBLIC_MESSAGE_SCOPES` in `./scopes.ts`, checked by the same test). They are merged over
  * English, so a key outside those scopes renders in English rather than as its raw key.
  */
-export const publicCatalogues = { fr, de, es } satisfies Record<
-  Exclude<Locale, AppLocale>,
-  object
->
+export const publicCatalogues = { fr, de, es } satisfies Record<Exclude<Locale, AppLocale>, object>
 
 type Tree = { [key: string]: string | Tree }
 

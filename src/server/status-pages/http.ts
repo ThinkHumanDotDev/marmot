@@ -92,7 +92,7 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'themeOverrides',
   'bannerText',
   'defaultLocale',
-  'locales',
+  'additionalLocales',
   'timeZoneMode',
   'timeZone',
   'published',

@@ -36,7 +36,7 @@ export const STATUS_TIME_ZONE_STORAGE_KEY = 'marmot-status-time-zone'
 /** The status page fields that decide its languages. */
 export interface LocalizedPage {
   defaultLocale?: string | null
-  locales?: readonly string[] | null
+  additionalLocales?: readonly string[] | null
 }
 
 /** The page's default language: its `defaultLocale` when shipped, else `en`. */
@@ -49,7 +49,7 @@ export const pageDefaultLocale = (page: LocalizedPage | null | undefined): Local
  */
 export function offeredLocales(page: LocalizedPage | null | undefined): Locale[] {
   const offered: Locale[] = [pageDefaultLocale(page)]
-  for (const locale of page?.locales ?? []) {
+  for (const locale of page?.additionalLocales ?? []) {
     if (isLocale(locale) && !offered.includes(locale)) offered.push(locale)
   }
   return offered
@@ -101,10 +101,7 @@ function visitorLocale(offered: readonly Locale[], headers: Headers): Locale | n
  * switcher earlier, else the best `Accept-Language` match among the offered languages. Returns
  * null when that is the default language, or when the URL already has a prefix.
  */
-export function preferredLocaleRedirect(
-  page: LocalizedPage,
-  headers: Headers,
-): Locale | null {
+export function preferredLocaleRedirect(page: LocalizedPage, headers: Headers): Locale | null {
   if (headers.get(STATUS_LOCALE_HEADER)) return null
   const offered = offeredLocales(page)
   if (offered.length < 2) return null

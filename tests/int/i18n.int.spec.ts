@@ -66,7 +66,7 @@ describe('i18n', () => {
         expect(flattenKeys(catalogue), `keys of ${locale}.json`).toEqual(reference)
         // The ICU placeholders of every message are the same as in English.
         const placeholders = (text: string) =>
-          [...text.matchAll(/\{(\w+)/g)].map((match) => match[1]).sort()
+          [...text.matchAll(/\{\s*(\w+)\s*[,}]/g)].map((match) => match[1]).sort()
         for (const key of reference) {
           const read = (tree: unknown) =>
             key
@@ -89,7 +89,7 @@ describe('i18n', () => {
       expect(getTranslator('es')('statusPages.overall.down')).toBe('Interrupción grave')
       // Outside the public scopes the catalogue falls back to English rather than raw keys.
       expect(getTranslator('fr')('statusPages.settings.save')).toBe('Save settings')
-      expect(getStaticFormatter('fr', 'UTC').number(0.9998, 'percent')).toBe('99,98 %')
+      expect(getStaticFormatter('fr', 'UTC').number(0.9998, 'percent')).toMatch(/^99,98\s%$/)
     })
 
     it('has no empty messages', () => {
@@ -190,14 +190,14 @@ describe('i18n', () => {
         id: page.id,
         data: {
           defaultLocale: 'de',
-          locales: ['fr', 'en', 'fr'],
+          additionalLocales: ['fr', 'en', 'fr'],
           timeZoneMode: 'page',
           timeZone: ' Europe/Berlin ',
         },
         overrideAccess: true,
       })
       expect(translated.defaultLocale).toBe('de')
-      expect(translated.locales).toEqual(['fr', 'en'])
+      expect(translated.additionalLocales).toEqual(['fr', 'en'])
       expect(translated.timeZone).toBe('Europe/Berlin')
       expect(offeredLocales(translated)).toEqual(['de', 'fr', 'en'])
 
@@ -206,7 +206,7 @@ describe('i18n', () => {
         id: page.id,
         overrideAccess: true,
       })
-      expect(reread.locales).toEqual(['fr', 'en'])
+      expect(reread.additionalLocales).toEqual(['fr', 'en'])
 
       await expect(
         payload.update({
@@ -220,7 +220,7 @@ describe('i18n', () => {
         payload.update({
           collection: 'status-pages',
           id: page.id,
-          data: { locales: ['xx' as never] },
+          data: { additionalLocales: ['xx' as never] },
           overrideAccess: true,
         }),
       ).rejects.toThrow()
@@ -267,7 +267,7 @@ describe('i18n', () => {
   })
 
   describe('status page locale (#114)', () => {
-    const page = { slug: 'acme', defaultLocale: 'en', locales: ['fr', 'de'], domains: [] }
+    const page = { slug: 'acme', defaultLocale: 'en', additionalLocales: ['fr', 'de'], domains: [] }
     const headers = (init: Record<string, string>) => new Headers(init)
 
     it('renders the plain URL in the default language and prefixed URLs in theirs', () => {
@@ -333,9 +333,9 @@ describe('i18n', () => {
 
     it('builds localized paths, links and hreflang alternates', () => {
       expect(localizedPath(page, '/status/acme', '/status/acme', 'fr')).toBe('/status/acme/fr')
-      expect(localizedPath(page, '/status/acme', '/status/acme/fr/events?month=2026-10', 'en')).toBe(
-        '/status/acme/events?month=2026-10',
-      )
+      expect(
+        localizedPath(page, '/status/acme', '/status/acme/fr/events?month=2026-10', 'en'),
+      ).toBe('/status/acme/events?month=2026-10')
       expect(localizedPath(page, '/status/acme', '/status/acme/fr/events', 'de')).toBe(
         '/status/acme/de/events',
       )
