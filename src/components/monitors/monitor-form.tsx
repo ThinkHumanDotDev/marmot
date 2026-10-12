@@ -60,6 +60,7 @@ import {
   DNS_RECORD_TYPES,
   HTTP_METHODS,
   humanDuration,
+  isCertificateMonitorType,
   isDatabaseMonitorType,
   isHostMonitorType,
   isHttpMonitorType,
@@ -78,6 +79,8 @@ import {
   SMTP_SECURITY_MODES,
   SNMP_VERSIONS,
   SSH_AUTH_METHODS,
+  UDP_PAYLOAD_ENCODINGS,
+  UDP_RESPONSE_MATCHES,
   type MonitorFormInput,
   type MonitorFormValues,
   type MonitorTypeName,
@@ -196,6 +199,11 @@ const hasConnectionSection = (type: MonitorTypeName | undefined): boolean =>
         'snmp',
         'smtp',
         'sftp',
+        'ssh',
+        'udp',
+        'tls',
+        'imap',
+        'pop3',
         'rabbitmq',
         'websocket-upgrade',
         'gamedig',
@@ -1063,6 +1071,8 @@ export function MonitorForm({
     globalpingMeasurement,
     globalpingSuccessRule,
     globalpingProtocol,
+    udpResponseMatch,
+    smtpSecurity,
     parent,
     prometheusDegradedOperator,
   ] = useWatch({
@@ -1086,6 +1096,8 @@ export function MonitorForm({
       'globalpingMeasurement',
       'globalpingSuccessRule',
       'globalpingProtocol',
+      'udpResponseMatch',
+      'smtpSecurity',
       'parent',
       'prometheusDegradedOperator',
     ],
@@ -1104,6 +1116,20 @@ export function MonitorForm({
   )
 
   const isHttp = isHttpMonitorType(type)
+  const capturesCertificate = isCertificateMonitorType(type)
+  // IMAP / POP3: follow the security mode with the well-known port while it is still a default one.
+  React.useEffect(() => {
+    const ports: Partial<Record<MonitorTypeName, [number, number]>> = {
+      imap: [143, 993],
+      pop3: [110, 995],
+    }
+    const pair = ports[type]
+    if (!pair) return
+    const port = getValues('port')
+    const [plain, implicit] = pair
+    if (smtpSecurity === 'secure' && port === plain) setValue('port', implicit)
+    else if (smtpSecurity !== 'secure' && port === implicit) setValue('port', plain)
+  }, [type, smtpSecurity, getValues, setValue])
   const isUrl = isUrlMonitorType(type)
   const isHost = isHostMonitorType(type)
   const isPort = isPortMonitorType(type)
@@ -2154,7 +2180,107 @@ export function MonitorForm({
                 />
               )}
 
-              {type === 'sftp' && (
+              {(type === 'imap' || type === 'pop3') && (
+                <>
+                  <SelectField
+                    control={control}
+                    name="smtpSecurity"
+                    label={t('connection.security')}
+                    options={SMTP_SECURITY_MODES.map((m) => ({
+                      value: m,
+                      label: t(`connection.mailSecurity.${m}`),
+                    }))}
+                    description={t('connection.mailSecurityDescription')}
+                  />
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <TextField
+                      control={control}
+                      name="mailUsername"
+                      label={t('connection.username')}
+                      autoComplete="off"
+                      description={t('connection.mailUsernameDescription')}
+                    />
+                    <TextField
+                      control={control}
+                      name="mailPassword"
+                      label={t('connection.password')}
+                      type="password"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </>
+              )}
+
+              {type === 'tls' && (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <TextField
+                    control={control}
+                    name="tlsServername"
+                    label={t('connection.tlsServername')}
+                    placeholder="ldap.example.com"
+                    description={t('connection.tlsServernameDescription')}
+                  />
+                  <TextField
+                    control={control}
+                    name="tlsAlpn"
+                    label={t('connection.tlsAlpn')}
+                    placeholder="h2, http/1.1"
+                    description={t('connection.tlsAlpnDescription')}
+                  />
+                </div>
+              )}
+
+              {(type === 'tls' || type === 'imap' || type === 'pop3') && (
+                <SwitchField
+                  control={control}
+                  name="ignoreTls"
+                  label={t('connection.ignoreTls')}
+                  description={t('http.ignoreTlsDescription')}
+                />
+              )}
+
+              {type === 'udp' && (
+                <>
+                  <div className="grid gap-5 sm:grid-cols-[1fr_12rem]">
+                    <TextareaField
+                      control={control}
+                      name="udpPayload"
+                      label={t('connection.udpPayload')}
+                      mono
+                      rows={3}
+                      description={t('connection.udpPayloadDescription')}
+                    />
+                    <SelectField
+                      control={control}
+                      name="udpPayloadEncoding"
+                      label={t('connection.udpPayloadEncoding')}
+                      options={UDP_PAYLOAD_ENCODINGS.map((m) => ({
+                        value: m,
+                        label: t(`connection.udpPayloadEncodingOption.${m}`),
+                      }))}
+                    />
+                  </div>
+                  <SelectField
+                    control={control}
+                    name="udpResponseMatch"
+                    label={t('connection.udpResponseMatch')}
+                    options={UDP_RESPONSE_MATCHES.map((m) => ({
+                      value: m,
+                      label: t(`connection.udpResponseMatchOption.${m}`),
+                    }))}
+                    description={t('connection.udpResponseMatchDescription')}
+                  />
+                  {(udpResponseMatch === 'keyword' || udpResponseMatch === 'regex') && (
+                    <TextField
+                      control={control}
+                      name="udpResponsePattern"
+                      label={t('connection.udpResponsePattern')}
+                    />
+                  )}
+                </>
+              )}
+
+              {(type === 'sftp' || type === 'ssh') && (
                 <>
                   <div className="grid gap-5 sm:grid-cols-2">
                     <TextField
@@ -2162,6 +2288,9 @@ export function MonitorForm({
                       name="sshUsername"
                       label={t('connection.username')}
                       autoComplete="off"
+                      description={
+                        type === 'ssh' ? t('connection.sshUsernameDescription') : undefined
+                      }
                     />
                     <SelectField
                       control={control}
@@ -2200,13 +2329,43 @@ export function MonitorForm({
                       autoComplete="new-password"
                     />
                   )}
-                  <TextField
-                    control={control}
-                    name="sftpPath"
-                    label={t('connection.remotePath')}
-                    placeholder="/var/backups"
-                    description={t('connection.remotePathDescription')}
-                  />
+                  {type === 'sftp' ? (
+                    <TextField
+                      control={control}
+                      name="sftpPath"
+                      label={t('connection.remotePath')}
+                      placeholder="/var/backups"
+                      description={t('connection.remotePathDescription')}
+                    />
+                  ) : (
+                    <>
+                      <TextareaField
+                        control={control}
+                        name="sshCommand"
+                        label={t('connection.sshCommand')}
+                        mono
+                        rows={2}
+                        // eslint-disable-next-line marmot/no-literal-jsx-text -- example value, not prose
+                        placeholder="systemctl is-active nginx"
+                        description={t('connection.sshCommandDescription')}
+                      />
+                      <div className="grid gap-5 sm:grid-cols-[12rem_1fr]">
+                        <NumberField
+                          control={control}
+                          name="sshExpectedExitCode"
+                          label={t('connection.sshExpectedExitCode')}
+                          min={0}
+                          max={255}
+                        />
+                        <TextField
+                          control={control}
+                          name="sshExpectedOutput"
+                          label={t('connection.sshExpectedOutput')}
+                          description={t('connection.sshExpectedOutputDescription')}
+                        />
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
@@ -2876,7 +3035,7 @@ export function MonitorForm({
                 label={t('advanced.upsideDown')}
                 description={t('advanced.upsideDownDescription')}
               />
-              {isHttp && (
+              {capturesCertificate && (
                 <SwitchField
                   control={control}
                   name="expiryNotification"

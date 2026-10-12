@@ -2771,6 +2771,58 @@
           "notNull": false,
           "default": "'opportunistic'"
         },
+        "mail_username": {
+          "name": "mail_username",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mail_password": {
+          "name": "mail_password",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "udp_payload": {
+          "name": "udp_payload",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "udp_payload_encoding": {
+          "name": "udp_payload_encoding",
+          "type": "enum_monitors_udp_payload_encoding",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'text'"
+        },
+        "udp_response_match": {
+          "name": "udp_response_match",
+          "type": "enum_monitors_udp_response_match",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'none'"
+        },
+        "udp_response_pattern": {
+          "name": "udp_response_pattern",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tls_servername": {
+          "name": "tls_servername",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tls_alpn": {
+          "name": "tls_alpn",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "ssh_username": {
           "name": "ssh_username",
           "type": "varchar",
@@ -2805,6 +2857,25 @@
         },
         "sftp_path": {
           "name": "sftp_path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ssh_command": {
+          "name": "ssh_command",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ssh_expected_exit_code": {
+          "name": "ssh_expected_exit_code",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "ssh_expected_output": {
+          "name": "ssh_expected_output",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
@@ -6672,89 +6743,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.status_pages_additional_locales": {
-      "name": "status_pages_additional_locales",
-      "schema": "",
-      "columns": {
-        "order": {
-          "name": "order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value": {
-          "name": "value",
-          "type": "enum_status_pages_additional_locales",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "status_pages_additional_locales_order_idx": {
-          "name": "status_pages_additional_locales_order_idx",
-          "columns": [
-            {
-              "expression": "order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_pages_additional_locales_parent_idx": {
-          "name": "status_pages_additional_locales_parent_idx",
-          "columns": [
-            {
-              "expression": "parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "status_pages_additional_locales_parent_fk": {
-          "name": "status_pages_additional_locales_parent_fk",
-          "tableFrom": "status_pages_additional_locales",
-          "tableTo": "status_pages",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.status_pages_allowed_email_domains": {
       "name": "status_pages_allowed_email_domains",
       "schema": "",
@@ -7435,27 +7423,13 @@
           "primaryKey": false,
           "notNull": false
         },
-        "default_locale": {
-          "name": "default_locale",
-          "type": "enum_status_pages_default_locale",
+        "language": {
+          "name": "language",
+          "type": "enum_status_pages_language",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": false,
           "default": "'en'"
-        },
-        "time_zone_mode": {
-          "name": "time_zone_mode",
-          "type": "enum_status_pages_time_zone_mode",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'visitor'"
-        },
-        "time_zone": {
-          "name": "time_zone",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
         },
         "published": {
           "name": "published",
@@ -15066,6 +15040,11 @@
         "snmp",
         "ntp",
         "sftp",
+        "ssh",
+        "udp",
+        "tls",
+        "imap",
+        "pop3",
         "radius",
         "tailscale-ping",
         "real-browser",
@@ -15347,6 +15326,24 @@
         "nostarttls"
       ]
     },
+    "public.enum_monitors_udp_payload_encoding": {
+      "name": "enum_monitors_udp_payload_encoding",
+      "schema": "public",
+      "values": [
+        "text",
+        "hex"
+      ]
+    },
+    "public.enum_monitors_udp_response_match": {
+      "name": "enum_monitors_udp_response_match",
+      "schema": "public",
+      "values": [
+        "none",
+        "any",
+        "keyword",
+        "regex"
+      ]
+    },
     "public.enum_monitors_ssh_auth_method": {
       "name": "enum_monitors_ssh_auth_method",
       "schema": "public",
@@ -15544,16 +15541,6 @@
         "email"
       ]
     },
-    "public.enum_status_pages_additional_locales": {
-      "name": "enum_status_pages_additional_locales",
-      "schema": "public",
-      "values": [
-        "en",
-        "fr",
-        "de",
-        "es"
-      ]
-    },
     "public.enum_status_pages_subscriptions_channels": {
       "name": "enum_status_pages_subscriptions_channels",
       "schema": "public",
@@ -15581,22 +15568,12 @@
         "dark"
       ]
     },
-    "public.enum_status_pages_default_locale": {
-      "name": "enum_status_pages_default_locale",
+    "public.enum_status_pages_language": {
+      "name": "enum_status_pages_language",
       "schema": "public",
       "values": [
-        "en",
-        "fr",
-        "de",
-        "es"
-      ]
-    },
-    "public.enum_status_pages_time_zone_mode": {
-      "name": "enum_status_pages_time_zone_mode",
-      "schema": "public",
-      "values": [
-        "visitor",
-        "page"
+        "auto",
+        "en"
       ]
     },
     "public.enum_status_pages_access": {
@@ -15729,10 +15706,7 @@
       "name": "enum_status_page_subscribers_locale",
       "schema": "public",
       "values": [
-        "en",
-        "fr",
-        "de",
-        "es"
+        "en"
       ]
     },
     "public.enum_subscriber_notifications_channels": {
@@ -16034,6 +16008,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "0209b5ac-a6fb-435a-9ad9-367b14cb7423",
+  "id": "40d5cf59-71a4-448e-9c8f-4518aa3f8840",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

@@ -61,6 +61,13 @@ export const adminTranslations = {
         starttlsIgnore: 'Ignore STARTTLS',
         password: 'Password',
         privateKey: 'Private key',
+        tlsHandshake: 'TLS Handshake',
+        text: 'Text',
+        hex: 'Hex',
+        udpNoResponse: 'No response expected',
+        udpAnyResponse: 'Any response',
+        regex: 'Regular expression',
+        mailLogin: 'Mail login',
         formBody: 'Form (x-www-form-urlencoded)',
         instanceSettings: 'Instance settings',
         dashboard: 'Dashboard',
@@ -389,6 +396,21 @@ export const adminTranslations = {
         grpcBodyDescription: 'JSON request body.',
         grpcMetadataDescription: 'JSON object of request metadata.',
         sftpPathDescription: 'Optional remote path that must exist.',
+        sshUsernameDescription:
+          'SSH monitors: leave empty to only read the server banner; set it to log in.',
+        sshCommandDescription: 'Optional command to run after logging in.',
+        sshExpectedExitCodeDescription: 'Exit code the command must return (default 0).',
+        sshExpectedOutputDescription: 'Optional text the command output must contain.',
+        udpPayloadDescription: 'Datagram to send (text, or hex pairs such as "ff 00 1a").',
+        udpResponseMatchDescription:
+          'Without an expected response the check is UP unless an ICMP port unreachable comes back.',
+        udpResponsePatternDescription: 'Keyword the response must contain, or regular expression.',
+        tlsServernameDescription: 'SNI server name (defaults to the hostname).',
+        tlsAlpnDescription: 'Comma-separated ALPN protocols to offer, e.g. h2, http/1.1.',
+        mailSecurityDescription:
+          'SMTP, IMAP and POP3: STARTTLS when offered, required STARTTLS, implicit TLS, or plain text.',
+        mailUsernameDescription:
+          'Optional IMAP/POP3 login; credentials are only sent over TLS unless STARTTLS is ignored.',
         rabbitmqNodesDescription: 'Management API base URLs, e.g. https://node1:15672.',
         wsSubprotocolDescription: 'Comma-separated Sec-WebSocket-Protocol values.',
         wsIgnoreSecWebsocketAcceptHeaderDescription:

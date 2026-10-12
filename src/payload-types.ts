@@ -418,6 +418,11 @@ export interface Monitor {
     | 'snmp'
     | 'ntp'
     | 'sftp'
+    | 'ssh'
+    | 'udp'
+    | 'tls'
+    | 'imap'
+    | 'pop3'
     | 'radius'
     | 'tailscale-ping'
     | 'real-browser'
@@ -603,12 +608,23 @@ export interface Monitor {
   prometheusNoDataStatus?: ('up' | 'down' | 'pending') | null;
   prometheusErrorStatus?: ('up' | 'down' | 'pending') | null;
   smtpSecurity?: ('opportunistic' | 'starttls' | 'secure' | 'nostarttls') | null;
+  mailUsername?: string | null;
+  mailPassword?: string | null;
+  udpPayload?: string | null;
+  udpPayloadEncoding?: ('text' | 'hex') | null;
+  udpResponseMatch?: ('none' | 'any' | 'keyword' | 'regex') | null;
+  udpResponsePattern?: string | null;
+  tlsServername?: string | null;
+  tlsAlpn?: string | null;
   sshUsername?: string | null;
   sshAuthMethod?: ('password' | 'privateKey') | null;
   sshPassword?: string | null;
   sshPrivateKey?: string | null;
   sshPassphrase?: string | null;
   sftpPath?: string | null;
+  sshCommand?: string | null;
+  sshExpectedExitCode?: number | null;
+  sshExpectedOutput?: string | null;
   rabbitmqNodes?: string[] | null;
   rabbitmqUsername?: string | null;
   rabbitmqPassword?: string | null;
@@ -2154,12 +2170,23 @@ export interface MonitorsSelect<T extends boolean = true> {
   prometheusNoDataStatus?: T;
   prometheusErrorStatus?: T;
   smtpSecurity?: T;
+  mailUsername?: T;
+  mailPassword?: T;
+  udpPayload?: T;
+  udpPayloadEncoding?: T;
+  udpResponseMatch?: T;
+  udpResponsePattern?: T;
+  tlsServername?: T;
+  tlsAlpn?: T;
   sshUsername?: T;
   sshAuthMethod?: T;
   sshPassword?: T;
   sshPrivateKey?: T;
   sshPassphrase?: T;
   sftpPath?: T;
+  sshCommand?: T;
+  sshExpectedExitCode?: T;
+  sshExpectedOutput?: T;
   rabbitmqNodes?: T;
   rabbitmqUsername?: T;
   rabbitmqPassword?: T;
