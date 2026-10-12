@@ -54,7 +54,8 @@ import * as migration_20261011_162022_magic_link from './20261011_162022_magic_l
 import * as migration_20261011_193817_status_page_monitor from './20261011_193817_status_page_monitor';
 import * as migration_20261011_200250_push_ping_by_email from './20261011_200250_push_ping_by_email';
 import * as migration_20261011_202905_prometheus_monitor from './20261011_202905_prometheus_monitor';
-import * as migration_20261012_000612_status_page_embedding from './20261012_000612_status_page_embedding';
+import * as migration_20261012_000555_group_aggregation_modes from './20261012_000555_group_aggregation_modes';
+import * as migration_20261012_010123_status_page_embedding from './20261012_010123_status_page_embedding';
 
 export const migrations = [
   {
@@ -338,8 +339,13 @@ export const migrations = [
     name: '20261011_202905_prometheus_monitor',
   },
   {
-    up: migration_20261012_000612_status_page_embedding.up,
-    down: migration_20261012_000612_status_page_embedding.down,
-    name: '20261012_000612_status_page_embedding'
+    up: migration_20261012_000555_group_aggregation_modes.up,
+    down: migration_20261012_000555_group_aggregation_modes.down,
+    name: '20261012_000555_group_aggregation_modes',
+  },
+  {
+    up: migration_20261012_010123_status_page_embedding.up,
+    down: migration_20261012_010123_status_page_embedding.down,
+    name: '20261012_010123_status_page_embedding'
   },
 ];
