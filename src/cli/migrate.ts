@@ -12,6 +12,7 @@ import { getPayload, type Migration } from 'payload'
 import config from '@payload-config'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
+import { migrations as mongodbMigrations } from '@/migrations/mongodb'
 import { migrations as postgresMigrations } from '@/migrations/postgres'
 
 const log = childLogger('migrate')
@@ -39,10 +40,12 @@ async function main(): Promise<void> {
         // A fresh database has no payload-migrations table yet; migrate() creates it.
       }
     }
-    // MongoDB has no migrations yet (src/migrations/mongodb is empty); its collections are schemaless.
-    // Payload types migration arguments as `unknown`; the generated files type them per adapter.
+    // MongoDB collections are schemaless; its migrations only fix data and indexes.
+    // Payload types migration arguments as `unknown`; the files type them per adapter.
     const migrations: Migration[] =
-      env.DATABASE_ADAPTER === 'postgres' ? (postgresMigrations as unknown as Migration[]) : []
+      env.DATABASE_ADAPTER === 'postgres'
+        ? (postgresMigrations as unknown as Migration[])
+        : (mongodbMigrations as unknown as Migration[])
     await payload.db.migrate({ migrations })
     log.info({ adapter: payload.db.name, migrations: migrations.length }, 'migrations complete')
   } finally {

@@ -277,6 +277,22 @@ compound unique index), looked up as `days <= threshold` so a certificate alread
 produces one message. The certificate history is cleared when a different leaf certificate appears, the domain
 history when the expiry date moves later (renewal); both go with the monitor when it is deleted.
 
+### Certificate transparency alerts
+
+Monitors with `ctAlerts` (#143) are looked up in certificate transparency logs by the `ct-alerts` job
+(`src/server/jobs/ct-alerts.ts`), a BullMQ job scheduler every 5 minutes on its own `marmot:ct` queue
+(concurrency 1, so slow lookups never delay the maintenance jobs). A run takes the monitors whose
+`ctState.nextCheckAt` is due (`CT_CHECK_INTERVAL_MINUTES`), asks the source (`CT_SOURCE_URL`, crt.sh JSON
+or Cert Spotter issuances; requests spaced by `CT_REQUESTS_PER_MINUTE`, identical URLs fetched once) and
+announces the certificates for the hostname (and `*.hostname` with `ctIncludeSubdomains`) logged after the
+baseline `ctState.since` through the channels that accept `certificate`. Each one is first claimed in
+`notification-sent-history` (`type: 'ct'`, `days: 0`, `fingerprint`; the unique index is
+`(type, monitor, days, fingerprint)`, expiry rows store `''`), so re-runs and overlapping runs announce it
+once. A failed lookup stops the run and backs off the source (in memory, per worker process) and the
+monitor (`ctState.failures`, `nextCheckAt`), exponentially from 5 minutes to a day or by `Retry-After`. A
+`beforeChange` hook clears `ctState` when the option is turned off. Runs stop starting lookups after
+4.5 minutes so they never overlap.
+
 ## Maintenance windows
 
 `maintenance` documents (org-scoped) describe when a set of monitors is deliberately offline: `title`,
