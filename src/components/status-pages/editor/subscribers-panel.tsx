@@ -247,11 +247,14 @@ function AddSubscriberForm({
   orgId,
   pageId,
   components,
+  audiences,
   onAdded,
 }: {
   orgId: OrgId
   pageId: OrgId
   components: IncidentComponentOption[]
+  /** Audiences of an audience page (#151): the subscriber needs at least one. */
+  audiences: { id: string; name: string }[] | null
   onAdded: (row: SubscriberRow) => void
 }) {
   const t = useTranslations('statusPages.subscribers.add')
@@ -260,6 +263,7 @@ function AddSubscriberForm({
   const [channel, setChannel] = React.useState<SubscriberChannel>('email')
   const [target, setTarget] = React.useState('')
   const [selected, setSelected] = React.useState<string[]>([])
+  const [chosenAudiences, setChosenAudiences] = React.useState<string[]>([])
   const [headers, setHeaders] = React.useState<{ name: string; value: string }[]>([])
   const [busy, setBusy] = React.useState(false)
   const [secret, setSecret] = React.useState<string | null>(null)
@@ -273,6 +277,7 @@ function AddSubscriberForm({
         channel,
         target,
         components: selected,
+        ...(audiences ? { audiences: chosenAudiences } : {}),
         ...(channel === 'webhook' ? { headers: headers.filter((h) => h.name.trim()) } : {}),
       })
       onAdded(doc)
@@ -319,6 +324,33 @@ function AddSubscriberForm({
           />
         </div>
       </div>
+      {audiences && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">{t('audiences')}</legend>
+          <p className="text-xs text-muted-foreground">
+            {audiences.length === 0 ? t('noAudiences') : t('audiencesHint')}
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {audiences.map((audience) => (
+              <label key={audience.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="accent-primary"
+                  checked={chosenAudiences.includes(audience.id)}
+                  onChange={(e) =>
+                    setChosenAudiences((list) =>
+                      e.target.checked
+                        ? [...list, audience.id]
+                        : list.filter((id) => id !== audience.id),
+                    )
+                  }
+                />
+                {audience.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       {components.length > 0 && (
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-medium">{t('components')}</legend>
@@ -435,6 +467,24 @@ export function SubscribersPanel({
   const [loading, setLoading] = React.useState(false)
   const fileInput = React.useRef<HTMLInputElement>(null)
   const names = React.useMemo(() => new Map(components.map((c) => [c.id, c.name])), [components])
+  const audiencePage = page.access === 'audience'
+  const [audiences, setAudiences] = React.useState<{ id: string; name: string }[] | null>(null)
+
+  React.useEffect(() => {
+    if (!audiencePage || !canManage) return
+    let cancelled = false
+    statusPagesApi.audiences
+      .list(orgId, page.id)
+      .then(({ docs }) => {
+        if (!cancelled) setAudiences(docs.map((a) => ({ id: String(a.id), name: a.name })))
+      })
+      .catch(() => {
+        if (!cancelled) setAudiences([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [audiencePage, canManage, orgId, page.id])
 
   const load = React.useCallback(async () => {
     if (!canRead) return
@@ -492,6 +542,7 @@ export function SubscribersPanel({
           orgId={orgId}
           pageId={page.id}
           components={components}
+          audiences={audiencePage ? (audiences ?? []) : null}
           onAdded={() => void load()}
         />
       )}

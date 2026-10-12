@@ -28,6 +28,7 @@ import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
 import { DOCKER_CONNECTION_TYPES } from '@/lib/monitor-resources'
 import { SSH_TUNNEL_AUTH_METHODS } from '@/lib/ssh-tunnels'
 import { LOG_TRIGGERS } from '@/lib/response-log'
+import { STATUS_PAGE_ACCESS_MODES } from '@/lib/status-page-access'
 import { SUBSCRIBER_CHANNELS } from '@/lib/status-page-subscribers'
 import { maintenanceFormSchema } from '@/lib/validation/maintenance'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
@@ -121,7 +122,7 @@ const statusPageBody = z
     slug: z.string().min(1),
     description: z.string().nullable().optional(),
     published: z.boolean().optional(),
-    access: z.enum(['public', 'password', 'email', 'ip']).optional(),
+    access: z.enum(STATUS_PAGE_ACCESS_MODES).optional(),
     password: z.string().optional().describe('Write-only; stored hashed'),
     groups: z.array(z.record(z.string(), z.unknown())).optional().describe('Component groups'),
     domains: z.array(z.record(z.string(), z.unknown())).optional(),
@@ -155,6 +156,10 @@ const subscriberCreateBody = z.object({
   channel: z.enum(SUBSCRIBER_CHANNELS),
   target: z.string().describe('Address, phone number or URL'),
   components: z.array(z.string()).optional(),
+  audiences: z
+    .array(id)
+    .optional()
+    .describe('Audiences of an audience page (#151) whose components the subscriber hears about'),
   headers: subscriberHeaders.optional().describe('Webhook headers'),
 })
 
@@ -165,6 +170,12 @@ const subscriberPatchBody = z.object({
 
 const batchActionBody = z.object({ action: z.enum(['send', 'discard', 'retry']) })
 const viewerPatchBody = z.object({ status: z.enum(['active', 'revoked']) })
+const audienceBody = z.object({
+  name: z.string().min(1).max(100),
+  components: z.array(z.string()).optional().describe('Component (group row) ids of the page'),
+  emails: z.array(z.string()).optional().describe('Member addresses'),
+  emailDomains: z.array(z.string()).optional().describe('Member email domains'),
+})
 const updateMessageBody = z.object({ message: z.string() })
 
 const dockerTestBody = z.object({
@@ -1450,6 +1461,50 @@ export const OPERATIONS: OperationSpec[] = [
     summary: 'Forget a visitor',
     tag: 'Status pages',
     permission: 'status-page:update',
+  },
+
+  // Audiences of audience pages (#151)
+  {
+    method: 'GET',
+    path: `${ORG}/status-pages/{id}/audiences`,
+    operationId: 'listStatusPageAudiences',
+    summary: 'Audiences of a status page',
+    tag: 'Status pages',
+    permission: 'status-page:read',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/status-pages/{id}/audiences`,
+    operationId: 'createStatusPageAudience',
+    summary: 'Create an audience',
+    tag: 'Status pages',
+    permission: 'status-page:update',
+    body: { schema: audienceBody },
+  },
+  {
+    method: 'PATCH',
+    path: `${ORG}/status-pages/{id}/audiences/{audienceId}`,
+    operationId: 'updateStatusPageAudience',
+    summary: 'Edit an audience',
+    tag: 'Status pages',
+    permission: 'status-page:update',
+    body: { schema: audienceBody.partial() },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/status-pages/{id}/audiences/{audienceId}`,
+    operationId: 'deleteStatusPageAudience',
+    summary: 'Delete an audience',
+    tag: 'Status pages',
+    permission: 'status-page:update',
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/status-pages/{id}/audiences/{audienceId}/preview`,
+    operationId: 'previewStatusPageAudience',
+    summary: 'The public payload as members of an audience see it',
+    tag: 'Status pages',
+    permission: 'status-page:read',
   },
 
   // Uptime history (#112)

@@ -241,6 +241,9 @@
         "confirmDescription": "Fahren Sie fort, um sich auf diesem Gerät bei dieser Statusseite anzumelden.",
         "confirm": "Weiter zur Statusseite"
       },
+      "audience": {
+        "description": "Diese Statusseite ist nur für eingeladene Kunden und Teams verfügbar. Geben Sie Ihre E-Mail-Adresse ein, um einen Anmeldelink zu erhalten."
+      },
       "ipAllowlist": {
         "description": "Diese Statusseite ist nur aus freigegebenen Netzwerken erreichbar. Verbinden Sie sich mit dem Netzwerk oder VPN Ihrer Organisation und laden Sie die Seite neu."
       }

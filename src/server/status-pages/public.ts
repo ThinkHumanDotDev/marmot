@@ -40,6 +40,12 @@ import {
   type PublicMaintenance,
 } from '@/server/maintenance/status-page'
 import { populateMonitorTags, toRealtimeTags } from '@/server/realtime/serialize'
+import {
+  isAudiencePage,
+  lockAudiencePage,
+  visibleIncidents,
+  type AudienceScopedPage,
+} from '@/server/status-pages/audiences'
 import { pastIncidentDays, type PublicIncidentDay } from '@/server/status-pages/event-summary'
 import { publicIdOf } from '@/server/status-pages/public-ids'
 import { getUptime } from '@/server/stats/uptime-calculator'
@@ -276,7 +282,10 @@ const relId = (value: unknown): string | number | null => {
 const mediaUrl = (media: StatusPage['logo']): string | null =>
   media && typeof media === 'object' ? ((media as Media).url ?? null) : null
 
-/** The published status page with `slug`, or null. */
+/**
+ * The published status page with `slug`, or null. An `audience` page (#151) comes back locked (no
+ * groups) until `scopePageForVisitor` narrows it to the visitor's components.
+ */
 export async function findPublishedStatusPage(
   payload: Payload,
   slug: string,
@@ -289,7 +298,7 @@ export async function findPublishedStatusPage(
     pagination: false,
     overrideAccess: true,
   })
-  return docs[0] ?? null
+  return docs[0] ? lockAudiencePage(docs[0]) : null
 }
 
 /** The public subset of a status page's configuration. */
@@ -328,11 +337,14 @@ export function toPublicConfig(page: StatusPage): PublicConfig {
 
 /**
  * Public view of an incident. `componentNames` maps component ids to the names shown on the page;
- * components that are not visible there (removed rows, paused monitors) are left out.
+ * components that are not visible there (removed rows, paused monitors) are left out. With
+ * `scoped` (audience pages, #151) the incident's impact is the worst of the visible components', so
+ * it says nothing about components of other audiences.
  */
 export function toPublicIncident(
   incident: Incident,
   componentNames: ReadonlyMap<string, string> = new Map(),
+  { scoped = false }: { scoped?: boolean } = {},
 ): PublicIncident {
   const { updates, state } = incidentTimeline(incident)
   const visible = (rows: readonly { component: string; impact: ComponentImpact }[]) =>
@@ -341,13 +353,18 @@ export function toPublicIncident(
       return name === undefined ? [] : [{ id: row.component, name, impact: row.impact }]
     })
   const newestFirst = updates.slice().reverse()
+  const components = visible(state.components)
+  const impact =
+    scoped && state.components.length > 0
+      ? (worstImpact(components.map((c) => c.impact)) ?? 'operational')
+      : state.impact
   return {
     id: String(incident.id),
     publicId: publicIdOf('incidents', incident),
     title: incident.title,
     status: state.status,
-    impact: state.impact,
-    components: visible(state.components),
+    impact,
+    components,
     updates: newestFirst.map((update, index) => ({
       id: update.id ? String(update.id) : `${incident.id}-${index}`,
       status: update.status,
@@ -357,7 +374,7 @@ export function toPublicIncident(
       components: visible(update.components ?? []),
     })),
     content: newestFirst[0]?.message ?? '',
-    style: legacyStyleFromImpact(state.impact),
+    style: legacyStyleFromImpact(impact),
     pinned: Boolean(incident.pinned),
     active: state.active,
     startedAt: updates[0]?.postedAt || incident.createdAt,
@@ -629,9 +646,9 @@ export async function buildPublicGroups(
             overrideAccess: true,
           })
           .then((result) => result.docs),
-    context.incidents ?? findActiveIncidents(payload, page.id),
+    context.incidents ?? findActiveIncidents(payload, page),
     context.maintenance ??
-      (hasStatic ? getActiveMaintenanceForStatusPage(payload, page.id) : Promise.resolve([])),
+      (hasStatic ? getActiveMaintenanceForStatusPage(payload, page) : Promise.resolve([])),
   ])
   const monitors =
     page.showTags && docs.length > 0 ? await populateMonitorTags(payload, docs) : docs
@@ -713,21 +730,24 @@ function uptimeComponentsOf(
   )
 }
 
-/** Incidents of a page: active ones, pinned first, newest first. */
+/**
+ * Incidents of a page: active ones, pinned first, newest first. On an `audience` page only those
+ * visible to the scoped page (#151).
+ */
 export async function findActiveIncidents(
   payload: Payload,
-  pageId: string | number,
+  page: AudienceScopedPage,
 ): Promise<Incident[]> {
   const { docs } = await payload.find({
     collection: 'incidents',
-    where: { and: [{ statusPage: { equals: pageId } }, { active: { equals: true } }] },
+    where: { and: [{ statusPage: { equals: page.id } }, { active: { equals: true } }] },
     sort: ['-pinned', '-createdAt'],
     limit: 50,
     pagination: false,
     depth: 0,
     overrideAccess: true,
   })
-  return docs
+  return visibleIncidents(page, docs)
 }
 
 /** Everything the public page shows, or null when the slug is unknown or unpublished. */
@@ -748,12 +768,12 @@ export async function buildPublicStatusPageData(
   const timeZone = statusPageTimeZone(page)
   const pastDays = pastIncidentsDaysOf(page)
   const [incidents, maintenance, recent] = await Promise.all([
-    findActiveIncidents(payload, page.id),
-    getActiveMaintenanceForStatusPage(payload, page.id, {
+    findActiveIncidents(payload, page),
+    getActiveMaintenanceForStatusPage(payload, page, {
       now,
       visibilityHours: page.maintenanceVisibilityHours,
     }),
-    findRecentIncidents(payload, page.id, pastDays, now),
+    findRecentIncidents(payload, page, pastDays, now),
   ])
   const groups = await buildPublicGroups(payload, page, {
     incidents,
@@ -763,7 +783,8 @@ export async function buildPublicStatusPageData(
   })
 
   const names = componentNamesOf(groups)
-  const publicIncidents = incidents.map((incident) => toPublicIncident(incident, names))
+  const scoped = { scoped: isAudiencePage(page) }
+  const publicIncidents = incidents.map((incident) => toPublicIncident(incident, names, scoped))
 
   return {
     config: toPublicConfig(page),
@@ -775,7 +796,7 @@ export async function buildPublicStatusPageData(
     pastIncidents:
       pastDays > 0
         ? pastIncidentDays(
-            recent.map((incident) => toPublicIncident(incident, names)),
+            recent.map((incident) => toPublicIncident(incident, names, scoped)),
             pastDays,
             timeZone,
             now,
@@ -801,7 +822,7 @@ export const MAX_PAST_INCIDENTS = 200
  */
 export async function findRecentIncidents(
   payload: Payload,
-  pageId: string | number,
+  page: AudienceScopedPage,
   days: number,
   now = new Date(),
 ): Promise<Incident[]> {
@@ -809,11 +830,11 @@ export async function findRecentIncidents(
   const since = new Date(now.getTime() - (days + 1) * 24 * 60 * 60_000).toISOString()
   const { docs } = await payload.find({
     collection: 'incidents',
-    where: { and: [{ statusPage: { equals: pageId } }, { createdAt: { greater_than: since } }] },
+    where: { and: [{ statusPage: { equals: page.id } }, { createdAt: { greater_than: since } }] },
     sort: '-createdAt',
     limit: MAX_PAST_INCIDENTS,
     depth: 0,
     overrideAccess: true,
   })
-  return docs
+  return visibleIncidents(page, docs)
 }

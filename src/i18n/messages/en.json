@@ -1924,6 +1924,7 @@
         "ssh_tunnel": "SSH tunnel",
         "status_page": "Status page",
         "status_page_viewer": "Status page viewer",
+        "status_page_audience": "Status page audience",
         "incident": "Incident",
         "subscriber": "Subscriber",
         "subscriber_notification": "Subscriber notification",
@@ -4396,7 +4397,8 @@
         "share": "Share",
         "subscribers": "Subscribers",
         "notifications": "Notifications",
-        "history": "History"
+        "history": "History",
+        "audiences": "Audiences"
       }
     },
     "settings": {
@@ -4762,6 +4764,9 @@
         "confirmDescription": "Continue to sign in to this status page on this device.",
         "confirm": "Continue to the status page"
       },
+      "audience": {
+        "description": "This status page is only available to invited customers and teams. Enter your email address to receive a sign-in link."
+      },
       "ipAllowlist": {
         "description": "This status page is only available from approved networks. Connect to your organization’s network or VPN and reload the page."
       },
@@ -4785,6 +4790,10 @@
           "ip-allowlist": {
             "label": "IP allow-list",
             "hint": "Only visitors from the listed IPv4 and IPv6 ranges can view the page."
+          },
+          "audience": {
+            "label": "Audiences",
+            "hint": "Visitors sign in with an email link and see only the components, incidents and maintenance of their audiences."
           }
         },
         "password": "Password",
@@ -4830,7 +4839,8 @@
           "remove": "Remove",
           "loadFailed": "Could not load the visitors",
           "updateFailed": "Could not update the visitor"
-        }
+        },
+        "audienceNote": "Members are listed on the Audiences tab. Anyone not in an audience is turned away, even when signed in."
       }
     },
     "share": {
@@ -5144,7 +5154,10 @@
         "added": "Subscriber added",
         "addFailed": "Could not add the subscriber.",
         "secretTitle": "Signing secret",
-        "secretHint": "Deliveries are signed with this secret in X-Marmot-Signature. It was also sent in the first request."
+        "secretHint": "Deliveries are signed with this secret in X-Marmot-Signature. It was also sent in the first request.",
+        "audiences": "Audiences",
+        "audiencesHint": "The subscriber only hears about incidents and maintenance of these audiences’ components.",
+        "noAudiences": "Create an audience on the Audiences tab first: on an audience page, subscribers without one receive nothing."
       },
       "notifications": {
         "title": "Notifications",
@@ -5238,6 +5251,39 @@
       "component": "Component",
       "noData": "No data",
       "downtime": "Down {duration}"
+    },
+    "audiences": {
+      "title": "Audiences",
+      "description": "Show each customer or region only its own components. A signed-in visitor sees the components of every audience that lists their address or its domain, and only the incidents and maintenance affecting those components. Incidents and maintenance that name no component are shown to every audience.",
+      "modeOff": "Audiences apply once the page’s access is set to “Audiences” on the Access tab. You can prepare and preview them before.",
+      "empty": "No audience yet.",
+      "add": "Add audience",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteTitle": "Delete the audience “{name}”?",
+      "deleteDescription": "Its members lose access unless another audience lists them. Subscribers bound to it stop receiving its announcements.",
+      "deleted": "Audience deleted",
+      "saved": "Audience saved",
+      "saveFailed": "Could not save the audience",
+      "loadFailed": "Could not load the audiences",
+      "name": "Name",
+      "namePlaceholder": "Acme Corp",
+      "components": "Components it sees",
+      "noComponents": "Add components on the Groups tab first.",
+      "emails": "Member addresses",
+      "emailsHint": "One address per line.",
+      "domains": "Member email domains",
+      "domainsHint": "One domain per line, such as acme.com. Every address at these domains is a member.",
+      "summary": "{components, plural, one {# component} other {# components}} · {members, plural, one {# member rule} other {# member rules}}",
+      "cancel": "Cancel",
+      "save": "Save audience",
+      "saving": "Saving…",
+      "preview": {
+        "title": "View as audience",
+        "description": "The page exactly as members of the chosen audience see it.",
+        "choose": "Choose an audience",
+        "loadFailed": "Could not load the preview"
+      }
     }
   },
   "maintenance": {
@@ -6149,6 +6195,15 @@
     "statusPageEmbedOriginsTooMany": "List at most {max} origins.",
     "statusPageViewerNotFound": "Visitor not found.",
     "statusPageViewerStatusInvalid": "The status must be \"active\" or \"revoked\".",
+    "statusPageAudiencePageRequired": "An audience needs a status page, and cannot move to another one.",
+    "statusPageAudienceNameRequired": "Give the audience a name.",
+    "statusPageAudienceComponentsInvalid": "Choose components of this status page.",
+    "statusPageAudienceEmailInvalid": "\"{email}\" is not a valid email address.",
+    "statusPageAudienceEmailsTooMany": "List at most {max} addresses.",
+    "statusPageAudiencesTooMany": "A status page can have at most {max} audiences.",
+    "statusPageAudienceNotFound": "Audience not found.",
+    "statusPageAudienceNameTaken": "This page already has an audience with that name.",
+    "subscriberAudiencesInvalid": "Choose audiences of this status page.",
     "subscriberStatusPageRequired": "A subscriber needs a status page, and cannot move to another one.",
     "subscriberTargetInvalid": "Enter a valid email address, phone number in international format (+15551234567), webhook URL or Slack incoming-webhook URL.",
     "subscriberComponentsInvalid": "Choose components of this status page.",

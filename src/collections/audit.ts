@@ -43,6 +43,7 @@ export const AUDITED: Partial<Record<CollectionSlug, AuditCollectionOptions>> = 
     // Viewers sign themselves in through magic links; only changes made by members are audited.
     systemWrites: false,
   },
+  'status-page-audiences': { entityType: 'status_page_audience' },
   incidents: { entityType: 'incident' },
   'status-page-subscribers': {
     entityType: 'subscriber',

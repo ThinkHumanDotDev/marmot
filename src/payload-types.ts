@@ -92,6 +92,7 @@ export interface Config {
     'stat-location-hourly': StatLocationHourly;
     'status-pages': StatusPage;
     'status-page-viewers': StatusPageViewer;
+    'status-page-audiences': StatusPageAudience;
     'status-page-uptime-history': StatusPageUptimeHistory;
     incidents: Incident;
     'status-page-subscribers': StatusPageSubscriber;
@@ -137,6 +138,7 @@ export interface Config {
     'stat-location-hourly': StatLocationHourlySelect<false> | StatLocationHourlySelect<true>;
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
     'status-page-viewers': StatusPageViewersSelect<false> | StatusPageViewersSelect<true>;
+    'status-page-audiences': StatusPageAudiencesSelect<false> | StatusPageAudiencesSelect<true>;
     'status-page-uptime-history': StatusPageUptimeHistorySelect<false> | StatusPageUptimeHistorySelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
     'status-page-subscribers': StatusPageSubscribersSelect<false> | StatusPageSubscribersSelect<true>;
@@ -1041,7 +1043,7 @@ export interface StatusPage {
   timeZoneMode?: ('visitor' | 'page') | null;
   timeZone?: string | null;
   published?: boolean | null;
-  access?: ('public' | 'password' | 'email-domain' | 'ip-allowlist') | null;
+  access?: ('public' | 'password' | 'email-domain' | 'ip-allowlist' | 'audience') | null;
   password?: string | null;
   passwordHash?: string | null;
   allowedEmailDomains?:
@@ -1296,6 +1298,21 @@ export interface StatusPageViewer {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "status-page-audiences".
+ */
+export interface StatusPageAudience {
+  id: number;
+  organization: number | Organization;
+  statusPage: number | StatusPage;
+  name: string;
+  components?: string[] | null;
+  emails?: string[] | null;
+  emailDomains?: string[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "status-page-uptime-history".
  */
 export interface StatusPageUptimeHistory {
@@ -1324,6 +1341,7 @@ export interface StatusPageSubscriber {
   statusPage: number | StatusPage;
   channel: 'email' | 'sms' | 'webhook' | 'slack';
   target: string;
+  audiences?: (number | StatusPageAudience)[] | null;
   components?: string[] | null;
   source?: ('self_signup' | 'added_by_owner' | 'import') | null;
   confirmedAt?: string | null;
@@ -1813,6 +1831,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'status-page-viewers';
         value: number | StatusPageViewer;
+      } | null)
+    | ({
+        relationTo: 'status-page-audiences';
+        value: number | StatusPageAudience;
       } | null)
     | ({
         relationTo: 'status-page-uptime-history';
@@ -2685,6 +2707,20 @@ export interface StatusPageViewersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "status-page-audiences_select".
+ */
+export interface StatusPageAudiencesSelect<T extends boolean = true> {
+  organization?: T;
+  statusPage?: T;
+  name?: T;
+  components?: T;
+  emails?: T;
+  emailDomains?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "status-page-uptime-history_select".
  */
 export interface StatusPageUptimeHistorySelect<T extends boolean = true> {
@@ -2753,6 +2789,7 @@ export interface StatusPageSubscribersSelect<T extends boolean = true> {
   statusPage?: T;
   channel?: T;
   target?: T;
+  audiences?: T;
   components?: T;
   source?: T;
   confirmedAt?: T;

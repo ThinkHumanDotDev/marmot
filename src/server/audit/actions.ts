@@ -17,6 +17,7 @@ export const AUDIT_RESOURCE_TYPES = [
   'ssh_tunnel',
   'status_page',
   'status_page_viewer',
+  'status_page_audience',
   'incident',
   'subscriber',
   'subscriber_notification',

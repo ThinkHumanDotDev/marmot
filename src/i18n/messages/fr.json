@@ -241,6 +241,9 @@
         "confirmDescription": "Continuez pour vous connecter à cette page d’état sur cet appareil.",
         "confirm": "Continuer vers la page d’état"
       },
+      "audience": {
+        "description": "Cette page d’état est réservée aux clients et équipes invités. Saisissez votre adresse e-mail pour recevoir un lien de connexion."
+      },
       "ipAllowlist": {
         "description": "Cette page d’état n’est accessible que depuis des réseaux autorisés. Connectez-vous au réseau ou au VPN de votre organisation puis rechargez la page."
       }

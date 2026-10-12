@@ -953,8 +953,8 @@ allow-list, so an intranet status never reaches another site through a visitor's
 
 ## Access
 
-A page's **Access** tab switches it between **Public** (default), **Password**, **Email domain** and
-**IP allow-list**. Protection applies to published pages; signed-in members still preview their pages
+A page's **Access** tab switches it between **Public** (default), **Password**, **Email domain**,
+**IP allow-list** and **Audiences**. Protection applies to published pages; signed-in members still preview their pages
 from the builder. Whatever the mode, every public surface checks access through
 `checkStatusPageAccess` (`src/server/status-pages/access.ts`), which dispatches to one strategy per mode
 and denies modes it does not know: the HTML page, `/api/status-pages/:slug/public`, `/rss` and the
@@ -1045,6 +1045,55 @@ only behind a proxy that **overwrites** those headers (the bundled Caddy does; n
 first hop). With `trustProxy` off, nobody is admitted (the Access tab warns), because a client could
 otherwise claim any address. If a CDN or load balancer sits in front of the proxy, make sure the
 address that reaches Marmot is the visitor's, not the CDN's.
+
+### Audiences
+
+For B2B products with per-customer or per-region infrastructure (#151): one page, several
+**audiences**, each seeing only its own components. An incident on the EU-2 cluster is written once and
+reaches only the customers on EU-2, on the page and in their notifications.
+
+**Setting it up.** On the **Audiences** tab add an audience per customer or region: a name ("Acme
+Corp", "EU customers"), the components it sees, and its members as addresses (`ops@acme.com`) and/or
+email domains (`acme.com`, exact match as for [email domain](#email-domain) pages). Then set the
+Access tab to **Audiences**. You can prepare audiences before switching; **View as audience** on the
+same tab renders the page exactly as an audience sees it (drafts too), from
+`GET /api/orgs/:orgId/status-pages/:id/audiences/:audienceId/preview`.
+
+**Signing in.** Visitors use the same one-time email links as [email domain](#email-domain) pages (same
+form, rate limits, single use, `status-page-viewers` rows you can revoke). A link is only sent to
+addresses that some audience lists. On every request the viewer's address is matched against the page's
+audiences again (`audienceGrantFor`), so editing or deleting an audience applies at once; a signed-in
+visitor no audience lists any more is sent back to the sign-in form. A visitor in several audiences
+sees the union of their components.
+
+**What a visitor sees.**
+
+- Components: only those of their audiences; groups left empty are hidden.
+- Incidents: those naming (in any update, or in their current state) at least one visible component.
+  An incident that names **no component** is page-wide and every audience sees it. Component lists,
+  impacts and the overall status only count visible components, so an incident shared by two audiences
+  says nothing about the other audience's components.
+- Maintenance: windows covering a monitor of a visible component, and page-wide ones (no monitor).
+- Nothing in the URL widens this: the scope comes only from the signed session, and filters such as
+  `?component=` ignore components the visitor cannot see. An event of another audience answers `404`.
+
+This holds for every public surface: the HTML page, history and permalinks, `/api/status-pages/:slug/public`
+and `/events`, the RSS/Atom/JSON feeds, `maintenance.ics`, the Statuspage-compatible JSON, Markdown
+and `llms.txt`, the page badge and monitor badges (a monitor of another audience answers `404`). Like
+every protected page, an audience page has no embed mode, no widget, no sitemap and is never cached
+publicly. The filtering is in `src/server/status-pages/audiences.ts`: `findPublishedStatusPage` returns
+audience pages **without groups** until `scopePageForVisitor` narrows them to the visitor's
+components, and the incident and maintenance loaders take the scoped page, so a code path that forgets
+to scope shows nothing rather than everything.
+
+**Subscribers.** A visitor who subscribes is bound to their audiences (from the session, never from the
+request) and can only pick, and later manage, their audiences' components. An announcement reaches a
+subscriber only when its components overlap the subscriber's audiences (page-wide announcements reach
+every audience), and the message names only components the subscriber's audiences see. Subscribers you
+add on the Subscribers tab need an audience; without one an audience page sends them nothing. Removing
+someone from an audience does not remove their subscriptions; remove those on the Subscribers tab.
+
+SSO groups as members (with [SSO](Single-Sign-On.md)) are not supported yet.
 
 ## Themes
 

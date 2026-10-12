@@ -17,6 +17,11 @@
  * which also names their `status-page-viewers` row. Every request re-checks that row (not revoked)
  * and that the address's domain is still allowed.
  *
+ * Audience mode (#151): the same magic-link session as email-domain mode, but the viewer's address
+ * is matched against the page's audiences (`status-page-audiences`) on every request; the grant
+ * names the audiences and their components, and `scopePageForVisitor` (`audiences.ts`) narrows the
+ * page to them. A viewer in no audience is signed out.
+ *
  * IP allow-list mode: no session; every request's client address (resolved through the `trustProxy`
  * instance setting, see `requestMeta`) must fall in one of the page's CIDR ranges. Without a
  * trusted address nobody is admitted.
@@ -33,10 +38,11 @@ import type { StatusPageAccessMode } from '@/lib/status-page-access'
 import { verifyPassword } from '@/server/security/password-hash'
 import { createRateLimiter, type RateLimiter } from '@/server/security/rate-limit'
 import { requestMeta } from '@/server/security/request'
+import { audienceGrantFor, type AudienceGrant } from '@/server/status-pages/audiences'
 import { ipAllowListFor } from '@/server/status-pages/ip-allowlist'
 import { isEmailAllowed, touchViewer } from '@/server/status-pages/magic-link'
 
-import type { StatusPage } from '@/payload-types'
+import type { StatusPage, StatusPageViewer } from '@/payload-types'
 import { defaultLocale, type Locale } from '@/i18n/locales'
 import { translateError, type ErrorKey } from '@/server/errors'
 
@@ -77,6 +83,8 @@ export type StatusPageAccessDecision =
       via: AccessGrant
       /** The response depends on the visitor's credentials: never store it in a shared cache. */
       restricted: boolean
+      /** `audience` pages: what the visitor may see (`scopePageForVisitor`). */
+      audience?: AudienceGrant
     }
   | { allowed: false; reason: AccessDenial; retryAfterSeconds?: number }
 
@@ -232,7 +240,7 @@ export async function signAccessToken(
 }
 
 export interface AccessTokenClaims {
-  /** `status-page-viewers` id (email-domain sessions). */
+  /** `status-page-viewers` id (email-domain and audience sessions). */
   viewer: string | null
 }
 
@@ -315,11 +323,15 @@ const passwordStrategy: AccessStrategy = async ({ payload, page, request, option
   return { allowed: false, reason: 'login-required' }
 }
 
-const emailDomainStrategy: AccessStrategy = async ({ payload, page, request }) => {
-  const denied: StatusPageAccessDecision = { allowed: false, reason: 'login-required' }
+/** The active viewer row the page's access cookie names, or null. */
+async function sessionViewer({
+  payload,
+  page,
+  request,
+}: AccessContext): Promise<StatusPageViewer | null> {
   const token = readCookie(request.headers.get('cookie'), accessCookieName(page.id))
   const claims = await readAccessToken(page, token)
-  if (!claims?.viewer) return denied
+  if (!claims?.viewer) return null
 
   const viewer = await payload
     .findByID({
@@ -330,13 +342,27 @@ const emailDomainStrategy: AccessStrategy = async ({ payload, page, request }) =
       disableErrors: true,
     })
     .catch(() => null)
-  if (!viewer || viewer.status !== 'active') return denied
+  if (!viewer || viewer.status !== 'active') return null
   const viewerPage = typeof viewer.page === 'object' ? viewer.page.id : viewer.page
-  if (String(viewerPage) !== String(page.id)) return denied
-  if (!isEmailAllowed(page, viewer.email)) return denied
+  if (String(viewerPage) !== String(page.id)) return null
+  return viewer
+}
 
-  await touchViewer(payload, viewer)
+const emailDomainStrategy: AccessStrategy = async (ctx) => {
+  const viewer = await sessionViewer(ctx)
+  if (!viewer || !isEmailAllowed(ctx.page, viewer.email)) {
+    return { allowed: false, reason: 'login-required' }
+  }
+  await touchViewer(ctx.payload, viewer)
   return { allowed: true, via: 'session', restricted: true }
+}
+
+const audienceStrategy: AccessStrategy = async (ctx) => {
+  const viewer = await sessionViewer(ctx)
+  const audience = viewer ? await audienceGrantFor(ctx.payload, ctx.page.id, viewer.email) : null
+  if (!viewer || !audience) return { allowed: false, reason: 'login-required' }
+  await touchViewer(ctx.payload, viewer)
+  return { allowed: true, via: 'session', restricted: true, audience }
 }
 
 const ipAllowlistStrategy: AccessStrategy = async ({ payload, page, request }) => {
@@ -353,6 +379,7 @@ export const ACCESS_STRATEGIES: Record<StatusPageAccessMode, AccessStrategy> = {
   password: passwordStrategy,
   'email-domain': emailDomainStrategy,
   'ip-allowlist': ipAllowlistStrategy,
+  audience: audienceStrategy,
 }
 
 /** True when the page needs more than a URL to view (any mode but `public`). */

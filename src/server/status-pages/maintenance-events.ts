@@ -18,6 +18,7 @@ import type { Maintenance, MaintenanceOccurrence, StatusPage } from '@/payload-t
 import { toOccurrenceUpdate } from '@/server/maintenance/occurrences'
 import { relationId } from '@/server/maintenance/serialize'
 import { getActiveMaintenanceForStatusPage } from '@/server/maintenance/status-page'
+import { isMaintenanceVisibleOn, type AudienceScopedPage } from '@/server/status-pages/audiences'
 import { resolveTimezone } from '@/server/maintenance/status'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
 
@@ -82,17 +83,19 @@ export const isCancelledEvent = (event: Pick<MaintenanceEvent, 'state' | 'paused
  */
 export async function listMaintenanceEvents(
   payload: Payload,
-  pageId: string | number,
+  page: AudienceScopedPage,
   { now = new Date() }: { now?: Date } = {},
 ): Promise<MaintenanceEvent[]> {
-  const { docs: maintenances } = await payload.find({
+  const { docs: found } = await payload.find({
     collection: 'maintenance',
-    where: { statusPages: { equals: pageId } },
+    where: { statusPages: { equals: page.id } },
     depth: 0,
     limit: 100,
     pagination: false,
     overrideAccess: true,
   })
+  // Audience pages (#151): only the maintenance the scoped page may show.
+  const maintenances = (found as Maintenance[]).filter((doc) => isMaintenanceVisibleOn(page, doc))
   if (maintenances.length === 0) return []
   const byId = new Map((maintenances as Maintenance[]).map((m) => [String(m.id), m]))
 
@@ -166,11 +169,11 @@ export async function listMaintenanceEvents(
  */
 export async function announcedMaintenance(
   payload: Payload,
-  page: Pick<StatusPage, 'id' | 'maintenanceVisibilityHours'>,
+  page: AudienceScopedPage & Pick<StatusPage, 'maintenanceVisibilityHours'>,
   events: readonly MaintenanceEvent[],
   now: Date = new Date(),
 ): Promise<MaintenanceEvent[]> {
-  const shown = await getActiveMaintenanceForStatusPage(payload, page.id, {
+  const shown = await getActiveMaintenanceForStatusPage(payload, page, {
     now,
     visibilityHours: page.maintenanceVisibilityHours,
   })

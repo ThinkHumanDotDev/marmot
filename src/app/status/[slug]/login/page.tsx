@@ -58,6 +58,7 @@ function Alert({ children }: { children: React.ReactNode }) {
  * - `email-domain`: the address form, then "check your inbox" (`?sent=1`); the emailed link opens
  *   this page with `?token=…`, which asks for one click to redeem it (mail scanners that prefetch
  *   links cannot use it up).
+ * - `audience` (#151): the same address form and link as `email-domain`.
  * - `ip-allowlist`: a static "restricted" notice; there is nothing to sign in with.
  */
 export default async function StatusPageLogin({ params, searchParams }: PageProps) {
@@ -87,7 +88,7 @@ export default async function StatusPageLogin({ params, searchParams }: PageProp
   if (mode === 'ip-allowlist') {
     Icon = ShieldOff
     description = t('ipAllowlist.description')
-  } else if (mode === 'email-domain') {
+  } else if (mode === 'email-domain' || mode === 'audience') {
     const token =
       typeof query.token === 'string' && query.token.length <= 128 ? query.token : undefined
     const message =
@@ -119,7 +120,7 @@ export default async function StatusPageLogin({ params, searchParams }: PageProp
         </a>
       )
     } else {
-      description = t('emailDomain.description')
+      description = mode === 'audience' ? t('audience.description') : t('emailDomain.description')
       content = (
         <form method="post" action={action} className="flex flex-col gap-3">
           {message && <Alert>{message}</Alert>}

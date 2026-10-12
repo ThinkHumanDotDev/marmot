@@ -118,6 +118,12 @@ export async function announceMaintenanceEvent(
   for (const pageId of event.maintenance.statusPages) {
     const page = await loadPage(payload, toId(payload, pageId))
     if (!page) continue
+    const components = maintenanceComponents(page, event.maintenance.monitors)
+    // Audience pages (#151): a maintenance of monitors that no component shows is visible to no
+    // audience, so it must not become a page-wide announcement either.
+    if (page.access === 'audience' && event.maintenance.monitors.length > 0 && !components.length) {
+      continue
+    }
     await createNotificationBatch(payload, {
       page,
       event: MAINTENANCE_EVENTS[event.type],
@@ -127,7 +133,7 @@ export async function announceMaintenanceEvent(
       message:
         event.update?.message ||
         (event.type === 'scheduled' ? (event.maintenance.description ?? '') : ''),
-      components: maintenanceComponents(page, event.maintenance.monitors),
+      components,
       occurredAt: event.at,
       window: {
         start: event.occurrence.start,

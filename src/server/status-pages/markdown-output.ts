@@ -15,6 +15,7 @@ import type { OccurrenceState, OccurrenceUpdate } from '@/lib/maintenance-announ
 import type { StatusPage } from '@/payload-types'
 import type { PublicMaintenance } from '@/server/maintenance/status-page'
 
+import { isAudiencePage } from './audiences'
 import { announcedMaintenance, listMaintenanceEvents } from './maintenance-events'
 import {
   buildPublicGroups,
@@ -136,12 +137,14 @@ export async function renderPageMarkdown({
   const helpers = tools(page, locale)
   const { t } = helpers
   const [incidents, events] = await Promise.all([
-    findActiveIncidents(payload, page.id),
-    listMaintenanceEvents(payload, page.id, { now }),
+    findActiveIncidents(payload, page),
+    listMaintenanceEvents(payload, page, { now }),
   ])
   const groups = await buildPublicGroups(payload, page, { incidents })
   const names = componentNamesOf(groups)
-  const active = incidents.map((incident) => toPublicIncident(incident, names))
+  const active = incidents.map((incident) =>
+    toPublicIncident(incident, names, { scoped: isAudiencePage(page) }),
+  )
   const overall = pageOverallStatus(groups, active)
   const maintenance = await announcedMaintenance(payload, page, events, now)
 
@@ -293,12 +296,14 @@ export async function renderLlmsTxt({
   locale,
 }: MarkdownInput): Promise<string> {
   const { t } = tools(page, locale)
-  const incidents = await findActiveIncidents(payload, page.id)
+  const incidents = await findActiveIncidents(payload, page)
   const groups = await buildPublicGroups(payload, page, { incidents })
   const names = componentNamesOf(groups)
   const overall = pageOverallStatus(
     groups,
-    incidents.map((incident) => toPublicIncident(incident, names)),
+    incidents.map((incident) =>
+      toPublicIncident(incident, names, { scoped: isAudiencePage(page) }),
+    ),
   )
   const link = (label: string, url: string, description: string) =>
     `- [${escapeMarkdown(label)}](${url}): ${escapeMarkdown(description)}`

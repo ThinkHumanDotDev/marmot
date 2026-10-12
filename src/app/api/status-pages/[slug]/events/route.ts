@@ -8,6 +8,7 @@ import {
   accessRequestFrom,
   checkStatusPageAccess,
 } from '@/server/status-pages/access'
+import { scopePageForVisitor } from '@/server/status-pages/audiences'
 import { listStatusPageEvents } from '@/server/status-pages/events'
 import { findPublishedStatusPage } from '@/server/status-pages/public'
 import { robotsHeader } from '@/server/status-pages/seo'
@@ -40,7 +41,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   if (!access.allowed) return accessDeniedResponse(access, 'json', requestLocale(request))
 
   const filters = parseEventFilters(new URL(request.url).searchParams)
-  const history = await listStatusPageEvents(payload, page, filters)
+  const history = await listStatusPageEvents(payload, scopePageForVisitor(page, access), filters)
   return Response.json(history, {
     headers: {
       'Cache-Control': accessCacheControl(access, 'public, max-age=60'),
