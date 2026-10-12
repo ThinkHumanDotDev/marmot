@@ -822,10 +822,10 @@ the page refreshes on its auto-refresh interval like the full page, and the embe
 
 Framing is **opt-in per page** with **Allow embedding** (`allowEmbedding`):
 
-| Setting                   | `Content-Security-Policy` of the page                         | `X-Frame-Options` |
-| ------------------------- | ------------------------------------------------------------- | ----------------- |
-| Off (default)             | `frame-ancestors 'none'`                                      | `DENY`            |
-| On any website (`any`)    | `frame-ancestors *`                                           | none              |
+| Setting                    | `Content-Security-Policy` of the page                        | `X-Frame-Options` |
+| -------------------------- | ------------------------------------------------------------ | ----------------- |
+| Off (default)              | `frame-ancestors 'none'`                                     | `DENY`            |
+| On any website (`any`)     | `frame-ancestors *`                                          | none              |
 | Only on listed (`origins`) | `frame-ancestors https://docs.acme.com https://*.acme.com …` | none              |
 
 Origins (`embedOrigins`, at most 50) are a scheme, a host (or `*.` plus a domain) and an optional port,
@@ -845,7 +845,12 @@ page; links still open in a new tab.
 ### Status widget
 
 ```html
-<script async src="https://marmot.example.com/status/acme/widget.js" data-theme="light" data-size="md"></script>
+<script
+  async
+  src="https://marmot.example.com/status/acme/widget.js"
+  data-theme="light"
+  data-size="md"
+></script>
 ```
 
 `GET /status/:slug/widget.js` (also `/widget.js` on a custom domain) is a dependency-free script (well

@@ -2466,6 +2466,32 @@
           "primaryKey": false,
           "notNull": false
         },
+        "push_email_failure_keyword": {
+          "name": "push_email_failure_keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_email_success_keyword": {
+          "name": "push_email_success_keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_email_start_keyword": {
+          "name": "push_email_start_keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_email_unmatched": {
+          "name": "push_email_unmatched",
+          "type": "enum_monitors_push_email_unmatched",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'ignore'"
+        },
         "manual_status": {
           "name": "manual_status",
           "type": "enum_monitors_manual_status",
@@ -6716,88 +6742,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.status_pages_embed_origins": {
-      "name": "status_pages_embed_origins",
-      "schema": "",
-      "columns": {
-        "_order": {
-          "name": "_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "_parent_id": {
-          "name": "_parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "varchar",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "origin": {
-          "name": "origin",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "status_pages_embed_origins_order_idx": {
-          "name": "status_pages_embed_origins_order_idx",
-          "columns": [
-            {
-              "expression": "_order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_pages_embed_origins_parent_id_idx": {
-          "name": "status_pages_embed_origins_parent_id_idx",
-          "columns": [
-            {
-              "expression": "_parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "status_pages_embed_origins_parent_id_fk": {
-          "name": "status_pages_embed_origins_parent_id_fk",
-          "tableFrom": "status_pages_embed_origins",
-          "tableTo": "status_pages",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.status_pages_subscriptions_channels": {
       "name": "status_pages_subscriptions_channels",
       "schema": "",
@@ -7336,14 +7280,6 @@
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
-        },
-        "allow_embedding": {
-          "name": "allow_embedding",
-          "type": "enum_status_pages_allow_embedding",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'off'"
         },
         "search_engine_index": {
           "name": "search_engine_index",
@@ -14801,6 +14737,14 @@
         "cron"
       ]
     },
+    "public.enum_monitors_push_email_unmatched": {
+      "name": "enum_monitors_push_email_unmatched",
+      "schema": "public",
+      "values": [
+        "ignore",
+        "fail"
+      ]
+    },
     "public.enum_monitors_manual_status": {
       "name": "enum_monitors_manual_status",
       "schema": "public",
@@ -15076,15 +15020,6 @@
         "password",
         "email-domain",
         "ip-allowlist"
-      ]
-    },
-    "public.enum_status_pages_allow_embedding": {
-      "name": "enum_status_pages_allow_embedding",
-      "schema": "public",
-      "values": [
-        "off",
-        "any",
-        "origins"
       ]
     },
     "public.enum_status_pages_subscriptions_delivery_mode": {
@@ -15488,6 +15423,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "e8c2d08c-f3aa-464a-8d4e-675684764b29",
+  "id": "8a8294ff-986c-45f2-83c7-3265f2592243",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

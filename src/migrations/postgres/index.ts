@@ -52,7 +52,9 @@ import * as migration_20261008_035336_email_verification from './20261008_035336
 import * as migration_20261008_054355_otel_collectors from './20261008_054355_otel_collectors';
 import * as migration_20261011_162022_magic_link from './20261011_162022_magic_link';
 import * as migration_20261011_193817_status_page_monitor from './20261011_193817_status_page_monitor';
-import * as migration_20261011_201416_status_page_embedding from './20261011_201416_status_page_embedding';
+import * as migration_20261011_200250_push_ping_by_email from './20261011_200250_push_ping_by_email';
+import * as migration_20261011_202905_prometheus_monitor from './20261011_202905_prometheus_monitor';
+import * as migration_20261012_000612_status_page_embedding from './20261012_000612_status_page_embedding';
 
 export const migrations = [
   {
@@ -326,8 +328,18 @@ export const migrations = [
     name: '20261011_193817_status_page_monitor',
   },
   {
-    up: migration_20261011_201416_status_page_embedding.up,
-    down: migration_20261011_201416_status_page_embedding.down,
-    name: '20261011_201416_status_page_embedding'
+    up: migration_20261011_200250_push_ping_by_email.up,
+    down: migration_20261011_200250_push_ping_by_email.down,
+    name: '20261011_200250_push_ping_by_email',
+  },
+  {
+    up: migration_20261011_202905_prometheus_monitor.up,
+    down: migration_20261011_202905_prometheus_monitor.down,
+    name: '20261011_202905_prometheus_monitor',
+  },
+  {
+    up: migration_20261012_000612_status_page_embedding.up,
+    down: migration_20261012_000612_status_page_embedding.down,
+    name: '20261012_000612_status_page_embedding'
   },
 ];

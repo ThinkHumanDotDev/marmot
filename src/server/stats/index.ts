@@ -27,6 +27,8 @@ export type HeartbeatContext = {
     ping?: number | null
     /** Request timing phases (#94), the stored heartbeat's `timing` group. */
     timing?: unknown
+    /** Metric value of a Prometheus query monitor (#140). */
+    value?: number | null
     /** The engine hands over the stored document, whose time is an ISO string. */
     time: Date | string
     important?: boolean | null
@@ -71,6 +73,7 @@ export const createStatsListener =
         status: ctx.heartbeat.status,
         ping: locationFailed ? null : (ctx.heartbeat.ping ?? null),
         timing: locationFailed ? undefined : ctx.heartbeat.timing,
+        value: ctx.heartbeat.value ?? null,
         time: new Date(ctx.heartbeat.time),
       })
     } catch (error) {
