@@ -1,7 +1,9 @@
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
+import { isLocale } from '@/i18n/locales'
 import { resolveStatusPageLocale } from '@/i18n/resolve'
+import { offeredLocales } from '@/lib/status-page-locales'
 import { requestLocale } from '@/server/request-locale'
 import {
   accessDeniedResponse,
@@ -17,7 +19,9 @@ export const dynamic = 'force-dynamic'
 type RouteContext = { params: Promise<{ slug: string }> }
 
 /**
- * POST /api/status-pages/:slug/subscribe — `{ channel, target, components? }`.
+ * POST /api/status-pages/:slug/subscribe — `{ channel, target, components?, locale? }`.
+ * `locale` is the language the visitor reads the page in; messages to the subscriber use it when
+ * the page offers it, else the page's default language.
  *
  * Anonymous, for visitors who may view the page (protected pages need the access cookie). Answers
  * `202 { ok: true, next }` where `next` is `confirm-email`, `enter-code` or `done`, whatever the
@@ -44,7 +48,9 @@ export async function POST(request: Request, { params }: RouteContext) {
     page,
     { channel: body.channel, target: body.target, components: body.components },
     request,
-    resolveStatusPageLocale(page, request.headers),
+    isLocale(body.locale, offeredLocales(page))
+      ? body.locale
+      : resolveStatusPageLocale(page, request.headers),
   )
   if (result.ok) return Response.json(result, { status: 202, headers: NO_STORE })
   switch (result.error) {

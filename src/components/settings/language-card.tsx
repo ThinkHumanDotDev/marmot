@@ -15,12 +15,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
+  appLocales,
   hasMultipleLocales,
   isLocale,
   LOCALE_COOKIE,
   LOCALE_COOKIE_MAX_AGE,
   localeNames,
-  locales,
   type Locale,
 } from '@/i18n/locales'
 import { accountApi } from '@/lib/org-api'
@@ -50,7 +50,7 @@ export function LanguageCard({ userId, language }: LanguageCardProps) {
   if (!hasMultipleLocales()) return null
 
   async function choose(next: string) {
-    if (!isLocale(next) || next === value) return
+    if (!isLocale(next, appLocales) || next === value) return
     const previous = value
     setValue(next)
     try {
@@ -78,7 +78,7 @@ export function LanguageCard({ userId, language }: LanguageCardProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {locales.map((locale) => (
+              {appLocales.map((locale) => (
                 <SelectItem key={locale} value={locale} lang={locale}>
                   {localeNames[locale]}
                 </SelectItem>

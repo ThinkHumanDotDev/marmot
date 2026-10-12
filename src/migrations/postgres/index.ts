@@ -58,7 +58,9 @@ import * as migration_20261012_000555_group_aggregation_modes from './20261012_0
 import * as migration_20261012_004250_status_page_uptime_history from './20261012_004250_status_page_uptime_history';
 import * as migration_20261012_010244_protocol_monitors from './20261012_010244_protocol_monitors';
 import * as migration_20261012_012757_ssh_tunnels from './20261012_012757_ssh_tunnels';
-import * as migration_20261012_020509_status_page_latency_charts from './20261012_020509_status_page_latency_charts';
+import * as migration_20261012_015900_status_page_embedding from './20261012_015900_status_page_embedding';
+import * as migration_20261012_023207_status_page_translations from './20261012_023207_status_page_translations';
+import * as migration_20261012_030622_status_page_latency_charts from './20261012_030622_status_page_latency_charts';
 
 export const migrations = [
   {
@@ -362,8 +364,18 @@ export const migrations = [
     name: '20261012_012757_ssh_tunnels',
   },
   {
-    up: migration_20261012_020509_status_page_latency_charts.up,
-    down: migration_20261012_020509_status_page_latency_charts.down,
-    name: '20261012_020509_status_page_latency_charts'
+    up: migration_20261012_015900_status_page_embedding.up,
+    down: migration_20261012_015900_status_page_embedding.down,
+    name: '20261012_015900_status_page_embedding',
+  },
+  {
+    up: migration_20261012_023207_status_page_translations.up,
+    down: migration_20261012_023207_status_page_translations.down,
+    name: '20261012_023207_status_page_translations',
+  },
+  {
+    up: migration_20261012_030622_status_page_latency_charts.up,
+    down: migration_20261012_030622_status_page_latency_charts.down,
+    name: '20261012_030622_status_page_latency_charts'
   },
 ];

@@ -3,18 +3,31 @@
  * catalogue under `src/i18n/messages/<locale>.json`, registering it in `src/i18n/messages/index.ts`
  * and appending it here; nothing else in the code base lists locales.
  *
+ * `locales` is every language with a catalogue. Some catalogues only cover the public status page
+ * surfaces (`PUBLIC_MESSAGE_SCOPES` in `src/i18n/messages/scopes.ts`): visitors can read a status
+ * page, its feeds and the subscriber emails in them, but the signed-in app only offers the
+ * languages in `appLocales`, whose catalogues are complete.
+ *
  * This module is imported by client components, collections and the worker alike, so it must stay
  * free of Next.js and Payload imports.
  */
-export const locales = ['en'] as const
+export const locales = ['en', 'fr', 'de', 'es'] as const
 
 export type Locale = (typeof locales)[number]
 
-export const defaultLocale: Locale = 'en'
+/** Languages with a complete catalogue: the signed-in app, organization and admin languages. */
+export const appLocales = ['en'] as const satisfies readonly Locale[]
 
-/** Each language's name in its own language, for the language picker. */
+export type AppLocale = (typeof appLocales)[number]
+
+export const defaultLocale: AppLocale = 'en'
+
+/** Each language's name in its own language, for the language pickers. */
 export const localeNames: Record<Locale, string> = {
   en: 'English',
+  fr: 'Français',
+  de: 'Deutsch',
+  es: 'Español',
 }
 
 /** Cookie that remembers the language on signed-out pages (login, invite, status pages). */
@@ -23,8 +36,8 @@ export const LOCALE_COOKIE = 'marmot-locale'
 /** One year: the preference also lives on the user record, the cookie is a convenience. */
 export const LOCALE_COOKIE_MAX_AGE = 365 * 24 * 60 * 60
 
-/** Whether the UI should offer a language picker at all. */
-export const hasMultipleLocales = (): boolean => (locales as readonly string[]).length > 1
+/** Whether the app UI should offer a language picker at all (`appLocales`). */
+export const hasMultipleLocales = (): boolean => (appLocales as readonly string[]).length > 1
 
 export function isLocale(value: unknown, supported: readonly string[] = locales): value is Locale {
   return typeof value === 'string' && supported.includes(value)
@@ -90,7 +103,7 @@ export interface LocaleSources {
  */
 export function resolveLocale(
   sources: LocaleSources,
-  supported: readonly string[] = locales,
+  supported: readonly string[] = appLocales,
 ): Locale {
   if (isLocale(sources.preference, supported)) return sources.preference
   if (isLocale(sources.cookie, supported)) return sources.cookie

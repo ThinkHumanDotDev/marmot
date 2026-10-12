@@ -41,7 +41,10 @@ export type StatusPagePatch = Partial<
     | 'themePreset'
     | 'themeOverrides'
     | 'bannerText'
-    | 'language'
+    | 'defaultLocale'
+    | 'additionalLocales'
+    | 'timeZoneMode'
+    | 'timeZone'
     | 'published'
     | 'searchEngineIndex'
     | 'showTags'
@@ -63,6 +66,8 @@ export type StatusPagePatch = Partial<
     | 'subscriptions'
     | 'allowedEmailDomains'
     | 'allowedIpRanges'
+    | 'allowEmbedding'
+    | 'embedOrigins'
   >
 > & {
   /** New page password (write-only; never returned). */

@@ -18,7 +18,9 @@ import { cn } from '@/lib/utils'
 
 import { SubscribeDialog } from './subscribe-dialog'
 import { ImpactBadge, IncidentUpdateEntry, impactStyles, StatusPageLogo } from './parts'
+import { LocaleSwitcher, TimeZoneSwitcher } from './footer-controls'
 import { ThemeToggle } from './theme-toggle'
+import { useLiveStatus } from './use-live-status'
 
 export { ImpactBadge, IncidentUpdateEntry, impactStyles, StatusPageLogo }
 import type {
@@ -281,7 +283,7 @@ function MonitorRow({ monitor, basePath }: { monitor: PublicMonitor; basePath: s
  * A group as a collapsible section (WAI-ARIA disclosure: a button inside the heading). The header
  * carries the worst status of the group's components, so a collapsed group still shows problems.
  */
-function GroupSection({ group, basePath }: { group: PublicGroup; basePath: string }) {
+export function GroupSection({ group, basePath }: { group: PublicGroup; basePath: string }) {
   const t = useTranslations('statusPages')
   const [open, setOpen] = React.useState(group.defaultOpen)
   const contentId = React.useId()
@@ -349,43 +351,14 @@ interface StatusPageViewProps {
 export function StatusPageView({ slug, initial, basePath }: StatusPageViewProps) {
   const t = useTranslations('statusPages')
   const format = useFormatter()
-  const [data, setData] = React.useState(initial)
-  const [refreshing, setRefreshing] = React.useState(false)
+  const { data, refreshing } = useLiveStatus(slug, initial)
   const interval = data.config.autoRefreshInterval
-
-  React.useEffect(() => {
-    if (!interval || interval <= 0) return
-    let cancelled = false
-    const tick = async () => {
-      if (document.visibilityState === 'hidden') return
-      setRefreshing(true)
-      try {
-        const res = await fetch(`/api/status-pages/${encodeURIComponent(slug)}/public`, {
-          cache: 'no-store',
-          headers: { Accept: 'application/json' },
-        })
-        // Access ended (password changed, viewer revoked, cookie expired, network left): the
-        // server sends the sign-in or restricted screen.
-        if (res.status === 401 || res.status === 403) return window.location.reload()
-        if (res.ok && !cancelled) setData((await res.json()) as PublicStatusPageData)
-      } catch {
-        // keep showing the last good payload
-      } finally {
-        if (!cancelled) setRefreshing(false)
-      }
-    }
-    const id = window.setInterval(tick, Math.max(5, interval) * 1000)
-    return () => {
-      cancelled = true
-      window.clearInterval(id)
-    }
-  }, [slug, interval])
 
   const { config, groups, incidents, overall, maintenance } = data
   const pinned = incidents.filter((i) => i.pinned)
   const others = incidents.filter((i) => !i.pinned)
-  const feedHref = `/status/${encodeURIComponent(slug)}/rss`
   const base = basePath ?? `/status/${encodeURIComponent(slug)}`
+  const feedHref = `${base}/rss`
   const link = (kind: EventKind, publicId: string) => `${base}${eventPath(kind, publicId)}`
 
   return (
@@ -537,6 +510,10 @@ export function StatusPageView({ slug, initial, basePath }: StatusPageViewProps)
                 </a>
               )}
             </span>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <TimeZoneSwitcher />
+            <LocaleSwitcher />
           </div>
         </footer>
       </div>

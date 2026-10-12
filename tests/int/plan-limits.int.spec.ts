@@ -330,7 +330,10 @@ describe('custom domains', () => {
       user: await as(owner),
       overrideAccess: false,
     })
-    expect(await resolve(host)).toEqual({ status: 200, body: { slug: page.slug } })
+    expect(await resolve(host)).toEqual({
+      status: 200,
+      body: { slug: page.slug, frameAncestors: "'none'" },
+    })
   })
 
   it('stops resolving after a downgrade but keeps the domains and the page', async () => {
@@ -360,7 +363,10 @@ describe('custom domains', () => {
 
     // Upgrading again restores the hostname without re-entering it.
     await setPlan(org, 'pro', 'active')
-    expect(await resolve(host)).toEqual({ status: 200, body: { slug: page.slug } })
+    expect(await resolve(host)).toEqual({
+      status: 200,
+      body: { slug: page.slug, frameAncestors: "'none'" },
+    })
   })
 
   it('always resolves with billing disabled', async () => {

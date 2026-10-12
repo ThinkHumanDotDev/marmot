@@ -29,7 +29,8 @@ Three org-scoped collections (`src/collections/StatusPages.ts`, `src/collections
 | `theme`                                              | `auto` (visitor picks system/light/dark), or a forced `light` / `dark`.                  |
 | `themePreset`, `themeOverrides`                      | Built-in palette id and validated colour overrides ([Themes](#themes)).                  |
 | `bannerText`                                         | Optional headline (≤ 140 characters) that replaces the overall-status text.              |
-| `language`                                           | Locale of the page text (`en`), or `auto` to follow the visitor's browser.               |
+| `defaultLocale`, `additionalLocales[]`               | Page languages (`en`, `fr`, `de`, `es`); see [Languages](#languages-and-time-zones).     |
+| `timeZoneMode`, `timeZone`                           | `visitor` (default) or a fixed `page` zone; IANA `timeZone`, else the org's.             |
 | `published`                                          | Only published pages are served; drafts 404 for visitors.                                |
 | `access`, `password` (write-only)                    | `public`, `password`, `email-domain` or `ip-allowlist`; see [Access](#access).           |
 | `allowedEmailDomains[].domain`                       | Domains admitted by `email-domain` access (lower-cased, without `@`).                    |
@@ -599,19 +600,48 @@ working. The OpenAPI document at `/api/openapi.json` describes them (`src/server
 - **Caching**: `Cache-Control: public, max-age=N, stale-while-revalidate=N` where `N` is the page's
   auto-refresh interval clamped to 30–300 seconds (300 when the page does not refresh);
   `private, no-store` plus `X-Robots-Tag: noindex` for protected pages. `Vary: Accept-Language, Cookie`
-  because `auto`-language pages follow the visitor.
+  (the access cookie decides protected pages; the language comes from the URL prefix).
 - **Validation**: a weak `ETag` of the body; `If-None-Match` with a matching tag returns `304`. Bodies
   contain no "generated at" timestamps, so the tag only changes when the data does.
 - **CORS**: `Access-Control-Allow-Origin: *` with `ETag` exposed; `OPTIONS` answers the preflight that
-  `If-None-Match` triggers.
+  `If-None-Match` triggers. Responses to visitors admitted by an IP allow-list carry no CORS header: the
+  network position is shared by every site the visitor opens, so no other site's script may read them.
 - **Errors**: RFC 9457 `application/problem+json` with `type: about:blank`, the HTTP status phrase as
   `title`, a localised `detail` and a `code` (`not-found`, `login-required`, `invalid-password`,
   `rate-limited`, `ip-not-allowed`).
 
+## Languages and time zones
+
+A page is written in its `defaultLocale` and can offer `additionalLocales` (#114). Marmot ships the public
+page, its history and permalinks, the access and subscription pages, the feeds, the Markdown and
+`llms.txt` outputs, the subscriber emails, SMS and chat messages in English, French, German and Spanish
+(`src/i18n/messages/<locale>.json`, the keys in `PUBLIC_MESSAGE_SCOPES`). User content (titles, incident
+updates, component names) is shown as written.
+
+- **URLs**: the default language has no prefix; the others live under their code:
+  `/status/acme/fr`, `/status/acme/fr/events`, `/status/acme/fr/rss`, and `/fr/…` on a custom domain.
+  The proxy strips the prefix before routing, so every page path, feed, badge and machine endpoint is
+  available in every offered language. A language the page does not offer falls back to the default.
+- **First visit**: on a plain URL, a visitor whose browser prefers an offered language
+  (`Accept-Language`, matched by base language) is redirected to it. The footer's language switcher
+  links to the current view in every offered language and remembers the choice in the
+  `marmot-status-locale` cookie, which then wins over `Accept-Language` (choosing the default language
+  stops the redirect).
+- **SEO**: every HTML page links its `hreflang` alternates (plus `x-default`), and its canonical URL and
+  feed links stay in its language.
+- **Subscribers** receive messages in the language they subscribed in (`locale` of the subscription),
+  and their manage, confirm and unsubscribe links open in it.
+- **Time zones**: timestamps are formatted with `Intl` in the page language. The server renders them in
+  the page's `timeZone` (else the organization's), so HTML and hydration match. With `timeZoneMode:
+visitor` (default) they switch to the visitor's browser zone after hydration; with `page` they stay in
+  the page zone. The footer says which zone is in use and, when the visitor's zone differs, lets them
+  switch between the two (remembered in `localStorage`). Day and month grouping of the history follows
+  the page zone.
+
 ## Builder
 
 `/{orgSlug}/status-pages` lists the organization's pages; `/{orgSlug}/status-pages/{id}` edits one with
-nine tabs (ten for admins): **Settings** (title, slug, description, language once Marmot ships more than one, refresh,
+nine tabs (ten for admins): **Settings** (title, slug, description, languages and time zone, refresh,
 custom CSS, analytics id, header links, display toggles, uptime bars and calculation mode, delete), **Theme** (colour mode, preset, colour
 overrides, banner headline, logos and favicon, with a live preview; see [Themes](#themes)), **Groups &
 monitors** (drag-and-drop groups and components with
@@ -926,6 +956,66 @@ through one access check (`statusPageBadgeAccess` → `checkStatusPageAccess`): 
 (access cookie, `?pw=`, or a client address in the IP allow-list), and granted responses of protected
 pages are `private, no-store` too.
 
+## Embedding
+
+The **Share** tab also offers two ways to show the status inside another site (#109), each with
+copy-to-clipboard snippets.
+
+### iframe embed mode
+
+`/status/<slug>?embed=all` (or `https://status.example.com/?embed=all` on a custom domain) renders the
+page without its header and footer. `embed` takes `all` or a comma-separated list of sections:
+`banner` (overall status), `maintenance`, `incidents` (active incidents), `components` (the groups) and
+`history` (past incidents); unknown names are ignored and a list without a known section shows them all.
+`&theme=light` or `&theme=dark` overrides the page's theme. Every link of the embed opens in a new tab,
+the page refreshes on its auto-refresh interval like the full page, and the embed is `noindex`.
+
+Framing is **opt-in per page** with **Allow embedding** (`allowEmbedding`):
+
+| Setting                    | `Content-Security-Policy` of the page                        | `X-Frame-Options` |
+| -------------------------- | ------------------------------------------------------------ | ----------------- |
+| Off (default)              | `frame-ancestors 'none'`                                     | `DENY`            |
+| On any website (`any`)     | `frame-ancestors *`                                          | none              |
+| Only on listed (`origins`) | `frame-ancestors https://docs.acme.com https://*.acme.com …` | none              |
+
+Origins (`embedOrigins`, at most 50) are a scheme, a host (or `*.` plus a domain) and an optional port,
+nothing else; the server normalizes them and rejects anything else, and `origins` needs at least one.
+Only the page itself follows the setting: every other response under `/status/` (login, subscription
+management, history, feeds, …) is sent with `frame-ancestors 'none'` and `X-Frame-Options: DENY`, as is
+everything outside `/status/`.
+
+**Only public pages can be framed.** A draft or a page with any [access](#access) mode but public always
+answers `frame-ancestors 'none'`, whatever the setting, and its embed mode answers `404`, so the access
+cookie (and the IP allow-list) is never used inside a frame. The headers are set by `src/proxy.ts`, which
+looks the policy up through `GET /api/status-pages/:slug/embed-policy` (on custom domains through
+`resolve-domain`); lookups are cached for 60 seconds, so switching embedding off takes up to a minute, and
+a failed lookup refuses framing. The snippet's `sandbox` attribute keeps the frame from navigating the host
+page; links still open in a new tab.
+
+### Status widget
+
+```html
+<script
+  async
+  src="https://marmot.example.com/status/acme/widget.js"
+  data-theme="light"
+  data-size="md"
+></script>
+```
+
+`GET /status/:slug/widget.js` (also `/widget.js` on a custom domain) is a dependency-free script (well
+under 5 KB gzipped) that renders a status pill ("All Systems Operational", "Partial System Outage", …)
+right after its `<script>` element, linking to the page. It reads the page's cached
+[`status.json`](#feeds-and-machine-readable-output) without credentials and re-reads it on the page's
+auto-refresh interval (at least every 30 seconds, never when auto-refresh is off). `data-theme` is
+`light` (default), `dark` or `auto` (the visitor's system setting), `data-size` `sm`, `md` (default) or
+`lg`; the pill lives in a shadow root, so the host site's CSS does not affect it. The Share tab also has a
+React component that appends the script to its own element. The widget does not need **Allow embedding**.
+
+Only public pages have a widget: for a draft or a protected page `widget.js` answers `404` whatever
+credentials the request carries, and `status.json` sends no CORS header to visitors admitted by an IP
+allow-list, so an intranet status never reaches another site through a visitor's browser.
+
 ## Access
 
 A page's **Access** tab switches it between **Public** (default), **Password**, **Email domain** and
@@ -1096,7 +1186,7 @@ real state.
 
 A page can be served at the root of its own hostnames (`domains[].hostname`). `src/proxy.ts` (the
 Next.js 16 proxy, formerly middleware) runs for the page's public paths only: `/`, `/rss`,
-`/manifest.json`, `/login`, `/badge.svg`, `/events`, `/events/incident/:id[.md]`,
+`/manifest.json`, `/login`, `/badge.svg`, `/widget.js`, `/events`, `/events/incident/:id[.md]`,
 `/events/maintenance/:id[.md]`, `/sitemap.xml`, `/robots.txt`, `/feed/atom`, `/feed/json`,
 `/maintenance.ics`, `/api/v2/*.json`, `/api/openapi.json`, `/index.md` and `/llms.txt`:
 

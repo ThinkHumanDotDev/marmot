@@ -18,7 +18,11 @@ import {
 import { isProtectedPage } from '@/server/status-pages/access'
 import { buildPageCharts, type PublicComponentChart } from '@/server/status-pages/latency-charts'
 import { NOINDEX, statusPageMetadata } from '@/server/status-pages/seo'
-import { statusPageUrlForHeaders } from '@/server/status-pages/urls'
+import {
+  localeAlternates,
+  statusPageLocalePath,
+  statusPageUrlForHeaders,
+} from '@/server/status-pages/urls'
 
 import { loadPageAccess, loadPublishedPage } from '../data'
 
@@ -60,9 +64,13 @@ export async function chartsMetadata(
     return { title: page.title, robots: NOINDEX }
   }
   const t = await getTranslations({ locale, namespace: 'statusPages.seo' })
-  const base = statusPageUrlForHeaders(page, await headers())
+  const requestHeaders = await headers()
+  const base = statusPageUrlForHeaders(page, requestHeaders)
+  const feedBase = statusPageLocalePath(page, requestHeaders)
   if (componentId === undefined) {
     return statusPageMetadata(page, {
+      languages: localeAlternates(page, requestHeaders, CHARTS_PATH),
+      feedBase,
       title: t('chartsTitle', { siteName: page.title }),
       description: t('chartsDescription', { siteName: page.title }),
       url: `${base}${CHARTS_PATH}`,
@@ -71,6 +79,8 @@ export async function chartsMetadata(
   const [chart] = await loadCharts(slug, range, componentId)
   if (!chart) return { title: page.title, robots: NOINDEX }
   return statusPageMetadata(page, {
+    languages: localeAlternates(page, requestHeaders, componentChartPath(chart.componentId)),
+    feedBase,
     title: t('componentChartTitle', { name: chart.name, siteName: page.title }),
     description: t('componentChartDescription', { name: chart.name, siteName: page.title }),
     url: `${base}${componentChartPath(chart.componentId)}`,

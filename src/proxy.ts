@@ -1,5 +1,21 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
+import type { Locale } from '@/i18n/locales'
+import {
+  EMBED_PARAM,
+  EMBED_THEME_HEADER,
+  EMBED_THEME_PARAM,
+  FRAME_ANCESTORS_NONE,
+  frameHeaders,
+  isFrameAncestorsValue,
+  parseEmbedTheme,
+} from '@/lib/status-page-embed'
+import {
+  splitLocalePrefix,
+  STATUS_LOCALE_HEADER,
+  STATUS_PATH_HEADER,
+} from '@/lib/status-page-locales'
+
 /**
  * Status page URL rewrites (Next.js 16 "proxy", formerly middleware).
  *
@@ -15,15 +31,30 @@ import { NextResponse, type NextRequest } from 'next/server'
  *   https://status.example.com/              → /status/<slug>
  *   https://status.example.com/rss           → /status/<slug>/rss (and every other path in
  *                                              `REWRITES`: `manifest.json`, `login`, `badge.svg`,
- *                                              the history `events`, `sitemap.xml`, `robots.txt`,
+ *                                              `widget.js`, the history `events`, `sitemap.xml`,
+ *                                              `robots.txt`,
  *                                              the feeds, `maintenance.ics`, `api/v2/*.json`,
  *                                              `api/openapi.json`, `index.md`, `llms.txt`)
  *   https://status.example.com/events/incident/<id>    → /status/<slug>/events/incident/<id>
  *   https://status.example.com/events/maintenance/<id> → /status/<slug>/events/maintenance/<id>
  *   https://status.example.com/events/incident/<id>.md → /status/<slug>/event-md/incident/<id>
  *
+ * Translated pages (#114): a language prefix after the page (`/status/<slug>/fr/events`, or
+ * `/fr/events` on a custom domain) is removed before routing and passed on in the
+ * `x-marmot-status-locale` request header, so every page route, feed and badge serves the language
+ * without a route tree per locale. `x-marmot-status-path` carries the path the visitor asked for
+ * (for the first-visit language redirect and the language switcher). Both headers are always
+ * overwritten here, so a client cannot set them on its own.
+ *
  * Everything else (the app, API, admin) is untouched, and any failure falls through to the normal
  * routing so a broken lookup can never take the main site down. See docs/Status-Pages.md.
+ *
+ * Framing (#109): the page itself (`/status/<slug>`, or `/` on its custom domain) gets the
+ * `Content-Security-Policy: frame-ancestors …` of its `allowEmbedding` setting, looked up through
+ * `GET /api/status-pages/:slug/embed-policy` (or with the domain, cached for 60 s); every other
+ * response below `/status/` and every rewritten path gets `frame-ancestors 'none'` and
+ * `X-Frame-Options: DENY`. A failed lookup also denies framing. `?embed=…&theme=` on the page is
+ * passed to the layout as the `x-marmot-embed-theme` request header.
  */
 
 export const config = {
@@ -33,6 +64,7 @@ export const config = {
     '/manifest.json',
     '/login',
     '/badge.svg',
+    '/widget.js',
     '/events',
     '/events/:kind/:id',
     '/monitors',
@@ -45,6 +77,9 @@ export const config = {
     '/feed/:path*',
     '/api/v2/:path*',
     '/api/openapi.json',
+    // Language prefixes on custom domains; keep in sync with `locales` (src/proxy.test.ts checks).
+    '/:locale(en|fr|de|es)',
+    '/:locale(en|fr|de|es)/:path*',
     '/status/:path*',
   ],
 }
@@ -56,6 +91,7 @@ const REWRITES: Record<string, string> = {
   '/manifest.json': '/manifest.json',
   '/login': '/login',
   '/badge.svg': '/badge.svg',
+  '/widget.js': '/widget.js',
   '/events': '/events',
   '/monitors': '/monitors',
   '/sitemap.xml': '/sitemap.xml',
@@ -102,6 +138,46 @@ export function customDomainSuffix(pathname: string): string | undefined {
   return undefined
 }
 
+const STATUS_PATH = /^\/status\/([a-z0-9-]+)(\/.*)?$/
+
+/**
+ * Rewrite of a path under `/status/…` (any host): the language prefix after the slug is removed
+ * and returned, then Markdown aliases are applied.
+ */
+export function statusPathRewrite(pathname: string): { pathname: string; locale: Locale | null } {
+  let inner = pathname
+  let locale: Locale | null = null
+  const match = STATUS_PATH.exec(pathname)
+  if (match) {
+    const split = splitLocalePrefix(match[2] ?? '')
+    if (split.locale) {
+      locale = split.locale
+      inner = `/status/${match[1]}${split.rest}`
+    }
+  }
+  return { pathname: markdownAliasRewrite(inner) ?? inner, locale }
+}
+
+/**
+ * The path below `/status/<slug>` a custom-domain `pathname` maps to, with its language prefix
+ * (`/fr/events` → `/events`, `fr`), or undefined when it is not a page path.
+ */
+export function customDomainRewrite(
+  pathname: string,
+): { suffix: string; locale: Locale | null } | undefined {
+  const { locale, rest } = splitLocalePrefix(pathname)
+  const suffix = customDomainSuffix(locale ? rest || '/' : pathname)
+  return suffix === undefined ? undefined : { suffix, locale }
+}
+
+/** `headers` with the status page locale and path set by the proxy (never the client). */
+function statusHeaders(request: NextRequest, headers: Headers, locale: Locale | null): Headers {
+  if (locale) headers.set(STATUS_LOCALE_HEADER, locale)
+  else headers.delete(STATUS_LOCALE_HEADER)
+  headers.set(STATUS_PATH_HEADER, `${request.nextUrl.pathname}${request.nextUrl.search}`)
+  return headers
+}
+
 const HOSTNAME = /^(?=.{1,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(?:\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/
 
 function serverHostname(): string | null {
@@ -122,7 +198,12 @@ function requestHostname(request: NextRequest): string {
   return raw.replace(/:\d+$/, '')
 }
 
-async function resolveSlug(request: NextRequest, host: string): Promise<string | null> {
+interface ResolvedDomain {
+  slug: string
+  frameAncestors: string
+}
+
+async function resolveDomain(request: NextRequest, host: string): Promise<ResolvedDomain | null> {
   const url = new URL('/api/status-pages/resolve-domain', request.nextUrl.origin)
   url.searchParams.set('host', host)
   const res = await fetch(url, {
@@ -130,33 +211,101 @@ async function resolveSlug(request: NextRequest, host: string): Promise<string |
     next: { revalidate: 60 },
   })
   if (!res.ok) return null
-  const body = (await res.json()) as { slug?: unknown }
-  return typeof body.slug === 'string' && /^[a-z0-9-]+$/.test(body.slug) ? body.slug : null
+  const body = (await res.json()) as { slug?: unknown; frameAncestors?: unknown }
+  if (typeof body.slug !== 'string' || !/^[a-z0-9-]+$/.test(body.slug)) return null
+  return {
+    slug: body.slug,
+    frameAncestors: isFrameAncestorsValue(body.frameAncestors)
+      ? body.frameAncestors
+      : FRAME_ANCESTORS_NONE,
+  }
+}
+
+/** The page itself (`/status/<slug>`), the only path below `/status/` that may ever be framed. */
+const PAGE_PATH = /^\/status\/([a-z0-9-]+)\/?$/
+
+/**
+ * `frame-ancestors` of the page `slug` (`GET /api/status-pages/:slug/embed-policy`, cached for 60 s);
+ * `'none'` when the lookup fails, so a broken lookup never opens a page to framing.
+ */
+async function embedPolicy(request: NextRequest, slug: string): Promise<string> {
+  try {
+    const url = new URL(`/api/status-pages/${slug}/embed-policy`, request.nextUrl.origin)
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      next: { revalidate: 60 },
+    })
+    if (!res.ok) return FRAME_ANCESTORS_NONE
+    const body = (await res.json()) as { frameAncestors?: unknown }
+    return isFrameAncestorsValue(body.frameAncestors) ? body.frameAncestors : FRAME_ANCESTORS_NONE
+  } catch {
+    return FRAME_ANCESTORS_NONE
+  }
+}
+
+/**
+ * Request headers passed on to the page: the visitor's own, minus any `x-marmot-embed-theme`, plus
+ * that header with `?theme=` when the page is opened in embed mode (the layout sets the theme from
+ * it; layouts cannot read the query string).
+ */
+function pageRequestHeaders(request: NextRequest, isPage: boolean): Headers {
+  const headers = new Headers(request.headers)
+  headers.delete(EMBED_THEME_HEADER)
+  const params = request.nextUrl.searchParams
+  if (isPage && params.has(EMBED_PARAM)) {
+    const theme = parseEmbedTheme(params.get(EMBED_THEME_PARAM))
+    if (theme) headers.set(EMBED_THEME_HEADER, theme)
+  }
+  return headers
+}
+
+function withFrameHeaders(response: NextResponse, frameAncestors: string): NextResponse {
+  for (const [name, value] of Object.entries(frameHeaders(frameAncestors))) {
+    response.headers.set(name, value)
+  }
+  return response
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   if (pathname.startsWith('/status/')) {
-    const alias = markdownAliasRewrite(pathname)
-    if (alias === undefined) return NextResponse.next()
+    // Language prefix (#114) first: `/status/<slug>/fr` is the page itself, in French.
+    const rewrite = statusPathRewrite(pathname)
+    // Framing (#109): the page follows its `allowEmbedding` setting, everything else below
+    // `/status/` (login, subscription management, feeds, …) is never framed.
+    const page = PAGE_PATH.exec(rewrite.pathname)
+    const headers = statusHeaders(
+      request,
+      pageRequestHeaders(request, page !== null),
+      rewrite.locale,
+    )
+    const frameAncestors = page ? await embedPolicy(request, page[1]) : FRAME_ANCESTORS_NONE
+    if (rewrite.pathname === pathname) {
+      return withFrameHeaders(NextResponse.next({ request: { headers } }), frameAncestors)
+    }
     const target = request.nextUrl.clone()
-    target.pathname = alias
-    return NextResponse.rewrite(target)
+    target.pathname = rewrite.pathname
+    return withFrameHeaders(NextResponse.rewrite(target, { request: { headers } }), frameAncestors)
   }
 
-  const suffix = customDomainSuffix(pathname)
-  if (suffix === undefined) return NextResponse.next()
+  const rewrite = customDomainRewrite(pathname)
+  if (rewrite === undefined) return NextResponse.next()
 
   const host = requestHostname(request)
   const own = serverHostname()
   if (!HOSTNAME.test(host) || host === own || host === 'localhost') return NextResponse.next()
 
   try {
-    const slug = await resolveSlug(request, host)
-    if (!slug) return NextResponse.next()
+    const resolved = await resolveDomain(request, host)
+    if (!resolved) return NextResponse.next()
     const target = request.nextUrl.clone()
-    target.pathname = `/status/${slug}${suffix}`
-    return NextResponse.rewrite(target)
+    target.pathname = `/status/${resolved.slug}${rewrite.suffix}`
+    const isPage = rewrite.suffix === ''
+    const headers = statusHeaders(request, pageRequestHeaders(request, isPage), rewrite.locale)
+    return withFrameHeaders(
+      NextResponse.rewrite(target, { request: { headers } }),
+      isPage ? resolved.frameAncestors : FRAME_ANCESTORS_NONE,
+    )
   } catch {
     return NextResponse.next()
   }

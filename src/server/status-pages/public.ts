@@ -9,10 +9,15 @@
 import type { Payload } from 'payload'
 
 import type { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
-import type { StatusPageLanguage, StatusPageTheme } from '@/collections/StatusPages'
-import { defaultLocale } from '@/i18n/locales'
+import type { StatusPageTheme, StatusPageTimeZoneMode } from '@/collections/StatusPages'
+import type { Locale } from '@/i18n/locales'
 import { statusPageTimeZone } from '@/i18n/resolve'
 import { DEFAULT_PAST_INCIDENTS_DAYS, MAX_PAST_INCIDENTS_DAYS } from '@/lib/status-page-events'
+import {
+  followsVisitorTimeZone,
+  offeredLocales,
+  pageDefaultLocale,
+} from '@/lib/status-page-locales'
 import { getThemePreset } from '@/lib/status-page-themes'
 import { offeredChannels, type SubscriberChannel } from '@/lib/status-page-subscribers'
 import {
@@ -215,8 +220,14 @@ export interface PublicConfig {
   themePreset: string
   /** Custom headline that replaces the automatic overall-status text. */
   bannerText: string | null
-  /** Fixed locale, or `auto` to follow the visitor's browser. */
-  language: StatusPageLanguage
+  /** Language of the page's plain URL (#114). */
+  defaultLocale: Locale
+  /** Languages the page offers, default first; the others live under `/<locale>`. */
+  locales: Locale[]
+  /** `visitor`: times follow the visitor's browser zone; `page`: always `timeZone`. */
+  timeZoneMode: StatusPageTimeZoneMode
+  /** The page's own IANA time zone (its setting, else the organization's). */
+  timeZone: string
   published: boolean
   showTags: boolean
   showCertificateExpiry: boolean
@@ -301,7 +312,10 @@ export function toPublicConfig(page: StatusPage): PublicConfig {
     theme: page.theme ?? 'auto',
     themePreset: getThemePreset(page.themePreset).id,
     bannerText: page.bannerText?.trim() || null,
-    language: page.language ?? defaultLocale,
+    defaultLocale: pageDefaultLocale(page),
+    locales: offeredLocales(page),
+    timeZoneMode: followsVisitorTimeZone(page) ? 'visitor' : 'page',
+    timeZone: statusPageTimeZone(page),
     published: Boolean(page.published),
     showTags: Boolean(page.showTags),
     showCertificateExpiry: Boolean(page.showCertificateExpiry),

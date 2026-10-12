@@ -1,4 +1,4 @@
-import type { Locale } from '@/i18n/locales'
+import type { AppLocale, Locale } from '@/i18n/locales'
 import { resolveRequestLocale } from '@/i18n/resolve'
 import { toLocale } from '@/i18n/translator'
 import { SLUG_ERROR_KEYS, type SlugMessage } from '@/lib/reserved-slugs'
@@ -33,7 +33,7 @@ export function rememberRequestUser(request: Request, user: LocaleSource | null 
  * Locale for a response to `request`: the signed-in user's `language` (once a helper has
  * authenticated the request), then the `marmot-locale` cookie, then `Accept-Language`.
  */
-export function requestLocale(request: Request): Locale {
+export function requestLocale(request: Request): AppLocale {
   return resolveRequestLocale({ headers: request.headers, user: requestUsers.get(request) })
 }
 

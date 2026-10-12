@@ -7124,6 +7124,88 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.status_pages_embed_origins": {
+      "name": "status_pages_embed_origins",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "origin": {
+          "name": "origin",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "status_pages_embed_origins_order_idx": {
+          "name": "status_pages_embed_origins_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_pages_embed_origins_parent_id_idx": {
+          "name": "status_pages_embed_origins_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "status_pages_embed_origins_parent_id_fk": {
+          "name": "status_pages_embed_origins_parent_id_fk",
+          "tableFrom": "status_pages_embed_origins",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.status_pages_subscriptions_channels": {
       "name": "status_pages_subscriptions_channels",
       "schema": "",
@@ -7358,13 +7440,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": true
-        },
-        "show_chart": {
-          "name": "show_chart",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
         },
         "send_url": {
           "name": "send_url",
@@ -7669,6 +7744,14 @@
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
+        },
+        "allow_embedding": {
+          "name": "allow_embedding",
+          "type": "enum_status_pages_allow_embedding",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'off'"
         },
         "search_engine_index": {
           "name": "search_engine_index",
@@ -15846,6 +15929,15 @@
         "ip-allowlist"
       ]
     },
+    "public.enum_status_pages_allow_embedding": {
+      "name": "enum_status_pages_allow_embedding",
+      "schema": "public",
+      "values": [
+        "off",
+        "any",
+        "origins"
+      ]
+    },
     "public.enum_status_pages_uptime_calculation": {
       "name": "enum_status_pages_uptime_calculation",
       "schema": "public",
@@ -16268,6 +16360,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "d9d08f3a-7d9d-4fea-9c2e-430c7018ebd6",
+  "id": "d2694976-fcb1-4ec8-bd93-d24ffdb35a23",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
