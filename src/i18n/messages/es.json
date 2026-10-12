@@ -420,6 +420,30 @@
         "average": "Media"
       },
       "empty": "Esta página no publica gráficos de tiempo de respuesta."
+    },
+    "metrics": {
+      "heading": "Métricas",
+      "period": "Periodo",
+      "views": {
+        "hour": "1 hora",
+        "day": "24 horas",
+        "week": "7 días",
+        "month": "30 días"
+      },
+      "aggregations": {
+        "average": "Media",
+        "sum": "Total",
+        "last": "Último valor",
+        "max": "Máximo"
+      },
+      "thresholds": {
+        "warning": "Advertencia {value}",
+        "critical": "Crítico {value}"
+      },
+      "summary": "{name} en {period}: {value}.",
+      "empty": "No hay datos en este periodo.",
+      "loadFailed": "No se pudo cargar este periodo. Inténtalo de nuevo.",
+      "noValue": "–"
     }
   },
   "email": {

@@ -14,6 +14,8 @@ import { Locations } from './Locations'
 import { Maintenance } from './Maintenance'
 import { MaintenanceOccurrences } from './MaintenanceOccurrences'
 import { Media } from './Media'
+import { Metrics } from './Metrics'
+import { MetricStats } from './MetricStats'
 import { MonitorIncidents } from './MonitorIncidents'
 import { MonitorLocationStates } from './MonitorLocationStates'
 import { Monitors } from './Monitors'
@@ -85,6 +87,8 @@ export const collections: CollectionConfig[] = [
   WebhookEndpoints,
   WebhookDeliveries,
   OtelCollectors,
+  Metrics,
+  MetricStats,
 ]
   .map(withAuditHooks)
   // Demo mode guard rails (#159): no-ops unless DEMO_MODE is set.

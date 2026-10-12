@@ -420,6 +420,30 @@
         "average": "Durchschnitt"
       },
       "empty": "Auf dieser Seite sind keine Antwortzeit-Diagramme veröffentlicht."
+    },
+    "metrics": {
+      "heading": "Metriken",
+      "period": "Zeitraum",
+      "views": {
+        "hour": "1 Stunde",
+        "day": "24 Stunden",
+        "week": "7 Tage",
+        "month": "30 Tage"
+      },
+      "aggregations": {
+        "average": "Durchschnitt",
+        "sum": "Summe",
+        "last": "Letzter Wert",
+        "max": "Maximum"
+      },
+      "thresholds": {
+        "warning": "Warnung {value}",
+        "critical": "Kritisch {value}"
+      },
+      "summary": "{name} über {period}: {value}.",
+      "empty": "Keine Daten in diesem Zeitraum.",
+      "loadFailed": "Dieser Zeitraum konnte nicht geladen werden. Bitte erneut versuchen.",
+      "noValue": "–"
     }
   },
   "email": {

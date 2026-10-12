@@ -105,6 +105,8 @@ export interface Config {
     'webhook-endpoints': WebhookEndpoint;
     'webhook-deliveries': WebhookDelivery;
     'otel-collectors': OtelCollector;
+    metrics: Metric;
+    'metric-stats': MetricStat;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -150,6 +152,8 @@ export interface Config {
     'webhook-endpoints': WebhookEndpointsSelect<false> | WebhookEndpointsSelect<true>;
     'webhook-deliveries': WebhookDeliveriesSelect<false> | WebhookDeliveriesSelect<true>;
     'otel-collectors': OtelCollectorsSelect<false> | OtelCollectorsSelect<true>;
+    metrics: MetricsSelect<false> | MetricsSelect<true>;
+    'metric-stats': MetricStatsSelect<false> | MetricStatsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -1693,6 +1697,50 @@ export interface WebhookDelivery {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "metrics".
+ */
+export interface Metric {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  description?: string | null;
+  suffix?: string | null;
+  decimals: number;
+  aggregation: 'average' | 'sum' | 'last' | 'max';
+  defaultView: 'hour' | 'day' | 'week' | 'month';
+  thresholds?: {
+    warning?: number | null;
+    critical?: number | null;
+  };
+  source: 'push' | 'monitor';
+  monitor?: (number | null) | Monitor;
+  visible?: boolean | null;
+  statusPages?: (number | StatusPage)[] | null;
+  order?: number | null;
+  lastValue?: number | null;
+  lastPushAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "metric-stats".
+ */
+export interface MetricStat {
+  id: number;
+  metric: number | Metric;
+  organization: number | Organization;
+  granularity: 'minute' | 'hour' | 'day';
+  timestamp: number;
+  count: number;
+  sum: number;
+  min: number;
+  max: number;
+  last: number;
+  lastAt: number;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -1866,6 +1914,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'otel-collectors';
         value: number | OtelCollector;
+      } | null)
+    | ({
+        relationTo: 'metrics';
+        value: number | Metric;
+      } | null)
+    | ({
+        relationTo: 'metric-stats';
+        value: number | MetricStat;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -3026,6 +3082,50 @@ export interface OtelCollectorsSelect<T extends boolean = true> {
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "metrics_select".
+ */
+export interface MetricsSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  description?: T;
+  suffix?: T;
+  decimals?: T;
+  aggregation?: T;
+  defaultView?: T;
+  thresholds?:
+    | T
+    | {
+        warning?: T;
+        critical?: T;
+      };
+  source?: T;
+  monitor?: T;
+  visible?: T;
+  statusPages?: T;
+  order?: T;
+  lastValue?: T;
+  lastPushAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "metric-stats_select".
+ */
+export interface MetricStatsSelect<T extends boolean = true> {
+  metric?: T;
+  organization?: T;
+  granularity?: T;
+  timestamp?: T;
+  count?: T;
+  sum?: T;
+  min?: T;
+  max?: T;
+  last?: T;
+  lastAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

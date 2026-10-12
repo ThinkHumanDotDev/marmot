@@ -2,12 +2,16 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
+import { getPayload } from 'payload'
+
+import config from '@payload-config'
 
 import { StatusPageEmbed } from '@/components/status-pages/public/status-page-embed'
 import { StatusPageView } from '@/components/status-pages/public/status-page-view'
 import { getStatusPageLocale } from '@/i18n/server'
 import { markdownToText } from '@/lib/markdown'
 import { EMBED_PARAM, parseEmbedSections } from '@/lib/status-page-embed'
+import { buildPublicMetrics } from '@/server/metrics/public'
 import { isProtectedPage } from '@/server/status-pages/access'
 import { NOINDEX, statusPageMetadata } from '@/server/status-pages/seo'
 import {
@@ -72,22 +76,33 @@ export default async function PublicStatusPage({ params, searchParams }: PagePro
   const data = await loadPublicData(slug)
   if (!data) notFound()
 
-  const { config } = data
-  const locale = await getStatusPageLocale(config)
+  const { config: publicConfig } = data
+  const metrics = embed ? [] : await buildPublicMetrics(await getPayload({ config }), page)
+  const locale = await getStatusPageLocale(publicConfig)
   const t = await getTranslations({ locale, namespace: 'statusPages.overall' })
 
   return (
     <>
-      <StatusPageExtras config={config} restricted={restricted} />
+      <StatusPageExtras config={publicConfig} restricted={restricted} />
       <main
         id="status-page"
-        data-slug={config.slug}
-        aria-label={`${config.title}: ${t(data.overall)}`}
+        data-slug={publicConfig.slug}
+        aria-label={`${publicConfig.title}: ${t(data.overall)}`}
       >
         {embed ? (
-          <StatusPageEmbed slug={config.slug} initial={data} basePath={basePath} sections={embed} />
+          <StatusPageEmbed
+            slug={publicConfig.slug}
+            initial={data}
+            basePath={basePath}
+            sections={embed}
+          />
         ) : (
-          <StatusPageView slug={config.slug} initial={data} basePath={basePath} />
+          <StatusPageView
+            slug={publicConfig.slug}
+            initial={data}
+            basePath={basePath}
+            metrics={metrics}
+          />
         )}
       </main>
     </>
