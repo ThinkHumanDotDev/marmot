@@ -414,7 +414,8 @@ describe('status pages', () => {
         ),
       )
       expect(res.status).toBe(200)
-      expect(await res.json()).toEqual({ slug: published.slug })
+      // `frameAncestors`: the page's embedding policy (#109), off by default.
+      expect(await res.json()).toEqual({ slug: published.slug, frameAncestors: "'none'" })
 
       const unknown = await resolveDomainRoute(
         new Request('http://localhost/api/status-pages/resolve-domain?host=nobody.example.com'),
