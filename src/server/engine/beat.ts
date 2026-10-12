@@ -98,6 +98,8 @@ export interface CheckResult {
   probes?: ProbeResult[] | null
   /** Response received by the check (HTTP types), whatever the outcome (#97). */
   response?: CapturedResponse | null
+  /** Metric value judged by the check (Prometheus query monitors, #140), whatever the outcome. */
+  value?: number | null
   /** Cache lifetime of the document the check read (status page monitors, #125); unset otherwise. */
   cacheSeconds?: number | null
   /**

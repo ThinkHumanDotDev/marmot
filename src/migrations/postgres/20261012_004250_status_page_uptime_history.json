@@ -2047,6 +2047,43 @@
           "notNull": false,
           "default": 2000
         },
+        "aggregation": {
+          "name": "aggregation",
+          "type": "enum_monitors_aggregation",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'worst'"
+        },
+        "aggregation_quorum": {
+          "name": "aggregation_quorum",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "aggregation_quorum_unit": {
+          "name": "aggregation_quorum_unit",
+          "type": "enum_monitors_aggregation_quorum_unit",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'count'"
+        },
+        "aggregation_latency": {
+          "name": "aggregation_latency",
+          "type": "enum_monitors_aggregation_latency",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'none'"
+        },
+        "group_weight": {
+          "name": "group_weight",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 1
+        },
         "url": {
           "name": "url",
           "type": "varchar",
@@ -2668,6 +2705,63 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'public'"
+        },
+        "prometheus_query": {
+          "name": "prometheus_query",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prometheus_down_operator": {
+          "name": "prometheus_down_operator",
+          "type": "enum_monitors_prometheus_down_operator",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'>'"
+        },
+        "prometheus_down_threshold": {
+          "name": "prometheus_down_threshold",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prometheus_degraded_operator": {
+          "name": "prometheus_degraded_operator",
+          "type": "enum_monitors_prometheus_degraded_operator",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prometheus_degraded_threshold": {
+          "name": "prometheus_degraded_threshold",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prometheus_aggregate": {
+          "name": "prometheus_aggregate",
+          "type": "enum_monitors_prometheus_aggregate",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'worst'"
+        },
+        "prometheus_no_data_status": {
+          "name": "prometheus_no_data_status",
+          "type": "enum_monitors_prometheus_no_data_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'down'"
+        },
+        "prometheus_error_status": {
+          "name": "prometheus_error_status",
+          "type": "enum_monitors_prometheus_error_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'down'"
         },
         "smtp_security": {
           "name": "smtp_security",
@@ -4744,6 +4838,12 @@
         "probes": {
           "name": "probes",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "value": {
+          "name": "value",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -14850,6 +14950,7 @@
         "http",
         "keyword",
         "json-query",
+        "prometheus",
         "port",
         "ping",
         "dns",
@@ -14887,6 +14988,33 @@
         "any",
         "half",
         "all"
+      ]
+    },
+    "public.enum_monitors_aggregation": {
+      "name": "enum_monitors_aggregation",
+      "schema": "public",
+      "values": [
+        "worst",
+        "quorum",
+        "weighted"
+      ]
+    },
+    "public.enum_monitors_aggregation_quorum_unit": {
+      "name": "enum_monitors_aggregation_quorum_unit",
+      "schema": "public",
+      "values": [
+        "count",
+        "percent"
+      ]
+    },
+    "public.enum_monitors_aggregation_latency": {
+      "name": "enum_monitors_aggregation_latency",
+      "schema": "public",
+      "values": [
+        "none",
+        "avg",
+        "max",
+        "min"
       ]
     },
     "public.enum_monitors_reminder_backoff": {
@@ -15059,6 +15187,57 @@
       "values": [
         "1",
         "2c"
+      ]
+    },
+    "public.enum_monitors_prometheus_down_operator": {
+      "name": "enum_monitors_prometheus_down_operator",
+      "schema": "public",
+      "values": [
+        ">",
+        ">=",
+        "<",
+        "<=",
+        "==",
+        "!="
+      ]
+    },
+    "public.enum_monitors_prometheus_degraded_operator": {
+      "name": "enum_monitors_prometheus_degraded_operator",
+      "schema": "public",
+      "values": [
+        ">",
+        ">=",
+        "<",
+        "<=",
+        "==",
+        "!="
+      ]
+    },
+    "public.enum_monitors_prometheus_aggregate": {
+      "name": "enum_monitors_prometheus_aggregate",
+      "schema": "public",
+      "values": [
+        "worst",
+        "any",
+        "all"
+      ]
+    },
+    "public.enum_monitors_prometheus_no_data_status": {
+      "name": "enum_monitors_prometheus_no_data_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending"
+      ]
+    },
+    "public.enum_monitors_prometheus_error_status": {
+      "name": "enum_monitors_prometheus_error_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending"
       ]
     },
     "public.enum_monitors_smtp_security": {
@@ -15735,6 +15914,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "a928a182-dc2f-4599-a42d-5a8ce69c7407",
+  "id": "9e7010d7-1bcd-4f81-8987-1e5482b87e71",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

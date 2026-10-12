@@ -19,6 +19,7 @@ import {
 } from './latency-histogram'
 import {
   getStats,
+  mergeBucketValues,
   pingWeight,
   rangeWindow,
   type Bucket,
@@ -77,6 +78,8 @@ export type SeriesPoint = {
   pingMax: number | null
   /** Average request timing phases of the interval (#94); only on intervals that measured them. */
   timing?: RequestTiming
+  /** Metric value of the interval (Prometheus query monitors, #140); only when one was recorded. */
+  value?: { avg: number; min: number; max: number; count: number }
 } & Partial<PercentileValues>
 
 export type RangeStats = Omit<MonitorStats, 'buckets'> & {
@@ -157,6 +160,7 @@ export function buildSeries(
     const group = groups.get(timestamp) ?? []
     const counts = countChecks(group)
     const timing = mergeBucketTiming(group.map((bucket) => bucket.extras))
+    const value = mergeBucketValues(group.map((bucket) => bucket.extras))
     let pingTotal = 0
     let weightTotal = 0
     for (const bucket of group) {
@@ -176,6 +180,7 @@ export function buildSeries(
       pingMax: maxOf(group.map((b) => b.pingMax)),
       ...(percentiles.length > 0 ? bucketPercentiles(group, percentiles) : {}),
       ...(timing ? { timing } : {}),
+      ...(value ? { value } : {}),
     })
   }
   return series
