@@ -59,7 +59,8 @@ import * as migration_20261012_004250_status_page_uptime_history from './2026101
 import * as migration_20261012_010244_protocol_monitors from './20261012_010244_protocol_monitors';
 import * as migration_20261012_012757_ssh_tunnels from './20261012_012757_ssh_tunnels';
 import * as migration_20261012_015900_status_page_embedding from './20261012_015900_status_page_embedding';
-import * as migration_20261012_023731_ct_alerts from './20261012_023731_ct_alerts';
+import * as migration_20261012_023207_status_page_translations from './20261012_023207_status_page_translations';
+import * as migration_20261012_030104_ct_alerts from './20261012_030104_ct_alerts';
 
 export const migrations = [
   {
@@ -368,8 +369,13 @@ export const migrations = [
     name: '20261012_015900_status_page_embedding',
   },
   {
-    up: migration_20261012_023731_ct_alerts.up,
-    down: migration_20261012_023731_ct_alerts.down,
-    name: '20261012_023731_ct_alerts'
+    up: migration_20261012_023207_status_page_translations.up,
+    down: migration_20261012_023207_status_page_translations.down,
+    name: '20261012_023207_status_page_translations',
+  },
+  {
+    up: migration_20261012_030104_ct_alerts.up,
+    down: migration_20261012_030104_ct_alerts.down,
+    name: '20261012_030104_ct_alerts'
   },
 ];

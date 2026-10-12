@@ -4265,6 +4265,15 @@
       "rss": "RSS",
       "poweredBy": "Powered by Marmot"
     },
+    "localeSwitcher": {
+      "label": "Language"
+    },
+    "timeZone": {
+      "label": "Time zone",
+      "notice": "All times in {zone}",
+      "visitor": "Your time zone ({zone})",
+      "page": "Page time zone ({zone})"
+    },
     "rss": {
       "title": "{title} status",
       "description": "Current status: {status}",
@@ -4328,10 +4337,6 @@
         "eventsLabel": "History",
         "events": "past incidents and maintenance, each with a permalink"
       }
-    },
-    "editor": {
-      "language": "Language",
-      "languageAuto": "Follow the visitor's browser"
     },
     "list": {
       "pageTitle": "Status pages",
@@ -4407,7 +4412,7 @@
       "footerTextPlaceholder": "Contact support@example.com for help. Markdown links are supported.",
       "appearance": {
         "title": "Appearance",
-        "description": "Language, refresh rate and custom styling."
+        "description": "Refresh rate and custom styling."
       },
       "autoRefresh": "Auto refresh (seconds, 0 = off)",
       "customCss": "Custom CSS",
@@ -4442,6 +4447,22 @@
         "homepageUrlHint": "The logo and title link here.",
         "contactUrl": "Contact URL",
         "contactUrlHint": "Shown as a “Contact us” button. An https:// URL or mailto: address."
+      },
+      "localization": {
+        "title": "Languages and time",
+        "description": "The languages visitors can read the page in and the time zone of its timestamps.",
+        "defaultLocale": "Default language",
+        "defaultLocaleHint": "Served at the page's plain URL.",
+        "locales": "Also offered in",
+        "localesHint": "Each extra language gets its own URL prefix, such as /fr, and an entry in the footer's language switcher. First-time visitors get the best match for their browser.",
+        "timeZoneMode": "Time zone",
+        "timeZoneModes": {
+          "visitor": "Visitor's time zone",
+          "page": "Fixed page time zone"
+        },
+        "timeZone": "Page time zone",
+        "timeZonePlaceholder": "Organization time zone",
+        "timeZoneHint": "An IANA name such as Europe/Berlin. Leave it empty to use the organization's time zone. Visitors can still switch in the footer."
       },
       "pastIncidentsDays": "Past incidents shown (days)",
       "pastIncidentsDaysHint": "Incidents of the last days are listed by day below the components; 0 hides the list. All of them stay on the history page.",

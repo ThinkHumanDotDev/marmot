@@ -127,9 +127,10 @@ carry no locale prefix, the language comes from the signed-in user. Everything l
 
 | File                      | Role                                                                                                                                    |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `locales.ts`              | `locales`, `defaultLocale`, `localeNames` (each language in its own language) and the pure resolver. The only list of languages.        |
+| `locales.ts`              | `locales` (every catalogue), `appLocales` (complete catalogues), `defaultLocale`, `localeNames` and the pure resolver.                  |
 | `messages/<locale>.json`  | One catalogue per language, namespaced by area (`common`, `auth`, `settings`, `statusPages`, …). English is the reference.              |
 | `messages/index.ts`       | Static map of catalogues (no computed `import()`, so the worker bundle can include it).                                                 |
+| `messages/scopes.ts`      | `PUBLIC_MESSAGE_SCOPES`: the keys a status page visitor can see; the only keys `fr`, `de` and `es` translate (merged over English).     |
 | `formats.ts`              | Named date and number formats (`short`, `zoned`, `percent`, …) and the default time zone.                                               |
 | `request.ts`, `server.ts` | next-intl request config; locale of the current request (`getRequestLocale`, `getStatusPageLocale`).                                    |
 | `resolve.ts`              | Locale and time zone of a request or a status page from plain `Headers`; usable in route handlers and tests.                            |
@@ -249,13 +250,22 @@ the same catalogue.
 
 User preference (`users.language`) → `marmot-locale` cookie (signed-out pages; the language picker sets
 it) → `Accept-Language` matched by base language → `defaultLocale`. Public status pages use their own
-`language` setting, or follow the visitor when it is `auto`. `<html lang>` always reflects the result.
+language prefix in the URL (`/status/<slug>/fr`), else their `defaultLocale`; plain URLs redirect first
+visits to an offered language the visitor prefers (`src/lib/status-page-locales.ts`). `<html lang>`
+always reflects the result. See docs/Status-Pages.md → Languages and time zones.
 
 ### Adding a language
 
+The signed-in app only offers `appLocales`, whose catalogues are complete. A language can first ship for
+the public status pages only: add `<locale>.json` with exactly the keys in `PUBLIC_MESSAGE_SCOPES`,
+register it in `publicCatalogues` (`src/i18n/messages/index.ts`), append it to `locales` and
+`localeNames`, and add it to the language prefixes in the `matcher` of `src/proxy.ts`. A string added
+to one of those scopes in `en.json` must be translated in every such catalogue (the catalogue test
+checks keys and placeholders). To make a language complete:
+
 1. Copy `src/i18n/messages/en.json` to `<locale>.json` and translate it (same keys; the catalogue format
    is plain nested JSON with ICU messages, which Crowdin, Weblate and Lingo.dev all handle).
-2. Register it in `src/i18n/messages/index.ts` and append the locale to `locales` and `localeNames` in
+2. Register it in `src/i18n/messages/index.ts` and append the locale to `locales`, `appLocales` and `localeNames` in
    `src/i18n/locales.ts`. The language picker in **Settings → Account** and the status page builder
    appear automatically once more than one locale exists.
 3. For the Payload admin, add the matching pack from `@payloadcms/translations/languages/<locale>` and

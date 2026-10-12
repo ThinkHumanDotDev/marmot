@@ -10,7 +10,12 @@ import { markdownToText } from '@/lib/markdown'
 import { EMBED_PARAM, parseEmbedSections } from '@/lib/status-page-embed'
 import { isProtectedPage } from '@/server/status-pages/access'
 import { NOINDEX, statusPageMetadata } from '@/server/status-pages/seo'
-import { statusPageBasePath, statusPageUrlForHeaders } from '@/server/status-pages/urls'
+import {
+  localeAlternates,
+  statusPageBasePath,
+  statusPageLocalePath,
+  statusPageUrlForHeaders,
+} from '@/server/status-pages/urls'
 
 import { loadPageAccess, loadPublicData, loadPublishedPage } from './data'
 import { StatusPageExtras } from './extras'
@@ -36,10 +41,13 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     return { title: page.title, robots: NOINDEX }
   }
 
+  const requestHeaders = await headers()
   const metadata = statusPageMetadata(page, {
     title: page.title,
     description: page.description ? markdownToText(page.description) : undefined,
-    url: statusPageUrlForHeaders(page, await headers()),
+    url: statusPageUrlForHeaders(page, requestHeaders),
+    languages: localeAlternates(page, requestHeaders),
+    feedBase: statusPageLocalePath(page, requestHeaders),
   })
   // The embed mode repeats the page's content; only the page itself is indexed.
   const embedded = parseEmbedSections((await searchParams)[EMBED_PARAM]) !== null

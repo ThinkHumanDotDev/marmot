@@ -1,0 +1,438 @@
+{
+  "common": {
+    "relativeTime": {
+      "never": "nie",
+      "justNow": "gerade eben",
+      "minutes": "vor {count} Min.",
+      "hours": "vor {count} Std.",
+      "days": "vor {count} T."
+    },
+    "duration": {
+      "day": "{count, plural, one {# Tag} other {# Tage}}",
+      "hour": "{count, plural, one {# Stunde} other {# Stunden}}",
+      "minute": "{count, plural, one {# Minute} other {# Minuten}}",
+      "second": "{count, plural, one {# Sekunde} other {# Sekunden}}"
+    }
+  },
+  "statusPages": {
+    "overall": {
+      "up": "Alle Systeme betriebsbereit",
+      "partial": "Dienst teilweise eingeschränkt",
+      "degraded": "Eingeschränkte Leistung",
+      "down": "Schwerer Ausfall",
+      "maintenance": "In Wartung",
+      "unknown": "Noch keine Daten"
+    },
+    "notFound": {
+      "pageTitle": "Statusseite nicht gefunden",
+      "title": "Statusseite nicht gefunden",
+      "description": "Diese Statusseite existiert nicht oder wurde nicht veröffentlicht."
+    },
+    "sections": {
+      "maintenance": "Wartung",
+      "incidents": "Vorfälle",
+      "services": "Dienste",
+      "otherIncidents": "Weitere Vorfälle",
+      "ongoingIncidents": "Laufende Vorfälle"
+    },
+    "maintenance": {
+      "from": "ab {start}"
+    },
+    "monitors": {
+      "empty": "Dieser Seite wurden noch keine Monitore hinzugefügt.",
+      "emptyGroup": "Keine Monitore in dieser Gruppe.",
+      "uptime24h": "Verfügbarkeit 24 Std.",
+      "uptime30d": "Verfügbarkeit 30 T.",
+      "window24h": "24 Std.",
+      "window30d": "30 T."
+    },
+    "uptime": {
+      "groupLabel": "Tägliche Verfügbarkeit der letzten {days} Tage",
+      "daysAgo": "vor {days} Tagen",
+      "today": "Heute",
+      "percent": "{value} Verfügbarkeit",
+      "noData": "Keine Daten",
+      "barLabel": "{date}: {state}",
+      "barLabelWithUptime": "{date}: {state}, {uptime} Verfügbarkeit",
+      "state": {
+        "nodata": "Keine Daten",
+        "up": "Betriebsbereit",
+        "maintenance": "Wartung",
+        "degraded": "Eingeschränkte Leistung",
+        "partial": "Teilausfall",
+        "down": "Ausfall"
+      },
+      "downFor": "Ausgefallen für {duration}",
+      "noDowntime": "Kein Ausfall verzeichnet",
+      "duration": {
+        "hours": "{hours} Std. {minutes} Min.",
+        "minutes": "{minutes} Min.",
+        "lessThanMinute": "weniger als eine Minute"
+      },
+      "incidents": "Vorfälle",
+      "maintenance": "Wartung"
+    },
+    "public": {
+      "contact": "Kontakt",
+      "homepage": "Startseite von {title}",
+      "aboutComponent": "Über {name}",
+      "componentMaintenance": "In Wartung",
+      "impact": {
+        "operational": "Betriebsbereit",
+        "degraded_performance": "Eingeschränkte Leistung",
+        "partial_outage": "Teilausfall",
+        "major_outage": "Schwerer Ausfall"
+      },
+      "incidents": {
+        "status": {
+          "investigating": "Wird untersucht",
+          "identified": "Ursache gefunden",
+          "monitoring": "Wird beobachtet",
+          "resolved": "Behoben"
+        },
+        "feedTitle": "[{status}] {title}",
+        "affected": "Betroffen: {components}",
+        "affectedLabel": "Betroffene Komponenten",
+        "componentImpact": "{name} ({impact})",
+        "latestUpdate": "Neueste Meldung",
+        "showTimeline": "{count, plural, one {# Meldung} other {Alle # Meldungen}} anzeigen",
+        "timelineLabel": "Meldungen zu {title}",
+        "edited": "bearbeitet",
+        "editedAt": "Bearbeitet am {time}"
+      },
+      "maintenance": {
+        "state": {
+          "scheduled": "Geplant",
+          "in-progress": "Läuft",
+          "verifying": "Wird geprüft",
+          "completed": "Abgeschlossen",
+          "cancelled": "Abgesagt"
+        },
+        "defaultMessage": {
+          "scheduled": "Wartung geplant.",
+          "in-progress": "Wartung begonnen.",
+          "verifying": "Arbeiten abgeschlossen; wird geprüft.",
+          "completed": "Wartung abgeschlossen.",
+          "cancelled": "Wartung abgesagt."
+        },
+        "updates": "Meldungen",
+        "completedAt": "Abgeschlossen am {time}",
+        "cancelledAt": "Abgesagt am {time}"
+      }
+    },
+    "beats": {
+      "none": "Noch keine Prüfungen",
+      "summary": "{count, plural, one {Letzte Prüfung} other {Letzte # Prüfungen}}: {parts}. Zuletzt: {latest}.",
+      "count": "{count} {status}",
+      "status": {
+        "up": "online",
+        "down": "offline",
+        "pending": "ausstehend",
+        "maintenance": "Wartung",
+        "degraded": "eingeschränkt",
+        "unknown": "unbekannt"
+      },
+      "ping": "{ms} ms"
+    },
+    "footer": {
+      "refreshing": "Wird aktualisiert…",
+      "updated": "Aktualisiert {time}",
+      "refreshEvery": "aktualisiert alle {seconds} s",
+      "rss": "RSS",
+      "poweredBy": "Betrieben mit Marmot"
+    },
+    "localeSwitcher": {
+      "label": "Sprache"
+    },
+    "timeZone": {
+      "label": "Zeitzone",
+      "notice": "Alle Zeiten in {zone}",
+      "visitor": "Ihre Zeitzone ({zone})",
+      "page": "Zeitzone der Seite ({zone})"
+    },
+    "rss": {
+      "title": "Status von {title}",
+      "description": "Aktueller Status: {status}",
+      "monitorDown": "{name} ist ausgefallen",
+      "monitorDownSince": "{name} ist seit {since} ausgefallen.",
+      "monitorDownDescription": "{name} ist ausgefallen."
+    },
+    "machine": {
+      "indicator": {
+        "none": "Alle Systeme betriebsbereit",
+        "minor": "Kleinere Dienststörung",
+        "major": "Teilweiser Systemausfall",
+        "critical": "Schwerer Systemausfall",
+        "maintenance": "Dienst in Wartung"
+      },
+      "componentStatus": {
+        "operational": "Betriebsbereit",
+        "degraded_performance": "Eingeschränkte Leistung",
+        "partial_outage": "Teilausfall",
+        "major_outage": "Schwerer Ausfall",
+        "under_maintenance": "In Wartung"
+      },
+      "calendarName": "Wartung von {title}",
+      "markdown": {
+        "currentStatus": "Aktueller Status",
+        "status": "Status",
+        "impact": "Auswirkung",
+        "started": "Beginn",
+        "resolved": "Behoben",
+        "statusPage": "Statusseite",
+        "updates": "Meldungen",
+        "details": "Details",
+        "when": "Wann",
+        "window": "{start} bis {end}",
+        "untilFurtherNotice": "Bis auf Weiteres",
+        "noIncidents": "Keine laufenden Vorfälle.",
+        "noMaintenance": "Keine Wartung geplant.",
+        "machineReadable": "Maschinenlesbare Versionen"
+      },
+      "llms": {
+        "summary": "Live-Status von {title}: Komponenten, Vorfälle und geplante Wartungen.",
+        "currentStatus": "Aktueller Status: {status}.",
+        "incidentMarkdown": "Jeder Permalink eines Vorfalls oder einer Wartung hat eine Markdown-Version: .md an die URL anhängen.",
+        "statusSection": "Status",
+        "feedsSection": "Feeds",
+        "markdownLabel": "Statusseite (Markdown)",
+        "markdown": "aktueller Status, Komponenten, laufende Vorfälle und Wartungen als Markdown",
+        "api": {
+          "summary": "Statuspage-kompatible Zusammenfassung: Seite, Komponenten, offene Vorfälle, anstehende Wartungen und der Gesamtindikator",
+          "status": "Gesamtindikator (none, minor, major oder critical) und seine Beschreibung",
+          "components": "jede Komponente und ihr Status",
+          "incidents": "die 50 neuesten Vorfälle mit allen Meldungen",
+          "scheduled-maintenances": "Wartungstermine, anstehende und die der letzten 30 Tage, mit ihren Meldungen"
+        },
+        "atom": "Atom-1.0-Feed, ein Eintrag pro Vorfallsmeldung",
+        "jsonFeed": "JSON Feed 1.1, ein Element pro Vorfallsmeldung",
+        "rss": "RSS-2.0-Feed, ein Element pro Vorfallsmeldung",
+        "calendar": "Wartungsfenster als iCalendar-Abonnement",
+        "openapi": "OpenAPI-3.1-Beschreibung dieser schreibgeschützten Endpunkte",
+        "page": "die für Menschen lesbare Statusseite",
+        "eventsLabel": "Verlauf",
+        "events": "vergangene Vorfälle und Wartungen, jeweils mit Permalink"
+      }
+    },
+    "theme": {
+      "toggle": {
+        "label": "Farbschema",
+        "system": "System",
+        "light": "Hell",
+        "dark": "Dunkel"
+      }
+    },
+    "access": {
+      "pageTitle": "Zugang erforderlich",
+      "metaTitle": "{title}: Zugang erforderlich",
+      "description": "Diese Statusseite ist passwortgeschützt. Geben Sie das Passwort ein, um sie anzuzeigen.",
+      "password": "Passwort",
+      "submit": "Statusseite anzeigen",
+      "invalid": "Das Passwort ist nicht korrekt.",
+      "rateLimited": "Zu viele Versuche. Warten Sie einige Minuten und versuchen Sie es erneut.",
+      "emailDomain": {
+        "description": "Diese Statusseite ist auf freigegebene E-Mail-Domains beschränkt. Geben Sie Ihre E-Mail-Adresse ein, um einen Anmeldelink zu erhalten.",
+        "email": "E-Mail-Adresse",
+        "submit": "Anmeldelink per E-Mail senden",
+        "sent": "Wenn diese Adresse die Seite sehen darf, ist ein Anmeldelink unterwegs. Er funktioniert einmal und läuft in {minutes} Minuten ab.",
+        "useAnother": "Andere Adresse verwenden",
+        "invalidEmail": "Geben Sie eine gültige E-Mail-Adresse ein.",
+        "linkInvalid": "Dieser Anmeldelink ist ungültig, abgelaufen oder wurde bereits verwendet. Fordern Sie einen neuen an.",
+        "confirmDescription": "Fahren Sie fort, um sich auf diesem Gerät bei dieser Statusseite anzumelden.",
+        "confirm": "Weiter zur Statusseite"
+      },
+      "ipAllowlist": {
+        "description": "Diese Statusseite ist nur aus freigegebenen Netzwerken erreichbar. Verbinden Sie sich mit dem Netzwerk oder VPN Ihrer Organisation und laden Sie die Seite neu."
+      }
+    },
+    "events": {
+      "viewHistory": "Verlauf ansehen",
+      "historyHeading": "Verlauf",
+      "historyDescription": "Vorfälle und Wartungsfenster, neueste zuerst.",
+      "backToStatus": "Zurück zum aktuellen Status",
+      "currentStatus": "Aktueller Status",
+      "pastIncidents": "Vergangene Vorfälle",
+      "noIncidentsReported": "Keine Vorfälle gemeldet.",
+      "empty": "Bisher wurde nichts gemeldet.",
+      "emptyFiltered": "Keine Vorfälle oder Wartungsfenster entsprechen diesen Filtern.",
+      "eventCount": "{count, plural, =0 {Keine Ereignisse} one {# Ereignis} other {# Ereignisse}}",
+      "filters": {
+        "label": "Verlauf filtern",
+        "type": "Art",
+        "allTypes": "Alle Arten",
+        "incidents": "Vorfälle",
+        "maintenance": "Wartung",
+        "component": "Komponente",
+        "allComponents": "Alle Komponenten",
+        "month": "Monat",
+        "allMonths": "Alle Monate",
+        "apply": "Anwenden",
+        "reset": "Zurücksetzen"
+      },
+      "pagination": {
+        "label": "Seiten des Verlaufs",
+        "newer": "Neuer",
+        "older": "Älter",
+        "page": "Seite {page} von {total}"
+      },
+      "kind": {
+        "incident": "Vorfall",
+        "maintenance": "Wartung"
+      },
+      "ongoing": "Läuft",
+      "lasted": "Dauer: {duration}",
+      "affects": "Betrifft {components}",
+      "status": "Status",
+      "started": "Beginn",
+      "resolved": "Behoben",
+      "ended": "Ende",
+      "cancelled": "Abgesagt",
+      "duration": "Dauer",
+      "notApplicable": "Entfällt",
+      "impact": "Auswirkung",
+      "affectedComponents": "Betroffene Komponenten",
+      "noComponents": "Keine angegeben",
+      "updates": "Meldungen",
+      "planned": "Geplantes Fenster: {window}",
+      "copyLink": "Link kopieren",
+      "copied": "Link kopiert",
+      "copyFailed": "Kopieren fehlgeschlagen"
+    },
+    "seo": {
+      "historyTitle": "Verlauf · {siteName}",
+      "historyDescription": "Vorfälle und Wartungsfenster von {siteName}, {dateRange}.",
+      "historyDescriptionEmpty": "Vorfälle und Wartungsfenster von {siteName}.",
+      "incidentTitle": "{title} · {siteName}",
+      "incidentDescription": "Vorfall bei {siteName}: {status}, {dateRange}.",
+      "maintenanceTitle": "{title} · {siteName}",
+      "maintenanceDescription": "Wartung bei {siteName}: {status}, {dateRange}."
+    },
+    "subscribe": {
+      "button": "Abonnieren",
+      "title": "Benachrichtigungen erhalten",
+      "description": "Erhalten Sie eine Nachricht, wenn ein Vorfall oder eine Wartung {title} betrifft.",
+      "channel": "Benachrichtigen per",
+      "channels": {
+        "email": "E-Mail",
+        "sms": "SMS",
+        "webhook": "Webhook",
+        "slack": "Slack"
+      },
+      "target": {
+        "email": "E-Mail-Adresse",
+        "sms": "Handynummer",
+        "webhook": "Webhook-URL",
+        "slack": "URL des eingehenden Slack-Webhooks"
+      },
+      "placeholder": {
+        "email": "sie@beispiel.de",
+        "sms": "+4915112345678",
+        "webhook": "https://example.com/hooks/status",
+        "slack": "https://hooks.slack.com/services/…"
+      },
+      "smsHint": "Internationales Format mit Ländervorwahl. Es können Kosten für Nachrichten und Daten anfallen; antworten Sie STOP, um sich abzumelden.",
+      "webhookHint": "Empfängt signiertes JSON (X-Marmot-Signature). Die erste Anfrage enthält das Signaturgeheimnis.",
+      "components": "Komponenten",
+      "allComponents": "Alle Komponenten",
+      "someComponents": "Nur die Komponenten, die ich auswähle",
+      "submit": "Abonnieren",
+      "submitting": "Wird abonniert…",
+      "checkEmail": "Prüfen Sie Ihren Posteingang: Wir haben einen Link zur Bestätigung des Abonnements gesendet.",
+      "done": "Abonniert. Die erste Nachricht ist mit Links zur Verwaltung des Abonnements unterwegs.",
+      "code": "Code aus der SMS",
+      "codeHint": "Wir haben einen {length}-stelligen Code an {target} gesendet.",
+      "verify": "Bestätigen",
+      "verifying": "Wird geprüft…",
+      "verified": "Abonniert. Sie erhalten Meldungen per SMS.",
+      "manageLink": "Abonnement verwalten",
+      "failed": "Abonnieren fehlgeschlagen. Versuchen Sie es später erneut.",
+      "close": "Schließen"
+    },
+    "subscription": {
+      "metaTitle": "Abonnement · {title}",
+      "notFound": "Dieser Link ist ungültig oder das Abonnement wurde beendet.",
+      "backToPage": "Zurück zu {title}",
+      "confirmTitle": "Abonnement bestätigen",
+      "confirmDescription": "Bestätigen Sie, um Meldungen zu Vorfällen und Wartungen von {title} an {target} zu erhalten.",
+      "confirm": "Abonnement bestätigen",
+      "confirmed": "Abonnement bestätigt.",
+      "manageTitle": "Ihr Abonnement",
+      "manageDescription": "Meldungen von {title} gehen an {target} ({channel}).",
+      "pending": "Noch nicht bestätigt: Folgen Sie zuerst dem Link in der Bestätigungsnachricht.",
+      "components": "Komponenten, denen Sie folgen",
+      "allComponents": "Alle Komponenten",
+      "someComponents": "Nur diese Komponenten",
+      "save": "Speichern",
+      "saving": "Wird gespeichert…",
+      "saved": "Gespeichert.",
+      "saveFailed": "Speichern fehlgeschlagen. Versuchen Sie es erneut.",
+      "unsubscribeTitle": "Abmelden",
+      "unsubscribeDescription": "Keine Meldungen von {title} mehr an {target} erhalten?",
+      "unsubscribe": "Abmelden",
+      "unsubscribed": "Sie sind abgemeldet und erhalten keine weiteren Meldungen von {title}."
+    }
+  },
+  "email": {
+    "statusPageMagicLink": {
+      "subject": "Ihr Anmeldelink für {page}",
+      "intro": "Mit diesem Link können Sie die Statusseite <strong>{page}</strong> ansehen.",
+      "button": "Statusseite ansehen",
+      "link": "Anmelden: {url}",
+      "expires": "Der Link funktioniert einmal und läuft in {minutes} Minuten ab.",
+      "ignore": "Wenn Sie ihn nicht angefordert haben, können Sie diese E-Mail ignorieren."
+    },
+    "subscriptions": {
+      "headline": {
+        "incident_opened": "Neuer Vorfall",
+        "incident_updated": "Neue Vorfallsmeldung",
+        "incident_resolved": "Behoben",
+        "maintenance_scheduled": "Geplante Wartung",
+        "maintenance_reminder": "Anstehende Wartung",
+        "maintenance_started": "Wartung begonnen",
+        "maintenance_updated": "Neue Wartungsmeldung",
+        "maintenance_completed": "Wartung abgeschlossen",
+        "maintenance_cancelled": "Wartung abgesagt"
+      },
+      "subject": "[{siteName}] {headline}: {title}",
+      "status": "Status: {status}",
+      "affected": "Betroffen: {components}",
+      "window": "Zeitraum: {period}",
+      "starts": "Beginn: {start}",
+      "viewPage": "Auf der Statusseite ansehen",
+      "viewPageLink": "Details: {url}",
+      "footer": "Sie erhalten diese E-Mail, weil Sie Meldungen von {siteName} abonniert haben.",
+      "manage": "Abonnement verwalten",
+      "manageLink": "Abonnement verwalten: {url}",
+      "unsubscribe": "Abmelden",
+      "unsubscribeLink": "Abmelden: {url}",
+      "confirm": {
+        "subject": "Bestätigen Sie Ihr Abonnement für {siteName}",
+        "intro": "Jemand, hoffentlich Sie, möchte an diese Adresse Meldungen zu Vorfällen und Wartungen von <strong>{siteName}</strong> erhalten.",
+        "button": "Abonnement bestätigen",
+        "link": "Abonnement bestätigen: {url}",
+        "ignore": "Wenn Sie das nicht angefordert haben, ignorieren Sie diese E-Mail: Sie erhalten nichts weiter."
+      },
+      "already": {
+        "subject": "Ihr Abonnement für {siteName}",
+        "intro": "Diese Adresse erhält bereits Meldungen von <strong>{siteName}</strong>. Sie können jederzeit die abonnierten Komponenten ändern oder sich abmelden.",
+        "ignore": "Wenn Sie diese E-Mail nicht angefordert haben, können Sie sie ignorieren."
+      }
+    }
+  },
+  "subscriberMessages": {
+    "sms": {
+      "incidentOpened": "[{siteName}] Neuer Vorfall: {title} ({status}). {message} {url}",
+      "incidentUpdated": "[{siteName}] {title}: {status}. {message} {url}",
+      "maintenanceScheduled": "[{siteName}] Geplante Wartung: {title} ({start}). {message} {url}",
+      "maintenanceUpdated": "[{siteName}] Wartung {title}: {status}. {message} {url}",
+      "code": "{code} ist Ihr Code, um Meldungen von {siteName} zu erhalten. Er läuft in {minutes} Minuten ab."
+    },
+    "chat": {
+      "viewPage": "Statusseite ansehen",
+      "manage": "Abonnement verwalten",
+      "unsubscribe": "Abmelden",
+      "welcomeTitle": "{siteName} abonniert",
+      "welcome": "Dieser Kanal erhält Meldungen zu Vorfällen und Wartungen von {siteName}."
+    }
+  }
+}

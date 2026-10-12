@@ -11,6 +11,7 @@ import {
 import { orgScoped } from '@/access/org-scoped'
 import { getOrgIdsWithPermission, isSuperadmin, type UserLike } from '@/access/permissions'
 import { adminGroup, adminT } from '@/i18n/admin'
+import { isValidTimeZone } from '@/i18n/formats'
 import { defaultLocale, localeNames, locales } from '@/i18n/locales'
 import {
   DEFAULT_MAINTENANCE_VISIBILITY_HOURS,
@@ -54,9 +55,12 @@ import { userErrorText } from '@/server/request-locale'
 export const STATUS_PAGE_THEMES = ['auto', 'light', 'dark'] as const
 export type StatusPageTheme = (typeof STATUS_PAGE_THEMES)[number]
 
-/** `auto` follows the visitor's browser language; otherwise a fixed locale from `src/i18n/locales.ts`. */
-export const STATUS_PAGE_LANGUAGE_AUTO = 'auto' as const
-export type StatusPageLanguage = typeof STATUS_PAGE_LANGUAGE_AUTO | (typeof locales)[number]
+/**
+ * Where the public page takes its time zone from: the visitor's browser (`visitor`) or the page's
+ * fixed `timeZone` (`page`, falling back to the organization's zone). See `src/lib/status-page-locales.ts`.
+ */
+export const STATUS_PAGE_TIME_ZONE_MODES = ['visitor', 'page'] as const
+export type StatusPageTimeZoneMode = (typeof STATUS_PAGE_TIME_ZONE_MODES)[number]
 
 export { HOSTNAME_PATTERN, normalizeHostname, validateHostname } from '@/lib/status-page-hostnames'
 
@@ -100,6 +104,10 @@ const normalize: CollectionBeforeValidateHook<StatusPage> = ({ data }) => {
   if (typeof data.slug === 'string') data.slug = data.slug.trim().toLowerCase()
   for (const key of ['homepageUrl', 'contactUrl'] as const) {
     if (typeof data[key] === 'string') data[key] = data[key].trim() || null
+  }
+  if (typeof data.timeZone === 'string') data.timeZone = data.timeZone.trim() || null
+  if (Array.isArray(data.additionalLocales)) {
+    data.additionalLocales = [...new Set(data.additionalLocales)]
   }
   if (Array.isArray(data.groups)) {
     for (const group of data.groups) {
@@ -372,16 +380,49 @@ export const StatusPages: CollectionConfig = {
       admin: { description: adminT('marmot:statusPages:themeDescription') },
     },
     ...statusPageThemeFields,
+    // Translated public page (#114): the default language has no URL prefix, the other offered
+    // languages live under `/status/<slug>/<locale>` (and `/<locale>` on custom domains).
     {
-      name: 'language',
-      type: 'select',
-      label: adminT('marmot:language'),
-      defaultValue: defaultLocale,
-      options: [
-        { label: adminT('marmot:followVisitor'), value: STATUS_PAGE_LANGUAGE_AUTO },
-        ...locales.map((locale) => ({ label: localeNames[locale], value: locale })),
+      type: 'row',
+      fields: [
+        {
+          name: 'defaultLocale',
+          type: 'select',
+          label: adminT('marmot:language'),
+          defaultValue: defaultLocale,
+          options: locales.map((locale) => ({ label: localeNames[locale], value: locale })),
+          admin: { description: adminT('marmot:statusPages:defaultLocaleDescription') },
+        },
+        {
+          name: 'additionalLocales',
+          type: 'select',
+          hasMany: true,
+          options: locales.map((locale) => ({ label: localeNames[locale], value: locale })),
+          admin: { description: adminT('marmot:statusPages:localesDescription') },
+        },
       ],
-      admin: { description: adminT('marmot:statusPageLanguageDescription') },
+    },
+    {
+      type: 'row',
+      fields: [
+        {
+          name: 'timeZoneMode',
+          type: 'select',
+          defaultValue: 'visitor',
+          options: STATUS_PAGE_TIME_ZONE_MODES.map((mode) => ({ label: mode, value: mode })),
+          admin: { description: adminT('marmot:statusPages:timeZoneModeDescription') },
+        },
+        {
+          name: 'timeZone',
+          type: 'text',
+          validate: (value: unknown, { req }: { req: { user?: unknown } }): true | string =>
+            value == null ||
+            value === '' ||
+            (typeof value === 'string' && isValidTimeZone(value.trim())) ||
+            userErrorText(req, 'maintenanceTimezoneUnknown', { timezone: String(value) }),
+          admin: { description: adminT('marmot:statusPages:timeZoneDescription') },
+        },
+      ],
     },
     {
       name: 'published',

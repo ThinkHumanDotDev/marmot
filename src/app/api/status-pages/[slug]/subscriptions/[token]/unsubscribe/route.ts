@@ -5,6 +5,7 @@ import {
   isFormRequest,
   loadSubscription,
 } from '@/server/status-pages/subscribers/http'
+import { subscriberPrefix } from '@/server/status-pages/subscribers/links'
 import { unsubscribe } from '@/server/status-pages/subscribers/signup'
 
 export const dynamic = 'force-dynamic'
@@ -31,7 +32,8 @@ export async function POST(request: Request, { params }: RouteContext) {
       status: 303,
       headers: {
         ...NO_STORE,
-        Location: `${statusPagePath(slug)}/unsubscribe/${encodeURIComponent(token)}?done=1`,
+        // Back in the subscriber's language (#114).
+        Location: `${statusPagePath(slug)}${ctx ? subscriberPrefix(ctx.page, ctx.subscriber) : ''}/unsubscribe/${encodeURIComponent(token)}?done=1`,
       },
     })
   }

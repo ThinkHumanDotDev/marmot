@@ -29,7 +29,8 @@ Three org-scoped collections (`src/collections/StatusPages.ts`, `src/collections
 | `theme`                                              | `auto` (visitor picks system/light/dark), or a forced `light` / `dark`.                  |
 | `themePreset`, `themeOverrides`                      | Built-in palette id and validated colour overrides ([Themes](#themes)).                  |
 | `bannerText`                                         | Optional headline (≤ 140 characters) that replaces the overall-status text.              |
-| `language`                                           | Locale of the page text (`en`), or `auto` to follow the visitor's browser.               |
+| `defaultLocale`, `additionalLocales[]`               | Page languages (`en`, `fr`, `de`, `es`); see [Languages](#languages-and-time-zones).     |
+| `timeZoneMode`, `timeZone`                           | `visitor` (default) or a fixed `page` zone; IANA `timeZone`, else the org's.             |
 | `published`                                          | Only published pages are served; drafts 404 for visitors.                                |
 | `access`, `password` (write-only)                    | `public`, `password`, `email-domain` or `ip-allowlist`; see [Access](#access).           |
 | `allowedEmailDomains[].domain`                       | Domains admitted by `email-domain` access (lower-cased, without `@`).                    |
@@ -534,7 +535,7 @@ working. The OpenAPI document at `/api/openapi.json` describes them (`src/server
 - **Caching**: `Cache-Control: public, max-age=N, stale-while-revalidate=N` where `N` is the page's
   auto-refresh interval clamped to 30–300 seconds (300 when the page does not refresh);
   `private, no-store` plus `X-Robots-Tag: noindex` for protected pages. `Vary: Accept-Language, Cookie`
-  because `auto`-language pages follow the visitor.
+  (the access cookie decides protected pages; the language comes from the URL prefix).
 - **Validation**: a weak `ETag` of the body; `If-None-Match` with a matching tag returns `304`. Bodies
   contain no "generated at" timestamps, so the tag only changes when the data does.
 - **CORS**: `Access-Control-Allow-Origin: *` with `ETag` exposed; `OPTIONS` answers the preflight that
@@ -544,10 +545,38 @@ working. The OpenAPI document at `/api/openapi.json` describes them (`src/server
   `title`, a localised `detail` and a `code` (`not-found`, `login-required`, `invalid-password`,
   `rate-limited`, `ip-not-allowed`).
 
+## Languages and time zones
+
+A page is written in its `defaultLocale` and can offer `additionalLocales` (#114). Marmot ships the public
+page, its history and permalinks, the access and subscription pages, the feeds, the Markdown and
+`llms.txt` outputs, the subscriber emails, SMS and chat messages in English, French, German and Spanish
+(`src/i18n/messages/<locale>.json`, the keys in `PUBLIC_MESSAGE_SCOPES`). User content (titles, incident
+updates, component names) is shown as written.
+
+- **URLs**: the default language has no prefix; the others live under their code:
+  `/status/acme/fr`, `/status/acme/fr/events`, `/status/acme/fr/rss`, and `/fr/…` on a custom domain.
+  The proxy strips the prefix before routing, so every page path, feed, badge and machine endpoint is
+  available in every offered language. A language the page does not offer falls back to the default.
+- **First visit**: on a plain URL, a visitor whose browser prefers an offered language
+  (`Accept-Language`, matched by base language) is redirected to it. The footer's language switcher
+  links to the current view in every offered language and remembers the choice in the
+  `marmot-status-locale` cookie, which then wins over `Accept-Language` (choosing the default language
+  stops the redirect).
+- **SEO**: every HTML page links its `hreflang` alternates (plus `x-default`), and its canonical URL and
+  feed links stay in its language.
+- **Subscribers** receive messages in the language they subscribed in (`locale` of the subscription),
+  and their manage, confirm and unsubscribe links open in it.
+- **Time zones**: timestamps are formatted with `Intl` in the page language. The server renders them in
+  the page's `timeZone` (else the organization's), so HTML and hydration match. With `timeZoneMode:
+visitor` (default) they switch to the visitor's browser zone after hydration; with `page` they stay in
+  the page zone. The footer says which zone is in use and, when the visitor's zone differs, lets them
+  switch between the two (remembered in `localStorage`). Day and month grouping of the history follows
+  the page zone.
+
 ## Builder
 
 `/{orgSlug}/status-pages` lists the organization's pages; `/{orgSlug}/status-pages/{id}` edits one with
-nine tabs (ten for admins): **Settings** (title, slug, description, language once Marmot ships more than one, refresh,
+nine tabs (ten for admins): **Settings** (title, slug, description, languages and time zone, refresh,
 custom CSS, analytics id, header links, display toggles, uptime bars and calculation mode, delete), **Theme** (colour mode, preset, colour
 overrides, banner headline, logos and favicon, with a live preview; see [Themes](#themes)), **Groups &
 monitors** (drag-and-drop groups and components with
