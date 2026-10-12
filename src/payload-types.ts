@@ -1108,6 +1108,7 @@ export interface StatusPage {
               name?: string | null;
               description?: string | null;
               showValues?: boolean | null;
+              showChart?: boolean | null;
               sendUrl?: boolean | null;
               customUrl?: string | null;
               id?: string | null;
@@ -2661,6 +2662,7 @@ export interface StatusPagesSelect<T extends boolean = true> {
               name?: T;
               description?: T;
               showValues?: T;
+              showChart?: T;
               sendUrl?: T;
               customUrl?: T;
               id?: T;

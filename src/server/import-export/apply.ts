@@ -453,6 +453,7 @@ export async function applyImportPlan(
                 name: row.name ?? null,
                 description: row.description ?? null,
                 showValues: row.showValues ?? true,
+                showChart: row.showChart ?? false,
                 sendUrl: row.sendUrl,
                 customUrl: row.customUrl,
               }))

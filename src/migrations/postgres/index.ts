@@ -61,6 +61,7 @@ import * as migration_20261012_012757_ssh_tunnels from './20261012_012757_ssh_tu
 import * as migration_20261012_015900_status_page_embedding from './20261012_015900_status_page_embedding';
 import * as migration_20261012_023207_status_page_translations from './20261012_023207_status_page_translations';
 import * as migration_20261012_030104_ct_alerts from './20261012_030104_ct_alerts';
+import * as migration_20261012_033317_status_page_latency_charts from './20261012_033317_status_page_latency_charts';
 
 export const migrations = [
   {
@@ -376,6 +377,11 @@ export const migrations = [
   {
     up: migration_20261012_030104_ct_alerts.up,
     down: migration_20261012_030104_ct_alerts.down,
-    name: '20261012_030104_ct_alerts'
+    name: '20261012_030104_ct_alerts',
+  },
+  {
+    up: migration_20261012_033317_status_page_latency_charts.up,
+    down: migration_20261012_033317_status_page_latency_charts.down,
+    name: '20261012_033317_status_page_latency_charts'
   },
 ];
