@@ -7,6 +7,7 @@ import {
   accessRequestFrom,
   checkStatusPageAccess,
 } from '@/server/status-pages/access'
+import { scopePageForVisitor } from '@/server/status-pages/audiences'
 import {
   DEFAULT_PUBLIC_CHART_RANGE,
   isPublicChartRange,
@@ -57,7 +58,10 @@ export async function GET(request: Request, { params }: RouteContext) {
   }
   const componentId = searchParams.get('component') ?? undefined
 
-  const components = await buildPageCharts(payload, page, range, { componentId })
+  // Audience pages (#151): only the visitor's components.
+  const components = await buildPageCharts(payload, scopePageForVisitor(page, access), range, {
+    componentId,
+  })
   if (componentId !== undefined && components.length === 0) {
     return Response.json(
       { error: errorText(request, 'statusPageChartNotFound') },

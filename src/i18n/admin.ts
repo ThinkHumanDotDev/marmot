@@ -249,6 +249,12 @@ export const adminTranslations = {
       statusPageViewers: {
         statusDescription: 'revoked: the visitor is signed out and cannot request new links.',
       },
+      statusPageAudiences: {
+        componentsDescription: 'Component ids (group row ids) of the page this audience sees.',
+        emailsDescription: 'Addresses of the members; they sign in with a one-time link.',
+        emailDomainsDescription:
+          'Domains such as example.com; every address at these domains is a member.',
+      },
       statusPageUptimeHistory: {
         label: 'Status page uptime history',
         description:
@@ -575,7 +581,7 @@ export const adminTranslations = {
           "IANA time zone such as Europe/Berlin. Empty uses the organization's time zone.",
         publishedDescription: 'Unpublished pages return 404 to visitors.',
         accessDescription:
-          'password: visitors enter the page password. email-domain: visitors get a one-time link at an allowed email domain. ip-allowlist: only requests from the listed IP ranges.',
+          'password: visitors enter the page password. email-domain: visitors get a one-time link at an allowed email domain. ip-allowlist: only requests from the listed IP ranges. audience: signed-in members of the page audiences see only their components.',
         passwordDescription:
           'Set or change the page password. Changing it signs every visitor out.',
         allowedEmailDomainsDescription:
@@ -640,6 +646,8 @@ export const adminTranslations = {
       subscribers: {
         targetDescription: 'Email address, phone number (E.164), webhook URL or Slack webhook URL.',
         componentsDescription: 'Component ids of the page; empty means every component.',
+        audiencesDescription:
+          'Audiences of an audience-mode page whose components this subscriber hears about.',
         confirmedAtDescription: 'Unconfirmed self sign-ups receive nothing.',
         localeDescription: 'Language of the messages.',
         secretDescription: 'Signs every webhook delivery (X-Marmot-Signature).',
@@ -647,6 +655,21 @@ export const adminTranslations = {
       subscriberNotifications: {
         windowDescription: 'Maintenance window of the announcement.',
         channelsDescription: 'Channels the announcement went out on.',
+      },
+      slaTargets: {
+        targetDescription: 'Percent of the window the monitor must be up, e.g. 99.9.',
+        calculationDescription:
+          'duration: time not down / time with a known state. checks: successful checks / all checks.',
+        excludeMaintenanceDescription:
+          'Leave maintenance windows out of the uptime and the error budget.',
+      },
+      slaReports: {
+        scheduleDescription:
+          'weekly: every Monday for the previous week. monthly: on the 1st for the previous month (UTC).',
+        lastSentPeriodDescription: 'Last period emailed by the schedule.',
+      },
+      slaReportShares: {
+        revokedAtDescription: 'Revoked links stop working for good.',
       },
       tags: {
         colorDescription: 'Hex colour of the chip, e.g. #2563EB.',

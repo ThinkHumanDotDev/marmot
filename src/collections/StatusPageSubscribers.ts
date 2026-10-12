@@ -103,6 +103,30 @@ const prepare: CollectionBeforeChangeHook<StatusPageSubscriber> = async ({
     data.components = kept
   }
 
+  if (data.audiences !== undefined) {
+    const requested = [...new Set((data.audiences ?? []).map((a) => String(relId(a))))]
+    if (requested.length > 0) {
+      const { docs } = await req.payload.find({
+        collection: 'status-page-audiences',
+        where: {
+          and: [{ statusPage: { equals: pageId } }, { id: { in: requested } }],
+        },
+        depth: 0,
+        limit: requested.length,
+        pagination: false,
+        req,
+        overrideAccess: true,
+        select: {},
+      })
+      if (docs.length !== requested.length) {
+        return invalid(req, 'subscriberAudiencesInvalid', 'audiences')
+      }
+      data.audiences = docs.map((doc) => doc.id)
+    } else {
+      data.audiences = []
+    }
+  }
+
   if (data.headers !== undefined) {
     const rows = data.headers ?? []
     if (channel !== 'webhook' && rows.length > 0) {
@@ -234,6 +258,15 @@ export const StatusPageSubscribers: CollectionConfig = {
           admin: { description: adminT('marmot:subscribers:targetDescription') },
         },
       ],
+    },
+    {
+      // Audiences (#151) of an `audience` page whose components the subscriber may hear about;
+      // set from the visitor's session on sign-up. Without one, an audience page sends nothing.
+      name: 'audiences',
+      type: 'relationship',
+      relationTo: 'status-page-audiences',
+      hasMany: true,
+      admin: { description: adminT('marmot:subscribers:audiencesDescription') },
     },
     {
       // Component ids (group row ids of the page); empty = every component.

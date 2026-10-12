@@ -25,6 +25,7 @@ import { Organizations } from './Organizations'
 import { OtelCollectors } from './OtelCollectors'
 import { Proxies } from './Proxies'
 import { PushEvents } from './PushEvents'
+import { SlaReportShares, SlaReports, SlaTargets } from './Sla'
 import { SshTunnels } from './SshTunnels'
 import { SsoConnections } from './SsoConnections'
 import { SsoDomains } from './SsoDomains'
@@ -38,6 +39,7 @@ import { SubscriberDeliveries } from './SubscriberDeliveries'
 import { SubscriberNotifications } from './SubscriberNotifications'
 import { StatusPageUptimeHistory } from './StatusPageUptimeHistory'
 import { StatusPageViewers } from './StatusPageViewers'
+import { StatusPageAudiences } from './StatusPageAudiences'
 import { Tags } from './Tags'
 import { Templates } from './Templates'
 import { Users } from './Users'
@@ -74,7 +76,11 @@ export const collections: CollectionConfig[] = [
   StatLocationHourly,
   StatusPages,
   StatusPageViewers,
+  StatusPageAudiences,
   StatusPageUptimeHistory,
+  SlaTargets,
+  SlaReports,
+  SlaReportShares,
   Incidents,
   StatusPageSubscribers,
   SubscriberNotifications,

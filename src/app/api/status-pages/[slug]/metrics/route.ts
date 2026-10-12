@@ -10,6 +10,7 @@ import {
   accessRequestFrom,
   checkStatusPageAccess,
 } from '@/server/status-pages/access'
+import { scopePageForVisitor } from '@/server/status-pages/audiences'
 import { findPublishedStatusPage } from '@/server/status-pages/public'
 
 export const dynamic = 'force-dynamic'
@@ -48,7 +49,11 @@ export async function GET(request: Request, { params }: RouteContext) {
     )
   }
   const metricId = searchParams.get('metric') ?? undefined
-  const metrics = await buildPublicMetrics(payload, page, { metricId, view })
+  // Audience pages (#151): only metrics of the visitor's components (and pushed ones).
+  const metrics = await buildPublicMetrics(payload, scopePageForVisitor(page, access), {
+    metricId,
+    view,
+  })
   if (metricId !== undefined && metrics.length === 0) {
     return Response.json(
       { error: errorText(request, 'metricNotFound') },

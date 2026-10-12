@@ -28,6 +28,7 @@ import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
 import { DOCKER_CONNECTION_TYPES } from '@/lib/monitor-resources'
 import { SSH_TUNNEL_AUTH_METHODS } from '@/lib/ssh-tunnels'
 import { LOG_TRIGGERS } from '@/lib/response-log'
+import { STATUS_PAGE_ACCESS_MODES } from '@/lib/status-page-access'
 import { SUBSCRIBER_CHANNELS } from '@/lib/status-page-subscribers'
 import { maintenanceFormSchema } from '@/lib/validation/maintenance'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
@@ -90,6 +91,11 @@ export interface OperationSpec {
 const id = z.union([z.string(), z.number().int()])
 const impact = z.enum(COMPONENT_IMPACTS)
 
+const slaShareBody = z.object({
+  from: z.string().describe('First UTC day, YYYY-MM-DD (inclusive)'),
+  to: z.string().describe('Last UTC day, YYYY-MM-DD (inclusive)'),
+})
+
 const componentImpacts = z
   .array(z.object({ component: z.string().describe('Component (group row) id'), impact }))
   .describe('Affected components and their impact')
@@ -127,7 +133,7 @@ const statusPageBody = z
     slug: z.string().min(1),
     description: z.string().nullable().optional(),
     published: z.boolean().optional(),
-    access: z.enum(['public', 'password', 'email', 'ip']).optional(),
+    access: z.enum(STATUS_PAGE_ACCESS_MODES).optional(),
     password: z.string().optional().describe('Write-only; stored hashed'),
     groups: z.array(z.record(z.string(), z.unknown())).optional().describe('Component groups'),
     domains: z.array(z.record(z.string(), z.unknown())).optional(),
@@ -161,6 +167,10 @@ const subscriberCreateBody = z.object({
   channel: z.enum(SUBSCRIBER_CHANNELS),
   target: z.string().describe('Address, phone number or URL'),
   components: z.array(z.string()).optional(),
+  audiences: z
+    .array(id)
+    .optional()
+    .describe('Audiences of an audience page (#151) whose components the subscriber hears about'),
   headers: subscriberHeaders.optional().describe('Webhook headers'),
 })
 
@@ -171,6 +181,12 @@ const subscriberPatchBody = z.object({
 
 const batchActionBody = z.object({ action: z.enum(['send', 'discard', 'retry']) })
 const viewerPatchBody = z.object({ status: z.enum(['active', 'revoked']) })
+const audienceBody = z.object({
+  name: z.string().min(1).max(100),
+  components: z.array(z.string()).optional().describe('Component (group row) ids of the page'),
+  emails: z.array(z.string()).optional().describe('Member addresses'),
+  emailDomains: z.array(z.string()).optional().describe('Member email domains'),
+})
 const updateMessageBody = z.object({ message: z.string() })
 
 const dockerTestBody = z.object({
@@ -1458,6 +1474,50 @@ export const OPERATIONS: OperationSpec[] = [
     permission: 'status-page:update',
   },
 
+  // Audiences of audience pages (#151)
+  {
+    method: 'GET',
+    path: `${ORG}/status-pages/{id}/audiences`,
+    operationId: 'listStatusPageAudiences',
+    summary: 'Audiences of a status page',
+    tag: 'Status pages',
+    permission: 'status-page:read',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/status-pages/{id}/audiences`,
+    operationId: 'createStatusPageAudience',
+    summary: 'Create an audience',
+    tag: 'Status pages',
+    permission: 'status-page:update',
+    body: { schema: audienceBody },
+  },
+  {
+    method: 'PATCH',
+    path: `${ORG}/status-pages/{id}/audiences/{audienceId}`,
+    operationId: 'updateStatusPageAudience',
+    summary: 'Edit an audience',
+    tag: 'Status pages',
+    permission: 'status-page:update',
+    body: { schema: audienceBody.partial() },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/status-pages/{id}/audiences/{audienceId}`,
+    operationId: 'deleteStatusPageAudience',
+    summary: 'Delete an audience',
+    tag: 'Status pages',
+    permission: 'status-page:update',
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/status-pages/{id}/audiences/{audienceId}/preview`,
+    operationId: 'previewStatusPageAudience',
+    summary: 'The public payload as members of an audience see it',
+    tag: 'Status pages',
+    permission: 'status-page:read',
+  },
+
   // Uptime history (#112)
   {
     method: 'GET',
@@ -1467,6 +1527,65 @@ export const OPERATIONS: OperationSpec[] = [
       'Monthly uptime per component (`?months=1..24`, default 12); `?format=csv` downloads it as CSV',
     tag: 'Status pages',
     permission: 'status-page:history',
+  },
+
+  // SLA targets and reports (#156). Targets and reports themselves are edited through the
+  // Payload REST API (`/api/sla-targets`, `/api/sla-reports`).
+  {
+    method: 'GET',
+    path: `${ORG}/sla/targets`,
+    operationId: 'listSlaTargetStatuses',
+    summary:
+      'SLA targets with the current period: attainment, error budget, burn rate and incidents',
+    tag: 'SLA',
+    permission: 'sla:read',
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/sla/reports/{id}`,
+    operationId: 'getSlaReport',
+    summary:
+      'An SLA report over `?from=YYYY-MM-DD&to=YYYY-MM-DD` (default: last month); `?format=csv|pdf` downloads it',
+    tag: 'SLA',
+    permission: 'sla:read',
+    query: [
+      { name: 'from', description: 'First UTC day (inclusive)', schema: { type: 'string' } },
+      { name: 'to', description: 'Last UTC day (inclusive)', schema: { type: 'string' } },
+      {
+        name: 'format',
+        description: '`json` (default), `csv` or `pdf`',
+        schema: { type: 'string' },
+      },
+    ],
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/sla/reports/{id}/shares`,
+    operationId: 'listSlaReportShares',
+    summary: "A report's public share links (without their tokens)",
+    tag: 'SLA',
+    permission: 'sla:manage',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/sla/reports/{id}/shares`,
+    operationId: 'createSlaReportShare',
+    summary: 'Create a public read-only link to the report over a range of days',
+    description:
+      'The response carries the link (`url`, `token`) exactly once; only a hash is stored.',
+    tag: 'SLA',
+    permission: 'sla:manage',
+    body: { schema: slaShareBody },
+    status: 201,
+    response: { description: '`{ doc, token, url }`', schema: anyObject },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/sla/reports/{id}/shares/{shareId}`,
+    operationId: 'revokeSlaReportShare',
+    summary: 'Revoke a share link for good',
+    tag: 'SLA',
+    permission: 'sla:manage',
   },
 
   // Outbound webhooks (admins by default; keys only where the organization lowered `webhook:*`)

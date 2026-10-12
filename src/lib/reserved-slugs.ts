@@ -40,6 +40,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'signin',
   'signout',
   'signup',
+  'sla',
   'sso',
   'socket.io',
   'static',

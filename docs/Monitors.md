@@ -522,6 +522,44 @@ organization's default OTLP collector. The form's **OpenTelemetry** card turns t
 organization; `null` = the default). Collectors, metrics and backend examples:
 [Integrations](Integrations.md#opentelemetry-otlp-export).
 
+## SLA targets and reports
+
+**SLA** in the sidebar (`g` `l`) tracks uptime commitments per monitor (#156). Everyone in the
+organization sees it; admins (`sla:manage`) set targets, build reports and share them.
+
+**Targets.** A target is a monitor, a percentage (for example 99.9), a measurement window (calendar
+month, calendar quarter or the rolling last 30 days, all in UTC), an uptime calculation and whether
+maintenance windows are excluded:
+
+- _Time up_ (default): time not DOWN divided by the time whose state is known, replayed from the
+  monitor's status changes;
+- _Successful checks_: successful checks divided by all checks (degraded and maintenance checks
+  count as successful, pending ones as failed).
+
+With _Exclude maintenance windows_ the maintenance time (or the maintenance checks) leaves both
+sides of the ratio and the error budget. For each target the page shows the current period's
+attainment, the **error budget** (the downtime the target allows over the whole period, e.g.
+43.2 minutes for 99.9 % of a 30-day month) and what is left of it, the **burn rate** (the error rate
+divided by the allowed one: above 1 the budget runs out before the period ends) and the monitor
+incidents that consumed it. A target is _on track_, _at risk_ (below the target so far or burning
+faster than allowed) or _missed_ (budget spent).
+
+**Reports.** A report groups targets. Its page lists, for any range of up to 400 days (default: last
+month), each target's uptime, downtime, incident count, MTTR (mean time to recovery of the incidents
+resolved in the range), the budget left and whether the target was met, and downloads it as CSV or
+PDF. A report can be emailed **weekly** (Mondays, for the previous Monday–Sunday) or **monthly**
+(on the 1st, for the previous month) to a list of recipients, with the CSV and the PDF attached;
+emails go through the instance's SMTP settings ([Configuration](Configuration.md)).
+
+**Share links.** Admins can create a public, read-only link to a report over a fixed range
+(`/sla/<token>`, a print-friendly page with CSV and PDF downloads). The token is shown once and only
+its hash is stored; a link shows that report and nothing else, and revoking it is final.
+
+Figures come from the daily statistics, so a report reaches back as far as `KEEP_DATA_PERIOD_DAYS`.
+API: `GET /api/orgs/:orgId/sla/targets`, `GET /api/orgs/:orgId/sla/reports/:id?from=&to=&format=`,
+`GET|POST /api/orgs/:orgId/sla/reports/:id/shares`, `DELETE …/shares/:shareId`; targets and reports
+themselves are the `sla-targets` and `sla-reports` collections of the REST API.
+
 ## API
 
 Monitors are managed through org-scoped route handlers that authenticate the Payload session and apply the

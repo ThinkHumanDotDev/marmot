@@ -8,6 +8,12 @@
  */
 import type { Payload } from 'payload'
 
+import {
+  isAudiencePage,
+  visibleIncidents,
+  type AudienceScopedPage,
+} from '@/server/status-pages/audiences'
+
 import { getStaticFormatter, getTranslator } from '@/i18n/translator'
 import type { Locale } from '@/i18n/locales'
 import { resolveStatusPageLocale, statusPageTimeZone } from '@/i18n/resolve'
@@ -62,22 +68,25 @@ export interface StatusPageFeed {
 
 type Translator = ReturnType<typeof getTranslator>
 
-/** All incidents of a page (active and resolved), newest first. */
+/**
+ * The latest incidents of a page (active and resolved), newest first. On an `audience` page (#151)
+ * only those visible to the scoped page; a few more are read so the filter still fills the list.
+ */
 export async function findFeedIncidents(
   payload: Payload,
-  pageId: string | number,
+  page: AudienceScopedPage,
   limit = 50,
 ): Promise<Incident[]> {
   const { docs } = await payload.find({
     collection: 'incidents',
-    where: { statusPage: { equals: pageId } },
+    where: { statusPage: { equals: page.id } },
     sort: '-createdAt',
-    limit,
+    limit: isAudiencePage(page) ? limit * 4 : limit,
     pagination: false,
     depth: 0,
     overrideAccess: true,
   })
-  return docs
+  return visibleIncidents(page, docs).slice(0, limit)
 }
 
 /**
@@ -171,13 +180,14 @@ export async function buildStatusPageFeed(
 ): Promise<StatusPageFeed> {
   const [groups, incidents] = await Promise.all([
     buildPublicGroups(payload, page),
-    findFeedIncidents(payload, page.id),
+    findFeedIncidents(payload, page),
   ])
   const t = getTranslator(locale)
   const format = getStaticFormatter(locale, statusPageTimeZone(page))
 
   const names = componentNamesOf(groups)
-  const publicIncidents = incidents.map((incident) => toPublicIncident(incident, names))
+  const scoped = { scoped: isAudiencePage(page) }
+  const publicIncidents = incidents.map((incident) => toPublicIncident(incident, names, scoped))
   const overall = pageOverallStatus(
     groups,
     publicIncidents.filter((incident) => incident.active),

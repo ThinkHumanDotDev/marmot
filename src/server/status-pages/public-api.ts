@@ -3,8 +3,9 @@
  * the Statuspage-compatible JSON, Markdown, `llms.txt`, the OpenAPI document). Every one of them:
  *
  * - loads the published page and runs `checkStatusPageAccess` (every access mode: password, email
- *   domain, IP allow-list), so protected pages answer 401 / 403 (429 while rate limited) and are never
- *   stored by shared caches;
+ *   domain, IP allow-list, audience), so protected pages answer 401 / 403 (429 while rate limited) and
+ *   are never stored by shared caches; audience pages are narrowed to the visitor's audiences
+ *   (`scopePageForVisitor`) before anything is built;
  * - answers errors as RFC 9457 `application/problem+json`;
  * - sends `Cache-Control` matched to the page's auto-refresh interval plus `stale-while-revalidate`,
  *   a weak `ETag` of the body (`If-None-Match` → 304), and CORS `*` with the `ETag` exposed (not for
@@ -32,6 +33,7 @@ import {
   PROTECTED_CACHE_CONTROL,
   type StatusPageAccessDecision,
 } from './access'
+import { scopePageForVisitor } from './audiences'
 import { findPublishedStatusPage } from './public'
 import { statusPageLinksFor, type StatusPageLinks } from './urls'
 
@@ -181,11 +183,13 @@ export async function servePublicStatusPage(
   build: (ctx: PublicEndpointContext) => Promise<PublicDocument | Response>,
 ): Promise<Response> {
   const payload = await getPayload({ config })
-  const page = await findPublishedStatusPage(payload, slug)
-  if (!page) return notFoundProblem(request)
+  const found = await findPublishedStatusPage(payload, slug)
+  if (!found) return notFoundProblem(request)
 
-  const access = await checkStatusPageAccess(payload, page, accessRequestFrom(request))
+  const access = await checkStatusPageAccess(payload, found, accessRequestFrom(request))
   if (!access.allowed) return accessProblem(request, access, requestLocale(request))
+  // Audience pages (#151): only the visitor's components from here on.
+  const page = scopePageForVisitor(found, access)
 
   const result = await build({
     payload,

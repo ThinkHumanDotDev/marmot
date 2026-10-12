@@ -24,7 +24,7 @@ import {
   statusPageUrlForHeaders,
 } from '@/server/status-pages/urls'
 
-import { loadPageAccess, loadPublishedPage } from '../data'
+import { loadPageAccess, loadPublishedPage, loadVisiblePage } from '../data'
 
 export type ChartSearchParams = Record<string, string | string[] | undefined>
 
@@ -41,7 +41,7 @@ export const loadCharts = cache(
     range: PublicChartRange,
     componentId?: string,
   ): Promise<PublicComponentChart[]> => {
-    const page = await loadPublishedPage(slug)
+    const page = await loadVisiblePage(slug)
     if (!page) return []
     const payload = await getPayload({ config })
     return buildPageCharts(payload, page, range, { componentId })

@@ -168,7 +168,7 @@ async function emailDomainLogin(ctx: Ctx) {
  * - `password` pages: field `password`. A correct password sets the page's HttpOnly access cookie
  *   (`{ ok: true }`); otherwise 401 / 429 with `{ error, code }` (`?error=invalid|rate-limited`).
  *   Rate limited per page and client (see `attemptStatusPagePassword`).
- * - `email-domain` pages: field `email` asks for a sign-in link: 202 `{ ok: true, sent: true }`
+ * - `email-domain` and `audience` pages: field `email` asks for a sign-in link: 202 `{ ok: true, sent: true }`
  *   (`?sent=1`) whether or not the address is admitted, 400 `invalid-email` for something that is
  *   not an address, 429 when rate limited per client and per address. Field `token` redeems a
  *   link: the access cookie, or 400 `link-invalid` (`?error=link-invalid`). See `magic-link.ts`.
@@ -204,6 +204,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     case 'password':
       return passwordLogin(ctx)
     case 'email-domain':
+    case 'audience':
       return emailDomainLogin(ctx)
     default:
       return body.form

@@ -14,6 +14,8 @@
  *   multi-location monitors that drifted from their per-location states (#92).
  * - `status-page-uptime-snapshot` (daily at 00:20 UTC, `src/server/status-pages/uptime-history.ts`):
  *   preserves the daily uptime of status page components before retention prunes it (#112).
+ * - `sla-reports-due` (hourly at :40 UTC, `src/server/sla/schedule.ts`): enqueues the scheduled SLA
+ *   reports whose period completed (#156); the notification worker emails them.
  * - Demo mode only (#159): `demo-reset` (on boot and every `DEMO_RESET_INTERVAL_MINUTES`,
  *   `src/server/demo/reset.ts`) wipes and reseeds the demo dataset; `demo-probes` (every minute,
  *   `src/server/demo/probes.ts`) plays the simulated probe agents.
@@ -48,6 +50,11 @@ import {
   UPTIME_SNAPSHOT_JOB_NAME,
   UPTIME_SNAPSHOT_PATTERN,
 } from '@/server/status-pages/uptime-history'
+import {
+  enqueueDueSlaReports,
+  scheduleSlaReportsJob,
+  SLA_REPORTS_DUE_JOB_NAME,
+} from '@/server/sla/schedule'
 import {
   PROBE_HEALTH_INTERVAL_MS,
   PROBE_HEALTH_JOB_NAME,
@@ -183,6 +190,7 @@ export const processMaintenanceJob =
     if (job.name === PROBE_HEALTH_JOB_NAME) return refreshLocationStatuses(payload)
     if (job.name === QUORUM_RECOMPUTE_JOB_NAME) return recomputeQuorumStatuses(payload)
     if (job.name === UPTIME_SNAPSHOT_JOB_NAME) return snapshotUptimeHistory(payload)
+    if (job.name === SLA_REPORTS_DUE_JOB_NAME) return enqueueDueSlaReports(payload)
     if (job.name === DEMO_RESET_JOB_NAME) {
       demoLockClient ??= createRedis()
       return processDemoResetJob(payload, job, {
@@ -253,6 +261,7 @@ export async function startMaintenanceWorker(
   await scheduleProbeHealthJob(getMaintenanceQueue(options))
   await scheduleQuorumRecomputeJob(getMaintenanceQueue(options))
   await scheduleUptimeSnapshotJob(getMaintenanceQueue(options))
+  await scheduleSlaReportsJob(getMaintenanceQueue(options))
   await scheduleDemoJobs(getMaintenanceQueue(options))
   // Re-plan every wake-up once per boot (they may have been lost with Redis).
   try {

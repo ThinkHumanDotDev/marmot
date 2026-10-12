@@ -1,6 +1,6 @@
 'use client'
 
-import { Globe, LockKeyhole, Mail, Network } from 'lucide-react'
+import { Globe, LockKeyhole, Mail, Network, UsersRound } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -25,6 +25,7 @@ const ICONS: Record<StatusPageAccessMode, React.ComponentType<{ className?: stri
   password: LockKeyhole,
   'email-domain': Mail,
   'ip-allowlist': Network,
+  audience: UsersRound,
 }
 
 type Ranges = NonNullable<StatusPage['allowedIpRanges']>
@@ -52,7 +53,8 @@ const textToRanges = (text: string): Ranges =>
 
 /**
  * Who may view the published page: everyone, visitors who know the page password, visitors with an
- * email address at an allowed domain (magic link), or visitors from allowed IP ranges.
+ * email address at an allowed domain (magic link), visitors from allowed IP ranges, or members of
+ * the page's audiences (magic link, #151; the audiences themselves live on their own tab).
  */
 export function AccessPanel({
   orgId,
@@ -215,6 +217,12 @@ export function AccessPanel({
             </div>
           )}
 
+          {mode === 'audience' && (
+            <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+              {t('audienceNote')}
+            </p>
+          )}
+
           {mode === 'ip-allowlist' && (
             <div className="grid gap-2">
               <Label htmlFor="sp-access-ranges">{t('ranges.label')}</Label>
@@ -267,7 +275,7 @@ export function AccessPanel({
         )}
       </form>
 
-      {saved === 'email-domain' && (
+      {(saved === 'email-domain' || saved === 'audience') && (
         <ViewersList orgId={orgId} pageId={page.id} canEdit={canEdit} timeZone={timeZone} />
       )}
     </div>

@@ -1,5 +1,5 @@
 /**
- * Magic links for `email-domain` status pages.
+ * Magic links for `email-domain` and `audience` (#151) status pages.
  *
  * 1. A visitor enters an address (`POST /api/status-pages/:slug/access` with `email`). The request is
  *    rate limited per client IP (or per page without a trusted address) and per page and address,
@@ -33,6 +33,7 @@ import { serverTranslator } from '@/server/i18n'
 import { createRedis } from '@/server/redis'
 import { createRateLimiter, type RateLimiter } from '@/server/security/rate-limit'
 import { requestMeta } from '@/server/security/request'
+import { audienceGrantFor } from '@/server/status-pages/audiences'
 import { statusPageUrlFor } from '@/server/status-pages/urls'
 
 import type { StatusPage, StatusPageViewer } from '@/payload-types'
@@ -129,11 +130,27 @@ const relId = (value: unknown): string | number | null => {
 const allowedDomains = (page: Pick<StatusPage, 'allowedEmailDomains'>) =>
   (page.allowedEmailDomains ?? []).map((row) => row.domain)
 
-/** True while `email` may be admitted to `page` (mode on, domain still listed). */
+/**
+ * True while `email` may be admitted to an `email-domain` page (mode on, domain still listed).
+ * Audience pages need the database: see `isEmailAdmitted`.
+ */
 export const isEmailAllowed = (
   page: Pick<StatusPage, 'access' | 'allowedEmailDomains'>,
   email: string,
 ): boolean => page.access === 'email-domain' && isEmailInDomains(email, allowedDomains(page))
+
+/**
+ * True while `email` may sign in to `page`: an allowed domain of an `email-domain` page, or a
+ * member of one of the audiences of an `audience` page.
+ */
+export async function isEmailAdmitted(
+  payload: Payload,
+  page: Pick<StatusPage, 'id' | 'access' | 'allowedEmailDomains'>,
+  email: string,
+): Promise<boolean> {
+  if (page.access === 'audience') return (await audienceGrantFor(payload, page.id, email)) !== null
+  return isEmailAllowed(page, email)
+}
 
 async function findViewer(
   payload: Payload,
@@ -215,7 +232,7 @@ async function deliver(
   pageUrl: string,
   locale: Locale,
 ): Promise<void> {
-  if (!isEmailAllowed(page, email)) return
+  if (!(await isEmailAdmitted(payload, page, email))) return
   const viewer = await findViewer(payload, page.id, email)
   if (viewer?.status === 'revoked') return
 
@@ -298,7 +315,7 @@ export async function consumeMagicLink(
     return { ok: false }
   }
   if (entry.p !== String(page.id) || typeof entry.e !== 'string') return { ok: false }
-  if (!isEmailAllowed(page, entry.e)) return { ok: false }
+  if (!(await isEmailAdmitted(payload, page, entry.e))) return { ok: false }
 
   const now = new Date().toISOString()
   const existing = await findViewer(payload, page.id, entry.e)

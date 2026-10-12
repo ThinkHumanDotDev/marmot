@@ -274,11 +274,19 @@ const removeSubscribers: CollectionBeforeDeleteHook = async ({ id, req }) => {
 }
 
 /**
- * Visitor records (`status-page-viewers`) and the preserved uptime history
+ * Audiences, visitor records (`status-page-viewers`) and the preserved uptime history
  * (`status-page-uptime-history`) reference the page with a NOT NULL foreign key on Postgres, so
  * they go before the page does.
  */
 const removeViewers: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  // Audiences (#151) go after the subscribers (`removeSubscribers`), which may reference them.
+  await req.payload.delete({
+    collection: 'status-page-audiences',
+    where: { statusPage: { equals: id } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
   await req.payload.delete({
     collection: 'status-page-viewers',
     where: { page: { equals: id } },

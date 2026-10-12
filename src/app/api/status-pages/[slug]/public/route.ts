@@ -7,6 +7,7 @@ import {
   accessRequestFrom,
   checkStatusPageAccess,
 } from '@/server/status-pages/access'
+import { scopePageForVisitor } from '@/server/status-pages/audiences'
 import { buildPublicStatusPageData, findPublishedStatusPage } from '@/server/status-pages/public'
 import { errorText, requestLocale } from '@/server/request-locale'
 
@@ -39,7 +40,8 @@ export async function GET(request: Request, { params }: RouteContext) {
   const access = await checkStatusPageAccess(payload, page, accessRequestFrom(request))
   if (!access.allowed) return accessDeniedResponse(access, 'json', requestLocale(request))
 
-  const data = await buildPublicStatusPageData(payload, page)
+  // Audience pages (#151): only the visitor's components, incidents and maintenance.
+  const data = await buildPublicStatusPageData(payload, scopePageForVisitor(page, access))
   return Response.json(data, {
     headers: {
       'Cache-Control': accessCacheControl(access, 'public, max-age=30'),

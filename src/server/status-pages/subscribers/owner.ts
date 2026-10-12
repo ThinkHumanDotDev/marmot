@@ -101,6 +101,7 @@ export const ownerSubscriber = (doc: StatusPageSubscriber) => ({
   channel: doc.channel,
   target: doc.target,
   components: doc.components ?? [],
+  audiences: (doc.audiences ?? []).map((a) => String(typeof a === 'object' ? a.id : a)),
   source: doc.source ?? 'self_signup',
   confirmedAt: doc.confirmedAt ?? null,
   createdAt: doc.createdAt,

@@ -10,6 +10,7 @@ import {
   accessRequestFrom,
   checkStatusPageAccess,
 } from '@/server/status-pages/access'
+import { scopePageForVisitor } from '@/server/status-pages/audiences'
 import { findPublishedStatusPage } from '@/server/status-pages/public'
 import { NO_STORE, errorJson, readBody } from '@/server/status-pages/subscribers/http'
 import { offeredChannels, subscribe } from '@/server/status-pages/subscribers/signup'
@@ -31,13 +32,16 @@ type RouteContext = { params: Promise<{ slug: string }> }
 export async function POST(request: Request, { params }: RouteContext) {
   const { slug } = await params
   const payload = await getPayload({ config })
-  const page = await findPublishedStatusPage(payload, slug)
-  if (!page) return errorJson(request, 'statusPageNotFound', 404)
+  const found = await findPublishedStatusPage(payload, slug)
+  if (!found) return errorJson(request, 'statusPageNotFound', 404)
 
-  const access = await checkStatusPageAccess(payload, page, accessRequestFrom(request), {
+  const access = await checkStatusPageAccess(payload, found, accessRequestFrom(request), {
     acceptPasswordParam: false,
   })
   if (!access.allowed) return accessDeniedResponse(access, 'json', requestLocale(request))
+  // Audience pages (#151): components of the visitor's audiences only, and the subscription is
+  // bound to those audiences (from the session, never from the body).
+  const page = scopePageForVisitor(found, access)
   if (offeredChannels(page).length === 0) return errorJson(request, 'subscriptionsUnavailable', 404)
 
   const body = await readBody(request)
@@ -46,7 +50,12 @@ export async function POST(request: Request, { params }: RouteContext) {
   const result = await subscribe(
     payload,
     page,
-    { channel: body.channel, target: body.target, components: body.components },
+    {
+      channel: body.channel,
+      target: body.target,
+      components: body.components,
+      audiences: access.audience?.audiences,
+    },
     request,
     isLocale(body.locale, offeredLocales(page))
       ? body.locale

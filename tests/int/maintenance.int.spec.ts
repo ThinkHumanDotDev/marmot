@@ -365,7 +365,7 @@ describe('maintenance windows', () => {
       })
       await createDoc(orgA, { title: 'elsewhere' })
 
-      const items = await getActiveMaintenanceForStatusPage(payload, page.id)
+      const items = await getActiveMaintenanceForStatusPage(payload, page)
       expect(items.map((i) => [i.title, i.status])).toEqual([
         ['running', 'under-maintenance'],
         ['soon', 'scheduled'],

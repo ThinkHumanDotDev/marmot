@@ -145,6 +145,8 @@ export interface StatusChange {
 export interface StatusReplay {
   downSeconds: number
   knownSeconds: number
+  /** Seconds spent in MAINTENANCE (SLA targets may exclude them, #156). */
+  maintenanceSeconds: number
   /** Statuses held at some point of the interval. */
   held: Set<BeatStatus>
 }
@@ -162,6 +164,7 @@ export function replayStatuses(
   const held = new Set<BeatStatus>()
   let downMs = 0
   let knownMs = 0
+  let maintenanceMs = 0
   let status = initial
   let cursor = from
   const close = (until: number) => {
@@ -169,6 +172,7 @@ export function replayStatuses(
     if (status === null || span <= 0) return
     knownMs += span
     if (status === 'down') downMs += span
+    if (status === 'maintenance') maintenanceMs += span
     held.add(status)
   }
   for (const change of changes) {
@@ -182,7 +186,12 @@ export function replayStatuses(
     status = change.status
   }
   if (cursor < to) close(to)
-  return { downSeconds: downMs / 1000, knownSeconds: knownMs / 1000, held }
+  return {
+    downSeconds: downMs / 1000,
+    knownSeconds: knownMs / 1000,
+    maintenanceSeconds: maintenanceMs / 1000,
+    held,
+  }
 }
 
 // ---- Manual mode: incident impacts ------------------------------------------------------------------
@@ -322,7 +331,8 @@ export interface MonthlyUptimeRow {
   days: number
 }
 
-const csvCell = (value: string): string =>
+/** One CSV cell: quoted when needed, formula-looking values neutralised (CSV injection). */
+export const csvCell = (value: string): string =>
   /[",\n\r]/.test(value) || /^[=+\-@\t\r]/.test(value)
     ? `"${(/^[=+\-@\t\r]/.test(value) ? `'${value}` : value).replace(/"/g, '""')}"`
     : value
