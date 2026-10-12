@@ -11,6 +11,7 @@ import { visitorThemeScript } from '@/components/status-pages/public/theme-stora
 import { localeNames } from '@/i18n/locales'
 import { getMessages } from '@/i18n/messages'
 import { getStatusPageLocale, statusPageTimeZone } from '@/i18n/server'
+import { EMBED_THEME_HEADER, parseEmbedTheme } from '@/lib/status-page-embed'
 import {
   followsVisitorTimeZone,
   localizedPath,
@@ -65,7 +66,9 @@ export default async function StatusLayout({
       redirect(localizedPath(page, statusPageRootPath(page, headers), visitorPath, preferred))
     }
   }
-  const theme = page?.theme ?? 'auto'
+  // `?embed=…&theme=light|dark` (#109), passed on by the proxy, which strips visitors' own header.
+  const embedTheme = parseEmbedTheme(headers.get(EMBED_THEME_HEADER))
+  const theme = embedTheme ?? page?.theme ?? 'auto'
   const themeCss = page ? buildThemeCss(page.themePreset, page.themeOverrides) : ''
   const locale = await getStatusPageLocale(page)
   const timeZone = statusPageTimeZone(page)

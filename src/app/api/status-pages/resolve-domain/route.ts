@@ -2,6 +2,7 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import { HOSTNAME_PATTERN, normalizeHostname } from '@/collections/StatusPages'
+import { frameAncestorsFor } from '@/lib/status-page-embed'
 import { orgAllowsCustomDomains, relationId } from '@/server/billing/entitlements'
 
 export const dynamic = 'force-dynamic'
@@ -11,7 +12,8 @@ export const dynamic = 'force-dynamic'
  *
  * Maps a custom hostname to the slug of the published status page that lists it. Used by
  * `src/proxy.ts` to rewrite requests that arrive on a custom domain, and usable as Caddy's
- * `on_demand_tls { ask … }` endpoint (which sends `?domain=`). Returns `{ slug }` or 404 (also when
+ * `on_demand_tls { ask … }` endpoint (which sends `?domain=`). Returns `{ slug, frameAncestors }`
+ * (the page's embedding policy, see `src/lib/status-page-embed.ts`) or 404 (also when
  * the organization's plan does not include custom domains).
  */
 export async function GET(request: Request) {
@@ -44,5 +46,9 @@ export async function GET(request: Request) {
       { status: 404, headers: { 'Cache-Control': 'public, max-age=60' } },
     )
   }
-  return Response.json({ slug: page.slug }, { headers: { 'Cache-Control': 'public, max-age=60' } })
+  return Response.json(
+    // `frameAncestors`: the page's embedding policy (#109), applied by the proxy on this host.
+    { slug: page.slug, frameAncestors: frameAncestorsFor(page) },
+    { headers: { 'Cache-Control': 'public, max-age=60' } },
+  )
 }

@@ -26,6 +26,7 @@ import {
 } from '../api'
 import { AccessPanel } from './access-panel'
 import { DomainsPanel } from './domains-panel'
+import { EmbedPanel } from './embed-panel'
 import { GroupsEditor } from './groups-editor'
 import { HistoryPanel } from './history-panel'
 import { IncidentsPanel, type IncidentComponentOption } from './incidents-panel'
@@ -261,8 +262,9 @@ export function StatusPageEditor({
               timeZone={timeZone}
             />
           </TabsContent>
-          <TabsContent value="share" className="pt-6">
+          <TabsContent value="share" className="flex flex-col gap-6 pt-6">
             <SharePanel page={page} />
+            <EmbedPanel orgId={orgId} page={page} onSaved={setPage} canEdit={canEdit} />
           </TabsContent>
           {canViewHistory && (
             <TabsContent value="history" className="pt-6">

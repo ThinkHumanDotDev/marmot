@@ -101,6 +101,9 @@ export const STATUS_PAGE_WRITABLE_FIELDS = [
   'password',
   'allowedEmailDomains',
   'allowedIpRanges',
+  // Embedding (#109): `off | any | origins` and the allowed origins.
+  'allowEmbedding',
+  'embedOrigins',
   'searchEngineIndex',
   'showTags',
   'showCertificateExpiry',
