@@ -214,6 +214,31 @@ backlog never has to fit in the worker's memory. Telemetry and log collections h
 are removed through the database adapter (`payload.db.deleteMany`); unconfirmed subscribers go through
 `payload.delete` so their `beforeDelete` cascade still runs.
 
+## SLA targets and reports
+
+`sla-targets` (monitor, `target` %, `period` = `month | quarter | rolling30`, `calculation` =
+`duration | checks`, `excludeMaintenance`), `sla-reports` (targets, `schedule` = `none | weekly |
+monthly`, recipients, delivery bookkeeping) and `sla-report-shares` (report, `fromDate`/`toDate`,
+`tokenHash`, `revokedAt`) are org-scoped (`sla:read` for viewers, `sla:manage` for admins) (#156).
+The maths is pure (`src/lib/sla.ts`: periods, `slaUptime`, `slaAttainment` with the error budget
+and burn rate, MTTR, the CSV); `src/server/sla/compute.ts` feeds it from the same sources as the
+status page uptime of #112 (`loadMonitorDays`: `stat-daily` counts and the replayed important
+heartbeats, which also yield the time spent in maintenance) plus the `monitor-incidents` of the
+period. Exports: CSV, a dependency-free PDF writer (`src/server/sla/pdf.ts`) and the
+server-rendered page.
+
+Scheduling uses the existing queues: the `sla-reports-due` job scheduler (hourly at :40 UTC on
+`marmot:maintenance`) enqueues one `sla-report-send` job per report whose previous complete week or
+month (`previousSchedulePeriod`) differs from its `lastSentPeriod` (job id
+`sla-report-<report>-<period>`); the notification worker renders the report and sends it to each
+recipient through the Payload email adapter with the CSV and PDF attached, then records the period.
+A new or changed schedule starts with the period that just ended marked as sent.
+
+Share links (`src/server/sla/shares.ts`) carry 32 random bytes; only the SHA-256 is stored, and the
+field can only be written by the share route (`req.context` flag) and never read through the API.
+`/sla/<token>` and `/api/sla/<token>` resolve the token with `overrideAccess` and render that report
+over the stored range only; revoked or unknown tokens get the same 404.
+
 ## Notifications
 
 `notifications` documents (org-scoped: `name`, `type` = provider slug, `config` validated against the
@@ -570,6 +595,8 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `status-page:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
 | `status-page:create`, `status-page:update`, `status-page:delete`    |        |   ✓    |   ✓   |   ✓   |
 | `status-page:history` (monthly uptime history and CSV export)       |        |        |   ✓   |   ✓   |
+| `sla:read` (SLA targets and reports)                                |   ✓    |   ✓    |   ✓   |   ✓   |
+| `sla:manage` (targets, scheduled reports, share links)              |        |        |   ✓   |   ✓   |
 | `subscriber:read`, `subscriber:manage`                              |        |   ✓    |   ✓   |   ✓   |
 | `subscriber:send`                                                   |        |        |   ✓   |   ✓   |
 | `maintenance:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |

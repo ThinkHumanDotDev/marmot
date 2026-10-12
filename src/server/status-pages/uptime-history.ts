@@ -120,6 +120,8 @@ export interface LiveDay {
   held: Set<BeatStatus>
   degraded: number
   maintenance: number
+  /** Seconds spent in MAINTENANCE, from the replayed transitions (0 for snapshots). */
+  maintenanceSeconds: number
 }
 
 type StatRow = {
@@ -234,6 +236,7 @@ export async function loadMonitorDays(
       held: replay.held,
       degraded: extrasCount(row.extras, 'degraded'),
       maintenance: extrasCount(row.extras, 'maintenance'),
+      maintenanceSeconds: replay.maintenanceSeconds,
     })
   }
   return out
@@ -423,6 +426,7 @@ const snapshotDay = (row: SnapshotRow): LiveDay => ({
   ),
   degraded: row.degraded ?? (row.state === 'degraded' ? 1 : 0),
   maintenance: row.maintenance ?? 0,
+  maintenanceSeconds: 0,
 })
 
 // ---- Page uptime ------------------------------------------------------------------------------------
@@ -516,6 +520,7 @@ export async function loadPageUptime(
             held: new Set(),
             degraded: 0,
             maintenance: 0,
+            maintenanceSeconds: 0,
           }
           source = 'live'
         }

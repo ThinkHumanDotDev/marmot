@@ -50,6 +50,11 @@ export const PERMISSIONS = {
   // Monthly uptime history and its CSV export for SLA reporting (#112).
   'status-page:history': 'admin',
 
+  // SLA targets and reports (#156): everyone sees attainment and reports; admins set targets,
+  // schedule reports and create or revoke public share links.
+  'sla:read': 'viewer',
+  'sla:manage': 'admin',
+
   // Status page subscribers (#104): addresses are personal data, so viewers do not see them.
   'subscriber:read': 'member',
   'subscriber:manage': 'member',

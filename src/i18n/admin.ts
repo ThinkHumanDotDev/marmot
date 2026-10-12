@@ -619,6 +619,21 @@ export const adminTranslations = {
         windowDescription: 'Maintenance window of the announcement.',
         channelsDescription: 'Channels the announcement went out on.',
       },
+      slaTargets: {
+        targetDescription: 'Percent of the window the monitor must be up, e.g. 99.9.',
+        calculationDescription:
+          'duration: time not down / time with a known state. checks: successful checks / all checks.',
+        excludeMaintenanceDescription:
+          'Leave maintenance windows out of the uptime and the error budget.',
+      },
+      slaReports: {
+        scheduleDescription:
+          'weekly: every Monday for the previous week. monthly: on the 1st for the previous month (UTC).',
+        lastSentPeriodDescription: 'Last period emailed by the schedule.',
+      },
+      slaReportShares: {
+        revokedAtDescription: 'Revoked links stop working for good.',
+      },
       tags: {
         colorDescription: 'Hex colour of the chip, e.g. #2563EB.',
       },

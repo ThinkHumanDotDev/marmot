@@ -1,0 +1,408 @@
+import {
+  ValidationError,
+  type CollectionBeforeChangeHook,
+  type CollectionBeforeDeleteHook,
+  type CollectionConfig,
+  type FieldAccess,
+  type PayloadRequest,
+  type Where,
+} from 'payload'
+
+import { orgScoped } from '@/access/org-scoped'
+import { adminGroup, adminT } from '@/i18n/admin'
+import {
+  isSlaSchedule,
+  previousSchedulePeriod,
+  SLA_CALCULATIONS,
+  SLA_MAX_RECIPIENTS,
+  SLA_SCHEDULES,
+  SLA_TARGET_MAX,
+  SLA_TARGET_MIN,
+  SLA_WINDOWS,
+} from '@/lib/sla'
+import type { ErrorKey } from '@/server/errors'
+import { userErrorText } from '@/server/request-locale'
+import type { SlaReport, SlaReportShare, SlaTarget } from '@/payload-types'
+
+import { relId } from './shared'
+
+/**
+ * SLA targets, reports and report share links (#156). See `src/lib/sla.ts` for the maths and
+ * `src/server/sla/` for report generation, scheduling and sharing.
+ */
+
+/** `req.context` flag the share route sets so `tokenHash` can be written on create. */
+export const SLA_SHARE_SERVER_CONTEXT = 'slaShareServer'
+
+const invalid = (req: PayloadRequest, collection: string, key: ErrorKey, path: string): never => {
+  throw new ValidationError({
+    collection,
+    errors: [{ message: userErrorText(req, key), path }],
+  })
+}
+
+const sameOrg = (a: unknown, b: unknown) => a !== null && String(a) === String(b)
+
+const orgFilter = ({ data }: { data: unknown }): Where | true => {
+  const organization = relId((data as { organization?: unknown })?.organization)
+  return organization === null ? true : { organization: { equals: organization } }
+}
+
+const orgField = {
+  name: 'organization',
+  type: 'relationship',
+  relationTo: 'organizations',
+  required: true,
+  index: true,
+  admin: { position: 'sidebar' },
+} as const
+
+/** Server-owned bookkeeping: never written through the API (the worker uses `overrideAccess`). */
+const serverOnly: FieldAccess = () => false
+
+// ---- Targets ----------------------------------------------------------------------------------------
+
+/** The monitor must belong to the target's organization. */
+const checkTargetMonitor: CollectionBeforeChangeHook<SlaTarget> = async ({
+  data,
+  originalDoc,
+  req,
+}) => {
+  const organization = relId(data.organization ?? originalDoc?.organization)
+  const monitorId = relId(data.monitor !== undefined ? data.monitor : originalDoc?.monitor)
+  if (monitorId === null) return data
+  const monitor = await req.payload
+    .findByID({
+      collection: 'monitors',
+      id: monitorId,
+      depth: 0,
+      req,
+      overrideAccess: true,
+      select: { organization: true },
+    })
+    .catch(() => null)
+  if (!monitor || !sameOrg(relId(monitor.organization), organization)) {
+    invalid(req, 'sla-targets', 'slaMonitorInvalid', 'monitor')
+  }
+  return data
+}
+
+/** Reports keep a list of targets; a deleted target leaves them (Mongo keeps no foreign keys). */
+const detachTargetFromReports: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  const { docs } = await req.payload.find({
+    collection: 'sla-reports',
+    where: { targets: { in: [id] } },
+    depth: 0,
+    limit: 0,
+    pagination: false,
+    req,
+    overrideAccess: true,
+    select: { targets: true },
+  })
+  for (const report of docs) {
+    await req.payload.update({
+      collection: 'sla-reports',
+      id: report.id,
+      data: {
+        targets: (report.targets ?? [])
+          .map((target) => relId(target))
+          .filter((target) => target !== null && String(target) !== String(id)),
+      } as Partial<SlaReport>,
+      depth: 0,
+      req,
+      overrideAccess: true,
+    })
+  }
+}
+
+export const SlaTargets: CollectionConfig = {
+  slug: 'sla-targets',
+  admin: {
+    useAsTitle: 'target',
+    group: adminGroup('statistics'),
+    defaultColumns: ['monitor', 'target', 'period', 'organization'],
+  },
+  access: {
+    read: orgScoped('sla:read'),
+    create: orgScoped('sla:manage'),
+    update: orgScoped('sla:manage'),
+    delete: orgScoped('sla:manage'),
+  },
+  hooks: {
+    beforeChange: [checkTargetMonitor],
+    beforeDelete: [detachTargetFromReports],
+  },
+  fields: [
+    orgField,
+    {
+      name: 'monitor',
+      type: 'relationship',
+      relationTo: 'monitors',
+      required: true,
+      index: true,
+      filterOptions: orgFilter,
+    },
+    {
+      type: 'row',
+      fields: [
+        {
+          name: 'target',
+          type: 'number',
+          required: true,
+          min: SLA_TARGET_MIN,
+          max: SLA_TARGET_MAX,
+          admin: { description: adminT('marmot:slaTargets:targetDescription') },
+        },
+        {
+          name: 'period',
+          type: 'select',
+          required: true,
+          defaultValue: 'month',
+          options: SLA_WINDOWS.map((value) => ({ label: value, value })),
+        },
+        {
+          name: 'calculation',
+          type: 'select',
+          required: true,
+          defaultValue: 'duration',
+          options: SLA_CALCULATIONS.map((value) => ({ label: value, value })),
+          admin: { description: adminT('marmot:slaTargets:calculationDescription') },
+        },
+      ],
+    },
+    {
+      name: 'excludeMaintenance',
+      type: 'checkbox',
+      defaultValue: true,
+      admin: { description: adminT('marmot:slaTargets:excludeMaintenanceDescription') },
+    },
+  ],
+  timestamps: true,
+}
+
+// ---- Reports ----------------------------------------------------------------------------------------
+
+const normalizeReport: CollectionBeforeChangeHook<SlaReport> = async ({
+  data,
+  originalDoc,
+  req,
+}) => {
+  if (typeof data.name === 'string') data.name = data.name.trim()
+  const organization = relId(data.organization ?? originalDoc?.organization)
+
+  if (Array.isArray(data.targets)) {
+    const ids = [...new Set(data.targets.map((t) => relId(t)).filter((t) => t !== null))]
+    if (ids.length > 0) {
+      const { docs } = await req.payload.find({
+        collection: 'sla-targets',
+        where: { id: { in: ids } },
+        depth: 0,
+        limit: ids.length,
+        pagination: false,
+        req,
+        overrideAccess: true,
+        select: { organization: true },
+      })
+      if (
+        docs.length !== ids.length ||
+        docs.some((doc) => !sameOrg(relId(doc.organization), organization))
+      ) {
+        invalid(req, 'sla-reports', 'slaTargetsInvalid', 'targets')
+      }
+    }
+    data.targets = ids as SlaReport['targets']
+  }
+
+  if (Array.isArray(data.recipients)) {
+    const seen = new Set<string>()
+    data.recipients = data.recipients
+      .map((row) => ({ ...row, email: String(row?.email ?? '').trim() }))
+      .filter((row) => {
+        const key = row.email.toLowerCase()
+        if (!key || seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+  }
+  const schedule = data.schedule ?? originalDoc?.schedule ?? 'none'
+  const recipients = data.recipients ?? originalDoc?.recipients ?? []
+  if (schedule !== 'none' && recipients.length === 0) {
+    invalid(req, 'sla-reports', 'slaRecipientsRequired', 'recipients')
+  }
+  // A new schedule starts with the next period to complete: the one that just ended counts as
+  // sent, so creating a monthly report mid-month does not email last month's report at once.
+  if (data.schedule !== undefined && data.schedule !== originalDoc?.schedule) {
+    data.lastSentPeriod = isSlaSchedule(data.schedule)
+      ? (previousSchedulePeriod(data.schedule, new Date())?.key ?? null)
+      : null
+  }
+  return data
+}
+
+/** Share links reference the report with a NOT NULL foreign key on Postgres. */
+const removeReportShares: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  await req.payload.delete({
+    collection: 'sla-report-shares',
+    where: { report: { equals: id } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
+}
+
+export const SlaReports: CollectionConfig = {
+  slug: 'sla-reports',
+  admin: {
+    useAsTitle: 'name',
+    group: adminGroup('statistics'),
+    defaultColumns: ['name', 'schedule', 'lastSentAt', 'organization'],
+  },
+  access: {
+    read: orgScoped('sla:read'),
+    create: orgScoped('sla:manage'),
+    update: orgScoped('sla:manage'),
+    delete: orgScoped('sla:manage'),
+  },
+  hooks: {
+    beforeChange: [normalizeReport],
+    beforeDelete: [removeReportShares],
+  },
+  fields: [
+    orgField,
+    { name: 'name', type: 'text', required: true, maxLength: 100 },
+    {
+      name: 'targets',
+      type: 'relationship',
+      relationTo: 'sla-targets',
+      hasMany: true,
+      filterOptions: orgFilter,
+    },
+    {
+      name: 'schedule',
+      type: 'select',
+      required: true,
+      defaultValue: 'none',
+      options: SLA_SCHEDULES.map((value) => ({ label: value, value })),
+      admin: { description: adminT('marmot:slaReports:scheduleDescription') },
+    },
+    {
+      name: 'recipients',
+      type: 'array',
+      maxRows: SLA_MAX_RECIPIENTS,
+      fields: [{ name: 'email', type: 'email', required: true }],
+    },
+    {
+      name: 'lastSentPeriod',
+      type: 'text',
+      access: { create: serverOnly, update: serverOnly },
+      admin: { readOnly: true, description: adminT('marmot:slaReports:lastSentPeriodDescription') },
+    },
+    {
+      name: 'lastSentAt',
+      type: 'date',
+      access: { create: serverOnly, update: serverOnly },
+      admin: { readOnly: true },
+    },
+    {
+      name: 'lastError',
+      type: 'text',
+      access: { create: serverOnly, update: serverOnly },
+      admin: { readOnly: true },
+    },
+  ],
+  timestamps: true,
+}
+
+// ---- Share links ------------------------------------------------------------------------------------
+
+const checkShareReport: CollectionBeforeChangeHook<SlaReportShare> = async ({
+  data,
+  originalDoc,
+  req,
+}) => {
+  const organization = relId(data.organization ?? originalDoc?.organization)
+  const reportId = relId(data.report ?? originalDoc?.report)
+  const report =
+    reportId === null
+      ? null
+      : await req.payload
+          .findByID({
+            collection: 'sla-reports',
+            id: reportId,
+            depth: 0,
+            req,
+            overrideAccess: true,
+            select: { organization: true },
+          })
+          .catch(() => null)
+  if (!report || !sameOrg(relId(report.organization), organization)) {
+    invalid(req, 'sla-report-shares', 'slaReportNotFound', 'report')
+  }
+  return data
+}
+
+export const SlaReportShares: CollectionConfig = {
+  slug: 'sla-report-shares',
+  admin: {
+    useAsTitle: 'fromDate',
+    group: adminGroup('statistics'),
+    defaultColumns: ['report', 'fromDate', 'toDate', 'revokedAt', 'organization'],
+  },
+  access: {
+    read: orgScoped('sla:manage'),
+    create: orgScoped('sla:manage'),
+    update: orgScoped('sla:manage'),
+    delete: orgScoped('sla:manage'),
+  },
+  hooks: {
+    beforeChange: [checkShareReport],
+  },
+  fields: [
+    orgField,
+    {
+      name: 'report',
+      type: 'relationship',
+      relationTo: 'sla-reports',
+      required: true,
+      index: true,
+    },
+    {
+      // SHA-256 of the link token; the token itself is shown once and never stored.
+      name: 'tokenHash',
+      type: 'text',
+      required: true,
+      unique: true,
+      index: true,
+      access: {
+        read: () => false,
+        create: ({ req }) => req.context?.[SLA_SHARE_SERVER_CONTEXT] === true,
+        update: () => false,
+      },
+      admin: { hidden: true },
+    },
+    {
+      type: 'row',
+      fields: [
+        // Inclusive `YYYY-MM-DD` dates (UTC days) of the shared range.
+        { name: 'fromDate', type: 'text', required: true, access: { update: serverOnly } },
+        { name: 'toDate', type: 'text', required: true, access: { update: serverOnly } },
+      ],
+    },
+    {
+      name: 'createdBy',
+      type: 'relationship',
+      relationTo: 'users',
+      access: { update: serverOnly },
+      admin: { readOnly: true },
+    },
+    {
+      name: 'revokedAt',
+      type: 'date',
+      index: true,
+      // Revoking is final: a revoked link cannot be brought back (create a new one instead).
+      access: { create: serverOnly, update: ({ doc }) => !doc?.revokedAt },
+      admin: { description: adminT('marmot:slaReportShares:revokedAtDescription') },
+    },
+  ],
+  timestamps: true,
+}

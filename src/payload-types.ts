@@ -93,6 +93,9 @@ export interface Config {
     'status-pages': StatusPage;
     'status-page-viewers': StatusPageViewer;
     'status-page-uptime-history': StatusPageUptimeHistory;
+    'sla-targets': SlaTarget;
+    'sla-reports': SlaReport;
+    'sla-report-shares': SlaReportShare;
     incidents: Incident;
     'status-page-subscribers': StatusPageSubscriber;
     'subscriber-notifications': SubscriberNotification;
@@ -138,6 +141,9 @@ export interface Config {
     'status-pages': StatusPagesSelect<false> | StatusPagesSelect<true>;
     'status-page-viewers': StatusPageViewersSelect<false> | StatusPageViewersSelect<true>;
     'status-page-uptime-history': StatusPageUptimeHistorySelect<false> | StatusPageUptimeHistorySelect<true>;
+    'sla-targets': SlaTargetsSelect<false> | SlaTargetsSelect<true>;
+    'sla-reports': SlaReportsSelect<false> | SlaReportsSelect<true>;
+    'sla-report-shares': SlaReportSharesSelect<false> | SlaReportSharesSelect<true>;
     incidents: IncidentsSelect<false> | IncidentsSelect<true>;
     'status-page-subscribers': StatusPageSubscribersSelect<false> | StatusPageSubscribersSelect<true>;
     'subscriber-notifications': SubscriberNotificationsSelect<false> | SubscriberNotificationsSelect<true>;
@@ -1300,6 +1306,59 @@ export interface StatusPageUptimeHistory {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sla-targets".
+ */
+export interface SlaTarget {
+  id: number;
+  organization: number | Organization;
+  monitor: number | Monitor;
+  target: number;
+  period: 'month' | 'quarter' | 'rolling30';
+  calculation: 'duration' | 'checks';
+  excludeMaintenance?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sla-reports".
+ */
+export interface SlaReport {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  targets?: (number | SlaTarget)[] | null;
+  schedule: 'none' | 'weekly' | 'monthly';
+  recipients?:
+    | {
+        email: string;
+        id?: string | null;
+      }[]
+    | null;
+  lastSentPeriod?: string | null;
+  lastSentAt?: string | null;
+  lastError?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sla-report-shares".
+ */
+export interface SlaReportShare {
+  id: number;
+  organization: number | Organization;
+  report: number | SlaReport;
+  tokenHash: string;
+  fromDate: string;
+  toDate: string;
+  createdBy?: (number | null) | User;
+  revokedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "status-page-subscribers".
  */
 export interface StatusPageSubscriber {
@@ -1801,6 +1860,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'status-page-uptime-history';
         value: number | StatusPageUptimeHistory;
+      } | null)
+    | ({
+        relationTo: 'sla-targets';
+        value: number | SlaTarget;
+      } | null)
+    | ({
+        relationTo: 'sla-reports';
+        value: number | SlaReport;
+      } | null)
+    | ({
+        relationTo: 'sla-report-shares';
+        value: number | SlaReportShare;
       } | null)
     | ({
         relationTo: 'incidents';
@@ -2677,6 +2748,56 @@ export interface StatusPageUptimeHistorySelect<T extends boolean = true> {
   downSeconds?: T;
   knownSeconds?: T;
   state?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sla-targets_select".
+ */
+export interface SlaTargetsSelect<T extends boolean = true> {
+  organization?: T;
+  monitor?: T;
+  target?: T;
+  period?: T;
+  calculation?: T;
+  excludeMaintenance?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sla-reports_select".
+ */
+export interface SlaReportsSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  targets?: T;
+  schedule?: T;
+  recipients?:
+    | T
+    | {
+        email?: T;
+        id?: T;
+      };
+  lastSentPeriod?: T;
+  lastSentAt?: T;
+  lastError?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sla-report-shares_select".
+ */
+export interface SlaReportSharesSelect<T extends boolean = true> {
+  organization?: T;
+  report?: T;
+  tokenHash?: T;
+  fromDate?: T;
+  toDate?: T;
+  createdBy?: T;
+  revokedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
