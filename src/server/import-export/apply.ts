@@ -17,7 +17,16 @@ import { can, type OrgId } from '@/access/permissions'
 import type { ImportReport, SkippedItem } from '@/lib/import-export'
 import { childLogger } from '@/lib/logger'
 import { validateOrganizationSlug } from '@/lib/reserved-slugs'
-import type { Incident, Monitor, Notification, StatusPage, Template } from '@/payload-types'
+import { maskTarget } from '@/lib/status-page-subscribers'
+import type {
+  Incident,
+  Maintenance as MaintenanceDoc,
+  Monitor,
+  Notification,
+  StatusPage,
+  StatusPageSubscriber,
+  Template,
+} from '@/payload-types'
 import type { RequestUser } from '@/server/monitors/http'
 import { AUDIT_SKIP_CONTEXT } from '@/server/audit/context'
 import type { Entitlements } from '@/lib/entitlements'
@@ -29,7 +38,8 @@ import {
 import { checkServerSmtpChange } from '@/server/notifications/server-smtp'
 import { recordAuditEventFromReq } from '@/server/security/audit'
 
-import type { ImportPlan, PlannedMonitor } from './types'
+import { IMPORT_SILENT_CONTEXT } from './context'
+import type { ImportPlan, PlannedMonitor, PlannedSubscriber } from './types'
 import { defaultLocale, type Locale } from '@/i18n/locales'
 import { translateError } from '@/server/errors'
 import { slugMessageIn } from '@/server/request-locale'
@@ -96,6 +106,9 @@ export async function applyImportPlan(
     statusPages: { create: 0, skipped: [...plan.skipped.statusPages] },
     templates: { create: 0, skipped: [...plan.skipped.templates] },
     tags: { create: 0, skipped: [...plan.skipped.tags] },
+    incidents: { create: 0, skipped: [...plan.skipped.incidents] },
+    maintenance: { create: 0, skipped: [...plan.skipped.maintenance] },
+    subscribers: { create: 0, skipped: [...plan.skipped.subscribers] },
     warnings: [...plan.warnings],
   }
   const created = {
@@ -103,6 +116,9 @@ export async function applyImportPlan(
     notifications: [] as OrgId[],
     statusPages: [] as OrgId[],
     templates: [] as OrgId[],
+    incidents: [] as OrgId[],
+    maintenance: [] as OrgId[],
+    subscribers: [] as OrgId[],
   }
 
   const skipAll = (items: { name: string }[], target: SkippedItem[], reason: string) => {
@@ -153,7 +169,42 @@ export async function applyImportPlan(
       report.statusPages.skipped,
       t('noStatusPagePermission'),
     )
+    skipAll(
+      plan.statusPages.flatMap((p) => p.incidents.map((incident) => ({ name: incident.title }))),
+      report.incidents.skipped,
+      t('requiresStatusPage'),
+    )
+    skipAll(
+      plan.statusPages.flatMap((p) => (p.subscribers ?? []).map(subscriberName)),
+      report.subscribers.skipped,
+      t('requiresStatusPage'),
+    )
     plan = { ...plan, statusPages: [] }
+  }
+  // Incidents need `status-page:update`, subscribers `subscriber:manage` (#120).
+  if (!can(user, orgId, 'status-page:update')) {
+    skipAll(
+      plan.statusPages.flatMap((p) => p.incidents.map((incident) => ({ name: incident.title }))),
+      report.incidents.skipped,
+      t('noIncidentPermission'),
+    )
+    plan = { ...plan, statusPages: plan.statusPages.map((p) => ({ ...p, incidents: [] })) }
+  }
+  if (!can(user, orgId, 'subscriber:manage')) {
+    skipAll(
+      plan.statusPages.flatMap((p) => (p.subscribers ?? []).map(subscriberName)),
+      report.subscribers.skipped,
+      t('noSubscriberPermission'),
+    )
+    plan = { ...plan, statusPages: plan.statusPages.map((p) => ({ ...p, subscribers: [] })) }
+  }
+  if (!can(user, orgId, 'maintenance:create') && plan.maintenance.length > 0) {
+    skipAll(
+      plan.maintenance.map((m) => ({ name: m.title })),
+      report.maintenance.skipped,
+      t('noMaintenancePermission'),
+    )
+    plan = { ...plan, maintenance: [] }
   }
 
   const canTemplates = can(user, orgId, 'template:create')
@@ -340,12 +391,43 @@ export async function applyImportPlan(
   }
 
   const orderedMonitors = orderByDepth(plan.monitors)
+  // Templates bound to a page that will not be created lose the page and its components.
+  const importedPageKeys = new Set(statusPages.map((page) => page.key))
+  for (const page of plan.statusPages) {
+    if (importedPageKeys.has(page.key)) continue
+    skipAll(
+      page.incidents.map((incident) => ({ name: incident.title })),
+      report.incidents.skipped,
+      t('requiresStatusPage'),
+    )
+    skipAll(
+      (page.subscribers ?? []).map(subscriberName),
+      report.subscribers.skipped,
+      t('requiresStatusPage'),
+    )
+  }
+  // Maintenance windows keep the pages and monitors that are imported; one left without any
+  // target is skipped.
+  const importedMonitorKeys = new Set(orderedMonitors.map((monitor) => monitor.key))
+  const maintenance = plan.maintenance.flatMap((planned) => {
+    const statusPageKeys = planned.statusPageKeys.filter((key) => importedPageKeys.has(key))
+    const monitorKeys = planned.monitorKeys.filter((key) => importedMonitorKeys.has(key))
+    if (statusPageKeys.length === 0 && monitorKeys.length === 0) {
+      report.maintenance.skipped.push({ name: planned.title, reason: t('requiresStatusPage') })
+      return []
+    }
+    return [{ ...planned, statusPageKeys, monitorKeys }]
+  })
   report.notifications.create = plan.notifications.length
   report.monitors.create = orderedMonitors.length
   report.statusPages.create = statusPages.length
   report.templates.create = plan.templates.length
-  // Templates bound to a page that will not be created lose the page and its components.
-  const importedPageKeys = new Set(statusPages.map((page) => page.key))
+  report.incidents.create = statusPages.reduce((sum, page) => sum + page.incidents.length, 0)
+  report.maintenance.create = maintenance.length
+  report.subscribers.create = statusPages.reduce(
+    (sum, page) => sum + (page.subscribers?.length ?? 0),
+    0,
+  )
   const templates = plan.templates.map((planned) => {
     if (planned.statusPageKey === null || importedPageKeys.has(planned.statusPageKey)) {
       return planned
@@ -363,7 +445,8 @@ export async function applyImportPlan(
   // ---- Commit ---------------------------------------------------------------------------------
   const req: PayloadRequest = await createLocalReq({ user }, payload)
   // One `import.completed` row summarises the import instead of a row per created document.
-  req.context = { ...req.context, [AUDIT_SKIP_CONTEXT]: true }
+  // Imported incidents and maintenance are history: they are not announced again.
+  req.context = { ...req.context, [AUDIT_SKIP_CONTEXT]: true, [IMPORT_SILENT_CONTEXT]: true }
   const transactionID = await payload.db.beginTransaction()
   if (transactionID) req.transactionID = transactionID
   const createdMonitors: Monitor[] = []
@@ -484,18 +567,100 @@ export async function applyImportPlan(
       )
       createdPages.set(planned.key, { id: doc.id, rows })
       for (const incident of planned.incidents) {
-        await payload.create({
+        const { updates, impact, createdAt, ...legacy } = incident
+        const incidentDoc = await payload.create({
           collection: 'incidents',
-          data: {
-            ...incident,
-            statusPage: doc.id,
-            organization: orgId,
-          } as Omit<Incident, 'id' | 'createdAt' | 'updatedAt'>,
+          data: (updates
+            ? {
+                title: incident.title,
+                pinned: incident.pinned,
+                ...(impact ? { impact } : {}),
+                ...(createdAt ? { createdAt } : {}),
+                updates: updates.map((update) => ({
+                  status: update.status,
+                  message: update.message,
+                  postedAt: update.postedAt,
+                  components: update.components.flatMap((row) => {
+                    const component = rows.get(row.componentKey)
+                    return component ? [{ component, impact: row.impact }] : []
+                  }),
+                })),
+                statusPage: doc.id,
+                organization: orgId,
+              }
+            : {
+                ...legacy,
+                ...(createdAt ? { createdAt } : {}),
+                statusPage: doc.id,
+                organization: orgId,
+              }) as Omit<Incident, 'id' | 'createdAt' | 'updatedAt'>,
           depth: 0,
           req,
           user,
           overrideAccess: false,
         })
+        created.incidents.push(incidentDoc.id)
+      }
+    }
+
+    for (const planned of maintenance) {
+      const start = utcMinute(planned.start)
+      let end = utcMinute(planned.end)
+      // Windows are stored to the minute; keep at least one.
+      if (end <= start) end = utcMinute(new Date(Date.parse(`${start}Z`) + 60_000).toISOString())
+      const doc = await payload.create({
+        collection: 'maintenance',
+        data: {
+          organization: orgId,
+          title: planned.title,
+          description: planned.description,
+          strategy: 'single',
+          timezone: 'UTC',
+          active: true,
+          dateRange: { start, end },
+          statusPages: planned.statusPageKeys.flatMap((key) => {
+            const page = createdPages.get(key)
+            return page ? [page.id] : []
+          }),
+          monitors: planned.monitorKeys.flatMap((key) => {
+            const id = monitorIds.get(key)
+            return id !== undefined ? [id] : []
+          }),
+        } as Omit<MaintenanceDoc, 'id' | 'createdAt' | 'updatedAt'>,
+        depth: 0,
+        req,
+        user,
+        overrideAccess: false,
+      })
+      created.maintenance.push(doc.id)
+    }
+
+    // Subscribers last: confirmed, `source: import`, no opt-in message.
+    for (const planned of statusPages) {
+      const page = createdPages.get(planned.key)
+      if (!page) continue
+      for (const subscriber of planned.subscribers ?? []) {
+        const doc = await payload.create({
+          collection: 'status-page-subscribers',
+          data: {
+            organization: orgId,
+            statusPage: page.id,
+            channel: subscriber.channel,
+            target: subscriber.target,
+            components: subscriber.componentKeys
+              ? subscriber.componentKeys.flatMap((key) => {
+                  const component = page.rows.get(key)
+                  return component ? [component] : []
+                })
+              : [],
+            source: 'import',
+          } as Omit<StatusPageSubscriber, 'id' | 'createdAt' | 'updatedAt'>,
+          depth: 0,
+          req,
+          user,
+          overrideAccess: false,
+        })
+        created.subscribers.push(doc.id)
       }
     }
 
@@ -539,6 +704,9 @@ export async function applyImportPlan(
         notifications: created.notifications.length,
         statusPages: created.statusPages.length,
         templates: created.templates.length,
+        incidents: created.incidents.length,
+        maintenance: created.maintenance.length,
+        subscribers: created.subscribers.length,
       },
     })
 
@@ -553,8 +721,19 @@ export async function applyImportPlan(
   report.notifications.created = created.notifications
   report.statusPages.created = created.statusPages
   report.templates.created = created.templates
+  report.incidents.created = created.incidents
+  report.maintenance.created = created.maintenance
+  report.subscribers.created = created.subscribers
   return report
 }
+
+/** Report name of a planned subscriber (masked: reports are shown and may be logged). */
+const subscriberName = (subscriber: PlannedSubscriber) => ({
+  name: maskTarget(subscriber.channel, subscriber.target),
+})
+
+/** `2026-10-12T08:30` (UTC) — the local-time format of a maintenance window in `UTC`. */
+const utcMinute = (iso: string): string => new Date(iso).toISOString().slice(0, 16)
 
 /**
  * Register the check schedulers of the imported monitors and tell live dashboards about them,

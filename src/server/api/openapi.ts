@@ -23,6 +23,7 @@ import { PERMISSIONS, type Permission, ROLES } from '@/access/permissions'
 import { connectionSchema } from '@/app/api/orgs/[orgId]/sso/connections/route'
 import { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
 import { API_KEY_SCOPES } from '@/lib/api-key-scopes'
+import { IMPORT_RESOURCES } from '@/lib/import-export'
 import { COMPONENT_IMPACTS, INCIDENT_STATUSES } from '@/lib/incident-timeline'
 import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
 import { DOCKER_CONNECTION_TYPES } from '@/lib/monitor-resources'
@@ -275,6 +276,14 @@ const ssoMetadataBody = z.union([
 const importBody = z
   .record(z.string(), z.unknown())
   .describe('A Marmot export (GET …/export) or an Uptime Kuma backup JSON')
+const providerImportBody = z.object({
+  credentials: z
+    .record(z.string(), z.string())
+    .describe(
+      'Statuspage: `apiKey`, `pageId`; Better Stack: `apiToken`, optional `statusPageId`. Used for this request only, never stored',
+    ),
+  resources: z.array(z.enum(IMPORT_RESOURCES)).min(1),
+})
 
 const imageUpload: JsonSchema = {
   type: 'object',
@@ -489,6 +498,18 @@ export const OPERATIONS: OperationSpec[] = [
     tag: 'Import and export',
     permission: 'monitor:create',
     body: { schema: importBody },
+    query: [dryRun],
+    status: 201,
+    response: { description: 'Import report (200 on a dry run)', schema: anyObject },
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/import/providers/{provider}`,
+    operationId: 'importFromProvider',
+    summary: 'Import from Atlassian Statuspage or Better Stack through their API',
+    tag: 'Import and export',
+    permission: 'monitor:create',
+    body: { schema: providerImportBody },
     query: [dryRun],
     status: 201,
     response: { description: 'Import report (200 on a dry run)', schema: anyObject },

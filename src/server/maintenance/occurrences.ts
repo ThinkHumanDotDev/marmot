@@ -27,6 +27,7 @@
 import type { Payload, PayloadRequest } from 'payload'
 
 import { afterCommit } from '@/db/after-commit'
+import { IMPORT_SILENT_CONTEXT } from '@/server/import-export/context'
 import { LocalizedAPIError } from '@/server/errors'
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
@@ -621,8 +622,10 @@ export async function syncMaintenance(
     log.info({ maintenanceId: doc.id, from: doc.status, to: status }, 'maintenance status changed')
   }
 
+  // Windows written by an import (#120) were announced by the source already.
+  const silent = Boolean(req?.context?.[IMPORT_SILENT_CONTEXT])
   const events = plan.events
-    .filter((pending) => !pending.occurrence.deleted)
+    .filter((pending) => !silent && !pending.occurrence.deleted)
     .map((pending) =>
       buildEvent(doc, pending, persisted.get(pending.occurrence) as MaintenanceOccurrence),
     )

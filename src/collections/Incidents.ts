@@ -28,6 +28,7 @@ import {
 } from '@/lib/incident-timeline'
 import type { ErrorKey } from '@/server/errors'
 import { userErrorText } from '@/server/request-locale'
+import { IMPORT_SILENT_CONTEXT } from '@/server/import-export/context'
 import { emitIncidentUpdatePosted } from '@/server/status-pages/incident-events'
 import { assignPublicId } from '@/server/status-pages/public-ids'
 
@@ -326,6 +327,8 @@ const announceUpdates: CollectionAfterChangeHook<Incident> = async ({
   operation,
   req,
 }) => {
+  // Imported history (#120) was announced by the source already.
+  if (req.context[IMPORT_SILENT_CONTEXT]) return doc
   const silent = silentIds(req)
   const before = new Set(
     operation === 'create' ? [] : (previousDoc?.updates ?? []).map((row) => String(row.id)),

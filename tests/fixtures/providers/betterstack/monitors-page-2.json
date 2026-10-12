@@ -1,0 +1,35 @@
+{
+  "data": [
+    {
+      "id": "2004",
+      "type": "monitor",
+      "attributes": {
+        "url": "db.example.com",
+        "pronounceable_name": "Database port",
+        "monitor_type": "tcp",
+        "check_frequency": 120,
+        "request_timeout": 3000,
+        "port": "5432",
+        "paused": false
+      }
+    },
+    {
+      "id": "2005",
+      "type": "monitor",
+      "attributes": {
+        "url": "ntp.example.com",
+        "pronounceable_name": "NTP",
+        "monitor_type": "udp",
+        "check_frequency": 180,
+        "port": "123",
+        "paused": false
+      }
+    }
+  ],
+  "pagination": {
+    "first": "https://uptime.betterstack.com/api/v2/monitors?page=1",
+    "last": "https://uptime.betterstack.com/api/v2/monitors?page=2",
+    "prev": "https://uptime.betterstack.com/api/v2/monitors?page=1",
+    "next": null
+  }
+}

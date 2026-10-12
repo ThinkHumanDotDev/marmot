@@ -19,9 +19,22 @@ interface ImportReportViewProps {
   report: ImportReport
 }
 
-type SectionKey = 'monitors' | 'notifications' | 'statusPages' | 'templates' | 'tags'
+type SectionKey =
+  | 'monitors'
+  | 'notifications'
+  | 'statusPages'
+  | 'templates'
+  | 'tags'
+  | 'incidents'
+  | 'maintenance'
+  | 'subscribers'
 
 const SECTIONS: SectionKey[] = ['monitors', 'notifications', 'statusPages', 'templates', 'tags']
+/** Shown only when the import has any (provider imports, exports with incidents). */
+const OPTIONAL_SECTIONS: SectionKey[] = ['incidents', 'maintenance', 'subscribers']
+
+const hasItems = (section: ImportSectionReport | undefined): section is ImportSectionReport =>
+  Boolean(section && (section.create > 0 || section.skipped.length > 0))
 
 function SectionRow({ label, section }: { label: string; section: ImportSectionReport }) {
   const [open, setOpen] = React.useState(false)
@@ -95,6 +108,9 @@ export function ImportReportView({ report }: ImportReportViewProps) {
         </TableHeader>
         <TableBody>
           {SECTIONS.map((key) => (
+            <SectionRow key={key} label={t(`sections.${key}`)} section={report[key]} />
+          ))}
+          {OPTIONAL_SECTIONS.filter((key) => hasItems(report[key])).map((key) => (
             <SectionRow key={key} label={t(`sections.${key}`)} section={report[key]} />
           ))}
         </TableBody>

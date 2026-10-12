@@ -74,6 +74,83 @@ report:
 A committed import (HTTP 201) adds `created: [ids]` to each section. A file that is not one of the two
 formats answers 400; a file over 10 MB answers 413.
 
+## Importing from a hosted service
+
+**Import from a service** (same settings tab) moves an account from **Atlassian Statuspage** or
+**Better Stack** through the service's API. Pick the service, paste an API key, choose what to
+import, then **Connect and preview**: Marmot reads the account and shows the same report as a file
+import (counts per part, every skipped item with its reason, notes). **Import** reads the account
+again and writes it in one transaction, in the order monitors → status page and components →
+incidents → maintenance → subscribers. A failed import rolls back (on adapters with transactions,
+as above).
+
+**Credentials are never stored.** The key is held in the browser tab until the import finishes or is
+cancelled, sent with the preview and again with the import, used for that request's API calls only
+(as an `Authorization` header to the service's fixed API host; pagination links to other hosts are
+refused) and never written to the database, the audit log or the server logs. Prefer a read-only key
+and revoke it afterwards.
+
+| Source               | Credentials                                 | Monitors | Status page and components | Incidents (with updates and impacts) | Upcoming maintenance | Subscribers |
+| -------------------- | ------------------------------------------- | :------: | :------------------------: | :----------------------------------: | :------------------: | :---------: |
+| Atlassian Statuspage | API key, page ID                            |    —     |             ✓              |                  ✓                   |          ✓           |      ✓      |
+| Better Stack         | Uptime API token, status page ID (optional) |    ✓     |             ✓              |                  ✓                   |          ✓           |      —      |
+
+Instatus and Checkly are planned (#283).
+
+Common rules:
+
+- Imported status pages are **unpublished** (noted in the report) so you can review them first. The
+  slug comes from the source's subdomain and the custom domain is kept, with the conflict rules above.
+- Incidents keep their title, creation time and the whole update timeline (status, message, posting
+  time, component impacts). Impacts use Statuspage's vocabulary, which Marmot shares (`operational`,
+  `degraded_performance`, `partial_outage`, `major_outage`). Imported history is **not announced**:
+  no subscriber notifications or webhooks are sent for imported incidents and maintenance windows.
+- Maintenance windows become one-off windows (`single`, times in UTC) linked to the imported page
+  (and, for Better Stack, to the affected monitors). Finished windows are skipped with a reason.
+- Subscribers are created confirmed with `source: import`; nobody receives an opt-in message.
+  Invalid, duplicate and quarantined addresses and unsupported channels are skipped with a reason
+  (addresses appear masked in the report).
+- Incidents and subscribers belong to the imported page: without **Status page and components** they
+  are skipped.
+- Permissions: the route needs `monitor:create`; monitors, status pages, incidents
+  (`status-page:update`), maintenance (`maintenance:create`) and subscribers (`subscriber:manage`)
+  the caller may not create are skipped and reported. Plan limits apply as for file imports, and
+  demo mode refuses provider imports.
+
+**Atlassian Statuspage** (Manage API v1, `https://api.statuspage.io/v1`): the page (name, subdomain,
+description, website and support URLs, custom domain, headline as banner), its components (groups
+become component groups, ungrouped components a group named "Services"; components are static
+components because Statuspage has no monitors), incidents with `incident_updates` (`postmortem`
+counts as resolved; `affected_components` become impacts), scheduled maintenances that have not
+ended, and active email, SMS (numbers with a country code) and webhook subscribers with their
+component choices. Slack and Teams subscriptions are skipped.
+
+**Better Stack** (Uptime API v2, `https://uptime.betterstack.com/api/v2`): monitors of type
+`status` and `expected_status_code` (→ HTTP, with the expected codes), `keyword` and
+`keyword_absence` (→ keyword, inverted), `ping` and `tcp` (→ ping, port) with URL, check frequency
+(raised to 20 s at least), timeout, method, headers, body, redirects, TLS verification, SSL and
+domain expiry, and the paused state; other types (UDP, SMTP, POP3, IMAP, DNS, Playwright) are skipped
+with a reason. Status pages (all, or the one whose ID you give) with company name and URLs, theme,
+custom CSS and domain, Google Analytics ID and announcement; sections become groups and resources
+become components, linked to the imported monitor (response-time widgets show the chart) or static
+otherwise. Status reports become incidents (Better Stack updates carry no status, so they are
+`investigating` until the report has ended, when the last update resolves it); `maintenance` reports
+become maintenance windows. Heartbeats, monitor groups, escalation policies and on-call settings are
+not imported.
+
+The importers are built from the services' documented API formats and tested with hand-written
+fixtures of those responses (`tests/fixtures/providers`).
+
+| Method | Path                                                     | Permission                     |
+| ------ | -------------------------------------------------------- | ------------------------------ |
+| POST   | `/api/orgs/:orgId/import/providers/:provider[?dryRun=1]` | `monitor:create` (+ see above) |
+
+`:provider` is `statuspage` or `betterstack`; the body is
+`{ "credentials": { "apiKey": "…", "pageId": "…" }, "resources": ["components", "incidents", "maintenance", "subscribers"] }`
+(Better Stack: `apiToken`, optional `statusPageId`; resources also `monitors`). The answer is the
+import report with the extra sections `incidents`, `maintenance` and `subscribers`. A rejected key or
+unknown page answers 400, an unreachable or misbehaving API 502.
+
 ## What an Uptime Kuma backup maps to
 
 The mapping is ported from Uptime Kuma 1.23's `uploadBackup` handler and `Monitor.toJSON()` (see
