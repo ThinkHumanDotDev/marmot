@@ -9,6 +9,7 @@
  * - `stat-minutely`      older than 24 hours
  * - `stat-hourly`        older than 30 days
  * - `stat-location-hourly` older than 30 days (per-location series of multi-location monitors, #92)
+ * - `metric-stats`       custom metric rollups (#155), per granularity like the three above
  * - `stat-daily`         older than the `keepDataPeriodDays` instance setting (default
  *                        `KEEP_DATA_PERIOD_DAYS`; skipped when < 1, like Uptime Kuma)
  * - `heartbeats`         non-important beats older than 24 hours, important beats older than
@@ -78,6 +79,7 @@ export type RetentionResult = {
   hourly: number
   locationHourly: number
   daily: number
+  metricStats: number
   heartbeats: number
   importantHeartbeats: number
   auditLogs: number
@@ -159,6 +161,7 @@ export async function runRetention(
     hourly: 0,
     locationHourly: 0,
     daily: 0,
+    metricStats: 0,
     heartbeats: 0,
     importantHeartbeats: 0,
     auditLogs: 0,
@@ -178,6 +181,17 @@ export async function runRetention(
   })
 
   const longTermEnabled = keepDays >= 1
+  // Custom metric rollups follow the monitor rollups' retention, granularity by granularity.
+  const metricCutoffs = [
+    { granularity: 'minute', cutoff: cutoffs.minutely },
+    { granularity: 'hour', cutoff: cutoffs.hourly },
+    ...(longTermEnabled ? [{ granularity: 'day', cutoff: cutoffs.daily }] : []),
+  ]
+  for (const { granularity, cutoff } of metricCutoffs) {
+    result.metricStats += await deleteWhere('metric-stats', {
+      and: [{ granularity: { equals: granularity } }, { timestamp: { less_than: cutoff } }],
+    })
+  }
   if (longTermEnabled) {
     result.daily = await deleteWhere('stat-daily', {
       timestamp: { less_than: cutoffs.daily },
@@ -211,6 +225,13 @@ export async function runRetention(
       result.daily += await deleteWhere('stat-daily', {
         and: [
           { organization: { in: organizations } },
+          { timestamp: { less_than: getDailyKey(cutoff) } },
+        ],
+      })
+      result.metricStats += await deleteWhere('metric-stats', {
+        and: [
+          { organization: { in: organizations } },
+          { granularity: { equals: 'day' } },
           { timestamp: { less_than: getDailyKey(cutoff) } },
         ],
       })

@@ -298,6 +298,43 @@ JSON.
 }
 ```
 
+### Custom metrics
+
+Beyond up/down and latency, a page can chart business figures such as an API error rate or a queue
+backlog (#155). Define them under **Settings → Metrics** (or `/api/orgs/:orgId/metrics`, `metric:*`
+permissions, members by default): a name, description, unit (`suffix`, e.g. `%` or `ms`), `decimals`,
+how the values of one interval are combined (`aggregation`: `average`, `sum`, `last` or `max`), the
+period it opens with (`defaultView`: `hour`, `day`, `week` or `month`), optional warning and critical
+`thresholds` drawn as reference lines, and an `order`.
+
+A metric gets its values in one of two ways (`source`):
+
+- **push** (default): a script sends points with an API key that has write scope:
+
+  ```sh
+  curl -X POST https://status.example.com/api/orgs/<orgId>/metrics/<metricId>/points \
+    -H "Authorization: Bearer mk_…" -H "Content-Type: application/json" \
+    -d '{"points":[{"value":0.42},{"value":0.40,"timestamp":"2026-10-12T09:59:00Z"}]}'
+  ```
+
+  `{ "value": 0.42 }` works for a single point. A request carries up to 1 000 points from the last 24
+  hours (`timestamp` in unix seconds, milliseconds or ISO 8601; default now) and answers
+  `202 { "accepted": n }`; a bad point rejects the whole batch with `400`. Pushes are rate limited per
+  key and metric (`METRIC_PUSH_RATE_LIMIT`, 60 a minute) on top of the key's write budget
+  (`API_KEY_WRITE_RATE_LIMIT`).
+
+- **monitor**: the value a [Prometheus query monitor](Monitors.md) records, read from its statistics.
+
+Points are never stored one by one: each push is folded into minutely, hourly and daily rollups
+(`metric-stats`) that follow the monitor statistics' retention (24 hours, 30 days, the data period). The
+`hour` view draws 1-minute intervals, `day` 5 minutes, `week` 1 hour and `month` 4 hours.
+
+A metric appears in the **Metrics** section of a page only when it is **published** (`visible`) and the
+page is one of its `statusPages`; hidden metrics never reach visitors. Visitors switch the period per
+metric; the data comes from `GET /api/status-pages/:slug/metrics[?metric=<id>&view=hour|day|week|month]`,
+which carries the display settings and aggregates only (no source monitor, push time or organization),
+follows the page's access control and is cached for 30 seconds.
+
 ## Public endpoints
 
 All of these are anonymous and return 404 for unknown or unpublished slugs. Protected pages also need
@@ -321,6 +358,7 @@ in the IP allow-list (403 otherwise).
 | `GET /status/:slug/events`                           | History page ([below](#history-and-permalinks)).                                                    |
 | `GET /status/:slug/monitors[/:componentId]`          | [Latency charts](#latency-charts) of the published components (404 when there are none).            |
 | `GET /api/status-pages/:slug/charts`                 | Their data as JSON (`?range=1d\|7d\|30d`, `?component=`); `Cache-Control: public, max-age=30`.      |
+| `GET /api/status-pages/:slug/metrics`                | [Custom metrics](#custom-metrics) of the page (`?metric=`, `?view=hour\|day\|week\|month`).         |
 | `GET /status/:slug/events/incident/:id`              | Permalink of an incident (`:id` is its `publicId`).                                                 |
 | `GET /status/:slug/events/maintenance/:id`           | Permalink of a maintenance window (occurrence `publicId`).                                          |
 | `GET /api/status-pages/:slug/events`                 | History as JSON (filters as on the page).                                                           |
@@ -1144,8 +1182,10 @@ sees the union of their components.
 
 This holds for every public surface: the HTML page, history and permalinks, `/api/status-pages/:slug/public`
 and `/events`, the RSS/Atom/JSON feeds, `maintenance.ics`, the Statuspage-compatible JSON, Markdown
-and `llms.txt`, the [latency charts](#latency-charts) (page and JSON), the page badge and monitor badges (a
-monitor of another audience answers `404`). Like
+and `llms.txt`, the [latency charts](#latency-charts) (page and JSON), the [custom metrics](#custom-metrics)
+(page and JSON: a monitor-backed metric only for the audiences that see its monitor, a pushed metric for
+every audience, like a page-wide incident), the page badge and monitor badges (a monitor of another
+audience answers `404`). Like
 every protected page, an audience page has no embed mode, no widget, no sitemap and is never cached
 publicly. The filtering is in `src/server/status-pages/audiences.ts`: `findPublishedStatusPage` returns
 audience pages **without groups** until `scopePageForVisitor` narrows them to the visitor's

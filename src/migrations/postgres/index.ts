@@ -62,7 +62,8 @@ import * as migration_20261012_015900_status_page_embedding from './20261012_015
 import * as migration_20261012_023207_status_page_translations from './20261012_023207_status_page_translations';
 import * as migration_20261012_030104_ct_alerts from './20261012_030104_ct_alerts';
 import * as migration_20261012_033317_status_page_latency_charts from './20261012_033317_status_page_latency_charts';
-import * as migration_20261012_040743_status_page_audiences from './20261012_040743_status_page_audiences';
+import * as migration_20261012_041041_status_page_custom_metrics from './20261012_041041_status_page_custom_metrics';
+import * as migration_20261012_203433_status_page_audiences from './20261012_203433_status_page_audiences';
 
 export const migrations = [
   {
@@ -386,8 +387,13 @@ export const migrations = [
     name: '20261012_033317_status_page_latency_charts',
   },
   {
-    up: migration_20261012_040743_status_page_audiences.up,
-    down: migration_20261012_040743_status_page_audiences.down,
-    name: '20261012_040743_status_page_audiences'
+    up: migration_20261012_041041_status_page_custom_metrics.up,
+    down: migration_20261012_041041_status_page_custom_metrics.down,
+    name: '20261012_041041_status_page_custom_metrics',
+  },
+  {
+    up: migration_20261012_203433_status_page_audiences.up,
+    down: migration_20261012_203433_status_page_audiences.down,
+    name: '20261012_203433_status_page_audiences'
   },
 ];

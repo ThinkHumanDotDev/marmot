@@ -10,6 +10,7 @@ import {
 import { POST as accessRoute } from '@/app/api/status-pages/[slug]/access/route'
 import { GET as chartsRoute } from '@/app/api/status-pages/[slug]/charts/route'
 import { GET as eventRoute } from '@/app/api/status-pages/[slug]/events/[kind]/[id]/route'
+import { GET as metricsRoute } from '@/app/api/status-pages/[slug]/metrics/route'
 import { GET as eventsRoute } from '@/app/api/status-pages/[slug]/events/route'
 import { GET as publicRoute } from '@/app/api/status-pages/[slug]/public/route'
 import { POST as subscribeRoute } from '@/app/api/status-pages/[slug]/subscribe/route'
@@ -315,7 +316,7 @@ describe('audience-specific status pages (#151)', () => {
     sendEmail?.mockRestore()
     await settleMagicLinkDeliveries()
     if (org?.id) {
-      for (const collection of ['incidents', 'maintenance'] as const) {
+      for (const collection of ['incidents', 'maintenance', 'metrics'] as const) {
         await payload.delete({
           collection,
           where: { organization: { equals: org.id } },
@@ -625,6 +626,47 @@ describe('audience-specific status pages (#151)', () => {
       expectOnly(await all.text(), ['Acme API'], ['Beta API'], 'charts')
       expect((await charts(aliceCookie, `?component=${betaC}`)).status).toBe(404)
       expect((await charts(bobCookie, `?component=${betaC}`)).status).toBe(200)
+    })
+
+    it('custom metrics', async () => {
+      const metric = (name: string, monitor: Monitor | null) =>
+        payload.create({
+          collection: 'metrics',
+          overrideAccess: true,
+          depth: 0,
+          data: {
+            organization: org.id,
+            name,
+            source: monitor ? 'monitor' : 'push',
+            ...(monitor ? { monitor: monitor.id } : {}),
+            visible: true,
+            statusPages: [page.id],
+          } as RequiredDataFromCollectionSlug<'metrics'>,
+        })
+      const acmeMetric = await metric('Acme latency metric', acmeMonitor)
+      const betaMetric = await metric('Beta latency metric', betaMonitor)
+      await metric('Fleet size metric', null)
+
+      const metrics = (cookie: string, query = '') =>
+        call(
+          metricsRoute,
+          `${BASE}/api/status-pages/${page.slug}/metrics${query}`,
+          { slug: page.slug },
+          { headers: { Cookie: cookie } },
+        )
+      const all = await metrics(aliceCookie)
+      expect(all.status).toBe(200)
+      expectOnly(
+        await all.text(),
+        ['Acme latency metric', 'Fleet size metric'],
+        ['Beta latency metric'],
+        'metrics',
+      )
+      expect((await metrics(aliceCookie, `?metric=${betaMetric.id}`)).status).toBe(404)
+      expect((await metrics(aliceCookie, `?metric=${acmeMetric.id}`)).status).toBe(200)
+      expect((await metrics(bobCookie, `?metric=${betaMetric.id}`)).status).toBe(200)
+      expect((await metrics(bobCookie, `?metric=${acmeMetric.id}`)).status).toBe(404)
+      expect((await metrics(malloryCookie)).status).toBe(401)
     })
 
     it('badges and the widget', async () => {

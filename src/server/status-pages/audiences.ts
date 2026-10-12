@@ -157,6 +157,22 @@ export function isMaintenanceVisibleOn(
   return covered.some((id) => visible.has(id))
 }
 
+/**
+ * True when a custom metric (#155) may be shown on (scoped) `page`: always on other modes; on
+ * `audience` pages a monitor-backed metric only when its monitor is a visible component, a pushed
+ * metric (no monitor) like page-wide incidents.
+ */
+export function isMetricVisibleOn(
+  page: Pick<StatusPage, 'access' | 'groups'>,
+  metric: { monitor?: unknown },
+): boolean {
+  if (!isAudiencePage(page)) return true
+  const monitor = metric.monitor
+  if (monitor == null) return true
+  const id = String(typeof monitor === 'object' ? (monitor as { id: unknown }).id : monitor)
+  return visibleMonitorIds(page).has(id)
+}
+
 // ---------------------------------------------------------------------------------------------
 // Audiences of a page
 

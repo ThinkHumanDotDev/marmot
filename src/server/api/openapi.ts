@@ -40,6 +40,12 @@ import { API_KEY_FORBIDDEN_SECTIONS, isWriteMethod } from '@/server/auth/request
 import { STATS_RANGES } from '@/server/stats/uptime-calculator'
 import { createEndpointSchema, updateEndpointSchema } from '@/server/webhooks/manage'
 import { createCollectorSchema, updateCollectorSchema } from '@/server/otel/manage'
+import {
+  metricCreateSchema,
+  metricPointsSchema,
+  metricUpdateSchema,
+} from '@/server/metrics/schemas'
+import { METRIC_VIEWS } from '@/lib/metrics'
 
 /** Version of the management API contract. Breaking changes bump the major version. */
 export const MANAGEMENT_API_VERSION = '1.0.0'
@@ -1655,6 +1661,82 @@ export const OPERATIONS: OperationSpec[] = [
     tag: 'OpenTelemetry',
     permission: 'otel-collector:manage',
     response: { description: '`{ ok, status, error }`', schema: anyObject },
+  },
+
+  // Custom status page metrics (#155)
+  {
+    method: 'GET',
+    path: `${ORG}/metrics`,
+    operationId: 'listMetrics',
+    summary: 'Custom metrics',
+    tag: 'Metrics',
+    permission: 'metric:read',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/metrics`,
+    operationId: 'createMetric',
+    summary: 'Create a custom metric',
+    description:
+      'Published on the `statusPages` listed when `visible`. A `monitor` source charts the value the monitor records.',
+    tag: 'Metrics',
+    permission: 'metric:create',
+    body: { schema: metricCreateSchema },
+    status: 201,
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/metrics/{id}`,
+    operationId: 'getMetric',
+    summary: 'A custom metric',
+    tag: 'Metrics',
+    permission: 'metric:read',
+  },
+  {
+    method: 'PATCH',
+    path: `${ORG}/metrics/{id}`,
+    operationId: 'updateMetric',
+    summary: 'Update a custom metric',
+    tag: 'Metrics',
+    permission: 'metric:update',
+    body: { schema: metricUpdateSchema },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/metrics/{id}`,
+    operationId: 'deleteMetric',
+    summary: 'Delete a custom metric and its recorded values',
+    tag: 'Metrics',
+    permission: 'metric:delete',
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/metrics/{id}/points`,
+    operationId: 'getMetricSeries',
+    summary: 'The metric chart of a period',
+    tag: 'Metrics',
+    permission: 'metric:read',
+    query: [
+      {
+        name: 'view',
+        description: 'Period (defaults to the metric’s `defaultView`)',
+        schema: { type: 'string', enum: [...METRIC_VIEWS] },
+      },
+    ],
+    response: { description: '`{ view, step, series, current, summary }`', schema: anyObject },
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/metrics/{id}/points`,
+    operationId: 'pushMetricPoints',
+    summary: 'Push values to a metric',
+    description:
+      'Up to 1 000 points from the last 24 hours, rolled up into minutely, hourly and daily buckets. Rate limited per key and metric (`METRIC_PUSH_RATE_LIMIT`). `409` for monitor-backed metrics.',
+    tag: 'Metrics',
+    permission: 'metric:push',
+    body: { schema: metricPointsSchema },
+    status: 202,
+    response: { description: '`{ accepted }`', schema: anyObject },
   },
 
   // Not organization-scoped
