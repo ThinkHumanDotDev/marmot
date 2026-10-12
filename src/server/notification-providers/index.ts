@@ -43,6 +43,7 @@ import './wecom'
 import './dingding'
 import './feishu'
 import './bitrix24'
+import './whatsapp'
 
 export * from './describe'
 export * from './http'
