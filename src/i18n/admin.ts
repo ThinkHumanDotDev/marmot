@@ -138,6 +138,19 @@ export const adminTranslations = {
           'Monitors that export without a collector of their own use this one. One per organization.',
         activeDescription: 'Inactive collectors receive nothing.',
       },
+      metrics: {
+        description:
+          'Custom metrics shown on status pages. Manage them under Settings → Metrics; points are pushed to POST /api/orgs/:orgId/metrics/:id/points.',
+        suffixDescription: 'Unit shown after the value, e.g. % or ms.',
+        aggregationDescription:
+          'How the points of one chart interval are combined: average, sum, last value or maximum.',
+        thresholdsDescription: 'Optional reference lines drawn on the chart.',
+        sourceDescription:
+          'push: points arrive through the API. monitor: the value a monitor records (Prometheus query monitors).',
+        visibleDescription: 'Only visible metrics are shown on the status pages listed below.',
+        statsDescription:
+          'Rollups of pushed metric points; minutely rows are kept 24 hours, hourly 30 days, daily for the data period.',
+      },
       webhookDeliveries: {
         description:
           'Delivery log of outbound webhooks, pruned after WEBHOOK_DELIVERY_RETENTION_DAYS.',

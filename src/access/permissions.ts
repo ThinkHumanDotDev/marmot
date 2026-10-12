@@ -109,6 +109,13 @@ export const PERMISSIONS = {
   'otel-collector:read': 'member',
   'otel-collector:manage': 'admin',
 
+  // Custom status page metrics (#155): everyone sees them, members define them and push points.
+  'metric:read': 'viewer',
+  'metric:create': 'member',
+  'metric:update': 'member',
+  'metric:delete': 'member',
+  'metric:push': 'member',
+
   // Single sign-on connections and verified domains (Settings → Security).
   'sso:read': 'admin',
   'sso:manage': 'owner',

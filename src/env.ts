@@ -198,6 +198,9 @@ const schema = z.object({
   // be writes (POST/PUT/PATCH/DELETE). 0 turns the respective limit off.
   API_KEY_RATE_LIMIT: z.coerce.number().int().min(0).default(600),
   API_KEY_WRITE_RATE_LIMIT: z.coerce.number().int().min(0).default(60),
+  // Custom metric pushes (#155) per minute per API key (or user) and metric, on top of the write
+  // limit above. 0 turns it off.
+  METRIC_PUSH_RATE_LIMIT: z.coerce.number().int().min(0).default(60),
 
   // Lifetime of the cookie a visitor gets after signing in to a protected status page.
   STATUS_PAGE_SESSION_DAYS: z.coerce.number().int().min(1).max(365).default(30),

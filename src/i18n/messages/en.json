@@ -1627,6 +1627,7 @@
       "instance": "Instance",
       "webhooks": "Webhooks",
       "openTelemetry": "OpenTelemetry",
+      "metrics": "Metrics",
       "locations": "Locations"
     },
     "pageTitles": {
@@ -1647,6 +1648,7 @@
       "instance": "Instance settings",
       "webhooks": "Webhooks",
       "openTelemetry": "OpenTelemetry",
+      "metrics": "Metrics",
       "webhookDeliveries": "Webhook deliveries",
       "locations": "Locations"
     },
@@ -1942,7 +1944,8 @@
         "import": "Import",
         "webhook_endpoint": "Webhook endpoint",
         "location": "Probe location",
-        "otel_collector": "OpenTelemetry collector"
+        "otel_collector": "OpenTelemetry collector",
+        "metric": "Metric"
       },
       "verbs": {
         "created": "created",
@@ -2288,7 +2291,8 @@
         "monitorIncident": "Monitor incidents",
         "webhook": "Webhooks",
         "otelCollector": "OpenTelemetry collectors",
-        "location": "Probe locations"
+        "location": "Probe locations",
+        "metric": "Status page metrics"
       },
       "actions": {
         "read": "View",
@@ -2302,7 +2306,8 @@
         "send": "Send",
         "acknowledge": "Acknowledge",
         "resolve": "Resolve",
-        "history": "Uptime history"
+        "history": "Uptime history",
+        "push": "Push values"
       },
       "custom": "Custom",
       "fixed": "(fixed)",
@@ -2828,6 +2833,74 @@
         "saved": "Collector saved",
         "created": "Collector created",
         "failed": "Could not save the collector"
+      }
+    },
+    "metrics": {
+      "forbiddenTitle": "Metrics are not available",
+      "forbidden": "You need permission to view metrics in this organization.",
+      "title": "Metrics",
+      "description": "Custom figures such as an error rate or a queue backlog, charted on your status pages. Push values through the API or use the value a monitor records.",
+      "new": "New metric",
+      "emptyTitle": "No metrics yet",
+      "emptyDescription": "Create a metric, push values to it with an API key and publish it on a status page.",
+      "emptyReadOnly": "No metrics have been created in this organization.",
+      "sources": {
+        "push": "Pushed",
+        "monitor": "From a monitor"
+      },
+      "aggregations": {
+        "average": "Average",
+        "sum": "Sum",
+        "last": "Last value",
+        "max": "Maximum"
+      },
+      "views": {
+        "hour": "Hour",
+        "day": "Day",
+        "week": "Week",
+        "month": "Month"
+      },
+      "badgePublished": "{count, plural, one {On # status page} other {On # status pages}}",
+      "badgeHidden": "Not published",
+      "lastValue": "Last value {value} at {time}",
+      "neverPushed": "No values pushed yet.",
+      "monitorBacked": "Values come from the monitor's checks.",
+      "pushHint": "Push values with an API key that has write access: POST a JSON body with points, each a value and an optional timestamp (up to 1,000 points from the last 24 hours), to the address shown under a metric.",
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "confirmDeleteTitle": "Delete {name}?",
+      "confirmDeleteDescription": "The metric and its recorded values are removed from every status page.",
+      "confirmDelete": "Delete metric",
+      "deleted": "Metric deleted.",
+      "deleteFailed": "The metric could not be deleted.",
+      "form": {
+        "newTitle": "New metric",
+        "editTitle": "Edit metric",
+        "description": "How the metric is shown on status pages.",
+        "name": "Name",
+        "namePlaceholder": "API error rate",
+        "descriptionLabel": "Description",
+        "suffix": "Unit",
+        "suffixPlaceholder": "%",
+        "decimals": "Decimals",
+        "aggregation": "Combine values by",
+        "defaultView": "Default period",
+        "warning": "Warning threshold",
+        "critical": "Critical threshold",
+        "source": "Source",
+        "sourceHint": "Pushed metrics receive values through the API. Monitor metrics chart the value a Prometheus query monitor records.",
+        "monitor": "Monitor",
+        "monitorPlaceholder": "Choose a monitor",
+        "visible": "Publish",
+        "visibleHint": "Show the metric on the status pages selected below. Hidden metrics are never public.",
+        "statusPages": "Status pages",
+        "order": "Order",
+        "cancel": "Cancel",
+        "save": "Save",
+        "create": "Create metric",
+        "saved": "Metric saved.",
+        "created": "Metric created.",
+        "failed": "The metric could not be saved."
       }
     }
   },
@@ -5289,6 +5362,30 @@
         "average": "Average"
       },
       "empty": "No response-time charts are published on this page."
+    },
+    "metrics": {
+      "heading": "Metrics",
+      "period": "Period",
+      "views": {
+        "hour": "1 hour",
+        "day": "24 hours",
+        "week": "7 days",
+        "month": "30 days"
+      },
+      "aggregations": {
+        "average": "Average",
+        "sum": "Total",
+        "last": "Latest",
+        "max": "Maximum"
+      },
+      "thresholds": {
+        "warning": "Warning {value}",
+        "critical": "Critical {value}"
+      },
+      "summary": "{name} over {period}: {value}.",
+      "empty": "No data in this period.",
+      "loadFailed": "This period could not be loaded. Try again.",
+      "noValue": "–"
     }
   },
   "maintenance": {
@@ -6250,7 +6347,14 @@
     "emailNotVerified": "Confirm your email address first: open the link we sent you, or request a new one.",
     "verificationLinkInvalid": "This confirmation link is invalid or has expired. Sign in and request a new one.",
     "magicLinkDisabled": "Sign-in links are turned off on this server.",
-    "magicLinkInvalid": "This sign-in link is invalid, has expired or was already used. Request a new one."
+    "magicLinkInvalid": "This sign-in link is invalid, has expired or was already used. Request a new one.",
+    "metricNotFound": "Metric not found.",
+    "metricNotPushable": "This metric takes its values from a monitor; values cannot be pushed to it.",
+    "metricViewInvalid": "The period must be one of {views}.",
+    "metricPointTooOld": "Point {index} is older than 24 hours or has an invalid timestamp.",
+    "metricPointInFuture": "Point {index} is more than 5 minutes in the future.",
+    "metricMonitorRequired": "Choose a monitor of this organization for a monitor-backed metric.",
+    "metricStatusPagesInvalid": "Choose status pages of this organization."
   },
   "subscriberMessages": {
     "sms": {

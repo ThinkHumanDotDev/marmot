@@ -99,6 +99,8 @@ export const AUDITED: Partial<Record<CollectionSlug, AuditCollectionOptions>> = 
     ignore: ['lastExportAt', 'lastError'],
     toggle: { field: 'active', on: 'otel_collector.enabled', off: 'otel_collector.disabled' },
   },
+  // `lastValue` / `lastPushAt` follow every push; the points themselves are telemetry.
+  metrics: { entityType: 'metric', ignore: ['lastValue', 'lastPushAt'] },
   'sso-connections': { entityType: 'sso_connection' },
   'sso-domains': { entityType: 'sso_domain' },
   invitations: { entityType: 'invitation' },
@@ -122,6 +124,7 @@ export const NOT_AUDITED: Partial<Record<CollectionSlug, string>> = {
   'stat-hourly': 'high-volume rollups',
   'stat-daily': 'high-volume rollups',
   'stat-location-hourly': 'high-volume rollups',
+  'metric-stats': 'high-volume rollups of pushed metric points',
   'status-page-uptime-history': 'daily rollups written by the snapshot job',
   'monitor-location-states': 'engine state, rewritten after every check',
   'notification-sent-history': 'delivery log',
