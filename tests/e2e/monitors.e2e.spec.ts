@@ -240,4 +240,60 @@ test.describe('Monitor list bulk actions', () => {
       })
       .toEqual([true, true])
   })
+
+  test('adds the selection to a maintenance window and a status page group (#262)', async ({
+    page,
+    adminApi,
+  }) => {
+    const organization = await adminApi.organizationId(org.slug)
+    const maintenanceWindow = await adminApi.create('maintenance', {
+      organization,
+      title: `Bulk window ${run}`,
+      strategy: 'manual',
+      active: false,
+    })
+    created.unshift({ collection: 'maintenance', id: maintenanceWindow.id })
+    const statusPage = await adminApi.create('status-pages', {
+      organization,
+      title: `Bulk page ${run}`,
+      slug: `e2e-bulk-page-${run}`,
+      groups: [{ name: 'Core services', monitors: [] }],
+    })
+    created.unshift({ collection: 'status-pages', id: statusPage.id })
+
+    await page.goto(`/${org.slug}/monitors?q=${encodeURIComponent('tag:prod')}`)
+    const list = page.getByRole('list', { name: 'Monitors', exact: true })
+    await expect(list.getByRole('listitem')).toHaveCount(3)
+    await page.getByRole('checkbox', { name: 'Select all shown monitors' }).check()
+    await expect(page.getByText('3 selected')).toBeVisible()
+
+    const toolbar = page.getByRole('toolbar', { name: 'Bulk actions' })
+    await toolbar.getByRole('button', { name: 'Maintenance' }).click()
+    await page.getByRole('menuitem', { name: `Bulk window ${run}` }).click()
+    await expect(page.getByText('Added 3 monitors to the maintenance window.')).toBeVisible()
+    const stored = await adminApi.find<{ id: DocId; monitors?: unknown[] }>('maintenance', {
+      id: { equals: String(maintenanceWindow.id) },
+    })
+    expect(stored[0].monitors).toHaveLength(3)
+
+    // From the command palette: it opens the bar's menu to pick the page and the group.
+    await page.getByRole('checkbox', { name: 'Select all shown monitors' }).check()
+    await page.keyboard.press('ControlOrMeta+k')
+    await page
+      .getByRole('dialog', { name: 'Command palette' })
+      .getByRole('option', { name: 'Add 3 selected monitors to a status page group…' })
+      .click()
+    await page.getByRole('menuitem', { name: `Bulk page ${run}` }).click()
+    await page.getByRole('menuitem', { name: 'Core services' }).click()
+    await expect(page.getByText('Added 3 monitors to the status page group.')).toBeVisible()
+    await expect
+      .poll(async () => {
+        const [doc] = await adminApi.find<{ groups?: { monitors?: unknown[] }[] }>(
+          'status-pages',
+          { id: { equals: String(statusPage.id) } },
+        )
+        return doc?.groups?.[0]?.monitors?.length
+      })
+      .toBe(3)
+  })
 })

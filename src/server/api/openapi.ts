@@ -788,7 +788,7 @@ export const OPERATIONS: OperationSpec[] = [
     operationId: 'bulkMonitors',
     summary: 'Run one action on many monitors',
     description:
-      '`pause`, `resume`, `check` (queues a recorded check per monitor, spending the organization’s on-demand budget), `delete`, `addTags` / `removeTags` (`payload.tags`) and `addNotifications` / `removeNotifications` (`payload.notifications`), up to 500 ids. Each monitor is written on its own and audited on its own; the response has one result per id. `delete` needs `monitor:delete`. An API key spends one write per monitor and may name at most `API_KEY_WRITE_RATE_LIMIT` ids.',
+      '`pause`, `resume`, `check` (queues a recorded check per monitor, spending the organization’s on-demand budget), `delete`, `addTags` / `removeTags` (`payload.tags`) and `addNotifications` / `removeNotifications` (`payload.notifications`), `addToMaintenance` (`payload.maintenance`, also needs `maintenance:update`) and `addToStatusPageGroup` (`payload.statusPage` and `payload.group`, the group row id, also needs `status-page:update`), up to 500 ids. The last two write the maintenance window or the status page once, as the caller; monitors already listed there are `unchanged`. Every other action writes each monitor on its own and audited on its own; the response has one result per id. `delete` needs `monitor:delete`. An API key spends one write per monitor and may name at most `API_KEY_WRITE_RATE_LIMIT` ids.',
     tag: 'Monitors',
     permission: 'monitor:update',
     body: { schema: monitorBulkBody },

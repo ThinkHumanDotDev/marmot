@@ -1,6 +1,18 @@
 'use client'
 
-import { BellMinus, BellPlus, Pause, Play, Tag, Tags, Trash2, X, Zap } from 'lucide-react'
+import {
+  BellMinus,
+  BellPlus,
+  Globe,
+  Pause,
+  Play,
+  Tag,
+  Tags,
+  Trash2,
+  Wrench,
+  X,
+  Zap,
+} from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -12,25 +24,26 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { api } from '@/lib/api'
-import type { BulkResponse, MonitorBulkAction } from '@/lib/monitor-bulk'
+import type { BulkResponse, BulkStatusPageOption, MonitorBulkAction } from '@/lib/monitor-bulk'
 import { toStoreMonitor } from '@/lib/realtime'
-import { useMonitorSelection } from '@/stores/monitor-selection-store'
+import { type ListBulkPermissions, useMonitorSelection } from '@/stores/monitor-selection-store'
 import { useMonitorStore } from '@/stores/monitor-store'
 
 import type { FilterOption } from './monitor-list-toolbar'
 
-export interface BulkPermissions {
-  /** `monitor:update`: pause, resume, check, tags, channels. */
-  update: boolean
-  /** `monitor:delete`. */
-  delete: boolean
-}
+/**
+ * `update` (`monitor:update`): pause, resume, check, tags, channels; `delete`; `maintenance` and
+ * `statusPage`: the "add to" actions (#262).
+ */
+export type BulkPermissions = ListBulkPermissions
+export type { BulkStatusPageOption }
 
 interface MonitorBulkBarProps {
   orgId: string
@@ -42,9 +55,22 @@ interface MonitorBulkBarProps {
   tags: FilterOption[]
   /** `null` when the user cannot read notification channels. */
   notifications: FilterOption[] | null
+  /** Maintenance windows to add the selection to (`null` without the permissions). */
+  maintenance: { id: string; name: string }[] | null
+  /** Status pages and their groups to add the selection to (`null` without the permissions). */
+  statusPages: BulkStatusPageOption[] | null
 }
 
-type BulkPayload = { tags?: { tag: string }[]; notifications?: string[] }
+type BulkPayload = {
+  tags?: { tag: string }[]
+  notifications?: string[]
+  maintenance?: string
+  statusPage?: string
+  group?: string
+}
+
+/** Menus of the bar the command palette can open (to pick the target of an "add to" action). */
+type TargetMenu = 'maintenance' | 'statusPage'
 
 /** Apply the results to the live store, so the list is right even without a socket. */
 function applyResults(response: BulkResponse) {
@@ -58,7 +84,8 @@ function applyResults(response: BulkResponse) {
 
 /**
  * Select-all checkbox and the bulk actions on the selection (#124): pause, resume, check now,
- * add/remove tags, attach/detach channels and delete (confirmed). Each action is one request to
+ * add/remove tags, attach/detach channels, add to a maintenance window or a status page group
+ * (#262) and delete (confirmed). Each action is one request to
  * `POST /api/orgs/:orgId/monitors/bulk`; the result per monitor comes back in the response and
  * over the socket. Also runs the bulk actions the command palette asks for.
  */
@@ -69,6 +96,8 @@ export function MonitorBulkBar({
   permissions,
   tags,
   notifications,
+  maintenance,
+  statusPages,
 }: MonitorBulkBarProps) {
   const t = useTranslations('monitors.list.bulk')
   const tSel = useTranslations('monitors.list.selection')
@@ -76,6 +105,11 @@ export function MonitorBulkBar({
   const clear = useMonitorSelection((s) => s.clear)
   const [pending, setPending] = React.useState<MonitorBulkAction | null>(null)
   const [confirmDelete, setConfirmDelete] = React.useState(false)
+  const [openMenu, setOpenMenu] = React.useState<TargetMenu | null>(null)
+  const menuProps = (menu: TargetMenu) => ({
+    open: openMenu === menu,
+    onOpenChange: (open: boolean) => setOpenMenu(open ? menu : null),
+  })
   const selectAllRef = React.useRef<HTMLInputElement>(null)
 
   const count = selectedIds.length
@@ -99,13 +133,17 @@ export function MonitorBulkBar({
         })
         applyResults(response)
         const { changed, unchanged, failed } = response.summary
+        const summary =
+          action === 'addToMaintenance' || action === 'addToStatusPageGroup'
+            ? t('resultAdded', { action, changed, unchanged })
+            : t('result', { action, changed, unchanged })
         const firstFailure = response.results.find((result) => !result.ok)
         if (failed > 0 && firstFailure && !firstFailure.ok) {
           toast.error(t('partial', { failed, message: firstFailure.message }), {
-            description: t('result', { action, changed, unchanged }),
+            description: summary,
           })
         } else {
-          toast.success(t('result', { action, changed, unchanged }))
+          toast.success(summary)
         }
         clear()
       } catch (error) {
@@ -135,6 +173,13 @@ export function MonitorBulkBar({
         if (allowed.delete) {
           cancelConfirm()
           cancelConfirm = afterDialogsClose(() => setConfirmDelete(true))
+        }
+      } else if (action === 'addToMaintenance' || action === 'addToStatusPageGroup') {
+        // The target is picked in the bar's own menu, opened once the palette has closed.
+        const menu: TargetMenu = action === 'addToMaintenance' ? 'maintenance' : 'statusPage'
+        if (allowed[menu]) {
+          cancelConfirm()
+          cancelConfirm = afterDialogsClose(() => setOpenMenu(menu))
         }
       } else if (allowed.update) {
         void runAction(action)
@@ -203,6 +248,54 @@ export function MonitorBulkBar({
                       options={tags}
                       onPick={(value) => void run('removeTags', { tags: [{ tag: value }] })}
                     />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {permissions.maintenance && maintenance && maintenance.length > 0 && (
+                <DropdownMenu {...menuProps('maintenance')}>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="xs" variant="outline" disabled={busy}>
+                      <Wrench aria-hidden /> {t('maintenance')}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
+                    <DropdownMenuLabel>{t('addToMaintenance')}</DropdownMenuLabel>
+                    {maintenance.map((item) => (
+                      <DropdownMenuItem
+                        key={item.id}
+                        onSelect={() => void run('addToMaintenance', { maintenance: item.id })}
+                      >
+                        <span className="truncate">{item.name}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {permissions.statusPage && statusPages && (
+                <DropdownMenu {...menuProps('statusPage')}>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="xs" variant="outline" disabled={busy}>
+                      <Globe aria-hidden /> {t('statusPage')}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuLabel>{t('addToStatusPageGroup')}</DropdownMenuLabel>
+                    {statusPages
+                      .filter((page) => page.groups.length > 0)
+                      .map((page) => (
+                        <ReferenceSubmenu
+                          key={page.id}
+                          label={page.title}
+                          icon={<Globe aria-hidden />}
+                          options={page.groups.map((group) => ({
+                            value: group.id,
+                            label: group.name,
+                          }))}
+                          onPick={(group) =>
+                            void run('addToStatusPageGroup', { statusPage: page.id, group })
+                          }
+                        />
+                      ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}

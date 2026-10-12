@@ -158,7 +158,9 @@
       "bulkPause": "Pause {count, plural, one {# selected monitor} other {# selected monitors}}",
       "bulkResume": "Resume {count, plural, one {# selected monitor} other {# selected monitors}}",
       "bulkCheck": "Check {count, plural, one {# selected monitor} other {# selected monitors}} now",
-      "bulkDelete": "Delete {count, plural, one {# selected monitor} other {# selected monitors}}…"
+      "bulkDelete": "Delete {count, plural, one {# selected monitor} other {# selected monitors}}…",
+      "bulkAddToMaintenance": "Add {count, plural, one {# selected monitor} other {# selected monitors}} to a maintenance window…",
+      "bulkAddToStatusPageGroup": "Add {count, plural, one {# selected monitor} other {# selected monitors}} to a status page group…"
     },
     "checkerOffline": {
       "title": "Checker offline",
@@ -262,8 +264,13 @@
         "channels": "Channels",
         "attachChannel": "Attach channel",
         "detachChannel": "Detach channel",
+        "maintenance": "Maintenance",
+        "addToMaintenance": "Add to maintenance window",
+        "statusPage": "Status page",
+        "addToStatusPageGroup": "Add to status page group",
         "working": "Working…",
         "result": "{action, select, pause {Paused} resume {Resumed} check {Queued a check for} delete {Deleted} addTags {Tagged} removeTags {Removed the tag from} addNotifications {Attached the channel to} removeNotifications {Detached the channel from} other {Updated}} {changed, plural, one {# monitor} other {# monitors}}{unchanged, plural, =0 {} other { ({unchanged} already done)}}.",
+        "resultAdded": "Added {changed, plural, one {# monitor} other {# monitors}} to the {action, select, addToMaintenance {maintenance window} other {status page group}}{unchanged, plural, =0 {} other { ({unchanged} already there)}}.",
         "partial": "{failed, plural, one {# monitor was} other {# monitors were}} not changed: {message}",
         "failed": "The bulk action failed",
         "deleteTitle": "Delete {count, plural, one {# monitor} other {# monitors}}?",
@@ -6018,6 +6025,7 @@
     "maintenanceOccurrenceRequired": "A maintenance window belongs to a maintenance.",
     "maintenanceTransitionInvalid": "Cannot post “{to}” on a maintenance window that is {from}.",
     "statusPageNotFound": "Status page not found",
+    "statusPageGroupNotFound": "Status page group not found",
     "statusPageForeignMonitors": "Every monitor on a status page must belong to the same organization.",
     "hostnameDuplicate": "Each hostname may only be listed once.",
     "hostnameTaken": "One of these hostnames is already used by another status page.",
