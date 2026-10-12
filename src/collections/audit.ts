@@ -34,6 +34,8 @@ export const AUDITED: Partial<Record<CollectionSlug, AuditCollectionOptions>> = 
     label: (doc) => (typeof doc.host === 'string' ? `${doc.host}:${String(doc.port ?? '')}` : null),
   },
   'docker-hosts': { entityType: 'docker_host' },
+  // Credentials are redacted by name (password, privateKey, passphrase); only `has*` flags remain.
+  'ssh-tunnels': { entityType: 'ssh_tunnel' },
   'status-pages': { entityType: 'status_page' },
   'status-page-viewers': {
     entityType: 'status_page_viewer',

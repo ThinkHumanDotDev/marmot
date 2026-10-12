@@ -51,6 +51,7 @@ import {
   PROMETHEUS_OPERATORS,
 } from '@/lib/prometheus'
 import { REMINDER_BACKOFFS } from '@/lib/reminder-backoff'
+import { supportsSshTunnel } from '@/lib/ssh-tunnels'
 import {
   AUTH_METHODS,
   BODY_ENCODINGS,
@@ -153,6 +154,7 @@ const EMPTY_RESOURCES: MonitorFormResources = {
   tags: [],
   proxies: [],
   dockerHosts: [],
+  sshTunnels: [],
   locations: [],
   notifications: [],
   otelCollectors: [],
@@ -1071,6 +1073,7 @@ export function MonitorForm({
     globalpingMeasurement,
     globalpingSuccessRule,
     globalpingProtocol,
+    sshTunnel,
     udpResponseMatch,
     smtpSecurity,
     parent,
@@ -1096,6 +1099,7 @@ export function MonitorForm({
       'globalpingMeasurement',
       'globalpingSuccessRule',
       'globalpingProtocol',
+      'sshTunnel',
       'udpResponseMatch',
       'smtpSecurity',
       'parent',
@@ -1116,6 +1120,14 @@ export function MonitorForm({
   )
 
   const isHttp = isHttpMonitorType(type)
+  // SSH tunnel (#160): replaces the proxy, so picking one clears it.
+  const canTunnel = supportsSshTunnel(type)
+  const usesTunnel = canTunnel && sshTunnel !== null && sshTunnel !== undefined
+  React.useEffect(() => {
+    if (usesTunnel && getValues('proxy') !== null) {
+      setValue('proxy', null, { shouldDirty: true })
+    }
+  }, [usesTunnel, getValues, setValue])
   const capturesCertificate = isCertificateMonitorType(type)
   // IMAP / POP3: follow the security mode with the well-known port while it is still a default one.
   React.useEffect(() => {
@@ -1567,6 +1579,30 @@ export function MonitorForm({
                   autoComplete="off"
                 />
               </div>
+            )}
+
+            {canTunnel && (
+              <RelationSelectField
+                control={control}
+                name="sshTunnel"
+                label={t('general.sshTunnel')}
+                noneLabel={t('general.noSshTunnel')}
+                options={resources.sshTunnels}
+                description={
+                  resources.sshTunnels.length === 0
+                    ? t.rich('general.sshTunnelEmpty', {
+                        link: (chunks) => (
+                          <Link
+                            href={`/${orgSlug}/settings/ssh-tunnels`}
+                            className="underline underline-offset-2"
+                          >
+                            {chunks}
+                          </Link>
+                        ),
+                      })
+                    : t('general.sshTunnelDescription')
+                }
+              />
             )}
 
             {type === 'push' && (
@@ -2725,7 +2761,7 @@ export function MonitorForm({
                 description={t('http.headersDescription')}
               />
               <StatusCodesField control={control} />
-              {proxyField}
+              {!usesTunnel && proxyField}
               <SwitchField
                 control={control}
                 name="ignoreTls"
@@ -2845,7 +2881,7 @@ export function MonitorForm({
                 placeholder={'{\n  "X-Scope-OrgID": "tenant-1"\n}'}
                 description={t('http.headersDescription')}
               />
-              {proxyField}
+              {!usesTunnel && proxyField}
               <SwitchField
                 control={control}
                 name="ignoreTls"

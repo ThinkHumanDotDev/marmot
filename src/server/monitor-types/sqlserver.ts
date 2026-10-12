@@ -12,6 +12,7 @@ import { outboundGuardActive, resolveGuardedTarget } from '@/server/security/out
 import { assertConnectionTargetsAllowed } from '@/server/security/connection-hosts'
 
 import { registerMonitorType } from './registry'
+import { tunnelSocket } from './tunnel'
 import { describeRows, sqlQueryOf } from './sql'
 import { errorMessage, loadOptionalDriver, requireField, withAbort } from './util'
 
@@ -40,6 +41,17 @@ export async function guardedTediousConnector(
   })
 }
 
+/** Resolves with `socket` once it is connected (what tedious expects from a connector). */
+function connectedSocket(socket: net.Socket): Promise<net.Socket> {
+  return new Promise((resolve, reject) => {
+    socket.once('connect', () => {
+      socket.removeListener('error', reject)
+      resolve(socket)
+    })
+    socket.once('error', reject)
+  })
+}
+
 registerMonitorType({
   name: 'sqlserver',
   label: 'Microsoft SQL Server',
@@ -50,7 +62,20 @@ registerMonitorType({
     const mssql = await loadOptionalDriver(() => import('mssql'), 'mssql', 'SQL Server')
 
     let poolConfig: string | import('mssql').config = connectionString
-    if (outboundGuardActive()) {
+    const tunnel = ctx.tunnel
+    if (tunnel) {
+      // SSH tunnel (#160): the TDS connection goes through the bastion (give the port: named
+      // instances need the SQL Server Browser over UDP, which is not tunnelled).
+      const parsed = mssql.ConnectionPool.parseConnectionString(connectionString)
+      poolConfig = {
+        ...parsed,
+        options: {
+          ...parsed.options,
+          connector: (options: { host: string; port: number }) =>
+            connectedSocket(tunnelSocket(tunnel, options.host, options.port)),
+        } as never,
+      }
+    } else if (outboundGuardActive()) {
       // Pre-check of the named host(s) for the SQL Server Browser lookup of named instances (UDP,
       // made by tedious itself: a small time-of-check/time-of-use window remains there); the TDS
       // connection itself goes through `guardedTediousConnector` at connect time.

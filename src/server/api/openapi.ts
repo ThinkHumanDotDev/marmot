@@ -26,6 +26,7 @@ import { API_KEY_SCOPES } from '@/lib/api-key-scopes'
 import { COMPONENT_IMPACTS, INCIDENT_STATUSES } from '@/lib/incident-timeline'
 import { occurrenceUpdateSchema } from '@/lib/maintenance-announcements'
 import { DOCKER_CONNECTION_TYPES } from '@/lib/monitor-resources'
+import { SSH_TUNNEL_AUTH_METHODS } from '@/lib/ssh-tunnels'
 import { LOG_TRIGGERS } from '@/lib/response-log'
 import { SUBSCRIBER_CHANNELS } from '@/lib/status-page-subscribers'
 import { maintenanceFormSchema } from '@/lib/validation/maintenance'
@@ -171,6 +172,19 @@ const dockerTestBody = z.object({
   connectionType: z.enum(DOCKER_CONNECTION_TYPES).optional(),
   socketPath: z.string().optional(),
   url: z.string().optional(),
+})
+
+const sshTunnelTestBody = z.object({
+  sshTunnelId: id.optional(),
+  fetchFingerprint: z.boolean().optional(),
+  host: z.string().optional(),
+  port: z.number().int().min(1).max(65535).optional(),
+  username: z.string().optional(),
+  authMethod: z.enum(SSH_TUNNEL_AUTH_METHODS).optional(),
+  password: z.string().optional(),
+  privateKey: z.string().optional(),
+  passphrase: z.string().optional(),
+  knownHostFingerprint: z.string().optional(),
 })
 
 export const incidentNoteBody = z.object({ note: z.string().max(2000).optional() })
@@ -404,6 +418,19 @@ export const OPERATIONS: OperationSpec[] = [
     tag: 'Docker hosts',
     permission: 'docker-host:update',
     body: { schema: dockerTestBody },
+  },
+
+  // SSH tunnels
+  {
+    method: 'POST',
+    path: `${ORG}/ssh-tunnels/test`,
+    operationId: 'testSshTunnel',
+    summary: 'Connect to an SSH bastion, verify its host key and authenticate',
+    description:
+      'Tests a saved tunnel (`sshTunnelId`) or unsaved values; `fetchFingerprint` only reads the host key the bastion presents. Credentials are never returned.',
+    tag: 'SSH tunnels',
+    permission: 'ssh-tunnel:update',
+    body: { schema: sshTunnelTestBody },
   },
 
   // Import / export
