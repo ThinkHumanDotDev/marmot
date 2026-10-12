@@ -1144,7 +1144,8 @@ sees the union of their components.
 
 This holds for every public surface: the HTML page, history and permalinks, `/api/status-pages/:slug/public`
 and `/events`, the RSS/Atom/JSON feeds, `maintenance.ics`, the Statuspage-compatible JSON, Markdown
-and `llms.txt`, the page badge and monitor badges (a monitor of another audience answers `404`). Like
+and `llms.txt`, the [latency charts](#latency-charts) (page and JSON), the page badge and monitor badges (a
+monitor of another audience answers `404`). Like
 every protected page, an audience page has no embed mode, no widget, no sitemap and is never cached
 publicly. The filtering is in `src/server/status-pages/audiences.ts`: `findPublishedStatusPage` returns
 audience pages **without groups** until `scopePageForVisitor` narrows them to the visitor's
