@@ -218,6 +218,10 @@ export async function recordBeat(
       // Request timing phases (#94); omitted for types that do not measure them and for held
       // (deferred / checker offline) beats, which measured nothing.
       ...(result.timing && !held ? { timing: result.timing } : {}),
+      // Metric value of a Prometheus query monitor (#140); held beats judged nothing.
+      ...(typeof result.value === 'number' && Number.isFinite(result.value) && !held
+        ? { value: result.value }
+        : {}),
       // Per-probe results of multi-location checks (Globalping, #142).
       ...(result.probes?.length ? { probes: result.probes as unknown as Heartbeat['probes'] } : {}),
       // Response log (#97): status code and headers of every HTTP check, the body only when the

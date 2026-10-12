@@ -397,6 +397,7 @@ export interface Monitor {
     | 'http'
     | 'keyword'
     | 'json-query'
+    | 'prometheus'
     | 'port'
     | 'ping'
     | 'dns'
@@ -591,6 +592,14 @@ export interface Monitor {
   snmpOid?: string | null;
   snmpVersion?: ('1' | '2c') | null;
   snmpCommunity?: string | null;
+  prometheusQuery?: string | null;
+  prometheusDownOperator?: ('>' | '>=' | '<' | '<=' | '==' | '!=') | null;
+  prometheusDownThreshold?: number | null;
+  prometheusDegradedOperator?: ('>' | '>=' | '<' | '<=' | '==' | '!=') | null;
+  prometheusDegradedThreshold?: number | null;
+  prometheusAggregate?: ('worst' | 'any' | 'all') | null;
+  prometheusNoDataStatus?: ('up' | 'down' | 'pending') | null;
+  prometheusErrorStatus?: ('up' | 'down' | 'pending') | null;
   smtpSecurity?: ('opportunistic' | 'starttls' | 'secure' | 'nostarttls') | null;
   sshUsername?: string | null;
   sshAuthMethod?: ('password' | 'privateKey') | null;
@@ -815,6 +824,7 @@ export interface Heartbeat {
     | number
     | boolean
     | null;
+  value?: number | null;
   statusCode?: number | null;
   response?: {
     headers?:
@@ -2103,6 +2113,14 @@ export interface MonitorsSelect<T extends boolean = true> {
   snmpOid?: T;
   snmpVersion?: T;
   snmpCommunity?: T;
+  prometheusQuery?: T;
+  prometheusDownOperator?: T;
+  prometheusDownThreshold?: T;
+  prometheusDegradedOperator?: T;
+  prometheusDegradedThreshold?: T;
+  prometheusAggregate?: T;
+  prometheusNoDataStatus?: T;
+  prometheusErrorStatus?: T;
   smtpSecurity?: T;
   sshUsername?: T;
   sshAuthMethod?: T;
@@ -2266,6 +2284,7 @@ export interface HeartbeatsSelect<T extends boolean = true> {
         transfer?: T;
       };
   probes?: T;
+  value?: T;
   statusCode?: T;
   response?:
     | T

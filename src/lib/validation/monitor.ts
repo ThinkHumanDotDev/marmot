@@ -19,6 +19,12 @@ import {
 } from '@/lib/group-aggregation'
 import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
 import {
+  PROMETHEUS_AGGREGATES,
+  PROMETHEUS_FALLBACK_STATUSES,
+  PROMETHEUS_OPERATORS,
+  PROMETHEUS_QUERY_MAX_LENGTH,
+} from '@/lib/prometheus'
+import {
   DEFAULT_QUORUM,
   MAX_MONITOR_LOCATIONS,
   probeSupportsType,
@@ -76,6 +82,7 @@ export const MONITOR_TYPE_NAMES = [
   'http',
   'keyword',
   'json-query',
+  'prometheus',
   'port',
   'ping',
   'dns',
@@ -119,6 +126,7 @@ export const URL_MONITOR_TYPES: readonly MonitorTypeName[] = [
   ...HTTP_MONITOR_TYPES,
   'websocket-upgrade',
   'real-browser',
+  'prometheus',
 ]
 /** Types whose target is `hostname` (and usually `port`). */
 export const HOST_MONITOR_TYPES: readonly MonitorTypeName[] = [
@@ -214,6 +222,11 @@ export const MONITOR_TYPE_GROUPS: Record<
         name: 'json-query',
         label: 'HTTP(s) - Json Query',
         description: 'UP when a JSONata expression over the JSON response matches.',
+      },
+      {
+        name: 'prometheus',
+        label: 'Prometheus Query',
+        description: 'Runs a PromQL query; DOWN or degraded when the value meets a threshold.',
       },
       {
         name: 'real-browser',
@@ -394,6 +407,8 @@ export const MQTT_CHECK_TYPES = ['keyword', 'json-query'] as const
 export const SNMP_VERSIONS = ['1', '2c'] as const
 export const SMTP_SECURITY_MODES = ['opportunistic', 'starttls', 'secure', 'nostarttls'] as const
 export const SSH_AUTH_METHODS = ['password', 'privateKey'] as const
+/** Authentication of the Prometheus query monitor (#140). */
+export const PROMETHEUS_AUTH_METHODS = ['none', 'basic', 'bearer'] as const
 
 /** Uptime Kuma's UI minimum for `interval` and `retryInterval`. */
 export const MIN_INTERVAL_SECONDS = 20
@@ -481,6 +496,13 @@ const assertionRow = z.object({
 })
 
 const nonNegativeInt = (max = 1_000_000) => z.number().int().min(0).max(max)
+
+/** An optional finite number (thresholds); empty is `null`. */
+const finiteNumber = z
+  .number()
+  .finite()
+  .nullish()
+  .transform((v) => (v === undefined ? null : v))
 
 /** List of non-empty strings (brokers, nodes); blanks are dropped. */
 const textList = (max = 500) =>
@@ -694,6 +716,19 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       snmpVersion: z.enum(SNMP_VERSIONS).default('2c'),
       snmpCommunity: optionalText(500),
 
+      // Prometheus query (#140)
+      prometheusQuery: optionalText(PROMETHEUS_QUERY_MAX_LENGTH),
+      prometheusDownOperator: z.enum(PROMETHEUS_OPERATORS).default('>'),
+      prometheusDownThreshold: finiteNumber,
+      prometheusDegradedOperator: z
+        .enum(PROMETHEUS_OPERATORS)
+        .nullish()
+        .transform((value) => value ?? null),
+      prometheusDegradedThreshold: finiteNumber,
+      prometheusAggregate: z.enum(PROMETHEUS_AGGREGATES).default('worst'),
+      prometheusNoDataStatus: z.enum(PROMETHEUS_FALLBACK_STATUSES).default('down'),
+      prometheusErrorStatus: z.enum(PROMETHEUS_FALLBACK_STATUSES).default('down'),
+
       // SMTP
       smtpSecurity: z.enum(SMTP_SECURITY_MODES).default('opportunistic'),
 
@@ -827,6 +862,24 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         if (!values.remoteBrowser) issue('remoteBrowser', message('remoteBrowserRequired'))
         else if (!/^wss?:\/\/\S+$/i.test(values.remoteBrowser)) {
           issue('remoteBrowser', message('remoteBrowserUrl'))
+        }
+      }
+
+      if (type === 'prometheus') {
+        if (!values.url) issue('url', message('urlRequired'))
+        else if (!/^https?:\/\/\S+$/i.test(values.url)) issue('url', message('httpUrl'))
+        checkHeaders()
+        if (!values.prometheusQuery) issue('prometheusQuery', message('queryRequired'))
+        if (values.prometheusDownThreshold === null) {
+          issue('prometheusDownThreshold', message('thresholdRequired'))
+        }
+        if (values.prometheusDegradedOperator && values.prometheusDegradedThreshold === null) {
+          issue('prometheusDegradedThreshold', message('thresholdRequired'))
+        }
+        if (!(PROMETHEUS_AUTH_METHODS as readonly string[]).includes(values.authMethod)) {
+          issue('authMethod', message('prometheusAuthMethod'))
+        } else {
+          checkAuth()
         }
       }
 
@@ -1054,7 +1107,7 @@ export const DATABASE_CONNECTION_PLACEHOLDERS: Record<string, string> = {
 /** Starting value of `url` for the URL-based types. */
 export function defaultUrl(type: MonitorTypeName): string | null {
   if (type === 'websocket-upgrade') return 'wss://'
-  if (isHttpMonitorType(type) || type === 'real-browser') return 'https://'
+  if (isHttpMonitorType(type) || type === 'real-browser' || type === 'prometheus') return 'https://'
   return null
 }
 
@@ -1163,6 +1216,14 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     radiusSecret: null,
     radiusCalledStationId: null,
     radiusCallingStationId: null,
+    prometheusQuery: null,
+    prometheusDownOperator: '>',
+    prometheusDownThreshold: null,
+    prometheusDegradedOperator: null,
+    prometheusDegradedThreshold: null,
+    prometheusAggregate: 'worst',
+    prometheusNoDataStatus: 'down',
+    prometheusErrorStatus: 'down',
     snmpOid: null,
     snmpVersion: '2c',
     snmpCommunity: type === 'snmp' ? 'public' : null,

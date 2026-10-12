@@ -2706,6 +2706,63 @@
           "notNull": false,
           "default": "'public'"
         },
+        "prometheus_query": {
+          "name": "prometheus_query",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prometheus_down_operator": {
+          "name": "prometheus_down_operator",
+          "type": "enum_monitors_prometheus_down_operator",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'>'"
+        },
+        "prometheus_down_threshold": {
+          "name": "prometheus_down_threshold",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prometheus_degraded_operator": {
+          "name": "prometheus_degraded_operator",
+          "type": "enum_monitors_prometheus_degraded_operator",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prometheus_degraded_threshold": {
+          "name": "prometheus_degraded_threshold",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prometheus_aggregate": {
+          "name": "prometheus_aggregate",
+          "type": "enum_monitors_prometheus_aggregate",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'worst'"
+        },
+        "prometheus_no_data_status": {
+          "name": "prometheus_no_data_status",
+          "type": "enum_monitors_prometheus_no_data_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'down'"
+        },
+        "prometheus_error_status": {
+          "name": "prometheus_error_status",
+          "type": "enum_monitors_prometheus_error_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'down'"
+        },
         "smtp_security": {
           "name": "smtp_security",
           "type": "enum_monitors_smtp_security",
@@ -4781,6 +4838,12 @@
         "probes": {
           "name": "probes",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "value": {
+          "name": "value",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -14596,6 +14659,7 @@
         "http",
         "keyword",
         "json-query",
+        "prometheus",
         "port",
         "ping",
         "dns",
@@ -14832,6 +14896,57 @@
       "values": [
         "1",
         "2c"
+      ]
+    },
+    "public.enum_monitors_prometheus_down_operator": {
+      "name": "enum_monitors_prometheus_down_operator",
+      "schema": "public",
+      "values": [
+        ">",
+        ">=",
+        "<",
+        "<=",
+        "==",
+        "!="
+      ]
+    },
+    "public.enum_monitors_prometheus_degraded_operator": {
+      "name": "enum_monitors_prometheus_degraded_operator",
+      "schema": "public",
+      "values": [
+        ">",
+        ">=",
+        "<",
+        "<=",
+        "==",
+        "!="
+      ]
+    },
+    "public.enum_monitors_prometheus_aggregate": {
+      "name": "enum_monitors_prometheus_aggregate",
+      "schema": "public",
+      "values": [
+        "worst",
+        "any",
+        "all"
+      ]
+    },
+    "public.enum_monitors_prometheus_no_data_status": {
+      "name": "enum_monitors_prometheus_no_data_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending"
+      ]
+    },
+    "public.enum_monitors_prometheus_error_status": {
+      "name": "enum_monitors_prometheus_error_status",
+      "schema": "public",
+      "values": [
+        "up",
+        "down",
+        "pending"
       ]
     },
     "public.enum_monitors_smtp_security": {
@@ -15487,6 +15602,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "9135806f-69df-4c57-aee3-53bd4bd1851e",
+  "id": "7b81feaa-e784-4f2b-81e1-48751adf32d5",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

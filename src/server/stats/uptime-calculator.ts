@@ -99,7 +99,52 @@ export type BucketExtras = {
   pingCount?: number
   /** Per-phase running averages of the request timing (#94), `{ dns: { avg, count }, … }`. */
   timing?: BucketTiming
+  /** Metric value of Prometheus query monitors (#140): running average, min and max. */
+  value?: BucketValue
   [key: string]: unknown
+}
+
+/** Rolled-up metric values of a bucket (`extras.value`). */
+export type BucketValue = { avg: number; min: number; max: number; count: number }
+
+const isBucketValue = (value: unknown): value is BucketValue => {
+  const v = value as Partial<BucketValue> | null
+  return Boolean(
+    v &&
+    typeof v === 'object' &&
+    [v.avg, v.min, v.max, v.count].every((n) => typeof n === 'number' && Number.isFinite(n)) &&
+    (v.count ?? 0) > 0,
+  )
+}
+
+/** Fold one metric value into a bucket's `extras.value`. */
+export function applyValue(current: unknown, value: number): BucketValue {
+  if (!isBucketValue(current)) return { avg: value, min: value, max: value, count: 1 }
+  const count = current.count + 1
+  return {
+    avg: (current.avg * current.count + value) / count,
+    min: Math.min(current.min, value),
+    max: Math.max(current.max, value),
+    count,
+  }
+}
+
+/** Merge the `extras.value` of several buckets (`null` when none carries one). */
+export function mergeBucketValues(extrasList: readonly unknown[]): BucketValue | null {
+  let merged: BucketValue | null = null
+  for (const extras of extrasList) {
+    const value = (extras as BucketExtras | null | undefined)?.value
+    if (!isBucketValue(value)) continue
+    merged = merged
+      ? {
+          avg: (merged.avg * merged.count + value.avg * value.count) / (merged.count + value.count),
+          min: Math.min(merged.min, value.min),
+          max: Math.max(merged.max, value.max),
+          count: merged.count + value.count,
+        }
+      : { ...value }
+  }
+  return merged
 }
 
 export type Bucket = BucketData & { timestamp: number }
@@ -182,9 +227,14 @@ export function applyBeat(
   status: HeartbeatStatus,
   ping: number | null | undefined,
   timing?: unknown,
+  value?: number | null,
 ): BucketData {
   const next: BucketData = { ...bucket, extras: { ...bucket.extras } }
   const flat = flatStatus(status)
+  // The metric value counts whatever the status: a value over the DOWN threshold is the point.
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    next.extras.value = applyValue(next.extras.value, value)
+  }
 
   if (status === 'maintenance') {
     next.extras.maintenance = (next.extras.maintenance ?? 0) + 1
@@ -276,6 +326,8 @@ export type RecordHeartbeatInput = {
   ping?: number | null
   /** Request timing phases of the beat (#94), rolled up as per-phase averages. */
   timing?: unknown
+  /** Metric value of the beat (Prometheus query monitors, #140). */
+  value?: number | null
   /** Beat time; defaults to now. */
   time?: Date
 }
@@ -347,18 +399,19 @@ async function upsertBucket(
   input: Required<Pick<RecordHeartbeatInput, 'monitorId' | 'organizationId' | 'status'>> & {
     ping: number | null
     timing?: unknown
+    value?: number | null
   },
   timestamp: number,
 ): Promise<Bucket> {
   const existing = await findBucket(payload, collection, input.monitorId, timestamp)
 
   if (existing) {
-    const next = applyBeat(existing, input.status, input.ping, input.timing)
+    const next = applyBeat(existing, input.status, input.ping, input.timing, input.value)
     await payload.update({ collection, id: existing.id, data: bucketToData(next), depth: 0 })
     return { ...next, timestamp }
   }
 
-  const fresh = applyBeat(emptyBucket(), input.status, input.ping, input.timing)
+  const fresh = applyBeat(emptyBucket(), input.status, input.ping, input.timing, input.value)
   try {
     // Relationship ids are numbers on Postgres/SQLite and strings on MongoDB; the generated
     // types follow the adapter the types were generated with, so cast the adapter-neutral ids.
@@ -378,7 +431,7 @@ async function upsertBucket(
       { collection, monitorId: input.monitorId, timestamp },
       'bucket insert raced; updating',
     )
-    const next = applyBeat(raced, input.status, input.ping, input.timing)
+    const next = applyBeat(raced, input.status, input.ping, input.timing, input.value)
     await payload.update({ collection, id: raced.id, data: bucketToData(next), depth: 0 })
     return { ...next, timestamp }
   }
@@ -399,6 +452,7 @@ export async function recordHeartbeat(
     status: input.status,
     ping: isUsablePing(input.ping) ? input.ping : null,
     timing: input.timing,
+    value: input.value,
   }
 
   const [minute, hour, day] = await Promise.all(

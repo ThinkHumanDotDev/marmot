@@ -118,6 +118,13 @@ export const Heartbeats: CollectionConfig = {
       admin: { readOnly: true, description: adminT('marmot:heartbeats:probesDescription') },
     },
     {
+      // Metric value the check judged (Prometheus query monitors, #140), charted instead of the
+      // response time on the detail page.
+      name: 'value',
+      type: 'number',
+      admin: { readOnly: true, description: adminT('marmot:heartbeats:valueDescription') },
+    },
+    {
       name: 'statusCode',
       type: 'number',
       admin: { readOnly: true, description: adminT('marmot:heartbeats:statusCodeDescription') },
