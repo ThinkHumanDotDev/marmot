@@ -64,6 +64,13 @@ export const adminTranslations = {
         starttlsIgnore: 'Ignore STARTTLS',
         password: 'Password',
         privateKey: 'Private key',
+        tlsHandshake: 'TLS Handshake',
+        text: 'Text',
+        hex: 'Hex',
+        udpNoResponse: 'No response expected',
+        udpAnyResponse: 'Any response',
+        regex: 'Regular expression',
+        mailLogin: 'Mail login',
         formBody: 'Form (x-www-form-urlencoded)',
         instanceSettings: 'Instance settings',
         dashboard: 'Dashboard',
@@ -223,6 +230,14 @@ export const adminTranslations = {
       },
       statusPageViewers: {
         statusDescription: 'revoked: the visitor is signed out and cannot request new links.',
+      },
+      statusPageUptimeHistory: {
+        label: 'Status page uptime history',
+        description:
+          'Daily uptime of status page components, preserved after retention prunes the statistics.',
+        timestampDescription: 'Unix seconds of the start of the day (UTC).',
+        downSecondsDescription: 'Seconds the monitor spent DOWN that day.',
+        knownSecondsDescription: 'Seconds of the day whose monitor status is known.',
       },
       maintenance: {
         descriptionDescription: 'Shown on status pages.',
@@ -384,6 +399,21 @@ export const adminTranslations = {
         grpcBodyDescription: 'JSON request body.',
         grpcMetadataDescription: 'JSON object of request metadata.',
         sftpPathDescription: 'Optional remote path that must exist.',
+        sshUsernameDescription:
+          'SSH monitors: leave empty to only read the server banner; set it to log in.',
+        sshCommandDescription: 'Optional command to run after logging in.',
+        sshExpectedExitCodeDescription: 'Exit code the command must return (default 0).',
+        sshExpectedOutputDescription: 'Optional text the command output must contain.',
+        udpPayloadDescription: 'Datagram to send (text, or hex pairs such as "ff 00 1a").',
+        udpResponseMatchDescription:
+          'Without an expected response the check is UP unless an ICMP port unreachable comes back.',
+        udpResponsePatternDescription: 'Keyword the response must contain, or regular expression.',
+        tlsServernameDescription: 'SNI server name (defaults to the hostname).',
+        tlsAlpnDescription: 'Comma-separated ALPN protocols to offer, e.g. h2, http/1.1.',
+        mailSecurityDescription:
+          'SMTP, IMAP and POP3: STARTTLS when offered, required STARTTLS, implicit TLS, or plain text.',
+        mailUsernameDescription:
+          'Optional IMAP/POP3 login; credentials are only sent over TLS unless STARTTLS is ignored.',
         rabbitmqNodesDescription: 'Management API base URLs, e.g. https://node1:15672.',
         wsSubprotocolDescription: 'Comma-separated Sec-WebSocket-Protocol values.',
         wsIgnoreSecWebsocketAcceptHeaderDescription:
@@ -535,6 +565,10 @@ export const adminTranslations = {
         contactUrlDescription:
           'Contact link in the page header: an http(s) URL or mailto: address.',
         showValuesDescription: 'Show uptime percentages and response times to visitors.',
+        uptimeBarDaysDescription: 'Number of daily uptime bars per component (30, 45 or 90).',
+        uptimeCalculationDescription:
+          'checks: successful / all checks. duration: time not DOWN / total time. manual: from incident impacts only.',
+        showUptimePercentageDescription: 'Show the uptime percentage next to the daily bars.',
         defaultOpenDescription: 'Expanded when the page loads; visitors can still collapse it.',
         componentsDescription:
           'Components of the group: monitors, or static entries set by incidents.',

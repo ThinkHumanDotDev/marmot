@@ -89,7 +89,7 @@ export function StatusPageEmbed({
           ) : (
             <section aria-label={t('sections.services')} className="flex flex-col gap-3">
               {groups.map((group, i) => (
-                <GroupSection key={`${group.name}-${i}`} group={group} />
+                <GroupSection key={`${group.name}-${i}`} group={group} basePath={basePath} />
               ))}
             </section>
           ))}

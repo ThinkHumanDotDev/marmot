@@ -6842,88 +6842,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.status_pages_embed_origins": {
-      "name": "status_pages_embed_origins",
-      "schema": "",
-      "columns": {
-        "_order": {
-          "name": "_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "_parent_id": {
-          "name": "_parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "varchar",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "origin": {
-          "name": "origin",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "status_pages_embed_origins_order_idx": {
-          "name": "status_pages_embed_origins_order_idx",
-          "columns": [
-            {
-              "expression": "_order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_pages_embed_origins_parent_id_idx": {
-          "name": "status_pages_embed_origins_parent_id_idx",
-          "columns": [
-            {
-              "expression": "_parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "status_pages_embed_origins_parent_id_fk": {
-          "name": "status_pages_embed_origins_parent_id_fk",
-          "tableFrom": "status_pages_embed_origins",
-          "tableTo": "status_pages",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.status_pages_subscriptions_channels": {
       "name": "status_pages_subscriptions_channels",
       "schema": "",
@@ -7463,14 +7381,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "allow_embedding": {
-          "name": "allow_embedding",
-          "type": "enum_status_pages_allow_embedding",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'off'"
-        },
         "search_engine_index": {
           "name": "search_engine_index",
           "type": "boolean",
@@ -7501,6 +7411,28 @@
         },
         "show_values": {
           "name": "show_values",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "uptime_bar_days": {
+          "name": "uptime_bar_days",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 90
+        },
+        "uptime_calculation": {
+          "name": "uptime_calculation",
+          "type": "enum_status_pages_uptime_calculation",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'checks'"
+        },
+        "show_uptime_percentage": {
+          "name": "show_uptime_percentage",
           "type": "boolean",
           "primaryKey": false,
           "notNull": false,
@@ -8003,6 +7935,241 @@
           "tableTo": "status_pages",
           "columnsFrom": [
             "page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.status_page_uptime_history": {
+      "name": "status_page_uptime_history",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status_page_id": {
+          "name": "status_page_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "component": {
+          "name": "component",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day": {
+          "name": "day",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "month": {
+          "name": "month",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "up": {
+          "name": "up",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "down": {
+          "name": "down",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "degraded": {
+          "name": "degraded",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "maintenance": {
+          "name": "maintenance",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "down_seconds": {
+          "name": "down_seconds",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "known_seconds": {
+          "name": "known_seconds",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "state": {
+          "name": "state",
+          "type": "enum_status_page_uptime_history_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'up'"
+        }
+      },
+      "indexes": {
+        "status_page_uptime_history_organization_idx": {
+          "name": "status_page_uptime_history_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_uptime_history_status_page_idx": {
+          "name": "status_page_uptime_history_status_page_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_uptime_history_component_idx": {
+          "name": "status_page_uptime_history_component_idx",
+          "columns": [
+            {
+              "expression": "component",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_uptime_history_timestamp_idx": {
+          "name": "status_page_uptime_history_timestamp_idx",
+          "columns": [
+            {
+              "expression": "timestamp",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "status_page_uptime_history_month_idx": {
+          "name": "status_page_uptime_history_month_idx",
+          "columns": [
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "statusPage_component_timestamp_idx": {
+          "name": "statusPage_component_timestamp_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "component",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "timestamp",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "status_page_uptime_history_organization_id_organizations_id_fk": {
+          "name": "status_page_uptime_history_organization_id_organizations_id_fk",
+          "tableFrom": "status_page_uptime_history",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "status_page_uptime_history_status_page_id_status_pages_id_fk": {
+          "name": "status_page_uptime_history_status_page_id_status_pages_id_fk",
+          "tableFrom": "status_page_uptime_history",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "status_page_id"
           ],
           "columnsTo": [
             "id"
@@ -12966,6 +13133,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "status_page_uptime_history_id": {
+          "name": "status_page_uptime_history_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "incidents_id": {
           "name": "incidents_id",
           "type": "integer",
@@ -13435,6 +13608,21 @@
           "columns": [
             {
               "expression": "status_page_viewers_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_status_page_uptime_history_idx": {
+          "name": "payload_locked_documents_rels_status_page_uptime_history_idx",
+          "columns": [
+            {
+              "expression": "status_page_uptime_history_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -13945,6 +14133,19 @@
           "tableTo": "status_page_viewers",
           "columnsFrom": [
             "status_page_viewers_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_status_page_uptime_history_fk": {
+          "name": "payload_locked_documents_rels_status_page_uptime_history_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "status_page_uptime_history",
+          "columnsFrom": [
+            "status_page_uptime_history_id"
           ],
           "columnsTo": [
             "id"
@@ -15291,13 +15492,13 @@
         "ip-allowlist"
       ]
     },
-    "public.enum_status_pages_allow_embedding": {
-      "name": "enum_status_pages_allow_embedding",
+    "public.enum_status_pages_uptime_calculation": {
+      "name": "enum_status_pages_uptime_calculation",
       "schema": "public",
       "values": [
-        "off",
-        "any",
-        "origins"
+        "checks",
+        "duration",
+        "manual"
       ]
     },
     "public.enum_status_pages_subscriptions_delivery_mode": {
@@ -15314,6 +15515,18 @@
       "values": [
         "active",
         "revoked"
+      ]
+    },
+    "public.enum_status_page_uptime_history_state": {
+      "name": "enum_status_page_uptime_history_state",
+      "schema": "public",
+      "values": [
+        "nodata",
+        "up",
+        "maintenance",
+        "degraded",
+        "partial",
+        "down"
       ]
     },
     "public.enum_incidents_updates_components_impact": {
@@ -15701,6 +15914,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "51855286-ef55-4f39-9dc9-d8647bfd2969",
+  "id": "9e7010d7-1bcd-4f81-8987-1e5482b87e71",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

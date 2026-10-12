@@ -18,32 +18,35 @@ drafts but not change them.
 Three org-scoped collections (`src/collections/StatusPages.ts`, `src/collections/Incidents.ts`,
 `src/collections/StatusPageViewers.ts`):
 
-| `status-pages` field                                 | Notes                                                                          |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `organization`                                       | Owning organization (required).                                                |
-| `slug`                                               | Globally unique, lower-cased; reserved words from `src/lib/reserved-slugs.ts`. |
-| `title`, `description`, `logo` (media), `footerText` | Shown on the page; description and footer accept the Markdown subset below.    |
-| `logoDark`, `favicon` (media)                        | Dark-mode logo and favicon ([Themes](#themes)); uploaded through the builder.  |
-| `homepageUrl`                                        | Where the logo (or the title, without a logo) links to; `http(s)` only.        |
-| `contactUrl`                                         | "Contact us" button in the header; `http(s)` URL or `mailto:` address.         |
-| `theme`                                              | `auto` (visitor picks system/light/dark), or a forced `light` / `dark`.        |
-| `themePreset`, `themeOverrides`                      | Built-in palette id and validated colour overrides ([Themes](#themes)).        |
-| `bannerText`                                         | Optional headline (≤ 140 characters) that replaces the overall-status text.    |
-| `language`                                           | Locale of the page text (`en`), or `auto` to follow the visitor's browser.     |
-| `published`                                          | Only published pages are served; drafts 404 for visitors.                      |
-| `access`, `password` (write-only)                    | `public`, `password`, `email-domain` or `ip-allowlist`; see [Access](#access). |
-| `allowedEmailDomains[].domain`                       | Domains admitted by `email-domain` access (lower-cased, without `@`).          |
-| `allowedIpRanges[] { cidr, label }`                  | IPv4/IPv6 CIDR ranges admitted by `ip-allowlist` access.                       |
-| `searchEngineIndex`                                  | Emits `robots: index, follow` instead of `noindex`.                            |
-| `showTags`, `showCertificateExpiry`, `showPoweredBy` | Display toggles.                                                               |
-| `showValues`                                         | Default `true`. Off hides uptime % and response times page-wide (HTML + JSON). |
-| `autoRefreshInterval`                                | Seconds between client refreshes of the public API; `0` disables.              |
-| `maintenanceVisibilityHours`                         | Hours a completed or cancelled maintenance window stays on the page (24).      |
-| `pastIncidentsDays`                                  | Days of past incidents listed by day on the page (7, max 90, `0` hides them).  |
-| `customCSS`                                          | Injected into the public page as a `<style>` tag.                              |
-| `googleAnalyticsId`                                  | `G-…` measurement id; the gtag snippet is only emitted when set.               |
-| `domains[].hostname`                                 | Custom hostnames (see below). Unique across all pages.                         |
-| `groups[]`                                           | `name`, `defaultOpen` + `monitors[]` (components, see below), in order.        |
+| `status-pages` field                                 | Notes                                                                                    |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `organization`                                       | Owning organization (required).                                                          |
+| `slug`                                               | Globally unique, lower-cased; reserved words from `src/lib/reserved-slugs.ts`.           |
+| `title`, `description`, `logo` (media), `footerText` | Shown on the page; description and footer accept the Markdown subset below.              |
+| `logoDark`, `favicon` (media)                        | Dark-mode logo and favicon ([Themes](#themes)); uploaded through the builder.            |
+| `homepageUrl`                                        | Where the logo (or the title, without a logo) links to; `http(s)` only.                  |
+| `contactUrl`                                         | "Contact us" button in the header; `http(s)` URL or `mailto:` address.                   |
+| `theme`                                              | `auto` (visitor picks system/light/dark), or a forced `light` / `dark`.                  |
+| `themePreset`, `themeOverrides`                      | Built-in palette id and validated colour overrides ([Themes](#themes)).                  |
+| `bannerText`                                         | Optional headline (≤ 140 characters) that replaces the overall-status text.              |
+| `language`                                           | Locale of the page text (`en`), or `auto` to follow the visitor's browser.               |
+| `published`                                          | Only published pages are served; drafts 404 for visitors.                                |
+| `access`, `password` (write-only)                    | `public`, `password`, `email-domain` or `ip-allowlist`; see [Access](#access).           |
+| `allowedEmailDomains[].domain`                       | Domains admitted by `email-domain` access (lower-cased, without `@`).                    |
+| `allowedIpRanges[] { cidr, label }`                  | IPv4/IPv6 CIDR ranges admitted by `ip-allowlist` access.                                 |
+| `searchEngineIndex`                                  | Emits `robots: index, follow` instead of `noindex`.                                      |
+| `showTags`, `showCertificateExpiry`, `showPoweredBy` | Display toggles.                                                                         |
+| `showValues`                                         | Default `true`. Off hides uptime % and response times page-wide (HTML + JSON).           |
+| `uptimeBarDays`                                      | Daily uptime bars per component: `30`, `45` or `90` (default).                           |
+| `uptimeCalculation`                                  | `checks` (default), `duration` or `manual`; see [Daily uptime bars](#daily-uptime-bars). |
+| `showUptimePercentage`                               | Default `true`. Off keeps the bars but hides every uptime percentage.                    |
+| `autoRefreshInterval`                                | Seconds between client refreshes of the public API; `0` disables.                        |
+| `maintenanceVisibilityHours`                         | Hours a completed or cancelled maintenance window stays on the page (24).                |
+| `pastIncidentsDays`                                  | Days of past incidents listed by day on the page (7, max 90, `0` hides them).            |
+| `customCSS`                                          | Injected into the public page as a `<style>` tag.                                        |
+| `googleAnalyticsId`                                  | `G-…` measurement id; the gtag snippet is only emitted when set.                         |
+| `domains[].hostname`                                 | Custom hostnames (see below). Unique across all pages.                                   |
+| `groups[]`                                           | `name`, `defaultOpen` + `monitors[]` (components, see below), in order.                  |
 
 | `incidents` field            | Notes                                                                                                       |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -198,6 +201,41 @@ members see their drafts and protected pages too. Viewers are created only by th
 Incidents are never readable anonymously — the public API serves them. A `beforeChange` hook refuses
 monitors that belong to another organization and hostnames already claimed by another page.
 
+### Daily uptime bars
+
+Each component row shows one bar per UTC day for the last `uptimeBarDays` days (30, 45 or 90), oldest
+left (#112). A bar takes the day's worst state: `down` (the monitor was DOWN, or a major outage),
+`partial` (a partial outage), `degraded` (degraded checks or degraded performance), `maintenance`, `up`,
+or `nodata` when nothing was recorded. Hovering, focusing or tapping a bar shows the day's uptime,
+downtime and the incidents and maintenance windows of that day, linked to their
+[permalinks](#history-and-permalinks); the arrow keys move between days. Under the bars the row shows the
+uptime over the whole window (unless `showUptimePercentage` is off).
+
+The page's `uptimeCalculation` decides every percentage (`src/lib/uptime-history.ts`):
+
+| Mode       | Uptime                                                                                                                       |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `checks`   | Successful / all checks of the day, as in the statistics (degraded and maintenance beats count as up, pending ones as down). |
+| `duration` | Time not in a DOWN state / time whose state is known, replayed from the important heartbeats (status transitions).           |
+| `manual`   | From incident impacts only: a major outage counts as down, a partial outage as half down, degraded performance as up.        |
+
+Static components have no checks and always use `manual`; their history starts on the day the page was
+created. Overlapping incidents are not added up: at each instant the worst impact counts. A window's
+figure sums the days that have data.
+
+**Preserved history.** Bars read `stat-daily` and the important heartbeats while retention keeps them
+(`KEEP_DATA_PERIOD_DAYS`). The `status-page-uptime-snapshot` job (daily at 00:20 UTC on the maintenance
+queue) copies every complete day of each monitor component into `status-page-uptime-history` (one row per
+page, component and UTC day: check counts, degraded and maintenance beats, seconds DOWN and seconds with a
+known state, the day's state). It looks back 35 days, and over the whole retained history (400 days) the
+first time it sees a page; existing rows are never rewritten. Retention never deletes these rows, so
+shortening `KEEP_DATA_PERIOD_DAYS` no longer rewrites a page's history: days whose statistics are gone are
+read from the snapshot. The rows go with their page.
+
+**Monthly history.** Admins (`status-page:history`) get a **History** tab in the builder: the uptime of
+each component per month (3 to 24 months, newest first) in the page's mode, with an **Export CSV** button
+(`month,component_id,component,uptime_percent,downtime_seconds,days`) for SLA reports.
+
 ## Public endpoints
 
 All of these are anonymous and return 404 for unknown or unpublished slugs. Protected pages also need
@@ -248,6 +286,9 @@ in the IP allow-list (403 otherwise).
     "showCertificateExpiry": false,
     "showPoweredBy": true,
     "showValues": true,
+    "uptimeBarDays": 90, // 30 | 45 | 90
+    "uptimeCalculation": "checks", // checks | duration | manual
+    "showUptimePercentage": true,
     "autoRefreshInterval": 300,
     "customCSS": null,
     "footerText": null,
@@ -273,6 +314,18 @@ in the IP allow-list (403 otherwise).
           "uptime24h": 0.9993, // only when showValues
           "uptime30d": 0.9981, // only when showValues
           "beats": [{ "status": "up", "time": "2026-10-05T03:00:00.000Z", "ping": 42 }], // oldest first, ≤ 50; ping only when showValues
+          "uptime": 0.9987, // over the bars' window, in the page's mode; only with showValues and showUptimePercentage
+          "days": [
+            // one per UTC day, oldest first (uptimeBarDays of them)
+            {
+              "date": "2026-10-04",
+              "state": "down", // nodata | up | maintenance | degraded | partial | down (worst of the day)
+              "uptime": 0.9, // only with showValues and showUptimePercentage; null without data
+              "downtimeSeconds": 21600, // only with showValues
+              "incidents": [{ "id": "k3x9a0b1", "title": "API errors", "impact": "major_outage" }], // id = permalink id
+              "maintenance": [], // [{ id, title }], id = permalink id
+            },
+          ],
           "tags": [{ "name": "env", "color": "#2563EB", "value": "prod" }], // only when showTags
         },
         {
@@ -284,6 +337,7 @@ in the IP allow-list (403 otherwise).
           "impact": "partial_outage",
           "showValues": true,
           "beats": [], // always empty for static components
+          "days": [], // daily bars as above, from incidents only
         },
       ],
     },
@@ -493,8 +547,8 @@ working. The OpenAPI document at `/api/openapi.json` describes them (`src/server
 ## Builder
 
 `/{orgSlug}/status-pages` lists the organization's pages; `/{orgSlug}/status-pages/{id}` edits one with
-nine tabs: **Settings** (title, slug, description, language once Marmot ships more than one, refresh,
-custom CSS, analytics id, header links, display toggles, delete), **Theme** (colour mode, preset, colour
+nine tabs (ten for admins): **Settings** (title, slug, description, language once Marmot ships more than one, refresh,
+custom CSS, analytics id, header links, display toggles, uptime bars and calculation mode, delete), **Theme** (colour mode, preset, colour
 overrides, banner headline, logos and favicon, with a live preview; see [Themes](#themes)), **Groups &
 monitors** (drag-and-drop groups and components with
 `dnd-kit`, static components, per-component public name, description, values toggle, "show URL" / custom
@@ -502,7 +556,8 @@ link, per-group "expanded by default"), **Incidents** (post, edit, pin, resolve,
 components and their impact, [templates](#templates)), **Subscribers** and **Notifications** (see [Subscribers](#subscribers)),
 **Domains**, **Access** (public, password, email domain or IP allow-list, with the list of signed-in
 visitors for email-domain pages; see below) and **Share** (the [status badge](#status-badge) with
-Markdown and HTML snippets). The header switch publishes/unpublishes.
+Markdown and HTML snippets), plus **History** for admins (monthly uptime and its CSV export, see
+[Daily uptime bars](#daily-uptime-bars)). The header switch publishes/unpublishes.
 
 Mutations go through route handlers under `/api/orgs/:orgId/status-pages/**`
 (`src/app/api/orgs/[orgId]/status-pages`), which authenticate the Payload session and call the Local API
@@ -521,6 +576,7 @@ with `overrideAccess: false`, so the collections' access rules decide what each 
 | `PATCH …/incidents/:incidentId/updates/:updateId`        | Edit an update's text (`{ message }`)        |
 | `GET …/:id/viewers`                                      | Visitors of an email-domain page             |
 | `PATCH`/`DELETE …/:id/viewers/:viewerId`                 | Revoke or restore (`{ status }`) / forget    |
+| `GET …/:id/uptime-history?months=12[&format=csv]`        | Monthly uptime per component (admins)        |
 
 Opening an incident: `POST …/incidents` with
 `{ title, pinned?, status?, message?, components?: [{ component, impact }], impact? }` (`status` defaults to
@@ -1135,6 +1191,10 @@ With another proxy (nginx, Traefik, Cloudflare), terminate TLS there, forward th
   `src/server/status-pages/badge.test.ts` (state precedence, incident impact), `src/server/badges/status-page.test.ts`
   (renderers) and `src/lib/status-page-badge.test.ts` (embed snippets) are the unit tests.
 - `src/lib/markdown.test.ts` — the Markdown subset and its HTML escaping.
+- `tests/int/status-page-uptime.int.spec.ts` — daily bars (30/45/90 per component, day state and
+  incidents), each calculation mode on the same data, hiding the percentage, the snapshot job (idempotent,
+  read once retention pruned the statistics), the monthly history JSON and CSV (admins only) and the
+  cascade on page delete. `src/lib/uptime-history.test.ts` covers the maths of each mode.
 - `tests/e2e/status-pages.e2e.spec.ts` — seeds an organization, monitor and published page through the
   Local API, visits `/status/<slug>` anonymously, checks title, group, monitor link, incident (including a
   timeline with a major outage until it is resolved) and the

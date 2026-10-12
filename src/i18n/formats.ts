@@ -21,6 +21,10 @@ export const formats = {
     },
     /** `Oct 6, 2026` */
     date: { dateStyle: 'medium' },
+    /** `Oct 6, 2026` of a UTC day (daily uptime bars, whose days are UTC days). */
+    utcDate: { dateStyle: 'medium', timeZone: 'UTC' },
+    /** `Oct 2026` of a UTC month (the monthly uptime history). */
+    utcMonth: { year: 'numeric', month: 'short', timeZone: 'UTC' },
     /** `10:00 AM` */
     time: { timeStyle: 'short' },
     /** `Oct 6, 2026, 10:00:42 AM`: heartbeats and events, where seconds matter. */

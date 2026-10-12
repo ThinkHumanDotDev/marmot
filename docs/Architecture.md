@@ -197,6 +197,13 @@ the buckets into a fixed number of chart intervals (5 min for 1 d, 1 h for 7 d, 
 chart never reads raw heartbeats. Rows written before the histogram existed have none and contribute no
 percentiles.
 
+Status pages keep their own long-term copy (#112): the daily `status-page-uptime-snapshot` job
+(`src/server/status-pages/uptime-history.ts`, 00:20 UTC on `marmot:maintenance`) writes one
+`status-page-uptime-history` row per page, component and complete UTC day from `stat-daily` and the
+important heartbeats (check counts, seconds DOWN, seconds with a known state). Retention never prunes
+it; the daily bars and the monthly history read it for the days whose statistics are gone
+([Status pages](Status-Pages.md#daily-uptime-bars)).
+
 Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ job scheduler on the
 `marmot:maintenance` queue: minutely rows older than 24 h, hourly and per-location hourly older than 30 d, daily and important
 heartbeats older than the `keepDataPeriodDays` instance setting (default `KEEP_DATA_PERIOD_DAYS`; long-term
@@ -542,6 +549,7 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `notification:create`, `notification:update`, `notification:delete` |        |        |   ✓   |   ✓   |
 | `status-page:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
 | `status-page:create`, `status-page:update`, `status-page:delete`    |        |   ✓    |   ✓   |   ✓   |
+| `status-page:history` (monthly uptime history and CSV export)       |        |        |   ✓   |   ✓   |
 | `subscriber:read`, `subscriber:manage`                              |        |   ✓    |   ✓   |   ✓   |
 | `subscriber:send`                                                   |        |        |   ✓   |   ✓   |
 | `maintenance:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
