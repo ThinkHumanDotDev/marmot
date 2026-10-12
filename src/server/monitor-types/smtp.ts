@@ -13,6 +13,7 @@ import type { Monitor } from '@/payload-types'
 import { resolveGuardedTarget } from '@/server/security/outbound-guard'
 
 import { registerMonitorType } from './registry'
+import { tlsServername } from './tunnel'
 import { checkTimeoutMs, errorMessage, requireHostname, withAbort } from './util'
 
 export const DEFAULT_SMTP_PORT = 25
@@ -46,11 +47,19 @@ registerMonitorType({
   async check(ctx) {
     const options: ReturnType<typeof smtpTransportOptions> & { servername?: string } =
       smtpTransportOptions(ctx.monitor, checkTimeoutMs(ctx.monitor))
-    // Outbound address guard: connect to the vetted address, verify TLS against the name.
-    const vetted = await resolveGuardedTarget(options.host)
-    if (vetted && vetted.address !== options.host) {
-      options.servername = options.host
-      options.host = vetted.address
+    if (ctx.tunnel) {
+      // SSH tunnel (#160): connect to the tunnel's endpoint, verify TLS against the name.
+      const endpoint = await ctx.tunnel.endpoint(options.host, options.port)
+      options.servername = tlsServername(options.host)
+      options.host = endpoint.host
+      options.port = endpoint.port
+    } else {
+      // Outbound address guard: connect to the vetted address, verify TLS against the name.
+      const vetted = await resolveGuardedTarget(options.host)
+      if (vetted && vetted.address !== options.host) {
+        options.servername = options.host
+        options.host = vetted.address
+      }
     }
     const transporter = nodemailer.createTransport(options)
     const startTime = Date.now()

@@ -54,6 +54,23 @@ registerMonitorType({
     if (!hostname || !port) {
       throw new Error('Hostname and port are required')
     }
+    // SSH tunnel (#160): UP when the bastion opens a connection to the target.
+    if (ctx.tunnel) {
+      const start = performance.now()
+      try {
+        await ctx.tunnel.probe(hostname, port)
+      } catch (err) {
+        throw new Error(
+          `Connection failed${err instanceof Error && err.message ? `: ${err.message}` : ''}`,
+        )
+      }
+      const ms = Math.round(performance.now() - start)
+      ctx.heartbeat.ping = ms
+      ctx.heartbeat.msg = `${ms} ms`
+      ctx.heartbeat.status = 'up'
+      ctx.timing = { dns: null, connect: roundPhase(ms), tls: null, ttfb: null, transfer: null }
+      return
+    }
     // Outbound address guard: connect to the vetted address (null when the guard is off). The
     // guard's resolution then is the DNS phase; the socket connects to an IP literal.
     const guardStart = performance.now()

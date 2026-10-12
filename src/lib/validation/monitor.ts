@@ -684,6 +684,8 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       ignoreTls: z.boolean().default(false),
       expiryNotification: z.boolean().default(false),
       proxy: relationId,
+      // SSH tunnel (#160): HTTP family, TCP port, SQL databases, Redis, SMTP.
+      sshTunnel: relationId,
       domainExpiryNotification: z.boolean().default(false),
 
       // Keyword / JSON query
@@ -1273,6 +1275,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     ignoreTls: false,
     expiryNotification: false,
     proxy: null,
+    sshTunnel: null,
     domainExpiryNotification: false,
     keyword: null,
     invertKeyword: false,
@@ -1405,6 +1408,7 @@ export function monitorToFormValues(doc: MonitorLike): MonitorFormValues {
   const relations = {
     parent: toId(doc.parent),
     proxy: toId(doc.proxy),
+    sshTunnel: toId(doc.sshTunnel),
     dockerHost: toId(doc.dockerHost),
     otlpCollector: toId(doc.otlpCollector),
   }

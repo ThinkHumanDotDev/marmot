@@ -569,7 +569,7 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
       return
     }
     const { id: _id, notifications: _n, pushToken: _p, parent: _parent, ...fields } = entry
-    // Tags, proxies and Docker hosts are organization resources the export does not carry; their ids
+    // Tags, proxies, SSH tunnels and Docker hosts are organization resources the export does not carry; their ids
     // belong to the exporting organization, so references to them are not imported.
     if (fields.type === 'docker') {
       plan.skipped.monitors.push({
@@ -584,10 +584,15 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
       const resources = hasTags && hasProxy ? 'both' : hasTags ? 'tags' : 'proxy'
       plan.warnings.push(t('resourcesDropped', { name, resources }))
     }
+    // SSH tunnels (#160) are organization resources with credentials, like proxies.
+    if (fields.sshTunnel !== null && fields.sshTunnel !== undefined) {
+      plan.warnings.push(t('sshTunnelDropped', { name }))
+    }
     const parsed = monitorFormSchema.safeParse({
       ...fields,
       tags: [],
       proxy: null,
+      sshTunnel: null,
       dockerHost: null,
       // Collectors are organization resources too; imported monitors use the default collector.
       otlpCollector: null,

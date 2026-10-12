@@ -255,6 +255,7 @@ export function fromMarmotExport(file: Record<string, unknown>): {
       notifications,
       tags,
       proxy,
+      sshTunnel,
       dockerHost,
       locations,
       pushToken: _p,
@@ -273,6 +274,7 @@ export function fromMarmotExport(file: Record<string, unknown>): {
     const dropped = [
       Array.isArray(tags) && tags.length > 0 ? 'tags' : null,
       proxy !== null && proxy !== undefined ? 'proxy' : null,
+      sshTunnel !== null && sshTunnel !== undefined ? 'sshTunnel' : null,
       dockerHost !== null && dockerHost !== undefined ? 'dockerHost' : null,
       Array.isArray(locations) && locations.length > 0 ? 'locations' : null,
     ].filter(Boolean)
