@@ -25,6 +25,7 @@ import { Organizations } from './Organizations'
 import { OtelCollectors } from './OtelCollectors'
 import { Proxies } from './Proxies'
 import { PushEvents } from './PushEvents'
+import { SlaReportShares, SlaReports, SlaTargets } from './Sla'
 import { SshTunnels } from './SshTunnels'
 import { SsoConnections } from './SsoConnections'
 import { SsoDomains } from './SsoDomains'
@@ -77,6 +78,9 @@ export const collections: CollectionConfig[] = [
   StatusPageViewers,
   StatusPageAudiences,
   StatusPageUptimeHistory,
+  SlaTargets,
+  SlaReports,
+  SlaReportShares,
   Incidents,
   StatusPageSubscribers,
   SubscriberNotifications,

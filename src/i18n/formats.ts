@@ -35,6 +35,14 @@ export const formats = {
   number: {
     /** `99.98%` */
     percent: { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 },
+    /** `99.954%`: SLA attainment, where the third decimal matters (#156). */
+    slaPercent: { style: 'percent', minimumFractionDigits: 3, maximumFractionDigits: 3 },
+    /** `99.9%`: SLA targets, as entered. */
+    targetPercent: { style: 'percent', maximumFractionDigits: 4 },
+    /** `43.2`: SLA downtime and error budget in minutes. */
+    minutes: { maximumFractionDigits: 1 },
+    /** `0.46`: SLA burn rate. */
+    ratio: { minimumFractionDigits: 2, maximumFractionDigits: 2 },
     /** `100%` */
     wholePercent: { style: 'percent', maximumFractionDigits: 0 },
     integer: { maximumFractionDigits: 0 },

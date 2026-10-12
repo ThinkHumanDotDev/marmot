@@ -91,6 +91,11 @@ export interface OperationSpec {
 const id = z.union([z.string(), z.number().int()])
 const impact = z.enum(COMPONENT_IMPACTS)
 
+const slaShareBody = z.object({
+  from: z.string().describe('First UTC day, YYYY-MM-DD (inclusive)'),
+  to: z.string().describe('Last UTC day, YYYY-MM-DD (inclusive)'),
+})
+
 const componentImpacts = z
   .array(z.object({ component: z.string().describe('Component (group row) id'), impact }))
   .describe('Affected components and their impact')
@@ -1522,6 +1527,65 @@ export const OPERATIONS: OperationSpec[] = [
       'Monthly uptime per component (`?months=1..24`, default 12); `?format=csv` downloads it as CSV',
     tag: 'Status pages',
     permission: 'status-page:history',
+  },
+
+  // SLA targets and reports (#156). Targets and reports themselves are edited through the
+  // Payload REST API (`/api/sla-targets`, `/api/sla-reports`).
+  {
+    method: 'GET',
+    path: `${ORG}/sla/targets`,
+    operationId: 'listSlaTargetStatuses',
+    summary:
+      'SLA targets with the current period: attainment, error budget, burn rate and incidents',
+    tag: 'SLA',
+    permission: 'sla:read',
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/sla/reports/{id}`,
+    operationId: 'getSlaReport',
+    summary:
+      'An SLA report over `?from=YYYY-MM-DD&to=YYYY-MM-DD` (default: last month); `?format=csv|pdf` downloads it',
+    tag: 'SLA',
+    permission: 'sla:read',
+    query: [
+      { name: 'from', description: 'First UTC day (inclusive)', schema: { type: 'string' } },
+      { name: 'to', description: 'Last UTC day (inclusive)', schema: { type: 'string' } },
+      {
+        name: 'format',
+        description: '`json` (default), `csv` or `pdf`',
+        schema: { type: 'string' },
+      },
+    ],
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/sla/reports/{id}/shares`,
+    operationId: 'listSlaReportShares',
+    summary: "A report's public share links (without their tokens)",
+    tag: 'SLA',
+    permission: 'sla:manage',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/sla/reports/{id}/shares`,
+    operationId: 'createSlaReportShare',
+    summary: 'Create a public read-only link to the report over a range of days',
+    description:
+      'The response carries the link (`url`, `token`) exactly once; only a hash is stored.',
+    tag: 'SLA',
+    permission: 'sla:manage',
+    body: { schema: slaShareBody },
+    status: 201,
+    response: { description: '`{ doc, token, url }`', schema: anyObject },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/sla/reports/{id}/shares/{shareId}`,
+    operationId: 'revokeSlaReportShare',
+    summary: 'Revoke a share link for good',
+    tag: 'SLA',
+    permission: 'sla:manage',
   },
 
   // Outbound webhooks (admins by default; keys only where the organization lowered `webhook:*`)

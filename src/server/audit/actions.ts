@@ -31,6 +31,9 @@ export const AUDIT_RESOURCE_TYPES = [
   'webhook_endpoint',
   'location',
   'otel_collector',
+  'sla_target',
+  'sla_report',
+  'sla_report_share',
   'metric',
 ] as const
 export type AuditResourceType = (typeof AUDIT_RESOURCE_TYPES)[number]

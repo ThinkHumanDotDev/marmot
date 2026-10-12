@@ -11,6 +11,7 @@ export const PERMISSION_RESOURCE_KEYS = {
   notification: 'notification',
   'status-page': 'statusPage',
   subscriber: 'subscriber',
+  sla: 'sla',
   maintenance: 'maintenance',
   template: 'template',
   tag: 'tag',
