@@ -62,16 +62,17 @@ job data; `notificationEventFor()` in `src/server/engine/beat.ts`):
 Every channel has an `events` selection (`src/lib/notification-events.ts`); a channel is only told about
 the events it selected:
 
-| Event          | Sent when                                                                             | Default |
-| -------------- | ------------------------------------------------------------------------------------- | :-----: |
-| `down`         | a monitor went DOWN                                                                   |   on    |
-| `up`           | it recovered from DOWN (the message carries the downtime)                             |   on    |
-| `degraded`     | it became DEGRADED or went back from DEGRADED to UP                                   |   off   |
-| `reminder`     | the `resendInterval` repeat while still DOWN                                          |   on    |
-| `certificate`  | a TLS certificate or domain expiry warning, or a new certificate in the CT logs       |   on    |
-| `maintenance`  | a maintenance window covering the monitor starts or ends (once per channel and event) |   off   |
-| `acknowledged` | a member acknowledged the monitor's [incident](Monitors.md#incidents)                 |   on    |
-| `resolved`     | a member resolved the monitor's incident by hand (automatic resolution is `up`)       |   on    |
+| Event          | Sent when                                                                                                                      | Default |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------ | :-----: |
+| `down`         | a monitor went DOWN                                                                                                            |   on    |
+| `up`           | it recovered from DOWN (the message carries the downtime)                                                                      |   on    |
+| `degraded`     | it became DEGRADED or went back from DEGRADED to UP                                                                            |   off   |
+| `reminder`     | the `resendInterval` repeat while still DOWN                                                                                   |   on    |
+| `certificate`  | a TLS certificate or domain expiry warning, or a new certificate in the CT logs                                                |   on    |
+| `maintenance`  | a maintenance window covering the monitor starts or ends (once per channel and event)                                          |   off   |
+| `acknowledged` | a member acknowledged the monitor's [incident](Monitors.md#incidents)                                                          |   on    |
+| `resolved`     | a member resolved the monitor's incident by hand (automatic resolution is `up`)                                                |   on    |
+| `incident`     | a [declared incident](Monitors.md#declared-incidents) was declared, changed status or commander, or its commander was reminded |   off   |
 
 The defaults are what every channel received before the filters existed plus the incident events, and a
 channel without a selection (one created before the field existed, or saved with an empty list) gets the defaults, so
@@ -115,6 +116,11 @@ channels that selected the event, through the same queue: job `incident-notify` 
 `[name] [👀 Acknowledged] Acknowledged by Ada. Note: …` or `[name] [✅ Resolved] Resolved by Ada after 12
 minutes.`, sent with the monitor and no heartbeat (like a test message, so rich providers send the text).
 An automatic resolution sends nothing extra: the UP notification already announces the recovery.
+
+[Declared incidents](Monitors.md#declared-incidents) belong to the organization rather than to a monitor, so
+they go to every active channel of the organization that selected the opt-in `incident` event: job
+`declared-incident-notify` (one per channel, plus one email to the commander when assigned and for
+reminders), message `[title] [🚨 Incident declared] Critical incident declared. Commander: Ada. <link>`.
 
 While the incident is still open, DOWN messages (first alert and reminders) end with
 `Acknowledge: <server>/ack/<token>`, a signed link to acknowledge from the phone. Providers that build their

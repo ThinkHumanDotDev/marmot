@@ -84,6 +84,7 @@ export interface Config {
     'notification-sent-history': NotificationSentHistory;
     heartbeats: Heartbeat;
     'monitor-incidents': MonitorIncident;
+    'declared-incidents': DeclaredIncident;
     'monitor-location-states': MonitorLocationState;
     'push-events': PushEvent;
     'stat-minutely': StatMinutely;
@@ -135,6 +136,7 @@ export interface Config {
     'notification-sent-history': NotificationSentHistorySelect<false> | NotificationSentHistorySelect<true>;
     heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
     'monitor-incidents': MonitorIncidentsSelect<false> | MonitorIncidentsSelect<true>;
+    'declared-incidents': DeclaredIncidentsSelect<false> | DeclaredIncidentsSelect<true>;
     'monitor-location-states': MonitorLocationStatesSelect<false> | MonitorLocationStatesSelect<true>;
     'push-events': PushEventsSelect<false> | PushEventsSelect<true>;
     'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
@@ -716,7 +718,18 @@ export interface Notification {
     | boolean
     | null;
   events?:
-    ('down' | 'up' | 'degraded' | 'reminder' | 'certificate' | 'maintenance' | 'acknowledged' | 'resolved')[] | null;
+    | (
+        | 'down'
+        | 'up'
+        | 'degraded'
+        | 'reminder'
+        | 'certificate'
+        | 'maintenance'
+        | 'acknowledged'
+        | 'resolved'
+        | 'incident'
+      )[]
+    | null;
   isDefault?: boolean | null;
   applyExisting?: boolean | null;
   active?: boolean | null;
@@ -1126,6 +1139,61 @@ export interface StatusPage {
               id?: string | null;
             }[]
           | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "declared-incidents".
+ */
+export interface DeclaredIncident {
+  id: number;
+  organization: number | Organization;
+  title: string;
+  severity: 'critical' | 'major' | 'minor';
+  status: 'open' | 'mitigated' | 'resolved' | 'closed' | 'canceled';
+  summary?: string | null;
+  commander?: (number | null) | User;
+  declaredBy?: (number | null) | User;
+  startedAt: string;
+  mitigatedAt?: string | null;
+  resolvedAt?: string | null;
+  closedAt?: string | null;
+  canceledAt?: string | null;
+  monitorIncident?: (number | null) | MonitorIncident;
+  statusPageIncident?: (number | null) | Incident;
+  postmortem?: {
+    status?: ('none' | 'draft' | 'approved') | null;
+    content?: string | null;
+    approvedBy?: (number | null) | User;
+    approvedAt?: string | null;
+  };
+  postmortemSkipped?: boolean | null;
+  lastActivityAt?: string | null;
+  nextReminderAt?: string | null;
+  remindersSent?: number | null;
+  lastReminderAt?: string | null;
+  timeline?:
+    | {
+        type:
+          | 'declared'
+          | 'severity_changed'
+          | 'status_changed'
+          | 'commander_changed'
+          | 'note'
+          | 'linked'
+          | 'unlinked'
+          | 'postmortem_drafted'
+          | 'postmortem_approved'
+          | 'closed';
+        at: string;
+        by?: (number | null) | User;
+        from?: string | null;
+        to?: string | null;
+        message?: string | null;
         id?: string | null;
       }[]
     | null;
@@ -1909,6 +1977,10 @@ export interface PayloadLockedDocument {
         value: number | MonitorIncident;
       } | null)
     | ({
+        relationTo: 'declared-incidents';
+        value: number | DeclaredIncident;
+      } | null)
+    | ({
         relationTo: 'monitor-location-states';
         value: number | MonitorLocationState;
       } | null)
@@ -2610,6 +2682,52 @@ export interface MonitorIncidentsSelect<T extends boolean = true> {
         at?: T;
         by?: T;
         via?: T;
+        message?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "declared-incidents_select".
+ */
+export interface DeclaredIncidentsSelect<T extends boolean = true> {
+  organization?: T;
+  title?: T;
+  severity?: T;
+  status?: T;
+  summary?: T;
+  commander?: T;
+  declaredBy?: T;
+  startedAt?: T;
+  mitigatedAt?: T;
+  resolvedAt?: T;
+  closedAt?: T;
+  canceledAt?: T;
+  monitorIncident?: T;
+  statusPageIncident?: T;
+  postmortem?:
+    | T
+    | {
+        status?: T;
+        content?: T;
+        approvedBy?: T;
+        approvedAt?: T;
+      };
+  postmortemSkipped?: T;
+  lastActivityAt?: T;
+  nextReminderAt?: T;
+  remindersSent?: T;
+  lastReminderAt?: T;
+  timeline?:
+    | T
+    | {
+        type?: T;
+        at?: T;
+        by?: T;
+        from?: T;
+        to?: T;
         message?: T;
         id?: T;
       };
