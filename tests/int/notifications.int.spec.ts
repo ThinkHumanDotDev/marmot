@@ -706,7 +706,7 @@ describe('notification endpoints', () => {
         type: 'whatsapp',
         config: { ...(channel.config as object), recipient: '015123456789' },
       }),
-    ).rejects.toThrow(/E\.164/)
+    ).rejects.toThrow(/config\.recipient/)
 
     // A failed delivery records the Graph API error on the channel.
     stubFetch(400)
