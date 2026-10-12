@@ -131,6 +131,7 @@
     "playwright-core": "1.58.2",
     "protobufjs": "^8.8.0",
     "radius": "^1.1.4",
+    "ssh2": "^1.17.0",
     "ssh2-sftp-client": "^12.1.1",
     "ws": "^8.22.0"
   },
@@ -150,6 +151,7 @@
     "@types/radius": "^0.0.33",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "@types/ssh2": "^1.15.6",
     "@types/smtp-server": "^3.5.13",
     "@types/ssh2-sftp-client": "^9.0.6",
     "@types/web-push": "^3.6.4",
