@@ -288,10 +288,9 @@ test.describe('Monitor list bulk actions', () => {
     await expect(page.getByText('Added 3 monitors to the status page group.')).toBeVisible()
     await expect
       .poll(async () => {
-        const [doc] = await adminApi.find<{ groups?: { monitors?: unknown[] }[] }>(
-          'status-pages',
-          { id: { equals: String(statusPage.id) } },
-        )
+        const [doc] = await adminApi.find<{ groups?: { monitors?: unknown[] }[] }>('status-pages', {
+          id: { equals: String(statusPage.id) },
+        })
         return doc?.groups?.[0]?.monitors?.length
       })
       .toBe(3)
