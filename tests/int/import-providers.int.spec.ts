@@ -106,9 +106,22 @@ async function captureLogs<T>(fn: () => Promise<T>): Promise<{ result: T; logs: 
   const methods = ['trace', 'debug', 'info', 'warn', 'error', 'fatal'] as const
   const spies = methods.map((method) =>
     vi.spyOn(payload.logger, method).mockImplementation(((...args: unknown[]) => {
-      lines.push(
-        JSON.stringify(args, (_key, value) => (value instanceof Error ? value.message : value)),
-      )
+      // Log arguments may be circular (driver errors): serialise what can be, never throw.
+      const seen = new WeakSet<object>()
+      try {
+        lines.push(
+          JSON.stringify(args, (_key, value: unknown) => {
+            if (value instanceof Error) return `${value.name}: ${value.message}`
+            if (value && typeof value === 'object') {
+              if (seen.has(value)) return '[circular]'
+              seen.add(value)
+            }
+            return value
+          }),
+        )
+      } catch {
+        lines.push(args.map(String).join(' '))
+      }
     }) as never),
   )
   try {
