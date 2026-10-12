@@ -18,6 +18,7 @@ export const getRequestLocale = cache(async (): Promise<Locale> => {
 
 /** Locale of a public status page for the current request (`resolveStatusPageLocale`). */
 export const getStatusPageLocale = cache(
-  async (page: Pick<StatusPage, 'language'> | null | undefined): Promise<Locale> =>
-    resolveStatusPageLocale(page, await getHeaders()),
+  async (
+    page: Pick<StatusPage, 'defaultLocale' | 'additionalLocales'> | null | undefined,
+  ): Promise<Locale> => resolveStatusPageLocale(page, await getHeaders()),
 )

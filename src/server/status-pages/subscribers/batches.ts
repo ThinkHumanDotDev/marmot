@@ -13,6 +13,7 @@ import type { Payload } from 'payload'
 import type { Locale } from '@/i18n/locales'
 import { toLocale } from '@/i18n/translator'
 import { childLogger } from '@/lib/logger'
+import { pageDefaultLocale } from '@/lib/status-page-locales'
 import {
   subscriberWantsComponents,
   type NotificationBatchState,
@@ -352,15 +353,16 @@ export async function loadPageContext(payload: Payload, pageId: Id): Promise<Pag
   return { page, i18n, names }
 }
 
-/** Language of a subscriber's messages: theirs, else the page's fixed language, else the org's. */
+/**
+ * Language of a subscriber's messages: the one they subscribed in, else the page's default
+ * language (#114).
+ */
 export function subscriberLocale(
   subscriber: Pick<StatusPageSubscriber, 'locale'> | null,
   ctx: PageContext,
 ): Locale {
   if (subscriber?.locale) return toLocale(subscriber.locale)
-  const language = ctx.page.language
-  if (language && language !== 'auto') return toLocale(language)
-  return ctx.i18n.locale
+  return pageDefaultLocale(ctx.page)
 }
 
 export interface BatchPreview {

@@ -5,7 +5,7 @@ import {
   isFormRequest,
   loadSubscription,
 } from '@/server/status-pages/subscribers/http'
-import { subscriptionLinks } from '@/server/status-pages/subscribers/links'
+import { subscriberPrefix, subscriptionLinks } from '@/server/status-pages/subscribers/links'
 import { confirmSubscription } from '@/server/status-pages/subscribers/signup'
 
 export const dynamic = 'force-dynamic'
@@ -38,7 +38,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       status: 303,
       headers: {
         ...NO_STORE,
-        Location: `${statusPagePath(slug)}/manage/${encodeURIComponent(token)}?confirmed=1`,
+        Location: `${statusPagePath(slug)}${subscriberPrefix(ctx.page, ctx.subscriber)}/manage/${encodeURIComponent(token)}?confirmed=1`,
       },
     })
   }

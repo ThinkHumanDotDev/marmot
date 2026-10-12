@@ -13,7 +13,11 @@ import {
 import { isEventsReturnPath } from '@/lib/status-page-events'
 import { consumeMagicLink, requestMagicLink } from '@/server/status-pages/magic-link'
 import { findPublishedStatusPage } from '@/server/status-pages/public'
-import { requestHostname, statusPageBasePath } from '@/server/status-pages/urls'
+import {
+  headersWithRequestedLocale,
+  requestHostname,
+  statusPageBasePath,
+} from '@/server/status-pages/urls'
 import { errorText, requestLocale } from '@/server/request-locale'
 
 import type { StatusPage } from '@/payload-types'
@@ -190,9 +194,11 @@ export async function POST(request: Request, { params }: RouteContext) {
     )
   }
 
-  const base = statusPageBasePath(page, request.headers)
+  // The login form posts with `?locale=` so redirects and sign-in emails keep its language.
+  const localized = new Request(request.url, { headers: headersWithRequestedLocale(request) })
+  const base = statusPageBasePath(page, localized.headers)
   const pagePath = body.next ? `${base}${body.next}` : base || '/'
-  const ctx: Ctx = { request, page, body, base, pagePath }
+  const ctx: Ctx = { request: localized, page, body, base, pagePath }
 
   switch (page.access) {
     case 'password':

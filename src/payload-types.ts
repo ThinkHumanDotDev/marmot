@@ -1023,7 +1023,10 @@ export interface StatusPage {
   bannerText?: string | null;
   logoDark?: (number | null) | Media;
   favicon?: (number | null) | Media;
-  language?: ('auto' | 'en') | null;
+  defaultLocale?: ('en' | 'fr' | 'de' | 'es') | null;
+  additionalLocales?: ('en' | 'fr' | 'de' | 'es')[] | null;
+  timeZoneMode?: ('visitor' | 'page') | null;
+  timeZone?: string | null;
   published?: boolean | null;
   access?: ('public' | 'password' | 'email-domain' | 'ip-allowlist') | null;
   password?: string | null;
@@ -1311,7 +1314,7 @@ export interface StatusPageSubscriber {
   components?: string[] | null;
   source?: ('self_signup' | 'added_by_owner' | 'import') | null;
   confirmedAt?: string | null;
-  locale?: 'en' | null;
+  locale?: ('en' | 'fr' | 'de' | 'es') | null;
   token?: string | null;
   secret?: string | null;
   headers?:
@@ -2562,7 +2565,10 @@ export interface StatusPagesSelect<T extends boolean = true> {
   bannerText?: T;
   logoDark?: T;
   favicon?: T;
-  language?: T;
+  defaultLocale?: T;
+  additionalLocales?: T;
+  timeZoneMode?: T;
+  timeZone?: T;
   published?: T;
   access?: T;
   password?: T;

@@ -13,6 +13,7 @@ vi.mock('@/i18n/locales', async (importOriginal) => {
   return {
     ...actual,
     locales,
+    appLocales: locales,
     isLocale: (value: unknown, supported: readonly string[] = locales) =>
       typeof value === 'string' && supported.includes(value),
   }
@@ -63,7 +64,7 @@ describe('API error locale', () => {
 
   it("prefers the authenticated user's language over the headers", () => {
     const req = request({ 'accept-language': 'en' })
-    rememberRequestUser(req, { language: XX })
+    rememberRequestUser(req, { language: XX as never })
     expect(errorText(req, 'unauthenticated')).toBe('XX Unauthorized')
   })
 

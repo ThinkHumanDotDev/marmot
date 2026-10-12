@@ -8,6 +8,7 @@ import { renderMarkdown } from '@/lib/markdown'
 import { EVENTS_PATH } from '@/lib/status-page-events'
 import type { PublicConfig } from '@/server/status-pages/public'
 
+import { LocaleSwitcher, TimeZoneSwitcher } from './footer-controls'
 import { StatusPageLogo } from './parts'
 import { ThemeToggle } from './theme-toggle'
 
@@ -63,7 +64,7 @@ export function StatusPageShell({
           </span>
           <span className="flex items-center gap-3">
             <a
-              href={`/status/${encodeURIComponent(config.slug)}/rss`}
+              href={`${basePath}/rss`}
               className="inline-flex items-center gap-1 hover:text-foreground"
             >
               <Rss className="size-3.5" aria-hidden /> {t('footer.rss')}
@@ -79,6 +80,10 @@ export function StatusPageShell({
               </a>
             )}
           </span>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <TimeZoneSwitcher />
+          <LocaleSwitcher />
         </div>
       </footer>
     </div>

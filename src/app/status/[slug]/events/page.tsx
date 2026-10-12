@@ -14,7 +14,11 @@ import { monthKey } from '@/server/status-pages/event-summary'
 import { listStatusPageEvents, type EventHistory } from '@/server/status-pages/events'
 import { toPublicConfig } from '@/server/status-pages/public'
 import { isIndexable, NOINDEX, statusPageMetadata } from '@/server/status-pages/seo'
-import { statusPageUrlForHeaders } from '@/server/status-pages/urls'
+import {
+  localeAlternates,
+  statusPageLocalePath,
+  statusPageUrlForHeaders,
+} from '@/server/status-pages/urls'
 import type { StatusPage } from '@/payload-types'
 
 import { loadPageAccess, loadPublishedPage, requireVisiblePage } from '../data'
@@ -58,8 +62,11 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     ? format.dateTimeRange(new Date(history.range.from), new Date(history.range.to), 'date')
     : null
   const query = eventFiltersQuery(history.filters)
-  const base = statusPageUrlForHeaders(page, await headers())
+  const requestHeaders = await headers()
+  const base = statusPageUrlForHeaders(page, requestHeaders)
   const metadata = statusPageMetadata(page, {
+    languages: localeAlternates(page, requestHeaders, EVENTS_PATH),
+    feedBase: statusPageLocalePath(page, requestHeaders),
     title: t('historyTitle', { siteName: page.title }),
     description: dateRange
       ? t('historyDescription', { siteName: page.title, dateRange })

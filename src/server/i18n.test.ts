@@ -13,6 +13,7 @@ vi.mock('@/i18n/locales', async (importOriginal) => {
   return {
     ...actual,
     locales,
+    appLocales: locales,
     isLocale: (value: unknown, supported: readonly string[] = locales) =>
       typeof value === 'string' && supported.includes(value),
   }
