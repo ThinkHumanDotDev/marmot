@@ -6,10 +6,26 @@ import { create } from 'zustand'
  * page it was made on. The list keeps it a subset of the monitors it shows (`retain`).
  */
 
-/** Bulk actions the command palette can start on the list's selection. */
-export type PaletteBulkAction = 'pause' | 'resume' | 'check' | 'delete'
+/**
+ * Bulk actions the command palette can start on the list's selection. The two `addTo…` actions
+ * need a target, so the list opens its menu to pick the maintenance window or status page group.
+ */
+export type PaletteBulkAction =
+  'pause' | 'resume' | 'check' | 'delete' | 'addToMaintenance' | 'addToStatusPageGroup'
 
-const NO_PERMISSIONS = { update: false, delete: false } as const
+/** What the list lets the user do with a selection (organization overrides applied). */
+export interface ListBulkPermissions {
+  /** `monitor:update` */
+  update: boolean
+  /** `monitor:delete` */
+  delete: boolean
+  /** `monitor:update` and `maintenance:update`, with at least one window to add to. */
+  maintenance?: boolean
+  /** `monitor:update` and `status-page:update`, with at least one group to add to. */
+  statusPage?: boolean
+}
+
+const NO_PERMISSIONS: ListBulkPermissions = { update: false, delete: false }
 
 export interface MonitorSelectionState {
   selected: Record<string, true>
@@ -21,7 +37,7 @@ export interface MonitorSelectionState {
    * What the list on screen lets the user do with a selection: the organization's permissions
    * with its overrides applied, as resolved by the server (the palette only knows the role).
    */
-  listPermissions: { update: boolean; delete: boolean }
+  listPermissions: ListBulkPermissions
   /** The palette asked the list to focus its search box. */
   searchFocusPending: boolean
   /** The palette asked the list to run a bulk action on the selection. */
@@ -35,7 +51,7 @@ export interface MonitorSelectionState {
   retain: (visible: readonly string[]) => void
   clear: () => void
 
-  setListMounted: (mounted: boolean, permissions?: { update: boolean; delete: boolean }) => void
+  setListMounted: (mounted: boolean, permissions?: ListBulkPermissions) => void
   requestSearchFocus: () => void
   takeSearchFocus: () => boolean
   requestBulk: (action: PaletteBulkAction) => void

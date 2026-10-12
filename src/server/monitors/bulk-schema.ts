@@ -26,18 +26,30 @@ export const monitorBulkBody = z
       .object({
         tags: z.array(tagRow).min(1).max(MAX_BULK_REFERENCES).optional(),
         notifications: z.array(id).min(1).max(MAX_BULK_REFERENCES).optional(),
+        /** Maintenance window of `addToMaintenance`. */
+        maintenance: id.optional(),
+        /** Status page of `addToStatusPageGroup`. */
+        statusPage: id.optional(),
+        /** Id of the group (row of the page's `groups`) of `addToStatusPageGroup`. */
+        group: z.string().min(1).max(64).optional(),
       })
       .optional(),
   })
   .superRefine((body, ctx) => {
-    const needs =
+    const needs: (keyof NonNullable<typeof body.payload>)[] =
       body.action === 'addTags' || body.action === 'removeTags'
-        ? 'tags'
+        ? ['tags']
         : body.action === 'addNotifications' || body.action === 'removeNotifications'
-          ? 'notifications'
-          : null
-    if (needs && !body.payload?.[needs]) {
-      ctx.addIssue({ code: 'custom', path: ['payload', needs], message: `${needs} is required` })
+          ? ['notifications']
+          : body.action === 'addToMaintenance'
+            ? ['maintenance']
+            : body.action === 'addToStatusPageGroup'
+              ? ['statusPage', 'group']
+              : []
+    for (const field of needs) {
+      if (body.payload?.[field] === undefined) {
+        ctx.addIssue({ code: 'custom', path: ['payload', field], message: `${field} is required` })
+      }
     }
   })
 

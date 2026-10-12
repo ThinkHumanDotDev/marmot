@@ -1,7 +1,7 @@
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
-import { bulkActionPermission } from '@/lib/monitor-bulk'
+import { bulkActionPermissions } from '@/lib/monitor-bulk'
 import { runMonitorBulkAction } from '@/server/monitors/bulk'
 import { monitorBulkBody } from '@/server/monitors/bulk-schema'
 import {
@@ -22,9 +22,12 @@ type RouteContext = { params: Promise<{ orgId: string }> }
  * POST /api/orgs/:orgId/monitors/bulk — one action on many monitors (#124):
  * `{ ids, action, payload }` with `action` one of `pause`, `resume`, `check`, `delete`,
  * `addTags` / `removeTags` (`payload.tags: [{ tag, value? }]`) and `addNotifications` /
- * `removeNotifications` (`payload.notifications: [id]`).
+ * `removeNotifications` (`payload.notifications: [id]`), `addToMaintenance`
+ * (`payload.maintenance: id`) and `addToStatusPageGroup` (`payload.statusPage: id`,
+ * `payload.group: groupId`).
  *
- * Needs `monitor:delete` for `delete` and `monitor:update` otherwise. Answers `200` with one
+ * Needs `monitor:delete` for `delete` and `monitor:update` otherwise, plus `maintenance:update` for
+ * `addToMaintenance` and `status-page:update` for `addToStatusPageGroup` (#262). Answers `200` with one
  * result per id (`{ id, ok, unchanged?, monitor? }` or `{ id, ok: false, error, message }`) and a
  * summary; see `src/server/monitors/bulk.ts` for the rules.
  */
@@ -43,13 +46,10 @@ export async function POST(request: Request, { params }: RouteContext) {
   const parsed = monitorBulkBody.safeParse(body)
   if (!parsed.success) return validationError(parsed.error, request)
 
-  const forbidden = await authorize(
-    payload,
-    auth.user,
-    orgId,
-    bulkActionPermission(parsed.data.action),
-  )
-  if (forbidden) return forbidden
+  for (const permission of bulkActionPermissions(parsed.data.action)) {
+    const forbidden = await authorize(payload, auth.user, orgId, permission)
+    if (forbidden) return forbidden
+  }
 
   const result = await runMonitorBulkAction(
     { payload, request, user: auth.user, orgId },
