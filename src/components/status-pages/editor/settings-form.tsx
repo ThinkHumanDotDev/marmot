@@ -25,6 +25,14 @@ import {
   MAX_MAINTENANCE_VISIBILITY_HOURS,
 } from '@/lib/maintenance-announcements'
 import { DEFAULT_PAST_INCIDENTS_DAYS, MAX_PAST_INCIDENTS_DAYS } from '@/lib/status-page-events'
+import {
+  DEFAULT_UPTIME_CALCULATION_MODE,
+  UPTIME_BAR_DAY_OPTIONS,
+  UPTIME_CALCULATION_MODES,
+  isUptimeCalculationMode,
+  uptimeBarDaysOf,
+  type UptimeCalculationMode,
+} from '@/lib/uptime-history'
 import type { StatusPage } from '@/payload-types'
 
 import { statusPagesApi, type OrgId, type StatusPagePatch } from '../api'
@@ -46,6 +54,9 @@ type Values = Required<
     | 'showCertificateExpiry'
     | 'showPoweredBy'
     | 'showValues'
+    | 'uptimeBarDays'
+    | 'uptimeCalculation'
+    | 'showUptimePercentage'
     | 'autoRefreshInterval'
     | 'maintenanceVisibilityHours'
     | 'pastIncidentsDays'
@@ -70,6 +81,11 @@ const fromPage = (page: StatusPage): Values => ({
   showCertificateExpiry: Boolean(page.showCertificateExpiry),
   showPoweredBy: page.showPoweredBy !== false,
   showValues: page.showValues !== false,
+  uptimeBarDays: uptimeBarDaysOf(page.uptimeBarDays),
+  uptimeCalculation: isUptimeCalculationMode(page.uptimeCalculation)
+    ? page.uptimeCalculation
+    : DEFAULT_UPTIME_CALCULATION_MODE,
+  showUptimePercentage: page.showUptimePercentage !== false,
   autoRefreshInterval: page.autoRefreshInterval ?? 300,
   maintenanceVisibilityHours:
     page.maintenanceVisibilityHours ?? DEFAULT_MAINTENANCE_VISIBILITY_HOURS,
@@ -456,6 +472,66 @@ export function SettingsForm({
       </div>
 
       <div className="flex flex-col gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>{ts('uptime.title')}</CardTitle>
+            <CardDescription>{ts('uptime.description')}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="uptimeBarDays">{ts('uptime.days')}</Label>
+              <Select
+                value={String(values.uptimeBarDays)}
+                disabled={!canEdit}
+                onValueChange={(v) => set('uptimeBarDays', uptimeBarDaysOf(Number(v)))}
+              >
+                <SelectTrigger id="uptimeBarDays">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {UPTIME_BAR_DAY_OPTIONS.map((days) => (
+                    <SelectItem key={days} value={String(days)}>
+                      {ts('uptime.daysOption', { days })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="uptimeCalculation">{ts('uptime.calculation')}</Label>
+              <Select
+                value={values.uptimeCalculation ?? DEFAULT_UPTIME_CALCULATION_MODE}
+                disabled={!canEdit}
+                onValueChange={(v) => set('uptimeCalculation', v as UptimeCalculationMode)}
+              >
+                <SelectTrigger id="uptimeCalculation" aria-describedby="uptimeCalculationHint">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {UPTIME_CALCULATION_MODES.map((mode) => (
+                    <SelectItem key={mode} value={mode}>
+                      {ts(`uptime.modes.${mode}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p id="uptimeCalculationHint" className="text-xs text-muted-foreground">
+                {ts(
+                  `uptime.modeHints.${values.uptimeCalculation ?? DEFAULT_UPTIME_CALCULATION_MODE}`,
+                )}
+              </p>
+            </div>
+            <Toggle
+              id="showUptimePercentage"
+              label={ts('uptime.showPercentage')}
+              description={ts('uptime.showPercentageHint')}
+              checked={Boolean(values.showUptimePercentage)}
+              disabled={!canEdit}
+              onChange={(v) => set('showUptimePercentage', v)}
+            />
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>{ts('visibility.title')}</CardTitle>

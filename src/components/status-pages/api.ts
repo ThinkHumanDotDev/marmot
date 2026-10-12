@@ -11,6 +11,7 @@ import type {
   SubscriberChannel,
   SubscriberSource,
 } from '@/lib/status-page-subscribers'
+import type { MonthlyUptimeRow, UptimeCalculationMode } from '@/lib/uptime-history'
 import type { Incident, Monitor, StatusPage, StatusPageViewer } from '@/payload-types'
 
 export type OrgId = string | number
@@ -50,6 +51,9 @@ export type StatusPagePatch = Partial<
     | 'showCertificateExpiry'
     | 'showPoweredBy'
     | 'showValues'
+    | 'uptimeBarDays'
+    | 'uptimeCalculation'
+    | 'showUptimePercentage'
     | 'autoRefreshInterval'
     | 'maintenanceVisibilityHours'
     | 'pastIncidentsDays'
@@ -150,6 +154,13 @@ export const statusPagesApi = {
       ),
   },
 
+  /** Monthly uptime per component (#112); needs `status-page:history`. */
+  uptimeHistory: (orgId: OrgId, id: OrgId, months: number) =>
+    api.get<UptimeHistoryResponse>(`${base(orgId)}/${id}/uptime-history?months=${months}`),
+  /** URL of the history as CSV (a download link). */
+  uptimeHistoryCsvUrl: (orgId: OrgId, id: OrgId, months: number) =>
+    `${base(orgId)}/${id}/uptime-history?months=${months}&format=csv`,
+
   viewers: {
     list: (orgId: OrgId, id: OrgId) =>
       api.get<{ docs: StatusPageViewer[] }>(`${base(orgId)}/${id}/viewers`),
@@ -160,6 +171,14 @@ export const statusPagesApi = {
     remove: (orgId: OrgId, id: OrgId, viewerId: OrgId) =>
       api.delete<{ ok: true }>(`${base(orgId)}/${id}/viewers/${viewerId}`),
   },
+}
+
+export interface UptimeHistoryResponse {
+  mode: UptimeCalculationMode
+  /** `YYYY-MM`, newest first. */
+  months: string[]
+  components: { id: string; name: string }[]
+  rows: MonthlyUptimeRow[]
 }
 
 export interface SubscriberRow {

@@ -46,6 +46,32 @@
       "window24h": "24 h",
       "window30d": "30 d"
     },
+    "uptime": {
+      "groupLabel": "Disponibilidad diaria de los últimos {days} días",
+      "daysAgo": "hace {days} días",
+      "today": "Hoy",
+      "percent": "{value} de disponibilidad",
+      "noData": "Sin datos",
+      "barLabel": "{date}: {state}",
+      "barLabelWithUptime": "{date}: {state}, {uptime} de disponibilidad",
+      "state": {
+        "nodata": "Sin datos",
+        "up": "Operativo",
+        "maintenance": "Mantenimiento",
+        "degraded": "Rendimiento degradado",
+        "partial": "Interrupción parcial",
+        "down": "Interrupción"
+      },
+      "downFor": "Caído durante {duration}",
+      "noDowntime": "No se registraron caídas",
+      "duration": {
+        "hours": "{hours} h {minutes} min",
+        "minutes": "{minutes} min",
+        "lessThanMinute": "menos de un minuto"
+      },
+      "incidents": "Incidentes",
+      "maintenance": "Mantenimiento"
+    },
     "public": {
       "contact": "Contacto",
       "homepage": "Página de inicio de {title}",

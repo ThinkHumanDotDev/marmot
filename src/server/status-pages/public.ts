@@ -43,6 +43,23 @@ import { populateMonitorTags, toRealtimeTags } from '@/server/realtime/serialize
 import { pastIncidentDays, type PublicIncidentDay } from '@/server/status-pages/event-summary'
 import { publicIdOf } from '@/server/status-pages/public-ids'
 import { getUptime } from '@/server/stats/uptime-calculator'
+import {
+  componentMode,
+  loadPageUptime,
+  pageUptimeMode,
+  type ComponentUptime,
+  type UptimeComponent,
+} from '@/server/status-pages/uptime-history'
+import {
+  dayLabel,
+  downtimeOf,
+  uptimeBarDaysOf,
+  uptimeOf,
+  windowDays,
+  type DayState,
+  type UptimeBarDays,
+  type UptimeCalculationMode,
+} from '@/lib/uptime-history'
 
 import type { Incident, Media, Monitor, StatusPage } from '@/payload-types'
 
@@ -87,6 +104,16 @@ export interface PublicMonitor {
   uptime30d?: number
   /** Oldest first, at most `BEATS_PER_MONITOR`; always empty for static components. */
   beats: PublicBeat[]
+  /**
+   * Daily bars, oldest first: `config.uptimeBarDays` of them on the page payload (#112); empty
+   * where the bars are not built (badges, feeds).
+   */
+  days: PublicUptimeDay[]
+  /**
+   * Uptime (0..1) over the bars' window under the page's calculation mode, null without data; only
+   * with `showValues` and `showUptimePercentage`.
+   */
+  uptime?: number | null
   tags?: { name: string; color?: string | null; value?: string | null }[]
   /**
    * A third-party status page monitor (#125): shown like a static component, its state written out
@@ -96,6 +123,22 @@ export interface PublicMonitor {
 }
 
 export type PublicComponent = PublicMonitor
+
+/** One daily bar of a component (#112): a UTC day. */
+export interface PublicUptimeDay {
+  /** `YYYY-MM-DD` (UTC). */
+  date: string
+  /** Worst state of the day; `nodata` when nothing was recorded. */
+  state: DayState
+  /** 0..1 under the page's calculation mode; only with `showValues` and `showUptimePercentage`. */
+  uptime?: number | null
+  /** Seconds down (incident downtime in `manual` mode); only with `showValues`. */
+  downtimeSeconds?: number | null
+  /** Incidents of the day affecting the component (or the whole page); `id` is the permalink id. */
+  incidents: { id: string; title: string; impact: ComponentImpact | null }[]
+  /** Maintenance windows of the day covering the component; `id` is the permalink id. */
+  maintenance: { id: string; title: string }[]
+}
 
 export interface PublicGroup {
   name: string
@@ -185,6 +228,12 @@ export interface PublicConfig {
   showPoweredBy: boolean
   /** Page-wide switch for uptime percentages and response times. */
   showValues: boolean
+  /** Daily bars per component (30, 45 or 90). */
+  uptimeBarDays: UptimeBarDays
+  /** How uptime percentages are calculated (`checks`, `duration` or `manual`). */
+  uptimeCalculation: UptimeCalculationMode
+  /** Show the uptime percentage next to the bars. */
+  showUptimePercentage: boolean
   autoRefreshInterval: number
   customCSS: string | null
   footerText: string | null
@@ -266,6 +315,9 @@ export function toPublicConfig(page: StatusPage): PublicConfig {
     showCertificateExpiry: Boolean(page.showCertificateExpiry),
     showPoweredBy: page.showPoweredBy !== false,
     showValues: page.showValues !== false,
+    uptimeBarDays: uptimeBarDaysOf(page.uptimeBarDays),
+    uptimeCalculation: pageUptimeMode(page),
+    showUptimePercentage: page.showUptimePercentage !== false,
     autoRefreshInterval: Math.max(0, page.autoRefreshInterval ?? 0),
     customCSS: page.customCSS ?? null,
     footerText: page.footerText ?? null,
@@ -414,12 +466,39 @@ type MonitorRow = NonNullable<GroupRow['monitors']>[number]
 const rowShowsValues = (page: StatusPage, row: MonitorRow): boolean =>
   page.showValues !== false && row.showValues !== false
 
+/** Public bars and window uptime of a component (`uptime` only when the page shows it). */
+function publicUptime(
+  page: StatusPage,
+  row: MonitorRow,
+  type: ComponentType,
+  uptime: ComponentUptime | undefined,
+): Pick<PublicMonitor, 'days' | 'uptime'> {
+  if (!uptime) return { days: [] }
+  const showValues = rowShowsValues(page, row)
+  const showPercentage = showValues && page.showUptimePercentage !== false
+  const mode = componentMode(pageUptimeMode(page), type)
+  const days = uptime.days.map((day): PublicUptimeDay => ({
+    date: dayLabel(day.day),
+    state: day.state,
+    ...(showPercentage ? { uptime: day.hasData ? uptimeOf(mode, day.figures) : null } : {}),
+    ...(showValues ? { downtimeSeconds: day.hasData ? downtimeOf(mode, day.figures) : null } : {}),
+    incidents: day.incidents.map((incident) => ({
+      id: incident.publicId,
+      title: incident.title,
+      impact: incident.impact,
+    })),
+    maintenance: day.maintenance.map((m) => ({ id: m.publicId, title: m.title })),
+  }))
+  return showPercentage ? { days, uptime: uptimeOf(mode, uptime.totals) } : { days }
+}
+
 async function toPublicMonitor(
   payload: Payload,
   page: StatusPage,
   row: MonitorRow,
   monitor: Monitor,
   impact: ComponentImpact | null,
+  uptime: ComponentUptime | undefined,
 ): Promise<PublicMonitor> {
   const showValues = rowShowsValues(page, row)
   const showTags = Boolean(page.showTags)
@@ -448,6 +527,7 @@ async function toPublicMonitor(
     showValues,
     ...(showValues ? { uptime24h, uptime30d } : {}),
     beats,
+    ...publicUptime(page, row, 'monitor', uptime),
     ...(showTags ? { tags } : {}),
     ...(monitor.type === 'status-page' ? { vendor: true } : {}),
   }
@@ -459,6 +539,7 @@ function toPublicStaticComponent(
   fallbackId: string,
   impact: ComponentImpact | null,
   underMaintenance: boolean,
+  uptime: ComponentUptime | undefined,
 ): PublicMonitor {
   const id = row.id ? String(row.id) : fallbackId
   const url = row.customUrl?.trim() || undefined
@@ -474,6 +555,7 @@ function toPublicStaticComponent(
     impact,
     showValues: rowShowsValues(page, row),
     beats: [],
+    ...publicUptime(page, row, 'static', uptime),
   }
 }
 
@@ -499,6 +581,10 @@ export interface PublicGroupsContext {
   incidents?: Incident[]
   /** Maintenance of the page (fetched when omitted). */
   maintenance?: PublicMaintenance[]
+  /** Build the daily uptime bars (#112); off for callers that only need statuses. */
+  uptimeBars?: boolean
+  /** Reference time of the bars (default now). */
+  now?: Date
 }
 
 /**
@@ -552,6 +638,12 @@ export async function buildPublicGroups(
   const byId = new Map(monitors.map((m) => [String(m.id), m]))
   const impacts = impactsByComponent(incidents)
   const underMaintenance = maintenance.some((m) => m.status === 'under-maintenance')
+  const uptime = context.uptimeBars
+    ? await loadPageUptime(payload, page, uptimeComponentsOf(page, byId), {
+        now: context.now,
+        days: windowDays(uptimeBarDaysOf(page.uptimeBarDays), context.now ?? new Date()),
+      })
+    : new Map<string, ComponentUptime>()
 
   const groups: PublicGroup[] = []
   for (const [groupIndex, group] of (page.groups ?? []).entries()) {
@@ -567,12 +659,24 @@ export async function buildPublicGroups(
                 `static-${groupIndex}-${rowIndex}`,
                 impact,
                 underMaintenance,
+                row.id ? uptime.get(String(row.id)) : undefined,
               ),
             ),
           ]
         }
         const monitor = byId.get(String(relId(row.monitor)))
-        return monitor ? [toPublicMonitor(payload, page, row, monitor, impact)] : []
+        return monitor
+          ? [
+              toPublicMonitor(
+                payload,
+                page,
+                row,
+                monitor,
+                impact,
+                row.id ? uptime.get(String(row.id)) : undefined,
+              ),
+            ]
+          : []
       }),
     )
     groups.push({
@@ -583,6 +687,30 @@ export async function buildPublicGroups(
     })
   }
   return groups
+}
+
+/** The page's components with a row id whose daily bars are built (visible ones only). */
+function uptimeComponentsOf(
+  page: StatusPage,
+  monitors: ReadonlyMap<string, Monitor>,
+): UptimeComponent[] {
+  return (page.groups ?? []).flatMap((group) =>
+    (group.monitors ?? []).flatMap((row): UptimeComponent[] => {
+      if (!row.id) return []
+      if (row.type === 'static') return [{ id: String(row.id), type: 'static', monitorId: null }]
+      const monitor = monitors.get(String(relId(row.monitor)))
+      return monitor
+        ? [
+            {
+              id: String(row.id),
+              type: 'monitor',
+              monitorId: monitor.id,
+              lastStatus: monitor.status?.lastStatus ?? null,
+            },
+          ]
+        : []
+    }),
+  )
 }
 
 /** Incidents of a page: active ones, pinned first, newest first. */
@@ -627,7 +755,12 @@ export async function buildPublicStatusPageData(
     }),
     findRecentIncidents(payload, page.id, pastDays, now),
   ])
-  const groups = await buildPublicGroups(payload, page, { incidents, maintenance })
+  const groups = await buildPublicGroups(payload, page, {
+    incidents,
+    maintenance,
+    uptimeBars: true,
+    now,
+  })
 
   const names = componentNamesOf(groups)
   const publicIncidents = incidents.map((incident) => toPublicIncident(incident, names))

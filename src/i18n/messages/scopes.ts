@@ -16,6 +16,7 @@ export const PUBLIC_MESSAGE_SCOPES = [
   'statusPages.sections',
   'statusPages.maintenance',
   'statusPages.monitors',
+  'statusPages.uptime',
   'statusPages.public',
   'statusPages.beats',
   'statusPages.footer',

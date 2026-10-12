@@ -221,6 +221,14 @@ export const adminTranslations = {
       statusPageViewers: {
         statusDescription: 'revoked: the visitor is signed out and cannot request new links.',
       },
+      statusPageUptimeHistory: {
+        label: 'Status page uptime history',
+        description:
+          'Daily uptime of status page components, preserved after retention prunes the statistics.',
+        timestampDescription: 'Unix seconds of the start of the day (UTC).',
+        downSecondsDescription: 'Seconds the monitor spent DOWN that day.',
+        knownSecondsDescription: 'Seconds of the day whose monitor status is known.',
+      },
       maintenance: {
         descriptionDescription: 'Shown on status pages.',
         activeDescription: 'Paused maintenances never run.',
@@ -310,6 +318,22 @@ export const adminTranslations = {
         quorum_half: 'At least half of the locations',
         quorum_all: 'All locations',
         weightDescription: 'Sort order on status pages.',
+        aggregationDescription:
+          'Group monitors: how the children decide the group status. Worst: any child down makes the group down.',
+        aggregation_worst: 'Worst child',
+        aggregation_quorum: 'Quorum',
+        aggregation_weighted: 'Weighted score',
+        aggregationQuorumDescription:
+          'Quorum groups: children (or percent of the children) that must be up; below it the group is down.',
+        aggregationQuorumUnit_count: 'Children',
+        aggregationQuorumUnit_percent: 'Percent',
+        aggregationLatencyDescription: "The group's response time from its children's last ping.",
+        aggregationLatency_none: 'None',
+        aggregationLatency_avg: 'Average',
+        aggregationLatency_max: 'Maximum',
+        aggregationLatency_min: 'Minimum',
+        groupWeightDescription:
+          'Weight of this monitor in a weighted parent group (relative to its siblings; 0 = ignored).',
         proxyDescription: 'Send the request through this proxy (inactive proxies are skipped).',
         otlpExportDescription:
           "Export this monitor's check results as OpenTelemetry metrics (when a collector applies).",
@@ -520,6 +544,10 @@ export const adminTranslations = {
         contactUrlDescription:
           'Contact link in the page header: an http(s) URL or mailto: address.',
         showValuesDescription: 'Show uptime percentages and response times to visitors.',
+        uptimeBarDaysDescription: 'Number of daily uptime bars per component (30, 45 or 90).',
+        uptimeCalculationDescription:
+          'checks: successful / all checks. duration: time not DOWN / total time. manual: from incident impacts only.',
+        showUptimePercentageDescription: 'Show the uptime percentage next to the daily bars.',
         defaultOpenDescription: 'Expanded when the page loads; visitors can still collapse it.',
         componentsDescription:
           'Components of the group: monitors, or static entries set by incidents.',
