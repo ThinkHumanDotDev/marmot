@@ -34,7 +34,7 @@ export interface CertExpiryNotice {
 }
 
 export interface NotifyCertExpiryOptions {
-  monitor: { id: string | number; name: string; url?: string | null }
+  monitor: CertExpiryMonitor & { id: string | number }
   tlsInfo: TlsInfo | null | undefined
   /** `tlsExpiryNotifyDays` from the instance settings. */
   notifyDays: readonly number[]
@@ -63,15 +63,29 @@ export function systemRootFingerprints(): ReadonlySet<string> {
   return systemRoots
 }
 
+/** What the warning names the monitor by: its URL, or `host:port` for TLS, IMAP and POP3 monitors. */
+export interface CertExpiryMonitor {
+  name: string
+  url?: string | null
+  hostname?: string | null
+  port?: number | null
+}
+
+const monitorAddress = (monitor: CertExpiryMonitor): string => {
+  if (monitor.url) return monitor.url
+  if (!monitor.hostname) return ''
+  return monitor.port ? `${monitor.hostname}:${monitor.port}` : monitor.hostname
+}
+
 export function certExpiryMessage(
-  monitor: { name: string; url?: string | null },
+  monitor: CertExpiryMonitor,
   cert: Pick<CertificateInfo, 'certType' | 'subjectCN' | 'daysRemaining'>,
   locale: Locale = defaultLocale,
 ): string {
   const t = serverTranslator(locale)
   return t('notifications.messages.certificateExpiry', {
     name: monitor.name,
-    address: monitor.url ?? '',
+    address: monitorAddress(monitor),
     // `server`, `intermediate CA`, … are identifiers shared with Kuma; kept as is in every language.
     certType: cert.certType,
     commonName: cert.subjectCN ?? t('notifications.messages.noCommonName'),
