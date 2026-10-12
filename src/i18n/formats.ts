@@ -36,6 +36,8 @@ export const formats = {
     integer: { maximumFractionDigits: 0 },
     /** `12.3`: request timing phases, where sub-millisecond values are common. */
     milliseconds: { maximumFractionDigits: 1 },
+    /** `0.0532`: metric values of Prometheus query monitors (#140). */
+    metricValue: { maximumFractionDigits: 4 },
   },
 } satisfies Formats
 
