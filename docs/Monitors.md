@@ -173,10 +173,15 @@ monitor hidden by a filter (or deleted) drops out of it. On the selection:
   organization's `ON_DEMAND_CHECKS_PER_MINUTE`, and paused, push and probe-checked monitors are skipped);
 - **Tags → Add tag / Remove tag** (an added tag keeps the value a monitor already has for it);
 - **Channels → Attach channel / Detach channel**;
+- **Maintenance → _window_**: adds the monitors to an existing [maintenance window](Maintenance.md)
+  (needs `maintenance:update` too);
+- **Status page → _page_ → _group_**: adds the monitors to a group of a status page as monitor components
+  (needs `status-page:update` too);
 - **Delete** (after a confirmation; `monitor:delete`).
 
-Pause, resume, check now and delete of the selection are also in the command palette while the list is
-open. Viewers see the search and the filters but no checkboxes.
+Pause, resume, check now, delete, **Add to maintenance window…** and **Add to status page group…** of the
+selection are also in the command palette while the list is open (the last two open the menu to pick the
+window or the group). Viewers see the search and the filters but no checkboxes.
 
 Each bulk action is one request to [`POST /api/orgs/:orgId/monitors/bulk`](#bulk-actions); the toast
 reports how many monitors changed, how many already were in the requested state and the first failure.
@@ -585,13 +590,17 @@ keys give machine access to badges and metrics ([Integrations](Integrations.md))
 { "ids": [12, 13, 14], "action": "addTags", "payload": { "tags": [{ "tag": 3, "value": "eu" }] } }
 ```
 
-| `action`                                     | `payload`                            | Permission       |
-| -------------------------------------------- | ------------------------------------ | ---------------- |
-| `pause`, `resume`                            | —                                    | `monitor:update` |
-| `check` (queue a recorded check, no waiting) | —                                    | `monitor:update` |
-| `addTags`, `removeTags`                      | `{ tags: [{ tag, value? }] }` (≤ 50) | `monitor:update` |
-| `addNotifications`, `removeNotifications`    | `{ notifications: [id] }` (≤ 50)     | `monitor:update` |
-| `delete`                                     | —                                    | `monitor:delete` |
+| `action`                                     | `payload`                            | Permission                                |
+| -------------------------------------------- | ------------------------------------ | ----------------------------------------- |
+| `pause`, `resume`                            | —                                    | `monitor:update`                          |
+| `check` (queue a recorded check, no waiting) | —                                    | `monitor:update`                          |
+| `addTags`, `removeTags`                      | `{ tags: [{ tag, value? }] }` (≤ 50) | `monitor:update`                          |
+| `addNotifications`, `removeNotifications`    | `{ notifications: [id] }` (≤ 50)     | `monitor:update`                          |
+| `delete`                                     | —                                    | `monitor:delete`                          |
+| `addToMaintenance`                           | `{ maintenance: id }`                | `monitor:update` and `maintenance:update` |
+| `addToStatusPageGroup`                       | `{ statusPage: id, group: groupId }` | `monitor:update` and `status-page:update` |
+
+`groupId` is the `id` of the row in the status page's `groups`.
 
 The answer is `200` with one result per id (duplicates collapse) and a summary:
 
@@ -620,6 +629,14 @@ organization (`400`) and the API key budget (an API key spends one write per mon
 `API_KEY_WRITE_RATE_LIMIT` monitors). Each changed monitor gets its own [audit log](Security.md#audit-log)
 row (`monitor.paused`, `monitor.resumed`, `monitor.updated`, `monitor.deleted`) with
 `metadata.bulk = { action, count }`; monitors that were already in the requested state get none.
+
+`addToMaintenance` and `addToStatusPageGroup` leave the monitors untouched and write the maintenance window
+or the status page instead: they read it as the caller (`404` when it is not one of the organization's,
+or the group does not exist), then update it **once** through the same path as its own form, so its
+access rules, organization checks, scheduling and audit row (`maintenance.updated` /
+`status_page.updated`, with `metadata.bulk`) apply. Monitors already in the window or the group (as a monitor
+component) are `unchanged`; the others are appended. If that single write is refused, every monitor it would
+have added fails with the reason.
 
 ### On-demand checks
 

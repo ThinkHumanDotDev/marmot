@@ -31,7 +31,7 @@ import {
   type MonitorSummary,
 } from '@/stores/monitor-store'
 
-import { MonitorBulkBar, type BulkPermissions } from './monitor-bulk-bar'
+import { MonitorBulkBar, type BulkPermissions, type BulkStatusPageOption } from './monitor-bulk-bar'
 import { MonitorListToolbar, type FilterOption, type FilterOptions } from './monitor-list-toolbar'
 import {
   MonitorRow,
@@ -54,6 +54,10 @@ export interface MonitorListResources {
   /** `null` when the user may not read notification channels. */
   notifications: { id: string; name: string }[] | null
   locations: { id: string; name: string }[]
+  /** Maintenance windows the selection can be added to; `null` without the permissions (#262). */
+  maintenance?: { id: string; name: string }[] | null
+  /** Status pages (with their groups) the selection can be added to; `null` without the permissions. */
+  statusPages?: BulkStatusPageOption[] | null
 }
 
 interface MonitorListProps {
@@ -128,6 +132,20 @@ export function MonitorList({
   const searchRef = React.useRef<HTMLInputElement>(null)
   const listRef = React.useRef<HTMLUListElement>(null)
   const selectable = bulk.update || bulk.delete
+  // The "add to" actions need monitor:update (the server also checks the target's permission,
+  // which `resources` reflects) and something to add to.
+  const canAddToMaintenance = bulk.update && (resources.maintenance?.length ?? 0) > 0
+  const canAddToStatusPage =
+    bulk.update && (resources.statusPages ?? []).some((page) => page.groups.length > 0)
+  const permissions = React.useMemo<BulkPermissions>(
+    () => ({
+      update: bulk.update,
+      delete: bulk.delete,
+      maintenance: canAddToMaintenance,
+      statusPage: canAddToStatusPage,
+    }),
+    [bulk.update, bulk.delete, canAddToMaintenance, canAddToStatusPage],
+  )
 
   const [filters, setFilters] = React.useState<MonitorFilters>(initialFilters)
   // A navigation to the same page with another query string (a shared link) replaces the filters.
@@ -204,12 +222,12 @@ export function MonitorList({
   React.useEffect(() => () => cancelFocus.current(), [])
   React.useEffect(() => {
     const store = useMonitorSelection.getState()
-    store.setListMounted(true, { update: bulk.update, delete: bulk.delete })
+    store.setListMounted(true, permissions)
     return () => {
       store.setListMounted(false)
       store.clear()
     }
-  }, [bulk.update, bulk.delete])
+  }, [permissions])
 
   const onSelect = React.useCallback<RowSelectHandler>((id, { range }) => {
     const store = useMonitorSelection.getState()
@@ -324,9 +342,11 @@ export function MonitorList({
             orgId={String(initial.organizationId)}
             selectedIds={selectedIds}
             shownIds={shownIds}
-            permissions={bulk}
+            permissions={permissions}
             tags={tagOptions}
             notifications={channelOptions}
+            maintenance={resources.maintenance ?? null}
+            statusPages={resources.statusPages ?? null}
           />
         )}
         <div className="hidden items-center border-b md:flex" aria-hidden>

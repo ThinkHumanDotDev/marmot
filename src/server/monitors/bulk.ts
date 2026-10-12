@@ -9,6 +9,10 @@
  * `monitor.updated`, `monitor.deleted`, …), tagged with `metadata.bulk` so the log shows they
  * belong to one request.
  *
+ * `addToMaintenance` and `addToStatusPageGroup` (#262) leave the monitors alone and write the
+ * maintenance window or the status page instead: once, as the user with `overrideAccess: false`,
+ * after the route checked `maintenance:update` / `status-page:update` besides `monitor:update`.
+ *
  * Writes are independent (one Local API operation each, processed in order): a failure is reported
  * for its id and the others still apply, the same on Postgres and on MongoDB without transactions.
  * Everything that can be checked up front (permission, size, payload, referenced tags and channels,
@@ -18,7 +22,7 @@ import type { Payload } from 'payload'
 import { type BulkErrorCode, type BulkResponse, type BulkResult } from '@/lib/monitor-bulk'
 import { supportsCheckNow } from '@/lib/on-demand-check'
 import { isRemoteMonitor } from '@/lib/probe-locations'
-import type { Monitor } from '@/payload-types'
+import type { Maintenance, Monitor, StatusPage } from '@/payload-types'
 import { AUDIT_METADATA_CONTEXT } from '@/server/audit/context'
 import { apiKeyOf } from '@/server/auth/request-auth'
 import { enqueueOnDemandCheck, onDemandWaitMs } from '@/server/engine/on-demand'
@@ -155,6 +159,143 @@ function updateFor(monitor: Monitor, body: MonitorBulkBody): Partial<Monitor> | 
   }
 }
 
+/**
+ * Where `addToMaintenance` and `addToStatusPageGroup` put the monitors (#262): the window or page
+ * read as the user, the ids it already lists and how to write it with more.
+ */
+interface BulkTarget {
+  collection: 'maintenance' | 'status-pages'
+  id: Id
+  /** Monitor ids already in the window or the group. */
+  present: Set<string>
+  /** The `data` of the single update that adds `added`. */
+  data: (added: Id[]) => Partial<Maintenance> | Partial<StatusPage>
+}
+
+/**
+ * Loads the target of a bulk action that writes a maintenance window or a status page, as the user
+ * and inside the organization. Answers 404 when the user cannot see it (or the group does not exist).
+ */
+async function loadTarget(ctx: BulkContext, body: MonitorBulkBody): Promise<BulkTarget | Response> {
+  const { payload, user, orgId } = ctx
+  if (body.action === 'addToMaintenance') {
+    const [id] = normalizeIds(payload, [body.payload!.maintenance!])
+    const { docs } = await payload.find({
+      collection: 'maintenance',
+      where: { and: [{ id: { equals: id } }, { organization: { equals: orgId } }] },
+      select: { monitors: true },
+      depth: 0,
+      limit: 1,
+      pagination: false,
+      user,
+      overrideAccess: false,
+    })
+    const found = docs[0] as Pick<Maintenance, 'id' | 'monitors'> | undefined
+    if (!found) return jsonError(404, errorText(ctx.request, 'maintenanceNotFound'))
+    const current = (found.monitors ?? [])
+      .map((value) => relationId(value))
+      .filter((value): value is Id => value !== null)
+    return {
+      collection: 'maintenance',
+      id: found.id,
+      present: new Set(current.map(String)),
+      data: (added) => ({ monitors: [...current, ...added] as never }),
+    }
+  }
+
+  const [id] = normalizeIds(payload, [body.payload!.statusPage!])
+  const { docs } = await payload.find({
+    collection: 'status-pages',
+    where: { and: [{ id: { equals: id } }, { organization: { equals: orgId } }] },
+    select: { groups: true },
+    depth: 0,
+    limit: 1,
+    pagination: false,
+    user,
+    overrideAccess: false,
+  })
+  const page = docs[0] as Pick<StatusPage, 'id' | 'groups'> | undefined
+  if (!page) return jsonError(404, errorText(ctx.request, 'statusPageNotFound'))
+  const groups = page.groups ?? []
+  const group = groups.find((row) => String(row.id) === body.payload!.group)
+  if (!group) return jsonError(404, errorText(ctx.request, 'statusPageGroupNotFound'))
+  const present = new Set(
+    (group.monitors ?? [])
+      .filter((row) => row.type !== 'static')
+      .map((row) => key(row.monitor))
+      .filter(Boolean),
+  )
+  return {
+    collection: 'status-pages',
+    id: page.id,
+    present,
+    // The whole `groups` array is written back (an array field is replaced), with the monitors
+    // appended to the chosen group as monitor components.
+    data: (added) => ({
+      groups: groups.map((row) =>
+        row === group
+          ? {
+              ...row,
+              monitors: [
+                ...(row.monitors ?? []),
+                ...added.map((monitor) => ({
+                  type: 'monitor' as const,
+                  monitor: monitor as never,
+                })),
+              ],
+            }
+          : row,
+      ),
+    }),
+  }
+}
+
+/**
+ * `addToMaintenance` / `addToStatusPageGroup`: one write of the window or the page, through the
+ * Local API as the user, so its access rules, reference checks and hooks (scheduling, realtime,
+ * audit) apply once. Monitors already there are `unchanged`; when the write fails, every monitor it
+ * would have added fails with the same message.
+ */
+async function addToTarget(
+  ctx: BulkContext,
+  target: BulkTarget,
+  ids: readonly Id[],
+  byId: ReadonlyMap<string, Monitor>,
+  context: Record<string, unknown>,
+): Promise<BulkResult[]> {
+  const results: BulkResult[] = []
+  const added: Id[] = []
+  for (const monitorId of ids) {
+    const monitor = byId.get(String(monitorId))
+    if (!monitor) results.push(failure(ctx, String(monitorId), 'notFound', 'monitorNotFound'))
+    else if (target.present.has(String(monitor.id))) {
+      results.push({ id: String(monitor.id), ok: true, unchanged: true })
+    } else {
+      added.push(monitor.id)
+      results.push({ id: String(monitor.id), ok: true })
+    }
+  }
+  if (added.length === 0) return results
+  try {
+    await ctx.payload.update({
+      collection: target.collection,
+      id: target.id,
+      data: target.data(added) as never,
+      user: ctx.user,
+      overrideAccess: false,
+      depth: 0,
+      context,
+    })
+    return results
+  } catch (error) {
+    const text = errorMessageFor(ctx.request, error, 'unexpected')
+    const failed = new Set(added.map(String))
+    return results.map((result) =>
+      failed.has(result.id) ? failure(ctx, result.id, 'failed', { text }) : result,
+    )
+  }
+}
+
 /** Queue a recorded "Check now" (`manual-check`) without waiting for the result. */
 async function queueCheck(
   ctx: BulkContext,
@@ -248,6 +389,12 @@ export async function runMonitorBulkAction(
     }
   }
 
+  const target =
+    body.action === 'addToMaintenance' || body.action === 'addToStatusPageGroup'
+      ? await loadTarget(ctx, body)
+      : null
+  if (target instanceof Response) return target
+
   const limited = await spendApiKeyBudget(ctx, ids.length)
   if (limited) return limited
 
@@ -268,10 +415,10 @@ export async function runMonitorBulkAction(
     [AUDIT_METADATA_CONTEXT]: { bulk: { action: body.action, count: ids.length } },
   }
   const budget = { exhausted: false }
-  const results: BulkResult[] = []
+  const results: BulkResult[] = target ? await addToTarget(ctx, target, ids, byId, context) : []
   const updated: Monitor[] = []
 
-  for (const monitorId of ids) {
+  for (const monitorId of target ? [] : ids) {
     const monitor = byId.get(String(monitorId))
     if (!monitor) {
       results.push(failure(ctx, String(monitorId), 'notFound', 'monitorNotFound'))

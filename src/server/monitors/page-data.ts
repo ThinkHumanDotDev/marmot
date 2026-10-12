@@ -6,6 +6,7 @@ import { getPayload, type Payload } from 'payload'
 import config from '@payload-config'
 import { canWithOverrides, type Permission } from '@/access/permissions'
 import { requireUser, type CurrentUser } from '@/lib/auth'
+import type { BulkStatusPageOption } from '@/lib/monitor-bulk'
 import type { Monitor, Organization } from '@/payload-types'
 import { parseId, relationId, type RequestUser } from '@/server/monitors/http'
 import {
@@ -246,16 +247,19 @@ export async function getMonitorFormResources(ctx: OrgPageContext): Promise<Moni
 /**
  * Tags, notification channels and probe locations for the monitor list's filters and bulk actions
  * (#124), read as the user. `notifications` is `null` when the user may not read channels (viewers),
- * so the list hides that filter instead of offering an empty one.
+ * so the list hides that filter instead of offering an empty one. `maintenance` and `statusPages`
+ * are the targets of the bulk "add to" actions (#262): `null` unless the user may update monitors
+ * and the windows or pages (organization overrides applied).
  */
 export async function getMonitorListResources(ctx: OrgPageContext): Promise<{
   tags: { id: string; name: string; color: string | null }[]
   notifications: { id: string; name: string }[] | null
   locations: { id: string; name: string }[]
+  maintenance: { id: string; name: string }[] | null
+  statusPages: BulkStatusPageOption[] | null
 }> {
   const common = {
     where: { organization: { equals: ctx.org.id } },
-    sort: 'name',
     depth: 0,
     limit: 500,
     user: ctx.requestUser,
@@ -263,14 +267,55 @@ export async function getMonitorListResources(ctx: OrgPageContext): Promise<{
     disableErrors: true,
   } as const
   const canReadChannels = ctx.allowed('notification:read')
-  const [tags, locations, notifications] = await Promise.all([
-    ctx.payload.find({ collection: 'tags', select: { name: true, color: true }, ...common }),
-    ctx.payload.find({ collection: 'locations', select: { name: true }, ...common }),
+  const canUpdateMonitors = ctx.allowed('monitor:update')
+  const canAddToMaintenance = canUpdateMonitors && ctx.allowed('maintenance:update')
+  const canAddToStatusPages = canUpdateMonitors && ctx.allowed('status-page:update')
+  const [tags, locations, notifications, maintenance, statusPages] = await Promise.all([
+    ctx.payload.find({
+      collection: 'tags',
+      select: { name: true, color: true },
+      sort: 'name',
+      ...common,
+    }),
+    ctx.payload.find({ collection: 'locations', select: { name: true }, sort: 'name', ...common }),
     canReadChannels
-      ? ctx.payload.find({ collection: 'notifications', select: { name: true }, ...common })
+      ? ctx.payload.find({
+          collection: 'notifications',
+          select: { name: true },
+          sort: 'name',
+          ...common,
+        })
+      : Promise.resolve(null),
+    canAddToMaintenance
+      ? ctx.payload.find({
+          collection: 'maintenance',
+          select: { title: true },
+          sort: 'title',
+          ...common,
+        })
+      : Promise.resolve(null),
+    canAddToStatusPages
+      ? ctx.payload.find({
+          collection: 'status-pages',
+          select: { title: true, groups: true },
+          sort: 'title',
+          ...common,
+        })
       : Promise.resolve(null),
   ])
   return {
+    maintenance: maintenance
+      ? maintenance.docs.map((doc) => ({ id: String(doc.id), name: doc.title }))
+      : null,
+    statusPages: statusPages
+      ? statusPages.docs.map((doc) => ({
+          id: String(doc.id),
+          title: doc.title,
+          groups: (doc.groups ?? [])
+            .filter((group) => group.id)
+            .map((group) => ({ id: String(group.id), name: group.name })),
+        }))
+      : null,
     tags: tags.docs.map((doc) => ({
       id: String(doc.id),
       name: doc.name,
