@@ -33,7 +33,11 @@ describe('event paths', () => {
     expect(isEventsReturnPath('/events')).toBe(true)
     expect(isEventsReturnPath('/events/incident/k3x9a0b1')).toBe(true)
     expect(isEventsReturnPath('/events/maintenance/k3x9a0b1')).toBe(true)
+    expect(isEventsReturnPath('/monitors')).toBe(true)
+    expect(isEventsReturnPath('/monitors/6702f1c4e1b2a3d4e5f60718')).toBe(true)
     for (const value of [
+      '/monitors/../admin',
+      '/monitors/6702f1c4e1b2a3d4e5f60718/x',
       '//evil.example',
       'https://evil.example/events',
       '/events/incident/K3X9A0B1',

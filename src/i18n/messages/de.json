@@ -305,7 +305,11 @@
       "incidentTitle": "{title} · {siteName}",
       "incidentDescription": "Vorfall bei {siteName}: {status}, {dateRange}.",
       "maintenanceTitle": "{title} · {siteName}",
-      "maintenanceDescription": "Wartung bei {siteName}: {status}, {dateRange}."
+      "maintenanceDescription": "Wartung bei {siteName}: {status}, {dateRange}.",
+      "chartsTitle": "Antwortzeiten · {siteName}",
+      "chartsDescription": "Antwortzeiten und Prüfungen von {siteName}.",
+      "componentChartTitle": "Antwortzeit von {name} · {siteName}",
+      "componentChartDescription": "Latenz-Perzentile und Prüfungen von {name} auf {siteName}."
     },
     "subscribe": {
       "button": "Abonnieren",
@@ -370,6 +374,52 @@
       "unsubscribeDescription": "Keine Meldungen von {title} mehr an {target} erhalten?",
       "unsubscribe": "Abmelden",
       "unsubscribed": "Sie sind abgemeldet und erhalten keine weiteren Meldungen von {title}."
+    },
+    "charts": {
+      "heading": "Antwortzeiten",
+      "description": "Latenz-Perzentile und Prüfungen aus den Monitoring-Daten.",
+      "viewChart": "Antwortzeit",
+      "viewChartLabel": "Antwortzeit von {name}",
+      "allCharts": "Alle Antwortzeiten",
+      "period": "Zeitraum",
+      "periods": {
+        "1d": "24 Stunden",
+        "7d": "7 Tage",
+        "30d": "30 Tage"
+      },
+      "latencyTitle": "Antwortzeit",
+      "latencyDescription": "Antwortzeit p50, p95 und p99 pro Intervall, in Millisekunden.",
+      "latencyEmpty": "Keine Antwortzeitdaten in diesem Zeitraum.",
+      "latencySummary": "Antwortzeit von {name}: p50 {p50}, p95 {p95}, p99 {p99} im Zeitraum.",
+      "checksTitle": "Prüfungen",
+      "checksDescription": "Erfolgreiche, beeinträchtigte und fehlgeschlagene Prüfungen pro Intervall.",
+      "checksEmpty": "Keine Prüfungen in diesem Zeitraum.",
+      "checksSummary": "{total} Prüfungen von {name}: {failed} fehlgeschlagen, {degraded} beeinträchtigt.",
+      "countsDegraded": "{up} erfolgreich · {degraded} beeinträchtigt · {down} fehlgeschlagen",
+      "percentile": "p{value}",
+      "ms": "{ms} ms",
+      "noValue": "–",
+      "metrics": {
+        "uptime": "Verfügbarkeit",
+        "p50": "p50",
+        "p95": "p95",
+        "p99": "p99",
+        "checks": "Prüfungen"
+      },
+      "series": {
+        "up": "Erfolgreich",
+        "degraded": "Beeinträchtigt",
+        "down": "Fehlgeschlagen"
+      },
+      "locations": {
+        "title": "Nach Standort",
+        "description": "Jeder Prüfstandort im Zeitraum.",
+        "location": "Standort",
+        "primary": "Primär",
+        "uptime": "Verfügbarkeit",
+        "average": "Durchschnitt"
+      },
+      "empty": "Auf dieser Seite sind keine Antwortzeit-Diagramme veröffentlicht."
     }
   },
   "email": {

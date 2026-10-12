@@ -498,6 +498,10 @@ import drops keys that are already in use.
   a channel to every current monitor. Clone keeps the channels and export/import carries them. The API
   takes `notifications: [id, …]` on `POST`/`PATCH /api/orgs/:orgId/monitors`; a create without the key
   gets the default channels. See [Notifications](Notifications.md).
+- **Certificate transparency alerts**: monitors with a hostname can announce every new certificate issued
+  for it (optionally its subdomains), flagging issuers outside an allow-list (`ctAlerts`,
+  `ctIncludeSubdomains`, `ctExpectedIssuers` in the _Advanced_ card). See
+  [Notifications](Notifications.md#certificate-transparency-alerts).
 - **Maintenance**: a monitor inside an active maintenance window reports MAINTENANCE instead of DOWN and does
   not notify; see [Maintenance](Maintenance.md).
 - **Tags**: coloured labels with optional values (`env: prod`), managed under Settings → Tags, shown in the

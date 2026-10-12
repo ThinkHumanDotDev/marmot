@@ -385,6 +385,13 @@ export const adminTranslations = {
         certInfoDescription:
           'Maintained by the worker: TLS certificate seen by the last HTTPS check.',
         domainExpiryDescription: 'Maintained by the worker: cached RDAP domain expiry lookup.',
+        ctAlertsDescription:
+          'Notify when a new certificate for the hostname appears in the certificate transparency logs.',
+        ctIncludeSubdomainsDescription: 'Also watch every subdomain (*.hostname).',
+        ctExpectedIssuersDescription:
+          'Expected issuers, e.g. "Let\'s Encrypt". Certificates from any other issuer are flagged as unexpected (empty = no check).',
+        ctStateDescription:
+          'Maintained by the worker: certificate transparency baseline, last lookup and backoff.',
         invertKeywordDescription: 'UP when the keyword is absent.',
         jsonPathDescription: 'JSONata expression, e.g. `$.status` or `data[0].ok`.',
         assertionsDescription:
@@ -452,9 +459,11 @@ export const adminTranslations = {
       },
       notificationSentHistory: {
         description:
-          'Expiry warnings already sent per monitor and threshold. Maintained by the worker.',
+          'Expiry warnings and certificate transparency alerts already sent per monitor. Maintained by the worker.',
         organizationDescription: 'Denormalised from the monitor for org-scoped queries.',
         daysDescription: 'Threshold (days before expiry) the warning was sent for.',
+        fingerprintDescription:
+          'Certificate transparency alerts: the announced certificate (empty for expiry warnings).',
       },
       notifications: {
         typeDescription: 'Provider slug, e.g. discord, slack, smtp (see docs/Notifications.md).',
@@ -594,6 +603,8 @@ export const adminTranslations = {
         componentDescriptionDescription: 'Shown to visitors as a tooltip.',
         componentShowValuesDescription:
           'Show uptime and response time for this component (the page setting must be on too).',
+        componentShowChartDescription:
+          'Publish latency percentile and check charts for this monitor (off by default; needs values shown).',
         logoDescription: 'Shown in light mode, and in dark mode when there is no dark logo.',
         themeDescription:
           'auto lets visitors pick (system, light or dark); light and dark force that mode.',

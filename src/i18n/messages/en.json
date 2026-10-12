@@ -1243,6 +1243,13 @@
         "certExpiryDescription": "Warn through this monitor's notification channels before the TLS certificate expires (7, 14 and 21 days by default).",
         "domainExpiry": "Domain name expiry notification",
         "domainExpiryDescription": "Look the registration up via RDAP once a day and warn before the domain expires.",
+        "ctAlerts": "Certificate transparency alerts",
+        "ctAlertsDescription": "Watch the public certificate transparency logs and notify through this monitor's channels whenever a new certificate is issued for the hostname.",
+        "ctIncludeSubdomains": "Include subdomains",
+        "ctIncludeSubdomainsDescription": "Also notify about certificates for any subdomain (*.hostname).",
+        "ctExpectedIssuers": "Expected issuers",
+        "ctExpectedIssuersPlaceholder": "Let's Encrypt",
+        "ctExpectedIssuersDescription": "One per line, e.g. Let's Encrypt. Certificates from any other issuer are flagged as unexpected. Leave empty to accept every issuer.",
         "active": "Active",
         "activeDescription": "Paused monitors keep their history but are not checked."
       },
@@ -3135,6 +3142,10 @@
       "certificateExpiry": "[{name}][{address}] {certType} certificate {commonName} will expire in {count, plural, other {{days} days}}",
       "noCommonName": "(no CN)",
       "domainExpiry": "[{name}][{address}] Domain name {domain} will expire in {count, plural, other {{days} days}}",
+      "ctNewCertificate": "[{name}] New certificate for {domain} issued by {issuer}. Names: {names}. Valid from {notBefore} to {notAfter}. {link}",
+      "ctUnexpectedCertificate": "[{name}] ⚠️ Unexpected issuer: new certificate for {domain} issued by {issuer}, which is not an expected issuer. Names: {names}. Valid from {notBefore} to {notAfter}. {link}",
+      "ctUnknownIssuer": "an unknown issuer",
+      "ctUnknownDate": "unknown",
       "providers": {
         "alert": "Marmot Alert",
         "alertFor": "Marmot Alert: {text}",
@@ -4517,7 +4528,8 @@
       "componentFallback": "component",
       "removeComponent": "Remove component from group",
       "componentCount": "{count, plural, one {# component} other {# components}}",
-      "staticNameRequired": "Static components need a name."
+      "staticNameRequired": "Static components need a name.",
+      "showChart": "Public latency chart"
     },
     "incidents": {
       "title": "Incidents",
@@ -4986,7 +4998,11 @@
       "incidentTitle": "{title} · {siteName}",
       "incidentDescription": "Incident on {siteName}: {status}, {dateRange}.",
       "maintenanceTitle": "{title} · {siteName}",
-      "maintenanceDescription": "Maintenance on {siteName}: {status}, {dateRange}."
+      "maintenanceDescription": "Maintenance on {siteName}: {status}, {dateRange}.",
+      "chartsTitle": "Response times · {siteName}",
+      "chartsDescription": "Response times and checks of {siteName}.",
+      "componentChartTitle": "{name} response time · {siteName}",
+      "componentChartDescription": "Latency percentiles and checks of {name} on {siteName}."
     },
     "subscribe": {
       "button": "Subscribe",
@@ -5234,6 +5250,52 @@
       "component": "Component",
       "noData": "No data",
       "downtime": "Down {duration}"
+    },
+    "charts": {
+      "heading": "Response times",
+      "description": "Latency percentiles and checks, from the monitoring data.",
+      "viewChart": "Response time",
+      "viewChartLabel": "Response time of {name}",
+      "allCharts": "All response times",
+      "period": "Period",
+      "periods": {
+        "1d": "24 hours",
+        "7d": "7 days",
+        "30d": "30 days"
+      },
+      "latencyTitle": "Response time",
+      "latencyDescription": "p50, p95 and p99 response time per interval, in milliseconds.",
+      "latencyEmpty": "No response-time data in this period.",
+      "latencySummary": "Response time of {name}: p50 {p50}, p95 {p95}, p99 {p99} over the period.",
+      "checksTitle": "Checks",
+      "checksDescription": "Successful, degraded and failed checks per interval.",
+      "checksEmpty": "No checks in this period.",
+      "checksSummary": "{total} checks of {name}: {failed} failed, {degraded} degraded.",
+      "countsDegraded": "{up} up · {degraded} degraded · {down} failed",
+      "percentile": "p{value}",
+      "ms": "{ms} ms",
+      "noValue": "–",
+      "metrics": {
+        "uptime": "Uptime",
+        "p50": "p50",
+        "p95": "p95",
+        "p99": "p99",
+        "checks": "Checks"
+      },
+      "series": {
+        "up": "Up",
+        "degraded": "Degraded",
+        "down": "Failed"
+      },
+      "locations": {
+        "title": "By location",
+        "description": "Each check location over the period.",
+        "location": "Location",
+        "primary": "Primary",
+        "uptime": "Uptime",
+        "average": "Average"
+      },
+      "empty": "No response-time charts are published on this page."
     }
   },
   "maintenance": {
@@ -6026,6 +6088,7 @@
     "maintenanceTransitionInvalid": "Cannot post “{to}” on a maintenance window that is {from}.",
     "statusPageNotFound": "Status page not found",
     "statusPageGroupNotFound": "Status page group not found",
+    "statusPageChartNotFound": "This component has no public charts.",
     "statusPageForeignMonitors": "Every monitor on a status page must belong to the same organization.",
     "hostnameDuplicate": "Each hostname may only be listed once.",
     "hostnameTaken": "One of these hostnames is already used by another status page.",
