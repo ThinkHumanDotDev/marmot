@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 
 import { BeatBar } from '@/components/status-pages/beat-bar'
+import { UptimeBars } from '@/components/status-pages/uptime-bars'
 import { PastIncidents } from '@/components/status-pages/public/event-list'
 import { MaintenanceCard } from '@/components/status-pages/public/maintenance-card'
 import { StatusDot } from '@/components/status-dot'
@@ -168,10 +169,8 @@ function DescriptionTooltip({ name, description }: { name: string; description: 
   )
 }
 
-function MonitorRow({ monitor }: { monitor: PublicMonitor }) {
-  const t = useTranslations('statusPages.monitors')
+function MonitorRow({ monitor, basePath }: { monitor: PublicMonitor; basePath: string }) {
   const tPublic = useTranslations('statusPages.public')
-  const format = useFormatter()
   const name = monitor.url ? (
     <a
       href={monitor.url}
@@ -193,8 +192,7 @@ function MonitorRow({ monitor }: { monitor: PublicMonitor }) {
     effectiveImpact(monitor.status, monitor.impact) ??
     (monitor.vendor && monitor.status === 'down' ? 'major_outage' : null)
   const impact = shown && shown !== 'operational' ? shown : null
-  const showValues =
-    monitor.showValues && monitor.uptime24h !== undefined && monitor.uptime30d !== undefined
+  const days = monitor.days ?? []
 
   return (
     <li
@@ -203,86 +201,64 @@ function MonitorRow({ monitor }: { monitor: PublicMonitor }) {
       data-component-type={monitor.type}
       data-component-status={monitor.status}
       data-monitor-impact={impact ?? undefined}
-      className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 py-3 sm:grid-cols-[auto_minmax(0,14rem)_minmax(0,1fr)_auto]"
+      className="flex flex-col gap-2 py-3"
     >
-      <StatusDot status={monitor.status} />
-      <div className="flex min-w-0 flex-col">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate">{name}</span>
-          {monitor.description && (
-            <DescriptionTooltip name={monitor.name} description={monitor.description} />
-          )}
-        </span>
-        {monitor.tags && monitor.tags.length > 0 && (
-          <span className="mt-1 flex flex-wrap gap-1">
-            {monitor.tags.map((tag, i) => (
-              <span
-                key={`${tag.name}-${i}`}
-                className="rounded-full border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-                style={tag.color ? { borderColor: tag.color, color: tag.color } : undefined}
-              >
-                {tag.name}
-                {tag.value ? `: ${tag.value}` : ''}
-              </span>
-            ))}
+      <div className="flex min-w-0 items-center gap-3">
+        <StatusDot status={monitor.status} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate">{name}</span>
+            {monitor.description && (
+              <DescriptionTooltip name={monitor.name} description={monitor.description} />
+            )}
           </span>
+          {monitor.tags && monitor.tags.length > 0 && (
+            <span className="mt-1 flex flex-wrap gap-1">
+              {monitor.tags.map((tag, i) => (
+                <span
+                  key={`${tag.name}-${i}`}
+                  className="rounded-full border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                  style={tag.color ? { borderColor: tag.color, color: tag.color } : undefined}
+                >
+                  {tag.name}
+                  {tag.value ? `: ${tag.value}` : ''}
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+        {isStatic ? (
+          <span
+            className={cn(
+              'shrink-0 text-right text-sm',
+              impact ? 'font-medium' : 'text-muted-foreground',
+            )}
+            data-impact={impact ?? undefined}
+          >
+            {impact
+              ? tPublic(`impact.${impact}`)
+              : monitor.status === 'maintenance'
+                ? tPublic('componentMaintenance')
+                : tPublic('impact.operational')}
+          </span>
+        ) : (
+          impact && (
+            <span
+              data-impact={impact}
+              className={cn(
+                'shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium',
+                impactStyles[impact],
+              )}
+            >
+              {tPublic(`impact.${impact}`)}
+            </span>
+          )
         )}
       </div>
-      {isStatic ? (
-        <span
-          className={cn(
-            'col-span-2 text-sm sm:col-span-2 sm:text-right',
-            impact ? 'font-medium' : 'text-muted-foreground',
-          )}
-          data-impact={impact ?? undefined}
-        >
-          {impact
-            ? tPublic(`impact.${impact}`)
-            : monitor.status === 'maintenance'
-              ? tPublic('componentMaintenance')
-              : tPublic('impact.operational')}
-        </span>
+      {days.length > 0 ? (
+        <UptimeBars days={days} uptime={monitor.uptime} basePath={basePath} />
       ) : (
-        <>
-          <div className="col-span-2 flex min-w-0 flex-col gap-1 sm:col-span-1">
-            {impact && (
-              <span
-                data-impact={impact}
-                className={cn(
-                  'w-fit rounded-full border px-2 py-0.5 text-[11px] font-medium',
-                  impactStyles[impact],
-                )}
-              >
-                {tPublic(`impact.${impact}`)}
-              </span>
-            )}
-            <BeatBar beats={monitor.beats} />
-          </div>
-          {showValues ? (
-            <dl className="col-span-2 flex gap-4 text-xs text-muted-foreground tabular-nums sm:col-span-1 sm:flex-col sm:gap-0 sm:text-right">
-              <div>
-                <dt className="sr-only">{t('uptime24h')}</dt>
-                <dd>
-                  <span className="font-medium text-foreground">
-                    {formatUptime(format, monitor.uptime24h ?? 0)}
-                  </span>{' '}
-                  {t('window24h')}
-                </dd>
-              </div>
-              <div>
-                <dt className="sr-only">{t('uptime30d')}</dt>
-                <dd>
-                  <span className="font-medium text-foreground">
-                    {formatUptime(format, monitor.uptime30d ?? 0)}
-                  </span>{' '}
-                  {t('window30d')}
-                </dd>
-              </div>
-            </dl>
-          ) : (
-            <span aria-hidden className="hidden sm:block" />
-          )}
-        </>
+        !isStatic && <BeatBar beats={monitor.beats} />
       )}
     </li>
   )
@@ -292,7 +268,7 @@ function MonitorRow({ monitor }: { monitor: PublicMonitor }) {
  * A group as a collapsible section (WAI-ARIA disclosure: a button inside the heading). The header
  * carries the worst status of the group's components, so a collapsed group still shows problems.
  */
-function GroupSection({ group }: { group: PublicGroup }) {
+function GroupSection({ group, basePath }: { group: PublicGroup; basePath: string }) {
   const t = useTranslations('statusPages')
   const [open, setOpen] = React.useState(group.defaultOpen)
   const contentId = React.useId()
@@ -330,7 +306,11 @@ function GroupSection({ group }: { group: PublicGroup }) {
         ) : (
           <ul className="mt-1 divide-y">
             {group.monitors.map((monitor) => (
-              <MonitorRow key={`${monitor.type}-${monitor.id}`} monitor={monitor} />
+              <MonitorRow
+                key={`${monitor.type}-${monitor.id}`}
+                monitor={monitor}
+                basePath={basePath}
+              />
             ))}
           </ul>
         )}
@@ -487,7 +467,7 @@ export function StatusPageView({ slug, initial, basePath }: StatusPageViewProps)
         ) : (
           <section aria-label={t('sections.services')} className="flex flex-col gap-4">
             {groups.map((group, i) => (
-              <GroupSection key={`${group.name}-${i}`} group={group} />
+              <GroupSection key={`${group.name}-${i}`} group={group} basePath={base} />
             ))}
           </section>
         )}

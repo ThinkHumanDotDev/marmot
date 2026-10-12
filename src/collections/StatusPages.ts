@@ -30,6 +30,12 @@ import {
 } from '@/lib/status-page-subscribers'
 import { normalizeHostname, validateHostname } from '@/lib/status-page-hostnames'
 import {
+  DEFAULT_UPTIME_BAR_DAYS,
+  DEFAULT_UPTIME_CALCULATION_MODE,
+  UPTIME_BAR_DAY_OPTIONS,
+  UPTIME_CALCULATION_MODES,
+} from '@/lib/uptime-history'
+import {
   enforceCustomDomainsOnChange,
   enforceEntitlementOnCreate,
 } from '@/server/billing/entitlements'
@@ -258,13 +264,21 @@ const removeSubscribers: CollectionBeforeDeleteHook = async ({ id, req }) => {
 }
 
 /**
- * Visitor records (`status-page-viewers`) reference the page with a NOT NULL foreign key on
- * Postgres, so they go before the page does.
+ * Visitor records (`status-page-viewers`) and the preserved uptime history
+ * (`status-page-uptime-history`) reference the page with a NOT NULL foreign key on Postgres, so
+ * they go before the page does.
  */
 const removeViewers: CollectionBeforeDeleteHook = async ({ id, req }) => {
   await req.payload.delete({
     collection: 'status-page-viewers',
     where: { page: { equals: id } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
+  await req.payload.delete({
+    collection: 'status-page-uptime-history',
+    where: { statusPage: { equals: id } },
     depth: 0,
     req,
     overrideAccess: true,
@@ -442,6 +456,35 @@ export const StatusPages: CollectionConfig = {
           type: 'checkbox',
           defaultValue: true,
           admin: { description: adminT('marmot:statusPages:showValuesDescription') },
+        },
+      ],
+    },
+    {
+      // Daily uptime bars (#112): how many days, how uptime is calculated, whether the % shows.
+      type: 'row',
+      fields: [
+        {
+          name: 'uptimeBarDays',
+          type: 'number',
+          defaultValue: DEFAULT_UPTIME_BAR_DAYS,
+          validate: (value: unknown) =>
+            value == null || (UPTIME_BAR_DAY_OPTIONS as readonly unknown[]).includes(value)
+              ? true
+              : `Choose ${UPTIME_BAR_DAY_OPTIONS.join(', ')} days.`,
+          admin: { description: adminT('marmot:statusPages:uptimeBarDaysDescription') },
+        },
+        {
+          name: 'uptimeCalculation',
+          type: 'select',
+          defaultValue: DEFAULT_UPTIME_CALCULATION_MODE,
+          options: UPTIME_CALCULATION_MODES.map((mode) => ({ label: mode, value: mode })),
+          admin: { description: adminT('marmot:statusPages:uptimeCalculationDescription') },
+        },
+        {
+          name: 'showUptimePercentage',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: { description: adminT('marmot:statusPages:showUptimePercentageDescription') },
         },
       ],
     },

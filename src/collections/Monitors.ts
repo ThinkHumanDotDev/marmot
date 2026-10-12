@@ -21,6 +21,21 @@ import { outboundGuardActive } from '@/server/security/outbound-guard'
 
 import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
 import {
+  DEFAULT_GROUP_AGGREGATION,
+  DEFAULT_GROUP_WEIGHT,
+  GROUP_AGGREGATION_MODES,
+  GROUP_LATENCY_MODES,
+  GROUP_QUORUM_UNITS,
+  MAX_GROUP_QUORUM,
+  MAX_GROUP_WEIGHT,
+} from '@/lib/group-aggregation'
+import {
+  PROMETHEUS_AGGREGATES,
+  PROMETHEUS_OPERATORS,
+  PROMETHEUS_QUERY_MAX_LENGTH,
+  type PrometheusFallbackStatus,
+} from '@/lib/prometheus'
+import {
   ASSERTION_COMPARATORS,
   ASSERTION_KINDS,
   assertionProblems,
@@ -34,6 +49,7 @@ import {
   REMINDER_BACKOFFS,
 } from '@/lib/reminder-backoff'
 import { relId } from './shared'
+import { PUSH_EMAIL_KEYWORD_MAX_LENGTH, type PushEmailUnmatched } from '@/lib/push-email'
 import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib/push-schedule'
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 import {
@@ -69,6 +85,7 @@ export const MONITOR_TYPES = [
   { label: 'HTTP(s)', value: 'http' },
   { label: adminT('marmot:labels:httpKeyword'), value: 'keyword' },
   { label: adminT('marmot:labels:httpJsonQuery'), value: 'json-query' },
+  { label: adminT('marmot:labels:prometheusQuery'), value: 'prometheus' },
   { label: adminT('marmot:labels:tcpPort'), value: 'port' },
   { label: 'Ping', value: 'ping' },
   { label: 'DNS', value: 'dns' },
@@ -108,8 +125,14 @@ export const MONITOR_TYPES = [
 ] as const
 
 export const HTTP_TYPES = ['http', 'keyword', 'json-query']
+
+const PROMETHEUS_STATUS_OPTIONS = [
+  { label: adminT('marmot:labels:up'), value: 'up' },
+  { label: adminT('marmot:labels:down'), value: 'down' },
+  { label: adminT('marmot:labels:pending'), value: 'pending' },
+] satisfies { label: unknown; value: PrometheusFallbackStatus }[]
 /** Types whose target is `url` (HTTP types plus the WebSocket and browser checks). */
-export const URL_TYPES = [...HTTP_TYPES, 'websocket-upgrade', 'real-browser']
+export const URL_TYPES = [...HTTP_TYPES, 'websocket-upgrade', 'real-browser', 'prometheus']
 /** Types whose target is `hostname` (+ `port`). */
 export const HOST_TYPES = [
   'port',
@@ -676,6 +699,70 @@ export const Monitors: CollectionConfig = {
       admin: { position: 'sidebar', description: adminT('marmot:monitors:weightDescription') },
     },
 
+    // ---- Group aggregation (#144) ---------------------------------------------------------------
+    {
+      // How a group monitor turns its children's status into its own (`src/lib/group-aggregation.ts`).
+      // Existing groups get the default, `worst`, which is the behaviour before #144.
+      name: 'aggregation',
+      type: 'select',
+      defaultValue: DEFAULT_GROUP_AGGREGATION,
+      options: GROUP_AGGREGATION_MODES.map((value) => ({
+        label: adminT(`marmot:monitors:aggregation_${value}`),
+        value,
+      })),
+      admin: {
+        condition: (data) => data?.type === 'group',
+        description: adminT('marmot:monitors:aggregationDescription'),
+      },
+    },
+    {
+      name: 'aggregationQuorum',
+      type: 'number',
+      min: 1,
+      max: MAX_GROUP_QUORUM,
+      admin: {
+        condition: (data) => data?.type === 'group' && data?.aggregation === 'quorum',
+        description: adminT('marmot:monitors:aggregationQuorumDescription'),
+      },
+    },
+    {
+      name: 'aggregationQuorumUnit',
+      type: 'select',
+      defaultValue: 'count',
+      options: GROUP_QUORUM_UNITS.map((value) => ({
+        label: adminT(`marmot:monitors:aggregationQuorumUnit_${value}`),
+        value,
+      })),
+      admin: {
+        condition: (data) => data?.type === 'group' && data?.aggregation === 'quorum',
+      },
+    },
+    {
+      name: 'aggregationLatency',
+      type: 'select',
+      defaultValue: 'none',
+      options: GROUP_LATENCY_MODES.map((value) => ({
+        label: adminT(`marmot:monitors:aggregationLatency_${value}`),
+        value,
+      })),
+      admin: {
+        condition: (data) => data?.type === 'group',
+        description: adminT('marmot:monitors:aggregationLatencyDescription'),
+      },
+    },
+    {
+      // Weight of this monitor inside a `weighted` parent group; relative, normalised by the group.
+      name: 'groupWeight',
+      type: 'number',
+      min: 0,
+      max: MAX_GROUP_WEIGHT,
+      defaultValue: DEFAULT_GROUP_WEIGHT,
+      admin: {
+        condition: (data) => Boolean(data?.parent),
+        description: adminT('marmot:monitors:groupWeightDescription'),
+      },
+    },
+
     // ---- Target ---------------------------------------------------------------------------------
     {
       name: 'url',
@@ -692,7 +779,7 @@ export const Monitors: CollectionConfig = {
       relationTo: 'proxies',
       filterOptions: sameOrganization,
       admin: {
-        condition: typeIn(HTTP_TYPES),
+        condition: typeIn([...HTTP_TYPES, 'prometheus']),
         description: adminT('marmot:monitors:proxyDescription'),
       },
     },
@@ -1281,6 +1368,48 @@ export const Monitors: CollectionConfig = {
       ],
     },
 
+    {
+      // Ping-by-email (#135): rules for mail sent to `<pushToken>@INBOUND_EMAIL_DOMAIN`.
+      type: 'collapsible',
+      label: adminT('marmot:labels:pushEmail'),
+      admin: { condition: (data) => data?.type === 'push', initCollapsed: true },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'pushEmailFailureKeyword',
+              type: 'text',
+              maxLength: PUSH_EMAIL_KEYWORD_MAX_LENGTH,
+              admin: { description: adminT('marmot:monitors:pushEmailFailureKeywordDescription') },
+            },
+            {
+              name: 'pushEmailSuccessKeyword',
+              type: 'text',
+              maxLength: PUSH_EMAIL_KEYWORD_MAX_LENGTH,
+              admin: { description: adminT('marmot:monitors:pushEmailSuccessKeywordDescription') },
+            },
+            {
+              name: 'pushEmailStartKeyword',
+              type: 'text',
+              maxLength: PUSH_EMAIL_KEYWORD_MAX_LENGTH,
+              admin: { description: adminT('marmot:monitors:pushEmailStartKeywordDescription') },
+            },
+          ],
+        },
+        {
+          name: 'pushEmailUnmatched',
+          type: 'select',
+          defaultValue: 'ignore',
+          options: [
+            { label: adminT('marmot:labels:pushEmailUnmatchedIgnore'), value: 'ignore' },
+            { label: adminT('marmot:labels:pushEmailUnmatchedFail'), value: 'fail' },
+          ] satisfies { label: unknown; value: PushEmailUnmatched }[],
+          admin: { description: adminT('marmot:monitors:pushEmailUnmatchedDescription') },
+        },
+      ],
+    },
+
     // ---- Manual ---------------------------------------------------------------------------------
     {
       name: 'manualStatus',
@@ -1460,6 +1589,67 @@ export const Monitors: CollectionConfig = {
               ],
             },
             { name: 'snmpCommunity', type: 'text', defaultValue: 'public' },
+          ],
+        },
+      ],
+    },
+
+    // ---- Prometheus query (#140) ---------------------------------------------------------------
+    {
+      type: 'collapsible',
+      label: adminT('marmot:labels:prometheusQuery'),
+      admin: { condition: (data) => data?.type === 'prometheus', initCollapsed: false },
+      fields: [
+        {
+          name: 'prometheusQuery',
+          type: 'textarea',
+          maxLength: PROMETHEUS_QUERY_MAX_LENGTH,
+          admin: { description: adminT('marmot:monitors:prometheusQueryDescription') },
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'prometheusDownOperator',
+              type: 'select',
+              defaultValue: '>',
+              options: [...PROMETHEUS_OPERATORS],
+              admin: { description: adminT('marmot:monitors:prometheusDownDescription') },
+            },
+            { name: 'prometheusDownThreshold', type: 'number' },
+            {
+              name: 'prometheusDegradedOperator',
+              type: 'select',
+              options: [...PROMETHEUS_OPERATORS],
+              admin: { description: adminT('marmot:monitors:prometheusDegradedDescription') },
+            },
+            { name: 'prometheusDegradedThreshold', type: 'number' },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'prometheusAggregate',
+              type: 'select',
+              defaultValue: 'worst',
+              options: [...PROMETHEUS_AGGREGATES],
+              admin: { description: adminT('marmot:monitors:prometheusAggregateDescription') },
+            },
+            {
+              name: 'prometheusNoDataStatus',
+              type: 'select',
+              defaultValue: 'down',
+              options: PROMETHEUS_STATUS_OPTIONS,
+              admin: { description: adminT('marmot:monitors:prometheusNoDataStatusDescription') },
+            },
+            {
+              name: 'prometheusErrorStatus',
+              type: 'select',
+              defaultValue: 'down',
+              options: PROMETHEUS_STATUS_OPTIONS,
+              admin: { description: adminT('marmot:monitors:prometheusErrorStatusDescription') },
+            },
           ],
         },
       ],

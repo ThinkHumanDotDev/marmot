@@ -52,6 +52,7 @@ import { toRealtimeTags } from '@/server/realtime/serialize'
 import { listAuditEvents } from '@/server/audit/query'
 import { heartbeatLocationWhere, loadMonitorLocationView } from '@/server/monitors/location-view'
 import { getMonitorChannels, getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
+import { monitorPushEmailAddress } from '@/server/push/inbound-config'
 import { getRangeStats } from '@/server/stats/range-stats'
 import { getUptime } from '@/server/stats/uptime-calculator'
 
@@ -183,9 +184,12 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
   const assertionResults = parseAssertionResults(latest.docs[0]?.assertions)
   const showAssertions =
     assertionResults.length > 1 || assertionResults.some((result) => !result.legacy)
-  // Request timing phases (#94): HTTP types, TCP port and the TLS handshake measure them.
+  // Request timing phases (#94): HTTP types, TCP port, the TLS handshake and Prometheus measure them.
   const measuresTiming =
-    isHttpMonitorType(monitor.type) || monitor.type === 'port' || monitor.type === 'tls'
+    isHttpMonitorType(monitor.type) ||
+    monitor.type === 'port' ||
+    monitor.type === 'tls' ||
+    monitor.type === 'prometheus'
   const latestTiming = parseRequestTiming(latest.docs[0]?.timing)
   const parent =
     monitor.parent && typeof monitor.parent === 'object' ? (monitor.parent as Monitor) : null
@@ -346,7 +350,15 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
           showYear={isPeriodWithinRetention('1y', retentionDays)}
         />
 
-        {pushUrl && <PushPanel monitor={monitor} pushUrl={pushUrl} timeZone={timeZone} now={now} />}
+        {pushUrl && (
+          <PushPanel
+            monitor={monitor}
+            pushUrl={pushUrl}
+            pushEmail={monitorPushEmailAddress(monitor)}
+            timeZone={timeZone}
+            now={now}
+          />
+        )}
 
         {showAssertions && <AssertionResultsCard results={assertionResults} />}
 
@@ -363,6 +375,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
           }}
           lastCheckAt={monitor.status?.lastCheckAt}
           showTiming={measuresTiming}
+          showValue={monitor.type === 'prometheus'}
           retentionDays={retentionDays}
         />
 

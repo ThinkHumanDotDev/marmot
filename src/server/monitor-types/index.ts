@@ -2,6 +2,7 @@
 import './http'
 import './keyword'
 import './json-query'
+import './prometheus'
 import './port'
 import './ping'
 import './dns'

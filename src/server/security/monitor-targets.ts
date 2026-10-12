@@ -86,6 +86,7 @@ export async function monitorTargetProblem(
     case 'http':
     case 'keyword':
     case 'json-query':
+    case 'prometheus':
     case 'websocket-upgrade':
     case 'real-browser':
     case 'status-page': {

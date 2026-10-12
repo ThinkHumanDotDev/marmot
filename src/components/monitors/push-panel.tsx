@@ -41,11 +41,14 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 export function PushPanel({
   monitor,
   pushUrl,
+  pushEmail = null,
   timeZone,
   now,
 }: {
   monitor: Monitor
   pushUrl: string
+  /** `<token>@INBOUND_EMAIL_DOMAIN` while ping-by-email (#135) is on. */
+  pushEmail?: string | null
   /** The organization's zone (schedules with `SAME_AS_SERVER`, timestamps). */
   timeZone: string
   now: Date
@@ -118,9 +121,39 @@ export function PushPanel({
         <p className="text-xs text-muted-foreground">
           {t.rich('signals', { code: (chunks) => <code>{chunks}</code> })}
         </p>
+        {pushEmail && (
+          <div className="flex flex-col gap-1" data-testid="push-email">
+            <p className="text-xs text-muted-foreground">{t('email')}</p>
+            <code className="w-fit rounded bg-muted px-2 py-1 font-mono text-sm break-all">
+              {pushEmail}
+            </code>
+            <p className="text-xs text-muted-foreground">
+              {emailRules(monitor, (key, values) => t(key, values))}
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
+}
+
+type EmailRuleKey = 'emailRulesDefault' | 'emailRules'
+
+/** One sentence describing how mail to the monitor address is classified. */
+function emailRules(
+  monitor: Monitor,
+  t: (key: EmailRuleKey, values?: Record<string, string>) => string,
+): string {
+  const failure = monitor.pushEmailFailureKeyword?.trim()
+  const success = monitor.pushEmailSuccessKeyword?.trim()
+  const start = monitor.pushEmailStartKeyword?.trim()
+  if (!failure && !success && !start) return t('emailRulesDefault')
+  return t('emailRules', {
+    failure: failure || '–',
+    success: success || '–',
+    start: start || '–',
+    unmatched: success ? (monitor.pushEmailUnmatched ?? 'ignore') : 'success',
+  })
 }
 
 /** The newest push signals of a monitor with their captured output. */

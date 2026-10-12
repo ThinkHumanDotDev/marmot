@@ -2466,6 +2466,32 @@
           "primaryKey": false,
           "notNull": false
         },
+        "push_email_failure_keyword": {
+          "name": "push_email_failure_keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_email_success_keyword": {
+          "name": "push_email_success_keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_email_start_keyword": {
+          "name": "push_email_start_keyword",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_email_unmatched": {
+          "name": "push_email_unmatched",
+          "type": "enum_monitors_push_email_unmatched",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'ignore'"
+        },
         "manual_status": {
           "name": "manual_status",
           "type": "enum_monitors_manual_status",
@@ -2651,58 +2677,6 @@
           "notNull": false,
           "default": "'opportunistic'"
         },
-        "mail_username": {
-          "name": "mail_username",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mail_password": {
-          "name": "mail_password",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "udp_payload": {
-          "name": "udp_payload",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "udp_payload_encoding": {
-          "name": "udp_payload_encoding",
-          "type": "enum_monitors_udp_payload_encoding",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'text'"
-        },
-        "udp_response_match": {
-          "name": "udp_response_match",
-          "type": "enum_monitors_udp_response_match",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'none'"
-        },
-        "udp_response_pattern": {
-          "name": "udp_response_pattern",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "tls_servername": {
-          "name": "tls_servername",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "tls_alpn": {
-          "name": "tls_alpn",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
         "ssh_username": {
           "name": "ssh_username",
           "type": "varchar",
@@ -2737,25 +2711,6 @@
         },
         "sftp_path": {
           "name": "sftp_path",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ssh_command": {
-          "name": "ssh_command",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ssh_expected_exit_code": {
-          "name": "ssh_expected_exit_code",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0
-        },
-        "ssh_expected_output": {
-          "name": "ssh_expected_output",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
@@ -14622,11 +14577,6 @@
         "snmp",
         "ntp",
         "sftp",
-        "ssh",
-        "udp",
-        "tls",
-        "imap",
-        "pop3",
         "radius",
         "tailscale-ping",
         "real-browser",
@@ -14787,6 +14737,14 @@
         "cron"
       ]
     },
+    "public.enum_monitors_push_email_unmatched": {
+      "name": "enum_monitors_push_email_unmatched",
+      "schema": "public",
+      "values": [
+        "ignore",
+        "fail"
+      ]
+    },
     "public.enum_monitors_manual_status": {
       "name": "enum_monitors_manual_status",
       "schema": "public",
@@ -14820,24 +14778,6 @@
         "starttls",
         "secure",
         "nostarttls"
-      ]
-    },
-    "public.enum_monitors_udp_payload_encoding": {
-      "name": "enum_monitors_udp_payload_encoding",
-      "schema": "public",
-      "values": [
-        "text",
-        "hex"
-      ]
-    },
-    "public.enum_monitors_udp_response_match": {
-      "name": "enum_monitors_udp_response_match",
-      "schema": "public",
-      "values": [
-        "none",
-        "any",
-        "keyword",
-        "regex"
       ]
     },
     "public.enum_monitors_ssh_auth_method": {
@@ -15483,6 +15423,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "d2c91ab4-6c9a-4f1b-a3fe-e6269f166a24",
+  "id": "8a8294ff-986c-45f2-83c7-3265f2592243",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

@@ -175,7 +175,8 @@ and latency chart read.
 Each row stores `up`, `down`, `ping` (average of UP beats), `pingMin`, `pingMax` and an `extras` JSON with
 `maintenance` (beats during maintenance, also counted as `up`), `degraded` (slow successful checks, also
 counted as `up`, their ping included), `pingCount` (weight of `ping`) and `timing` (per-phase running
-averages of the request timing, `{ dns: { avg, count }, … }`, from successful checks), plus
+averages of the request timing, `{ dns: { avg, count }, … }`, from successful checks) and `value`
+(`{ avg, min, max, count }` of the metric values of Prometheus query monitors, #140, any status), plus
 `latencyHistogram`, a JSON number array counting the pings of UP and DEGRADED beats per log-spaced bucket
 (four per doubling, from `[0, 1)` ms to an overflow bucket at 2^17 ms;
 `src/server/stats/latency-histogram.ts`). `pending`
@@ -195,6 +196,13 @@ the buckets into a fixed number of chart intervals (5 min for 1 d, 1 h for 7 d, 
 1 day for 90 d) with up / degraded / down counts, the average and the percentiles, so the detail page's
 chart never reads raw heartbeats. Rows written before the histogram existed have none and contribute no
 percentiles.
+
+Status pages keep their own long-term copy (#112): the daily `status-page-uptime-snapshot` job
+(`src/server/status-pages/uptime-history.ts`, 00:20 UTC on `marmot:maintenance`) writes one
+`status-page-uptime-history` row per page, component and complete UTC day from `stat-daily` and the
+important heartbeats (check counts, seconds DOWN, seconds with a known state). Retention never prunes
+it; the daily bars and the monthly history read it for the days whose statistics are gone
+([Status pages](Status-Pages.md#daily-uptime-bars)).
 
 Retention (`src/server/jobs/retention.ts`) runs hourly as the `retention` BullMQ job scheduler on the
 `marmot:maintenance` queue: minutely rows older than 24 h, hourly and per-location hourly older than 30 d, daily and important
@@ -541,6 +549,7 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `notification:create`, `notification:update`, `notification:delete` |        |        |   ✓   |   ✓   |
 | `status-page:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
 | `status-page:create`, `status-page:update`, `status-page:delete`    |        |   ✓    |   ✓   |   ✓   |
+| `status-page:history` (monthly uptime history and CSV export)       |        |        |   ✓   |   ✓   |
 | `subscriber:read`, `subscriber:manage`                              |        |   ✓    |   ✓   |   ✓   |
 | `subscriber:send`                                                   |        |        |   ✓   |   ✓   |
 | `maintenance:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
