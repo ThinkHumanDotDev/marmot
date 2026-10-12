@@ -7,7 +7,7 @@
  */
 import type { CollectionSlug, Payload } from 'payload'
 
-import type { Monitor } from '@/payload-types'
+import type { Monitor, StatusPage } from '@/payload-types'
 import { authenticateApiKey } from '@/server/api-keys'
 import {
   accessRequestFrom,
@@ -15,6 +15,7 @@ import {
   checkStatusPageAccess,
   isProtectedPage,
 } from '@/server/status-pages/access'
+import { scopePageForVisitor } from '@/server/status-pages/audiences'
 
 /** Slug of the status pages collection (issue #11); checked at runtime so this works before it lands. */
 export const STATUS_PAGES_SLUG = 'status-pages'
@@ -31,11 +32,13 @@ export const hasStatusPages = (payload: Payload): boolean =>
 /** Protected pages checked per badge request; a monitor is rarely on more than a couple. */
 const MAX_PROTECTED_PAGES = 5
 
-/** Published status pages that list the monitor in one of their groups (access fields only). */
+type BadgePage = AccessPage & Pick<StatusPage, 'groups'>
+
+/** Published status pages that list the monitor in one of their groups (access fields and groups). */
 async function publishedPagesWithMonitor(
   payload: Payload,
   monitorId: string | number,
-): Promise<AccessPage[]> {
+): Promise<BadgePage[]> {
   if (!hasStatusPages(payload)) return []
   const { docs } = await payload.find({
     collection: STATUS_PAGES_SLUG as CollectionSlug,
@@ -46,10 +49,23 @@ async function publishedPagesWithMonitor(
     limit: 50,
     pagination: false,
     overrideAccess: true,
-    select: { access: true, passwordHash: true, allowedEmailDomains: true, allowedIpRanges: true },
+    select: {
+      access: true,
+      passwordHash: true,
+      allowedEmailDomains: true,
+      allowedIpRanges: true,
+      groups: true,
+    },
   })
-  return docs as unknown as AccessPage[]
+  return docs as unknown as BadgePage[]
 }
+
+const pageShowsMonitor = (page: Pick<StatusPage, 'groups'>, monitorId: string | number) =>
+  (page.groups ?? []).some((group) =>
+    (group.monitors ?? []).some(
+      (row) => row.type !== 'static' && String(relationId(row.monitor)) === String(monitorId),
+    ),
+  )
 
 /** `true` when a published, public (unprotected) status page lists the monitor. */
 export async function isMonitorOnPublishedStatusPage(
@@ -82,7 +98,11 @@ export async function badgeAccess(
   const accessRequest = accessRequestFrom(request)
   for (const page of pages.slice(0, MAX_PROTECTED_PAGES)) {
     const decision = await checkStatusPageAccess(payload, page, accessRequest)
-    if (decision.allowed) return 'status-page'
+    // Audience pages (#151): only monitors of the visitor's audiences.
+    if (decision.allowed && pageShowsMonitor(scopePageForVisitor(page, decision), monitor.id)) {
+      return 'status-page'
+    }
+    if (decision.allowed) continue
     // Once rate limited, stop: the remaining pages would only add more guesses.
     if (decision.reason === 'rate-limited') return null
   }

@@ -8,13 +8,21 @@ import type { Payload } from 'payload'
 import { relId } from '@/collections/shared'
 import { DEFAULT_METRIC_VIEW, type MetricView, type PublicMetric } from '@/lib/metrics'
 import type { Metric, StatusPage } from '@/payload-types'
+import { isMetricVisibleOn } from '@/server/status-pages/audiences'
 
 import { readMetricSeries } from './series'
 
-/** The page's published metrics in display order (`metricId`: just that one). */
+/** The page fields the published metrics depend on. */
+export type MetricsPage = Pick<StatusPage, 'id' | 'organization' | 'access' | 'groups'>
+
+/**
+ * The page's published metrics in display order (`metricId`: just that one). Pass the page scoped
+ * to the visitor (`scopePageForVisitor`): on `audience` pages (#151) a monitor-backed metric is
+ * only listed when its monitor is one of the visitor's components.
+ */
 export async function findPublishedMetrics(
   payload: Payload,
-  page: Pick<StatusPage, 'id' | 'organization'>,
+  page: MetricsPage,
   metricId?: string,
 ): Promise<Metric[]> {
   const organization = relId(page.organization)
@@ -34,7 +42,8 @@ export async function findPublishedMetrics(
     pagination: false,
     overrideAccess: true,
   })
-  return metricId === undefined ? docs : docs.filter((doc) => String(doc.id) === metricId)
+  const visible = docs.filter((doc) => isMetricVisibleOn(page, doc))
+  return metricId === undefined ? visible : visible.filter((doc) => String(doc.id) === metricId)
 }
 
 export async function toPublicMetric(
@@ -72,7 +81,7 @@ export async function toPublicMetric(
  */
 export async function buildPublicMetrics(
   payload: Payload,
-  page: Pick<StatusPage, 'id' | 'organization'>,
+  page: MetricsPage,
   options: { metricId?: string; view?: MetricView; now?: Date } = {},
 ): Promise<PublicMetric[]> {
   const metrics = await findPublishedMetrics(payload, page, options.metricId)

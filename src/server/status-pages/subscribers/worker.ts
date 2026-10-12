@@ -7,8 +7,9 @@ import { UnrecoverableError, type Job } from 'bullmq'
 import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
-import { isDiscordWebhookUrl, subscriberWantsComponents } from '@/lib/status-page-subscribers'
+import { isDiscordWebhookUrl } from '@/lib/status-page-subscribers'
 import type {
+  StatusPage,
   StatusPageSubscriber,
   SubscriberDelivery,
   SubscriberNotification,
@@ -19,6 +20,8 @@ import {
   completeBatchIfDone,
   confirmedSubscribers,
   loadPageContext,
+  namesForSubscriber,
+  recipientFilter,
   subscriberLocale,
   type PageContext,
 } from './batches'
@@ -122,12 +125,25 @@ async function processFanout(
   })
   const existing = new Map(existingRows.map((row) => [String(relId(row.subscriber)), row]))
 
+  const page = (await findOrNull(() =>
+    payload.findByID({
+      collection: 'status-pages',
+      id: pageId,
+      depth: 0,
+      overrideAccess: true,
+      select: { access: true },
+    }),
+  )) as Pick<StatusPage, 'id' | 'access'> | null
+  if (!page) return { outcome: 'skipped', reason: 'page-not-found' }
+  // Component choice, and on audience pages (#151) the subscriber's audiences.
+  const reaches = await recipientFilter(payload, page, notification.components)
+
   let total = existing.size
   const channels = new Set<string>()
   for await (const batch of confirmedSubscribers(payload, pageId)) {
     const jobs = []
     for (const subscriber of batch) {
-      if (!subscriberWantsComponents(subscriber.components, notification.components)) continue
+      if (!reaches(subscriber)) continue
       channels.add(subscriber.channel)
       const row = existing.get(String(subscriber.id))
       if (row) {
@@ -180,7 +196,7 @@ async function send(
   subscriber: StatusPageSubscriber,
   delivery: SubscriberDelivery,
 ): Promise<void> {
-  const announcement = toAnnouncement(notification, ctx.page, ctx.names)
+  const announcement = toAnnouncement(notification, ctx.page, namesForSubscriber(ctx, subscriber))
   const locale = subscriberLocale(subscriber, ctx)
   const render = { locale, i18n: ctx.i18n }
   const links = subscriptionLinks(ctx.page, subscriber)

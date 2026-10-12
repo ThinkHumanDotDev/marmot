@@ -39,6 +39,7 @@ export const PUBLIC_MESSAGE_SCOPES = [
   'statusPages.access.invalid',
   'statusPages.access.rateLimited',
   'statusPages.access.emailDomain',
+  'statusPages.access.audience',
   'statusPages.access.ipAllowlist',
   'email.subscriptions',
   'email.statusPageMagicLink',

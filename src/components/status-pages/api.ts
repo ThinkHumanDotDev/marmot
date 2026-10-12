@@ -12,7 +12,14 @@ import type {
   SubscriberSource,
 } from '@/lib/status-page-subscribers'
 import type { MonthlyUptimeRow, UptimeCalculationMode } from '@/lib/uptime-history'
-import type { Incident, Monitor, StatusPage, StatusPageViewer } from '@/payload-types'
+import type {
+  Incident,
+  Monitor,
+  StatusPage,
+  StatusPageAudience,
+  StatusPageViewer,
+} from '@/payload-types'
+import type { PublicStatusPageData } from '@/server/status-pages/public'
 
 export type OrgId = string | number
 
@@ -173,6 +180,30 @@ export const statusPagesApi = {
     remove: (orgId: OrgId, id: OrgId, viewerId: OrgId) =>
       api.delete<{ ok: true }>(`${base(orgId)}/${id}/viewers/${viewerId}`),
   },
+
+  audiences: {
+    list: (orgId: OrgId, id: OrgId) =>
+      api.get<{ docs: StatusPageAudience[] }>(`${base(orgId)}/${id}/audiences`),
+    create: (orgId: OrgId, id: OrgId, data: AudienceDraft) =>
+      api.post<{ doc: StatusPageAudience }>(`${base(orgId)}/${id}/audiences`, { ...data }),
+    update: (orgId: OrgId, id: OrgId, audienceId: OrgId, data: Partial<AudienceDraft>) =>
+      api.patch<{ doc: StatusPageAudience }>(`${base(orgId)}/${id}/audiences/${audienceId}`, {
+        ...data,
+      }),
+    remove: (orgId: OrgId, id: OrgId, audienceId: OrgId) =>
+      api.delete<{ ok: true }>(`${base(orgId)}/${id}/audiences/${audienceId}`),
+    /** The public payload as members of the audience see it ("view as"). */
+    preview: (orgId: OrgId, id: OrgId, audienceId: OrgId) =>
+      api.get<PublicStatusPageData>(`${base(orgId)}/${id}/audiences/${audienceId}/preview`),
+  },
+}
+
+/** What the audience editor sends (#151). */
+export interface AudienceDraft {
+  name: string
+  components: string[]
+  emails: string[]
+  emailDomains: string[]
 }
 
 export interface UptimeHistoryResponse {
@@ -188,6 +219,8 @@ export interface SubscriberRow {
   channel: SubscriberChannel
   target: string
   components: string[]
+  /** Audiences (#151) the subscriber hears about on an audience page. */
+  audiences: string[]
   source: SubscriberSource
   confirmedAt: string | null
   createdAt: string
@@ -209,6 +242,7 @@ export interface SubscriberDraft {
   channel: SubscriberChannel
   target: string
   components?: string[]
+  audiences?: string[]
   headers?: { name: string; value: string }[]
 }
 

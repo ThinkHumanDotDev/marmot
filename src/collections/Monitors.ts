@@ -561,6 +561,7 @@ export const Monitors: CollectionConfig = {
           'push-events',
           'monitor-location-states',
           'stat-location-hourly',
+          'sla-targets',
         ] as const) {
           await req.payload.delete({ collection, where: { monitor: { equals: id } }, ...common })
         }

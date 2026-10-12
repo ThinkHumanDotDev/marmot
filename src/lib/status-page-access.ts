@@ -5,7 +5,9 @@
  * - `password`: visitors who know the page password;
  * - `email-domain`: visitors who prove, through a one-time link sent by email, that they own an
  *   address at one of the page's allowed domains;
- * - `ip-allowlist`: requests whose client address is in one of the page's CIDR ranges.
+ * - `ip-allowlist`: requests whose client address is in one of the page's CIDR ranges;
+ * - `audience`: visitors who sign in like `email-domain`, but are admitted through the page's
+ *   audiences (#151) and see only the components, incidents and maintenance of their audiences.
  *
  * Shared by the collection, the server-side check (`src/server/status-pages/access.ts`) and the
  * builder UI, so it lives outside the collection module.
@@ -15,6 +17,7 @@ export const STATUS_PAGE_ACCESS_MODES = [
   'password',
   'email-domain',
   'ip-allowlist',
+  'audience',
 ] as const
 export type StatusPageAccessMode = (typeof STATUS_PAGE_ACCESS_MODES)[number]
 
@@ -22,7 +25,13 @@ export type StatusPageAccessMode = (typeof STATUS_PAGE_ACCESS_MODES)[number]
 export const STATUS_PAGE_PASSWORD_MIN_LENGTH = 8
 export const STATUS_PAGE_PASSWORD_MAX_LENGTH = 256
 
-/** Lifetime of a magic link sent to an `email-domain` page visitor. */
+/** Modes whose visitors sign in with a one-time link sent by email. */
+export const MAGIC_LINK_ACCESS_MODES: readonly StatusPageAccessMode[] = ['email-domain', 'audience']
+
+export const usesMagicLinks = (mode: string | null | undefined): boolean =>
+  MAGIC_LINK_ACCESS_MODES.includes(mode as StatusPageAccessMode)
+
+/** Lifetime of a magic link sent to an `email-domain` or `audience` page visitor. */
 export const STATUS_PAGE_MAGIC_LINK_TTL_MINUTES = 15
 
 /** Upper bounds on the lists a page may carry (validated by the collection hook). */

@@ -25,6 +25,7 @@ import {
   type OrgId,
 } from '../api'
 import { AccessPanel } from './access-panel'
+import { AudiencesPanel } from './audiences-panel'
 import { DomainsPanel } from './domains-panel'
 import { EmbedPanel } from './embed-panel'
 import { GroupsEditor } from './groups-editor'
@@ -190,6 +191,7 @@ export function StatusPageEditor({
             )}
             <TabsTrigger value="domains">{t('tabs.domains')}</TabsTrigger>
             <TabsTrigger value="access">{ta('tab')}</TabsTrigger>
+            <TabsTrigger value="audiences">{t('tabs.audiences')}</TabsTrigger>
             <TabsTrigger value="share">{t('tabs.share')}</TabsTrigger>
             {canViewHistory && <TabsTrigger value="history">{t('tabs.history')}</TabsTrigger>}
           </TabsList>
@@ -250,6 +252,14 @@ export function StatusPageEditor({
               onSaved={setPage}
               canEdit={canEdit}
               customDomains={customDomains}
+            />
+          </TabsContent>
+          <TabsContent value="audiences" className="pt-6">
+            <AudiencesPanel
+              orgId={orgId}
+              page={page}
+              components={incidentComponents}
+              canEdit={canEdit}
             />
           </TabsContent>
           <TabsContent value="access" className="pt-6">

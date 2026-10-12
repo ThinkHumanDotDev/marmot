@@ -222,6 +222,31 @@ backlog never has to fit in the worker's memory. Telemetry and log collections h
 are removed through the database adapter (`payload.db.deleteMany`); unconfirmed subscribers go through
 `payload.delete` so their `beforeDelete` cascade still runs.
 
+## SLA targets and reports
+
+`sla-targets` (monitor, `target` %, `period` = `month | quarter | rolling30`, `calculation` =
+`duration | checks`, `excludeMaintenance`), `sla-reports` (targets, `schedule` = `none | weekly |
+monthly`, recipients, delivery bookkeeping) and `sla-report-shares` (report, `fromDate`/`toDate`,
+`tokenHash`, `revokedAt`) are org-scoped (`sla:read` for viewers, `sla:manage` for admins) (#156).
+The maths is pure (`src/lib/sla.ts`: periods, `slaUptime`, `slaAttainment` with the error budget
+and burn rate, MTTR, the CSV); `src/server/sla/compute.ts` feeds it from the same sources as the
+status page uptime of #112 (`loadMonitorDays`: `stat-daily` counts and the replayed important
+heartbeats, which also yield the time spent in maintenance) plus the `monitor-incidents` of the
+period. Exports: CSV, a dependency-free PDF writer (`src/server/sla/pdf.ts`) and the
+server-rendered page.
+
+Scheduling uses the existing queues: the `sla-reports-due` job scheduler (hourly at :40 UTC on
+`marmot:maintenance`) enqueues one `sla-report-send` job per report whose previous complete week or
+month (`previousSchedulePeriod`) differs from its `lastSentPeriod` (job id
+`sla-report-<report>-<period>`); the notification worker renders the report and sends it to each
+recipient through the Payload email adapter with the CSV and PDF attached, then records the period.
+A new or changed schedule starts with the period that just ended marked as sent.
+
+Share links (`src/server/sla/shares.ts`) carry 32 random bytes; only the SHA-256 is stored, and the
+field can only be written by the share route (`req.context` flag) and never read through the API.
+`/sla/<token>` and `/api/sla/<token>` resolve the token with `overrideAccess` and render that report
+over the stored range only; revoked or unknown tokens get the same 404.
+
 ## Notifications
 
 `notifications` documents (org-scoped: `name`, `type` = provider slug, `config` validated against the
@@ -402,6 +427,15 @@ The public payload (`buildPublicStatusPageData`) maps each monitor to the worst 
 incidents naming it and computes `overall` from both: a `major_outage` component counts as down, a
 partial one as not fully up, a degraded one (incident impact or degraded monitor, `effectiveImpact()`) as
 degraded, and incidents without components raise the page to `degraded`, `partial` or `down`. See [Status pages](Status-Pages.md) for the routes and payload.
+
+**Audience pages** (#151, access mode `audience`) show each visitor only the components of their
+audiences (`status-page-audiences`). The scope is attached to the page object itself
+(`src/server/status-pages/audiences.ts`): `findPublishedStatusPage` returns such a page without groups,
+the access check's grant (`decision.audience`) feeds `scopePageForVisitor`, which puts back only the
+visitor's rows, and the incident and maintenance loaders (`findActiveIncidents`, `findRecentIncidents`,
+`findFeedIncidents`, `getActiveMaintenanceForStatusPage`, `listMaintenanceEvents`, the history index)
+take that page and drop what names only invisible components. Subscriber fan-out applies the same rule
+per subscriber through its `audiences` (`recipientFilter`, `namesForSubscriber`).
 
 ### Outbound webhooks
 
@@ -594,6 +628,8 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `status-page:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |
 | `status-page:create`, `status-page:update`, `status-page:delete`    |        |   ✓    |   ✓   |   ✓   |
 | `status-page:history` (monthly uptime history and CSV export)       |        |        |   ✓   |   ✓   |
+| `sla:read` (SLA targets and reports)                                |   ✓    |   ✓    |   ✓   |   ✓   |
+| `sla:manage` (targets, scheduled reports, share links)              |        |        |   ✓   |   ✓   |
 | `subscriber:read`, `subscriber:manage`                              |        |   ✓    |   ✓   |   ✓   |
 | `subscriber:send`                                                   |        |        |   ✓   |   ✓   |
 | `maintenance:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |

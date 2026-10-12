@@ -15,6 +15,7 @@
 import type { Payload, RequiredDataFromCollectionSlug } from 'payload'
 
 import { incidentTimeline } from '@/lib/incident-timeline'
+import { isMaintenanceVisibleOn } from '@/server/status-pages/audiences'
 import { childLogger } from '@/lib/logger'
 import type { ComponentImpact, ComponentType } from '@/lib/status-page-components'
 import {
@@ -120,6 +121,8 @@ export interface LiveDay {
   held: Set<BeatStatus>
   degraded: number
   maintenance: number
+  /** Seconds spent in MAINTENANCE, from the replayed transitions (0 for snapshots). */
+  maintenanceSeconds: number
 }
 
 type StatRow = {
@@ -234,6 +237,7 @@ export async function loadMonitorDays(
       held: replay.held,
       degraded: extrasCount(row.extras, 'degraded'),
       maintenance: extrasCount(row.extras, 'maintenance'),
+      maintenanceSeconds: replay.maintenanceSeconds,
     })
   }
   return out
@@ -423,6 +427,7 @@ const snapshotDay = (row: SnapshotRow): LiveDay => ({
   ),
   degraded: row.degraded ?? (row.state === 'degraded' ? 1 : 0),
   maintenance: row.maintenance ?? 0,
+  maintenanceSeconds: 0,
 })
 
 // ---- Page uptime ------------------------------------------------------------------------------------
@@ -439,7 +444,7 @@ export interface PageUptimeOptions {
  */
 export async function loadPageUptime(
   payload: Payload,
-  page: Pick<StatusPage, 'id' | 'createdAt'>,
+  page: Pick<StatusPage, 'id' | 'createdAt'> & Partial<Pick<StatusPage, 'access' | 'groups'>>,
   components: readonly UptimeComponent[],
   options: PageUptimeOptions & { days: readonly number[] },
 ): Promise<Map<string, ComponentUptime>> {
@@ -480,7 +485,18 @@ export async function loadPageUptime(
       days[days.length - 1],
     ),
     windowIncidents(payload, page.id, from, to),
-    windowMaintenance(payload, page.id, from, to),
+    // Audience pages (#151): only maintenance the scoped page may show (static components
+    // otherwise list every maintenance of the page).
+    windowMaintenance(payload, page.id, from, to).then((list) =>
+      list.filter((m) =>
+        isMaintenanceVisibleOn(
+          { access: page.access, groups: page.groups },
+          {
+            monitors: [...m.monitors],
+          },
+        ),
+      ),
+    ),
   ])
 
   const pageCreated = Date.parse(page.createdAt)
@@ -516,6 +532,7 @@ export async function loadPageUptime(
             held: new Set(),
             degraded: 0,
             maintenance: 0,
+            maintenanceSeconds: 0,
           }
           source = 'live'
         }

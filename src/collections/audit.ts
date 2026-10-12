@@ -43,6 +43,7 @@ export const AUDITED: Partial<Record<CollectionSlug, AuditCollectionOptions>> = 
     // Viewers sign themselves in through magic links; only changes made by members are audited.
     systemWrites: false,
   },
+  'status-page-audiences': { entityType: 'status_page_audience' },
   incidents: { entityType: 'incident' },
   'status-page-subscribers': {
     entityType: 'subscriber',
@@ -66,6 +67,23 @@ export const AUDITED: Partial<Record<CollectionSlug, AuditCollectionOptions>> = 
     toggle: { field: 'active', on: 'maintenance.resumed', off: 'maintenance.paused' },
   },
   templates: { entityType: 'template' },
+  'sla-targets': {
+    entityType: 'sla_target',
+    label: (doc) => (typeof doc.target === 'number' ? `${doc.target}%` : null),
+  },
+  'sla-reports': {
+    entityType: 'sla_report',
+    // Delivery bookkeeping of the scheduled report job.
+    ignore: ['lastSentPeriod', 'lastSentAt', 'lastError'],
+  },
+  'sla-report-shares': {
+    entityType: 'sla_report_share',
+    label: (doc) =>
+      typeof doc.fromDate === 'string' && typeof doc.toDate === 'string'
+        ? `${doc.fromDate}..${doc.toDate}`
+        : null,
+    ignore: ['tokenHash'],
+  },
   'api-keys': {
     entityType: 'api_key',
     ignore: ['lastUsedAt'],

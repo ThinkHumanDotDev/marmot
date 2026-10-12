@@ -29,6 +29,7 @@ import {
   checkStatusPageAccess,
   protectedHeaders,
 } from '@/server/status-pages/access'
+import { scopePageForVisitor, type AudienceGrant } from '@/server/status-pages/audiences'
 import {
   buildPublicStatusPageData,
   findPublishedStatusPage,
@@ -119,6 +120,8 @@ export type BadgePageAccess =
       allowed: true
       /** The answer depends on the visitor's credentials: never store it in a shared cache. */
       restricted: boolean
+      /** Audience pages (#151): the visitor's audiences. */
+      audience?: AudienceGrant
     }
   | { allowed: false }
 
@@ -134,7 +137,9 @@ export async function statusPageBadgeAccess(
   request: Request,
 ): Promise<BadgePageAccess> {
   const decision = await checkStatusPageAccess(payload, page, accessRequestFrom(request))
-  return decision.allowed ? { allowed: true, restricted: decision.restricted } : { allowed: false }
+  return decision.allowed
+    ? { allowed: true, restricted: decision.restricted, audience: decision.audience }
+    : { allowed: false }
 }
 
 /** Shared caches keep a badge for the page's auto-refresh interval (5 minutes when it is off). */
@@ -182,7 +187,8 @@ export async function serveStatusPageBadge(
     })
   }
 
-  const data = await buildPublicStatusPageData(payload, page)
+  // Audience pages (#151): the state of the visitor's components only.
+  const data = await buildPublicStatusPageData(payload, scopePageForVisitor(page, access))
   const state = statusPageBadgeState(badgeInput(data))
   return new Response(renderStatusPageBadge(state, options), {
     status: 200,

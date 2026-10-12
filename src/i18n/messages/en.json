@@ -93,7 +93,8 @@
       "notifications": "Notifications",
       "members": "Members",
       "settings": "Settings",
-      "incidents": "Incidents"
+      "incidents": "Incidents",
+      "sla": "SLA"
     },
     "orgSwitcher": {
       "trigger": "Organization: {name}. Switch organization",
@@ -1933,6 +1934,7 @@
         "ssh_tunnel": "SSH tunnel",
         "status_page": "Status page",
         "status_page_viewer": "Status page viewer",
+        "status_page_audience": "Status page audience",
         "incident": "Incident",
         "subscriber": "Subscriber",
         "subscriber_notification": "Subscriber notification",
@@ -1952,6 +1954,9 @@
         "webhook_endpoint": "Webhook endpoint",
         "location": "Probe location",
         "otel_collector": "OpenTelemetry collector",
+        "sla_target": "SLA target",
+        "sla_report": "SLA report",
+        "sla_report_share": "SLA report link",
         "metric": "Metric"
       },
       "verbs": {
@@ -2299,6 +2304,7 @@
         "webhook": "Webhooks",
         "otelCollector": "OpenTelemetry collectors",
         "location": "Probe locations",
+        "sla": "SLA targets and reports",
         "metric": "Status page metrics"
       },
       "actions": {
@@ -4476,7 +4482,8 @@
         "share": "Share",
         "subscribers": "Subscribers",
         "notifications": "Notifications",
-        "history": "History"
+        "history": "History",
+        "audiences": "Audiences"
       }
     },
     "settings": {
@@ -4843,6 +4850,9 @@
         "confirmDescription": "Continue to sign in to this status page on this device.",
         "confirm": "Continue to the status page"
       },
+      "audience": {
+        "description": "This status page is only available to invited customers and teams. Enter your email address to receive a sign-in link."
+      },
       "ipAllowlist": {
         "description": "This status page is only available from approved networks. Connect to your organization’s network or VPN and reload the page."
       },
@@ -4866,6 +4876,10 @@
           "ip-allowlist": {
             "label": "IP allow-list",
             "hint": "Only visitors from the listed IPv4 and IPv6 ranges can view the page."
+          },
+          "audience": {
+            "label": "Audiences",
+            "hint": "Visitors sign in with an email link and see only the components, incidents and maintenance of their audiences."
           }
         },
         "password": "Password",
@@ -4911,7 +4925,8 @@
           "remove": "Remove",
           "loadFailed": "Could not load the visitors",
           "updateFailed": "Could not update the visitor"
-        }
+        },
+        "audienceNote": "Members are listed on the Audiences tab. Anyone not in an audience is turned away, even when signed in."
       }
     },
     "share": {
@@ -5229,7 +5244,10 @@
         "added": "Subscriber added",
         "addFailed": "Could not add the subscriber.",
         "secretTitle": "Signing secret",
-        "secretHint": "Deliveries are signed with this secret in X-Marmot-Signature. It was also sent in the first request."
+        "secretHint": "Deliveries are signed with this secret in X-Marmot-Signature. It was also sent in the first request.",
+        "audiences": "Audiences",
+        "audiencesHint": "The subscriber only hears about incidents and maintenance of these audiences’ components.",
+        "noAudiences": "Create an audience on the Audiences tab first: on an audience page, subscribers without one receive nothing."
       },
       "notifications": {
         "title": "Notifications",
@@ -5323,6 +5341,39 @@
       "component": "Component",
       "noData": "No data",
       "downtime": "Down {duration}"
+    },
+    "audiences": {
+      "title": "Audiences",
+      "description": "Show each customer or region only its own components. A signed-in visitor sees the components of every audience that lists their address or its domain, and only the incidents and maintenance affecting those components. Incidents and maintenance that name no component are shown to every audience.",
+      "modeOff": "Audiences apply once the page’s access is set to “Audiences” on the Access tab. You can prepare and preview them before.",
+      "empty": "No audience yet.",
+      "add": "Add audience",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteTitle": "Delete the audience “{name}”?",
+      "deleteDescription": "Its members lose access unless another audience lists them. Subscribers bound to it stop receiving its announcements.",
+      "deleted": "Audience deleted",
+      "saved": "Audience saved",
+      "saveFailed": "Could not save the audience",
+      "loadFailed": "Could not load the audiences",
+      "name": "Name",
+      "namePlaceholder": "Acme Corp",
+      "components": "Components it sees",
+      "noComponents": "Add components on the Groups tab first.",
+      "emails": "Member addresses",
+      "emailsHint": "One address per line.",
+      "domains": "Member email domains",
+      "domainsHint": "One domain per line, such as acme.com. Every address at these domains is a member.",
+      "summary": "{components, plural, one {# component} other {# components}} · {members, plural, one {# member rule} other {# member rules}}",
+      "cancel": "Cancel",
+      "save": "Save audience",
+      "saving": "Saving…",
+      "preview": {
+        "title": "View as audience",
+        "description": "The page exactly as members of the chosen audience see it.",
+        "choose": "Choose an audience",
+        "loadFailed": "Could not load the preview"
+      }
     },
     "charts": {
       "heading": "Response times",
@@ -6360,6 +6411,15 @@
     "statusPageEmbedOriginsTooMany": "List at most {max} origins.",
     "statusPageViewerNotFound": "Visitor not found.",
     "statusPageViewerStatusInvalid": "The status must be \"active\" or \"revoked\".",
+    "statusPageAudiencePageRequired": "An audience needs a status page, and cannot move to another one.",
+    "statusPageAudienceNameRequired": "Give the audience a name.",
+    "statusPageAudienceComponentsInvalid": "Choose components of this status page.",
+    "statusPageAudienceEmailInvalid": "\"{email}\" is not a valid email address.",
+    "statusPageAudienceEmailsTooMany": "List at most {max} addresses.",
+    "statusPageAudiencesTooMany": "A status page can have at most {max} audiences.",
+    "statusPageAudienceNotFound": "Audience not found.",
+    "statusPageAudienceNameTaken": "This page already has an audience with that name.",
+    "subscriberAudiencesInvalid": "Choose audiences of this status page.",
     "subscriberStatusPageRequired": "A subscriber needs a status page, and cannot move to another one.",
     "subscriberTargetInvalid": "Enter a valid email address, phone number in international format (+15551234567), webhook URL or Slack incoming-webhook URL.",
     "subscriberComponentsInvalid": "Choose components of this status page.",
@@ -6410,6 +6470,12 @@
     "verificationLinkInvalid": "This confirmation link is invalid or has expired. Sign in and request a new one.",
     "magicLinkDisabled": "Sign-in links are turned off on this server.",
     "magicLinkInvalid": "This sign-in link is invalid, has expired or was already used. Request a new one.",
+    "slaMonitorInvalid": "The monitor must belong to the target's organization.",
+    "slaTargetsInvalid": "Every target must belong to the report's organization.",
+    "slaRecipientsRequired": "A scheduled report needs at least one recipient.",
+    "slaReportNotFound": "SLA report not found.",
+    "slaShareNotFound": "This report link does not exist or was revoked.",
+    "slaRangeInvalid": "Choose a valid range of at most 400 days (YYYY-MM-DD).",
     "metricNotFound": "Metric not found.",
     "metricNotPushable": "This metric takes its values from a monitor; values cannot be pushed to it.",
     "metricViewInvalid": "The period must be one of {views}.",
@@ -6695,5 +6761,180 @@
     },
     "selfHost": "Prefer to run it yourself? Marmot is open source and free to self-host with no limits.",
     "selfHostLink": "Self-hosting guide"
+  },
+  "sla": {
+    "pageTitle": "SLA",
+    "title": "Service level agreements",
+    "description": "Uptime targets per monitor, the error budget left in the current period, and reports you can schedule or share.",
+    "loading": "Loading SLA targets…",
+    "windows": {
+      "month": "Calendar month",
+      "quarter": "Calendar quarter",
+      "rolling30": "Rolling 30 days"
+    },
+    "calculations": {
+      "duration": "Time up",
+      "checks": "Successful checks"
+    },
+    "schedules": {
+      "none": "Not scheduled",
+      "weekly": "Weekly (Mondays)",
+      "monthly": "Monthly (on the 1st)"
+    },
+    "health": {
+      "nodata": "No data",
+      "met": "On track",
+      "atRisk": "At risk",
+      "missed": "Missed"
+    },
+    "met": {
+      "yes": "Met",
+      "no": "Missed"
+    },
+    "columns": {
+      "item": "Monitor",
+      "target": "Target",
+      "uptime": "Uptime",
+      "downtime": "Downtime (min)",
+      "incidents": "Incidents",
+      "mttr": "MTTR (min)",
+      "met": "Target",
+      "remaining": "Budget left (min)"
+    },
+    "targets": {
+      "title": "Targets",
+      "description": "Attainment and error budget of the current period of each target.",
+      "new": "New target",
+      "emptyTitle": "No SLA targets yet",
+      "emptyDescription": "Set an uptime target on a monitor to track its error budget.",
+      "attainment": "Attainment",
+      "budget": "Error budget",
+      "budgetLeft": "{remaining} of {budget} min left",
+      "budgetOver": "{over} min over a budget of {budget} min",
+      "budgetMeter": "Error budget left: {percent}",
+      "burnRate": "Burn rate",
+      "burnRateHint": "1.00 spends exactly the budget by the end of the period.",
+      "period": "{from} – {to}",
+      "periodElapsed": "{percent} of the period elapsed",
+      "maintenanceExcluded": "Maintenance excluded",
+      "incidents": "{count, plural, =0 {No incidents this period} one {# incident this period} other {# incidents this period}}",
+      "incidentsTitle": "Incidents that consumed the budget",
+      "incidentOpen": "ongoing",
+      "incidentUnknownCause": "Outage",
+      "editLabel": "Edit the target of {name}",
+      "deleteLabel": "Delete the target of {name}",
+      "confirmDeleteTitle": "Delete the target of {name}?",
+      "confirmDeleteDescription": "Reports that include it will no longer list it.",
+      "confirmDelete": "Delete target",
+      "deleted": "Target deleted",
+      "deleteFailed": "Could not delete the target",
+      "form": {
+        "createTitle": "New SLA target",
+        "editTitle": "Edit SLA target",
+        "description": "The uptime the monitor must reach over each period.",
+        "monitor": "Monitor",
+        "monitorPlaceholder": "Choose a monitor",
+        "target": "Target (%)",
+        "targetHint": "For example 99.9 allows 43.2 minutes of downtime in a 30-day month.",
+        "period": "Measurement window",
+        "calculation": "Uptime calculation",
+        "calculationHint": "Time up counts minutes not down; successful checks counts check results.",
+        "excludeMaintenance": "Exclude maintenance windows",
+        "excludeMaintenanceHint": "Maintenance counts neither for nor against the target.",
+        "cancel": "Cancel",
+        "save": "Save target",
+        "saved": "Target saved",
+        "saveFailed": "Could not save the target",
+        "monitorRequired": "Choose a monitor.",
+        "targetInvalid": "Enter a target between 50 and 99.9999."
+      }
+    },
+    "reports": {
+      "title": "Reports",
+      "description": "Per-monitor uptime, downtime, incidents and MTTR over a date range, as a page, CSV or PDF. Scheduled reports are emailed with both attached.",
+      "new": "New report",
+      "emptyTitle": "No SLA reports yet",
+      "emptyDescription": "Group targets into a report to email it every week or month, or to share it.",
+      "targetCount": "{count, plural, one {# target} other {# targets}}",
+      "recipientCount": "{count, plural, one {# recipient} other {# recipients}}",
+      "lastSent": "Last sent {date}",
+      "lastError": "Last delivery failed: {error}",
+      "open": "Open",
+      "editLabel": "Edit report {name}",
+      "deleteLabel": "Delete report {name}",
+      "confirmDeleteTitle": "Delete report {name}?",
+      "confirmDeleteDescription": "Its schedule stops and its share links stop working.",
+      "confirmDelete": "Delete report",
+      "deleted": "Report deleted",
+      "deleteFailed": "Could not delete the report",
+      "form": {
+        "createTitle": "New SLA report",
+        "editTitle": "Edit SLA report",
+        "description": "Choose the targets the report lists and when it is emailed.",
+        "name": "Name",
+        "namePlaceholder": "Monthly customer SLA",
+        "targets": "Targets",
+        "noTargets": "Create a target first.",
+        "schedule": "Schedule",
+        "scheduleHint": "Reports cover the previous complete week or month (UTC) and go out shortly after it ends.",
+        "recipients": "Recipients",
+        "recipientsHint": "Email addresses, one per line or separated by commas.",
+        "cancel": "Cancel",
+        "save": "Save report",
+        "saved": "Report saved",
+        "saveFailed": "Could not save the report",
+        "nameRequired": "Enter a name.",
+        "recipientsInvalid": "Enter valid email addresses."
+      }
+    },
+    "report": {
+      "pageTitle": "SLA report",
+      "back": "SLA",
+      "range": "{from} to {to} (UTC)",
+      "generatedAt": "Generated {date}",
+      "empty": "This report lists no targets.",
+      "footnote": "Uptime and downtime come from the monitors’ daily statistics and status changes. MTTR covers incidents resolved in the range.",
+      "from": "From",
+      "to": "To",
+      "apply": "Show",
+      "presets": {
+        "lastMonth": "Last month",
+        "thisMonth": "This month",
+        "lastQuarter": "Last quarter"
+      },
+      "downloadCsv": "CSV",
+      "downloadPdf": "PDF",
+      "print": "Print",
+      "summary": "{met} of {total, plural, one {# target} other {# targets}} met",
+      "shares": {
+        "title": "Share links",
+        "description": "Anyone with a link sees this report for its date range, read-only, until you revoke it.",
+        "create": "Create link for this range",
+        "created": "Link created. Copy it now: it is not shown again.",
+        "copy": "Copy link",
+        "copied": "Link copied",
+        "empty": "No links yet.",
+        "range": "{from} – {to}",
+        "createdAt": "Created {date}",
+        "revoked": "Revoked {date}",
+        "revoke": "Revoke",
+        "revokeLabel": "Revoke the link for {range}",
+        "confirmRevokeTitle": "Revoke this link?",
+        "confirmRevokeDescription": "People who have it can no longer open the report. This cannot be undone.",
+        "revokedToast": "Link revoked",
+        "failed": "Could not update the share links"
+      }
+    },
+    "public": {
+      "pageTitle": "SLA report",
+      "notFoundTitle": "Report not available",
+      "notFoundDescription": "This link does not exist or was revoked.",
+      "sharedBy": "Shared by {organization}"
+    },
+    "email": {
+      "subject": "SLA report: {name} ({organization})",
+      "summary": "{met} of {total, plural, one {# target} other {# targets}} met.",
+      "attachments": "The report is attached as CSV and PDF."
+    }
   }
 }

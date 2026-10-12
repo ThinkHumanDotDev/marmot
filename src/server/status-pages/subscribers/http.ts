@@ -8,6 +8,7 @@ import config from '@payload-config'
 import type { StatusPage, StatusPageSubscriber } from '@/payload-types'
 import type { ErrorKey, ErrorValues } from '@/server/errors'
 import { errorText } from '@/server/request-locale'
+import { isAudiencePage, scopePageToAudiences } from '@/server/status-pages/audiences'
 import { findPublishedStatusPage } from '@/server/status-pages/public'
 
 import { findSubscriberByLinkToken } from './tokens'
@@ -72,7 +73,15 @@ export async function loadSubscription(
       ? subscriber.statusPage.id
       : subscriber.statusPage
   if (String(pageId) !== String(page.id)) return null
-  return { payload, page, subscriber }
+  // Audience pages (#151): the subscriber sees (and may follow) the components of its audiences.
+  const visible = isAudiencePage(page)
+    ? await scopePageToAudiences(
+        payload,
+        page,
+        (subscriber.audiences ?? []).map((a) => (typeof a === 'object' ? a.id : a)),
+      )
+    : page
+  return { payload, page: visible, subscriber }
 }
 
 /** What the manage page and `GET …/subscriptions/:token` show: never the secret or the headers. */

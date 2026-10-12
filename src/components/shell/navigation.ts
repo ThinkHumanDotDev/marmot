@@ -1,6 +1,7 @@
 import {
   Activity,
   Bell,
+  Gauge,
   Globe,
   Settings,
   Siren,
@@ -18,6 +19,7 @@ export interface NavItem {
     | 'incidents'
     | 'statusPages'
     | 'maintenance'
+    | 'sla'
     | 'notifications'
     | 'members'
     | 'settings'
@@ -31,6 +33,7 @@ export const orgNavigation: NavItem[] = [
   { segment: 'incidents', label: 'incidents', icon: Siren, shortcut: 'i' },
   { segment: 'status-pages', label: 'statusPages', icon: Globe, shortcut: 's' },
   { segment: 'maintenance', label: 'maintenance', icon: Wrench, shortcut: 'w' },
+  { segment: 'sla', label: 'sla', icon: Gauge, shortcut: 'l' },
   { segment: 'notifications', label: 'notifications', icon: Bell, shortcut: 'n' },
   { segment: 'members', label: 'members', icon: Users, shortcut: 'u' },
   { segment: 'settings', label: 'settings', icon: Settings, shortcut: ',' },

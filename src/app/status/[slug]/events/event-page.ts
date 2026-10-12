@@ -25,12 +25,12 @@ import {
   statusPageUrlForHeaders,
 } from '@/server/status-pages/urls'
 
-import { loadPageAccess, loadPublishedPage } from '../data'
+import { loadPageAccess, loadPublishedPage, loadVisiblePage } from '../data'
 
 /** The incident of the published page `slug` with this public id, memoised per request. */
 export const loadIncidentEvent = cache(
   async (slug: string, publicId: string): Promise<PublicIncidentEvent | null> => {
-    const page = await loadPublishedPage(slug)
+    const page = await loadVisiblePage(slug)
     if (!page) return null
     return getIncidentEvent(await getPayload({ config }), page, publicId)
   },
@@ -39,7 +39,7 @@ export const loadIncidentEvent = cache(
 /** The public maintenance window of the published page `slug`, memoised per request. */
 export const loadMaintenanceEvent = cache(
   async (slug: string, publicId: string): Promise<PublicMaintenanceEvent | null> => {
-    const page = await loadPublishedPage(slug)
+    const page = await loadVisiblePage(slug)
     if (!page) return null
     return getMaintenanceEvent(await getPayload({ config }), page, publicId)
   },

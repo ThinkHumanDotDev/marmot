@@ -281,6 +281,19 @@ const removeWebhooks: CollectionBeforeDeleteHook = async ({ id, req }) => {
   }
 }
 
+/** SLA share links, reports and targets (#156), in reference order (NOT NULL foreign keys). */
+const removeSla: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  for (const collection of ['sla-report-shares', 'sla-reports', 'sla-targets'] as const) {
+    await req.payload.delete({
+      collection,
+      where: { organization: { equals: id } },
+      depth: 0,
+      req,
+      overrideAccess: true,
+    })
+  }
+}
+
 /** OpenTelemetry collectors (#99) carry a NOT NULL `organization` too (monitors are detached). */
 const removeOtelCollectors: CollectionBeforeDeleteHook = async ({ id, req }) => {
   await req.payload.delete({
@@ -327,6 +340,7 @@ export const Organizations: CollectionConfig = {
       removeLocations,
       removeSso,
       removeWebhooks,
+      removeSla,
       removeOtelCollectors,
       removeMemberships,
     ],

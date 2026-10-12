@@ -33,6 +33,11 @@ import { findOpenIncident } from '@/server/incidents/store'
 import { serverTranslator } from '@/server/i18n'
 import { processWebhookDeliveryJob } from '@/server/webhooks/deliver'
 import { isWebhookJobName, type WebhookDeliveryJobData } from '@/server/webhooks/queue'
+import {
+  isSlaJobName,
+  processSlaReportSendJob,
+  type SlaReportSendData,
+} from '@/server/sla/schedule'
 
 const log = childLogger('notifications:worker')
 
@@ -250,8 +255,8 @@ export interface StartNotificationWorkerOptions extends QueueFactoryOptions {
 /**
  * Start the BullMQ worker consuming the notifications queue: monitor alerts (`notify`), maintenance
  * windows (`notify-maintenance`), incident acknowledgements and resolutions (`incident-notify`) ,
- * status page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`) and outbound webhook
- * deliveries (`webhook-delivery`).
+ * status page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`), outbound webhook
+ * deliveries (`webhook-delivery`) and scheduled SLA reports (`sla-report-send`).
  */
 export function startNotificationWorker(
   payload: Payload,
@@ -283,6 +288,11 @@ export function startNotificationWorker(
       }
       if (isWebhookJobName(job.name)) {
         await processWebhookDeliveryJob(payload, job as unknown as Job<WebhookDeliveryJobData>)
+        return
+      }
+      // Scheduled SLA reports (#156).
+      if (isSlaJobName(job.name)) {
+        await processSlaReportSendJob(payload, job as unknown as Job<SlaReportSendData>)
         return
       }
       await processNotificationJob(payload, job)
