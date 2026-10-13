@@ -304,6 +304,35 @@ expires after seven days. It opens a page with an **Acknowledge** button, so lin
 acknowledge. Anyone holding the message can use it: a signed-in member is recorded by name, anyone else as
 "from a notification link".
 
+## Declared incidents
+
+A **declared incident** (`declared-incidents`, **Response** in the sidebar) is the incident-response record a
+team runs, whether or not a monitor noticed: a title, a **severity** (critical, major, minor), a
+**commander** (a member of the organization), who declared it, a summary, its start (backdated if needed, or
+taken from the [monitor incident](#incidents) it was declared from) and a **timeline**.
+
+- **Status**: `open → mitigated → resolved → closed`, or `canceled` (false alarm) before it is resolved.
+  Mitigated may be skipped and a resolved incident can be reopened; any other change is refused (409).
+  Closed and canceled incidents are read-only.
+- **Timeline**: append-only. Declaring, severity, status and commander changes, linking or unlinking the
+  public status-page incident, postmortem drafts and approval, closing and notes each add an entry with who
+  did it.
+- **Postmortem**: a Markdown document started from a template (Summary, Impact, Timeline, Root cause, What
+  went well, What went wrong, Action items), saved as a draft and approved. Closing needs an approved
+  postmortem; an admin can close without one (`declared-incident:skip-postmortem`), which the timeline
+  records. Editing an approved postmortem makes it a draft again.
+- **Commander**: assigning someone emails them (not when they assign themselves). Without activity the
+  commander is reminded after 1 h (critical), 4 h (major) or 24 h (minor), then after twice as long each time
+  (at most a week apart); any change re-arms the reminder. Channels that selected the `incident` event hear
+  about declarations, status and commander changes and reminders ([Notifications](Notifications.md)).
+- **Public communication** stays on the status page: a declared incident links to a status-page incident
+  (`statusPageIncident`) instead of copying it, so what visitors read is still posted deliberately.
+
+Viewers read declared incidents; members declare and run them; admins delete them and may close them
+without a postmortem. Every change is in the audit log. API: `GET/POST /api/orgs/:orgId/declared-incidents`,
+`GET/PATCH/DELETE …/:id` (`title`, `severity`, `summary`, `commander`, `status`, `startedAt`,
+`statusPageIncident`, `postmortem`, `approvePostmortem`, `skipPostmortem`), `POST …/:id/notes { message }`.
+
 ## Check locations
 
 A monitor is checked by the workers of the Marmot server (**Local**) unless you switch on

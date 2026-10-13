@@ -65,6 +65,7 @@ import * as migration_20261012_033317_status_page_latency_charts from './2026101
 import * as migration_20261012_041041_status_page_custom_metrics from './20261012_041041_status_page_custom_metrics';
 import * as migration_20261012_203433_status_page_audiences from './20261012_203433_status_page_audiences';
 import * as migration_20261012_213002_sla_reports from './20261012_213002_sla_reports';
+import * as migration_20261012_220800_declared_incidents from './20261012_220800_declared_incidents';
 
 export const migrations = [
   {
@@ -400,6 +401,11 @@ export const migrations = [
   {
     up: migration_20261012_213002_sla_reports.up,
     down: migration_20261012_213002_sla_reports.down,
-    name: '20261012_213002_sla_reports'
+    name: '20261012_213002_sla_reports',
+  },
+  {
+    up: migration_20261012_220800_declared_incidents.up,
+    down: migration_20261012_220800_declared_incidents.down,
+    name: '20261012_220800_declared_incidents'
   },
 ];

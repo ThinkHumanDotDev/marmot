@@ -14,7 +14,10 @@
  * - `maintenance`: a maintenance window of the monitor started or ended;
  * - `acknowledged`: a member acknowledged the monitor's incident (#100);
  * - `resolved`: a member resolved the monitor's incident by hand (#100; automatic resolutions are
- *   announced by `up`).
+ *   announced by `up`);
+ * - `incident`: a declared incident was declared, changed status or commander, or its commander
+ *   is reminded of it (#101). Opt-in: declared incidents belong to the organization, not to the
+ *   monitors a channel is attached to, so a channel chooses to follow them.
  */
 export const CHANNEL_EVENTS = [
   'down',
@@ -25,6 +28,7 @@ export const CHANNEL_EVENTS = [
   'maintenance',
   'acknowledged',
   'resolved',
+  'incident',
 ] as const
 
 export type ChannelEvent = (typeof CHANNEL_EVENTS)[number]

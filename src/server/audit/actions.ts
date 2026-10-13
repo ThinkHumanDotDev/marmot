@@ -19,6 +19,7 @@ export const AUDIT_RESOURCE_TYPES = [
   'status_page_viewer',
   'status_page_audience',
   'incident',
+  'declared_incident',
   'subscriber',
   'subscriber_notification',
   'maintenance',

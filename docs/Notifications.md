@@ -17,7 +17,7 @@ Setting up a channel is a form: pick a **provider**, fill in the fields the prov
 generated from the provider's schema, so required fields and secrets are marked), pick the events, press
 **Send test** (one sample per selected event), save.
 Tick **Default** to preselect the channel on every new monitor and **Apply to all existing monitors** to
-attach it to the monitors you already have. Marmot ships 48 providers ported from Uptime Kuma (table below),
+attach it to the monitors you already have. Marmot ships 48 providers ported from Uptime Kuma (table below) plus WhatsApp,
 grouped as Chat, Push, Email and Generic (webhooks, incident management, SMS).
 
 ## How it works
@@ -62,16 +62,17 @@ job data; `notificationEventFor()` in `src/server/engine/beat.ts`):
 Every channel has an `events` selection (`src/lib/notification-events.ts`); a channel is only told about
 the events it selected:
 
-| Event          | Sent when                                                                             | Default |
-| -------------- | ------------------------------------------------------------------------------------- | :-----: |
-| `down`         | a monitor went DOWN                                                                   |   on    |
-| `up`           | it recovered from DOWN (the message carries the downtime)                             |   on    |
-| `degraded`     | it became DEGRADED or went back from DEGRADED to UP                                   |   off   |
-| `reminder`     | the `resendInterval` repeat while still DOWN                                          |   on    |
-| `certificate`  | a TLS certificate or domain expiry warning, or a new certificate in the CT logs       |   on    |
-| `maintenance`  | a maintenance window covering the monitor starts or ends (once per channel and event) |   off   |
-| `acknowledged` | a member acknowledged the monitor's [incident](Monitors.md#incidents)                 |   on    |
-| `resolved`     | a member resolved the monitor's incident by hand (automatic resolution is `up`)       |   on    |
+| Event          | Sent when                                                                                                                      | Default |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------ | :-----: |
+| `down`         | a monitor went DOWN                                                                                                            |   on    |
+| `up`           | it recovered from DOWN (the message carries the downtime)                                                                      |   on    |
+| `degraded`     | it became DEGRADED or went back from DEGRADED to UP                                                                            |   off   |
+| `reminder`     | the `resendInterval` repeat while still DOWN                                                                                   |   on    |
+| `certificate`  | a TLS certificate or domain expiry warning, or a new certificate in the CT logs                                                |   on    |
+| `maintenance`  | a maintenance window covering the monitor starts or ends (once per channel and event)                                          |   off   |
+| `acknowledged` | a member acknowledged the monitor's [incident](Monitors.md#incidents)                                                          |   on    |
+| `resolved`     | a member resolved the monitor's incident by hand (automatic resolution is `up`)                                                |   on    |
+| `incident`     | a [declared incident](Monitors.md#declared-incidents) was declared, changed status or commander, or its commander was reminded |   off   |
 
 The defaults are what every channel received before the filters existed plus the incident events, and a
 channel without a selection (one created before the field existed, or saved with an empty list) gets the defaults, so
@@ -115,6 +116,11 @@ channels that selected the event, through the same queue: job `incident-notify` 
 `[name] [👀 Acknowledged] Acknowledged by Ada. Note: …` or `[name] [✅ Resolved] Resolved by Ada after 12
 minutes.`, sent with the monitor and no heartbeat (like a test message, so rich providers send the text).
 An automatic resolution sends nothing extra: the UP notification already announces the recovery.
+
+[Declared incidents](Monitors.md#declared-incidents) belong to the organization rather than to a monitor, so
+they go to every active channel of the organization that selected the opt-in `incident` event: job
+`declared-incident-notify` (one per channel, plus one email to the commander when assigned and for
+reminders), message `[title] [🚨 Incident declared] Critical incident declared. Commander: Ada. <link>`.
 
 While the incident is still open, DOWN messages (first alert and reminders) end with
 `Acknowledge: <server>/ack/<token>`, a signed link to acknowledge from the phone. Providers that build their
@@ -340,6 +346,34 @@ services):
 | `apprise`        | Generic | **appriseUrl**, title. Runs the `apprise` CLI on the worker host (`pip install apprise`); fails with a readable error when the binary is missing. Refused while `MONITOR_DENY_PRIVATE_ADDRESSES` is on |
 
 Nostr is not ported: it needs `nostr-tools` plus a WebSocket polyfill, which outweighs its use.
+
+### WhatsApp
+
+`whatsapp` (Chat) sends through one of two backends, picked with `backend`:
+
+| `backend`         | Config keys (required in **bold**)                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `cloud` (default) | **recipient**, **accessToken** _(secret)_, **phoneNumberId**, **templateName**, templateLanguage (default `en_US`), templateVariables |
+| `twilio`          | **recipient**, **accountSid**, apiKey (SID, optional), **authToken** _(secret)_, **fromNumber**, contentSid, templateVariables        |
+
+- **Numbers** (`recipient`, `fromNumber`) must be E.164 (`+14155550123`); spaces, dashes and a `whatsapp:`
+  prefix are accepted and stripped. Saving a channel rejects anything else.
+- **Templates.** WhatsApp only delivers business-initiated messages that use a template approved in
+  WhatsApp Manager (Cloud API) or the Twilio Content Template Builder. `templateVariables` is a _template_
+  field with one Liquid template per line; line 1 fills the template's `{{1}}`, line 2 `{{2}}` and so on.
+  The default is `{{ name }}`, `{{ status }}`, `{{ msg }}`, so a matching template body could be
+  `{{1}} is {{2}}: {{3}}`. Clear the field for a template without variables (such as Meta's `hello_world`).
+  Rendered values are flattened to one line (WhatsApp rejects newlines and tabs in parameters) and empty
+  values are sent as `-`.
+- **Cloud API** posts a `type: "template"` message to
+  `https://graph.facebook.com/v21.0/<phoneNumberId>/messages` with `Authorization: Bearer <accessToken>`.
+  Use a permanent system-user token with the `whatsapp_business_messaging` permission; temporary tokens from
+  the API setup page expire after 24 hours.
+- **Twilio** posts to the Messages API with `whatsapp:`-prefixed `To`/`From`. With `contentSid` it sends
+  that content template and the variables as `ContentVariables` (`{"1": …, "2": …}`); without it the plain
+  message goes out as `Body`, which WhatsApp only delivers within 24 hours of the recipient's last message.
+- **Errors** from Meta or Twilio are stored on the channel's `lastError` with the vendor's message, e.g.
+  `WhatsApp Cloud API (HTTP 400): (#132001) Template name does not exist in the translation`.
 
 ### Email through the server SMTP settings
 

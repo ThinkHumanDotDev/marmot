@@ -29,12 +29,12 @@ organization always keeps at least one owner: the last owner cannot be demoted, 
 
 The exact permission strings, for anyone writing code or reading the access functions:
 
-| Permission                                                                                                                                                                                            | Minimum role |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| `organization:read`, `member:read`, `monitor:read`, `monitor-incident:read`, `status-page:read`, `maintenance:read`                                                                                   | viewer       |
-| `monitor:create\|update\|delete`, `monitor-incident:acknowledge\|resolve`, `status-page:create\|update\|delete`, `maintenance:create\|update\|delete`, `notification:read`, `subscriber:read\|manage` | member       |
-| `organization:update`, `member:invite\|remove\|update-role`, `notification:create\|update\|delete`, `api-key:read\|create\|delete`, `sso:read`, `subscriber:send`                                     | admin        |
-| `organization:delete`, `sso:manage`                                                                                                                                                                   | owner        |
+| Permission                                                                                                                                                                                                                                | Minimum role |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| `organization:read`, `member:read`, `monitor:read`, `monitor-incident:read`, `declared-incident:read`, `status-page:read`, `maintenance:read`                                                                                             | viewer       |
+| `monitor:create\|update\|delete`, `monitor-incident:acknowledge\|resolve`, `declared-incident:create\|update`, `status-page:create\|update\|delete`, `maintenance:create\|update\|delete`, `notification:read`, `subscriber:read\|manage` | member       |
+| `organization:update`, `member:invite\|remove\|update-role`, `notification:create\|update\|delete`, `api-key:read\|create\|delete`, `sso:read`, `subscriber:send`, `declared-incident:delete\|skip-postmortem`                            | admin        |
+| `organization:delete`, `sso:manage`                                                                                                                                                                                                       | owner        |
 
 ### Superadmins
 
