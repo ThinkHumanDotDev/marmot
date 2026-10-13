@@ -74,7 +74,10 @@ export function OnCallView(props: OnCallViewProps) {
 
   const mine = shifts.filter((shift) => shift.user.id === userId)
   const range = (start: string, end: string) =>
-    format.dateTimeRange(new Date(start), new Date(end), 'short')
+    t('range', {
+      start: format.dateTime(new Date(start), 'short'),
+      end: format.dateTime(new Date(end), 'short'),
+    })
 
   async function removeOverride(schedule: OnCallScheduleSummary, overrideId: string) {
     try {

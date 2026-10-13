@@ -303,6 +303,9 @@ export function PolicyDialog({
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium">{t('monitors')}</p>
               <div className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded-lg border p-3">
+                {monitors.length === 0 && (
+                  <p className="text-sm text-muted-foreground">{t('noMonitors')}</p>
+                )}
                 {monitors.map((monitor) => {
                   const on = selected.includes(monitor.id)
                   return (
