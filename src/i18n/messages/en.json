@@ -278,6 +278,29 @@
         "deleteTitle": "Delete {count, plural, one {# monitor} other {# monitors}}?",
         "deleteDescription": "This removes the selected monitors together with their heartbeats and statistics. Child monitors of a group are kept and detached. This cannot be undone.",
         "confirmDelete": "Delete monitors"
+      },
+      "view": {
+        "label": "View",
+        "list": "List",
+        "table": "Table",
+        "columns": "Columns",
+        "columnsLabel": "Visible columns"
+      },
+      "table": {
+        "label": "Monitors",
+        "never": "Never",
+        "columns": {
+          "select": "Select",
+          "status": "Status",
+          "name": "Name",
+          "target": "Target",
+          "type": "Type",
+          "tags": "Tags",
+          "lastCheck": "Last check",
+          "uptime24h": "Uptime (24h)",
+          "avgPing": "Avg. latency",
+          "lastIncident": "Last incident"
+        }
       }
     },
     "realtime": {

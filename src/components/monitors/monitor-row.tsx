@@ -21,6 +21,13 @@ import { useMonitorSelection } from '@/stores/monitor-selection-store'
 import { TagList } from './tag-chip'
 import { UptimeBar } from './uptime-bar'
 
+/** Uptime ratio as shown in lists: two decimals, "100%" once it rounds up, "—" without data. */
+export function formatUptime(format: ReturnType<typeof useFormatter>, uptime: number | undefined) {
+  if (uptime === undefined || Number.isNaN(uptime)) return '—'
+  // Rounded to two decimals, "100%" once it rounds up (99.995% and above).
+  return uptime >= 0.99995 ? format.number(1, 'wholePercent') : format.number(uptime, 'percent')
+}
+
 /** Human label for the monitor target (URL for HTTP types, host:port otherwise). */
 export function monitorTarget(monitor: Pick<MonitorSummary, 'type' | 'url' | 'hostname'>) {
   if (monitor.url) return monitor.url.replace(/^https?:\/\//, '')
@@ -56,18 +63,21 @@ interface MonitorRowViewProps {
 /** Data attribute of row checkboxes, used to move focus between them. */
 export const ROW_CHECKBOX_ATTR = 'data-monitor-select'
 
-function RowCheckbox({
+/** Row checkbox: click/Space toggles, Shift extends a range, ↑/↓ move between rows. */
+export function RowCheckbox({
   id,
   name,
   selection,
+  className,
 }: {
   id: string
   name: string
   selection: RowSelection
+  className?: string
 }) {
   const t = useTranslations('monitors.list.selection')
   return (
-    <div className="flex items-center pl-4">
+    <div className={cn('flex items-center pl-4', className)}>
       <input
         type="checkbox"
         className="size-4 cursor-pointer accent-primary"
@@ -151,12 +161,7 @@ export function MonitorRowView({
           className="hidden text-right text-sm tabular-nums md:block"
           title={t('format.uptime24hTitle')}
         >
-          {uptime24h === undefined || Number.isNaN(uptime24h)
-            ? '—'
-            : // Rounded to two decimals, "100%" once it rounds up (99.995% and above).
-              uptime24h >= 0.99995
-              ? format.number(1, 'wholePercent')
-              : format.number(uptime24h, 'percent')}
+          {formatUptime(format, uptime24h)}
         </div>
         <div
           className="hidden text-right text-sm text-muted-foreground tabular-nums md:block"
