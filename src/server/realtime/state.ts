@@ -6,7 +6,14 @@
 import type { Payload, PayloadRequest } from 'payload'
 
 import { getStats, type StatsRange } from '@/server/stats/uptime-calculator'
-import type { RealtimeHeartbeat, RealtimeId, RealtimeMonitor, RealtimeRange } from './events'
+import { isMonitorIncidentStatus } from '@/lib/monitor-incidents'
+import type {
+  RealtimeHeartbeat,
+  RealtimeId,
+  RealtimeLastIncident,
+  RealtimeMonitor,
+  RealtimeRange,
+} from './events'
 import {
   MONITOR_SUMMARY_SELECT,
   populateMonitorTags,
@@ -25,6 +32,8 @@ export interface OrgRealtimeState {
   importantHeartbeats: Record<RealtimeId, RealtimeHeartbeat[]>
   uptime: Record<RealtimeId, Partial<Record<RealtimeRange, number>>>
   avgPing: Record<RealtimeId, Partial<Record<RealtimeRange, number | null>>>
+  /** Newest monitor incident per monitor (monitors without one are absent). */
+  lastIncidents: Record<RealtimeId, RealtimeLastIncident>
 }
 
 export interface LoadOrgStateOptions {
@@ -68,6 +77,45 @@ async function mapLimit<T, R>(
   })
   await Promise.all(workers)
   return results
+}
+
+const isoDate = (value: unknown): string | null =>
+  typeof value === 'string' ? value : value instanceof Date ? value.toISOString() : null
+
+/**
+ * Newest monitor incident of a monitor, read with the caller's access (`monitor-incident:read`):
+ * a member without the permission simply gets none.
+ */
+async function lastIncident(
+  payload: Payload,
+  monitorId: string | number,
+  access: { user?: PayloadRequest['user']; overrideAccess: boolean },
+): Promise<RealtimeLastIncident | null> {
+  try {
+    const { docs } = await payload.find({
+      collection: 'monitor-incidents',
+      where: { monitor: { equals: monitorId } },
+      select: { status: true, startedAt: true, resolvedAt: true },
+      sort: '-startedAt',
+      limit: 1,
+      pagination: false,
+      depth: 0,
+      ...access,
+    })
+    const doc = docs[0] as
+      | { id: string | number; status?: unknown; startedAt?: unknown; resolvedAt?: unknown }
+      | undefined
+    const startedAt = isoDate(doc?.startedAt)
+    if (!doc || !startedAt || !isMonitorIncidentStatus(doc.status)) return null
+    return {
+      id: String(doc.id),
+      status: doc.status,
+      startedAt,
+      resolvedAt: isoDate(doc.resolvedAt),
+    }
+  } catch {
+    return null
+  }
 }
 
 async function recentHeartbeats(
@@ -129,15 +177,18 @@ export async function loadOrgState(
     importantHeartbeats: {},
     uptime: {},
     avgPing: {},
+    lastIncidents: {},
   }
 
   await mapLimit(monitors, options.concurrency ?? 8, async (monitor) => {
     const monitorId = parseDocId(payload, monitor.id)
-    const [beats, important, stats] = await Promise.all([
+    const [beats, important, stats, incident] = await Promise.all([
       recentHeartbeats(payload, monitorId, heartbeatLimit),
       recentHeartbeats(payload, monitorId, importantLimit, true),
       Promise.all(ranges.map((range) => getStats(payload, monitorId, range as StatsRange))),
+      lastIncident(payload, monitorId, access),
     ])
+    if (incident) state.lastIncidents[monitor.id] = incident
     state.heartbeats[monitor.id] = beats
     if (importantLimit > 0) state.importantHeartbeats[monitor.id] = important
     state.uptime[monitor.id] = {}

@@ -183,6 +183,19 @@ Pause, resume, check now, delete, **Add to maintenance window…** and **Add to 
 selection are also in the command palette while the list is open (the last two open the menu to pick the
 window or the group). Viewers see the search and the filters but no checkboxes.
 
+### Table view
+
+_(landing in the current release, #276)_
+
+The **List / Table** switch next to the filters shows the same monitors as a table with the columns
+status, name, target, type, tags, last check, 24 h uptime, average latency (24 h) and last incident (when
+the newest [incident](#incidents) started, and whether it is open, acknowledged or resolved). Click a
+column header (or focus it and press <kbd>Enter</kbd>) to sort by it, again to reverse the order; monitors
+without a value sort last. **Columns** hides or shows columns (the name always stays). The chosen view, sort
+and columns are remembered per user in the browser. Search, filters, selection (including <kbd>Shift</kbd>
+ranges and the keyboard, in the table's order) and bulk actions work exactly as in the list, and the table
+stays live.
+
 Each bulk action is one request to [`POST /api/orgs/:orgId/monitors/bulk`](#bulk-actions); the toast
 reports how many monitors changed, how many already were in the requested state and the first failure.
 

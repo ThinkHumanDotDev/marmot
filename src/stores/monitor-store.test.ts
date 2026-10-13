@@ -8,6 +8,7 @@ import {
   selectMonitorList,
   selectMonitorStatus,
   selectStatusCounts,
+  selectLastIncident,
   selectUptime,
   useMonitorStore,
   type Heartbeat,
@@ -129,6 +130,30 @@ describe('useMonitorStore', () => {
     expect(selectUptime('1', '30d')(state)).toBe(98)
     expect(selectUptime('1', '1y')(state)).toBeUndefined()
     expect(state.avgPing['1']).toBe(120)
+  })
+
+  it('keeps the newest incident of a monitor and its updates', () => {
+    const { setLastIncident } = useMonitorStore.getState()
+    const open = {
+      id: 'i2',
+      status: 'open' as const,
+      startedAt: '2026-10-12T10:00:00.000Z',
+      resolvedAt: null,
+    }
+    setLastIncident('1', open)
+    // An older incident (a late event) does not replace the newer one…
+    setLastIncident('1', { ...open, id: 'i1', startedAt: '2026-10-11T10:00:00.000Z' })
+    expect(selectLastIncident('1')(useMonitorStore.getState())).toEqual(open)
+    // …an update of the same incident does.
+    const resolved = {
+      ...open,
+      status: 'resolved' as const,
+      resolvedAt: '2026-10-12T10:05:00.000Z',
+    }
+    setLastIncident('1', resolved)
+    expect(selectLastIncident('1')(useMonitorStore.getState())).toEqual(resolved)
+    useMonitorStore.getState().removeMonitor('1')
+    expect(selectLastIncident('1')(useMonitorStore.getState())).toBeUndefined()
   })
 
   it('removes every trace of a monitor', () => {

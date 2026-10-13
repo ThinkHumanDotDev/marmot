@@ -135,6 +135,10 @@ export function createRealtimeServer(options: CreateRealtimeServerOptions): Real
           value,
         })
       }
+      const incident = state.lastIncidents[monitorId]
+      if (incident) {
+        socket.emit(RealtimeEvents.lastIncident, { organizationId: orgId, monitorId, incident })
+      }
       for (const [range, value] of Object.entries(state.avgPing[monitorId] ?? {})) {
         if (value === undefined) continue
         socket.emit(RealtimeEvents.avgPing, {

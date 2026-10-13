@@ -98,6 +98,21 @@ export function SocketProvider({ organizationId, children }: SocketProviderProps
       }
     }
 
+    const onLastIncident = (payload: RealtimePayloads['lastIncident']) => {
+      if (mine(payload)) store().setLastIncident(payload.monitorId, payload.incident)
+    }
+    const onMonitorIncident = (payload: RealtimePayloads['monitorIncident']) => {
+      const { incident } = payload
+      if (mine(payload) && incident.monitor) {
+        store().setLastIncident(incident.monitor.id, {
+          id: incident.id,
+          status: incident.status,
+          startedAt: incident.startedAt,
+          resolvedAt: incident.resolvedAt,
+        })
+      }
+    }
+
     socket.on('connect', onConnect)
     socket.on('disconnect', onDisconnect)
     socket.on('connect_error', onConnectError)
@@ -110,6 +125,8 @@ export function SocketProvider({ organizationId, children }: SocketProviderProps
     socket.on(RealtimeEvents.heartbeat, onHeartbeat)
     socket.on(RealtimeEvents.uptime, onUptime)
     socket.on(RealtimeEvents.avgPing, onAvgPing)
+    socket.on(RealtimeEvents.lastIncident, onLastIncident)
+    socket.on(RealtimeEvents.monitorIncident, onMonitorIncident)
 
     if (socket.connected) {
       onConnect()
@@ -130,6 +147,8 @@ export function SocketProvider({ organizationId, children }: SocketProviderProps
       socket.off(RealtimeEvents.heartbeat, onHeartbeat)
       socket.off(RealtimeEvents.uptime, onUptime)
       socket.off(RealtimeEvents.avgPing, onAvgPing)
+      socket.off(RealtimeEvents.lastIncident, onLastIncident)
+      socket.off(RealtimeEvents.monitorIncident, onMonitorIncident)
       // The next organization starts from a clean store (the socket stays open for reuse).
       store().reset()
     }
