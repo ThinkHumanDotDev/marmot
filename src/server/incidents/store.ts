@@ -18,6 +18,7 @@ import {
   type MonitorIncidentSummary,
 } from '@/lib/monitor-incidents'
 import { childLogger } from '@/lib/logger'
+import { stoppedEscalation } from '@/lib/on-call'
 import type { Incident, Monitor, MonitorIncident, User } from '@/payload-types'
 import { apiError } from '@/server/errors'
 import type { RequestUser } from '@/server/monitors/http'
@@ -163,6 +164,8 @@ export async function acknowledgeIncident(
       acknowledgedAt: at.toISOString(),
       acknowledgedBy: (actor.userId ?? null) as MonitorIncident['acknowledgedBy'],
       acknowledgedVia: actor.via ?? null,
+      // Acknowledging stops the on-call escalation (#145); `cancelEscalation` drops its job.
+      ...(stoppedEscalation(incident) ? { escalation: stoppedEscalation(incident) } : {}),
       timeline: [
         ...keep(incident),
         row('acknowledged', at, { by: actor.userId, via: actor.via, message: actor.note }),
@@ -192,6 +195,7 @@ export async function resolveIncident(
       resolvedAt: at.toISOString(),
       resolvedBy: (actor.auto ? null : (actor.userId ?? null)) as MonitorIncident['resolvedBy'],
       autoResolved: actor.auto,
+      ...(stoppedEscalation(incident) ? { escalation: stoppedEscalation(incident) } : {}),
       timeline: [
         ...keep(incident),
         row('resolved', at, {

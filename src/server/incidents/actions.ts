@@ -7,6 +7,7 @@ import type { Payload } from 'payload'
 
 import type { MonitorIncidentSummary } from '@/lib/monitor-incidents'
 import type { MonitorIncident } from '@/payload-types'
+import { cancelEscalation } from '@/server/on-call/escalation'
 
 import { enqueueIncidentNotifications } from './notify'
 import { publishIncident } from './realtime'
@@ -23,6 +24,7 @@ export async function acknowledge(
   actor: ActorInput,
 ): Promise<MonitorIncidentSummary> {
   const updated = await acknowledgeIncident(payload, incident, actor)
+  await cancelEscalation(updated)
   const summary = await settle(payload, updated)
   await enqueueIncidentNotifications(payload, updated, 'acknowledged')
   return summary
@@ -35,6 +37,7 @@ export async function resolve(
   actor: ActorInput,
 ): Promise<MonitorIncidentSummary> {
   const updated = await resolveIncident(payload, incident, { ...actor, auto: false })
+  await cancelEscalation(updated)
   const summary = await settle(payload, updated)
   await enqueueIncidentNotifications(payload, updated, 'resolved')
   return summary

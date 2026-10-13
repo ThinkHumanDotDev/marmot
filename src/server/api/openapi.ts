@@ -37,6 +37,12 @@ import { LOG_TRIGGERS } from '@/lib/response-log'
 import { STATUS_PAGE_ACCESS_MODES } from '@/lib/status-page-access'
 import { SUBSCRIBER_CHANNELS } from '@/lib/status-page-subscribers'
 import { maintenanceFormSchema } from '@/lib/validation/maintenance'
+import {
+  policySchema,
+  scheduleSchema,
+  updatePolicySchema,
+  updateScheduleSchema,
+} from '@/lib/validation/on-call'
 import { monitorFormSchema } from '@/lib/validation/monitor-schema'
 import { statusPageLookupSchema } from '@/lib/validation/status-page-monitor'
 import { apiKeyCreateSchema, apiKeyPatchSchema } from '@/server/api-keys/schemas'
@@ -857,6 +863,129 @@ export const OPERATIONS: OperationSpec[] = [
     permission: 'declared-incident:update',
     body: { schema: declaredNoteSchema },
     status: 201,
+  },
+
+  // On-call schedules and escalation policies (#145)
+  {
+    method: 'GET',
+    path: `${ORG}/on-call`,
+    operationId: 'whoIsOnCall',
+    summary: 'Who is on call in every schedule',
+    tag: 'On-call',
+    permission: 'on-call:read',
+    query: [
+      { name: 'at', description: 'Instant (ISO 8601); default now', schema: { type: 'string' } },
+    ],
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/on-call/shifts`,
+    operationId: 'listOnCallShifts',
+    summary: 'Upcoming on-call shifts',
+    tag: 'On-call',
+    permission: 'on-call:read',
+    query: [
+      { name: 'from', description: 'Start (ISO 8601); default now', schema: { type: 'string' } },
+      {
+        name: 'to',
+        description: 'End (ISO 8601); default 28 days later, at most 92',
+        schema: { type: 'string' },
+      },
+      {
+        name: 'user',
+        description: 'me (default), a member id, or all',
+        schema: { type: 'string' },
+      },
+      { name: 'schedule', description: 'Only this schedule', schema: { type: 'string' } },
+    ],
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/on-call/schedules`,
+    operationId: 'listOnCallSchedules',
+    summary: 'On-call schedules',
+    tag: 'On-call',
+    permission: 'on-call:read',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/on-call/schedules`,
+    operationId: 'createOnCallSchedule',
+    summary: 'Create an on-call schedule',
+    tag: 'On-call',
+    permission: 'on-call:manage',
+    body: { schema: scheduleSchema },
+    status: 201,
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/on-call/schedules/{id}`,
+    operationId: 'getOnCallSchedule',
+    summary: 'An on-call schedule',
+    tag: 'On-call',
+    permission: 'on-call:read',
+  },
+  {
+    method: 'PATCH',
+    path: `${ORG}/on-call/schedules/{id}`,
+    operationId: 'updateOnCallSchedule',
+    summary: 'Change a schedule, its layers or its overrides',
+    tag: 'On-call',
+    permission: 'on-call:manage',
+    body: { schema: updateScheduleSchema },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/on-call/schedules/{id}`,
+    operationId: 'deleteOnCallSchedule',
+    summary: 'Delete an on-call schedule',
+    tag: 'On-call',
+    permission: 'on-call:manage',
+    status: 204,
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/on-call/escalation-policies`,
+    operationId: 'listEscalationPolicies',
+    summary: 'Escalation policies',
+    tag: 'On-call',
+    permission: 'escalation-policy:read',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/on-call/escalation-policies`,
+    operationId: 'createEscalationPolicy',
+    summary: 'Create an escalation policy',
+    tag: 'On-call',
+    permission: 'escalation-policy:manage',
+    body: { schema: policySchema },
+    status: 201,
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/on-call/escalation-policies/{id}`,
+    operationId: 'getEscalationPolicy',
+    summary: 'An escalation policy',
+    tag: 'On-call',
+    permission: 'escalation-policy:read',
+  },
+  {
+    method: 'PATCH',
+    path: `${ORG}/on-call/escalation-policies/{id}`,
+    operationId: 'updateEscalationPolicy',
+    summary: 'Change a policy, its steps or the monitors using it',
+    tag: 'On-call',
+    permission: 'escalation-policy:manage',
+    body: { schema: updatePolicySchema },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/on-call/escalation-policies/{id}`,
+    operationId: 'deleteEscalationPolicy',
+    summary: 'Delete an escalation policy',
+    tag: 'On-call',
+    permission: 'escalation-policy:manage',
+    status: 204,
   },
 
   // Monitors

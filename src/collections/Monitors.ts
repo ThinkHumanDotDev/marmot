@@ -674,6 +674,15 @@ export const Monitors: CollectionConfig = {
       },
     },
     {
+      // On-call escalation (#145): who is paged, in which order, until someone acknowledges.
+      name: 'escalationPolicy',
+      type: 'relationship',
+      relationTo: 'escalation-policies',
+      filterOptions: ({ data }): Where | boolean =>
+        data?.organization ? { organization: { equals: data.organization } } : true,
+      admin: { position: 'sidebar' },
+    },
+    {
       // OpenTelemetry metrics export (#99): on by default, so the organization's default collector
       // receives every monitor's checks; off opts this monitor out.
       name: 'otlpExport',

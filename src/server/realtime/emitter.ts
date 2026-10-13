@@ -259,6 +259,19 @@ export function emitDeclaredIncident(
   })
 }
 
+/** An on-call schedule or escalation policy changed (`onCall`, #145). */
+export function emitOnCall(
+  organizationId: string | number,
+  kind: 'schedule' | 'policy',
+  docId: string | number,
+): void {
+  emitToOrg(organizationId, RealtimeEvents.onCall, {
+    organizationId: id(organizationId),
+    kind,
+    id: id(docId),
+  })
+}
+
 /** Instance-wide: broadcast the checker status to every connected socket (all organizations). */
 export function emitCheckerStatus(payload: RealtimePayloads['checkerStatus']): void {
   try {

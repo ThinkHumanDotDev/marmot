@@ -22,6 +22,7 @@ export const INCIDENT_TIMELINE_TYPES = [
   'acknowledged',
   'resolved',
   'published',
+  'escalated',
 ] as const
 export type IncidentTimelineType = (typeof INCIDENT_TIMELINE_TYPES)[number]
 
