@@ -1,0 +1,11 @@
+{
+  "event": {
+    "id": "evt-4821",
+    "title": "Payments queue backlog",
+    "state": "triggered",
+    "priority": "P2",
+    "details": "More than 5000 messages waiting.",
+    "component": "payments"
+  },
+  "api_key": "dd-0123456789abcdef"
+}

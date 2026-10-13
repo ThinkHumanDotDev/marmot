@@ -1661,7 +1661,8 @@
       "webhooks": "Webhooks",
       "openTelemetry": "OpenTelemetry",
       "metrics": "Metrics",
-      "locations": "Locations"
+      "locations": "Locations",
+      "integrations": "Integrations"
     },
     "pageTitles": {
       "account": "Account settings",
@@ -1683,7 +1684,8 @@
       "openTelemetry": "OpenTelemetry",
       "metrics": "Metrics",
       "webhookDeliveries": "Webhook deliveries",
-      "locations": "Locations"
+      "locations": "Locations",
+      "integrations": "Integrations"
     },
     "account": {
       "profile": {
@@ -1984,6 +1986,7 @@
         "sla_report_share": "SLA report link",
         "metric": "Metric",
         "declared_incident": "Declared incident",
+        "integration": "Inbound integration",
         "on_call_schedule": "On-call schedule",
         "escalation_policy": "Escalation policy"
       },
@@ -2335,6 +2338,7 @@
         "sla": "SLA targets and reports",
         "metric": "Status page metrics",
         "declaredIncident": "Declared incidents",
+        "integration": "Inbound integrations",
         "onCall": "On-call schedules",
         "escalationPolicy": "Escalation policies"
       },
@@ -2946,6 +2950,152 @@
         "saved": "Metric saved.",
         "created": "Metric created.",
         "failed": "The metric could not be saved."
+      }
+    },
+    "integrations": {
+      "title": "Inbound integrations",
+      "description": "Receive alerts from Alertmanager, Grafana or any JSON sender (and by email) and turn them into incidents, component status and push monitor heartbeats.",
+      "newIntegration": "New integration",
+      "emptyTitle": "No integrations yet",
+      "emptyDescription": "Create an integration and point your alerting tool at its URL.",
+      "emptyReadOnly": "Admins can create integrations.",
+      "forbiddenTitle": "Integrations are not available to your role",
+      "forbiddenDescription": "Ask an admin of this organization for access.",
+      "columns": {
+        "name": "Name",
+        "format": "Format",
+        "rules": "Rules",
+        "lastEvent": "Last event"
+      },
+      "formats": {
+        "alertmanager": "Prometheus Alertmanager",
+        "grafana": "Grafana alerting",
+        "generic": "Generic JSON"
+      },
+      "ruleCount": "{count, plural, =0 {No rules} one {# rule} other {# rules}}",
+      "never": "Never",
+      "paused": "Paused",
+      "activeLabel": "Receive alerts for {name}",
+      "actionsLabel": "Actions for {name}",
+      "viewEvents": "Event log",
+      "edit": "Edit",
+      "rotateToken": "Rotate token",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "deleted": "Integration deleted.",
+      "deleteFailed": "Could not delete the integration.",
+      "saveFailed": "Could not save the integration.",
+      "rotateFailed": "Could not rotate the token.",
+      "rotateTitle": "Rotate the token?",
+      "rotateDescription": "The current URL and email address stop working at once. Update your alerting tool with the new ones.",
+      "deleteTitle": "Delete this integration?",
+      "deleteDescription": "“{name}”, its alert state and its event log are deleted. Incidents it opened stay.",
+      "form": {
+        "createTitle": "New integration",
+        "editTitle": "Edit integration",
+        "description": "Rules are checked in order; the first one that matches an alert decides what happens. A resolved alert undoes what its firing did.",
+        "name": "Name",
+        "namePlaceholder": "Production Alertmanager",
+        "format": "Payload format",
+        "mapping": "JSON mapping",
+        "generic": {
+          "alertsPath": "Alerts array path (optional)",
+          "titlePath": "Title path",
+          "statusPath": "Status path",
+          "severityPath": "Severity path",
+          "dedupKeyPath": "Dedup key path",
+          "descriptionPath": "Description path",
+          "resolvedValues": "Status values meaning resolved"
+        },
+        "emailKeyword": "Resolved keyword for email",
+        "emailKeywordHint": "Mail whose subject contains this word resolves the alert with the same subject.",
+        "rules": "Rules",
+        "rulesHint": "Alerts that match no rule are logged and ignored.",
+        "addRule": "Add rule",
+        "save": "Save",
+        "create": "Create integration",
+        "cancel": "Cancel",
+        "failed": "Could not save the integration."
+      },
+      "rule": {
+        "legend": "Rule {number}",
+        "name": "Name",
+        "enabled": "Enabled",
+        "remove": "Remove",
+        "matchField": "Match field",
+        "matchFieldHint": "A label, annotation or JSON field (subject, from or body for email). Empty: title and description.",
+        "matchOperator": "Operator",
+        "operators": {
+          "equals": "equals",
+          "contains": "contains",
+          "regex": "matches regex"
+        },
+        "matchValue": "Value",
+        "matchValueHint": "Empty matches every alert.",
+        "incident": "Incident",
+        "incidentModes": {
+          "none": "No incident",
+          "draft": "Draft (declared incident)",
+          "publish": "Publish on a status page"
+        },
+        "severity": "Severity",
+        "severities": {
+          "critical": "Critical",
+          "major": "Major",
+          "minor": "Minor"
+        },
+        "updateComponent": "Update a public component",
+        "updateComponentHint": "Off by default. When on, a firing alert posts a public incident that sets the component’s status, and resolving the alert restores it.",
+        "statusPage": "Status page",
+        "component": "Component",
+        "impact": "Impact",
+        "impacts": {
+          "degraded_performance": "Degraded performance",
+          "partial_outage": "Partial outage",
+          "major_outage": "Major outage"
+        },
+        "choose": "Choose…",
+        "monitor": "Push monitor",
+        "monitorHint": "Firing records a failure, resolved a success.",
+        "noMonitor": "None"
+      },
+      "reveal": {
+        "title": "Integration endpoints",
+        "description": "Copy them now: the token they contain is shown only once. Rotate it to get new ones.",
+        "url": "Webhook URL (POST)",
+        "email": "Email address",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copyFailed": "Could not copy to the clipboard.",
+        "done": "Done"
+      },
+      "events": {
+        "title": "Event log: {name}",
+        "description": "The latest 100 payloads with secrets redacted, the outcome for each alert and the actions taken.",
+        "loading": "Loading…",
+        "empty": "Nothing received yet.",
+        "loadFailed": "Could not load the event log.",
+        "alertCount": "{count, plural, one {# alert} other {# alerts}}",
+        "sources": {
+          "webhook": "Webhook",
+          "email": "Email"
+        },
+        "outcomes": {
+          "opened": "Opened",
+          "resolved": "Resolved",
+          "duplicate": "Duplicate",
+          "unmatched": "No rule matched",
+          "unknown": "Unknown alert",
+          "error": "Error"
+        },
+        "actions": {
+          "component": "component status",
+          "status_page_incident": "status page incident",
+          "declared_incident": "declared incident",
+          "monitor": "push monitor"
+        },
+        "payload": "Payload",
+        "close": "Close"
       }
     }
   },
@@ -6876,6 +7026,12 @@
     "declaredIncidentCommanderNotMember": "The commander must be a member of this organization.",
     "declaredIncidentLinkInvalid": "The linked incident does not belong to this organization.",
     "declaredIncidentStartInFuture": "The start time cannot be in the future.",
+    "integrationNotFound": "Integration not found.",
+    "integrationTooManyRules": "An integration can have at most 50 rules.",
+    "integrationRuleRegexInvalid": "This regular expression is not valid.",
+    "integrationRuleStatusPageInvalid": "Choose a status page of this organization.",
+    "integrationRuleComponentInvalid": "Choose a component of the selected status page.",
+    "integrationRuleMonitorInvalid": "Choose a push monitor of this organization.",
     "onCallInvalid": "Check the schedule or policy: a time, date, time zone or target is invalid.",
     "onCallNotMember": "Everyone on call must be a member of this organization.",
     "onCallNotFound": "Schedule or escalation policy not found."

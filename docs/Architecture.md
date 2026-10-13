@@ -391,6 +391,18 @@ declared incident is the team's response, which may start from a monitor inciden
 and may span several monitors or none; the status-page incident is the public communication. Declared
 incidents **link** to the other two and never copy them.
 
+## Inbound integrations
+
+`integrations` (#152) receive alerts from Alertmanager, Grafana, generic JSON and email
+(`POST /api/inbound/<token>`, `<token>@INBOUND_EMAIL_DOMAIN`): `name`, `format`, `active`, `tokenHash` (SHA-256,
+server-only) and `tokenPrefix`, the `generic` JSON paths, `emailResolvedKeyword` and ordered `rules[]` (match,
+opt-in `updateComponent` with `statusPage`/`component`/`impact`, `incident: none|draft|publish`, `severity`,
+`monitor`). `integration-alerts` holds one row per `(integration, dedupKey)` (unique index) with the alert's
+state and the incidents its firing opened, so retries are idempotent; `integration-events` is the redacted
+payload log. Parsing and rule matching are pure (`src/lib/inbound-alerts.ts`); `src/server/integrations/ingest.ts`
+applies alerts through the existing collections (a status-page incident carries the component impact, a
+declared incident is the draft) and never duplicates them. See [Integrations](Integrations.md#inbound-alerts).
+
 Unlike monitor incidents, members write declared incidents through the collection with
 `overrideAccess: false` (`orgScoped('declared-incident:*')`); the rules live in the collection's
 `beforeChange` hook (`src/server/declared-incidents/hooks.ts`) so the route handlers, the REST API and the

@@ -124,6 +124,11 @@ export const PERMISSIONS = {
   'webhook:read': 'admin',
   'webhook:manage': 'admin',
 
+  // Inbound alert integrations (#152): members see the integrations and their event log (never the
+  // token); admins create them, edit their rules and rotate tokens.
+  'integration:read': 'member',
+  'integration:manage': 'admin',
+
   // OpenTelemetry collectors (#99): members pick one for their monitors (header values are never
   // readable), admins configure them.
   'otel-collector:read': 'member',

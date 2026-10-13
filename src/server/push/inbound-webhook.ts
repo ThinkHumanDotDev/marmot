@@ -59,7 +59,7 @@ function presentedSecret(request: Request): string | null {
 }
 
 /** Read the body, or `null` once it exceeds `limit` bytes (without buffering the rest). */
-async function readBody(request: Request, limit: number): Promise<Uint8Array | null> {
+export async function readBody(request: Request, limit: number): Promise<Uint8Array | null> {
   if (!request.body) return new Uint8Array()
   const reader = request.body.getReader()
   const chunks: Uint8Array[] = []

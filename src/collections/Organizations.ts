@@ -270,7 +270,14 @@ const resyncSchedulesOnPlanChange: CollectionAfterChangeHook<Organization> = asy
 }
 
 const removeWebhooks: CollectionBeforeDeleteHook = async ({ id, req }) => {
-  for (const collection of ['webhook-deliveries', 'webhook-endpoints'] as const) {
+  for (const collection of [
+    'webhook-deliveries',
+    'webhook-endpoints',
+    // Inbound integrations (#152), their event log and alert state.
+    'integration-events',
+    'integration-alerts',
+    'integrations',
+  ] as const) {
     await req.payload.delete({
       collection,
       where: { organization: { equals: id } },

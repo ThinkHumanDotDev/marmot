@@ -1,0 +1,30 @@
+{
+  "receiver": "marmot",
+  "status": "resolved",
+  "alerts": [
+    {
+      "status": "resolved",
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "api",
+        "severity": "critical",
+        "instance": "api-1:9090"
+      },
+      "annotations": {
+        "summary": "API error rate above 5%",
+        "description": "5xx responses are back to 0.3%."
+      },
+      "startsAt": "2026-10-12T10:00:00.000Z",
+      "endsAt": "2026-10-12T10:20:00.000Z",
+      "generatorURL": "http://prometheus:9090/graph?g0.expr=rate",
+      "fingerprint": "6f2b1c0d9e8a7b65"
+    }
+  ],
+  "groupLabels": { "alertname": "HighErrorRate" },
+  "commonLabels": { "alertname": "HighErrorRate", "service": "api", "severity": "critical" },
+  "commonAnnotations": { "summary": "API error rate above 5%" },
+  "externalURL": "http://alertmanager:9093",
+  "version": "4",
+  "groupKey": "{}:{alertname=\"HighErrorRate\"}",
+  "truncatedAlerts": 0
+}

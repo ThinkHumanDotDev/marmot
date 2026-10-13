@@ -10,6 +10,9 @@ import { AuditLogs } from './AuditLogs'
 import { DeclaredIncidents } from './DeclaredIncidents'
 import { Heartbeats } from './Heartbeats'
 import { Incidents } from './Incidents'
+import { IntegrationAlerts } from './IntegrationAlerts'
+import { IntegrationEvents } from './IntegrationEvents'
+import { Integrations } from './Integrations'
 import { Invitations } from './Invitations'
 import { Locations } from './Locations'
 import { Maintenance } from './Maintenance'
@@ -71,6 +74,9 @@ export const collections: CollectionConfig[] = [
   Heartbeats,
   MonitorIncidents,
   DeclaredIncidents,
+  Integrations,
+  IntegrationAlerts,
+  IntegrationEvents,
   OnCallSchedules,
   EscalationPolicies,
   MonitorLocationStates,

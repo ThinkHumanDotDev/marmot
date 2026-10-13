@@ -51,6 +51,7 @@ import { locationCreateSchema, locationPatchSchema } from '@/server/probes/schem
 import { API_KEY_FORBIDDEN_SECTIONS, isWriteMethod } from '@/server/auth/request-auth'
 import { STATS_RANGES } from '@/server/stats/uptime-calculator'
 import { createEndpointSchema, updateEndpointSchema } from '@/server/webhooks/manage'
+import { createIntegrationSchema, updateIntegrationSchema } from '@/server/integrations/manage'
 import { createCollectorSchema, updateCollectorSchema } from '@/server/otel/manage'
 import {
   metricCreateSchema,
@@ -1892,6 +1893,72 @@ export const OPERATIONS: OperationSpec[] = [
     summary: 'Send a signed `webhook.test` event now',
     tag: 'Webhooks',
     permission: 'webhook:manage',
+  },
+
+  // Inbound alert integrations (#152): tokens are shown once (create, rotate)
+  {
+    method: 'GET',
+    path: `${ORG}/integrations`,
+    operationId: 'listIntegrations',
+    summary: 'Inbound alert integrations (without tokens)',
+    tag: 'Integrations',
+    permission: 'integration:read',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/integrations`,
+    operationId: 'createIntegration',
+    summary: 'Create an inbound alert integration',
+    description:
+      'The response carries the `token`, the inbound `url` (`POST /api/inbound/{token}`) and, when inbound email is on, the `email` address exactly once.',
+    tag: 'Integrations',
+    permission: 'integration:manage',
+    body: { schema: createIntegrationSchema },
+    status: 201,
+    response: { description: '`{ doc, token, url, email }`', schema: anyObject },
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/integrations/{id}`,
+    operationId: 'getIntegration',
+    summary: 'An inbound alert integration (without its token)',
+    tag: 'Integrations',
+    permission: 'integration:read',
+  },
+  {
+    method: 'PATCH',
+    path: `${ORG}/integrations/{id}`,
+    operationId: 'updateIntegration',
+    summary: 'Update an integration (name, format, mapping, rules, active)',
+    tag: 'Integrations',
+    permission: 'integration:manage',
+    body: { schema: updateIntegrationSchema },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/integrations/{id}`,
+    operationId: 'deleteIntegration',
+    summary: 'Delete an integration with its alert state and event log',
+    tag: 'Integrations',
+    permission: 'integration:manage',
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/integrations/{id}/rotate-token`,
+    operationId: 'rotateIntegrationToken',
+    summary: 'Rotate the token (the old one stops working at once)',
+    tag: 'Integrations',
+    permission: 'integration:manage',
+    response: { description: '`{ doc, token, url, email }`, shown once', schema: anyObject },
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/integrations/{id}/events`,
+    operationId: 'listIntegrationEvents',
+    summary: 'Event log: received payloads (redacted), matched rules and actions, 25 per page',
+    tag: 'Integrations',
+    permission: 'integration:read',
+    query: [{ name: 'page', description: 'Page number', schema: { type: 'integer' } }],
   },
 
   // OpenTelemetry collectors (#99): header values are write-only

@@ -1,0 +1,13 @@
+{
+  "dashboardId": 1,
+  "evalMatches": [{ "value": 1, "metric": "Count", "tags": {} }],
+  "message": "Checkout latency is high",
+  "orgId": 1,
+  "panelId": 2,
+  "ruleId": 17,
+  "ruleName": "Checkout latency",
+  "ruleUrl": "http://grafana:3000/d/abc?tab=alert",
+  "state": "alerting",
+  "tags": { "service": "checkout" },
+  "title": "[Alerting] Checkout latency"
+}

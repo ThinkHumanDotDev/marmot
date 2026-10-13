@@ -3,7 +3,8 @@
  * `INBOUND_EMAIL_DOMAIN` are set. A receive-only MX for the inbound domain built on `smtp-server`:
  *
  * - no AUTH, no relaying: `RCPT TO` must be `<token>@INBOUND_EMAIL_DOMAIN` of an active push
- *   monitor, anything else is refused with 550 before the message is sent;
+ *   monitor or inbound integration (#152), anything else is refused with 550 before the message is
+ *   sent;
  * - `SIZE` is announced and enforced (`INBOUND_EMAIL_MAX_BYTES`): a larger message is refused with
  *   552 and nothing is parsed;
  * - a message that cannot be parsed or applied is refused with 451, and the listener keeps
@@ -16,6 +17,7 @@ import type { Payload } from 'payload'
 
 import { env } from '@/env'
 import { childLogger } from '@/lib/logger'
+import { findIntegrationByAddress } from '@/server/integrations/email'
 import { findPushMonitorByAddress, ingestPushEmail, parseRawEmail } from './email'
 import { inboundEmailDomain } from './inbound-config'
 
@@ -57,8 +59,11 @@ export async function startInboundSmtp(
     maxClients: 100,
     onRcptTo(address, _session, callback) {
       findPushMonitorByAddress(payload, address.address)
-        .then((monitor) =>
-          monitor ? callback() : callback(smtpError('5.1.1 Unknown recipient', 550)),
+        .then(
+          async (monitor) => monitor ?? (await findIntegrationByAddress(payload, address.address)),
+        )
+        .then((target) =>
+          target ? callback() : callback(smtpError('5.1.1 Unknown recipient', 550)),
         )
         .catch((err: unknown) => {
           log.error({ err }, 'recipient lookup failed')

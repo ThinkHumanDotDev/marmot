@@ -85,6 +85,9 @@ export interface Config {
     heartbeats: Heartbeat;
     'monitor-incidents': MonitorIncident;
     'declared-incidents': DeclaredIncident;
+    integrations: Integration;
+    'integration-alerts': IntegrationAlert;
+    'integration-events': IntegrationEvent;
     'on-call-schedules': OnCallSchedule;
     'escalation-policies': EscalationPolicy;
     'monitor-location-states': MonitorLocationState;
@@ -139,6 +142,9 @@ export interface Config {
     heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
     'monitor-incidents': MonitorIncidentsSelect<false> | MonitorIncidentsSelect<true>;
     'declared-incidents': DeclaredIncidentsSelect<false> | DeclaredIncidentsSelect<true>;
+    integrations: IntegrationsSelect<false> | IntegrationsSelect<true>;
+    'integration-alerts': IntegrationAlertsSelect<false> | IntegrationAlertsSelect<true>;
+    'integration-events': IntegrationEventsSelect<false> | IntegrationEventsSelect<true>;
     'on-call-schedules': OnCallSchedulesSelect<false> | OnCallSchedulesSelect<true>;
     'escalation-policies': EscalationPoliciesSelect<false> | EscalationPoliciesSelect<true>;
     'monitor-location-states': MonitorLocationStatesSelect<false> | MonitorLocationStatesSelect<true>;
@@ -1285,6 +1291,95 @@ export interface DeclaredIncident {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "integrations".
+ */
+export interface Integration {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  format: 'alertmanager' | 'grafana' | 'generic';
+  active?: boolean | null;
+  tokenHash: string;
+  tokenPrefix: string;
+  generic?: {
+    alertsPath?: string | null;
+    titlePath?: string | null;
+    statusPath?: string | null;
+    severityPath?: string | null;
+    dedupKeyPath?: string | null;
+    descriptionPath?: string | null;
+    resolvedValues?: string | null;
+  };
+  emailResolvedKeyword?: string | null;
+  rules?:
+    | {
+        name?: string | null;
+        enabled?: boolean | null;
+        matchField?: string | null;
+        matchOperator?: ('equals' | 'contains' | 'regex') | null;
+        matchValue?: string | null;
+        updateComponent?: boolean | null;
+        statusPage?: (number | null) | StatusPage;
+        component?: string | null;
+        impact?: ('degraded_performance' | 'partial_outage' | 'major_outage') | null;
+        incident?: ('none' | 'draft' | 'publish') | null;
+        severity?: ('critical' | 'major' | 'minor') | null;
+        monitor?: (number | null) | Monitor;
+        id?: string | null;
+      }[]
+    | null;
+  lastEventAt?: string | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "integration-alerts".
+ */
+export interface IntegrationAlert {
+  id: number;
+  organization: number | Organization;
+  integration: number | Integration;
+  dedupKey: string;
+  status: 'firing' | 'resolved';
+  title?: string | null;
+  rule?: string | null;
+  firedAt?: string | null;
+  resolvedAt?: string | null;
+  lastEventAt?: string | null;
+  statusPageIncident?: (number | null) | Incident;
+  declaredIncident?: (number | null) | DeclaredIncident;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "integration-events".
+ */
+export interface IntegrationEvent {
+  id: number;
+  organization: number | Organization;
+  integration: number | Integration;
+  receivedAt: string;
+  source: 'webhook' | 'email';
+  alertCount?: number | null;
+  droppedCount?: number | null;
+  payload?: string | null;
+  results?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "monitor-location-states".
  */
 export interface MonitorLocationState {
@@ -1310,7 +1405,7 @@ export interface PushEvent {
   monitor: number | Monitor;
   organization?: (number | null) | Organization;
   kind: 'success' | 'fail' | 'start' | 'log';
-  source?: ('http' | 'email') | null;
+  source?: ('http' | 'email' | 'integration') | null;
   msg?: string | null;
   body?: string | null;
   bodyTruncated?: boolean | null;
@@ -2062,6 +2157,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'declared-incidents';
         value: number | DeclaredIncident;
+      } | null)
+    | ({
+        relationTo: 'integrations';
+        value: number | Integration;
+      } | null)
+    | ({
+        relationTo: 'integration-alerts';
+        value: number | IntegrationAlert;
+      } | null)
+    | ({
+        relationTo: 'integration-events';
+        value: number | IntegrationEvent;
       } | null)
     | ({
         relationTo: 'on-call-schedules';
@@ -2832,6 +2939,86 @@ export interface DeclaredIncidentsSelect<T extends boolean = true> {
         message?: T;
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "integrations_select".
+ */
+export interface IntegrationsSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  format?: T;
+  active?: T;
+  tokenHash?: T;
+  tokenPrefix?: T;
+  generic?:
+    | T
+    | {
+        alertsPath?: T;
+        titlePath?: T;
+        statusPath?: T;
+        severityPath?: T;
+        dedupKeyPath?: T;
+        descriptionPath?: T;
+        resolvedValues?: T;
+      };
+  emailResolvedKeyword?: T;
+  rules?:
+    | T
+    | {
+        name?: T;
+        enabled?: T;
+        matchField?: T;
+        matchOperator?: T;
+        matchValue?: T;
+        updateComponent?: T;
+        statusPage?: T;
+        component?: T;
+        impact?: T;
+        incident?: T;
+        severity?: T;
+        monitor?: T;
+        id?: T;
+      };
+  lastEventAt?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "integration-alerts_select".
+ */
+export interface IntegrationAlertsSelect<T extends boolean = true> {
+  organization?: T;
+  integration?: T;
+  dedupKey?: T;
+  status?: T;
+  title?: T;
+  rule?: T;
+  firedAt?: T;
+  resolvedAt?: T;
+  lastEventAt?: T;
+  statusPageIncident?: T;
+  declaredIncident?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "integration-events_select".
+ */
+export interface IntegrationEventsSelect<T extends boolean = true> {
+  organization?: T;
+  integration?: T;
+  receivedAt?: T;
+  source?: T;
+  alertCount?: T;
+  droppedCount?: T;
+  payload?: T;
+  results?: T;
   updatedAt?: T;
   createdAt?: T;
 }

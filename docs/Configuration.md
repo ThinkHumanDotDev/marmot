@@ -178,6 +178,15 @@ transparency logs by the worker's `ct-alerts` job.
 | `INBOUND_EMAIL_WEBHOOK_SECRET` | —         | web         | Turns on the inbound-parse webhook `POST /api/inbound-email` (Postmark, Mailgun, SendGrid, Cloudflare Email Workers) and is the secret it requires (at least 16 characters): `?secret=`, the Basic auth password or an `X-Marmot-Secret` header.            |
 | `INBOUND_EMAIL_MAX_BYTES`      | `1048576` | web, worker | Largest accepted message in bytes (1 KiB–50 MiB). Larger mail is refused (`552` over SMTP, `413` on the webhook).                                                                                                                                           |
 
+### Inbound alert integrations
+
+[Integrations](Integrations.md#inbound-alerts) receive alerts from Alertmanager, Grafana or any JSON sender at `POST /api/inbound/<token>` (and by email at `<token>@INBOUND_EMAIL_DOMAIN` when ping-by-email is on).
+
+| Variable                   | Default  | Read by | Description                                                                                                                                                    |
+| -------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INBOUND_ALERT_RATE_LIMIT` | `120`    | web     | Requests per minute per integration token, and per client address when `trustProxy` is on. Over the limit the endpoint answers `429`. `0` turns the limit off. |
+| `INBOUND_ALERT_MAX_BYTES`  | `262144` | web     | Largest accepted request body in bytes (1 KiB–10 MiB); larger bodies get `413`.                                                                                |
+
 ### Self connectivity check
 
 When the worker's own uplink or DNS fails, every external monitor would go DOWN at once and every channel

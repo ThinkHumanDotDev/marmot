@@ -21,6 +21,7 @@ import {
 } from '@/lib/push-email'
 import { PUSH_MSG_MAX_LENGTH, type PushSignalKind } from '@/lib/push-schedule'
 import type { Monitor } from '@/payload-types'
+import { findIntegrationByAddress, ingestIntegrationEmail } from '@/server/integrations/email'
 import { inboundEmailDomain } from './inbound-config'
 import { findPushMonitor } from './index'
 import { ingestPushSignal } from './signals'
@@ -39,6 +40,7 @@ export interface InboundEmail {
 
 export type InboundRecipientOutcome =
   | { address: string; status: 'recorded'; kind: PushSignalKind; monitorId: string | number }
+  | { address: string; status: 'alert'; integrationId: string | number }
   | { address: string; status: 'ignored'; monitorId: string | number }
   | { address: string; status: 'unknown' }
 
@@ -75,7 +77,15 @@ export async function ingestPushEmail(
     seen.add(address)
     const monitor = await findPushMonitorByAddress(payload, raw.trim())
     if (!monitor) {
-      outcomes.push({ address, status: 'unknown' })
+      // Email-to-incident (#152): the address of an inbound integration.
+      const integration = await findIntegrationByAddress(payload, raw.trim())
+      if (integration && !seen.has(`integration:${integration.id}`)) {
+        seen.add(`integration:${integration.id}`)
+        await ingestIntegrationEmail(payload, integration, mail, options)
+        outcomes.push({ address, status: 'alert', integrationId: integration.id })
+      } else if (!integration) {
+        outcomes.push({ address, status: 'unknown' })
+      }
       continue
     }
     if (seen.has(`monitor:${monitor.id}`)) continue
