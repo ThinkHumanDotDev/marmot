@@ -641,6 +641,94 @@ describe('notification endpoints', () => {
     expect(missing.status).toBe(404)
   })
 
+  it('WhatsApp Cloud API channel: Test sends the approved template, errors land in lastError', async () => {
+    const channel = await createChannel({
+      name: 'whatsapp-cloud',
+      type: 'whatsapp',
+      events: ['down'],
+      config: {
+        backend: 'cloud',
+        recipient: '+4915123456789',
+        accessToken: 'EAAG-secret',
+        phoneNumberId: '1065403',
+        templateName: 'marmot_alert',
+        templateLanguage: 'en_US',
+      },
+    })
+    expect(channel.config).toMatchObject({
+      templateVariables: '{{ name }}\n{{ status }}\n{{ msg }}',
+    })
+
+    // Members never see the access token.
+    const listed = (await (await listRoute(await orgRoute(member), withParams())).json())
+      .docs as Notification[]
+    const seen = listed.find((d) => String(d.id) === String(channel.id))!
+    expect(JSON.stringify(seen.config)).not.toContain('EAAG-secret')
+
+    stubFetch()
+    const res = await testRoute(
+      new Request(`http://localhost/api/orgs/${org.id}/notifications/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders(admin)) },
+        body: JSON.stringify({ notificationId: channel.id }),
+      }),
+      withParams(),
+    )
+    expect(res.status).toBe(200)
+    expect(fetchCalls).toHaveLength(1)
+    expect(fetchCalls[0].url).toBe('https://graph.facebook.com/v21.0/1065403/messages')
+    const body = fetchCalls[0].body as {
+      to: string
+      type: string
+      template: {
+        name: string
+        language: { code: string }
+        components: { type: string; parameters: { type: string; text: string }[] }[]
+      }
+    }
+    expect(body).toMatchObject({
+      messaging_product: 'whatsapp',
+      to: '4915123456789',
+      type: 'template',
+      template: { name: 'marmot_alert', language: { code: 'en_US' } },
+    })
+    const parameters = body.template.components[0].parameters
+    expect(parameters).toHaveLength(3)
+    expect(parameters[2]).toEqual({
+      type: 'text',
+      text: '[Marmot] [⚠️ Test] Down: "whatsapp-cloud" is configured correctly.',
+    })
+
+    // E.164 is enforced when saving.
+    await expect(
+      createChannel({
+        name: 'whatsapp-bad-number',
+        type: 'whatsapp',
+        config: { ...(channel.config as object), recipient: '015123456789' },
+      }),
+    ).rejects.toThrow(/config\.recipient/)
+
+    // A failed delivery records the Graph API error on the channel.
+    stubFetch(400)
+    const monitor = await createMonitor({
+      name: 'wa-failing',
+      notifications: [channel.id] as never,
+    })
+    const heartbeat = await createHeartbeat(monitor, 'down', 'boom')
+    await expect(
+      processNotificationJob(payload, {
+        data: {
+          notificationId: String(channel.id),
+          monitorId: String(monitor.id),
+          heartbeatId: String(heartbeat.id),
+          organizationId: String(org.id),
+        },
+      }),
+    ).rejects.toThrow('WhatsApp Cloud API (HTTP 400): Invalid Webhook Token')
+    const stored = await payload.findByID({ collection: 'notifications', id: channel.id, depth: 0 })
+    expect(stored.lastError).toBe('WhatsApp Cloud API (HTTP 400): Invalid Webhook Token')
+  })
+
   it('GET lists channels for members (secrets masked) and POST creates for admins only', async () => {
     void params
     const channel = await createChannel({
