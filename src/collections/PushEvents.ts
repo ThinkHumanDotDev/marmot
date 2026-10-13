@@ -10,7 +10,7 @@ import { PUSH_BODY_LIMIT_BYTES, PUSH_MSG_MAX_LENGTH, PUSH_SIGNAL_KINDS } from '@
  * `ingestPushSignal()` (`src/server/push/signals.ts`), which keeps the newest
  * `PUSH_EVENTS_PER_MONITOR` rows per monitor. Rows go with their monitor.
  */
-export const PUSH_EVENT_SOURCES = ['http', 'email'] as const
+export const PUSH_EVENT_SOURCES = ['http', 'email', 'integration'] as const
 
 export const PushEvents: CollectionConfig = {
   slug: 'push-events',

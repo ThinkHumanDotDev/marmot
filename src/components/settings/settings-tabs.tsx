@@ -16,6 +16,7 @@ import {
   ScrollText,
   Server,
   ShieldCheck,
+  Siren,
   Tags,
   Telescope,
   UserRound,
@@ -59,6 +60,7 @@ export function SettingsTabs({
     { href: `/${orgSlug}/settings/locations`, label: t('locations'), icon: RadioTower },
     { href: `/${orgSlug}/settings/api-keys`, label: t('apiKeys'), icon: KeyRound },
     { href: `/${orgSlug}/settings/webhooks`, label: t('webhooks'), icon: Webhook },
+    { href: `/${orgSlug}/settings/integrations`, label: t('integrations'), icon: Siren },
     {
       href: `/${orgSlug}/settings/opentelemetry`,
       label: t('openTelemetry'),

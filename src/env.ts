@@ -194,6 +194,16 @@ const schema = z.object({
     .max(50 * 1024 * 1024)
     .default(1024 * 1024),
 
+  // Inbound alert integrations (#152, docs/Integrations.md#inbound-alerts): `POST /api/inbound/<token>` requests per
+  // minute per token (and per client address behind a trusted proxy), 0 = off; largest body, bytes.
+  INBOUND_ALERT_RATE_LIMIT: z.coerce.number().int().min(0).default(120),
+  INBOUND_ALERT_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1024)
+    .max(10 * 1024 * 1024)
+    .default(256 * 1024),
+
   // Management API (#115): requests per minute per organization API key, and how many of them may
   // be writes (POST/PUT/PATCH/DELETE). 0 turns the respective limit off.
   API_KEY_RATE_LIMIT: z.coerce.number().int().min(0).default(600),

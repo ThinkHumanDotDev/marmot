@@ -23,6 +23,7 @@ export const PERMISSION_RESOURCE_KEYS = {
   'api-key': 'apiKey',
   'audit-log': 'auditLog',
   webhook: 'webhook',
+  integration: 'integration',
   'otel-collector': 'otelCollector',
   metric: 'metric',
   sso: 'sso',

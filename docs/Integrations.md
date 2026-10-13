@@ -572,3 +572,66 @@ towards the automatic disable. The log is pruned after `WEBHOOK_DELIVERY_RETENTI
 
 The `webhook` notification channel type stays what it was: a per-monitor alert channel with Uptime Kuma's
 payload. Use outbound webhooks for integrations that need every event, signatures and a delivery history.
+
+## Inbound alerts
+
+Teams that already alert from Prometheus Alertmanager, Grafana or another tool can let those alerts
+update the status page and open incidents, without re-creating every check as a Marmot monitor. Admins
+manage **integrations** under **Settings → Integrations** (`integration:manage`); members see them and
+their event log (`integration:read`). The management API is `/api/orgs/:orgId/integrations[/:id[/events
+| /rotate-token]]` (see the [management API reference](#management-api)).
+
+Each integration has a secret token (`mi` + 40 hex characters, shown once on creation or rotation,
+only its SHA-256 is stored) and receives alerts at:
+
+- `POST /api/inbound/<token>`: the JSON body in the integration's **format**;
+- `<token>@INBOUND_EMAIL_DOMAIN`: when [ping-by-email](Monitors.md#ping-by-email) is on, mail reaches the
+  integration through the same SMTP listener and inbound-parse webhook as push monitors.
+
+| Format         | Parsed as                                                                                                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `alertmanager` | Alertmanager webhook (`version: 4`): one alert per `alerts[]` entry, keyed by `fingerprint`; labels and annotations are matchable fields, `annotations.summary` (else `alertname`) is the title. |
+| `grafana`      | Grafana unified alerting (same shape as Alertmanager) and legacy dashboard alerts (`ruleId`, `ruleName`, `state`, `tags`; `ok` and `paused` mean resolved).                                      |
+| `generic`      | Any JSON object or array. Dot paths (`$.event.title`, `items[0].id`) name the title, status, severity, dedup key and description; status values listed under "resolved" resolve the alert.       |
+| email          | The subject is the title; the integration's resolved keyword (default `resolved`) in the subject resolves the alert with the same subject. Rules match `subject`, `from` and `body`.             |
+
+### Rules
+
+Rules are checked in order; the first enabled rule that matches decides what a **firing** alert does.
+A rule matches a field (a label, annotation or JSON field; empty means the title and description)
+that `equals`, `contains` or matches a `regex` (case-insensitive) its value; an empty value matches
+everything. Alerts no rule matches are logged and ignored. A rule can:
+
+- **update a public component** (opt-in, off by default): post a status-page incident named after the
+  alert that sets the chosen component to degraded performance, partial outage or major outage;
+- **open an incident**: `draft` declares an internal [declared incident](Monitors.md#declared-incidents) with the rule's
+  severity (linked to the public incident when there is one), `publish` posts a status-page incident;
+- **drive a push monitor**: firing records a failure, resolved a success.
+
+When the alert **resolves**, everything its firing opened is resolved: the public incident gets a
+resolved update (the component is operational again), the declared incident moves to `resolved`, the
+push monitor records a success.
+
+### Security and idempotency
+
+- The token is compared in constant time; unknown, malformed and paused tokens get `404`.
+- `INBOUND_ALERT_RATE_LIMIT` requests per minute per token (and per client address behind a trusted
+  proxy), `429` with `Retry-After` beyond; bodies over `INBOUND_ALERT_MAX_BYTES` get `413`; at most 100
+  alerts are read per payload.
+- Alerts are keyed by `(integration, dedup key)`: a repeated or retried firing is a `duplicate` and
+  changes nothing, so Alertmanager's `repeat_interval`, Grafana re-notifications and sender retries
+  never open a second incident. A firing after a resolve opens new incidents.
+- The event log keeps the latest 100 payloads per integration with secret-looking keys (`token`,
+  `api_key`, `password`, `authorization`, …) redacted, and per alert the rule, the outcome (`opened`,
+  `resolved`, `duplicate`, `unmatched`, `unknown`, `error`) and the actions taken.
+
+The answer is `200 { ok, alerts, dropped, results: [{ dedupKey, status, outcome }] }`.
+
+```yaml
+# alertmanager.yml
+receivers:
+  - name: marmot
+    webhook_configs:
+      - url: https://status.example.com/api/inbound/mi0123…
+        send_resolved: true
+```

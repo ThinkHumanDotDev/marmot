@@ -109,6 +109,12 @@ export const AUDITED: Partial<Record<CollectionSlug, AuditCollectionOptions>> = 
     ],
     toggle: { field: 'active', on: 'webhook_endpoint.enabled', off: 'webhook_endpoint.disabled' },
   },
+  integrations: {
+    entityType: 'integration',
+    // Bookkeeping of the inbound endpoint; a new token is recorded as `integration.token_rotated`.
+    ignore: ['lastEventAt', 'tokenHash'],
+    toggle: { field: 'active', on: 'integration.enabled', off: 'integration.disabled' },
+  },
   locations: {
     entityType: 'location',
     // Liveness and agent details are refreshed by probe requests and the `probe-health` job; a new
@@ -158,6 +164,9 @@ export const NOT_AUDITED: Partial<Record<CollectionSlug, string>> = {
   'monitor-incidents':
     'opened and resolved by the engine; member actions are audited as monitor_incident.acknowledged|resolved|published',
   'push-events': 'push monitor signal log (high volume)',
+  'integration-alerts':
+    'alert state written by the inbound endpoint (the incidents it opens are audited)',
+  'integration-events': 'inbound alert payload log',
   'audit-logs': 'the audit log itself',
 }
 
