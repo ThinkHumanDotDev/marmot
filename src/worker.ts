@@ -32,6 +32,7 @@ import {
   registerNotificationListener,
   startNotificationWorker,
 } from '@/server/notifications'
+import { closeEscalationsQueue, startEscalationWorker } from '@/server/on-call/escalation'
 import { closeOtelExports, registerOtelListener } from '@/server/otel/listener'
 import { closeEmitter } from '@/server/realtime/emitter'
 import { registerRealtimeListener } from '@/server/realtime/listener'
@@ -110,6 +111,8 @@ async function main() {
   const maintenanceWorker = await startMaintenanceWorker(payload)
   // Certificate transparency alerts (#143): looks due monitors up in the CT logs every 5 minutes.
   const ctWorker = await startCtAlertsWorker(payload)
+  // On-call escalation (#145): delayed step jobs and pages, kept in Redis across restarts.
+  const escalationWorker = startEscalationWorker(payload)
 
   // Ping-by-email (#135): the inbound SMTP listener for `<push token>@INBOUND_EMAIL_DOMAIN`.
   let inboundSmtp: InboundSmtpListener | null = null
@@ -142,6 +145,7 @@ async function main() {
           notificationWorker.close(),
           maintenanceWorker.close(),
           ctWorker.close(),
+          escalationWorker.close(),
         ])
         await connectivity?.stop()
         await inboundSmtp?.close()
@@ -151,6 +155,7 @@ async function main() {
           closeNotificationsQueue(),
           closeMaintenanceQueue(),
           closeCtQueue(),
+          closeEscalationsQueue(),
         ])
         await closeCheckerStateStore()
         await closeEmitter()

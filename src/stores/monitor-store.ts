@@ -53,6 +53,15 @@ export interface MonitorSummary {
   includeLocal?: boolean
 }
 
+/** Newest monitor incident of a monitor (#276: "last incident" column of the table view). */
+export interface MonitorLastIncident {
+  id: string
+  status: 'open' | 'acknowledged' | 'resolved'
+  /** ISO timestamps. */
+  startedAt: string
+  resolvedAt: string | null
+}
+
 export type UptimePeriod = '24h' | '30d' | '1y'
 export type UptimeMap = Partial<Record<UptimePeriod, number>>
 
@@ -64,6 +73,7 @@ export interface MonitorState {
   importantHeartbeats: Record<MonitorId, RingBuffer<Heartbeat>>
   uptime: Record<MonitorId, UptimeMap>
   avgPing: Record<MonitorId, number>
+  lastIncident: Record<MonitorId, MonitorLastIncident>
   /** True once the initial monitor list arrived. */
   hydrated: boolean
 
@@ -77,6 +87,8 @@ export interface MonitorState {
 
   setUptime: (id: MonitorId, period: UptimePeriod, value: number) => void
   setAvgPing: (id: MonitorId, value: number) => void
+  /** Records an incident of a monitor; keeps it when it is the newest one (or an update of it). */
+  setLastIncident: (id: MonitorId, incident: MonitorLastIncident) => void
 
   reset: () => void
 }
@@ -87,10 +99,17 @@ const initialState = {
   importantHeartbeats: {},
   uptime: {},
   avgPing: {},
+  lastIncident: {},
   hydrated: false,
 } satisfies Pick<
   MonitorState,
-  'monitors' | 'heartbeats' | 'importantHeartbeats' | 'uptime' | 'avgPing' | 'hydrated'
+  | 'monitors'
+  | 'heartbeats'
+  | 'importantHeartbeats'
+  | 'uptime'
+  | 'avgPing'
+  | 'lastIncident'
+  | 'hydrated'
 >
 
 const toId = (id: string | number): MonitorId => String(id)
@@ -124,6 +143,7 @@ export const useMonitorStore = create<MonitorState>()((set) => ({
         importantHeartbeats: omit(s.importantHeartbeats),
         uptime: omit(s.uptime),
         avgPing: omit(s.avgPing),
+        lastIncident: omit(s.lastIncident),
       }
     }),
 
@@ -166,6 +186,20 @@ export const useMonitorStore = create<MonitorState>()((set) => ({
 
   setAvgPing: (rawId, value) => set((s) => ({ avgPing: { ...s.avgPing, [toId(rawId)]: value } })),
 
+  setLastIncident: (rawId, incident) =>
+    set((s) => {
+      const id = toId(rawId)
+      const current = s.lastIncident[id]
+      if (
+        current &&
+        current.id !== incident.id &&
+        Date.parse(current.startedAt) > Date.parse(incident.startedAt)
+      ) {
+        return {}
+      }
+      return { lastIncident: { ...s.lastIncident, [id]: incident } }
+    }),
+
   reset: () => set({ ...initialState }),
 }))
 
@@ -198,6 +232,9 @@ export const selectLatestHeartbeat = (id: string | number) => (s: MonitorState) 
 
 export const selectUptime = (id: string | number, period: UptimePeriod) => (s: MonitorState) =>
   s.uptime[toId(id)]?.[period]
+
+export const selectLastIncident = (id: string | number) => (s: MonitorState) =>
+  s.lastIncident[toId(id)]
 
 export const selectAvgPing = (id: string | number) => (s: MonitorState) => s.avgPing[toId(id)]
 

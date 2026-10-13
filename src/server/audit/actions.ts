@@ -20,6 +20,8 @@ export const AUDIT_RESOURCE_TYPES = [
   'status_page_audience',
   'incident',
   'declared_incident',
+  'on_call_schedule',
+  'escalation_policy',
   'subscriber',
   'subscriber_notification',
   'maintenance',

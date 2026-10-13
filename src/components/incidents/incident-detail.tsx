@@ -50,6 +50,8 @@ function useTimelineText() {
         return entry.by
           ? t('publishedBy', { name: entry.by.name, title: entry.message ?? '' })
           : t('published', { title: entry.message ?? '' })
+      case 'escalated':
+        return entry.message ? t('escalated', { targets: entry.message }) : t('escalatedNobody')
     }
   }
 }
@@ -60,6 +62,7 @@ const dotTone: Record<MonitorIncidentTimelineEntry['type'], string> = {
   acknowledged: 'bg-status-pending',
   resolved: 'bg-status-up',
   published: 'bg-primary',
+  escalated: 'bg-status-pending',
 }
 
 /** One incident: facts, actions and timeline; kept live by `monitorIncident` events. */
@@ -196,7 +199,7 @@ export function IncidentDetail({
                   <p className="text-xs text-muted-foreground">
                     {format.dateTime(new Date(entry.at), 'precise')}
                   </p>
-                  {entry.message && entry.type !== 'published' && (
+                  {entry.message && entry.type !== 'published' && entry.type !== 'escalated' && (
                     <p className="mt-1 text-sm break-words whitespace-pre-wrap text-muted-foreground">
                       {entry.message}
                     </p>

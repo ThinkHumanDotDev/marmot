@@ -417,6 +417,49 @@ incidents with `overrideAccess: true` and `req.context.declaredIncidentReminder`
 bookkeeping. Changes are audited by the collection audit hooks (`declared_incident.*`). Routes:
 `/api/orgs/:orgId/declared-incidents/**`; UI: `/[orgSlug]/declared-incidents`.
 
+## On-call and escalation
+
+`on-call-schedules` and `escalation-policies` (#145) decide who is paged when a monitor goes down, and in which
+order.
+
+**Schedules** have layers. A layer rotates through its ordered `members`: a shift lasts a day (`daily`), a week
+(`weekly`) or `customLength` hours or days, and hands off at `handoffTime` wall-clock time in the layer's
+`timezone` (the schedule's when empty), starting on `startDate`. Day-based shifts follow the calendar, so a
+weekly Monday 09:00 handoff stays at 09:00 local time across DST changes (that week is an hour shorter or
+longer); hour-based shifts are exact durations. A handoff inside the hour skipped by a DST change happens one
+hour later. `restrictions` limit a layer to windows of the week (e.g. weekdays 09:00–17:00, windows may wrap
+past midnight). Later layers take precedence over earlier ones where they have somebody on call, and
+`overrides` (one member for a time range) take precedence over every layer, the last matching one winning.
+The maths is pure and lives in `src/lib/on-call.ts` (`onCallAt`, `shiftsBetween`, unit-tested around DST
+changes), so the dashboard, the API and the worker agree.
+
+**Escalation policies** have ordered `steps`; each step pages its `targets` (the member on call in a schedule, a
+member, or any notification channel) and waits `escalateAfterMinutes` for an acknowledgement before the next
+step. After the last step the policy starts over `repeat` times. Monitors reference a policy
+(`monitors.escalationPolicy`). The escalation runs as BullMQ jobs on `marmot:escalations`
+(`src/server/on-call/escalation.ts`):
+
+```
+monitor incident opened ─▶ startEscalation ─▶ escalation-step (step 0, no delay)
+escalation-step ─▶ resolve targets ─▶ escalation-page per target (email, or the channel's provider)
+                └▶ timeline row `escalated` ─▶ next escalation-step, delayed by escalateAfterMinutes
+acknowledge / resolve ─▶ escalation.status = stopped ─▶ the pending step job is removed
+```
+
+Delayed jobs live in Redis, so pending steps survive worker restarts; job ids are derived from (incident,
+round, step), so a step is never queued twice. The incident keeps the state in `escalationPolicy` and
+`escalation { status: active | stopped | exhausted, step, round, nextAt }`, and every job re-checks it first:
+a step or page that slips past an acknowledgement pages nobody. Pages carry the signed acknowledge link
+(`/ack/<token>`). Phone calls (#146) and other channels plug in as notification channel types.
+
+Access: `on-call:read` (viewer) and `on-call:manage` (member) for schedules and overrides,
+`escalation-policy:read` (viewer) and `escalation-policy:manage` (admin) for policies. Members write through
+`/api/orgs/:orgId/on-call/**` with `overrideAccess: false`; the collection hooks require every person on call
+to be a member and every schedule and channel of a policy to belong to the organization. Changes are audited
+(`on_call_schedule.*`, `escalation_policy.*`) and announced with the `onCall` realtime event. Routes:
+`GET /api/orgs/:orgId/on-call` (who is on call now or `?at=`), `…/on-call/shifts` (upcoming shifts, the
+member's own by default), `…/on-call/schedules/**`, `…/on-call/escalation-policies/**`; UI: `/[orgSlug]/on-call`.
+
 ## Status page incidents
 
 An incident (`src/collections/Incidents.ts`) is a title plus a **timeline** of updates stored as an array
@@ -529,7 +572,8 @@ existing organization).
 monitors[] }` (active and paused monitors, with what the list searches and filters on: type, target,
 description, resolved tags, channel and location ids), then per monitor `heartbeatList` (last 100 beats, oldest →
 newest), `importantHeartbeatList` (last 50 status transitions), `uptime` and `avgPing` for `24h` and `30d`
-(`src/server/stats/uptime-calculator.ts`). `loadOrgState()` in `src/server/realtime/state.ts` builds that
+(`src/server/stats/uptime-calculator.ts`) and `lastIncident` (the newest monitor incident, for
+the monitor table; later changes arrive as `monitorIncident`). `loadOrgState()` in `src/server/realtime/state.ts` builds that
 state and is reused by server components (with the request user and `overrideAccess: false`).
 
 **Live events.** The worker registers `registerRealtimeListener()` (`src/server/realtime/listener.ts`) after
@@ -666,6 +710,9 @@ afford a lookup (`toClientNotification` secret masking, field-level access on `i
 | `declared-incident:read`                                            |   ✓    |   ✓    |   ✓   |   ✓   |
 | `declared-incident:create`, `declared-incident:update`              |        |   ✓    |   ✓   |   ✓   |
 | `declared-incident:delete`, `declared-incident:skip-postmortem`     |        |        |   ✓   |   ✓   |
+| `on-call:read`, `escalation-policy:read`                            |   ✓    |   ✓    |   ✓   |   ✓   |
+| `on-call:manage` (schedules and overrides)                          |        |   ✓    |   ✓   |   ✓   |
+| `escalation-policy:manage`                                          |        |        |   ✓   |   ✓   |
 | `notification:read`                                                 |        |   ✓    |   ✓   |   ✓   |
 | `notification:create`, `notification:update`, `notification:delete` |        |        |   ✓   |   ✓   |
 | `status-page:read`                                                  |   ✓    |   ✓    |   ✓   |   ✓   |

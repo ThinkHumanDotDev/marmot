@@ -135,6 +135,16 @@ and the `{{ status }}` template variable follow it, and so do provider-specific 
 (`source`, `alias`, dedup keys) stay as they are. The channel form shows provider and field labels in
 the user's language.
 
+### On-call pages
+
+A monitor with an escalation policy also pages people (see [Architecture](Architecture.md#on-call-and-escalation)):
+when its incident opens, each step of the policy pages the member on call in a schedule, a member (by email)
+or a notification channel, then waits for an acknowledgement before the next step. A channel target ignores
+the channel's event filter (the policy chose it) and receives
+`[name] [📟 Page] name is down and you are on call. Cause: … Acknowledge: <server>/ack/<token>`; members get
+the same text by email. Acknowledging the incident (dashboard, API or the link) stops the escalation. Manage
+schedules, overrides and policies on the **On-call** page (`g o`).
+
 ### Certificate transparency alerts
 
 Monitors with a hostname (HTTP family, TCP port, ping, DNS) can watch the public

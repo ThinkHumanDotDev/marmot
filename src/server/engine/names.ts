@@ -11,6 +11,8 @@ export const QUEUE_NAMES = {
   maintenance: 'maintenance',
   /** Certificate transparency lookups (`src/server/jobs/ct-alerts.ts`). */
   ct: 'ct',
+  /** On-call escalation steps and pages (`src/server/on-call/escalation.ts`, #145). */
+  escalations: 'escalations',
 } as const
 
 /** Job name of a monitor check on the checks queue. */

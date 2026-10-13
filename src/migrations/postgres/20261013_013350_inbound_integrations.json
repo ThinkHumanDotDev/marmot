@@ -2012,6 +2012,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "escalation_policy_id": {
+          "name": "escalation_policy_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "otlp_export": {
           "name": "otlp_export",
           "type": "boolean",
@@ -3089,6 +3095,21 @@
           "method": "btree",
           "with": {}
         },
+        "monitors_escalation_policy_idx": {
+          "name": "monitors_escalation_policy_idx",
+          "columns": [
+            {
+              "expression": "escalation_policy_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "monitors_otlp_collector_idx": {
           "name": "monitors_otlp_collector_idx",
           "columns": [
@@ -3257,6 +3278,19 @@
           "tableTo": "monitors",
           "columnsFrom": [
             "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitors_escalation_policy_id_escalation_policies_id_fk": {
+          "name": "monitors_escalation_policy_id_escalation_policies_id_fk",
+          "tableFrom": "monitors",
+          "tableTo": "escalation_policies",
+          "columnsFrom": [
+            "escalation_policy_id"
           ],
           "columnsTo": [
             "id"
@@ -5620,6 +5654,37 @@
           "primaryKey": false,
           "notNull": false
         },
+        "escalation_policy_id": {
+          "name": "escalation_policy_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "escalation_status": {
+          "name": "escalation_status",
+          "type": "enum_monitor_incidents_escalation_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "escalation_step": {
+          "name": "escalation_step",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "escalation_round": {
+          "name": "escalation_round",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "escalation_next_at": {
+          "name": "escalation_next_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "status_page_incident_id": {
           "name": "status_page_incident_id",
           "type": "integer",
@@ -5737,6 +5802,21 @@
           "columns": [
             {
               "expression": "resolved_by_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_incidents_escalation_policy_idx": {
+          "name": "monitor_incidents_escalation_policy_idx",
+          "columns": [
+            {
+              "expression": "escalation_policy_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5881,6 +5961,19 @@
           "tableTo": "users",
           "columnsFrom": [
             "resolved_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "monitor_incidents_escalation_policy_id_escalation_policies_id_fk": {
+          "name": "monitor_incidents_escalation_policy_id_escalation_policies_id_fk",
+          "tableFrom": "monitor_incidents",
+          "tableTo": "escalation_policies",
+          "columnsFrom": [
+            "escalation_policy_id"
           ],
           "columnsTo": [
             "id"
@@ -7418,6 +7511,1063 @@
           "tableTo": "integrations",
           "columnsFrom": [
             "integration_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.on_call_schedules_layers_restrictions_days": {
+      "name": "on_call_schedules_layers_restrictions_days",
+      "schema": "",
+      "columns": {
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "enum_on_call_schedules_layers_restrictions_days",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "on_call_schedules_layers_restrictions_days_order_idx": {
+          "name": "on_call_schedules_layers_restrictions_days_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "on_call_schedules_layers_restrictions_days_parent_idx": {
+          "name": "on_call_schedules_layers_restrictions_days_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "on_call_schedules_layers_restrictions_days_parent_fk": {
+          "name": "on_call_schedules_layers_restrictions_days_parent_fk",
+          "tableFrom": "on_call_schedules_layers_restrictions_days",
+          "tableTo": "on_call_schedules_layers_restrictions",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.on_call_schedules_layers_restrictions": {
+      "name": "on_call_schedules_layers_restrictions",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "start": {
+          "name": "start",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end": {
+          "name": "end",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "on_call_schedules_layers_restrictions_order_idx": {
+          "name": "on_call_schedules_layers_restrictions_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "on_call_schedules_layers_restrictions_parent_id_idx": {
+          "name": "on_call_schedules_layers_restrictions_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "on_call_schedules_layers_restrictions_parent_id_fk": {
+          "name": "on_call_schedules_layers_restrictions_parent_id_fk",
+          "tableFrom": "on_call_schedules_layers_restrictions",
+          "tableTo": "on_call_schedules_layers",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.on_call_schedules_layers": {
+      "name": "on_call_schedules_layers",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rotation": {
+          "name": "rotation",
+          "type": "enum_on_call_schedules_layers_rotation",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'weekly'"
+        },
+        "custom_length": {
+          "name": "custom_length",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custom_unit": {
+          "name": "custom_unit",
+          "type": "enum_on_call_schedules_layers_custom_unit",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'days'"
+        },
+        "handoff_time": {
+          "name": "handoff_time",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'09:00'"
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "on_call_schedules_layers_order_idx": {
+          "name": "on_call_schedules_layers_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "on_call_schedules_layers_parent_id_idx": {
+          "name": "on_call_schedules_layers_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "on_call_schedules_layers_parent_id_fk": {
+          "name": "on_call_schedules_layers_parent_id_fk",
+          "tableFrom": "on_call_schedules_layers",
+          "tableTo": "on_call_schedules",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.on_call_schedules_overrides": {
+      "name": "on_call_schedules_overrides",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start": {
+          "name": "start",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end": {
+          "name": "end",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "on_call_schedules_overrides_order_idx": {
+          "name": "on_call_schedules_overrides_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "on_call_schedules_overrides_parent_id_idx": {
+          "name": "on_call_schedules_overrides_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "on_call_schedules_overrides_user_idx": {
+          "name": "on_call_schedules_overrides_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "on_call_schedules_overrides_user_id_users_id_fk": {
+          "name": "on_call_schedules_overrides_user_id_users_id_fk",
+          "tableFrom": "on_call_schedules_overrides",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "on_call_schedules_overrides_parent_id_fk": {
+          "name": "on_call_schedules_overrides_parent_id_fk",
+          "tableFrom": "on_call_schedules_overrides",
+          "tableTo": "on_call_schedules",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.on_call_schedules": {
+      "name": "on_call_schedules",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'UTC'"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "on_call_schedules_organization_idx": {
+          "name": "on_call_schedules_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "on_call_schedules_updated_at_idx": {
+          "name": "on_call_schedules_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "on_call_schedules_created_at_idx": {
+          "name": "on_call_schedules_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "on_call_schedules_organization_id_organizations_id_fk": {
+          "name": "on_call_schedules_organization_id_organizations_id_fk",
+          "tableFrom": "on_call_schedules",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.on_call_schedules_rels": {
+      "name": "on_call_schedules_rels",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "users_id": {
+          "name": "users_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "on_call_schedules_rels_order_idx": {
+          "name": "on_call_schedules_rels_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "on_call_schedules_rels_parent_idx": {
+          "name": "on_call_schedules_rels_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "on_call_schedules_rels_path_idx": {
+          "name": "on_call_schedules_rels_path_idx",
+          "columns": [
+            {
+              "expression": "path",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "on_call_schedules_rels_users_id_idx": {
+          "name": "on_call_schedules_rels_users_id_idx",
+          "columns": [
+            {
+              "expression": "users_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "on_call_schedules_rels_parent_fk": {
+          "name": "on_call_schedules_rels_parent_fk",
+          "tableFrom": "on_call_schedules_rels",
+          "tableTo": "on_call_schedules",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "on_call_schedules_rels_users_fk": {
+          "name": "on_call_schedules_rels_users_fk",
+          "tableFrom": "on_call_schedules_rels",
+          "tableTo": "users",
+          "columnsFrom": [
+            "users_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.escalation_policies_steps_targets": {
+      "name": "escalation_policies_steps_targets",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "enum_escalation_policies_steps_targets_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "schedule_id": {
+          "name": "schedule_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "channel_id": {
+          "name": "channel_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "escalation_policies_steps_targets_order_idx": {
+          "name": "escalation_policies_steps_targets_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "escalation_policies_steps_targets_parent_id_idx": {
+          "name": "escalation_policies_steps_targets_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "escalation_policies_steps_targets_schedule_idx": {
+          "name": "escalation_policies_steps_targets_schedule_idx",
+          "columns": [
+            {
+              "expression": "schedule_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "escalation_policies_steps_targets_user_idx": {
+          "name": "escalation_policies_steps_targets_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "escalation_policies_steps_targets_channel_idx": {
+          "name": "escalation_policies_steps_targets_channel_idx",
+          "columns": [
+            {
+              "expression": "channel_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "escalation_policies_steps_targets_schedule_id_on_call_schedules_id_fk": {
+          "name": "escalation_policies_steps_targets_schedule_id_on_call_schedules_id_fk",
+          "tableFrom": "escalation_policies_steps_targets",
+          "tableTo": "on_call_schedules",
+          "columnsFrom": [
+            "schedule_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "escalation_policies_steps_targets_user_id_users_id_fk": {
+          "name": "escalation_policies_steps_targets_user_id_users_id_fk",
+          "tableFrom": "escalation_policies_steps_targets",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "escalation_policies_steps_targets_channel_id_notifications_id_fk": {
+          "name": "escalation_policies_steps_targets_channel_id_notifications_id_fk",
+          "tableFrom": "escalation_policies_steps_targets",
+          "tableTo": "notifications",
+          "columnsFrom": [
+            "channel_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "escalation_policies_steps_targets_parent_id_fk": {
+          "name": "escalation_policies_steps_targets_parent_id_fk",
+          "tableFrom": "escalation_policies_steps_targets",
+          "tableTo": "escalation_policies_steps",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.escalation_policies_steps": {
+      "name": "escalation_policies_steps",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "escalate_after_minutes": {
+          "name": "escalate_after_minutes",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 10
+        }
+      },
+      "indexes": {
+        "escalation_policies_steps_order_idx": {
+          "name": "escalation_policies_steps_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "escalation_policies_steps_parent_id_idx": {
+          "name": "escalation_policies_steps_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "escalation_policies_steps_parent_id_fk": {
+          "name": "escalation_policies_steps_parent_id_fk",
+          "tableFrom": "escalation_policies_steps",
+          "tableTo": "escalation_policies",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.escalation_policies": {
+      "name": "escalation_policies",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "repeat": {
+          "name": "repeat",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "escalation_policies_organization_idx": {
+          "name": "escalation_policies_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "escalation_policies_updated_at_idx": {
+          "name": "escalation_policies_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "escalation_policies_created_at_idx": {
+          "name": "escalation_policies_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "escalation_policies_organization_id_organizations_id_fk": {
+          "name": "escalation_policies_organization_id_organizations_id_fk",
+          "tableFrom": "escalation_policies",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
           ],
           "columnsTo": [
             "id"
@@ -16808,6 +17958,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "on_call_schedules_id": {
+          "name": "on_call_schedules_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "escalation_policies_id": {
+          "name": "escalation_policies_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "monitor_location_states_id": {
           "name": "monitor_location_states_id",
           "type": "integer",
@@ -17322,6 +18484,36 @@
           "columns": [
             {
               "expression": "integration_events_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_on_call_schedules_id_idx": {
+          "name": "payload_locked_documents_rels_on_call_schedules_id_idx",
+          "columns": [
+            {
+              "expression": "on_call_schedules_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payload_locked_documents_rels_escalation_policies_id_idx": {
+          "name": "payload_locked_documents_rels_escalation_policies_id_idx",
+          "columns": [
+            {
+              "expression": "escalation_policies_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -18018,6 +19210,32 @@
           "tableTo": "integration_events",
           "columnsFrom": [
             "integration_events_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_on_call_schedules_fk": {
+          "name": "payload_locked_documents_rels_on_call_schedules_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "on_call_schedules",
+          "columnsFrom": [
+            "on_call_schedules_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payload_locked_documents_rels_escalation_policies_fk": {
+          "name": "payload_locked_documents_rels_escalation_policies_fk",
+          "tableFrom": "payload_locked_documents_rels",
+          "tableTo": "escalation_policies",
+          "columnsFrom": [
+            "escalation_policies_id"
           ],
           "columnsTo": [
             "id"
@@ -19477,7 +20695,8 @@
         "maintenance",
         "acknowledged",
         "resolved",
-        "published"
+        "published",
+        "escalated"
       ]
     },
     "public.enum_monitor_incidents_timeline_via": {
@@ -19505,6 +20724,15 @@
         "dashboard",
         "api",
         "link"
+      ]
+    },
+    "public.enum_monitor_incidents_escalation_status": {
+      "name": "enum_monitor_incidents_escalation_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "stopped",
+        "exhausted"
       ]
     },
     "public.enum_declared_incidents_timeline_type": {
@@ -19611,6 +20839,45 @@
       "values": [
         "webhook",
         "email"
+      ]
+    },
+    "public.enum_on_call_schedules_layers_restrictions_days": {
+      "name": "enum_on_call_schedules_layers_restrictions_days",
+      "schema": "public",
+      "values": [
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri",
+        "sat",
+        "sun"
+      ]
+    },
+    "public.enum_on_call_schedules_layers_rotation": {
+      "name": "enum_on_call_schedules_layers_rotation",
+      "schema": "public",
+      "values": [
+        "daily",
+        "weekly",
+        "custom"
+      ]
+    },
+    "public.enum_on_call_schedules_layers_custom_unit": {
+      "name": "enum_on_call_schedules_layers_custom_unit",
+      "schema": "public",
+      "values": [
+        "hours",
+        "days"
+      ]
+    },
+    "public.enum_escalation_policies_steps_targets_type": {
+      "name": "enum_escalation_policies_steps_targets_type",
+      "schema": "public",
+      "values": [
+        "schedule",
+        "user",
+        "channel"
       ]
     },
     "public.enum_monitor_location_states_last_status": {
@@ -20217,6 +21484,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "39185610-d52e-4277-b743-82acc8d8401d",
+  "id": "5881e313-84a4-46ba-9c89-32213a830e14",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

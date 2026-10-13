@@ -40,13 +40,16 @@ import {
   type RowNavigateHandler,
   type RowSelectHandler,
 } from './monitor-row'
+import { MonitorTable, MonitorViewControls, useSortedIds } from './monitor-table'
+import { useMonitorViewPrefs, type TableColumn } from './monitor-view-prefs'
 import { UPTIME_BAR_BEATS } from './uptime-bar'
 
 /** Serialisable initial state produced by `loadOrgState` on the server. */
 export type MonitorListInitialState = Pick<
   OrgRealtimeState,
   'organizationId' | 'monitors' | 'heartbeats' | 'uptime'
->
+> &
+  Partial<Pick<OrgRealtimeState, 'avgPing' | 'lastIncidents'>>
 
 /** Organization resources the filters and bulk actions offer (loaded by the page). */
 export interface MonitorListResources {
@@ -62,6 +65,8 @@ export interface MonitorListResources {
 
 interface MonitorListProps {
   orgSlug: string
+  /** Signed-in user: the list/table choice is remembered per user (#276). */
+  userId?: string
   initial: MonitorListInitialState
   /** `monitor:create`; viewers get the empty state without the call to action. */
   canCreate?: boolean
@@ -81,6 +86,10 @@ function hydrateStore(initial: MonitorListInitialState) {
     if (beats) store.setHeartbeatList(monitor.id, beats.map(toStoreHeartbeat))
     const uptime = initial.uptime[monitor.id]?.['24h']
     if (uptime !== undefined) store.setUptime(monitor.id, '24h', uptime)
+    const avgPing = initial.avgPing?.[monitor.id]?.['24h']
+    if (typeof avgPing === 'number') store.setAvgPing(monitor.id, avgPing)
+    const incident = initial.lastIncidents?.[monitor.id]
+    if (incident) store.setLastIncident(monitor.id, incident)
   }
 }
 
@@ -116,6 +125,7 @@ const NO_BULK: BulkPermissions = { update: false, delete: false }
  */
 export function MonitorList({
   orgSlug,
+  userId = 'anonymous',
   initial,
   canCreate = true,
   initialFilters = EMPTY_FILTERS,
@@ -130,7 +140,10 @@ export function MonitorList({
   const monitors = useMonitorStore((s) => s.monitors)
   const liveStatuses = useLiveStatuses()
   const searchRef = React.useRef<HTMLInputElement>(null)
-  const listRef = React.useRef<HTMLUListElement>(null)
+  const listRef = React.useRef<HTMLDivElement>(null)
+  const [prefs, setPrefs] = useMonitorViewPrefs(userId)
+  // The table reads the store only, so it waits for hydration (the server render is the list).
+  const tableView = hydrated && prefs.view === 'table'
   const selectable = bulk.update || bulk.delete
   // The "add to" actions need monitor:update (the server also checks the target's permission,
   // which `resources` reflects) and something to add to.
@@ -195,10 +208,25 @@ export function MonitorList({
   }, [entries, filters, locationNames])
 
   const shownIds = React.useMemo(() => shown.map(({ monitor }) => monitor.id), [shown])
-  const shownIdsRef = React.useRef(shownIds)
+  const sortedIds = useSortedIds(shownIds, prefs.sort, locale)
+  // Range selection and ↑/↓ follow the order on screen.
+  const orderedIds = tableView ? sortedIds : shownIds
+  const shownIdsRef = React.useRef(orderedIds)
   React.useEffect(() => {
-    shownIdsRef.current = shownIds
-  }, [shownIds])
+    shownIdsRef.current = orderedIds
+  }, [orderedIds])
+
+  const onSort = React.useCallback(
+    (column: TableColumn) =>
+      setPrefs((p) => ({
+        ...p,
+        sort: {
+          column,
+          direction: p.sort.column === column && p.sort.direction === 'asc' ? 'desc' : 'asc',
+        },
+      })),
+    [setPrefs],
+  )
 
   // The selection never contains monitors that are not shown (filtered out or deleted), so a
   // bulk action only ever touches what the user sees.
@@ -327,12 +355,19 @@ export function MonitorList({
 
   return (
     <div className="grid gap-4">
-      <MonitorListToolbar
-        filters={filters}
-        onChange={updateFilters}
-        options={filterOptions}
-        searchRef={searchRef}
-      />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+        <div className="min-w-0 flex-1">
+          <MonitorListToolbar
+            filters={filters}
+            onChange={updateFilters}
+            options={filterOptions}
+            searchRef={searchRef}
+          />
+        </div>
+        <div className="flex justify-end">
+          <MonitorViewControls prefs={prefs} onChange={setPrefs} />
+        </div>
+      </div>
       <p className="sr-only" role="status" aria-live="polite" data-testid="monitor-list-count">
         {t('summary', { shown: shown.length, total: entries.length })}
       </p>
@@ -349,20 +384,36 @@ export function MonitorList({
             statusPages={resources.statusPages ?? null}
           />
         )}
-        <div className="hidden items-center border-b md:flex" aria-hidden>
-          {selectable && <span className="w-8 shrink-0" />}
-          <div className="grid flex-1 grid-cols-[auto_minmax(0,1fr)_minmax(8rem,14rem)_5rem_5rem] items-center gap-x-3 px-4 py-2 text-xs font-medium text-muted-foreground">
-            <span className="w-2.5" />
-            <span>{t('columns.monitor')}</span>
-            <span>{t('columns.lastChecks', { count: UPTIME_BAR_BEATS })}</span>
-            <span className="text-right">{t('columns.uptime24h')}</span>
-            <span className="text-right">{t('columns.ping')}</span>
+        {!tableView && (
+          <div className="hidden items-center border-b md:flex" aria-hidden>
+            {selectable && <span className="w-8 shrink-0" />}
+            <div className="grid flex-1 grid-cols-[auto_minmax(0,1fr)_minmax(8rem,14rem)_5rem_5rem] items-center gap-x-3 px-4 py-2 text-xs font-medium text-muted-foreground">
+              <span className="w-2.5" />
+              <span>{t('columns.monitor')}</span>
+              <span>{t('columns.lastChecks', { count: UPTIME_BAR_BEATS })}</span>
+              <span className="text-right">{t('columns.uptime24h')}</span>
+              <span className="text-right">{t('columns.ping')}</span>
+            </div>
           </div>
-        </div>
+        )}
         {rows.length > 0 ? (
-          <ul ref={listRef} className="divide-y" aria-label={t('listLabel')}>
-            {rows}
-          </ul>
+          <div ref={listRef}>
+            {tableView ? (
+              <MonitorTable
+                ids={sortedIds}
+                orgSlug={orgSlug}
+                sort={prefs.sort}
+                hidden={prefs.hidden}
+                onSort={onSort}
+                onSelect={selectable ? onSelect : undefined}
+                onNavigate={selectable ? onNavigate : undefined}
+              />
+            ) : (
+              <ul className="divide-y" aria-label={t('listLabel')}>
+                {rows}
+              </ul>
+            )}
+          </div>
         ) : (
           <div className="p-6">
             <EmptyState

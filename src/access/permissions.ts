@@ -46,6 +46,13 @@ export const PERMISSIONS = {
   'declared-incident:delete': 'admin',
   'declared-incident:skip-postmortem': 'admin',
 
+  // On-call (#145): everyone sees who is on call and their shifts; members edit schedules and
+  // overrides; admins decide who gets paged (escalation policies).
+  'on-call:read': 'viewer',
+  'on-call:manage': 'member',
+  'escalation-policy:read': 'viewer',
+  'escalation-policy:manage': 'admin',
+
   'notification:read': 'member',
   'notification:create': 'admin',
   'notification:update': 'admin',

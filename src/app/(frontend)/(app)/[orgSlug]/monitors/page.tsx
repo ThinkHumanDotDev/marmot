@@ -71,6 +71,7 @@ export default async function MonitorsPage({ params, searchParams }: MonitorsPag
       <section className="p-4 sm:p-6 md:p-8">
         <MonitorList
           orgSlug={orgSlug}
+          userId={String(ctx.user.id)}
           canCreate={canCreate}
           initialFilters={parseMonitorFilters(query)}
           resources={resources}
@@ -80,6 +81,8 @@ export default async function MonitorsPage({ params, searchParams }: MonitorsPag
             monitors: initial.monitors,
             heartbeats: initial.heartbeats,
             uptime: initial.uptime,
+            avgPing: initial.avgPing,
+            lastIncidents: initial.lastIncidents,
           }}
         />
       </section>

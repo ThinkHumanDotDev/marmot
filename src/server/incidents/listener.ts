@@ -14,6 +14,7 @@ import { incidentActionForBeat, type IncidentBeatAction } from '@/lib/monitor-in
 import type { MonitorIncident } from '@/payload-types'
 import { registerHeartbeatListener, type HeartbeatEvent } from '@/server/engine/hooks'
 import { registerNotificationGate } from '@/server/notifications/gates'
+import { cancelEscalation, startEscalation } from '@/server/on-call/escalation'
 
 import { publishIncident } from './realtime'
 import { getReminderPolicy, isReminderBeat } from './reminders'
@@ -57,11 +58,12 @@ export async function handleIncidentBeat(
       cause: heartbeat.msg,
       startedAt: at,
     })
-    if (created) {
-      log.info({ monitorId: monitor.id, incidentId: incident.id }, 'incident opened')
-      await publishIncident(payload, incident)
-    }
-    return { action, incident, changed: created }
+    if (!created) return { action, incident, changed: false }
+    log.info({ monitorId: monitor.id, incidentId: incident.id }, 'incident opened')
+    // On-call escalation (#145) when the monitor has a policy.
+    const escalated = await startEscalation(payload, incident, monitor, at)
+    await publishIncident(payload, escalated ?? incident)
+    return { action, incident: escalated ?? incident, changed: true }
   }
 
   const open = await findOpenIncident(payload, monitor.id)
@@ -72,6 +74,7 @@ export async function handleIncidentBeat(
       ? await noteMaintenance(payload, open, at)
       : await resolveIncident(payload, open, { auto: true, at })
   if (action === 'resolve') {
+    await cancelEscalation(updated)
     log.info({ monitorId: monitor.id, incidentId: open.id }, 'incident resolved automatically')
   }
   await publishIncident(payload, updated)

@@ -88,6 +88,8 @@ export interface Config {
     integrations: Integration;
     'integration-alerts': IntegrationAlert;
     'integration-events': IntegrationEvent;
+    'on-call-schedules': OnCallSchedule;
+    'escalation-policies': EscalationPolicy;
     'monitor-location-states': MonitorLocationState;
     'push-events': PushEvent;
     'stat-minutely': StatMinutely;
@@ -143,6 +145,8 @@ export interface Config {
     integrations: IntegrationsSelect<false> | IntegrationsSelect<true>;
     'integration-alerts': IntegrationAlertsSelect<false> | IntegrationAlertsSelect<true>;
     'integration-events': IntegrationEventsSelect<false> | IntegrationEventsSelect<true>;
+    'on-call-schedules': OnCallSchedulesSelect<false> | OnCallSchedulesSelect<true>;
+    'escalation-policies': EscalationPoliciesSelect<false> | EscalationPoliciesSelect<true>;
     'monitor-location-states': MonitorLocationStatesSelect<false> | MonitorLocationStatesSelect<true>;
     'push-events': PushEventsSelect<false> | PushEventsSelect<true>;
     'stat-minutely': StatMinutelySelect<false> | StatMinutelySelect<true>;
@@ -468,6 +472,7 @@ export interface Monitor {
       }[]
     | null;
   notifications?: (number | Notification)[] | null;
+  escalationPolicy?: (number | null) | EscalationPolicy;
   otlpExport?: boolean | null;
   otlpCollector?: (number | null) | OtelCollector;
   locations?: (number | Location)[] | null;
@@ -746,6 +751,77 @@ export interface Notification {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "escalation-policies".
+ */
+export interface EscalationPolicy {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  description?: string | null;
+  repeat?: number | null;
+  steps?:
+    | {
+        escalateAfterMinutes: number;
+        targets?:
+          | {
+              type: 'schedule' | 'user' | 'channel';
+              schedule?: (number | null) | OnCallSchedule;
+              user?: (number | null) | User;
+              channel?: (number | null) | Notification;
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "on-call-schedules".
+ */
+export interface OnCallSchedule {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  description?: string | null;
+  timezone: string;
+  layers?:
+    | {
+        name?: string | null;
+        timezone?: string | null;
+        rotation: 'daily' | 'weekly' | 'custom';
+        customLength?: number | null;
+        customUnit?: ('hours' | 'days') | null;
+        handoffTime: string;
+        startDate: string;
+        members?: (number | User)[] | null;
+        restrictions?:
+          | {
+              days: ('mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun')[];
+              start: string;
+              end: string;
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  overrides?:
+    | {
+        user: number | User;
+        start: string;
+        end: string;
+        note?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "otel-collectors".
  */
 export interface OtelCollector {
@@ -951,10 +1027,17 @@ export interface MonitorIncident {
   autoResolved?: boolean | null;
   remindersSent?: number | null;
   lastReminderAt?: string | null;
+  escalationPolicy?: (number | null) | EscalationPolicy;
+  escalation?: {
+    status?: ('active' | 'stopped' | 'exhausted') | null;
+    step?: number | null;
+    round?: number | null;
+    nextAt?: string | null;
+  };
   statusPageIncident?: (number | null) | Incident;
   timeline?:
     | {
-        type: 'opened' | 'maintenance' | 'acknowledged' | 'resolved' | 'published';
+        type: 'opened' | 'maintenance' | 'acknowledged' | 'resolved' | 'published' | 'escalated';
         at: string;
         by?: (number | null) | User;
         via?: ('dashboard' | 'api' | 'link') | null;
@@ -2088,6 +2171,14 @@ export interface PayloadLockedDocument {
         value: number | IntegrationEvent;
       } | null)
     | ({
+        relationTo: 'on-call-schedules';
+        value: number | OnCallSchedule;
+      } | null)
+    | ({
+        relationTo: 'escalation-policies';
+        value: number | EscalationPolicy;
+      } | null)
+    | ({
         relationTo: 'monitor-location-states';
         value: number | MonitorLocationState;
       } | null)
@@ -2422,6 +2513,7 @@ export interface MonitorsSelect<T extends boolean = true> {
         id?: T;
       };
   notifications?: T;
+  escalationPolicy?: T;
   otlpExport?: T;
   otlpCollector?: T;
   locations?: T;
@@ -2781,6 +2873,15 @@ export interface MonitorIncidentsSelect<T extends boolean = true> {
   autoResolved?: T;
   remindersSent?: T;
   lastReminderAt?: T;
+  escalationPolicy?: T;
+  escalation?:
+    | T
+    | {
+        status?: T;
+        step?: T;
+        round?: T;
+        nextAt?: T;
+      };
   statusPageIncident?: T;
   timeline?:
     | T
@@ -2918,6 +3019,75 @@ export interface IntegrationEventsSelect<T extends boolean = true> {
   droppedCount?: T;
   payload?: T;
   results?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "on-call-schedules_select".
+ */
+export interface OnCallSchedulesSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  description?: T;
+  timezone?: T;
+  layers?:
+    | T
+    | {
+        name?: T;
+        timezone?: T;
+        rotation?: T;
+        customLength?: T;
+        customUnit?: T;
+        handoffTime?: T;
+        startDate?: T;
+        members?: T;
+        restrictions?:
+          | T
+          | {
+              days?: T;
+              start?: T;
+              end?: T;
+              id?: T;
+            };
+        id?: T;
+      };
+  overrides?:
+    | T
+    | {
+        user?: T;
+        start?: T;
+        end?: T;
+        note?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "escalation-policies_select".
+ */
+export interface EscalationPoliciesSelect<T extends boolean = true> {
+  organization?: T;
+  name?: T;
+  description?: T;
+  repeat?: T;
+  steps?:
+    | T
+    | {
+        escalateAfterMinutes?: T;
+        targets?:
+          | T
+          | {
+              type?: T;
+              schedule?: T;
+              user?: T;
+              channel?: T;
+              id?: T;
+            };
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }

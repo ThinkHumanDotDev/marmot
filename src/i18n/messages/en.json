@@ -95,7 +95,8 @@
       "settings": "Settings",
       "incidents": "Incidents",
       "sla": "SLA",
-      "declaredIncidents": "Response"
+      "declaredIncidents": "Response",
+      "onCall": "On-call"
     },
     "orgSwitcher": {
       "trigger": "Organization: {name}. Switch organization",
@@ -278,6 +279,29 @@
         "deleteTitle": "Delete {count, plural, one {# monitor} other {# monitors}}?",
         "deleteDescription": "This removes the selected monitors together with their heartbeats and statistics. Child monitors of a group are kept and detached. This cannot be undone.",
         "confirmDelete": "Delete monitors"
+      },
+      "view": {
+        "label": "View",
+        "list": "List",
+        "table": "Table",
+        "columns": "Columns",
+        "columnsLabel": "Visible columns"
+      },
+      "table": {
+        "label": "Monitors",
+        "never": "Never",
+        "columns": {
+          "select": "Select",
+          "status": "Status",
+          "name": "Name",
+          "target": "Target",
+          "type": "Type",
+          "tags": "Tags",
+          "lastCheck": "Last check",
+          "uptime24h": "Uptime (24h)",
+          "avgPing": "Avg. latency",
+          "lastIncident": "Last incident"
+        }
       }
     },
     "realtime": {
@@ -1962,7 +1986,9 @@
         "sla_report_share": "SLA report link",
         "metric": "Metric",
         "declared_incident": "Declared incident",
-        "integration": "Inbound integration"
+        "integration": "Inbound integration",
+        "on_call_schedule": "On-call schedule",
+        "escalation_policy": "Escalation policy"
       },
       "verbs": {
         "created": "created",
@@ -2312,7 +2338,9 @@
         "sla": "SLA targets and reports",
         "metric": "Status page metrics",
         "declaredIncident": "Declared incidents",
-        "integration": "Inbound integrations"
+        "integration": "Inbound integrations",
+        "onCall": "On-call schedules",
+        "escalationPolicy": "Escalation policies"
       },
       "actions": {
         "read": "View",
@@ -3458,6 +3486,13 @@
         "commanderIs": "Commander: {name}.",
         "reminder": "No activity for {duration}. Post an update or change the status.",
         "emailSubject": "[Marmot] {label}: {title}"
+      },
+      "onCall": {
+        "label": "📟 Page",
+        "page": "{monitor} is down and you are on call.",
+        "cause": "Cause: {cause}",
+        "ack": "Acknowledge: {url}",
+        "emailSubject": "[Marmot] Page: {monitor} is down"
       }
     },
     "providers": {
@@ -6005,7 +6040,9 @@
         "dashboard": "from the dashboard",
         "api": "through the API",
         "link": "from a notification link"
-      }
+      },
+      "escalated": "Escalated: paged {targets}",
+      "escalatedNobody": "Escalation step reached nobody"
     },
     "actions": {
       "acknowledge": "Acknowledge",
@@ -6195,6 +6232,142 @@
         "actionItems": "Action items"
       }
     }
+  },
+  "onCall": {
+    "metaTitle": "On-call",
+    "title": "On-call",
+    "description": "Who is paged when a monitor goes down, and in which order.",
+    "now": {
+      "title": "On call now",
+      "empty": "No schedules yet. Create one to say who is on call.",
+      "nobody": "Nobody on call",
+      "until": "until {date}",
+      "noEnd": "No handoff in the next weeks",
+      "override": "Override",
+      "timezone": "Handoffs in {zone}"
+    },
+    "mine": {
+      "title": "Your upcoming shifts",
+      "empty": "You have no on-call shifts in the next four weeks.",
+      "override": "Override"
+    },
+    "schedule": {
+      "new": "New schedule",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteTitle": "Delete {name}?",
+      "deleteDescription": "Escalation steps that page this schedule will skip it.",
+      "created": "Schedule created",
+      "saved": "Schedule saved",
+      "deleted": "Schedule deleted",
+      "failed": "Could not save the schedule",
+      "dialogTitle": "On-call schedule",
+      "dialogDescription": "Layers rotate through their members. Later layers take precedence where they have somebody on call.",
+      "name": "Name",
+      "namePlaceholder": "Platform team",
+      "description": "Description",
+      "timezone": "Time zone",
+      "layers": "Layers",
+      "addLayer": "Add layer",
+      "removeLayer": "Remove layer",
+      "layer": "Layer {number}",
+      "layerName": "Layer name",
+      "layerNamePlaceholder": "Primary",
+      "rotation": "Rotation",
+      "rotations": {
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "custom": "Custom"
+      },
+      "customLength": "Shift length",
+      "units": {
+        "hours": "Hours",
+        "days": "Days"
+      },
+      "handoffTime": "Handoff time",
+      "startDate": "First shift starts on",
+      "members": "Members, in rotation order",
+      "addMember": "Add a member",
+      "moveUp": "Move {name} up",
+      "removeMember": "Remove {name}",
+      "noMembers": "Add at least one member to every layer.",
+      "restrictions": "Only on call during",
+      "noRestrictions": "Always on call",
+      "addRestriction": "Add a time window",
+      "removeRestriction": "Remove the time window",
+      "from": "From",
+      "to": "To",
+      "weekdays": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      },
+      "save": "Save",
+      "cancel": "Cancel",
+      "upcoming": "Next shifts",
+      "noUpcoming": "No shifts in the next four weeks."
+    },
+    "override": {
+      "add": "Add override",
+      "title": "Add an override",
+      "description": "Put someone on call for a time range, for example a holiday swap. Overrides take precedence over every layer.",
+      "user": "Member",
+      "start": "Start",
+      "end": "End",
+      "note": "Note",
+      "save": "Add override",
+      "saved": "Override added",
+      "removed": "Override removed",
+      "remove": "Remove the override for {name}",
+      "failed": "Could not save the override",
+      "list": "Overrides"
+    },
+    "policies": {
+      "title": "Escalation policies",
+      "empty": "No escalation policies yet. A policy says who is paged when a monitor goes down.",
+      "new": "New policy",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteTitle": "Delete {name}?",
+      "deleteDescription": "Monitors using it will stop escalating.",
+      "created": "Policy created",
+      "saved": "Policy saved",
+      "deleted": "Policy deleted",
+      "failed": "Could not save the policy",
+      "dialogTitle": "Escalation policy",
+      "dialogDescription": "Each step pages its targets, then waits for an acknowledgement before the next step. Acknowledging the incident stops the escalation.",
+      "name": "Name",
+      "namePlaceholder": "Production outages",
+      "description": "Description",
+      "repeat": "Repeat",
+      "repeatHint": "How many times to start over after the last step",
+      "steps": "Steps",
+      "step": "Step {number}",
+      "addStep": "Add step",
+      "removeStep": "Remove step {number}",
+      "escalateAfter": "Escalate after (minutes)",
+      "targets": "Page",
+      "addTarget": "Add target",
+      "removeTarget": "Remove target",
+      "targetTypes": {
+        "schedule": "On call in a schedule",
+        "user": "Member",
+        "channel": "Notification channel"
+      },
+      "pick": "Choose…",
+      "monitors": "Monitors using this policy",
+      "noMonitors": "No monitors use this policy.",
+      "after": "after {minutes, plural, one {# minute} other {# minutes}}",
+      "repeats": "{count, plural, =0 {No repeat} one {Repeats once} other {Repeats # times}}",
+      "noTargets": "Every step needs at least one target.",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "range": "{start} – {end}"
   },
   "templates": {
     "kinds": {
@@ -6858,7 +7031,10 @@
     "integrationRuleRegexInvalid": "This regular expression is not valid.",
     "integrationRuleStatusPageInvalid": "Choose a status page of this organization.",
     "integrationRuleComponentInvalid": "Choose a component of the selected status page.",
-    "integrationRuleMonitorInvalid": "Choose a push monitor of this organization."
+    "integrationRuleMonitorInvalid": "Choose a push monitor of this organization.",
+    "onCallInvalid": "Check the schedule or policy: a time, date, time zone or target is invalid.",
+    "onCallNotMember": "Everyone on call must be a member of this organization.",
+    "onCallNotFound": "Schedule or escalation policy not found."
   },
   "subscriberMessages": {
     "sms": {
