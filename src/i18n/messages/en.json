@@ -4182,6 +4182,59 @@
           }
         }
       },
+      "whatsapp": {
+        "label": "WhatsApp",
+        "fields": {
+          "backend": {
+            "label": "Backend",
+            "options": {
+              "cloud": "WhatsApp Business Cloud API (Meta)",
+              "twilio": "Twilio WhatsApp"
+            }
+          },
+          "recipient": {
+            "label": "Recipient number",
+            "description": "International E.164 format, starting with + and the country code."
+          },
+          "accessToken": {
+            "label": "Access token",
+            "description": "Cloud API only: a permanent system-user token with whatsapp_business_messaging."
+          },
+          "phoneNumberId": {
+            "label": "Phone number ID",
+            "description": "Cloud API only: the sender’s phone number ID (not the phone number itself)."
+          },
+          "templateName": {
+            "label": "Template name",
+            "description": "Cloud API only: an approved message template."
+          },
+          "templateLanguage": {
+            "label": "Template language"
+          },
+          "accountSid": {
+            "label": "Twilio account SID"
+          },
+          "apiKey": {
+            "label": "Twilio API key SID",
+            "description": "Optional: authenticate with an API key instead of the account SID."
+          },
+          "authToken": {
+            "label": "Twilio auth token (or API key secret)"
+          },
+          "fromNumber": {
+            "label": "Twilio WhatsApp sender",
+            "description": "Twilio only: your WhatsApp-enabled Twilio number."
+          },
+          "contentSid": {
+            "label": "Twilio content template SID",
+            "description": "Twilio only: an approved content template. Without it the plain message is sent, which WhatsApp only delivers within 24 hours of the recipient’s last message."
+          },
+          "templateVariables": {
+            "label": "Template variables",
+            "description": "One Liquid template per line, filling the template’s numbered variables in order. Leave empty for a template without variables."
+          }
+        }
+      },
       "wecom": {
         "label": "WeCom",
         "fields": {
