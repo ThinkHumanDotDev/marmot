@@ -50,6 +50,8 @@ export const AUDITED: Partial<Record<CollectionSlug, AuditCollectionOptions>> = 
     // Reminder bookkeeping of the worker and the activity stamp of every write.
     ignore: ['remindersSent', 'lastReminderAt', 'nextReminderAt', 'lastActivityAt'],
   },
+  'on-call-schedules': { entityType: 'on_call_schedule' },
+  'escalation-policies': { entityType: 'escalation_policy' },
   'status-page-subscribers': {
     entityType: 'subscriber',
     label: (doc) => (typeof doc.target === 'string' ? doc.target : null),

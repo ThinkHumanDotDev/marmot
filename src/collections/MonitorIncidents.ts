@@ -9,6 +9,7 @@ import {
   INCIDENT_TIMELINE_TYPES,
   MONITOR_INCIDENT_STATUSES,
 } from '@/lib/monitor-incidents'
+import { ESCALATION_STATUSES } from '@/lib/on-call'
 import type { MonitorIncident } from '@/payload-types'
 
 const relId = (value: unknown): string | number | null => {
@@ -141,6 +142,32 @@ export const MonitorIncidents: CollectionConfig = {
           admin: { description: adminT('marmot:monitorIncidents:remindersSentDescription') },
         },
         { name: 'lastReminderAt', type: 'date' },
+      ],
+    },
+    {
+      // On-call escalation (#145), driven by `src/server/on-call/escalation.ts`: `step`/`round` name
+      // the step whose delayed job is pending while `status` is `active`.
+      name: 'escalationPolicy',
+      type: 'relationship',
+      relationTo: 'escalation-policies',
+    },
+    {
+      name: 'escalation',
+      type: 'group',
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'status',
+              type: 'select',
+              options: ESCALATION_STATUSES.map((value) => ({ value, label: value })),
+            },
+            { name: 'step', type: 'number' },
+            { name: 'round', type: 'number' },
+            { name: 'nextAt', type: 'date' },
+          ],
+        },
       ],
     },
     {

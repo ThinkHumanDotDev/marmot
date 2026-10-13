@@ -9,6 +9,8 @@ export const PERMISSION_RESOURCE_KEYS = {
   monitor: 'monitor',
   'monitor-incident': 'monitorIncident',
   'declared-incident': 'declaredIncident',
+  'on-call': 'onCall',
+  'escalation-policy': 'escalationPolicy',
   notification: 'notification',
   'status-page': 'statusPage',
   subscriber: 'subscriber',

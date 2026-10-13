@@ -25,6 +25,7 @@ export const RealtimeEvents = {
   monitorIncident: 'monitorIncident',
   lastIncident: 'lastIncident',
   declaredIncident: 'declaredIncident',
+  onCall: 'onCall',
   info: 'info',
   checkerStatus: 'checkerStatus',
 } as const
@@ -146,6 +147,8 @@ export interface RealtimePayloads {
   }
   /** A declared incident was declared or changed (#101). */
   declaredIncident: { organizationId: RealtimeId; incident: DeclaredIncidentSummary }
+  /** An on-call schedule or escalation policy was created, changed or deleted (#145). */
+  onCall: { organizationId: RealtimeId; kind: 'schedule' | 'policy'; id: RealtimeId }
   /** Server information, sent once per connection. */
   info: { version: string; serverTime: string }
   /**

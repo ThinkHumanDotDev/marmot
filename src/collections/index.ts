@@ -21,6 +21,7 @@ import { MonitorIncidents } from './MonitorIncidents'
 import { MonitorLocationStates } from './MonitorLocationStates'
 import { Monitors } from './Monitors'
 import { Notifications } from './Notifications'
+import { EscalationPolicies, OnCallSchedules } from './OnCall'
 import { NotificationSentHistory } from './NotificationSentHistory'
 import { Organizations } from './Organizations'
 import { OtelCollectors } from './OtelCollectors'
@@ -70,6 +71,8 @@ export const collections: CollectionConfig[] = [
   Heartbeats,
   MonitorIncidents,
   DeclaredIncidents,
+  OnCallSchedules,
+  EscalationPolicies,
   MonitorLocationStates,
   PushEvents,
   StatMinutely,
