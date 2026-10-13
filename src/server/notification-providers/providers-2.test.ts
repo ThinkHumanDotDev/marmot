@@ -145,6 +145,7 @@ describe('notification provider registry (wave 2)', () => {
     'twilio',
     'webpush',
     'wecom',
+    'whatsapp',
     'zoho-cliq',
   ]
 
