@@ -317,3 +317,114 @@ test.describe('Monitor list bulk actions', () => {
       .toBe(3)
   })
 })
+
+/**
+ * Table view of the monitor list (#276): switch to the table, sort by 24 h uptime, hide a column,
+ * reload into the same view, and select rows with the keyboard for a bulk action.
+ */
+test.describe('Monitor table view', () => {
+  const run = runId()
+  const org = { name: `Table Org ${run}`, slug: `e2e-table-${run}` }
+  const created: { collection: string; id: DocId }[] = []
+  const ids: Record<'up' | 'down', DocId> = {} as never
+
+  test.beforeAll(async ({ adminApi }) => {
+    const track = <T extends { id: DocId }>(collection: string, doc: T): T => {
+      created.unshift({ collection, id: doc.id })
+      return doc
+    }
+    const organization = track('organizations', await adminApi.create('organizations', org))
+    const monitor = async (name: string, path: string) =>
+      track(
+        'monitors',
+        await adminApi.createMonitor({
+          name: `${name} ${run}`,
+          type: 'http',
+          url: targetUrl(path),
+          active: true,
+          interval: 60,
+          retryInterval: 60,
+          maxRetries: 0,
+          resendInterval: 0,
+          timeout: 48,
+          organization: organization.id,
+        }),
+      ).id
+    // Named so that the name order differs from the uptime order.
+    ids.up = await monitor('Alpha up', '/health')
+    ids.down = await monitor('Zulu down', '/down')
+    await adminApi.waitForHeartbeat(ids.up, 'up')
+    await adminApi.waitForHeartbeat(ids.down, 'down')
+  })
+
+  test.afterAll(async ({ adminApi }) => {
+    for (const { collection, id } of created) await adminApi.delete(collection, id)
+  })
+
+  test('switches to a sortable table that is remembered and keeps bulk selection', async ({
+    page,
+    adminApi,
+  }) => {
+    await page.goto(`/${org.slug}/monitors`)
+    await expect(
+      page.getByRole('list', { name: 'Monitors', exact: true }).getByRole('listitem'),
+    ).toHaveCount(2)
+
+    const views = page.getByRole('group', { name: 'View' })
+    await views.getByRole('button', { name: 'Table' }).click()
+    await expect(views.getByRole('button', { name: 'Table' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    const table = page.getByRole('table', { name: 'Monitors' })
+    const rows = table.locator('tbody tr')
+    await expect(rows).toHaveCount(2)
+    await expect(rows.first()).toContainText(`Alpha up ${run}`)
+    await expect(table.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    )
+
+    // Sorting by 24 h uptime: ascending puts the failing monitor first, again flips it.
+    const uptime = table.getByRole('columnheader', { name: /Uptime \(24h\)/ })
+    await uptime.getByRole('button').click()
+    await expect(uptime).toHaveAttribute('aria-sort', 'ascending')
+    await expect(rows.first()).toContainText(`Zulu down ${run}`)
+    await uptime.getByRole('button').click()
+    await expect(uptime).toHaveAttribute('aria-sort', 'descending')
+    await expect(rows.first()).toContainText(`Alpha up ${run}`)
+
+    // Hide the target column.
+    await expect(table.getByRole('columnheader', { name: /^Target/ })).toBeVisible()
+    await page.getByRole('button', { name: 'Columns' }).click()
+    await page.getByRole('menuitemcheckbox', { name: 'Target' }).click()
+    await page.keyboard.press('Escape')
+    await expect(table.getByRole('columnheader', { name: /^Target/ })).toHaveCount(0)
+
+    // The same view after a reload.
+    await page.reload()
+    await expect(rows).toHaveCount(2)
+    await expect(uptime).toHaveAttribute('aria-sort', 'descending')
+    await expect(rows.first()).toContainText(`Alpha up ${run}`)
+    await expect(table.getByRole('columnheader', { name: /^Target/ })).toHaveCount(0)
+
+    // Keyboard selection in table order, then a bulk action from the shared bar.
+    await rows.first().getByRole('checkbox').focus()
+    await page.keyboard.press('Space')
+    await expect(page.getByText('1 selected')).toBeVisible()
+    await page.keyboard.press('Shift+ArrowDown')
+    await expect(page.getByText('2 selected')).toBeVisible()
+    await page
+      .getByRole('toolbar', { name: 'Bulk actions' })
+      .getByRole('button', { name: 'Pause' })
+      .click()
+
+    // The rows update live.
+    // (generous timeout: the first bulk request compiles its route under `next dev`)
+    await expect(rows.filter({ hasText: 'Paused' })).toHaveCount(2, { timeout: 30_000 })
+    const monitors = await adminApi.find<{ id: DocId; active?: boolean }>('monitors', {
+      organization: { equals: String(await adminApi.organizationId(org.slug)) },
+    })
+    expect(monitors.map((m) => m.active)).toEqual([false, false])
+  })
+})

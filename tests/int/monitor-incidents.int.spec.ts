@@ -41,6 +41,7 @@ import {
   type NotificationsQueue,
 } from '@/server/notifications'
 import { closeEmitter } from '@/server/realtime/emitter'
+import { loadOrgState } from '@/server/realtime/state'
 
 /**
  * Monitor incidents (#100): the engine opens and resolves them, members acknowledge them through
@@ -240,6 +241,33 @@ describe('engine lifecycle', () => {
     // The next outage is a new incident.
     monitor = await beat(monitor, false, 'timeout', new Date(t0.getTime() + 360_000))
     expect((await incidentsOf(monitor)).map((i) => i.status)).toEqual(['resolved', 'open'])
+  })
+
+  it('hands the newest incident per monitor to the initial state (#276)', async () => {
+    let flapping = await createMonitor('Table flapping')
+    const quiet = await createMonitor('Table quiet')
+    const t0 = new Date(Date.now() - 30 * 60_000)
+    flapping = await beat(flapping, false, 'HTTP 503', t0)
+    flapping = await beat(flapping, true, 'OK', new Date(t0.getTime() + 60_000))
+    flapping = await beat(flapping, false, 'timeout', new Date(t0.getTime() + 120_000))
+    const [, newest] = await incidentsOf(flapping)
+
+    // Read with a viewer's access (fresh user: memberships were added after it was created).
+    const user = await payload.findByID({ collection: 'users', id: viewer.user.id, depth: 0 })
+    const state = await loadOrgState(payload, org.id, {
+      user: { ...user, collection: 'users' } as never,
+      overrideAccess: false,
+      heartbeatLimit: 0,
+      importantLimit: 0,
+      ranges: [],
+    })
+    expect(state.lastIncidents[String(flapping.id)]).toEqual({
+      id: String(newest.id),
+      status: 'open',
+      startedAt: new Date(t0.getTime() + 120_000).toISOString(),
+      resolvedAt: null,
+    })
+    expect(state.lastIncidents[String(quiet.id)]).toBeUndefined()
   })
 
   it('stays open through maintenance and does not reopen after a manual resolve', async () => {

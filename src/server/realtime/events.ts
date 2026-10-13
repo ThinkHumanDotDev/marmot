@@ -6,7 +6,7 @@
  *
  * This module must stay free of Node-only imports: it is bundled into client components.
  */
-import type { MonitorIncidentSummary } from '@/lib/monitor-incidents'
+import type { MonitorIncidentStatus, MonitorIncidentSummary } from '@/lib/monitor-incidents'
 
 /** Server → client events. */
 export const RealtimeEvents = {
@@ -22,6 +22,7 @@ export const RealtimeEvents = {
   maintenanceList: 'maintenanceList',
   notificationList: 'notificationList',
   monitorIncident: 'monitorIncident',
+  lastIncident: 'lastIncident',
   info: 'info',
   checkerStatus: 'checkerStatus',
 } as const
@@ -81,6 +82,15 @@ export interface RealtimeMonitor {
   includeLocal?: boolean
 }
 
+/** The newest monitor incident of a monitor, as the monitor table shows it (#276). */
+export interface RealtimeLastIncident {
+  id: RealtimeId
+  status: MonitorIncidentStatus
+  /** ISO timestamps. */
+  startedAt: string
+  resolvedAt: string | null
+}
+
 export interface RealtimeTag {
   id: RealtimeId
   name: string
@@ -126,6 +136,12 @@ export interface RealtimePayloads {
   notificationList: { organizationId: RealtimeId; items: unknown[] }
   /** A monitor incident was opened, acknowledged, resolved or published (#100). */
   monitorIncident: { organizationId: RealtimeId; incident: MonitorIncidentSummary }
+  /** Newest incident of one monitor, sent with the initial state (later changes: `monitorIncident`). */
+  lastIncident: {
+    organizationId: RealtimeId
+    monitorId: RealtimeId
+    incident: RealtimeLastIncident
+  }
   /** Server information, sent once per connection. */
   info: { version: string; serverTime: string }
   /**

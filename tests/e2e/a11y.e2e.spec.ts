@@ -92,11 +92,28 @@ test.describe('Accessibility', () => {
     }
   })
 
-  const appPages = [
+  const appPages: {
+    name: string
+    path: () => string
+    /** Puts the page in the state under test after loading (e.g. switches a view). */
+    prepare?: (page: Page) => Promise<void>
+    ready: (page: Page) => ReturnType<Page['getByRole']>
+  }[] = [
     {
       name: 'monitors list',
       path: () => `/${org.slug}/monitors`,
       ready: (page: Page) => page.getByRole('link', { name: new RegExp(monitorName) }),
+    },
+    {
+      // The table view (#276); the choice is remembered, so the later loads open on the table.
+      name: 'monitors table',
+      path: () => `/${org.slug}/monitors`,
+      prepare: (page: Page) =>
+        page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Table' }).click(),
+      ready: (page: Page) =>
+        page
+          .getByRole('table', { name: 'Monitors' })
+          .getByRole('link', { name: new RegExp(monitorName) }),
     },
     {
       name: 'monitor detail',
@@ -123,6 +140,7 @@ test.describe('Accessibility', () => {
       for (const colorScheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme })
         await page.goto(target.path())
+        await target.prepare?.(page)
         await expect(target.ready(page)).toBeVisible()
         await expect(page.locator('html')).toHaveClass(new RegExp(colorScheme))
         await expectNoSeriousViolations(page, `${target.name} (${colorScheme})`)
@@ -130,6 +148,7 @@ test.describe('Accessibility', () => {
       await page.emulateMedia({ colorScheme: 'light' })
       await page.setViewportSize({ width: 390, height: 844 })
       await page.goto(target.path())
+      await target.prepare?.(page)
       await expect(target.ready(page)).toBeVisible()
       // Nothing may force horizontal scrolling of the page at phone width.
       const overflow = await page.evaluate(

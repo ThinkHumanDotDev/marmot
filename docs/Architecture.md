@@ -489,7 +489,8 @@ existing organization).
 monitors[] }` (active and paused monitors, with what the list searches and filters on: type, target,
 description, resolved tags, channel and location ids), then per monitor `heartbeatList` (last 100 beats, oldest →
 newest), `importantHeartbeatList` (last 50 status transitions), `uptime` and `avgPing` for `24h` and `30d`
-(`src/server/stats/uptime-calculator.ts`). `loadOrgState()` in `src/server/realtime/state.ts` builds that
+(`src/server/stats/uptime-calculator.ts`) and `lastIncident` (the newest monitor incident, for
+the monitor table; later changes arrive as `monitorIncident`). `loadOrgState()` in `src/server/realtime/state.ts` builds that
 state and is reused by server components (with the request user and `overrideAccess: false`).
 
 **Live events.** The worker registers `registerRealtimeListener()` (`src/server/realtime/listener.ts`) after
