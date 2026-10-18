@@ -1,10 +1,11 @@
 /**
  * Scheduled SLA reports (#156), on the existing BullMQ queues:
  *
- * - `sla-reports-due` (job scheduler on `marmot:maintenance`, hourly at :40 UTC, after the daily
- *   uptime snapshot at 00:20): for every report with a schedule whose latest complete period
- *   (previous week or previous month, `previousSchedulePeriod`) has not been sent yet, enqueue
- *   one `sla-report-send` job.
+ * - `sla-reports-due` (job scheduler on `marmot:maintenance`, hourly at :40, after the daily
+ *   uptime snapshot at 00:20 UTC): for every report with a schedule whose latest complete period
+ *   (previous week or previous month in the organization's time zone, starting on its first day
+ *   of the week, `previousSchedulePeriod`) has not been sent yet, enqueue one `sla-report-send`
+ *   job.
  * - `sla-report-send` (on `marmot:notifications`, processed by the notification worker; job id
  *   `sla-report-<report>-<period>` dedupes, three attempts with exponential backoff): builds the
  *   report, renders the CSV and the PDF and emails them to each recipient through the Payload
@@ -12,8 +13,10 @@
  *   failed attempt the period is recorded with `lastError`, so a broken mailer does not retry the
  *   same period every hour.
  *
- * So a monthly report goes out on the 1st shortly after 00:40 UTC, a weekly one on Mondays.
- * Tests replace the job sink with `setSlaJobSink` to run jobs inline.
+ * So a monthly report goes out within the first hour of the 1st in the organization's time zone
+ * (#274), a weekly one on the first day of its week. "Send now" (`sendSlaReport`) mails a report
+ * at once without touching the schedule's bookkeeping. Tests replace the job sink with
+ * `setSlaJobSink` to run jobs inline.
  */
 import type { Job, JobsOptions, Queue } from 'bullmq'
 import type { Payload } from 'payload'
@@ -25,6 +28,7 @@ import {
   previousSchedulePeriod,
   slaReportCsv,
   slaReportFileStem,
+  UTC_ZONE,
   type SlaPeriod,
 } from '@/lib/sla'
 import type { SlaReport } from '@/payload-types'
@@ -34,11 +38,12 @@ import { getNotificationsQueue } from '@/server/notifications/dispatch'
 
 import { buildSlaReport } from './compute'
 import { renderSlaReportEmail, renderSlaReportPdf } from './render'
+import { loadSlaZones } from './zone'
 
 const log = childLogger('sla:schedule')
 
 export const SLA_REPORTS_DUE_JOB_NAME = 'sla-reports-due'
-/** Hourly at :40 UTC. */
+/** Hourly at :40 UTC: within the first hour of a new period in any time zone. */
 export const SLA_REPORTS_DUE_PATTERN = '40 * * * *'
 
 export const SLA_REPORT_SEND_JOB = 'sla-report-send' as const
@@ -102,10 +107,6 @@ async function enqueue(jobs: SlaJob[]): Promise<void> {
   await queue.addBulk(jobs)
 }
 
-/** The period a schedule would send next, used to start a new schedule after the current one. */
-export const lastCompletePeriodKey = (schedule: unknown, now: Date = new Date()): string | null =>
-  isSlaSchedule(schedule) ? (previousSchedulePeriod(schedule, now)?.key ?? null) : null
-
 /** Enqueue the reports whose latest complete period is due. */
 export async function enqueueDueSlaReports(
   payload: Payload,
@@ -118,18 +119,65 @@ export async function enqueueDueSlaReports(
     limit: 0,
     pagination: false,
     overrideAccess: true,
-    select: { schedule: true, lastSentPeriod: true, recipients: true },
+    select: { organization: true, schedule: true, lastSentPeriod: true, recipients: true },
   })
+  const zones = await loadSlaZones(
+    payload,
+    (docs as SlaReport[]).map((report) => relationId(report.organization)),
+  )
   const jobs: SlaJob[] = []
   for (const report of docs as SlaReport[]) {
     if (!isSlaSchedule(report.schedule) || (report.recipients ?? []).length === 0) continue
-    const period = previousSchedulePeriod(report.schedule, now)
+    const zone = zones.get(String(relationId(report.organization))) ?? UTC_ZONE
+    const period = previousSchedulePeriod(report.schedule, now, zone)
     if (!period || report.lastSentPeriod === period.key) continue
     jobs.push(slaReportSendJob(report.id, period))
   }
   await enqueue(jobs)
   if (jobs.length > 0) log.info({ enqueued: jobs.length }, 'SLA reports due')
   return { checked: docs.length, enqueued: jobs.length }
+}
+
+/**
+ * Builds `report` over `period` and emails it, with the CSV and PDF attached, to each of
+ * `recipients` (one message per recipient, so they do not see each other's addresses).
+ */
+export async function sendSlaReport(
+  payload: Payload,
+  report: SlaReport,
+  period: SlaPeriod,
+  recipients: readonly string[],
+  now: Date = new Date(),
+): Promise<void> {
+  const data = await buildSlaReport(payload, report, period, now)
+  const orgId = relationId(report.organization)
+  const [i18n, org] = await Promise.all([
+    getOrganizationI18n(payload, orgId),
+    orgId === null
+      ? null
+      : payload
+          .findByID({
+            collection: 'organizations',
+            id: orgId,
+            depth: 0,
+            overrideAccess: true,
+            select: { name: true },
+          })
+          .catch(() => null),
+  ])
+  const email = renderSlaReportEmail(data, org?.name ?? '', i18n)
+  const stem = slaReportFileStem(data)
+  const attachments = [
+    { filename: `${stem}.csv`, content: slaReportCsv(data), contentType: 'text/csv' },
+    {
+      filename: `${stem}.pdf`,
+      content: renderSlaReportPdf(data, i18n),
+      contentType: 'application/pdf',
+    },
+  ]
+  for (const to of recipients) {
+    await payload.sendEmail({ to, ...email, attachments })
+  }
 }
 
 async function recordOutcome(
@@ -168,36 +216,7 @@ export async function processSlaReportSendJob(
   if (recipients.length === 0) return null
 
   try {
-    const data = await buildSlaReport(payload, report, { from, to, key }, now)
-    const orgId = relationId(report.organization)
-    const [i18n, org] = await Promise.all([
-      getOrganizationI18n(payload, orgId),
-      orgId === null
-        ? null
-        : payload
-            .findByID({
-              collection: 'organizations',
-              id: orgId,
-              depth: 0,
-              overrideAccess: true,
-              select: { name: true },
-            })
-            .catch(() => null),
-    ])
-    const email = renderSlaReportEmail(data, org?.name ?? '', i18n)
-    const stem = slaReportFileStem(data)
-    const attachments = [
-      { filename: `${stem}.csv`, content: slaReportCsv(data), contentType: 'text/csv' },
-      {
-        filename: `${stem}.pdf`,
-        content: renderSlaReportPdf(data, i18n),
-        contentType: 'application/pdf',
-      },
-    ]
-    // One message per recipient, so recipients do not see each other's addresses.
-    for (const to of recipients) {
-      await payload.sendEmail({ to, ...email, attachments })
-    }
+    await sendSlaReport(payload, report, { from, to, key }, recipients, now)
     await recordOutcome(payload, report, {
       lastSentPeriod: key,
       lastSentAt: now.toISOString(),

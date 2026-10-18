@@ -11,8 +11,10 @@ import {
   previousSchedulePeriod,
   slaReportCsv,
   slaReportFileStem,
+  UTC_ZONE,
   type SlaPeriod,
   type SlaReportData,
+  type SlaZone,
 } from '@/lib/sla'
 import type { SlaReport, SlaTarget, User } from '@/payload-types'
 import { parseDocId } from '@/server/notifications/api'
@@ -71,12 +73,13 @@ export async function loadOrgReport(ctx: SlaUserContext, rawId: string): Promise
 }
 
 /**
- * The range of `?from=YYYY-MM-DD&to=YYYY-MM-DD`; the previous calendar month without them. Null
- * when the parameters are invalid.
+ * The range of `?from=YYYY-MM-DD&to=YYYY-MM-DD` (local days of the organization's time zone); the
+ * previous calendar month without them. Null when the parameters are invalid.
  */
 export function rangeFromSearchParams(
   params: URLSearchParams | Record<string, string | string[] | undefined>,
   now: Date = new Date(),
+  zone: SlaZone = UTC_ZONE,
 ): SlaPeriod | null {
   const get = (key: string) => {
     const value = params instanceof URLSearchParams ? params.get(key) : params[key]
@@ -84,9 +87,9 @@ export function rangeFromSearchParams(
   }
   const from = get('from')
   const to = get('to')
-  if (!from && !to) return previousSchedulePeriod('monthly', now)
+  if (!from && !to) return previousSchedulePeriod('monthly', now, zone)
   if (!from || !to) return null
-  return periodFromDates(from, to)
+  return periodFromDates(from, to, zone)
 }
 
 export type ReportFormat = 'json' | 'csv' | 'pdf'
