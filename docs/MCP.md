@@ -152,6 +152,9 @@ by hand, run `npx @modelcontextprotocol/inspector`, choose _Streamable HTTP_, en
 | `update_declared_incident`     | write | Change the title, summary, start, severity, commander, status, linked status-page incident, postmortem or action items                                                                 |
 | `add_declared_incident_note`   | write | Append a note to a declared incident's timeline                                                                                                                                        |
 | `create_maintenance`           | write | Schedule maintenance; takes the same fields as the maintenance form                                                                                                                    |
+| `list_metrics`                 | read  | Custom metrics (#280): source, unit, aggregation, thresholds, status pages and the latest pushed value                                                                                 |
+| `get_metric_series`            | read  | A metric's chart over `hour`, `day`, `week` or `month`: one value per interval, the latest value and the period's value                                                                |
+| `push_metric_points`           | write | Push up to 1 000 points to a pushed metric (`value`, optional `timestamp`); needs the `member` role                                                                                    |
 
 Tool input schemas are the management API's own zod validators (for example `create_maintenance` uses
 `maintenanceFormSchema`), so an agent gets the same validation messages as the REST API. Read-only tools

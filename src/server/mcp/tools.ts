@@ -22,6 +22,11 @@ import { POST as resumeMonitorRoute } from '@/app/api/orgs/[orgId]/monitors/[id]
 import { GET as getMonitorRoute } from '@/app/api/orgs/[orgId]/monitors/[id]/route'
 import { GET as monitorStatsRoute } from '@/app/api/orgs/[orgId]/monitors/[id]/stats/route'
 import { GET as listMonitorsRoute } from '@/app/api/orgs/[orgId]/monitors/route'
+import {
+  GET as metricSeriesRoute,
+  POST as pushMetricPointsRoute,
+} from '@/app/api/orgs/[orgId]/metrics/[id]/points/route'
+import { GET as listMetricsRoute } from '@/app/api/orgs/[orgId]/metrics/route'
 import { GET as listNotificationsRoute } from '@/app/api/orgs/[orgId]/notifications/route'
 import { POST as incidentUpdatesRoute } from '@/app/api/orgs/[orgId]/status-pages/[id]/incidents/[incidentId]/updates/route'
 import {
@@ -52,6 +57,7 @@ import {
 } from '@/lib/declared-incidents'
 import { INCIDENT_RANGES, INCIDENT_STATUS_FILTERS } from '@/lib/monitor-incidents'
 import type { ApiKeyScope } from '@/lib/api-key-scopes'
+import { METRIC_VIEWS, type MetricRow } from '@/lib/metrics'
 import {
   declaredNoteSchema,
   declareIncidentSchema,
@@ -61,6 +67,7 @@ import { maintenanceFormSchema } from '@/lib/validation/maintenance'
 import { MONITOR_TYPE_NAMES } from '@/lib/validation/monitor'
 import type { Incident, Monitor, Notification, StatusPage } from '@/payload-types'
 import { incidentCreateBody, incidentNoteBody, incidentUpdateBody } from '@/server/api/openapi'
+import { metricPointsBatchSchema } from '@/server/metrics/schemas'
 import type { ApiKeyPrincipal } from '@/server/auth/request-auth'
 import type { DeclaredListResult } from '@/server/declared-incidents/store'
 import { STATS_RANGES } from '@/server/stats/uptime-calculator'
@@ -215,6 +222,7 @@ const monitorId = id.describe('Monitor id (see list_monitors)')
 const statusPageId = id.describe('Status page id (see list_status_pages)')
 const incidentId = id.describe('Status page incident id (see list_incidents)')
 const monitorIncidentId = id.describe('Monitor incident id (see list_monitor_incidents)')
+const metricId = id.describe('Custom metric id (see list_metrics)')
 const declaredIncidentId = id.describe('Declared incident id (see list_declared_incidents)')
 
 const {
@@ -836,6 +844,81 @@ export const MCP_TOOLS: McpTool[] = [
         method: 'POST',
         path: 'maintenance',
         body,
+      }),
+  }),
+
+  // Custom metrics (#280)
+  tool({
+    name: 'list_metrics',
+    title: 'List custom metrics',
+    description:
+      'Custom metrics of the organization (business figures charted on status pages): source (push or monitor), unit, aggregation, thresholds, the status pages that show them and the latest pushed value.',
+    scope: 'read',
+    permission: 'metric:read',
+    inputSchema: z.object({}),
+    annotations: READ,
+    run: (_args, ctx) =>
+      viaRoute(
+        ctx,
+        'list_metrics',
+        { handler: listMetricsRoute, method: 'GET', path: 'metrics' },
+        (data: { docs: MetricRow[] }) => ({
+          metrics: data.docs.map((metric) => ({
+            id: metric.id,
+            name: metric.name,
+            description: metric.description,
+            source: metric.source,
+            unit: metric.suffix,
+            aggregation: metric.aggregation,
+            thresholds: metric.thresholds,
+            published: metric.visible,
+            statusPageIds: metric.statusPages,
+            lastValue: metric.lastValue,
+            lastPushAt: metric.lastPushAt,
+          })),
+        }),
+      ),
+  }),
+  tool({
+    name: 'get_metric_series',
+    title: 'Get a metric chart',
+    description:
+      'The chart of a custom metric as a status page draws it: one value per interval over the last hour, day, week or month, the latest value and the value of the whole period.',
+    scope: 'read',
+    permission: 'metric:read',
+    inputSchema: z.object({
+      metricId,
+      view: z.enum(METRIC_VIEWS).optional().describe("Period; defaults to the metric's own"),
+    }),
+    annotations: READ,
+    run: ({ metricId, view }, ctx) =>
+      viaRoute(ctx, 'get_metric_series', {
+        handler: metricSeriesRoute,
+        method: 'GET',
+        path: `metrics/${metricId}/points`,
+        params: { id: String(metricId) },
+        query: { view },
+      }),
+  }),
+  tool({
+    name: 'push_metric_points',
+    title: 'Push metric values',
+    description:
+      'Record values of a pushed custom metric: up to 1000 points, each a value and an optional timestamp (unix seconds or milliseconds, or ISO 8601; default now). Points older than 24 hours only reach the hourly (30 days) and daily rollups. Rate-limited per key and metric.',
+    scope: 'write',
+    permission: 'metric:push',
+    inputSchema: z.object({
+      metricId,
+      ...metricPointsBatchSchema.shape,
+    }),
+    annotations: WRITE,
+    run: ({ metricId, points }, ctx) =>
+      viaRoute(ctx, 'push_metric_points', {
+        handler: pushMetricPointsRoute,
+        method: 'POST',
+        path: `metrics/${metricId}/points`,
+        params: { id: String(metricId) },
+        body: { points },
       }),
   }),
 

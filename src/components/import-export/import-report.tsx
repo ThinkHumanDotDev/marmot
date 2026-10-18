@@ -28,10 +28,11 @@ type SectionKey =
   | 'incidents'
   | 'maintenance'
   | 'subscribers'
+  | 'metrics'
 
 const SECTIONS: SectionKey[] = ['monitors', 'notifications', 'statusPages', 'templates', 'tags']
-/** Shown only when the import has any (provider imports, exports with incidents). */
-const OPTIONAL_SECTIONS: SectionKey[] = ['incidents', 'maintenance', 'subscribers']
+/** Shown only when the import has any (provider imports, exports with incidents or metrics). */
+const OPTIONAL_SECTIONS: SectionKey[] = ['incidents', 'maintenance', 'subscribers', 'metrics']
 
 const hasItems = (section: ImportSectionReport | undefined): section is ImportSectionReport =>
   Boolean(section && (section.create > 0 || section.skipped.length > 0))

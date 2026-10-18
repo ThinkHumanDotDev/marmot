@@ -208,7 +208,10 @@ Public latency charts (#113, `src/server/status-pages/latency-charts.ts`) read `
 ([Status pages](Status-Pages.md#latency-charts)).
 Custom metrics (#155, `src/server/metrics/`) keep no raw points: a push folds its batch into
 `metric-stats` rows (one per metric, granularity and minute/hour/day bucket with count, sum, min, max
-and latest value), pruned by the retention job with the same cutoffs as the `stat-*` rows.
+and latest value), pruned by the retention job with the same cutoffs as the `stat-*` rows. Points older
+than 24 hours are backfilled into the hourly and daily rows only (#280), and pushes of one metric are
+serialised in the process and across processes by a Redis lock (`marmot:metric-push:<id>`,
+`src/server/metrics/lock.ts`; without Redis the push goes ahead unlocked).
 Monitor-backed metrics read the value their monitor records in `stat-*` (`extras.value`)
 ([Status pages](Status-Pages.md#custom-metrics)).
 

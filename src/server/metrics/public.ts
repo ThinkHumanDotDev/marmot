@@ -6,14 +6,40 @@
 import type { Payload } from 'payload'
 
 import { relId } from '@/collections/shared'
-import { DEFAULT_METRIC_VIEW, type MetricView, type PublicMetric } from '@/lib/metrics'
+import {
+  DEFAULT_METRIC_VIEW,
+  metricThresholdState,
+  type MetricView,
+  type PublicMetric,
+} from '@/lib/metrics'
 import type { Metric, StatusPage } from '@/payload-types'
 import { isMetricVisibleOn } from '@/server/status-pages/audiences'
 
 import { readMetricSeries } from './series'
 
 /** The page fields the published metrics depend on. */
-export type MetricsPage = Pick<StatusPage, 'id' | 'organization' | 'access' | 'groups'>
+export type MetricsPage = Pick<StatusPage, 'id' | 'organization' | 'access' | 'groups'> &
+  Partial<Pick<StatusPage, 'metricOrder'>>
+
+/**
+ * Metrics in the page's display order (#280): those in `metricOrder` first, in that order, then the
+ * rest in their own order (`docs` arrive sorted by `order`, `name`). Pure; exported for tests.
+ */
+export function orderForPage<T extends { id: string | number }>(
+  docs: readonly T[],
+  metricOrder: readonly unknown[] | null | undefined,
+): T[] {
+  const rank = new Map<string, number>()
+  for (const entry of metricOrder ?? []) {
+    const id = relId(entry)
+    if (id !== null && !rank.has(String(id))) rank.set(String(id), rank.size)
+  }
+  if (rank.size === 0) return [...docs]
+  return docs
+    .map((doc, index) => ({ doc, index, rank: rank.get(String(doc.id)) ?? rank.size + index }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map(({ doc }) => doc)
+}
 
 /**
  * The page's published metrics in display order (`metricId`: just that one). Pass the page scoped
@@ -42,7 +68,10 @@ export async function findPublishedMetrics(
     pagination: false,
     overrideAccess: true,
   })
-  const visible = docs.filter((doc) => isMetricVisibleOn(page, doc))
+  const visible = orderForPage(
+    docs.filter((doc) => isMetricVisibleOn(page, doc)),
+    page.metricOrder,
+  )
   return metricId === undefined ? visible : visible.filter((doc) => String(doc.id) === metricId)
 }
 
@@ -55,6 +84,10 @@ export async function toPublicMetric(
   const defaultView = metric.defaultView ?? DEFAULT_METRIC_VIEW
   const series = await readMetricSeries(payload, metric, view ?? defaultView, now)
   const description = metric.description?.trim()
+  const thresholds = {
+    warning: metric.thresholds?.warning ?? null,
+    critical: metric.thresholds?.critical ?? null,
+  }
   return {
     id: String(metric.id),
     name: metric.name,
@@ -64,10 +97,9 @@ export async function toPublicMetric(
     aggregation: metric.aggregation ?? 'average',
     defaultView,
     view: series.view,
-    thresholds: {
-      warning: metric.thresholds?.warning ?? null,
-      critical: metric.thresholds?.critical ?? null,
-    },
+    thresholds,
+    showThresholdState: metric.showThresholdState === true,
+    state: metricThresholdState(series.current, thresholds),
     step: series.step,
     current: series.current,
     summary: series.summary,

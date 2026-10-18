@@ -1,7 +1,7 @@
 # Import / Export
 
 Settings → **Import / Export** (`/<org>/settings/import-export`) moves monitors, notification channels,
-status pages and incident templates between organizations and instances, and migrates an existing Uptime Kuma installation.
+status pages, incident templates and custom metrics between organizations and instances, and migrates an existing Uptime Kuma installation.
 Code lives in `src/server/import-export/`; the UI in `src/components/import-export/`.
 
 ## Importing
@@ -19,8 +19,8 @@ press **Import**. The committed import runs in one database transaction, so a fa
 organization untouched (on database adapters without transactions the documents created so far remain).
 
 Permissions: importing needs `monitor:create` (member). Notification channels are only imported with
-`notification:create` (admin), status pages with `status-page:create` and templates with
-`template:create`; parts you may not create are
+`notification:create` (admin), status pages with `status-page:create`, templates with
+`template:create` and custom metrics with `metric:create`; parts you may not create are
 skipped and reported, and monitors are then imported without the corresponding channel links.
 
 ### Conflicts
@@ -33,6 +33,9 @@ skipped and reported, and monitors are then imported without the corresponding c
 - Monitors created without any channel receive the organization's default channels, like any new monitor.
 - A template whose **name** already exists in the organization is skipped. Templates bound to a status page
   that is not imported lose the page and their default components (reported as a note).
+- A custom metric whose **name** already exists in the organization is skipped, and so is a monitor-backed
+  metric whose monitor is not imported. Links to status pages that are not imported are dropped (reported
+  as a note). _(landing in the current release, #280)_
 
 ### API
 
@@ -317,6 +320,24 @@ not contain. The "default enabled" flag is kept; "apply to all existing monitors
       "statusPage": 5,
       "components": [{ "component": "6650c0ffee0000000000a001", "impact": "major_outage" }]
     }
+  ],
+  "metrics": [
+    {
+      "id": 9,
+      "name": "API error rate",
+      "description": null,
+      "suffix": "%",
+      "decimals": 2,
+      "aggregation": "average",
+      "defaultView": "day",
+      "thresholds": { "warning": 1, "critical": 5 },
+      "showThresholdState": true,
+      "source": "push",
+      "monitor": null,
+      "visible": true,
+      "order": 0,
+      "statusPages": [5]
+    }
   ]
 }
 ```
@@ -330,7 +351,9 @@ are regenerated on import. Push monitors keep their token and schedule (`pushSch
 automatic sending, SMS templates) travel with it, and its SMS sender when that Twilio channel is in the
 same file; the subscribers themselves do not (they are personal data, and their component choices name
 component ids): export and import them per page as CSV from the builder's **Subscribers** tab
-([Status pages](Status-Pages.md#managing-subscribers)). Heartbeats, statistics, maintenance windows, members and organization settings are not part of the export.
+([Status pages](Status-Pages.md#managing-subscribers)). Custom metrics (#280) travel as definitions with their status pages (`statusPages`) and monitor (`source:
+monitor`), and each page keeps its metric order (`metricOrder`, metric ids); their recorded values do not
+(`metrics` is optional, older files import unchanged). Heartbeats, statistics, maintenance windows, members and organization settings are not part of the export.
 Logos (media uploads) are not exported. Tags, proxies and Docker hosts are not exported either: a monitor's
 `tags`, `proxy` and `dockerHost` fields hold ids of the exporting organization, so the importer drops tag and
 proxy assignments (noted in the report) and skips `docker` monitors with a reason.
