@@ -19,6 +19,7 @@ import { LocationFilter, LocationStatusTable } from '@/components/monitors/locat
 import { LiveHeartbeatBar } from '@/components/monitors/live-heartbeat-bar'
 import { ImportantEventsTable } from '@/components/monitors/important-events-table'
 import { MonitorActions } from '@/components/monitors/monitor-actions'
+import { BrowserCheckDetailsView } from '@/components/monitors/browser-check-details'
 import { MonitorChannelsCard } from '@/components/monitors/monitor-channels-card'
 import { isPeriodWithinRetention } from '@/lib/entitlements'
 import { getOrgRetentionDays } from '@/server/billing/entitlements'
@@ -36,6 +37,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { env } from '@/env'
 import { timeZoneOrDefault } from '@/i18n/formats'
+import { parseBrowserDetails } from '@/lib/browser-script'
 import { parseRequestTiming } from '@/lib/request-timing'
 import { isCertificateMonitorType, isHttpMonitorType } from '@/lib/validation/monitor'
 import {
@@ -191,6 +193,10 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
     monitor.type === 'tls' ||
     monitor.type === 'prometheus'
   const latestTiming = parseRequestTiming(latest.docs[0]?.timing)
+  // Browser Script (#139): steps, errors and artifacts of the most recent check that ran a script.
+  const latestBrowserBeat =
+    monitor.type === 'browser-script' ? latest.docs.find((doc) => doc.browser) : undefined
+  const latestBrowser = parseBrowserDetails(latestBrowserBeat?.browser)
   const parent =
     monitor.parent && typeof monitor.parent === 'object' ? (monitor.parent as Monitor) : null
   const target = monitorTarget(monitor)
@@ -361,6 +367,18 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
         )}
 
         {showAssertions && <AssertionResultsCard results={assertionResults} />}
+
+        {latestBrowser && (
+          <Card className="gap-3" data-testid="latest-browser-check">
+            <CardHeader>
+              <CardTitle className="text-base">{t('browserCheck')}</CardTitle>
+              <CardDescription>{t('browserCheckDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BrowserCheckDetailsView details={latestBrowser} />
+            </CardContent>
+          </Card>
+        )}
 
         <MonitorStatsPanel
           monitorId={String(monitor.id)}

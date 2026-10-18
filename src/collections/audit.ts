@@ -151,6 +151,7 @@ export const NOT_AUDITED: Partial<Record<CollectionSlug, string>> = {
   'auth-accounts': 'linked sign-in identities of a user, not organization resources',
   media: 'uploads are audited through the status page or organization that references them',
   heartbeats: 'high-volume monitoring data',
+  'check-artifacts': 'screenshots and traces written by the worker with failing checks',
   'stat-minutely': 'high-volume rollups',
   'stat-hourly': 'high-volume rollups',
   'stat-daily': 'high-volume rollups',

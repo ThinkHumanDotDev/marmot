@@ -67,6 +67,7 @@ import {
   isHttpMonitorType,
   isKeywordMonitorType,
   isPortMonitorType,
+  BROWSER_SCRIPT_EXAMPLE,
   isUrlMonitorType,
   isValidStatusCodeRange,
   JSON_PATH_OPERATORS,
@@ -112,6 +113,7 @@ import { SAME_AS_SERVER } from '@/lib/validation/maintenance'
 import { AssertionsField } from './assertions-field'
 import { HttpSuiteField } from './http-suite-field'
 import { useElapsedSeconds } from './check-now'
+import { BrowserScriptCard } from './browser-script-card'
 import { CheckResultView } from './check-result'
 import { NotificationPicker } from './notification-picker'
 import { StatusPageComponentsField } from './status-page-components-field'
@@ -1005,6 +1007,11 @@ function applyTypeDefaults(
   if (type === 'manual' && !get('manualStatus')) set('manualStatus', 'up')
   if (type === 'snmp' && !get('snmpCommunity')) set('snmpCommunity', 'public')
   if (type === 'status-page' && !get('url')) set('url', 'https://')
+  if (type === 'browser-script') {
+    // The start URL is optional: a bare scheme left by a URL type would not validate.
+    if (schemeOnly) set('url', null)
+    if (!get('browserScript')) set('browserScript', BROWSER_SCRIPT_EXAMPLE)
+  }
   // A multi-step API check starts with one empty step.
   if (type === 'http-suite' && !get('httpSuite')) set('httpSuite', emptyHttpSuite())
   if (type === 'globalping') {
@@ -2542,6 +2549,18 @@ export function MonitorForm({
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Browser script (#139) ---------------------------------------------------------- */}
+        {type === 'browser-script' && (
+          <BrowserScriptCard
+            control={control}
+            running={testing}
+            runSeconds={testSeconds}
+            onRunNow={() => void form.handleSubmit(runTest, () => toast.error(t('fixFields')))()}
+            remoteBrowserLabel={t('connection.remoteBrowser')}
+            remoteBrowserDescription={t('connection.remoteBrowserDescription')}
+          />
         )}
 
         {/* Globalping ---------------------------------------------------------------------- */}

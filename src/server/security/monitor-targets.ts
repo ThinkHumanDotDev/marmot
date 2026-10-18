@@ -40,6 +40,7 @@ export const MONITOR_TARGET_FIELDS = [
 export const HOST_LOCAL_MONITOR_TYPES: Record<string, string> = {
   'tailscale-ping': 'The Tailscale Ping monitor',
   'real-browser': 'The Browser Engine monitor',
+  'browser-script': 'The Browser Script monitor',
 }
 
 export interface MonitorTargetProblem {
@@ -99,6 +100,7 @@ export async function monitorTargetProblem(
     case 'prometheus':
     case 'websocket-upgrade':
     case 'real-browser':
+    case 'browser-script':
     case 'status-page': {
       const problem = literal('url', looseHost(monitor.url))
       if (problem) return problem

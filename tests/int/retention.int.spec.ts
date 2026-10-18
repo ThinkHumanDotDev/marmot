@@ -449,6 +449,7 @@ describe('runRetention in batches', () => {
       metricStats: 0,
       heartbeats: 0,
       importantHeartbeats: 0,
+      checkArtifacts: 0,
       auditLogs: 0,
       unconfirmedSubscribers: 0,
       subscriberDeliveries: 0,

@@ -373,6 +373,9 @@ async function monitorTargets(
     case 'real-browser':
     case 'status-page':
       return hosts(monitor.url)
+    case 'browser-script':
+      // The script may go anywhere; the worker itself only reaches the remote browser.
+      return hosts(monitor.remoteBrowser)
     case 'http-suite':
       return hosts(...suiteTargetUrls(monitor.httpSuite))
     case 'dns':

@@ -10,6 +10,12 @@ import {
 
 import { orgScoped } from '@/access/org-scoped'
 import { attachDefaultNotifications } from './Notifications'
+import {
+  BROWSER_SCRIPT_MAX_LENGTH,
+  BROWSER_SCRIPT_MAX_VARIABLES,
+  BROWSER_SCRIPT_TYPE,
+  type BrowserArtifactMode,
+} from '@/lib/browser-script'
 import { childLogger } from '@/lib/logger'
 import type { Monitor } from '@/payload-types'
 import {
@@ -116,6 +122,7 @@ export const MONITOR_TYPES = [
   { label: 'Radius', value: 'radius' },
   { label: adminT('marmot:labels:tailscalePing'), value: 'tailscale-ping' },
   { label: adminT('marmot:labels:realBrowser'), value: 'real-browser' },
+  { label: adminT('marmot:labels:browserScript'), value: 'browser-script' },
   // Databases
   { label: 'MySQL/MariaDB', value: 'mysql' },
   { label: 'PostgreSQL', value: 'postgres' },
@@ -549,6 +556,12 @@ export const Monitors: CollectionConfig = {
       // they must go first; children of a group are detached rather than deleted.
       async ({ id, req }) => {
         const common = { req, overrideAccess: true, depth: 0 } as const
+        // Browser Script screenshots and traces (#139); through `delete` so the files go too.
+        await req.payload.delete({
+          collection: 'check-artifacts',
+          where: { monitor: { equals: id } },
+          ...common,
+        })
         await req.payload.delete({
           collection: 'heartbeats',
           where: { monitor: { equals: id } },
@@ -820,7 +833,11 @@ export const Monitors: CollectionConfig = {
       type: 'text',
       admin: {
         condition: (data) =>
-          typeIn(URL_TYPES)(data) || isGlobalping(data, 'http') || data?.type === 'status-page',
+          typeIn(URL_TYPES)(data) ||
+          isGlobalping(data, 'http') ||
+          data?.type === 'status-page' ||
+          // Browser Script (#139): the optional start URL (`url` in the script, `goto` base).
+          data?.type === BROWSER_SCRIPT_TYPE,
         placeholder: 'https://',
       },
     },
@@ -2045,9 +2062,61 @@ export const Monitors: CollectionConfig = {
       name: 'remoteBrowser',
       type: 'text',
       admin: {
-        condition: (data) => data?.type === 'real-browser',
+        condition: (data) => data?.type === 'real-browser' || data?.type === BROWSER_SCRIPT_TYPE,
         placeholder: 'ws://browserless:3000',
         description: adminT('marmot:monitors:remoteBrowserDescription'),
+      },
+    },
+
+    // ---- Browser script (#139) ------------------------------------------------------------------
+    {
+      name: 'browserScript',
+      type: 'code',
+      maxLength: BROWSER_SCRIPT_MAX_LENGTH,
+      admin: {
+        language: 'javascript',
+        condition: (data) => data?.type === BROWSER_SCRIPT_TYPE,
+        description: adminT('marmot:monitors:browserScriptDescription'),
+      },
+    },
+    {
+      name: 'browserVariables',
+      type: 'array',
+      maxRows: BROWSER_SCRIPT_MAX_VARIABLES,
+      admin: {
+        condition: (data) => data?.type === BROWSER_SCRIPT_TYPE,
+        description: adminT('marmot:monitors:browserVariablesDescription'),
+      },
+      fields: [
+        { name: 'name', type: 'text', required: true },
+        { name: 'value', type: 'text' },
+      ],
+    },
+    {
+      // Named `…Secrets` so the audit log redacts the whole list (`src/server/audit/diff.ts`).
+      name: 'browserSecrets',
+      type: 'array',
+      maxRows: BROWSER_SCRIPT_MAX_VARIABLES,
+      admin: {
+        condition: (data) => data?.type === BROWSER_SCRIPT_TYPE,
+        description: adminT('marmot:monitors:browserSecretsDescription'),
+      },
+      fields: [
+        { name: 'name', type: 'text', required: true },
+        { name: 'value', type: 'text' },
+      ],
+    },
+    {
+      name: 'browserArtifacts',
+      type: 'select',
+      defaultValue: 'failure',
+      options: [
+        { label: adminT('marmot:labels:browserArtifactsFailure'), value: 'failure' },
+        { label: adminT('marmot:labels:browserArtifactsAlways'), value: 'always' },
+      ] satisfies { label: unknown; value: BrowserArtifactMode }[],
+      admin: {
+        condition: (data) => data?.type === BROWSER_SCRIPT_TYPE,
+        description: adminT('marmot:monitors:browserArtifactsDescription'),
       },
     },
 

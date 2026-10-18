@@ -5,6 +5,8 @@
  */
 import { z } from 'zod'
 
+import type { BrowserCheckDetails } from '@/lib/browser-script'
+
 /** Upper bound of the response headers stored per check (names + values, UTF-8 bytes). */
 export const RESPONSE_HEADERS_LIMIT_BYTES = 8 * 1024
 /** Upper bound of the response body stored for a failed or degraded check (UTF-8 bytes). */
@@ -119,6 +121,8 @@ export interface ResponseLogDetail extends ResponseLogEntry {
   /** Per-step results of a multi-step API check (`heartbeats.steps`, #138), secrets redacted. */
   steps: unknown[]
   response: StoredResponse | null
+  /** Browser Script checks (#139): steps, errors, screenshot and trace; `null` for other types. */
+  browser: BrowserCheckDetails | null
 }
 
 /** Query string for the list API (empty values left out). */

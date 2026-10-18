@@ -3,6 +3,7 @@
  * Shared by the worker (which produces it), the route handlers (which return it as JSON) and the UI
  * (which renders it), so it must stay free of Node-only imports.
  */
+import type { BrowserCheckDetails } from '@/lib/browser-script'
 import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
 import type { SuiteStepResult } from '@/lib/validation/http-suite'
@@ -51,6 +52,12 @@ export interface OnDemandCheckResult {
   timing: RequestTiming | null
   /** Per-step results of a multi-step API check (`http-suite`), `null` for other types. */
   steps?: SuiteStepResult[] | null
+  /**
+   * Scripted browser checks (#139): steps, console errors, failed requests and the screenshot
+   * (stored artifacts when recorded, inline otherwise); `null` for other types. Optional: older
+   * workers do not send it.
+   */
+  browser?: BrowserCheckDetails | null
   /**
    * Extra, type-specific fields the check reported. Rendered generically so new fields show up
    * without UI changes.

@@ -17,6 +17,12 @@ import {
   MAX_GROUP_QUORUM,
   MAX_GROUP_WEIGHT,
 } from '@/lib/group-aggregation'
+import {
+  BROWSER_ARTIFACT_MODES,
+  BROWSER_SCRIPT_MAX_LENGTH,
+  BROWSER_SCRIPT_MAX_VARIABLES,
+  BROWSER_SCRIPT_VARIABLE_NAME,
+} from '@/lib/browser-script'
 import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
 import {
   PROMETHEUS_AGGREGATES,
@@ -89,6 +95,7 @@ export const MONITOR_TYPE_NAMES = [
   'ping',
   'dns',
   'real-browser',
+  'browser-script',
   'globalping',
   'status-page',
   // Passive
@@ -266,6 +273,12 @@ export const MONITOR_TYPE_GROUPS: Record<
         label: 'HTTP(s) - Browser Engine (Chrome/Chromium)',
         description:
           'Loads the page in a real Chromium through a remote Playwright browser; UP on a 2xx/3xx navigation.',
+      },
+      {
+        name: 'browser-script',
+        label: 'Browser Script (Playwright)',
+        description:
+          'Runs a Playwright script (log in, check out, search) in a remote browser; screenshot and trace on failure.',
       },
       { name: 'port', label: 'TCP Port', description: 'UP when a TCP connection succeeds.' },
       { name: 'ping', label: 'Ping', description: 'UP when the host answers ICMP echo requests.' },
@@ -558,6 +571,21 @@ const tagRow = z.object({
   tag: z.union([z.string().min(1), z.number().int().positive()]),
   value: optionalText(200),
 })
+
+/** `monitors.browserVariables` / `browserSecrets` row (#139); values are kept verbatim. */
+const browserVariableRow = z.object({
+  name: z.string().trim().min(1).max(64),
+  value: z
+    .string()
+    .max(2000)
+    .nullish()
+    .transform((value) => value ?? ''),
+})
+const browserVariableList = z
+  .array(browserVariableRow)
+  .max(BROWSER_SCRIPT_MAX_VARIABLES)
+  .nullish()
+  .transform((value) => value ?? [])
 
 /** `monitors.assertions` row (see `./assertions.ts`); the value is kept verbatim (no trimming). */
 const assertionRow = z.object({
@@ -865,6 +893,12 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       // Real browser
       remoteBrowser: optionalText(2048),
 
+      // Browser script (#139); the start URL is `url`, the browser `remoteBrowser`
+      browserScript: optionalText(BROWSER_SCRIPT_MAX_LENGTH),
+      browserVariables: browserVariableList,
+      browserSecrets: browserVariableList,
+      browserArtifacts: z.enum(BROWSER_ARTIFACT_MODES).default('failure'),
+
       // Globalping (#142); the target is `url` (HTTP) or `hostname`, the DNS options are shared
       globalpingMeasurement: z.enum(GLOBALPING_MEASUREMENTS).default('http'),
       globalpingLocations: optionalText(2000),
@@ -974,6 +1008,25 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         if (!values.remoteBrowser) issue('remoteBrowser', message('remoteBrowserRequired'))
         else if (!/^wss?:\/\/\S+$/i.test(values.remoteBrowser)) {
           issue('remoteBrowser', message('remoteBrowserUrl'))
+        }
+      }
+
+      if (type === 'browser-script') {
+        if (values.url && !/^https?:\/\/\S+$/i.test(values.url)) issue('url', message('httpUrl'))
+        if (!values.remoteBrowser) issue('remoteBrowser', message('remoteBrowserRequired'))
+        else if (!/^wss?:\/\/\S+$/i.test(values.remoteBrowser)) {
+          issue('remoteBrowser', message('remoteBrowserUrl'))
+        }
+        if (!values.browserScript) issue('browserScript', message('scriptRequired'))
+        for (const list of ['browserVariables', 'browserSecrets'] as const) {
+          const seen = new Set<string>()
+          values[list].forEach((row, index) => {
+            const nameIssue = (key: MonitorValidationKey) =>
+              ctx.addIssue({ code: 'custom', path: [list, index, 'name'], message: message(key) })
+            if (!BROWSER_SCRIPT_VARIABLE_NAME.test(row.name)) nameIssue('variableName')
+            else if (seen.has(row.name)) nameIssue('variableDuplicate')
+            seen.add(row.name)
+          })
         }
       }
 
@@ -1252,6 +1305,15 @@ export const DATABASE_CONNECTION_PLACEHOLDERS: Record<string, string> = {
   redis: 'redis://user:password@host:6379',
 }
 
+/** Starting script of a new Browser Script monitor (#139). */
+export const BROWSER_SCRIPT_EXAMPLE = `await test.step('open the page', async () => {
+  await page.goto(url || 'https://example.com')
+})
+await test.step('check the heading', async () => {
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+})
+`
+
 /** Starting value of `url` for the URL-based types. */
 export function defaultUrl(type: MonitorTypeName): string | null {
   if (type === 'websocket-upgrade') return 'wss://'
@@ -1405,6 +1467,10 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     game: null,
     gamedigGivenPortOnly: true,
     remoteBrowser: null,
+    browserScript: type === 'browser-script' ? BROWSER_SCRIPT_EXAMPLE : null,
+    browserVariables: [],
+    browserSecrets: [],
+    browserArtifacts: 'failure',
     globalpingMeasurement: 'http',
     globalpingLocations: null,
     globalpingProbes: GLOBALPING_DEFAULT_PROBES,

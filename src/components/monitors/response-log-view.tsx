@@ -43,6 +43,7 @@ import type {
 import { responseLogApi } from '@/lib/response-log-api'
 
 import { AssertionResultsCard } from './assertion-results-card'
+import { BrowserCheckDetailsView } from './browser-check-details'
 import { statusKey, useMonitorFormat } from './format'
 import { SuiteStepsWaterfall } from './suite-steps-waterfall'
 import { TimingWaterfall } from './timing-waterfall'
@@ -475,6 +476,8 @@ function ResponseLogSheet({
                   </div>
                 </section>
               )}
+
+              {detail.browser && <BrowserCheckDetailsView details={detail.browser} />}
 
               <section className="flex flex-col gap-2" data-testid="log-headers">
                 <h3 className="text-sm font-medium">{t('detail.headers')}</h3>

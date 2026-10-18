@@ -13,6 +13,7 @@
 import type { Payload, Where } from 'payload'
 
 import { parseAssertionResults } from '@/lib/assertion-results'
+import { parseBrowserDetails } from '@/lib/browser-script'
 import { heartbeatLocationKey } from '@/lib/probe-locations'
 import { parseRequestTiming } from '@/lib/request-timing'
 import {
@@ -192,6 +193,7 @@ export function toResponseLogDetail(heartbeat: Heartbeat): ResponseLogDetail {
     probes: Array.isArray(heartbeat.probes) ? (heartbeat.probes as unknown[]) : [],
     steps: Array.isArray(heartbeat.steps) ? (heartbeat.steps as unknown[]) : [],
     response: storedResponse(heartbeat.response),
+    browser: parseBrowserDetails(heartbeat.browser),
   }
 }
 

@@ -131,6 +131,13 @@ export const Heartbeats: CollectionConfig = {
       admin: { readOnly: true, description: adminT('marmot:heartbeats:valueDescription') },
     },
     {
+      // Scripted browser checks (#139): steps, console errors, failed requests, Web Vitals and the
+      // stored screenshot and trace (`check-artifacts`). Empty for every other type.
+      name: 'browser',
+      type: 'json',
+      admin: { readOnly: true, description: adminT('marmot:heartbeats:browserDescription') },
+    },
+    {
       name: 'statusCode',
       type: 'number',
       admin: { readOnly: true, description: adminT('marmot:heartbeats:statusCodeDescription') },

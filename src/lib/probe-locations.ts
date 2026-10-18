@@ -59,6 +59,8 @@ export const PROBE_UNSUPPORTED_TYPES: readonly string[] = [
   'steam',
   'globalping',
   'status-page',
+  // Its screenshots and traces are stored by the server's worker (#139).
+  'browser-script',
 ]
 
 export const probeSupportsType = (type: string | null | undefined): boolean =>

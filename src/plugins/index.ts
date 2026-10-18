@@ -49,7 +49,8 @@ export function getPlugins(): Plugin[] {
   if (env.S3_BUCKET) {
     plugins.push(
       s3Storage({
-        collections: { media: true },
+        // Browser Script screenshots and traces (#139) live next to the media, behind access control.
+        collections: { media: true, 'check-artifacts': true },
         bucket: env.S3_BUCKET,
         config: {
           region: env.S3_REGION,

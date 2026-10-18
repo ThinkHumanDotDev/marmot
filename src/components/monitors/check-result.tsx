@@ -3,12 +3,14 @@
 import { ShieldAlert } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 
+import { parseBrowserDetails } from '@/lib/browser-script'
 import type { OnDemandCheckResult } from '@/lib/on-demand-check'
 import { parseRequestTiming } from '@/lib/request-timing'
 import { parseSuiteStepResults } from '@/lib/validation/http-suite'
 import { cn } from '@/lib/utils'
 
 import { AssertionResultsCard, parseAssertionResults } from './assertion-results-card'
+import { BrowserCheckDetailsView } from './browser-check-details'
 import { useMonitorFormat } from './format'
 import { MonitorStatusBadge } from './status-badge'
 import { SuiteStepsWaterfall } from './suite-steps-waterfall'
@@ -39,6 +41,7 @@ export function CheckResultView({
   const { ping } = useMonitorFormat()
   const assertions = parseAssertionResults(result.assertions)
   const timing = parseRequestTiming(result.timing)
+  const browser = parseBrowserDetails(result.browser)
   const steps = parseSuiteStepResults(result.steps)
   const extra = Object.entries(result.details ?? {}).filter(
     ([, value]) => value !== null && value !== undefined && value !== '',
@@ -108,6 +111,8 @@ export function CheckResultView({
       )}
 
       {assertions.length > 0 && <AssertionResultsCard results={assertions} />}
+
+      {browser && <BrowserCheckDetailsView details={browser} />}
 
       <p className="text-xs text-muted-foreground">
         {result.recorded ? t('recorded') : t('notRecorded')}

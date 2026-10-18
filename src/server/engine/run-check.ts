@@ -144,6 +144,8 @@ async function runTypeCheck(
       probes: ctx.probes ?? null,
       response: ctx.response ?? null,
       value: ctx.value ?? null,
+      browser: ctx.browser ?? null,
+      artifacts: ctx.artifacts ?? null,
       steps: ctx.steps ?? null,
       ...(ctx.cacheSeconds !== undefined ? { cacheSeconds: ctx.cacheSeconds } : {}),
     }
@@ -170,6 +172,8 @@ async function runTypeCheck(
     probes: ctx.probes ?? null,
     response: ctx.response ?? null,
     value: ctx.value ?? null,
+    browser: ctx.browser ?? null,
+    artifacts: ctx.artifacts ?? null,
     steps: ctx.steps ?? null,
     ...(ctx.cacheSeconds !== undefined ? { cacheSeconds: ctx.cacheSeconds } : {}),
   }
