@@ -430,6 +430,7 @@ export interface Monitor {
     | 'keyword'
     | 'json-query'
     | 'prometheus'
+    | 'http-suite'
     | 'port'
     | 'ping'
     | 'dns'
@@ -596,6 +597,15 @@ export interface Monitor {
   globalpingPackets?: number | null;
   statusPageProvider?: ('auto' | 'atlassian' | 'instatus' | 'betterstack' | 'incidentio' | 'feed') | null;
   statusPageComponents?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  httpSuite?:
     | {
         [k: string]: unknown;
       }
@@ -984,6 +994,15 @@ export interface Heartbeat {
     transfer?: number | null;
   };
   probes?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  steps?:
     | {
         [k: string]: unknown;
       }
@@ -2642,6 +2661,7 @@ export interface MonitorsSelect<T extends boolean = true> {
   globalpingPackets?: T;
   statusPageProvider?: T;
   statusPageComponents?: T;
+  httpSuite?: T;
   pushToken?: T;
   pushSchedule?: T;
   pushCron?: T;
@@ -2886,6 +2906,7 @@ export interface HeartbeatsSelect<T extends boolean = true> {
         transfer?: T;
       };
   probes?: T;
+  steps?: T;
   value?: T;
   statusCode?: T;
   response?:
