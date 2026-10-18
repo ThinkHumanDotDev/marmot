@@ -64,7 +64,9 @@ export function useResponseText() {
     if (incident.status === 'acknowledged') {
       return incident.acknowledgedBy
         ? t('acknowledgedBy', { name: incident.acknowledgedBy.name })
-        : t('acknowledgedViaLink')
+        : incident.acknowledgedVia === 'phone'
+          ? t('acknowledgedByPhone')
+          : t('acknowledgedViaLink')
     }
     return t('notAcknowledged')
   }
