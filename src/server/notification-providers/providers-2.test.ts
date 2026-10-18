@@ -143,6 +143,7 @@ describe('notification provider registry (wave 2)', () => {
     'squadcast',
     'techulus-push',
     'twilio',
+    'voice-call',
     'webpush',
     'wecom',
     'whatsapp',

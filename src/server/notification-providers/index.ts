@@ -44,6 +44,7 @@ import './dingding'
 import './feishu'
 import './bitrix24'
 import './whatsapp'
+import './voice-call'
 
 export * from './describe'
 export * from './http'

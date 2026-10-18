@@ -1022,7 +1022,7 @@ export interface MonitorIncident {
   acknowledgedAt?: string | null;
   resolvedAt?: string | null;
   acknowledgedBy?: (number | null) | User;
-  acknowledgedVia?: ('dashboard' | 'api' | 'link') | null;
+  acknowledgedVia?: ('dashboard' | 'api' | 'link' | 'phone') | null;
   resolvedBy?: (number | null) | User;
   autoResolved?: boolean | null;
   remindersSent?: number | null;
@@ -1040,7 +1040,7 @@ export interface MonitorIncident {
         type: 'opened' | 'maintenance' | 'acknowledged' | 'resolved' | 'published' | 'escalated';
         at: string;
         by?: (number | null) | User;
-        via?: ('dashboard' | 'api' | 'link') | null;
+        via?: ('dashboard' | 'api' | 'link' | 'phone') | null;
         message?: string | null;
         id?: string | null;
       }[]

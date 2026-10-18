@@ -67,6 +67,17 @@ export interface NotificationSendContext {
   organization?: TemplateOrganization | null
   /** The organization's time zone (IANA) for dates in templates; UTC when absent. */
   timeZone?: string
+  /** The channel being sent to (absent for unsaved test channels). */
+  notificationId?: string | null
+  /** The channel's organization id. */
+  organizationId?: string | null
+  /**
+   * The monitor incident a DOWN message or a page is about while nobody acknowledged it yet
+   * (phone calls let the callee acknowledge it, #146); null otherwise.
+   */
+  incidentId?: string | null
+  /** A test message from the channel form. */
+  test?: boolean
 }
 
 /** A rendered notification email: subject, HTML part (null for plain-text only) and text part. */
@@ -97,6 +108,11 @@ export interface NotificationProvider {
    * without sending anything.
    */
   renderEmail?(ctx: NotificationSendContext): NotificationEmail
+  /**
+   * Send one test sample whatever the channel's events (a phone call per event would be a lot);
+   * the others send one per selected event.
+   */
+  readonly testOnce?: boolean
   /**
    * Deliver the message. Resolve with a short success string, throw on failure.
    */
