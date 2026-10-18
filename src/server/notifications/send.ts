@@ -47,6 +47,8 @@ export interface SendNotificationOptions {
    * decides the language unless `locale` is given.
    */
   channelOrganization?: ChannelOrganization
+  /** The monitor's open, unacknowledged incident on DOWN messages (the Slack app's buttons). */
+  openIncidentId?: string | number | null
 }
 
 /** Language a channel's messages are written in: its organization's, or the default. */
@@ -236,6 +238,7 @@ export async function sendNotification(
     downtimeSeconds = null,
     locale: knownLocale,
     channelOrganization,
+    openIncidentId = null,
   }: SendNotificationOptions,
 ): Promise<string> {
   const provider = getNotificationProvider(notification.type)
@@ -282,6 +285,11 @@ export async function sendNotification(
     downtimeSeconds,
     organization: org.organization,
     timeZone: org.timeZone,
+    organizationId:
+      notification.organization && typeof notification.organization === 'object'
+        ? notification.organization.id
+        : (notification.organization ?? null),
+    openIncidentId,
   })
 }
 

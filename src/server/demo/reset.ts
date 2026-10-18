@@ -120,6 +120,8 @@ const WIPE_FIRST = [
   'integration-events',
   'integration-alerts',
   'integrations',
+  'slack-user-links',
+  'slack-installations',
   'subscriber-deliveries',
   'subscriber-notifications',
   'status-page-subscribers',

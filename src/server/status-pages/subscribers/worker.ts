@@ -7,6 +7,7 @@ import { UnrecoverableError, type Job } from 'bullmq'
 import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
+import { isSlackAppTarget } from '@/lib/slack-app'
 import { isDiscordWebhookUrl } from '@/lib/status-page-subscribers'
 import type {
   StatusPage,
@@ -15,6 +16,7 @@ import type {
   SubscriberNotification,
 } from '@/payload-types'
 import { renderAnnouncementEmail } from '@/server/email/subscriber-emails'
+import { postSlackAppSubscriberMessage } from '@/server/slack/deliver'
 
 import {
   completeBatchIfDone,
@@ -223,6 +225,16 @@ async function send(
       )
       return
     case 'slack':
+      // Channels subscribed through the Slack app (#129) are posted to with the bot token.
+      if (isSlackAppTarget(subscriber.target)) {
+        await postSlackAppSubscriberMessage(
+          payload,
+          subscriber.target,
+          slackMessage(announcement, links, render, pageInfo),
+          { event: announcement.event, deliveryId: String(delivery.id) },
+        )
+        return
+      }
       await postSubscriberWebhook({
         url: subscriber.target,
         body: slackMessage(announcement, links, render, pageInfo),

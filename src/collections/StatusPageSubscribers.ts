@@ -88,7 +88,12 @@ const prepare: CollectionBeforeChangeHook<StatusPageSubscriber> = async ({
     return invalid(req, 'subscriberTargetInvalid', 'channel')
   }
   if (data.target !== undefined || operation === 'create') {
-    const check = normalizeTarget(channel, data.target)
+    // Slack app targets (#129) are only written by the slash command (`req.context` flag), and
+    // survive an update that sends them back unchanged.
+    const slackApp =
+      req.context?.slackAppSubscription === true ||
+      (operation === 'update' && data.target === originalDoc?.target)
+    const check = normalizeTarget(channel, data.target, { slackApp })
     if (!check.ok) return invalid(req, 'subscriberTargetInvalid', 'target')
     data.target = check.target
   }

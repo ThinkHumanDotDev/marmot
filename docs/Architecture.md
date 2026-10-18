@@ -417,6 +417,24 @@ incidents with `overrideAccess: true` and `req.context.declaredIncidentReminder`
 bookkeeping. Changes are audited by the collection audit hooks (`declared_incident.*`). Routes:
 `/api/orgs/:orgId/declared-incidents/**`; UI: `/[orgSlug]/declared-incidents`.
 
+## Slack app
+
+The optional Slack app (#129, off unless `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET` and `SLACK_SIGNING_SECRET`
+are set) lives in `src/server/slack/`. `slack-installations` holds one row per organization and workspace
+(both unique) with the bot token sealed by `src/server/slack/tokens.ts` (AES-256-GCM, key derived from
+`PAYLOAD_SECRET`, field never readable); `slack-user-links` maps `(teamId, slackUserId)` (unique) to a member.
+Both are written by the server only. Slack calls three routes, `/api/slack/{commands,interactions,events}`,
+which read the raw body and verify the signature (`signature.ts`: HMAC-SHA256 of `v0:<ts>:<body>`,
+constant-time, five-minute window) before anything else. Commands and actions resolve the workspace's
+installation, then the linked member (`linkedUser`: link, account, still a member), and act through the same
+code paths as the dashboard with that member's permissions: subscriber rows (channel `slack`, target
+`slack://<team>/<channel>`, only writable with the `slackAppSubscription` request context), status-page
+incidents with `overrideAccess: false`, `acknowledge()` with `via: slack`, and on-demand checks whose result is
+posted to the action's `response_url` after the response (`after()`). Deliveries to app targets
+(`slack/deliver.ts`) and the `slack-app` notification provider post with `chat.postMessage` and the bot token;
+the provider receives the organization id and the open incident id in its send context to build the buttons.
+See [Slack app](Slack-App.md).
+
 ## On-call and escalation
 
 `on-call-schedules` and `escalation-policies` (#145) decide who is paged when a monitor goes down, and in which

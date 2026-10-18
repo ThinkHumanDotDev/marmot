@@ -117,6 +117,15 @@ export const AUDITED: Partial<Record<CollectionSlug, AuditCollectionOptions>> = 
     ignore: ['lastEventAt', 'tokenHash'],
     toggle: { field: 'active', on: 'integration.enabled', off: 'integration.disabled' },
   },
+  // Slack app (#129); the sealed bot token is redacted by name.
+  'slack-installations': {
+    entityType: 'slack_installation',
+    label: (doc) => (typeof doc.teamName === 'string' ? doc.teamName : null),
+  },
+  'slack-user-links': {
+    entityType: 'slack_user_link',
+    label: (doc) => (typeof doc.slackUserId === 'string' ? doc.slackUserId : null),
+  },
   locations: {
     entityType: 'location',
     // Liveness and agent details are refreshed by probe requests and the `probe-health` job; a new

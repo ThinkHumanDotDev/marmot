@@ -27,7 +27,7 @@ export const INCIDENT_TIMELINE_TYPES = [
 export type IncidentTimelineType = (typeof INCIDENT_TIMELINE_TYPES)[number]
 
 /** How an acknowledgement or a manual resolution arrived. */
-export const INCIDENT_ACTION_SOURCES = ['dashboard', 'api', 'link'] as const
+export const INCIDENT_ACTION_SOURCES = ['dashboard', 'api', 'link', 'slack'] as const
 export type IncidentActionSource = (typeof INCIDENT_ACTION_SOURCES)[number]
 
 /**

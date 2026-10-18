@@ -95,16 +95,20 @@ async function ackLinkLine(
   monitor: Monitor,
   heartbeat: Heartbeat,
   locale: Locale,
-): Promise<string> {
-  if (heartbeat.status !== 'down') return ''
+): Promise<{ line: string; incidentId: string | number | null }> {
+  const none = { line: '', incidentId: null }
+  if (heartbeat.status !== 'down') return none
   try {
     const incident = await findOpenIncident(payload, monitor.id)
-    if (!incident || incident.status !== 'open') return ''
+    if (!incident || incident.status !== 'open') return none
     const url = ackLinkUrl(incident.id)
-    return `\n${serverTranslator(locale)('notifications.messages.incident.ackLink', { url })}`
+    return {
+      line: `\n${serverTranslator(locale)('notifications.messages.incident.ackLink', { url })}`,
+      incidentId: incident.id,
+    }
   } catch (err) {
     log.warn({ err, monitorId: monitor.id }, 'failed to build the acknowledge link')
-    return ''
+    return none
   }
 }
 
@@ -150,9 +154,9 @@ export async function processNotificationJob(
   const { locale } = channelOrganization
   const downtimeSeconds =
     event === 'up' ? await findOrNull(() => recoveryDowntimeSeconds(payload, heartbeat)) : null
+  const ack = await ackLinkLine(payload, monitor, heartbeat, locale)
   const message =
-    buildDefaultMessage(monitor, heartbeat, locale, { event, downtimeSeconds }) +
-    (await ackLinkLine(payload, monitor, heartbeat, locale))
+    buildDefaultMessage(monitor, heartbeat, locale, { event, downtimeSeconds }) + ack.line
   try {
     const result = await sendNotification(payload, notification, {
       message,
@@ -162,6 +166,7 @@ export async function processNotificationJob(
       downtimeSeconds,
       locale,
       channelOrganization,
+      openIncidentId: ack.incidentId,
     })
     await recordOutcome(payload, notification, { ok: true })
     log.info(

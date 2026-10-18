@@ -41,6 +41,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'signout',
   'signup',
   'sla',
+  'slack',
   'sso',
   'socket.io',
   'static',

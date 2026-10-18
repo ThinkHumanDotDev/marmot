@@ -67,6 +67,13 @@ export interface NotificationSendContext {
   organization?: TemplateOrganization | null
   /** The organization's time zone (IANA) for dates in templates; UTC when absent. */
   timeZone?: string
+  /** Id of the channel's organization, for providers that act on its behalf (the Slack app). */
+  organizationId?: string | number | null
+  /**
+   * The monitor's open, unacknowledged incident (#100) on DOWN messages, so chat providers can
+   * offer an "Acknowledge" button; null otherwise.
+   */
+  openIncidentId?: string | number | null
 }
 
 /** A rendered notification email: subject, HTML part (null for plain-text only) and text part. */
@@ -97,6 +104,11 @@ export interface NotificationProvider {
    * without sending anything.
    */
   renderEmail?(ctx: NotificationSendContext): NotificationEmail
+  /**
+   * Whether the provider can be used on this instance (e.g. the Slack app needs its environment
+   * variables). Unavailable providers are not offered in the channel picker. Default: available.
+   */
+  available?(): boolean
   /**
    * Deliver the message. Resolve with a short success string, throw on failure.
    */

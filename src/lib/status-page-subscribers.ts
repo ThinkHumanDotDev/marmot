@@ -4,6 +4,8 @@
  * it stays free of Payload and Node-only imports.
  */
 
+import { isSlackAppTarget } from '@/lib/slack-app'
+
 export const SUBSCRIBER_CHANNELS = ['email', 'sms', 'webhook', 'slack'] as const
 export type SubscriberChannel = (typeof SUBSCRIBER_CHANNELS)[number]
 
@@ -162,8 +164,16 @@ export const isDiscordWebhookUrl = (value: string): boolean => {
 
 export type TargetCheck = { ok: true; target: string } | { ok: false; error: 'invalidTarget' }
 
-/** Normalises and validates a subscriber target for its channel. */
-export function normalizeTarget(channel: SubscriberChannel, raw: unknown): TargetCheck {
+/**
+ * Normalises and validates a subscriber target for its channel. `slackApp` also accepts the
+ * `slack://<team>/<channel>` targets of channels subscribed through the Slack app (#129); only the
+ * slash command sets it, so visitors and owners cannot point deliveries at a workspace's channel.
+ */
+export function normalizeTarget(
+  channel: SubscriberChannel,
+  raw: unknown,
+  { slackApp = false }: { slackApp?: boolean } = {},
+): TargetCheck {
   if (typeof raw !== 'string') return { ok: false, error: 'invalidTarget' }
   const value = raw.trim()
   if (!value || value.length > MAX_TARGET_LENGTH) return { ok: false, error: 'invalidTarget' }
@@ -185,6 +195,7 @@ export function normalizeTarget(channel: SubscriberChannel, raw: unknown): Targe
         ? { ok: true, target: value }
         : { ok: false, error: 'invalidTarget' }
     case 'slack':
+      if (slackApp && isSlackAppTarget(value)) return { ok: true, target: value }
       return isSlackWebhookUrl(value)
         ? { ok: true, target: value }
         : { ok: false, error: 'invalidTarget' }
@@ -205,6 +216,7 @@ export function maskTarget(channel: SubscriberChannel, target: string): string {
       ? `${target.slice(0, 5)}${'*'.repeat(target.length - 7)}${target.slice(-2)}`
       : '***'
   }
+  if (isSlackAppTarget(target)) return target
   const url = parseUrl(target)
   return url ? `${url.protocol}//${url.host}/…` : '…'
 }

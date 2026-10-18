@@ -12,6 +12,7 @@ import type { Payload } from 'payload'
 
 import type { Locale } from '@/i18n/locales'
 import { childLogger } from '@/lib/logger'
+import { isSlackAppTarget } from '@/lib/slack-app'
 import {
   SMS_CODE_MAX_ATTEMPTS,
   SMS_CODE_TTL_MINUTES,
@@ -27,6 +28,7 @@ import {
   renderSubscriptionConfirmEmail,
 } from '@/server/email/subscriber-emails'
 import { serverTranslator } from '@/server/i18n'
+import { postSlackAppSubscriberMessage } from '@/server/slack/deliver'
 import { createRateLimiter, type RateLimiter } from '@/server/security/rate-limit'
 import { requestMeta } from '@/server/security/request'
 import { statusPageComponentIds } from '@/collections/StatusPageSubscribers'
@@ -259,6 +261,15 @@ async function sendSignupMessage(
     case 'webhook': {
       const render = { locale, i18n: ctx?.i18n ?? { locale, timeZone: 'UTC' } }
       const pageInfo = { title: page.title, url: publicPageUrl(page) }
+      if (subscriber.channel === 'slack' && isSlackAppTarget(subscriber.target)) {
+        await postSlackAppSubscriberMessage(
+          payload,
+          subscriber.target,
+          slackMessage(null, links, render, pageInfo),
+          { event: 'subscription_created', deliveryId: `welcome-${String(subscriber.id)}` },
+        )
+        return
+      }
       await postSubscriberWebhook({
         url: subscriber.target,
         body:
@@ -273,6 +284,18 @@ async function sendSignupMessage(
       return
     }
   }
+}
+
+/**
+ * The welcome message of a webhook or Slack subscriber, throwing on failure (the Slack app's
+ * `/marmot subscribe` (#129) undoes the subscription when the bot cannot post in the channel).
+ */
+export async function sendSubscriberWelcome(
+  payload: Payload,
+  page: StatusPage,
+  subscriber: StatusPageSubscriber,
+): Promise<void> {
+  await sendSignupMessage(payload, page, subscriber, false)
 }
 
 /**
