@@ -39,6 +39,7 @@ function useTimelineText() {
       case 'maintenance':
         return t('maintenance')
       case 'acknowledged':
+        if (!entry.by && entry.via === 'phone') return t('acknowledgedByPhone')
         return (
           (entry.by ? t('acknowledged', { name: entry.by.name }) : t('acknowledgedAnonymous')) +
           (entry.via && entry.via !== 'link' ? via : '')

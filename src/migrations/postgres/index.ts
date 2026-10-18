@@ -69,7 +69,8 @@ import * as migration_20261012_220800_declared_incidents from './20261012_220800
 import * as migration_20261012_235905_on_call_escalation from './20261012_235905_on_call_escalation';
 import * as migration_20261013_013350_inbound_integrations from './20261013_013350_inbound_integrations';
 import * as migration_20261018_002154_issue_tracker_alerts from './20261018_002154_issue_tracker_alerts';
-import * as migration_20261018_060408_sla_business_hours from './20261018_060408_sla_business_hours';
+import * as migration_20261018_061140_voice_call_acknowledgements from './20261018_061140_voice_call_acknowledgements';
+import * as migration_20261018_104929_sla_business_hours from './20261018_104929_sla_business_hours';
 
 export const migrations = [
   {
@@ -428,8 +429,13 @@ export const migrations = [
     name: '20261018_002154_issue_tracker_alerts',
   },
   {
-    up: migration_20261018_060408_sla_business_hours.up,
-    down: migration_20261018_060408_sla_business_hours.down,
-    name: '20261018_060408_sla_business_hours'
+    up: migration_20261018_061140_voice_call_acknowledgements.up,
+    down: migration_20261018_061140_voice_call_acknowledgements.down,
+    name: '20261018_061140_voice_call_acknowledgements',
+  },
+  {
+    up: migration_20261018_104929_sla_business_hours.up,
+    down: migration_20261018_104929_sla_business_hours.down,
+    name: '20261018_104929_sla_business_hours'
   },
 ];

@@ -18,7 +18,8 @@
  * (or a page queued just before the acknowledgement) pages nobody.
  *
  * Phone calls (#146) and other channels plug in as notification channel types: a `channel` target
- * accepts any provider.
+ * accepts any provider. A `voice-call` channel lets the callee acknowledge by pressing 1, which
+ * stops the escalation like any other acknowledgement.
  */
 import type { Job, Queue } from 'bullmq'
 import type { Payload } from 'payload'
@@ -423,6 +424,8 @@ export async function processEscalationPage(
       heartbeat: null,
       event: 'down',
       locale,
+      // A phone call (#146) lets the callee acknowledge by pressing 1.
+      incidentId: incident.id,
     })
     log.info({ incidentId: incident.id, notificationId: channel.id }, 'paged a channel')
     return { outcome: 'sent' }

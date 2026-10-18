@@ -462,7 +462,10 @@ Delayed jobs live in Redis, so pending steps survive worker restarts; job ids ar
 round, step), so a step is never queued twice. The incident keeps the state in `escalationPolicy` and
 `escalation { status: active | stopped | exhausted, step, round, nextAt }`, and every job re-checks it first:
 a step or page that slips past an acknowledgement pages nobody. Pages carry the signed acknowledge link
-(`/ack/<token>`). Phone calls (#146) and other channels plug in as notification channel types.
+(`/ack/<token>`). Phone calls (#146) plug in as the `voice-call` channel type: the page names the incident
+(`incidentId` in the provider context), the call reads it out and pressing 1 acknowledges it through a
+Twilio-signed webhook (`/api/notifications/voice/:callId/gather`), which stops the escalation like any other
+acknowledgement; see [Notifications](Notifications.md#phone-calls).
 
 Access: `on-call:read` (viewer) and `on-call:manage` (member) for schedules and overrides,
 `escalation-policy:read` (viewer) and `escalation-policy:manage` (admin) for policies. Members write through

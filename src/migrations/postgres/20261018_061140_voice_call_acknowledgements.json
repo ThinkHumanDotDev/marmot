@@ -11612,171 +11612,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.sla_targets_business_hours_days": {
-      "name": "sla_targets_business_hours_days",
-      "schema": "",
-      "columns": {
-        "order": {
-          "name": "order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value": {
-          "name": "value",
-          "type": "enum_sla_targets_business_hours_days",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "sla_targets_business_hours_days_order_idx": {
-          "name": "sla_targets_business_hours_days_order_idx",
-          "columns": [
-            {
-              "expression": "order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "sla_targets_business_hours_days_parent_idx": {
-          "name": "sla_targets_business_hours_days_parent_idx",
-          "columns": [
-            {
-              "expression": "parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "sla_targets_business_hours_days_parent_fk": {
-          "name": "sla_targets_business_hours_days_parent_fk",
-          "tableFrom": "sla_targets_business_hours_days",
-          "tableTo": "sla_targets",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.sla_targets_business_hours_holidays": {
-      "name": "sla_targets_business_hours_holidays",
-      "schema": "",
-      "columns": {
-        "_order": {
-          "name": "_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "_parent_id": {
-          "name": "_parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "varchar",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "date": {
-          "name": "date",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "sla_targets_business_hours_holidays_order_idx": {
-          "name": "sla_targets_business_hours_holidays_order_idx",
-          "columns": [
-            {
-              "expression": "_order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "sla_targets_business_hours_holidays_parent_id_idx": {
-          "name": "sla_targets_business_hours_holidays_parent_id_idx",
-          "columns": [
-            {
-              "expression": "_parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "sla_targets_business_hours_holidays_parent_id_fk": {
-          "name": "sla_targets_business_hours_holidays_parent_id_fk",
-          "tableFrom": "sla_targets_business_hours_holidays",
-          "tableTo": "sla_targets",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.sla_targets": {
       "name": "sla_targets",
       "schema": "",
@@ -11827,27 +11662,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": true
-        },
-        "business_hours_enabled": {
-          "name": "business_hours_enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "business_hours_start": {
-          "name": "business_hours_start",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'09:00'"
-        },
-        "business_hours_end": {
-          "name": "business_hours_end",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'17:00'"
         },
         "updated_at": {
           "name": "updated_at",
@@ -20898,7 +20712,8 @@
       "values": [
         "dashboard",
         "api",
-        "link"
+        "link",
+        "phone"
       ]
     },
     "public.enum_monitor_incidents_status": {
@@ -20916,7 +20731,8 @@
       "values": [
         "dashboard",
         "api",
-        "link"
+        "link",
+        "phone"
       ]
     },
     "public.enum_monitor_incidents_escalation_status": {
@@ -21224,19 +21040,6 @@
         "degraded",
         "partial",
         "down"
-      ]
-    },
-    "public.enum_sla_targets_business_hours_days": {
-      "name": "enum_sla_targets_business_hours_days",
-      "schema": "public",
-      "values": [
-        "mon",
-        "tue",
-        "wed",
-        "thu",
-        "fri",
-        "sat",
-        "sun"
       ]
     },
     "public.enum_sla_targets_period": {
@@ -21690,6 +21493,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "07ebd247-680e-42cc-b6db-db5200e809ac",
+  "id": "8c7e0a54-1935-4ec9-9fec-e5b9541e98d8",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
