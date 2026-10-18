@@ -68,7 +68,8 @@ import * as migration_20261012_213002_sla_reports from './20261012_213002_sla_re
 import * as migration_20261012_220800_declared_incidents from './20261012_220800_declared_incidents';
 import * as migration_20261012_235905_on_call_escalation from './20261012_235905_on_call_escalation';
 import * as migration_20261013_013350_inbound_integrations from './20261013_013350_inbound_integrations';
-import * as migration_20261018_002636_status_page_metrics_extras from './20261018_002636_status_page_metrics_extras';
+import * as migration_20261018_002154_issue_tracker_alerts from './20261018_002154_issue_tracker_alerts';
+import * as migration_20261018_055424_status_page_metrics_extras from './20261018_055424_status_page_metrics_extras';
 
 export const migrations = [
   {
@@ -422,8 +423,13 @@ export const migrations = [
     name: '20261013_013350_inbound_integrations',
   },
   {
-    up: migration_20261018_002636_status_page_metrics_extras.up,
-    down: migration_20261018_002636_status_page_metrics_extras.down,
-    name: '20261018_002636_status_page_metrics_extras'
+    up: migration_20261018_002154_issue_tracker_alerts.up,
+    down: migration_20261018_002154_issue_tracker_alerts.down,
+    name: '20261018_002154_issue_tracker_alerts',
+  },
+  {
+    up: migration_20261018_055424_status_page_metrics_extras.up,
+    down: migration_20261018_055424_status_page_metrics_extras.down,
+    name: '20261018_055424_status_page_metrics_extras'
   },
 ];

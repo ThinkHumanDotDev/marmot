@@ -299,7 +299,13 @@ announces the certificates for the hostname (and `*.hostname` with `ctIncludeSub
 baseline `ctState.since` through the channels that accept `certificate`. Each one is first claimed in
 `notification-sent-history` (`type: 'ct'`, `days: 0`, `fingerprint`; the unique index is
 `(type, monitor, days, fingerprint)`, expiry rows store `''`), so re-runs and overlapping runs announce it
-once. A failed lookup stops the run and backs off the source (in memory, per worker process) and the
+once.
+
+Issue-tracker channels (#149) keep their open ticket in the same collection: `type: 'issue'`, `days: 0`,
+`fingerprint` `<channel id>:<repository or project>` and `externalId` (issue number, key or id). Providers
+reach it through `NotificationSendContext.issues` (`src/server/notifications/issue-state.ts`), which
+`sendNotification` provides for monitor notifications of saved channels; the shared flow is
+`src/server/notification-providers/issue-tracker.ts`. A failed lookup stops the run and backs off the source (in memory, per worker process) and the
 monitor (`ctState.failures`, `nextCheckAt`), exponentially from 5 minutes to a day or by `Retry-After`. A
 `beforeChange` hook clears `ctState` when the option is turned off. Runs stop starting lookups after
 4.5 minutes so they never overlap.

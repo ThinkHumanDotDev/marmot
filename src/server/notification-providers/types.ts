@@ -67,6 +67,22 @@ export interface NotificationSendContext {
   organization?: TemplateOrganization | null
   /** The organization's time zone (IANA) for dates in templates; UTC when absent. */
   timeZone?: string
+  /**
+   * The open tickets of issue-tracker providers (#149) for this channel and monitor. Present for
+   * monitor notifications of a saved channel; absent for tests and organization-wide messages.
+   */
+  issues?: IssueStateStore
+}
+
+/**
+ * Remembers the external ticket of an open outage per channel and monitor
+ * (`notification-sent-history`, type `issue`). `target` names the repository, project or team, so
+ * a channel pointed at another repository starts afresh.
+ */
+export interface IssueStateStore {
+  get(target: string): Promise<string | null>
+  set(target: string, externalId: string): Promise<void>
+  clear(target: string): Promise<void>
 }
 
 /** A rendered notification email: subject, HTML part (null for plain-text only) and text part. */
