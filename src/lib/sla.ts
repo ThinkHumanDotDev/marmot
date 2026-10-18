@@ -27,8 +27,23 @@ import { csvCell, DAY_SECONDS } from '@/lib/uptime-history'
 export const SLA_WINDOWS = ['month', 'quarter', 'rolling30'] as const
 export type SlaWindow = (typeof SLA_WINDOWS)[number]
 
-export const SLA_CALCULATIONS = ['duration', 'checks'] as const
+/**
+ * `duration` and `checks` as for monitors; `manual` (status page components and groups only,
+ * #274): downtime from the incident impacts of the page, as in the #112 `manual` mode. Static
+ * components always use it.
+ */
+export const SLA_CALCULATIONS = ['duration', 'checks', 'manual'] as const
 export type SlaCalculation = (typeof SLA_CALCULATIONS)[number]
+
+/** What a target measures (#274): a monitor, a status page component or a status page group. */
+export const SLA_SUBJECTS = ['monitor', 'component', 'group'] as const
+export type SlaSubject = (typeof SLA_SUBJECTS)[number]
+
+export const isSlaSubject = (value: unknown): value is SlaSubject =>
+  typeof value === 'string' && (SLA_SUBJECTS as readonly string[]).includes(value)
+
+/** Most error budget alert thresholds per target. */
+export const SLA_MAX_ALERT_THRESHOLDS = 5
 
 export const SLA_SCHEDULES = ['none', 'weekly', 'monthly'] as const
 export type SlaSchedule = (typeof SLA_SCHEDULES)[number]
@@ -419,9 +434,9 @@ export function slaAttainment(
   const consumedSeconds =
     uptime === null
       ? 0
-      : spec.calculation === 'duration'
-        ? figures.downSeconds
-        : (1 - uptime) * Math.max(0, figures.elapsedSeconds - excluded)
+      : spec.calculation === 'checks'
+        ? (1 - uptime) * Math.max(0, figures.elapsedSeconds - excluded)
+        : figures.downSeconds
   const remainingSeconds = budgetSeconds - consumedSeconds
   return {
     uptime,
@@ -445,6 +460,53 @@ export function slaHealth(attainment: SlaAttainment): SlaHealth {
   if (attainment.remainingSeconds < 0) return 'missed'
   if (attainment.met === false || (attainment.burnRate ?? 0) > 1) return 'atRisk'
   return 'met'
+}
+
+// ---- Error budget alerts ----------------------------------------------------------------------------
+
+/**
+ * Remaining budget thresholds (percent) a target alerts on, deduplicated, highest first. Values
+ * outside 0..100 are dropped.
+ */
+export function normalizeThresholds(values: readonly unknown[] | null | undefined): number[] {
+  const out = new Set<number>()
+  for (const value of values ?? []) {
+    const number = typeof value === 'number' ? value : Number(value)
+    if (Number.isFinite(number) && number >= 0 && number <= 100) out.add(number)
+  }
+  return [...out].sort((a, b) => b - a).slice(0, SLA_MAX_ALERT_THRESHOLDS)
+}
+
+/** What a target has already alerted on (`sla-targets.budgetAlertState`). */
+export interface BudgetAlertState {
+  /** `SlaPeriod.key` the thresholds below belong to. */
+  period: string
+  /** Thresholds already alerted on in that period. */
+  sent: number[]
+}
+
+export const isBudgetAlertState = (value: unknown): value is BudgetAlertState =>
+  !!value &&
+  typeof value === 'object' &&
+  typeof (value as BudgetAlertState).period === 'string' &&
+  Array.isArray((value as BudgetAlertState).sent)
+
+/**
+ * The thresholds a target newly crossed: its remaining budget (`remainingRatio`, 1 = untouched)
+ * dropped below `threshold` % and no alert went out for that threshold in this period. A new
+ * period starts with none sent, so each threshold alerts at most once per period.
+ */
+export function dueBudgetAlerts(
+  thresholds: readonly number[],
+  remainingRatio: number | null,
+  periodKey: string,
+  state: BudgetAlertState | null,
+): { due: number[]; state: BudgetAlertState } {
+  const sent = state && state.period === periodKey ? state.sent : []
+  if (remainingRatio === null) return { due: [], state: { period: periodKey, sent } }
+  const remaining = remainingRatio * 100
+  const due = thresholds.filter((threshold) => remaining < threshold && !sent.includes(threshold))
+  return { due, state: { period: periodKey, sent: [...sent, ...due].sort((a, b) => b - a) } }
 }
 
 // ---- Incidents --------------------------------------------------------------------------------------

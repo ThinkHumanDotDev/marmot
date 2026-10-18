@@ -4,7 +4,7 @@
  * Fixture: one monitor observed over the whole previous calendar month (UTC), DOWN for 20 minutes
  * on day 3 and in maintenance for two hours on day 5; 20 failed and 120 maintenance checks.
  */
-import { getPayload, type Payload } from 'payload'
+import { getPayload, type Payload, type RequiredDataFromCollectionSlug } from 'payload'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import config from '@payload-config'
@@ -18,7 +18,21 @@ import {
 import { GET as targetsRoute } from '@/app/api/orgs/[orgId]/sla/targets/route'
 import { GET as publicRoute } from '@/app/api/sla/[token]/route'
 import { periodDates, periodFromDates, previousSchedulePeriod, type SlaReportData } from '@/lib/sla'
-import type { Monitor, Organization, SlaReport, SlaTarget, User } from '@/payload-types'
+import type {
+  Monitor,
+  Notification,
+  Organization,
+  SlaReport,
+  SlaTarget,
+  StatusPage,
+  User,
+} from '@/payload-types'
+import {
+  checkSlaBudgets,
+  processSlaBudgetAlertJob,
+  setSlaBudgetJobSink,
+  type SlaBudgetJob,
+} from '@/server/sla/alerts'
 import type { TargetStatus } from '@/server/sla/compute'
 import { buildSlaReport, targetStatuses } from '@/server/sla/compute'
 import {
@@ -201,6 +215,8 @@ describe('SLA targets and reports', () => {
       await payload.delete({ collection: 'heartbeats', where })
       await payload.delete({ collection: 'stat-daily', where })
       await payload.delete({ collection: 'stat-hourly', where })
+      await payload.delete({ collection: 'sla-targets', where })
+      await payload.delete({ collection: 'notifications', where })
       await payload.delete({ collection: 'monitor-incidents', where })
       await payload.delete({ collection: 'monitors', where })
       await payload.delete({ collection: 'organizations', id: target.id })
@@ -887,6 +903,304 @@ describe('SLA targets and reports', () => {
       )
       expect(res.status).toBe(400)
       await payload.delete({ collection: 'sla-reports', id: bare.id })
+    })
+  })
+
+  describe('status page components and groups (#274)', () => {
+    let page: StatusPage
+    let monitorRow: string
+    let staticRow: string
+    let groupId: string
+    const create = (data: Record<string, unknown>) =>
+      payload.create({
+        collection: 'sla-targets',
+        data: {
+          organization: org.id,
+          target: 99.9,
+          period: 'month',
+          excludeMaintenance: false,
+          calculation: 'duration',
+          ...data,
+        },
+        user: asUser(owner),
+        overrideAccess: false,
+      } as never) as Promise<SlaTarget>
+
+    beforeAll(async () => {
+      page = (await payload.create({
+        collection: 'status-pages',
+        data: {
+          organization: org.id,
+          title: 'Acme Status',
+          slug: `sla-page-${run}`,
+          published: true,
+          groups: [
+            {
+              name: 'Core',
+              monitors: [{ monitor: monitor.id }, { type: 'static', name: 'Support desk' }],
+            },
+          ],
+        },
+        depth: 0,
+      })) as StatusPage
+      await payload.db.updateOne({
+        collection: 'status-pages',
+        id: page.id,
+        data: { createdAt: new Date(month.from - 30 * DAY).toISOString() },
+        req: {} as never,
+      })
+      page = (await payload.findByID({
+        collection: 'status-pages',
+        id: page.id,
+        depth: 0,
+      })) as StatusPage
+      monitorRow = String(page.groups?.[0]?.monitors?.[0]?.id)
+      staticRow = String(page.groups?.[0]?.monitors?.[1]?.id)
+      groupId = String(page.groups?.[0]?.id)
+      // The support desk: a major outage for an hour on day 10, a partial one for two on day 12.
+      for (const [day, hours, impact] of [
+        [10, 1, 'major_outage'],
+        [12, 2, 'partial_outage'],
+      ] as const) {
+        await payload.create({
+          collection: 'incidents',
+          data: {
+            statusPage: page.id,
+            title: `Support ${impact}`,
+            updates: [
+              {
+                status: 'investigating',
+                message: 'Down.',
+                postedAt: at(day),
+                components: [{ component: staticRow, impact }],
+              },
+              { status: 'resolved', message: 'Fixed.', postedAt: at(day, hours * HOUR) },
+            ],
+          } as RequiredDataFromCollectionSlug<'incidents'>,
+          overrideAccess: true,
+        })
+      }
+    })
+
+    it('measures a monitor component from its monitor and a static one from incident impacts', async () => {
+      const monitorComponent = await create({
+        subject: 'component',
+        statusPage: page.id,
+        component: monitorRow,
+      })
+      const staticComponent = await create({
+        subject: 'component',
+        statusPage: page.id,
+        component: staticRow,
+      })
+      const [a, b] = await targetStatuses(
+        payload,
+        [monitorComponent, staticComponent],
+        new Date(month.to - 1),
+      )
+      expect(a.name).toBe('Acme Status › Checkout API')
+      expect(a.subject).toBe('component')
+      expect(a.attainment.uptime).toBeCloseTo(1 - 1200 / monthSeconds, 9)
+      expect(a.incidents.map((i) => [i.source, i.cause])).toEqual([
+        ['monitor', 'Connection refused'],
+      ])
+      // One hour down plus two hours half down.
+      expect(b.name).toBe('Acme Status › Support desk')
+      expect(b.attainment.uptime).toBeCloseTo(1 - 7200 / monthSeconds, 9)
+      expect(b.attainment.remainingSeconds).toBeCloseTo(0.001 * monthSeconds - 7200, 3)
+      expect(b.incidents.map((i) => i.source)).toEqual(['statusPage', 'statusPage'])
+      expect(b.incidents[0].statusPageId).toBe(String(page.id))
+    })
+
+    it('measures a group as the mean of its components, under any calculation mode', async () => {
+      const duration = await create({ subject: 'group', statusPage: page.id, component: groupId })
+      const manual = await create({
+        subject: 'group',
+        statusPage: page.id,
+        component: groupId,
+        calculation: 'manual',
+      })
+      const [a, b] = await targetStatuses(payload, [duration, manual], new Date(month.to - 1))
+      expect(a.name).toBe('Acme Status › Core')
+      expect(a.attainment.uptime).toBeCloseTo(1 - (1200 + 7200) / 2 / monthSeconds, 9)
+      expect(a.attainment.budgetSeconds).toBeCloseTo(0.001 * monthSeconds, 3)
+      expect(a.attainment.remainingSeconds).toBeCloseTo(0.001 * monthSeconds - 4200, 3)
+      // Incident impacts only: the monitor component had none.
+      expect(b.attainment.uptime).toBeCloseTo(1 - 7200 / 2 / monthSeconds, 9)
+
+      const data = await buildSlaReport(
+        payload,
+        { ...report, targets: [duration.id] } as SlaReport,
+        month,
+        now,
+      )
+      expect(data.rows.map((row) => [row.name, row.incidents])).toEqual([['Acme Status › Core', 3]])
+    })
+
+    it('refuses components of other pages, unknown rows and incident impacts on monitors', async () => {
+      const foreignPage = (await payload.create({
+        collection: 'status-pages',
+        data: {
+          organization: otherOrg.id,
+          title: 'Other',
+          slug: `sla-other-page-${run}`,
+          groups: [{ name: 'G', monitors: [{ type: 'static', name: 'S' }] }],
+        },
+        depth: 0,
+      })) as StatusPage
+      for (const data of [
+        { subject: 'group', statusPage: foreignPage.id, component: foreignPage.groups?.[0]?.id },
+        { subject: 'component', statusPage: page.id, component: 'nope' },
+        { subject: 'component', statusPage: page.id, component: groupId },
+        { subject: 'group', statusPage: page.id, component: staticRow },
+        { subject: 'monitor', monitor: monitor.id, calculation: 'manual' },
+      ]) {
+        await expect(create(data)).rejects.toThrow()
+      }
+      await payload.delete({ collection: 'status-pages', id: foreignPage.id })
+    })
+
+    it('drops the targets of a deleted status page', async () => {
+      const target = await create({
+        subject: 'component',
+        statusPage: page.id,
+        component: staticRow,
+      })
+      await payload.delete({ collection: 'incidents', where: { statusPage: { equals: page.id } } })
+      await payload.delete({ collection: 'status-pages', id: page.id })
+      const { totalDocs } = await payload.find({
+        collection: 'sla-targets',
+        where: { id: { equals: target.id } },
+      })
+      expect(totalDocs).toBe(0)
+    })
+  })
+
+  describe('error budget alerts (#274)', () => {
+    let channel: Notification
+    let target: SlaTarget
+    const budgetJobs: SlaBudgetJob[] = []
+
+    beforeAll(async () => {
+      channel = (await payload.create({
+        collection: 'notifications',
+        depth: 0,
+        overrideAccess: true,
+        data: {
+          organization: org.id,
+          name: 'sla-room',
+          type: 'discord',
+          config: {
+            webhookUrl: 'https://discord.com/api/webhooks/1/test',
+            messageFormat: 'custom',
+            messageTemplate: '{{ msg }}',
+          },
+          active: true,
+        } as never,
+      })) as Notification
+      setSlaBudgetJobSink(async (jobs) => void budgetJobs.push(...jobs))
+    })
+
+    afterAll(async () => {
+      setSlaBudgetJobSink(null)
+      vi.unstubAllGlobals()
+    })
+
+    it('refuses channels of other organizations', async () => {
+      const foreign = (await payload.create({
+        collection: 'notifications',
+        depth: 0,
+        overrideAccess: true,
+        data: {
+          organization: otherOrg.id,
+          name: 'foreign',
+          type: 'discord',
+          config: { webhookUrl: 'https://discord.com/api/webhooks/2/test' },
+          active: true,
+        } as never,
+      })) as Notification
+      await expect(
+        payload.create({
+          collection: 'sla-targets',
+          data: {
+            organization: org.id,
+            monitor: monitor.id,
+            target: 99.9,
+            budgetAlerts: { thresholds: [50], notifications: [foreign.id] },
+          },
+          user: asUser(owner),
+          overrideAccess: false,
+        } as never),
+      ).rejects.toThrow()
+    })
+
+    it('notifies once per period and threshold when the budget drops below it', async () => {
+      target = (await payload.create({
+        collection: 'sla-targets',
+        data: {
+          organization: org.id,
+          monitor: monitor.id,
+          target: 99.9,
+          period: 'month',
+          calculation: 'duration',
+          excludeMaintenance: false,
+          budgetAlerts: { thresholds: [50, 90, 90, 150], notifications: [channel.id] },
+        },
+        user: asUser(owner),
+        overrideAccess: false,
+      } as never)) as SlaTarget
+      expect(target.budgetAlerts?.thresholds).toEqual([90, 50])
+
+      const end = new Date(month.to - 1)
+      await checkSlaBudgets(payload, end)
+      // About 55 % of the budget is left: below 90 %, not below 50 %.
+      const mine = () => budgetJobs.filter((job) => job.data.targetId === String(target.id))
+      expect(mine().map((job) => [job.data.threshold, job.data.notificationId])).toEqual([
+        [90, String(channel.id)],
+      ])
+      await checkSlaBudgets(payload, end)
+      expect(mine()).toHaveLength(1)
+
+      // A stricter target spends the whole budget: one alert, for the lowest threshold crossed.
+      await payload.update({
+        collection: 'sla-targets',
+        id: target.id,
+        data: { target: 99.96 },
+        overrideAccess: true,
+      })
+      await checkSlaBudgets(payload, end)
+      expect(mine().map((job) => job.data.threshold)).toEqual([90, 50])
+      const stored = await payload.findByID({ collection: 'sla-targets', id: target.id })
+      expect(stored.budgetAlertState).toEqual({ period: month.key, sent: [90, 50] })
+
+      const calls: { content: string }[] = []
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (_url: string, init?: RequestInit) => {
+          calls.push(JSON.parse(String(init?.body)) as { content: string })
+          return new Response('{}', { status: 200 })
+        }),
+      )
+      expect(await processSlaBudgetAlertJob(payload, mine()[1])).toBe('sent')
+      expect(calls[0].content).toMatch(
+        /^\[Checkout API\] \[📉 Error budget\] The error budget of [\d.,]+ min is spent \(target 99\.96/,
+      )
+    })
+
+    it('starts every period with no alert sent', async () => {
+      await payload.update({
+        collection: 'sla-targets',
+        id: target.id,
+        data: { budgetAlertState: { period: 'earlier', sent: [90, 50] } },
+        overrideAccess: true,
+      })
+      budgetJobs.length = 0
+      await checkSlaBudgets(payload, new Date(month.to - 1))
+      expect(
+        budgetJobs
+          .filter((job) => job.data.targetId === String(target.id))
+          .map((j) => j.data.threshold),
+      ).toEqual([50])
     })
   })
 
