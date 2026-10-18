@@ -4930,6 +4930,12 @@
           "notNull": false,
           "default": "''"
         },
+        "external_id": {
+          "name": "external_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -20789,7 +20795,8 @@
       "values": [
         "certificate",
         "domain",
-        "ct"
+        "ct",
+        "issue"
       ]
     },
     "public.enum_heartbeats_location_status": {
@@ -21624,6 +21631,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "b9d254b4-61e2-4f0b-841a-b878e2cb61d7",
+  "id": "b09dbdc7-73a0-4540-8faf-8db760211b61",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
