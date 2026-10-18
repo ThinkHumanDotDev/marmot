@@ -1,0 +1,44 @@
+[
+  {
+    "id": "ckm0maintenance0000000001",
+    "name": "Database upgrade",
+    "nameTranslationId": null,
+    "start": "2099-01-10T02:00:00.000Z",
+    "duration": 150,
+    "status": "NOTSTARTEDYET",
+    "autoStart": true,
+    "autoEnd": true,
+    "updates": [
+      {
+        "id": "ckmu0000000000000000001",
+        "message": "<p>We will upgrade the primary database. The API may be read-only.</p>",
+        "markdown": "We will upgrade the primary database. The API may be read-only.",
+        "status": "NOTSTARTEDYET",
+        "started": "2026-09-25T10:00:00.000Z",
+        "createdAt": "2026-09-25T10:00:00.000Z"
+      }
+    ],
+    "components": [{ "id": "ckc0api00000000000000002", "name": "API", "status": "OPERATIONAL" }]
+  },
+  {
+    "id": "ckm0maintenance0000000002",
+    "name": "Network maintenance",
+    "nameTranslationId": null,
+    "start": "2026-08-01T01:00:00.000Z",
+    "end": "2026-08-01T02:00:00.000Z",
+    "duration": 60,
+    "status": "COMPLETED",
+    "updates": [],
+    "components": []
+  },
+  {
+    "id": "ckm0maintenance0000000003",
+    "name": "Unscheduled window",
+    "nameTranslationId": null,
+    "start": null,
+    "duration": null,
+    "status": "NOTSTARTEDYET",
+    "updates": [],
+    "components": []
+  }
+]
