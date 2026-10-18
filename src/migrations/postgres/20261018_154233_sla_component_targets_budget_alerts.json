@@ -11805,11 +11805,31 @@
           "primaryKey": false,
           "notNull": true
         },
+        "subject": {
+          "name": "subject",
+          "type": "enum_sla_targets_subject",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'monitor'"
+        },
         "monitor_id": {
           "name": "monitor_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "status_page_id": {
+          "name": "status_page_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "component": {
+          "name": "component",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
         },
         "target": {
           "name": "target",
@@ -11861,6 +11881,12 @@
           "notNull": false,
           "default": "'17:00'"
         },
+        "budget_alert_state": {
+          "name": "budget_alert_state",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -11897,6 +11923,21 @@
           "columns": [
             {
               "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sla_targets_status_page_idx": {
+          "name": "sla_targets_status_page_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -11963,6 +12004,229 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "sla_targets_status_page_id_status_pages_id_fk": {
+          "name": "sla_targets_status_page_id_status_pages_id_fk",
+          "tableFrom": "sla_targets",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "status_page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sla_targets_numbers": {
+      "name": "sla_targets_numbers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "number": {
+          "name": "number",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "sla_targets_numbers_order_parent_idx": {
+          "name": "sla_targets_numbers_order_parent_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sla_targets_numbers_parent_fk": {
+          "name": "sla_targets_numbers_parent_fk",
+          "tableFrom": "sla_targets_numbers",
+          "tableTo": "sla_targets",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sla_targets_rels": {
+      "name": "sla_targets_rels",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notifications_id": {
+          "name": "notifications_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "sla_targets_rels_order_idx": {
+          "name": "sla_targets_rels_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sla_targets_rels_parent_idx": {
+          "name": "sla_targets_rels_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sla_targets_rels_path_idx": {
+          "name": "sla_targets_rels_path_idx",
+          "columns": [
+            {
+              "expression": "path",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sla_targets_rels_notifications_id_idx": {
+          "name": "sla_targets_rels_notifications_id_idx",
+          "columns": [
+            {
+              "expression": "notifications_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sla_targets_rels_parent_fk": {
+          "name": "sla_targets_rels_parent_fk",
+          "tableFrom": "sla_targets_rels",
+          "tableTo": "sla_targets",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sla_targets_rels_notifications_fk": {
+          "name": "sla_targets_rels_notifications_fk",
+          "tableFrom": "sla_targets_rels",
+          "tableTo": "notifications",
+          "columnsFrom": [
+            "notifications_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -13207,12 +13471,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "viewer_id": {
-          "name": "viewer_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "source": {
           "name": "source",
           "type": "enum_status_page_subscribers_source",
@@ -13334,21 +13592,6 @@
           "columns": [
             {
               "expression": "target",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_page_subscribers_viewer_idx": {
-          "name": "status_page_subscribers_viewer_idx",
-          "columns": [
-            {
-              "expression": "viewer_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -13488,19 +13731,6 @@
           "tableTo": "status_pages",
           "columnsFrom": [
             "status_page_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "status_page_subscribers_viewer_id_status_page_viewers_id_fk": {
-          "name": "status_page_subscribers_viewer_id_status_page_viewers_id_fk",
-          "tableFrom": "status_page_subscribers",
-          "tableTo": "status_page_viewers",
-          "columnsFrom": [
-            "viewer_id"
           ],
           "columnsTo": [
             "id"
@@ -21288,6 +21518,15 @@
         "sun"
       ]
     },
+    "public.enum_sla_targets_subject": {
+      "name": "enum_sla_targets_subject",
+      "schema": "public",
+      "values": [
+        "monitor",
+        "component",
+        "group"
+      ]
+    },
     "public.enum_sla_targets_period": {
       "name": "enum_sla_targets_period",
       "schema": "public",
@@ -21302,7 +21541,8 @@
       "schema": "public",
       "values": [
         "duration",
-        "checks"
+        "checks",
+        "manual"
       ]
     },
     "public.enum_sla_reports_schedule": {
@@ -21739,6 +21979,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "e6c6f4a8-2f24-4b5a-905d-15fd606a47de",
+  "id": "dbf8fcbc-a011-4ab8-8b41-61eeddacee18",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
