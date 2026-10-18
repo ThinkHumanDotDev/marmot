@@ -2496,12 +2496,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "http_suite": {
-          "name": "http_suite",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "push_token": {
           "name": "push_token",
           "type": "varchar",
@@ -5198,12 +5192,6 @@
         },
         "probes": {
           "name": "probes",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "steps": {
-          "name": "steps",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
@@ -20254,7 +20242,6 @@
         "keyword",
         "json-query",
         "prometheus",
-        "http-suite",
         "port",
         "ping",
         "dns",
@@ -20725,7 +20712,8 @@
       "values": [
         "dashboard",
         "api",
-        "link"
+        "link",
+        "phone"
       ]
     },
     "public.enum_monitor_incidents_status": {
@@ -20743,7 +20731,8 @@
       "values": [
         "dashboard",
         "api",
-        "link"
+        "link",
+        "phone"
       ]
     },
     "public.enum_monitor_incidents_escalation_status": {
@@ -21504,6 +21493,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "093bf5a6-0999-4b8e-810f-1ca30a220155",
+  "id": "8c7e0a54-1935-4ec9-9fec-e5b9541e98d8",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

@@ -17,8 +17,8 @@ Setting up a channel is a form: pick a **provider**, fill in the fields the prov
 generated from the provider's schema, so required fields and secrets are marked), pick the events, press
 **Send test** (one sample per selected event), save.
 Tick **Default** to preselect the channel on every new monitor and **Apply to all existing monitors** to
-attach it to the monitors you already have. Marmot ships 48 providers ported from Uptime Kuma (table below) plus WhatsApp
-and five [issue trackers](#issue-trackers) (GitHub, GitLab, Gitea, Jira, Linear), grouped as Chat, Push, Email and
+attach it to the monitors you already have. Marmot ships 48 providers ported from Uptime Kuma (table below) plus WhatsApp,
+phone calls and five [issue trackers](#issue-trackers) (GitHub, GitLab, Gitea, Jira, Linear), grouped as Chat, Push, Email and
 Generic (webhooks, incident management, issue trackers, SMS).
 
 ## How it works
@@ -143,7 +143,8 @@ when its incident opens, each step of the policy pages the member on call in a s
 or a notification channel, then waits for an acknowledgement before the next step. A channel target ignores
 the channel's event filter (the policy chose it) and receives
 `[name] [📟 Page] name is down and you are on call. Cause: … Acknowledge: <server>/ack/<token>`; members get
-the same text by email. Acknowledging the incident (dashboard, API or the link) stops the escalation. Manage
+the same text by email. A [phone call](#phone-calls) channel rings the number instead and lets the callee
+press 1. Acknowledging the incident (dashboard, API, the link or the phone) stops the escalation. Manage
 schedules, overrides and policies on the **On-call** page (`g o`).
 
 ### Certificate transparency alerts
@@ -188,7 +189,8 @@ CT alerts are off in [demo mode](Demo-Mode.md), which never queries third partie
 (`[Marmot] [⚠️ Test] Down: "Ops" is configured correctly.`, in event order, stopping at the first failure)
 and answers `{ ok: true, result, events }` or `400 { ok: false, error }`. `events` in the body tests an
 unsaved selection; otherwise the saved channel's (or the defaults) apply. Requires `notification:update`.
-The UI's **Send test** button uses it; each sample counts against the server SMTP budget. Unsaved
+A [phone call](#phone-calls) channel places a single test call whatever the events. The UI's **Send test**
+button uses it; each sample counts against the server SMTP budget. Unsaved
 settings follow the same rules as saving them (`403` when the caller may not use the server SMTP settings);
 `429` means the organization used up its hourly budget for the server SMTP settings.
 
@@ -385,6 +387,54 @@ Nostr is not ported: it needs `nostr-tools` plus a WebSocket polyfill, which out
   message goes out as `Body`, which WhatsApp only delivers within 24 hours of the recipient's last message.
 - **Errors** from Meta or Twilio are stored on the channel's `lastError` with the vendor's message, e.g.
   `WhatsApp Cloud API (HTTP 400): (#132001) Template name does not exist in the translation`.
+
+### Phone calls
+
+`voice-call` (Generic) calls a phone through Twilio's Voice API and reads the alert out with text-to-speech,
+for outages that SMS and push are too easy to sleep through.
+
+| Config key        | Meaning                                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
+| **accountSid**    | Twilio account SID (`AC…`)                                                                               |
+| **authToken**     | _(secret)_ The account's auth token; it also verifies Twilio's webhooks (see below)                      |
+| **fromNumber**    | A voice-capable Twilio number, E.164 (`+15005550006`)                                                    |
+| **toNumber**      | The number to call, E.164 (`+14155550123`; spaces, dashes and brackets are stripped)                     |
+| voice             | Twilio TTS voice, e.g. `Polly.Joanna` or `Google.en-US-Neural2-F`; empty for Twilio's default            |
+| language          | `<Say>` language such as `en-GB`; empty follows the organization language (`en-US`, `fr-FR`, `de-DE`, …) |
+| retries           | Calls placed again when nobody answers or voicemail picks up (0–5, default 2)                            |
+| retryDelaySeconds | Delay before each of those calls (15–3600, default 60)                                                   |
+
+The flow (`src/server/voice-calls`):
+
+1. A notification (a DOWN alert, a reminder, an escalation page, or any other event the channel selected)
+   stores the call in Redis (`marmot:voice-call:<callId>`, 12 hours, with a random 128-bit id) and posts to
+   Twilio's Calls API with `Url` and `StatusCallback` pointing at
+   `<NEXT_PUBLIC_SERVER_URL>/api/notifications/voice/<callId>/{twiml,status}`.
+2. When the call is answered, `…/twiml` returns a `<Gather>` that reads, for an open incident,
+   _"Marmot alert. API production is down. Reason: HTTP 503. Press 1 to acknowledge the incident, or 2 to
+   hear this message again."_ Other events read the plain message without links or emoji.
+3. The keypress goes to `…/gather`: **1** acknowledges the monitor incident (recorded as _acknowledged by
+   phone_, audited as `monitor_incident.acknowledged` with `via: phone`), which stops its
+   [escalation](#on-call-pages) and its reminders; **2** reads the message again; silence reads it again up to
+   three times, then the call says goodbye. An incident that was acknowledged or resolved meanwhile is
+   announced as such. On a test call, 1 confirms the test.
+4. When the call ends, `…/status` checks the outcome. `busy`, `no-answer`, `failed` or `canceled`, or an
+   answering machine (calls that can be retried use Twilio's answering-machine detection, and Marmot hangs up
+   on voicemail), queue a `voice-call-retry` job on the notifications queue after `retryDelaySeconds`, up to
+   `retries` times, while the incident is still open, nobody pressed 1 and the channel is active. A call that
+   was answered but not acknowledged is not repeated: that is what escalation steps are for.
+
+Only an open, unacknowledged incident is acknowledged by a call, and only the incident the call was placed
+for. Recoveries and other messages are read out without retries.
+
+**Webhook security.** Every webhook must carry Twilio's `X-Twilio-Signature`, the HMAC-SHA1 of the URL
+Marmot gave Twilio plus the sorted POST parameters, keyed with the channel's auth token
+([Twilio docs](https://www.twilio.com/docs/usage/security#validating-requests)). Requests without a valid
+signature are refused with `403` before anything happens; unknown or expired call ids are `404`. The
+signature is checked against the public URL built from `NEXT_PUBLIC_SERVER_URL` rather than the URL the
+request arrived on, so it works behind reverse proxies, but that address must be reachable by Twilio over
+the internet; local development needs a tunnel. Twilio errors (e.g. an unverified number on a
+trial account) are stored on the channel's `lastError` and shown by **Send test**.
 
 ### Issue trackers
 

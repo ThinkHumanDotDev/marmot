@@ -140,7 +140,9 @@ export function buildIncidentMessage(
       ? t('notifications.messages.incident.acknowledgedBy', { name: incident.acknowledgedBy.name })
       : incident.acknowledgedVia === 'link'
         ? t('notifications.messages.incident.acknowledgedViaLink')
-        : t('notifications.messages.incident.acknowledged')
+        : incident.acknowledgedVia === 'phone'
+          ? t('notifications.messages.incident.acknowledgedByPhone')
+          : t('notifications.messages.incident.acknowledged')
   } else {
     text = incident.resolvedBy
       ? t('notifications.messages.incident.resolvedBy', {
