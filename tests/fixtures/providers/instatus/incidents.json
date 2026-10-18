@@ -1,0 +1,103 @@
+[
+  {
+    "id": "cki0incident000000000001",
+    "name": "API outage",
+    "nameTranslationId": null,
+    "started": "2026-09-10T10:00:00.000Z",
+    "resolved": "2026-09-10T11:30:00.000Z",
+    "status": "RESOLVED",
+    "updates": [
+      {
+        "id": "ckiu0000000000000000003",
+        "message": "<p>The API has recovered.</p>",
+        "markdown": "The API has recovered.",
+        "status": "RESOLVED",
+        "notify": true,
+        "started": "2026-09-10T11:30:00.000Z",
+        "ended": null,
+        "duration": null,
+        "createdAt": "2026-09-10T11:30:05.000Z",
+        "statuses": [{ "id": "ckc0api00000000000000002", "status": "OPERATIONAL" }]
+      },
+      {
+        "id": "ckiu0000000000000000001",
+        "message": "<p>We are investigating failing API requests.</p>",
+        "markdown": "We are investigating failing API requests.",
+        "status": "INVESTIGATING",
+        "notify": true,
+        "started": "2026-09-10T10:00:00.000Z",
+        "ended": null,
+        "duration": null,
+        "createdAt": "2026-09-10T10:00:04.000Z",
+        "statuses": [{ "id": "ckc0api00000000000000002", "status": "MAJOROUTAGE" }]
+      },
+      {
+        "id": "ckiu0000000000000000002",
+        "message": "<p>A faulty deploy was identified and rolled back.</p>",
+        "markdown": "A faulty deploy was identified and rolled back.",
+        "status": "IDENTIFIED",
+        "notify": true,
+        "started": "2026-09-10T10:30:00.000Z",
+        "ended": null,
+        "duration": null,
+        "createdAt": "2026-09-10T10:30:02.000Z",
+        "statuses": [{ "id": "ckc0api00000000000000002", "status": "PARTIALOUTAGE" }]
+      }
+    ],
+    "components": [{ "id": "ckc0api00000000000000002", "name": "API", "status": "OPERATIONAL" }]
+  },
+  {
+    "id": "cki0incident000000000002",
+    "name": "Slow dashboard",
+    "nameTranslationId": null,
+    "started": "2026-09-30T08:00:00.000Z",
+    "resolved": null,
+    "status": "MONITORING",
+    "updates": [
+      {
+        "id": "ckiu0000000000000000004",
+        "message": "<p>Dashboard pages load slowly.</p>",
+        "markdown": "Dashboard pages load slowly.",
+        "status": "INVESTIGATING",
+        "notify": true,
+        "started": "2026-09-30T08:00:00.000Z",
+        "createdAt": "2026-09-30T08:00:00.000Z"
+      },
+      {
+        "id": "ckiu0000000000000000005",
+        "message": "<p>A fix is deployed; we are monitoring.</p>",
+        "markdown": "A fix is deployed; we are monitoring.",
+        "status": "MONITORING",
+        "notify": true,
+        "started": "2026-09-30T09:15:00.000Z",
+        "createdAt": "2026-09-30T09:15:00.000Z"
+      }
+    ],
+    "components": [
+      { "id": "ckc0dashboard00000000003", "name": "Dashboard", "status": "DEGRADEDPERFORMANCE" },
+      { "id": "ckc0deleted0000000000009", "name": "Old component", "status": "MAJOROUTAGE" }
+    ]
+  },
+  {
+    "id": "cki0incident000000000003",
+    "name": "Login errors",
+    "nameTranslationId": null,
+    "started": "2026-08-20T14:00:00.000Z",
+    "resolved": "2026-08-20T14:40:00.000Z",
+    "status": "RESOLVED",
+    "updates": [
+      {
+        "id": "ckiu0000000000000000006",
+        "message": "<p>Some users cannot sign in.</p>",
+        "markdown": "Some users cannot sign in.",
+        "status": "INVESTIGATING",
+        "notify": false,
+        "started": "2026-08-20T14:00:00.000Z",
+        "createdAt": "2026-08-20T14:00:00.000Z"
+      }
+    ],
+    "components": [
+      { "id": "ckc0website00000000000004", "name": "Website", "status": "PARTIALOUTAGE" }
+    ]
+  }
+]

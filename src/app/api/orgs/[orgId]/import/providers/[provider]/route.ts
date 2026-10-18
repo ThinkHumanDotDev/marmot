@@ -9,8 +9,9 @@ type RouteContext = { params: Promise<{ orgId: string; provider: string }> }
 
 /**
  * POST /api/orgs/:orgId/import/providers/:provider[?dryRun=1] — import from a hosted service's API
- * (`statuspage`, `betterstack`; #120). Body: `{ credentials, resources }`. The credentials are
- * used for this request only and never stored. Same permissions and report as `/import`.
+ * (`statuspage`, `betterstack`, `instatus`, `checkly`; #120, #283). Body:
+ * `{ credentials, resources }`. The credentials are used for this request only and never stored.
+ * Same permissions and report as `/import`.
  */
 export async function POST(request: Request, { params }: RouteContext) {
   const payload = await getPayload({ config })

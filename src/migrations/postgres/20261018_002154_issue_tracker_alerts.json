@@ -4930,6 +4930,12 @@
           "notNull": false,
           "default": "''"
         },
+        "external_id": {
+          "name": "external_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -13003,12 +13009,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "viewer_id": {
-          "name": "viewer_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "source": {
           "name": "source",
           "type": "enum_status_page_subscribers_source",
@@ -13130,21 +13130,6 @@
           "columns": [
             {
               "expression": "target",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_page_subscribers_viewer_idx": {
-          "name": "status_page_subscribers_viewer_idx",
-          "columns": [
-            {
-              "expression": "viewer_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -13284,19 +13269,6 @@
           "tableTo": "status_pages",
           "columnsFrom": [
             "status_page_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "status_page_subscribers_viewer_id_status_page_viewers_id_fk": {
-          "name": "status_page_subscribers_viewer_id_status_page_viewers_id_fk",
-          "tableFrom": "status_page_subscribers",
-          "tableTo": "status_page_viewers",
-          "columnsFrom": [
-            "viewer_id"
           ],
           "columnsTo": [
             "id"
@@ -20688,7 +20660,8 @@
       "values": [
         "certificate",
         "domain",
-        "ct"
+        "ct",
+        "issue"
       ]
     },
     "public.enum_heartbeats_location_status": {
@@ -21518,6 +21491,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "0572bc14-1c9a-467c-b44f-c5080fbcb1e9",
+  "id": "00805503-ab70-4d66-8961-3a436478671e",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

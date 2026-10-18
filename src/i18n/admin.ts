@@ -488,11 +488,13 @@ export const adminTranslations = {
       },
       notificationSentHistory: {
         description:
-          'Expiry warnings and certificate transparency alerts already sent per monitor. Maintained by the worker.',
+          'Expiry warnings, certificate transparency alerts and open issue-tracker tickets per monitor. Maintained by the worker.',
         organizationDescription: 'Denormalised from the monitor for org-scoped queries.',
         daysDescription: 'Threshold (days before expiry) the warning was sent for.',
         fingerprintDescription:
-          'Certificate transparency alerts: the announced certificate (empty for expiry warnings).',
+          'Certificate transparency alerts: the announced certificate; issue trackers: channel and repository (empty for expiry warnings).',
+        externalIdDescription:
+          'Issue trackers: the open ticket (issue number, key or id) that reminders and the recovery update.',
       },
       notifications: {
         typeDescription: 'Provider slug, e.g. discord, slack, smtp (see docs/Notifications.md).',

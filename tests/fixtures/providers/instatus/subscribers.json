@@ -1,0 +1,99 @@
+[
+  {
+    "id": "cks0subscriber00000000001",
+    "email": "ops.lead@customer.example",
+    "phone": null,
+    "webhook": null,
+    "webhookEmail": null,
+    "confirmed": true,
+    "all": false,
+    "components": [{ "id": "ckc0api00000000000000002", "name": "API" }],
+    "language": "en",
+    "createdAt": "2025-01-11T10:00:00.000Z"
+  },
+  {
+    "id": "cks0subscriber00000000002",
+    "email": "status@partner.example",
+    "phone": null,
+    "webhook": null,
+    "webhookEmail": null,
+    "confirmed": true,
+    "all": true,
+    "components": [],
+    "language": "en",
+    "createdAt": "2025-02-11T10:00:00.000Z"
+  },
+  {
+    "id": "cks0subscriber00000000003",
+    "email": null,
+    "phone": "+1 415 555 0123",
+    "webhook": null,
+    "webhookEmail": null,
+    "confirmed": true,
+    "all": true,
+    "components": [],
+    "language": "en",
+    "createdAt": "2025-03-11T10:00:00.000Z"
+  },
+  {
+    "id": "cks0subscriber00000000004",
+    "email": null,
+    "phone": null,
+    "webhook": "https://hooks.customer.example/instatus",
+    "webhookEmail": "devops@customer.example",
+    "confirmed": true,
+    "all": false,
+    "components": ["ckc0dashboard00000000003", "ckc0website00000000000004"],
+    "language": "en",
+    "createdAt": "2025-04-11T10:00:00.000Z"
+  },
+  {
+    "id": "cks0subscriber00000000005",
+    "email": "pending@customer.example",
+    "phone": null,
+    "webhook": null,
+    "webhookEmail": null,
+    "confirmed": false,
+    "all": true,
+    "components": [],
+    "language": "en",
+    "createdAt": "2025-05-11T10:00:00.000Z"
+  },
+  {
+    "id": "cks0subscriber00000000006",
+    "email": "ops.lead@customer.example",
+    "phone": null,
+    "webhook": null,
+    "webhookEmail": null,
+    "confirmed": true,
+    "all": true,
+    "components": [],
+    "language": "en",
+    "createdAt": "2025-06-11T10:00:00.000Z"
+  },
+  {
+    "id": "cks0subscriber00000000007",
+    "email": null,
+    "phone": null,
+    "webhook": null,
+    "webhookEmail": null,
+    "slack": "T0123ABCD/C0456EFGH",
+    "confirmed": true,
+    "all": true,
+    "components": [],
+    "language": "en",
+    "createdAt": "2025-07-11T10:00:00.000Z"
+  },
+  {
+    "id": "cks0subscriber00000000008",
+    "email": null,
+    "phone": "4155550199",
+    "webhook": null,
+    "webhookEmail": null,
+    "confirmed": true,
+    "all": true,
+    "components": [],
+    "language": "en",
+    "createdAt": "2025-08-11T10:00:00.000Z"
+  }
+]
