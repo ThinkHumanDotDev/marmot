@@ -13,11 +13,14 @@ import { adminGroup, adminT } from '@/i18n/admin'
 import {
   businessHoursOf,
   isSlaSchedule,
+  normalizeThresholds,
   previousSchedulePeriod,
   SLA_CALCULATIONS,
+  SLA_MAX_ALERT_THRESHOLDS,
   SLA_MAX_HOLIDAYS,
   SLA_MAX_RECIPIENTS,
   SLA_SCHEDULES,
+  SLA_SUBJECTS,
   SLA_TARGET_MAX,
   SLA_TARGET_MIN,
   SLA_WEEKDAYS,
@@ -66,27 +69,111 @@ const serverOnly: FieldAccess = () => false
 
 // ---- Targets ----------------------------------------------------------------------------------------
 
-/** The monitor must belong to the target's organization. */
-const checkTargetMonitor: CollectionBeforeChangeHook<SlaTarget> = async ({
+/**
+ * What the target measures must belong to its organization (#274): a monitor, or a component or
+ * group (array row ids) of one of its status pages. The fields of the other subjects are cleared;
+ * the `manual` calculation needs a status page.
+ */
+const checkTargetSubject: CollectionBeforeChangeHook<SlaTarget> = async ({
   data,
   originalDoc,
   req,
 }) => {
   const organization = relId(data.organization ?? originalDoc?.organization)
-  const monitorId = relId(data.monitor !== undefined ? data.monitor : originalDoc?.monitor)
-  if (monitorId === null) return data
-  const monitor = await req.payload
-    .findByID({
-      collection: 'monitors',
-      id: monitorId,
+  const subject = data.subject ?? originalDoc?.subject ?? 'monitor'
+  const calculation = data.calculation ?? originalDoc?.calculation ?? 'duration'
+  if (subject === 'monitor') {
+    data.statusPage = null
+    data.component = null
+    if (calculation === 'manual') invalid(req, 'sla-targets', 'slaManualNeedsPage', 'calculation')
+    const monitorId = relId(data.monitor !== undefined ? data.monitor : originalDoc?.monitor)
+    const monitor =
+      monitorId === null
+        ? null
+        : await req.payload
+            .findByID({
+              collection: 'monitors',
+              id: monitorId,
+              depth: 0,
+              req,
+              overrideAccess: true,
+              select: { organization: true },
+            })
+            .catch(() => null)
+    if (!monitor || !sameOrg(relId(monitor.organization), organization)) {
+      invalid(req, 'sla-targets', 'slaMonitorInvalid', 'monitor')
+    }
+    return data
+  }
+
+  data.monitor = null
+  const pageId = relId(data.statusPage !== undefined ? data.statusPage : originalDoc?.statusPage)
+  const component = String(
+    (data.component !== undefined ? data.component : originalDoc?.component) ?? '',
+  )
+  const page =
+    pageId === null
+      ? null
+      : await req.payload
+          .findByID({
+            collection: 'status-pages',
+            id: pageId,
+            depth: 0,
+            req,
+            overrideAccess: true,
+            select: { organization: true, groups: true },
+          })
+          .catch(() => null)
+  const groups = page?.groups ?? []
+  const found =
+    subject === 'group'
+      ? groups.some((group) => group.id === component)
+      : groups.some((group) => (group.monitors ?? []).some((row) => row.id === component))
+  if (!page || !sameOrg(relId(page.organization), organization) || !component || !found) {
+    invalid(req, 'sla-targets', 'slaComponentInvalid', 'component')
+  }
+  return data
+}
+
+/**
+ * Error budget alerts (#274): thresholds within 0..100 (deduplicated, highest first) and channels
+ * of the target's organization.
+ */
+const checkBudgetAlerts: CollectionBeforeChangeHook<SlaTarget> = async ({
+  data,
+  originalDoc,
+  req,
+}) => {
+  if (!data.budgetAlerts) return data
+  if (data.budgetAlerts.thresholds !== undefined) {
+    data.budgetAlerts.thresholds = normalizeThresholds(data.budgetAlerts.thresholds)
+  }
+  const ids = [
+    ...new Set(
+      (data.budgetAlerts.notifications ?? []).map((n) => relId(n)).filter((n) => n !== null),
+    ),
+  ]
+  if (data.budgetAlerts.notifications !== undefined) {
+    data.budgetAlerts.notifications = ids as typeof data.budgetAlerts.notifications
+  }
+  if (ids.length > 0) {
+    const organization = relId(data.organization ?? originalDoc?.organization)
+    const { docs } = await req.payload.find({
+      collection: 'notifications',
+      where: { id: { in: ids } },
       depth: 0,
+      limit: ids.length,
+      pagination: false,
       req,
       overrideAccess: true,
       select: { organization: true },
     })
-    .catch(() => null)
-  if (!monitor || !sameOrg(relId(monitor.organization), organization)) {
-    invalid(req, 'sla-targets', 'slaMonitorInvalid', 'monitor')
+    if (
+      docs.length !== ids.length ||
+      docs.some((doc) => !sameOrg(relId(doc.organization), organization))
+    ) {
+      invalid(req, 'sla-targets', 'slaNotificationsInvalid', 'budgetAlerts')
+    }
   }
   return data
 }
@@ -143,7 +230,7 @@ export const SlaTargets: CollectionConfig = {
   admin: {
     useAsTitle: 'target',
     group: adminGroup('statistics'),
-    defaultColumns: ['monitor', 'target', 'period', 'organization'],
+    defaultColumns: ['subject', 'monitor', 'statusPage', 'target', 'period', 'organization'],
   },
   access: {
     read: orgScoped('sla:read'),
@@ -152,18 +239,43 @@ export const SlaTargets: CollectionConfig = {
     delete: orgScoped('sla:manage'),
   },
   hooks: {
-    beforeChange: [checkTargetMonitor, checkBusinessHours],
+    beforeChange: [checkTargetSubject, checkBusinessHours, checkBudgetAlerts],
     beforeDelete: [detachTargetFromReports],
   },
   fields: [
     orgField,
     {
+      name: 'subject',
+      type: 'select',
+      defaultValue: 'monitor',
+      options: SLA_SUBJECTS.map((value) => ({ label: value, value })),
+      admin: { description: adminT('marmot:slaTargets:subjectDescription') },
+    },
+    {
       name: 'monitor',
       type: 'relationship',
       relationTo: 'monitors',
-      required: true,
       index: true,
       filterOptions: orgFilter,
+      admin: { condition: (data) => (data?.subject ?? 'monitor') === 'monitor' },
+    },
+    {
+      // Component and group targets (#274): the status page and the row id of the component
+      // (`groups[].monitors[].id`) or the group (`groups[].id`).
+      name: 'statusPage',
+      type: 'relationship',
+      relationTo: 'status-pages',
+      index: true,
+      filterOptions: orgFilter,
+      admin: { condition: (data) => data?.subject === 'component' || data?.subject === 'group' },
+    },
+    {
+      name: 'component',
+      type: 'text',
+      admin: {
+        condition: (data) => data?.subject === 'component' || data?.subject === 'group',
+        description: adminT('marmot:slaTargets:componentDescription'),
+      },
     },
     {
       type: 'row',
@@ -238,6 +350,40 @@ export const SlaTargets: CollectionConfig = {
           fields: [{ name: 'date', type: 'text', required: true }],
         },
       ],
+    },
+    {
+      // Error budget alerts (#274): notify these channels once per period and threshold when the
+      // remaining budget drops below a threshold.
+      name: 'budgetAlerts',
+      type: 'group',
+      fields: [
+        {
+          name: 'thresholds',
+          type: 'number',
+          hasMany: true,
+          min: 0,
+          max: 100,
+          maxRows: SLA_MAX_ALERT_THRESHOLDS,
+          admin: { description: adminT('marmot:slaTargets:thresholdsDescription') },
+        },
+        {
+          name: 'notifications',
+          type: 'relationship',
+          relationTo: 'notifications',
+          hasMany: true,
+          filterOptions: orgFilter,
+        },
+      ],
+    },
+    {
+      // `{ period, sent }`: the thresholds already alerted on in the current period.
+      name: 'budgetAlertState',
+      type: 'json',
+      access: { create: serverOnly, update: serverOnly },
+      admin: {
+        readOnly: true,
+        description: adminT('marmot:slaTargets:budgetAlertStateDescription'),
+      },
     },
   ],
   timestamps: true,

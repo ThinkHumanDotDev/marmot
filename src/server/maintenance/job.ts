@@ -16,6 +16,8 @@
  *   preserves the daily uptime of status page components before retention prunes it (#112).
  * - `sla-reports-due` (hourly at :40 UTC, `src/server/sla/schedule.ts`): enqueues the scheduled SLA
  *   reports whose period completed (#156); the notification worker emails them.
+ * - `sla-budget-check` (every 15 minutes, `src/server/sla/alerts.ts`): enqueues the error budget
+ *   alerts of SLA targets whose remaining budget dropped below a threshold (#274).
  * - `declared-incident-reminders` (every five minutes, `src/server/declared-incidents/reminders.ts`):
  *   reminds the commanders of declared incidents without recent activity (#101).
  * - Demo mode only (#159): `demo-reset` (on boot and every `DEMO_RESET_INTERVAL_MINUTES`,
@@ -57,6 +59,11 @@ import {
   UPTIME_SNAPSHOT_JOB_NAME,
   UPTIME_SNAPSHOT_PATTERN,
 } from '@/server/status-pages/uptime-history'
+import {
+  checkSlaBudgets,
+  scheduleSlaBudgetCheckJob,
+  SLA_BUDGET_CHECK_JOB_NAME,
+} from '@/server/sla/alerts'
 import {
   enqueueDueSlaReports,
   scheduleSlaReportsJob,
@@ -198,6 +205,7 @@ export const processMaintenanceJob =
     if (job.name === QUORUM_RECOMPUTE_JOB_NAME) return recomputeQuorumStatuses(payload)
     if (job.name === UPTIME_SNAPSHOT_JOB_NAME) return snapshotUptimeHistory(payload)
     if (job.name === SLA_REPORTS_DUE_JOB_NAME) return enqueueDueSlaReports(payload)
+    if (job.name === SLA_BUDGET_CHECK_JOB_NAME) return checkSlaBudgets(payload)
     if (job.name === DECLARED_REMINDERS_JOB_NAME) return runDeclaredReminders(payload)
     if (job.name === DEMO_RESET_JOB_NAME) {
       demoLockClient ??= createRedis()
@@ -270,6 +278,7 @@ export async function startMaintenanceWorker(
   await scheduleQuorumRecomputeJob(getMaintenanceQueue(options))
   await scheduleUptimeSnapshotJob(getMaintenanceQueue(options))
   await scheduleSlaReportsJob(getMaintenanceQueue(options))
+  await scheduleSlaBudgetCheckJob(getMaintenanceQueue(options))
   await scheduleDeclaredRemindersJob(getMaintenanceQueue(options))
   await scheduleDemoJobs(getMaintenanceQueue(options))
   // Re-plan every wake-up once per boot (they may have been lost with Redis).
