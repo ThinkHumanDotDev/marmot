@@ -19,9 +19,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { api } from '@/lib/api'
 import { isPeriodWithinRetention } from '@/lib/entitlements'
+import type { PagespeedCategory } from '@/lib/pagespeed'
 import { cn } from '@/lib/utils'
 
 import { useMonitorFormat } from './format'
+import { PagespeedTrendCharts } from './pagespeed-charts'
 import { TimingPhasesChart } from './timing-phases-chart'
 
 /** Mirrors `CHART_RANGES` / `PERCENTILES` in `src/server/stats` (kept here to stay client-only). */
@@ -56,6 +58,8 @@ export type StatsPanelPoint = {
   timing?: unknown
   /** Query value of the interval (Prometheus query monitors, #140), when recorded. */
   value?: { avg: number; min: number; max: number; count: number }
+  /** PageSpeed scores and metrics of the interval (#137), per key, when a run was recorded. */
+  pagespeed?: Record<string, { avg: number; min: number; max: number; count: number }>
 } & Partial<Record<PercentileKey, number | null>>
 
 /** The part of `GET /api/monitors/:id/stats` (`RangeStats`) the panel uses. */
@@ -219,6 +223,7 @@ export function MonitorStatsPanel({
   lastCheckAt,
   showTiming = false,
   showValue = false,
+  pagespeed = null,
   retentionDays = null,
 }: {
   monitorId: string
@@ -231,6 +236,11 @@ export function MonitorStatsPanel({
    * report its average instead of a latency percentile.
    */
   showValue?: boolean
+  /**
+   * PageSpeed monitors (#137): add the score and metric trend charts, with the monitor's minimum
+   * score per category.
+   */
+  pagespeed?: { thresholds: Partial<Record<PagespeedCategory, number | null>> } | null
   /** Days of history the organization's plan keeps; longer periods are not offered (`null` = all). */
   retentionDays?: number | null
 }) {
@@ -611,6 +621,14 @@ export function MonitorStatsPanel({
       </Card>
 
       {showTiming && <TimingPhasesChart series={data.series} dailyTicks={range !== '1d'} />}
+
+      {pagespeed && (
+        <PagespeedTrendCharts
+          series={data.series}
+          dailyTicks={range !== '1d'}
+          thresholds={pagespeed.thresholds}
+        />
+      )}
     </div>
   )
 }

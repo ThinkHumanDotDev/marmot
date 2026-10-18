@@ -37,6 +37,8 @@ const serverEnv: Record<string, string> = {
   SMTP_SECURE: 'false',
   SMTP_USER: '',
   SMTP_PASSWORD: '',
+  // PageSpeed monitors (#137) query the recorded answer of the target server, never Google.
+  PAGESPEED_API_URL: `${targetURL}/pagespeedonline/v5/runPagespeed`,
 }
 
 export default defineConfig({

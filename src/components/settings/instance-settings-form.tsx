@@ -44,6 +44,7 @@ interface FormState {
   trustProxy: boolean
   steamApiKey: string
   globalpingApiToken: string
+  pagespeedApiKey: string
 }
 
 const toForm = (s: InstanceSettings): FormState => ({
@@ -58,6 +59,7 @@ const toForm = (s: InstanceSettings): FormState => ({
   trustProxy: s.trustProxy,
   steamApiKey: s.steamApiKey ?? '',
   globalpingApiToken: s.globalpingApiToken ?? '',
+  pagespeedApiKey: s.pagespeedApiKey ?? '',
 })
 
 /** "7, 14, 21" → [7, 14, 21]; `null` when any entry is not a positive integer. */
@@ -119,6 +121,7 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
       trustProxy: form.trustProxy,
       steamApiKey: form.steamApiKey.trim() || null,
       globalpingApiToken: form.globalpingApiToken.trim() || null,
+      pagespeedApiKey: form.pagespeedApiKey.trim() || null,
     }
     setPending(true)
     try {
@@ -262,6 +265,18 @@ export function InstanceSettingsForm({ settings }: InstanceSettingsFormProps) {
                 placeholder={settings.globalpingApiToken ? t('secretSaved') : t('secretNotSet')}
               />
               <p className="text-xs text-muted-foreground">{t('globalpingApiTokenHint')}</p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor={field('pagespeedApiKey')}>{t('pagespeedApiKey')}</Label>
+              <Input
+                id={field('pagespeedApiKey')}
+                type="password"
+                autoComplete="off"
+                value={form.pagespeedApiKey}
+                onChange={(e) => set('pagespeedApiKey', e.target.value)}
+                placeholder={settings.pagespeedApiKey ? t('secretSaved') : t('secretNotSet')}
+              />
+              <p className="text-xs text-muted-foreground">{t('pagespeedApiKeyHint')}</p>
             </div>
           </fieldset>
         </CardContent>

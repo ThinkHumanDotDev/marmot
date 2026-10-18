@@ -14,6 +14,7 @@
  * persists what comes out. That keeps the transition rules unit-testable without Redis or a database.
  */
 import { degradedThresholdMs } from '@/lib/monitor-degraded'
+import type { PagespeedRun } from '@/lib/pagespeed'
 import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
 import type { SuiteStepResult } from '@/lib/validation/http-suite'
@@ -101,6 +102,8 @@ export interface CheckResult {
   response?: CapturedResponse | null
   /** Metric value judged by the check (Prometheus query monitors, #140), whatever the outcome. */
   value?: number | null
+  /** Scores and metrics of a PageSpeed / Lighthouse run (#137), whatever the outcome. */
+  pagespeed?: PagespeedRun | null
   /** Per-step results of a multi-step API check (`http-suite`, #138), whatever the outcome. */
   steps?: SuiteStepResult[] | null
   /** Cache lifetime of the document the check read (status page monitors, #125); unset otherwise. */

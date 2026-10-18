@@ -222,6 +222,10 @@ export async function recordBeat(
       ...(typeof result.value === 'number' && Number.isFinite(result.value) && !held
         ? { value: result.value }
         : {}),
+      // Scores and metrics of a PageSpeed / Lighthouse run (#137); held beats ran nothing.
+      ...(result.pagespeed && !held
+        ? { pagespeed: result.pagespeed as unknown as Heartbeat['pagespeed'] }
+        : {}),
       // Per-probe results of multi-location checks (Globalping, #142).
       ...(result.probes?.length ? { probes: result.probes as unknown as Heartbeat['probes'] } : {}),
       // Per-step results of multi-step API checks (#138), secrets already redacted.

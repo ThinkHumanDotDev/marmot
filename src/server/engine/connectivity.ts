@@ -359,6 +359,11 @@ async function monitorTargets(
     case 'group':
     case 'manual':
       return { local: true }
+    case 'pagespeed':
+      // PageSpeed Insights (#137) loads the page from Google's network; Lighthouse from the browser.
+      return monitor.pagespeedBackend === 'lighthouse'
+        ? hosts(monitor.url)
+        : { local: false, hosts: [] }
     case 'push':
     case 'tailscale-ping':
     case 'globalping':

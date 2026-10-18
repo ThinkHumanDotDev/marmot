@@ -117,6 +117,14 @@ const schema = z.object({
     .default('https://crt.sh/?q={query}&output=json&exclude=expired&deduplicate=Y'),
   CT_CHECK_INTERVAL_MINUTES: z.coerce.number().int().min(60).max(360).default(180),
   CT_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(6),
+  // PageSpeed monitors (#137): Google API key used when the `pagespeedApiKey` instance setting is
+  // empty (without either, the API's small anonymous quota applies), and the endpoint of the
+  // PageSpeed Insights v5 `runPagespeed` method (a mock or an internal mirror).
+  PAGESPEED_API_KEY: z.string().trim().optional(),
+  PAGESPEED_API_URL: z
+    .string()
+    .url()
+    .default('https://www.googleapis.com/pagespeedonline/v5/runPagespeed'),
   // OpenTelemetry metrics export (#99): instance switch, how long data points wait to be batched,
   // data points per request, data points buffered per collector (oldest dropped beyond) and the
   // request timeout.

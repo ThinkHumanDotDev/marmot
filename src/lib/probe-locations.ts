@@ -51,6 +51,7 @@ export type LocationStatus = (typeof LOCATION_STATUSES)[number]
  * only calls the Globalping API (whose probes are the vantage points) with the instance's token.
  * `status-page` reads what a vendor reports about itself, the same from every vantage point, and its
  * cadence follows the vendor's cache headers, which only the server's scheduler applies.
+ * `pagespeed` (#137) uses the instance's PageSpeed Insights key and the server's 15 minute floor.
  */
 export const PROBE_UNSUPPORTED_TYPES: readonly string[] = [
   'group',
@@ -59,6 +60,7 @@ export const PROBE_UNSUPPORTED_TYPES: readonly string[] = [
   'steam',
   'globalping',
   'status-page',
+  'pagespeed',
 ]
 
 export const probeSupportsType = (type: string | null | undefined): boolean =>

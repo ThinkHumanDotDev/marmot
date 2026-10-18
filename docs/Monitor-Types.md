@@ -21,6 +21,7 @@ keyword, JSON query, TCP port, ping, DNS, gRPC and Globalping monitors.
 | `prometheus`        | Prometheus Query                           | `url` (API base URL), `prometheusQuery`, `prometheusDownOperator` + `prometheusDownThreshold`, optional degraded condition, `prometheusAggregate`, `prometheusNoDataStatus`, `prometheusErrorStatus`, `headers`, `proxy`, `ignoreTls`, `authMethod` none/basic/bearer; see [Prometheus query](#prometheus-query) | Prometheus HTTP API                  |
 | `http-suite`        | HTTP(s) - Multi-step API                   | `httpSuite` (`vars`, `secrets`, ordered `steps`), `maxRedirects`, `ignoreTls`, `proxy`; see [Multi-step API checks](#multi-step-api-checks)                                                                                                                                                                      | — (undici, jsonata)                  |
 | `real-browser`      | HTTP(s) - Browser Engine (Chrome/Chromium) | `url`, `remoteBrowser` (ws:// URL of a Playwright-compatible browser server), `ignoreTls`                                                                                                                                                                                                                        | `playwright-core` + a remote browser |
+| `pagespeed`         | PageSpeed / Lighthouse                     | `url`, `pagespeedBackend` psi \| lighthouse, `pagespeedStrategy` mobile \| desktop, `pagespeedCategories`, `pagespeedMin*` (0–100), `pagespeedFailStatus`; `remoteBrowser` for Lighthouse; see [PageSpeed / Lighthouse](#pagespeed--lighthouse)                                                                  | PSI API or `lighthouse` + a browser  |
 | `port`              | TCP Port                                   | `hostname`, `port`                                                                                                                                                                                                                                                                                               | —                                    |
 | `ping`              | Ping                                       | `hostname`                                                                                                                                                                                                                                                                                                       | system `ping` binary                 |
 | `dns`               | DNS                                        | `hostname`, `port` (53), `dnsResolveServer`, `dnsResolveType`, `assertions` (dnsRecord)                                                                                                                                                                                                                          | —                                    |
@@ -188,6 +189,48 @@ any other check.
   (`extras.value` = average, minimum, maximum and count). The monitor page charts it over the selected
   period instead of the response time, and reports the average value instead of a latency percentile.
   The response time of the query itself still feeds the uptime statistics.
+
+## PageSpeed / Lighthouse
+
+`pagespeed` monitors (#137) watch how fast and how healthy a page is, not only whether it answers: a
+deploy that halves the Lighthouse performance score or breaks accessibility shows up like an outage.
+
+- **Backends** (`pagespeedBackend`):
+  - `psi` (default): Google's [PageSpeed Insights v5 API](https://developers.google.com/speed/docs/insights/v5/get-started).
+    Google loads the page from its own network, so only public pages can be audited. The API key is the
+    `pagespeedApiKey` instance setting (Settings → Instance → Third-party API keys), else
+    `PAGESPEED_API_KEY`; without one the small anonymous quota applies. `PAGESPEED_API_URL` points the
+    monitor at another endpoint (a mirror or a mock).
+  - `lighthouse`: [Lighthouse](https://github.com/GoogleChrome/lighthouse) runs in your own remote
+    Chromium, for self-hosters who do not want to call Google or need to audit internal pages.
+    `remoteBrowser` is the Chrome DevTools Protocol websocket of that browser, for example
+    [browserless](https://www.browserless.io/) (`ws://browserless:3000`, the same server the Browser
+    Engine monitor can use; a plain `playwright run-server` does not speak CDP). The optional
+    `lighthouse` and `puppeteer-core` packages drive it; Marmot never launches Chromium itself, and the
+    private-address guard refuses this backend like the Browser Engine monitor.
+- **Options**: `pagespeedStrategy` mobile (default) or desktop; `pagespeedCategories` (performance,
+  accessibility, best practices, SEO; all four by default); a minimum score per category
+  (`pagespeedMinPerformance`, `pagespeedMinAccessibility`, `pagespeedMinBestPractices`,
+  `pagespeedMinSeo`, 0–100, empty = no minimum).
+- **Verdict**: a run with every score at or above its minimum is **UP**
+  (`performance 91, accessibility 97, best-practices 100, seo 92 (mobile)`). A run below a minimum is
+  **DEGRADED** (default) or **DOWN** (`pagespeedFailStatus`), with a message such as
+  `performance 54 < 70 (mobile)`; degraded notifications reach the channels that subscribe to the
+  `degraded` event ([Notifications](Notifications.md)), DOWN reaches every channel. A page Lighthouse
+  cannot audit (DNS failure, failed document request, nothing painted) is DOWN. A PageSpeed Insights
+  quota answer (429), an API outage (5xx) or an unreachable API holds the monitor as a deferred check:
+  a PENDING beat that uses no retry and sends no notification.
+- **Interval**: at least 15 minutes (`interval` and `retryInterval` ≥ 900 s). The form and the API
+  enforce it and the scheduler never runs a PageSpeed monitor more often, whatever is stored. New
+  monitors start with a 120 s timeout because a run often takes 20–60 s.
+- **Stored data**: every run's scores and main metrics are stored on the heartbeat
+  (`heartbeats.pagespeed`: LCP, FCP, TBT, Speed Index, TTFB and CLS from the lab run, plus INP, the
+  75th percentile of real Chrome users, when PageSpeed Insights has field data for the page) and rolled
+  up per bucket (`extras.pagespeed.<key>` = average, minimum, maximum and count), also for runs below a
+  minimum. The heartbeat's response time is the document's server response time (TTFB).
+- **Detail page**: trend charts of the category scores (the minimums as dashed lines), the timing
+  metrics and CLS for the selected period, and the latest run's scores and metrics with a link to the
+  full report on PageSpeed Insights.
 
 ## Multi-step API checks
 

@@ -23,6 +23,7 @@ import { MonitorChannelsCard } from '@/components/monitors/monitor-channels-card
 import { isPeriodWithinRetention } from '@/lib/entitlements'
 import { getOrgRetentionDays } from '@/server/billing/entitlements'
 import { MonitorStatsPanel } from '@/components/monitors/monitor-stats-panel'
+import { PagespeedLatestCard } from '@/components/monitors/pagespeed-charts'
 import { PushEventsTable, PushPanel } from '@/components/monitors/push-panel'
 import { ResponseLogView } from '@/components/monitors/response-log-view'
 import { MonitorStatusBadge } from '@/components/monitors/status-badge'
@@ -36,6 +37,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { env } from '@/env'
 import { timeZoneOrDefault } from '@/i18n/formats'
+import {
+  PAGESPEED_CATEGORIES,
+  PAGESPEED_THRESHOLD_FIELDS,
+  parsePagespeedRun,
+  type PagespeedRun,
+} from '@/lib/pagespeed'
 import { parseRequestTiming } from '@/lib/request-timing'
 import { isCertificateMonitorType, isHttpMonitorType } from '@/lib/validation/monitor'
 import {
@@ -191,6 +198,15 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
     monitor.type === 'tls' ||
     monitor.type === 'prometheus'
   const latestTiming = parseRequestTiming(latest.docs[0]?.timing)
+  // Latest PageSpeed run (#137): held beats and runs that never started carry none.
+  const latestPagespeed =
+    monitor.type === 'pagespeed'
+      ? latest.docs.reduce<{ run: PagespeedRun; time: string } | null>((found, doc) => {
+          if (found) return found
+          const run = parsePagespeedRun(doc.pagespeed)
+          return run ? { run, time: doc.time } : null
+        }, null)
+      : null
   const parent =
     monitor.parent && typeof monitor.parent === 'object' ? (monitor.parent as Monitor) : null
   const target = monitorTarget(monitor)
@@ -376,6 +392,18 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
           lastCheckAt={monitor.status?.lastCheckAt}
           showTiming={measuresTiming}
           showValue={monitor.type === 'prometheus'}
+          pagespeed={
+            monitor.type === 'pagespeed'
+              ? {
+                  thresholds: Object.fromEntries(
+                    PAGESPEED_CATEGORIES.map((category) => [
+                      category,
+                      monitor[PAGESPEED_THRESHOLD_FIELDS[category]] ?? null,
+                    ]),
+                  ),
+                }
+              : null
+          }
           retentionDays={retentionDays}
         />
 
@@ -439,6 +467,9 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
                 initial={incidents}
                 now={renderTime()}
               />
+            )}
+            {latestPagespeed && (
+              <PagespeedLatestCard run={latestPagespeed.run} time={latestPagespeed.time} />
             )}
             {latestTiming && (
               <Card className="gap-3" data-testid="latest-timing">
