@@ -10,10 +10,12 @@ import type { TLSSocket } from 'node:tls'
 import type { Payload } from 'payload'
 import { Agent, buildConnector, interceptors, request, type Dispatcher } from 'undici'
 
+import type { RequestTiming } from '@/lib/request-timing'
 import {
   normalizeAssertions,
   supportsAssertions,
   type AssertionResult,
+  type MonitorAssertion,
 } from '@/lib/validation/assertions'
 import type { Monitor, MonitorProxy } from '@/payload-types'
 import { captureFromSocket, fetchCertificate, type TlsInfo } from '@/server/engine/tls'
@@ -413,33 +415,36 @@ export interface HttpCheckOptions {
   typeCheck?: (response: HttpCheckResponse, statusMsg: string) => Promise<TypeCheckOutcome>
 }
 
+/** A response received by `sendHttpRequest`, with what the request sent and how long it took. */
+export interface SentHttpRequest {
+  response: HttpCheckResponse
+  /** The request headers (for scrubbing echoed credentials from the stored response). */
+  requestHeaders: Record<string, string> | undefined
+  /** Request timing phases (#94). */
+  timing: RequestTiming | null
+}
+
 /**
- * Perform the HTTP request of an http/keyword/json-query monitor and judge the response:
- *
- * 1. status: the monitor's `status` assertions when it has any, otherwise `acceptedStatusCodes`
- *    (failure message `"<status> - <text>"`, as before assertions existed);
- * 2. the type's own check (`options.typeCheck`);
- * 3. the remaining assertions (header, textBody, jsonBody).
- *
- * Everything is evaluated, `ctx.assertions` receives every result and the check throws with the
- * message of the first failure. On success `heartbeat.msg` is `"<status> - <text>"` (or the type
- * check's message) plus `", N assertions passed"` when the monitor has assertions.
+ * Send the request described by `monitor`'s HTTP settings (URL, method, body, headers, auth, TLS,
+ * redirects) through the monitor's proxy or SSH tunnel and the outbound address guard, and read the
+ * whole body. The TLS certificate seen is recorded on `ctx` (also after a failed handshake). Shared
+ * by the HTTP family (`performHttpCheck`) and the steps of an `http-suite` monitor, which pass a
+ * per-step copy of the monitor.
  */
-export async function performHttpCheck(
+export async function sendHttpRequest(
   ctx: MonitorCheckContext,
-  options: HttpCheckOptions = {},
-): Promise<HttpCheckResponse> {
+  monitor: Monitor = ctx.monitor,
+): Promise<SentHttpRequest> {
   // A tunnelled monitor never uses a proxy (refused on save); a stale reference is ignored.
-  const proxy = ctx.tunnel ? null : await loadMonitorProxy(ctx.payload, ctx.monitor)
+  const proxy = ctx.tunnel ? null : await loadMonitorProxy(ctx.payload, monitor)
   const {
     url,
     options: requestOptions,
     cleanup,
     capture,
     timing,
-  } = await buildHttpRequest(ctx.monitor, ctx.signal, { proxy, tunnel: ctx.tunnel })
+  } = await buildHttpRequest(monitor, ctx.signal, { proxy, tunnel: ctx.tunnel })
   const startTime = Date.now()
-  let response: HttpCheckResponse
   try {
     let res: Awaited<ReturnType<typeof request>>
     try {
@@ -450,46 +455,79 @@ export async function performHttpCheck(
     }
     const body = await res.body.text()
     const ping = Date.now() - startTime
-    ctx.timing = timing.result()
+    const measured = timing.result()
     await recordTlsInfo(ctx, url, capture)
-    response = {
-      statusCode: res.statusCode,
-      statusText: STATUS_CODES[res.statusCode] ?? '',
-      headers: res.headers,
-      body,
-      ping,
+    return {
+      response: {
+        statusCode: res.statusCode,
+        statusText: STATUS_CODES[res.statusCode] ?? '',
+        headers: res.headers,
+        body,
+        ping,
+      },
+      requestHeaders: requestOptions?.headers as Record<string, string> | undefined,
+      timing: measured,
     }
   } finally {
     await cleanup()
   }
-  ctx.heartbeat.ping = response.ping
-  // Response log (#97): capped, scrubbed headers and body; the beat keeps the body only on failure.
-  ctx.response = captureResponse(
-    response,
-    requestSecrets(requestOptions?.headers as Record<string, string> | undefined, ctx.monitor),
-  )
-  // Reported by on-demand checks ("Check now", "Test"); not stored on heartbeats.
-  ctx.heartbeat.statusCode = response.statusCode
+}
 
+/** Verdict of `judgeHttpResponse`. */
+export interface HttpJudgement {
+  /** Every result: status (or the legacy accepted ranges), the type check, the assertions. */
+  results: AssertionResult[]
+  /** Failure messages in evaluation order; empty when the response passed. */
+  failures: string[]
+  /** The first failed result, when one failed. */
+  failed: AssertionResult | null
+  /** `"<status> - <text>"`, or the type check's message when it passed. */
+  msg: string
+}
+
+/**
+ * Judge a response against accepted status codes and assertions:
+ *
+ * 1. status: the `status` assertions when there are any, otherwise `acceptedStatusCodes`
+ *    (failure message `"<status> - <text>"`, as before assertions existed);
+ * 2. the type's own check (`options.typeCheck`);
+ * 3. the remaining assertions (header, textBody, jsonBody).
+ *
+ * Everything is evaluated, so the result view is complete.
+ */
+export async function judgeHttpResponse(
+  response: HttpCheckResponse,
+  {
+    assertions,
+    acceptedStatusCodes,
+    typeCheck,
+  }: {
+    assertions: readonly MonitorAssertion[]
+    acceptedStatusCodes: readonly string[] | null | undefined
+    typeCheck?: HttpCheckOptions['typeCheck']
+  },
+): Promise<HttpJudgement> {
   const statusMsg = `${response.statusCode} - ${response.statusText}`
-  const assertions = supportsAssertions(ctx.monitor.type)
-    ? normalizeAssertions(ctx.monitor.assertions)
-    : []
   const statusAssertions = assertions.filter((a) => a.kind === 'status')
   const otherAssertions = assertions.filter((a) => a.kind !== 'status')
   const results: AssertionResult[] = []
   const failures: string[] = []
+  let failed: AssertionResult | null = null
+  const fail = (result: AssertionResult, message: string) => {
+    failures.push(message)
+    failed ??= result
+  }
 
   // 1. Status code: explicit status assertions replace the accepted ranges.
   if (statusAssertions.length > 0) {
     const statusResults = await evaluateHttpAssertions(statusAssertions, response)
     results.push(...statusResults)
-    const failed = statusResults.find((r) => !r.passed)
-    if (failed) failures.push(describeAssertionResult(failed))
+    const first = statusResults.find((r) => !r.passed)
+    if (first) fail(first, describeAssertionResult(first))
   } else {
-    const accepted = ctx.monitor.acceptedStatusCodes ?? ['200-299']
+    const accepted = acceptedStatusCodes ?? ['200-299']
     const passed = checkStatusCode(response.statusCode, accepted)
-    results.push({
+    const result: AssertionResult = {
       kind: 'status',
       target: null,
       comparator: 'in',
@@ -497,26 +535,57 @@ export async function performHttpCheck(
       actual: String(response.statusCode),
       passed,
       legacy: true,
-    })
-    if (!passed) failures.push(statusMsg)
+    }
+    results.push(result)
+    if (!passed) fail(result, statusMsg)
   }
 
   // 2. The type's own check (keyword, JSON query).
   let msg = statusMsg
-  if (options.typeCheck) {
-    const outcome = await options.typeCheck(response, statusMsg)
-    results.push({ ...outcome.result, legacy: true })
+  if (typeCheck) {
+    const outcome = await typeCheck(response, statusMsg)
+    const result = { ...outcome.result, legacy: true }
+    results.push(result)
     if (outcome.result.passed) msg = outcome.msg
-    else failures.push(outcome.msg)
+    else fail(result, outcome.msg)
   }
 
   // 3. Header and body assertions.
   if (otherAssertions.length > 0) {
     const otherResults = await evaluateHttpAssertions(otherAssertions, response)
     results.push(...otherResults)
-    const failed = otherResults.find((r) => !r.passed)
-    if (failed) failures.push(describeAssertionResult(failed))
+    const first = otherResults.find((r) => !r.passed)
+    if (first) fail(first, describeAssertionResult(first))
   }
+
+  return { results, failures, failed, msg }
+}
+
+/**
+ * Perform the HTTP request of an http/keyword/json-query monitor and judge the response
+ * (`judgeHttpResponse`): `ctx.assertions` receives every result and the check throws with the
+ * message of the first failure. On success `heartbeat.msg` is `"<status> - <text>"` (or the type
+ * check's message) plus `", N assertions passed"` when the monitor has assertions.
+ */
+export async function performHttpCheck(
+  ctx: MonitorCheckContext,
+  options: HttpCheckOptions = {},
+): Promise<HttpCheckResponse> {
+  const { response, requestHeaders, timing } = await sendHttpRequest(ctx)
+  ctx.timing = timing
+  ctx.heartbeat.ping = response.ping
+  // Response log (#97): capped, scrubbed headers and body; the beat keeps the body only on failure.
+  ctx.response = captureResponse(response, requestSecrets(requestHeaders, ctx.monitor))
+  // Reported by on-demand checks ("Check now", "Test"); not stored on heartbeats.
+  ctx.heartbeat.statusCode = response.statusCode
+
+  const { results, failures, msg } = await judgeHttpResponse(response, {
+    assertions: supportsAssertions(ctx.monitor.type)
+      ? normalizeAssertions(ctx.monitor.assertions)
+      : [],
+    acceptedStatusCodes: ctx.monitor.acceptedStatusCodes,
+    typeCheck: options.typeCheck,
+  })
 
   ctx.assertions = results
   if (failures.length > 0) throw new Error(failures[0])
