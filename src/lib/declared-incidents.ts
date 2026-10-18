@@ -67,6 +67,11 @@ export const DECLARED_TIMELINE_TYPES = [
   'postmortem_drafted',
   'postmortem_approved',
   'closed',
+  'title_changed',
+  'summary_changed',
+  'started_changed',
+  'action_item_added',
+  'action_item_done',
 ] as const
 export type DeclaredTimelineType = (typeof DECLARED_TIMELINE_TYPES)[number]
 
@@ -121,6 +126,21 @@ export interface DeclaredPerson {
   name: string
 }
 
+/** A follow-up of the postmortem, tracked on its own (an issue tracker can turn it into a ticket). */
+export interface DeclaredActionItem {
+  id: string
+  title: string
+  owner: DeclaredPerson | null
+  /** `YYYY-MM-DD`. */
+  dueDate: string | null
+  done: boolean
+  /** The ticket tracking it, when there is one. */
+  ticketUrl: string | null
+}
+
+/** Most action items one postmortem holds. */
+export const MAX_ACTION_ITEMS = 50
+
 export interface DeclaredTimelineEntry {
   id: string
   type: DeclaredTimelineType
@@ -154,6 +174,7 @@ export interface DeclaredIncidentSummary {
     content: string
     approvedBy: DeclaredPerson | null
     approvedAt: string | null
+    actionItems: DeclaredActionItem[]
   }
   postmortemSkipped: boolean
   timeline: DeclaredTimelineEntry[]
@@ -164,3 +185,58 @@ export type DeclaredStatusFilter = (typeof DECLARED_STATUS_FILTERS)[number]
 
 export const isDeclaredStatusFilter = (value: unknown): value is DeclaredStatusFilter =>
   typeof value === 'string' && (DECLARED_STATUS_FILTERS as readonly string[]).includes(value)
+
+/** The list's commander filter: a user id, or `none` for incidents nobody commands. */
+export const UNASSIGNED_COMMANDER = 'none'
+
+/** Counts and response times over the incidents matching the list's severity and commander filters. */
+export interface DeclaredIncidentStats {
+  total: number
+  /** Open or mitigated. */
+  active: number
+  canceled: number
+  /** Mean seconds from the start to mitigation (or resolution when it was never mitigated). */
+  meanTimeToMitigate: number | null
+  /** Mean seconds from the start to resolution, over resolved and closed incidents. */
+  meanTimeToResolve: number | null
+}
+
+const seconds = (from: string, to: string): number | null => {
+  const value = (new Date(to).getTime() - new Date(from).getTime()) / 1000
+  return Number.isFinite(value) ? Math.max(0, value) : null
+}
+
+const mean = (values: number[]): number | null =>
+  values.length ? Math.round(values.reduce((sum, v) => sum + v, 0) / values.length) : null
+
+/** Counts plus mean time to mitigate and to resolve; canceled incidents (false alarms) are not timed. */
+export function summarizeDeclaredIncidents(
+  incidents: readonly Pick<
+    DeclaredIncidentSummary,
+    'status' | 'startedAt' | 'mitigatedAt' | 'resolvedAt'
+  >[],
+): DeclaredIncidentStats {
+  const mitigate: number[] = []
+  const resolve: number[] = []
+  let active = 0
+  let canceled = 0
+  for (const incident of incidents) {
+    if (ACTIVE_DECLARED_STATUSES.includes(incident.status)) active++
+    if (incident.status === 'canceled') {
+      canceled++
+      continue
+    }
+    const mitigatedAt = incident.mitigatedAt ?? incident.resolvedAt
+    const ttm = mitigatedAt ? seconds(incident.startedAt, mitigatedAt) : null
+    if (ttm !== null) mitigate.push(ttm)
+    const ttr = incident.resolvedAt ? seconds(incident.startedAt, incident.resolvedAt) : null
+    if (ttr !== null) resolve.push(ttr)
+  }
+  return {
+    total: incidents.length,
+    active,
+    canceled,
+    meanTimeToMitigate: mean(mitigate),
+    meanTimeToResolve: mean(resolve),
+  }
+}

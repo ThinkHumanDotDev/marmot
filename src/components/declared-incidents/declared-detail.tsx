@@ -2,6 +2,7 @@
 
 import { ExternalLink } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -25,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { MARKDOWN_CLASS } from '@/components/status-pages/public/parts'
 import {
   DECLARED_INCIDENT_SEVERITIES,
   DECLARED_STATUS_TRANSITIONS,
@@ -34,11 +36,15 @@ import {
   type DeclaredIncidentSummary,
   type DeclaredTimelineEntry,
 } from '@/lib/declared-incidents'
+import { renderMarkdownDocument } from '@/lib/markdown'
+import { cn } from '@/lib/utils'
 import type { UpdateDeclaredIncidentInput } from '@/lib/validation/declared-incident'
 
+import { ActionItems } from './action-items'
 import { declaredApi, errorMessage, useDeclaredIncidentEvents } from './api'
 import { DeclaredStatusBadge, SeverityBadge } from './badges'
 import type { MemberChoice } from './declare-dialog'
+import { EditDetailsDialog } from './edit-details-dialog'
 
 const NONE = '__none__'
 
@@ -66,6 +72,8 @@ function useTimelineText() {
       ? ts(value as 'major')
       : (value ?? '')
   const status = (value: string | null) => (value ? tst(value as 'open') : '')
+  const format = useFormatter()
+  const when = (value: string | null) => (value ? format.dateTime(new Date(value), 'short') : '')
   return (entry: DeclaredTimelineEntry): string => {
     switch (entry.type) {
       case 'declared':
@@ -80,10 +88,35 @@ function useTimelineText() {
         return t('linked', { title: entry.message ?? '' })
       case 'closed':
         return entry.to === 'postmortem_skipped' ? t('closedSkipped') : t('closed')
+      case 'title_changed':
+        return t('title_changed', { to: entry.to ?? '' })
+      case 'started_changed':
+        return t('started_changed', { to: when(entry.to) })
+      case 'action_item_added':
+        return t('action_item_added', { title: entry.message ?? '' })
+      case 'action_item_done':
+        return t('action_item_done', { title: entry.message ?? '' })
       default:
         return t(entry.type)
     }
   }
+}
+
+const DOCUMENT_CLASS = cn(
+  MARKDOWN_CLASS,
+  '[&_h3]:mt-4 [&_h3]:text-base [&_h3]:font-semibold [&_h4]:mt-4 [&_h4]:font-semibold [&_h5]:mt-3 [&_h5]:font-medium [&_h6]:mt-3 [&_h6]:font-medium [&>:first-child]:mt-0 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mt-2 [&_ul]:mt-2 [&_ol]:mt-2 [&_pre]:mt-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_hr]:my-4',
+)
+
+/** The postmortem rendered from Markdown (`renderMarkdownDocument` escapes all HTML). */
+function PostmortemView({ content, empty }: { content: string; empty: string }) {
+  if (!content.trim()) return <p className="text-sm text-muted-foreground">{empty}</p>
+  return (
+    <div
+      className={DOCUMENT_CLASS}
+      data-testid="postmortem-rendered"
+      dangerouslySetInnerHTML={{ __html: renderMarkdownDocument(content) }}
+    />
+  )
 }
 
 /** One declared incident: workflow actions, details, postmortem and timeline; live over realtime. */
@@ -105,17 +138,34 @@ export function DeclaredDetail({
   const tt = useTranslations('declaredIncidents.timeline')
   const format = useFormatter()
   const timelineText = useTimelineText()
+  const router = useRouter()
 
   const [incident, setIncident] = React.useState(initial)
   const [postmortem, setPostmortem] = React.useState(initial.postmortem.content)
   const [note, setNote] = React.useState('')
   const [pending, setPending] = React.useState(false)
   const [confirm, setConfirm] = React.useState<'closed' | 'canceled' | null>(null)
+  const [preview, setPreview] = React.useState(false)
 
-  const apply = React.useCallback((next: DeclaredIncidentSummary) => {
-    setIncident(next)
-    setPostmortem((current) => (current.trim() ? current : next.postmortem.content))
-  }, [])
+  // The page header (server-rendered) shows the title: refresh it when the title changes.
+  const shownTitle = React.useRef(initial.title)
+  const track = React.useCallback(
+    (next: DeclaredIncidentSummary) => {
+      setIncident(next)
+      if (next.title !== shownTitle.current) {
+        shownTitle.current = next.title
+        router.refresh()
+      }
+    },
+    [router],
+  )
+  const apply = React.useCallback(
+    (next: DeclaredIncidentSummary) => {
+      track(next)
+      setPostmortem((current) => (current.trim() ? current : next.postmortem.content))
+    },
+    [track],
+  )
   useDeclaredIncidentEvents(orgId, (next) => {
     if (next.id === incident.id) apply(next)
   })
@@ -128,7 +178,7 @@ export function DeclaredDetail({
     setPending(true)
     try {
       const next = await declaredApi.update(orgId, incident.id, body)
-      setIncident(next)
+      track(next)
       if (body.postmortem !== undefined) setPostmortem(next.postmortem.content)
       toast.success(success ?? t('saved'))
       return true
@@ -145,7 +195,7 @@ export function DeclaredDetail({
     if (!note.trim()) return
     setPending(true)
     try {
-      setIncident(await declaredApi.note(orgId, incident.id, note.trim()))
+      track(await declaredApi.note(orgId, incident.id, note.trim()))
       setNote('')
       toast.success(tn('added'))
     } catch (error) {
@@ -200,8 +250,9 @@ export function DeclaredDetail({
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <Card className="gap-3">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">{t('facts')}</CardTitle>
+            {editable && <EditDetailsDialog incident={incident} pending={pending} onSave={save} />}
           </CardHeader>
           <CardContent className="grid gap-4 text-sm">
             <div className="grid gap-1.5">
@@ -273,7 +324,7 @@ export function DeclaredDetail({
             </dl>
             <div className="grid gap-0.5">
               <span className="text-xs font-medium text-muted-foreground">{t('summary')}</span>
-              <p className="break-words whitespace-pre-wrap">
+              <p className="break-words whitespace-pre-wrap" data-testid="declared-summary">
                 {incident.summary || (
                   <span className="text-muted-foreground">{t('noSummary')}</span>
                 )}
@@ -361,18 +412,30 @@ export function DeclaredDetail({
                       {tp('start')}
                     </Button>
                   )}
-                  <Textarea
-                    value={postmortem}
-                    onChange={(event) => setPostmortem(event.target.value)}
-                    placeholder={tp('placeholder')}
-                    className="min-h-64 font-mono text-sm"
-                    aria-label={tp('title')}
-                    data-testid="postmortem-content"
-                  />
+                  {preview ? (
+                    <PostmortemView content={postmortem} empty={tp('empty')} />
+                  ) : (
+                    <Textarea
+                      value={postmortem}
+                      onChange={(event) => setPostmortem(event.target.value)}
+                      placeholder={tp('placeholder')}
+                      className="min-h-64 font-mono text-sm"
+                      aria-label={tp('title')}
+                      data-testid="postmortem-content"
+                    />
+                  )}
                   {approved && postmortemDirty && (
                     <p className="text-xs text-muted-foreground">{tp('editApproved')}</p>
                   )}
                   <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => setPreview((value) => !value)}
+                      aria-pressed={preview}
+                      data-testid="postmortem-preview"
+                    >
+                      {preview ? tp('write') : tp('preview')}
+                    </Button>
                     <Button
                       variant="outline"
                       disabled={pending || !postmortemDirty}
@@ -397,15 +460,19 @@ export function DeclaredDetail({
                     </Button>
                   </div>
                 </>
-              ) : incident.postmortem.content ? (
-                <pre className="text-sm break-words whitespace-pre-wrap">
-                  {incident.postmortem.content}
-                </pre>
               ) : (
-                <p className="text-sm text-muted-foreground">{tp('empty')}</p>
+                <PostmortemView content={incident.postmortem.content} empty={tp('empty')} />
               )}
             </CardContent>
           </Card>
+
+          <ActionItems
+            items={incident.postmortem.actionItems}
+            members={members}
+            editable={editable}
+            pending={pending}
+            onSave={(actionItems, success) => save({ actionItems }, success)}
+          />
 
           <Card className="gap-3">
             <CardHeader>

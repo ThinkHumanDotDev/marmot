@@ -6019,6 +6019,141 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.declared_incidents_postmortem_action_items": {
+      "name": "declared_incidents_postmortem_action_items",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "due_date": {
+          "name": "due_date",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "done": {
+          "name": "done",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "ticket_url": {
+          "name": "ticket_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "declared_incidents_postmortem_action_items_order_idx": {
+          "name": "declared_incidents_postmortem_action_items_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "declared_incidents_postmortem_action_items_parent_id_idx": {
+          "name": "declared_incidents_postmortem_action_items_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "declared_incidents_postmortem_action_items_owner_idx": {
+          "name": "declared_incidents_postmortem_action_items_owner_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "declared_incidents_postmortem_action_items_owner_id_users_id_fk": {
+          "name": "declared_incidents_postmortem_action_items_owner_id_users_id_fk",
+          "tableFrom": "declared_incidents_postmortem_action_items",
+          "tableTo": "users",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "declared_incidents_postmortem_action_items_parent_id_fk": {
+          "name": "declared_incidents_postmortem_action_items_parent_id_fk",
+          "tableFrom": "declared_incidents_postmortem_action_items",
+          "tableTo": "declared_incidents",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.declared_incidents_timeline": {
       "name": "declared_incidents_timeline",
       "schema": "",
@@ -10967,137 +11102,6 @@
             "id"
           ],
           "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.status_pages_rels": {
-      "name": "status_pages_rels",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "order": {
-          "name": "order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "path": {
-          "name": "path",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "metrics_id": {
-          "name": "metrics_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "status_pages_rels_order_idx": {
-          "name": "status_pages_rels_order_idx",
-          "columns": [
-            {
-              "expression": "order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_pages_rels_parent_idx": {
-          "name": "status_pages_rels_parent_idx",
-          "columns": [
-            {
-              "expression": "parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_pages_rels_path_idx": {
-          "name": "status_pages_rels_path_idx",
-          "columns": [
-            {
-              "expression": "path",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_pages_rels_metrics_id_idx": {
-          "name": "status_pages_rels_metrics_id_idx",
-          "columns": [
-            {
-              "expression": "metrics_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "status_pages_rels_parent_fk": {
-          "name": "status_pages_rels_parent_fk",
-          "tableFrom": "status_pages_rels",
-          "tableTo": "status_pages",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "status_pages_rels_metrics_fk": {
-          "name": "status_pages_rels_metrics_fk",
-          "tableFrom": "status_pages_rels",
-          "tableTo": "metrics",
-          "columnsFrom": [
-            "metrics_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -17777,13 +17781,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "show_threshold_state": {
-          "name": "show_threshold_state",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
         "source": {
           "name": "source",
           "type": "enum_metrics_source",
@@ -21358,7 +21355,12 @@
         "unlinked",
         "postmortem_drafted",
         "postmortem_approved",
-        "closed"
+        "closed",
+        "title_changed",
+        "summary_changed",
+        "started_changed",
+        "action_item_added",
+        "action_item_done"
       ]
     },
     "public.enum_declared_incidents_severity": {
@@ -22117,6 +22119,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "554ae673-1195-4ceb-97f7-a9161c8b80d5",
+  "id": "3c0e3268-99f0-474d-80ba-15ff002ea2de",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

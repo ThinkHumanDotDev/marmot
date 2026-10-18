@@ -51,6 +51,89 @@ export function renderMarkdown(source: string): string {
   return out.join('')
 }
 
+/**
+ * Renders a longer Markdown document (postmortems) to safe HTML. On top of `renderMarkdown`'s inline
+ * formatting it supports `#` headings (rendered from `<h3>` down, below the page's own headings),
+ * `-`/`*`/`+` and numbered lists, fenced code blocks and horizontal rules. Like `renderMarkdown`
+ * everything is HTML-escaped first and links keep only http(s) and mailto URLs, so the output is safe
+ * to inject with `dangerouslySetInnerHTML`.
+ */
+export function renderMarkdownDocument(source: string): string {
+  const lines = source.replace(/\r\n?/g, '\n').split('\n')
+  const out: string[] = []
+  let paragraph: string[] = []
+  let list: { tag: 'ul' | 'ol'; items: string[] } | null = null
+  const flushParagraph = () => {
+    if (paragraph.length > 0) out.push(`<p>${inline(paragraph.join('\n'))}</p>`)
+    paragraph = []
+  }
+  const flushList = () => {
+    if (list) {
+      const items = list.items.map((item) => `<li>${inline(item)}</li>`).join('')
+      out.push(`<${list.tag}>${items}</${list.tag}>`)
+    }
+    list = null
+  }
+  const flush = () => {
+    flushParagraph()
+    flushList()
+  }
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index]
+    const fence = /^\s{0,3}(`{3,}|~{3,})/.exec(line)
+    if (fence) {
+      flush()
+      const code: string[] = []
+      index++
+      while (index < lines.length && !lines[index].trim().startsWith(fence[1])) {
+        code.push(lines[index])
+        index++
+      }
+      out.push(`<pre><code>${escapeHtml(code.join('\n'))}</code></pre>`)
+      continue
+    }
+    if (!line.trim()) {
+      flush()
+      continue
+    }
+    const heading = /^\s{0,3}(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/.exec(line)
+    if (heading) {
+      flush()
+      const level = Math.min(heading[1].length + 2, 6)
+      out.push(`<h${level}>${inline(heading[2])}</h${level}>`)
+      continue
+    }
+    if (/^\s{0,3}([-*_])(?:\s*\1){2,}\s*$/.test(line)) {
+      flush()
+      out.push('<hr/>')
+      continue
+    }
+    const bullet = /^\s*[-*+]\s+(.*)$/.exec(line)
+    const numbered = bullet ? null : /^\s*\d{1,9}[.)]\s+(.*)$/.exec(line)
+    const item = bullet ?? numbered
+    if (item) {
+      const tag = bullet ? 'ul' : 'ol'
+      flushParagraph()
+      if (list && list.tag !== tag) flushList()
+      list ??= { tag, items: [] }
+      list.items.push(item[1])
+      continue
+    }
+    if (list) {
+      // An indented line continues the previous item; anything else ends the list.
+      if (/^\s+\S/.test(line)) {
+        list.items[list.items.length - 1] += `\n${line.trim()}`
+        continue
+      }
+      flushList()
+    }
+    paragraph.push(line)
+  }
+  flush()
+  return out.join('')
+}
+
 /** Plain-text version (for meta descriptions and feed summaries). */
 export function markdownToText(source: string, maxLength = 155): string {
   const text = source

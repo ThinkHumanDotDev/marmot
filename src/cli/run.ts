@@ -20,6 +20,13 @@ import {
   statusCommand,
 } from './commands/monitors'
 import {
+  declaredDeclareCommand,
+  declaredInfoCommand,
+  declaredListCommand,
+  declaredNoteCommand,
+  declaredUpdateCommand,
+} from './commands/declared'
+import {
   adhocCheckCommand,
   configCommand,
   importCommand,
@@ -86,6 +93,10 @@ const OPTIONS: Record<string, OptionSpec> = {
   description: { type: 'string' },
   timezone: { type: 'string' },
   monitor: { type: 'string', multiple: true },
+  severity: { type: 'string' },
+  summary: { type: 'string' },
+  commander: { type: 'string' },
+  'monitor-incident': { type: 'string' },
   'api-key-stdin': { type: 'boolean' },
   version: { type: 'boolean', short: 'V' },
 }
@@ -198,6 +209,36 @@ export const COMMANDS: Command[] = [
     flags: ['page', 'title', 'status', 'message', 'impact', 'pinned', 'resolve'],
     usage: 'usage.incidentsUpdate',
     run: incidentsUpdateCommand,
+  },
+  {
+    words: ['declared-incidents', 'list'],
+    flags: ['status', 'severity', 'commander', 'limit'],
+    usage: 'usage.declaredList',
+    run: declaredListCommand,
+  },
+  {
+    words: ['declared-incidents', 'info'],
+    flags: [],
+    usage: 'usage.declaredInfo',
+    run: declaredInfoCommand,
+  },
+  {
+    words: ['declared-incidents', 'declare'],
+    flags: ['title', 'severity', 'summary', 'commander', 'start', 'monitor-incident'],
+    usage: 'usage.declaredDeclare',
+    run: declaredDeclareCommand,
+  },
+  {
+    words: ['declared-incidents', 'update'],
+    flags: ['status', 'severity', 'commander', 'title', 'summary', 'start'],
+    usage: 'usage.declaredUpdate',
+    run: declaredUpdateCommand,
+  },
+  {
+    words: ['declared-incidents', 'note'],
+    flags: ['message'],
+    usage: 'usage.declaredNote',
+    run: declaredNoteCommand,
   },
   {
     words: ['maintenance', 'list'],

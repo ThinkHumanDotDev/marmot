@@ -35,20 +35,41 @@ import {
 } from '@/app/api/orgs/[orgId]/status-pages/[id]/incidents/route'
 import { GET as getStatusPageRoute } from '@/app/api/orgs/[orgId]/status-pages/[id]/route'
 import { GET as listStatusPagesRoute } from '@/app/api/orgs/[orgId]/status-pages/route'
+import { POST as declaredNoteRoute } from '@/app/api/orgs/[orgId]/declared-incidents/[id]/notes/route'
+import {
+  GET as getDeclaredIncidentRoute,
+  PATCH as updateDeclaredIncidentRoute,
+} from '@/app/api/orgs/[orgId]/declared-incidents/[id]/route'
+import {
+  GET as listDeclaredIncidentsRoute,
+  POST as declareIncidentRoute,
+} from '@/app/api/orgs/[orgId]/declared-incidents/route'
 import { POST as acknowledgeMonitorIncidentRoute } from '@/app/api/orgs/[orgId]/monitor-incidents/[id]/acknowledge/route'
 import { POST as resolveMonitorIncidentRoute } from '@/app/api/orgs/[orgId]/monitor-incidents/[id]/resolve/route'
 import { GET as getMonitorIncidentRoute } from '@/app/api/orgs/[orgId]/monitor-incidents/[id]/route'
 import { GET as listMonitorIncidentsRoute } from '@/app/api/orgs/[orgId]/monitor-incidents/route'
 import { HEARTBEAT_STATUSES } from '@/collections/Heartbeats'
+import {
+  DECLARED_INCIDENT_SEVERITIES,
+  DECLARED_STATUS_FILTERS,
+  UNASSIGNED_COMMANDER,
+  type DeclaredIncidentSummary,
+} from '@/lib/declared-incidents'
 import { INCIDENT_RANGES, INCIDENT_STATUS_FILTERS } from '@/lib/monitor-incidents'
 import type { ApiKeyScope } from '@/lib/api-key-scopes'
 import { METRIC_VIEWS, type MetricRow } from '@/lib/metrics'
+import {
+  declaredNoteSchema,
+  declareIncidentSchema,
+  updateDeclaredIncidentSchema,
+} from '@/lib/validation/declared-incident'
 import { maintenanceFormSchema } from '@/lib/validation/maintenance'
 import { MONITOR_TYPE_NAMES } from '@/lib/validation/monitor'
 import type { Incident, Monitor, Notification, StatusPage } from '@/payload-types'
 import { incidentCreateBody, incidentNoteBody, incidentUpdateBody } from '@/server/api/openapi'
 import { metricPointsBatchSchema } from '@/server/metrics/schemas'
 import type { ApiKeyPrincipal } from '@/server/auth/request-auth'
+import type { DeclaredListResult } from '@/server/declared-incidents/store'
 import { STATS_RANGES } from '@/server/stats/uptime-calculator'
 
 import { callRoute, type DispatchContext, type RouteCall, type RouteHandler } from './dispatch'
@@ -143,6 +164,18 @@ const statusPageSummary = (page: StatusPage) => ({
   access: page.access ?? 'public',
 })
 
+/** A declared incident without its timeline and postmortem text (see get_declared_incident). */
+const declaredSummary = ({ timeline, postmortem, ...incident }: DeclaredIncidentSummary) => ({
+  ...incident,
+  timelineEntries: timeline.length,
+  postmortem: {
+    status: postmortem.status,
+    approvedBy: postmortem.approvedBy,
+    approvedAt: postmortem.approvedAt,
+    openActionItems: postmortem.actionItems.filter((item) => !item.done).length,
+  },
+})
+
 const incidentSummary = (incident: Incident) => {
   const updates = [...(incident.updates ?? [])].sort((a, b) =>
     String(b.postedAt).localeCompare(String(a.postedAt)),
@@ -190,6 +223,7 @@ const statusPageId = id.describe('Status page id (see list_status_pages)')
 const incidentId = id.describe('Status page incident id (see list_incidents)')
 const monitorIncidentId = id.describe('Monitor incident id (see list_monitor_incidents)')
 const metricId = id.describe('Custom metric id (see list_metrics)')
+const declaredIncidentId = id.describe('Declared incident id (see list_declared_incidents)')
 
 const {
   title: _legacyTitle,
@@ -491,6 +525,122 @@ export const MCP_TOOLS: McpTool[] = [
         path: `monitor-incidents/${monitorIncidentId}/resolve`,
         params: { id: String(monitorIncidentId) },
         body: note === undefined ? {} : { note },
+      }),
+  }),
+
+  // Declared incidents (the team's incident response: severity, commander, timeline, postmortem)
+  tool({
+    name: 'list_declared_incidents',
+    title: 'List declared incidents',
+    description:
+      'Incidents the team declared (severity, status, commander), newest first, with counts and mean time to mitigate / resolve. Not the outages monitors detect (see list_monitor_incidents) nor status page incidents (see list_incidents).',
+    scope: 'read',
+    permission: 'declared-incident:read',
+    inputSchema: z.object({
+      status: z.enum(DECLARED_STATUS_FILTERS).default('all').describe('active = open or mitigated'),
+      severity: z.enum(DECLARED_INCIDENT_SEVERITIES).optional(),
+      commander: id
+        .optional()
+        .describe(`Commander user id, or "${UNASSIGNED_COMMANDER}" for unassigned incidents`),
+      page: z.number().int().min(1).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    }),
+    annotations: READ,
+    run: ({ status, severity, commander, page, limit }, ctx) =>
+      viaRoute(
+        ctx,
+        'list_declared_incidents',
+        {
+          handler: listDeclaredIncidentsRoute,
+          method: 'GET',
+          path: 'declared-incidents',
+          query: {
+            status,
+            severity,
+            commander: commander === undefined ? undefined : String(commander),
+            page,
+            limit,
+          },
+        },
+        (data: DeclaredListResult) => ({
+          incidents: data.docs.map(declaredSummary),
+          stats: data.stats,
+          totalDocs: data.totalDocs,
+          page: data.page,
+          totalPages: data.totalPages,
+        }),
+      ),
+  }),
+  tool({
+    name: 'get_declared_incident',
+    title: 'Get a declared incident',
+    description:
+      'One declared incident with its timeline, postmortem (Markdown) and postmortem action items.',
+    scope: 'read',
+    permission: 'declared-incident:read',
+    inputSchema: z.object({ declaredIncidentId }),
+    annotations: READ,
+    run: ({ declaredIncidentId }, ctx) =>
+      viaRoute(ctx, 'get_declared_incident', {
+        handler: getDeclaredIncidentRoute,
+        method: 'GET',
+        path: `declared-incidents/${declaredIncidentId}`,
+        params: { id: String(declaredIncidentId) },
+      }),
+  }),
+  tool({
+    name: 'declare_incident',
+    title: 'Declare an incident',
+    description:
+      'Declare an incident: the commander is emailed and channels following incidents are told. Pass monitorIncident to declare it from a monitor outage (its start becomes the start).',
+    scope: 'write',
+    permission: 'declared-incident:create',
+    inputSchema: declareIncidentSchema,
+    annotations: WRITE,
+    run: (body, ctx) =>
+      viaRoute(ctx, 'declare_incident', {
+        handler: declareIncidentRoute,
+        method: 'POST',
+        path: 'declared-incidents',
+        body,
+      }),
+  }),
+  tool({
+    name: 'update_declared_incident',
+    title: 'Update a declared incident',
+    description:
+      'Change a declared incident: title, summary, startedAt, severity, commander (null to clear), status (open → mitigated → resolved → closed, or canceled; closing needs an approved postmortem), statusPageIncident, postmortem (Markdown), approvePostmortem, or actionItems (replaces the list; keep each item id). Closed and canceled incidents are read-only.',
+    scope: 'write',
+    permission: 'declared-incident:update',
+    inputSchema: z.object({
+      declaredIncidentId,
+      ...updateDeclaredIncidentSchema.shape,
+    }),
+    annotations: WRITE,
+    run: ({ declaredIncidentId, ...body }, ctx) =>
+      viaRoute(ctx, 'update_declared_incident', {
+        handler: updateDeclaredIncidentRoute,
+        method: 'PATCH',
+        path: `declared-incidents/${declaredIncidentId}`,
+        params: { id: String(declaredIncidentId) },
+        body: Object.fromEntries(Object.entries(body).filter(([, value]) => value !== undefined)),
+      }),
+  }),
+  tool({
+    name: 'add_declared_incident_note',
+    title: 'Add a note to a declared incident',
+    description: "Append a note to a declared incident's timeline.",
+    scope: 'write',
+    permission: 'declared-incident:update',
+    inputSchema: z.object({ declaredIncidentId, ...declaredNoteSchema.shape }),
+    annotations: WRITE,
+    run: ({ declaredIncidentId, message }, ctx) =>
+      viaRoute(ctx, 'add_declared_incident_note', {
+        handler: declaredNoteRoute,
+        method: 'POST',
+        path: `declared-incidents/${declaredIncidentId}/notes`,
+        params: { id: String(declaredIncidentId) },
+        body: { message },
       }),
   }),
 
