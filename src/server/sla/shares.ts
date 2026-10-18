@@ -13,6 +13,8 @@ import type { Payload } from 'payload'
 
 import { SLA_SHARE_SERVER_CONTEXT } from '@/collections/Sla'
 import { periodFromDates, type SlaPeriod } from '@/lib/sla'
+
+import { loadSlaZone } from './zone'
 import type { SlaReport, SlaReportShare } from '@/payload-types'
 import type { OrgRequestContext } from '@/server/notifications/api'
 import { relationId } from '@/server/maintenance/serialize'
@@ -45,15 +47,16 @@ export const toShareRow = (doc: SlaReportShare): ShareRow => ({
   revokedAt: doc.revokedAt ?? null,
 })
 
-/** Creates a link for `period` of `report`; the response is the only time the token is seen. */
+/**
+ * Creates a link for a range of `report` (inclusive `YYYY-MM-DD` dates, read in the organization's
+ * time zone when the link is opened); the response is the only time the token is seen.
+ */
 export async function createShare(
   ctx: OrgRequestContext,
   report: SlaReport,
-  period: SlaPeriod,
+  { from, to }: { from: string; to: string },
 ): Promise<{ share: ShareRow; token: string; url: string }> {
   const token = generateShareToken()
-  const from = new Date(period.from).toISOString().slice(0, 10)
-  const to = new Date(period.to - 86_400_000).toISOString().slice(0, 10)
   const doc = (await ctx.payload.create({
     collection: 'sla-report-shares',
     data: {
@@ -143,7 +146,8 @@ export async function resolveShare(payload: Payload, token: string): Promise<Res
   })
   const share = docs[0] as SlaReportShare | undefined
   if (!share || share.revokedAt) return null
-  const period = periodFromDates(share.fromDate, share.toDate)
+  const zone = await loadSlaZone(payload, relationId(share.organization))
+  const period = periodFromDates(share.fromDate, share.toDate, zone)
   const reportId = relationId(share.report)
   if (!period || reportId === null) return null
   const report = (await payload

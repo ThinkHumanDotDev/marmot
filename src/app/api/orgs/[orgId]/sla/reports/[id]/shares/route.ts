@@ -35,16 +35,18 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (ctx instanceof Response) return ctx
   const body = await readJson<{ from?: unknown; to?: unknown }>(request)
   if (!body) return jsonError(400, errorText(request, 'invalidJsonBody'))
-  const period =
-    typeof body.from === 'string' && typeof body.to === 'string'
-      ? periodFromDates(body.from, body.to)
+  const range =
+    typeof body.from === 'string' &&
+    typeof body.to === 'string' &&
+    periodFromDates(body.from, body.to)
+      ? { from: body.from, to: body.to }
       : null
-  if (!period) return jsonError(400, errorText(request, 'slaRangeInvalid'))
+  if (!range) return jsonError(400, errorText(request, 'slaRangeInvalid'))
 
   const report = await loadOrgReport(ctx, id)
   if (!report) return jsonError(404, errorText(request, 'slaReportNotFound'))
   try {
-    const { share, token, url } = await createShare(ctx, report, period)
+    const { share, token, url } = await createShare(ctx, report, range)
     return Response.json({ doc: share, token, url }, { status: 201 })
   } catch (error) {
     return jsonError(errorStatus(error), errorMessage(error, request))

@@ -71,7 +71,8 @@ import * as migration_20261013_013350_inbound_integrations from './20261013_0133
 import * as migration_20261018_002154_issue_tracker_alerts from './20261018_002154_issue_tracker_alerts';
 import * as migration_20261018_061140_voice_call_acknowledgements from './20261018_061140_voice_call_acknowledgements';
 import * as migration_20261018_105524_http_suite_monitor from './20261018_105524_http_suite_monitor';
-import * as migration_20261018_150615_status_page_subscriber_viewer from './20261018_150615_status_page_subscriber_viewer';
+import * as migration_20261018_150614_sla_business_hours from './20261018_150614_sla_business_hours';
+import * as migration_20261018_154341_status_page_subscriber_viewer from './20261018_154341_status_page_subscriber_viewer';
 
 export const migrations = [
   {
@@ -440,8 +441,13 @@ export const migrations = [
     name: '20261018_105524_http_suite_monitor',
   },
   {
-    up: migration_20261018_150615_status_page_subscriber_viewer.up,
-    down: migration_20261018_150615_status_page_subscriber_viewer.down,
-    name: '20261018_150615_status_page_subscriber_viewer'
+    up: migration_20261018_150614_sla_business_hours.up,
+    down: migration_20261018_150614_sla_business_hours.down,
+    name: '20261018_150614_sla_business_hours',
+  },
+  {
+    up: migration_20261018_154341_status_page_subscriber_viewer.up,
+    down: migration_20261018_154341_status_page_subscriber_viewer.down,
+    name: '20261018_154341_status_page_subscriber_viewer'
   },
 ];

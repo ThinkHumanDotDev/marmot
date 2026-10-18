@@ -681,10 +681,15 @@ export const adminTranslations = {
           'duration: time not down / time with a known state. checks: successful checks / all checks.',
         excludeMaintenanceDescription:
           'Leave maintenance windows out of the uptime and the error budget.',
+        businessHoursDescription:
+          "Count only these hours, in the organization's time zone: downtime outside them is ignored and the error budget is computed on them.",
+        businessStartDescription: 'HH:MM, e.g. 09:00.',
+        businessEndDescription: 'HH:MM after the start, or 24:00.',
+        holidaysDescription: 'Dates (YYYY-MM-DD) that do not count.',
       },
       slaReports: {
         scheduleDescription:
-          'weekly: every Monday for the previous week. monthly: on the 1st for the previous month (UTC).',
+          "weekly: on the organization's first day of the week for the previous week. monthly: on the 1st for the previous month (both in the organization's time zone).",
         lastSentPeriodDescription: 'Last period emailed by the schedule.',
       },
       slaReportShares: {
