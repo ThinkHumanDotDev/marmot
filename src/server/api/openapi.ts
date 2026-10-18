@@ -1991,6 +1991,43 @@ export const OPERATIONS: OperationSpec[] = [
     query: [{ name: 'page', description: 'Page number', schema: { type: 'integer' } }],
   },
 
+  // Slack app (#129): only when the SLACK_* variables are set (404 otherwise)
+  {
+    method: 'GET',
+    path: `${ORG}/slack`,
+    operationId: 'getSlackApp',
+    summary: 'The Slack app installation and linked Slack users (never the bot token)',
+    tag: 'Integrations',
+    permission: 'integration:read',
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/slack`,
+    operationId: 'uninstallSlackApp',
+    summary: 'Remove the Slack app: revokes the token, unlinks users, ends channel subscriptions',
+    tag: 'Integrations',
+    permission: 'integration:manage',
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/slack/install`,
+    operationId: 'installSlackApp',
+    summary: '"Add to Slack": redirects a signed-in admin to Slack\'s consent screen',
+    description: 'A browser navigation for signed-in members; API keys are refused.',
+    tag: 'Integrations',
+    permission: 'integration:manage',
+    status: 302,
+    response: { description: 'Redirect to `https://slack.com/oauth/v2/authorize`' },
+  },
+  {
+    method: 'DELETE',
+    path: `${ORG}/slack/links/{linkId}`,
+    operationId: 'unlinkSlackUser',
+    summary: 'Unlink a Slack user from their Marmot account',
+    tag: 'Integrations',
+    permission: 'integration:manage',
+  },
+
   // OpenTelemetry collectors (#99): header values are write-only
   {
     method: 'GET',

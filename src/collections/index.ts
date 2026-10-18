@@ -30,6 +30,8 @@ import { Organizations } from './Organizations'
 import { OtelCollectors } from './OtelCollectors'
 import { Proxies } from './Proxies'
 import { PushEvents } from './PushEvents'
+import { SlackInstallations } from './SlackInstallations'
+import { SlackUserLinks } from './SlackUserLinks'
 import { SlaReportShares, SlaReports, SlaTargets } from './Sla'
 import { SshTunnels } from './SshTunnels'
 import { SsoConnections } from './SsoConnections'
@@ -77,6 +79,8 @@ export const collections: CollectionConfig[] = [
   Integrations,
   IntegrationAlerts,
   IntegrationEvents,
+  SlackInstallations,
+  SlackUserLinks,
   OnCallSchedules,
   EscalationPolicies,
   MonitorLocationStates,

@@ -277,6 +277,9 @@ const removeWebhooks: CollectionBeforeDeleteHook = async ({ id, req }) => {
     'integration-events',
     'integration-alerts',
     'integrations',
+    // Slack app (#129): linked users first, then the installation.
+    'slack-user-links',
+    'slack-installations',
   ] as const) {
     await req.payload.delete({
       collection,

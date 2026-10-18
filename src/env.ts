@@ -204,6 +204,22 @@ const schema = z.object({
     .max(10 * 1024 * 1024)
     .default(256 * 1024),
 
+  // Slack app (#129, docs/Slack-App.md): per-organization install, `/marmot` slash command and
+  // interactive alert buttons. Off unless all three are set (the app's OAuth client and the
+  // signing secret every Slack request is verified with).
+  SLACK_CLIENT_ID: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().trim().optional(),
+  ),
+  SLACK_CLIENT_SECRET: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().trim().optional(),
+  ),
+  SLACK_SIGNING_SECRET: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().trim().optional(),
+  ),
+
   // Management API (#115): requests per minute per organization API key, and how many of them may
   // be writes (POST/PUT/PATCH/DELETE). 0 turns the respective limit off.
   API_KEY_RATE_LIMIT: z.coerce.number().int().min(0).default(600),

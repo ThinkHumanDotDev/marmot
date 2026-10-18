@@ -187,6 +187,20 @@ transparency logs by the worker's `ct-alerts` job.
 | `INBOUND_ALERT_RATE_LIMIT` | `120`    | web     | Requests per minute per integration token, and per client address when `trustProxy` is on. Over the limit the endpoint answers `429`. `0` turns the limit off. |
 | `INBOUND_ALERT_MAX_BYTES`  | `262144` | web     | Largest accepted request body in bytes (1 KiB–10 MiB); larger bodies get `413`.                                                                                |
 
+### Slack app
+
+The optional [Slack app](Slack-App.md) (`/marmot` slash command, status page subscriptions in Slack
+channels, incident updates and the Acknowledge / Check now alert buttons) is off unless all three
+variables are set; without them its routes answer `404` and the UI hides it. Create the app from the
+manifest in [Slack app](Slack-App.md#creating-the-slack-app) and copy its credentials from **Basic
+Information → App Credentials**.
+
+| Variable               | Default | Read by     | Description                                                                                                                                                                                          |
+| ---------------------- | ------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SLACK_CLIENT_ID`      | —       | web, worker | OAuth client ID of the Slack app (organizations install it with **Add to Slack**).                                                                                                                   |
+| `SLACK_CLIENT_SECRET`  | —       | web, worker | OAuth client secret, used to exchange the install code for the workspace's bot token (stored encrypted with a key derived from `PAYLOAD_SECRET`).                                                    |
+| `SLACK_SIGNING_SECRET` | —       | web, worker | Signing secret every request from Slack is verified with (HMAC-SHA256, five-minute replay window). Set all three on the worker too: it posts **Slack (app)** alerts and channel subscriber messages. |
+
 ### Self connectivity check
 
 When the worker's own uplink or DNS fails, every external monitor would go DOWN at once and every channel

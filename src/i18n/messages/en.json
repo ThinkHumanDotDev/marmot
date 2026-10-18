@@ -2064,6 +2064,8 @@
         "metric": "Metric",
         "declared_incident": "Declared incident",
         "integration": "Inbound integration",
+        "slack_installation": "Slack app installation",
+        "slack_user_link": "Linked Slack user",
         "on_call_schedule": "On-call schedule",
         "escalation_policy": "Escalation policy"
       },
@@ -3173,6 +3175,28 @@
         },
         "payload": "Payload",
         "close": "Close"
+      },
+      "slack": {
+        "title": "Slack app",
+        "description": "Subscribe Slack channels to status pages, post incident updates and act on alerts with /marmot and interactive buttons.",
+        "install": "Add to Slack",
+        "reinstall": "Reinstall",
+        "uninstall": "Remove from Slack",
+        "uninstallTitle": "Remove the Slack app?",
+        "uninstallDescription": "The bot token is revoked, linked Slack users are unlinked and channel subscriptions made with /marmot subscribe stop.",
+        "uninstalled": "The Slack app was removed.",
+        "uninstallFailed": "The Slack app could not be removed.",
+        "installedIn": "Installed in {team}",
+        "installedBy": "Installed by {name} on {date}",
+        "linkedUsers": "Linked Slack users",
+        "noLinks": "Nobody has linked a Slack account yet. Members run /marmot link in Slack.",
+        "linkedTo": "{slackUser} → {name}",
+        "deletedAccount": "deleted account",
+        "unlink": "Unlink",
+        "unlinked": "The Slack user was unlinked.",
+        "unlinkFailed": "The Slack user could not be unlinked.",
+        "readOnly": "Admins install and remove the Slack app.",
+        "outcomes": "{outcome, select, installed {The Slack app is installed. Run /marmot help in Slack.} denied {The installation was cancelled in Slack.} forbidden {You are not allowed to install the Slack app.} team-taken {This Slack workspace is already connected to another organization.} invalid-state {The installation expired or was started in another browser. Please try again.} other {The Slack app could not be installed.}}"
       }
     }
   },
@@ -3521,6 +3545,9 @@
         "serviceWentTitle": "{name} service went {status, select, down {down.} up {up!} other {unknown}}",
         "statusWord": "{status, select, down {Down} up {Up} other {unknown}}",
         "openMonitor": "Open {name}",
+        "acknowledge": "Acknowledge",
+        "checkNow": "Check now",
+        "openInMarmot": "Open in Marmot",
         "visitSite": "Visit site",
         "visitMonitorUrl": "Visit Monitor URL",
         "serviceName": "Service Name",
@@ -4232,6 +4259,18 @@
           "template": {
             "label": "Message template",
             "description": "Supports '{{' monitor.name '}}', '{{' heartbeat.msg '}}', '{{' status '}}'."
+          }
+        }
+      },
+      "slack-app": {
+        "label": "Slack (app)",
+        "fields": {
+          "channel": {
+            "label": "Channel",
+            "description": "Channel name or ID. Private channels need the app invited first (/invite @Marmot)."
+          },
+          "channelNotify": {
+            "label": "Notify channel (@channel)"
           }
         }
       },
@@ -6363,7 +6402,8 @@
         "dashboard": "from the dashboard",
         "api": "through the API",
         "link": "from a notification link",
-        "phone": "by phone"
+        "phone": "by phone",
+        "slack": "from Slack"
       },
       "escalated": "Escalated: paged {targets}",
       "escalatedNobody": "Escalation step reached nobody"
@@ -7110,6 +7150,10 @@
     "cannotManageInviteLinks": "You cannot manage invite links in this organization.",
     "cannotGrantHigherRole": "You cannot grant a role above your own.",
     "unauthenticated": "Unauthorized",
+    "slackNotInstalled": "The Slack app is not installed for this organization.",
+    "slackLinkNotFound": "No such linked Slack user.",
+    "slackLinkInvalid": "This link is invalid or has expired. Run /marmot link in Slack again.",
+    "slackNotMember": "Your account is not a member of the organization that installed the Slack app.",
     "unexpected": "Unexpected error",
     "invalidJsonBody": "Invalid JSON body",
     "expectedJsonBody": "Expected a JSON body",
@@ -7855,6 +7899,77 @@
       "subject": "SLA report: {name} ({organization})",
       "summary": "{met} of {total, plural, one {# target} other {# targets}} met.",
       "attachments": "The report is attached as CSV and PDF."
+    }
+  },
+  "slackApp": {
+    "help": "*Marmot for Slack*\n• `/marmot status` – your organization's monitors; `/marmot status NAME` – one monitor or status page\n• `/marmot subscribe URL` – post a status page's incident and maintenance updates in this channel\n• `/marmot unsubscribe [URL]` – stop them (all pages without a URL)\n• `/marmot subscriptions` – the status pages this channel follows\n• `/marmot incident create`, `update` or `resolve` – post a status page incident update\n• `/marmot link` / `/marmot unlink` – connect your Marmot account (needed for anything that changes something)",
+    "notInstalled": "Marmot is not connected to this Slack workspace. An organization admin can install the app in Marmot under Settings → Integrations.",
+    "unknownCommand": "Unknown command “{command}”. Try `/marmot help`.",
+    "failed": "Something went wrong. Please try again.",
+    "linkFirst": "Link your Slack account to your Marmot account first: run `/marmot link`.",
+    "linkPrompt": "Open the link below and sign in to Marmot to connect your Slack account. The link is valid for 15 minutes and only works for you.",
+    "linkButton": "Link my account",
+    "alreadyLinked": "Your Slack account is linked to the Marmot account of {name}.",
+    "unlinked": "Your Slack account is no longer linked to Marmot.",
+    "notLinked": "Your Slack account is not linked to Marmot.",
+    "forbidden": "The Marmot account of {name} is not allowed to do that.",
+    "statusNotFound": "No monitor or status page matches “{query}”.",
+    "statusSummary": "{total, plural, =0 {This organization has no monitors yet.} one {# monitor: {up} up, {down} down, {other} paused or pending.} other {# monitors: {up} up, {down} down, {other} paused or pending.}}",
+    "statusMore": "…and {count} more down.",
+    "monitorStates": "{state, select, up {Up} down {Down} pending {Pending} maintenance {Maintenance} degraded {Degraded} paused {Paused} other {Not checked yet}}",
+    "pageStates": "{state, select, up {All systems operational} degraded {Degraded performance} partial {Partial outage} down {Major outage} maintenance {Under maintenance} other {Unknown}}",
+    "activeIncident": ":warning: Active incident: {title}",
+    "viewPage": "View the status page",
+    "subscribeUsage": "Usage: `/marmot subscribe https://status.example.com` (a status page on this Marmot instance).",
+    "pageNotFound": "No published status page on this Marmot instance matches “{query}”.",
+    "subscriptionsOff": "{page} does not offer Slack subscriptions.",
+    "alreadySubscribed": "This channel is already subscribed to {page}.",
+    "botNotInChannel": "Marmot cannot post in this channel. Invite the app first (`/invite @Marmot`), then try again.",
+    "subscribed": "{user} subscribed this channel to *{page}*: its incident and maintenance updates will be posted here.",
+    "unsubscribed": "{count, plural, =0 {This channel was not subscribed to that.} one {Unsubscribed this channel from # status page.} other {Unsubscribed this channel from # status pages.}}",
+    "subscriptionsNone": "This channel is not subscribed to any status page. Add one with `/marmot subscribe URL`.",
+    "subscriptionsList": "This channel receives updates from:",
+    "incidentUsage": "Usage: `/marmot incident create`, `/marmot incident update` or `/marmot incident resolve`.",
+    "noPages": "This organization has no status pages yet.",
+    "noActiveIncidents": "There is no active incident to update.",
+    "incidentPosted": "Posted “{title}” on {page}.",
+    "incidentNotFound": "That incident no longer exists.",
+    "incidentStates": "{state, select, acknowledged {The incident is already acknowledged.} resolved {The incident is already resolved.} other {The incident cannot be acknowledged.}}",
+    "acknowledged": "{user} acknowledged the incident of *{monitor}*.",
+    "monitorNotFound": "That monitor no longer exists.",
+    "checkUnavailable": "*{monitor}* cannot be checked from here right now (paused, push or checked by a probe location).",
+    "checkRateLimited": "Too many checks in the last minute. Try again shortly.",
+    "checkQueued": "Checking *{monitor}*…",
+    "checkResult": "*{monitor}*: {state, select, up {Up} down {Down} pending {Pending} maintenance {Maintenance} degraded {Degraded} other {Unknown}}{ping} – {message}",
+    "ping": " ({ms} ms)",
+    "checkTimedOut": "The check of *{monitor}* did not finish in time; its result will show up in Marmot.",
+    "checkFailed": "The check of *{monitor}* could not run.",
+    "modal": {
+      "titles": "{mode, select, create {New incident} update {Incident update} other {Resolve incident}}",
+      "submit": "Post",
+      "cancel": "Cancel",
+      "page": "Status page",
+      "incident": "Incident",
+      "title": "Title",
+      "status": "Status",
+      "message": "Message",
+      "statuses": "{status, select, investigating {Investigating} identified {Identified} monitoring {Monitoring} other {Resolved}}",
+      "invalid": "Check this field."
+    },
+    "linkPage": {
+      "pageTitle": "Link Slack account",
+      "title": "Link your Slack account",
+      "description": "Slack user {slackUser} in the {team} workspace will act as you in Marmot: subscribing channels, posting incident updates, acknowledging and checking monitors, with your permissions in {organization}.",
+      "signedInAs": "Signed in as {name}.",
+      "confirm": "Link account",
+      "linking": "Linking…",
+      "linked": "Done. You can go back to Slack.",
+      "failed": "The account could not be linked.",
+      "invalidTitle": "This link is invalid or has expired",
+      "invalidDescription": "Run /marmot link in Slack again to get a new one.",
+      "notMemberTitle": "Not a member",
+      "notMemberDescription": "Your Marmot account is not a member of {organization}, which installed the app in this workspace.",
+      "openDashboard": "Open Marmot"
     }
   }
 }

@@ -144,6 +144,7 @@ describe('notification provider registry (wave 2)', () => {
     'sendgrid',
     'serverchan',
     'signal',
+    'slack-app',
     'splunk',
     'squadcast',
     'techulus-push',

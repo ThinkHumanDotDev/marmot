@@ -801,6 +801,9 @@ component choice). Sign-ups go to `POST /api/status-pages/:slug/subscribe`:
   15 minutes and allow five tries.
 - **Webhook / Slack**: active at once; the first request (`type: "test"`) carries the manage links and, for
   webhooks, the signing secret.
+- **Slack app**: with the [Slack app](Slack-App.md) installed, `/marmot subscribe <page URL>` subscribes the
+  channel it runs in (a `slack` subscriber with the target `slack://<workspace>/<channel>`, posted to with the
+  bot token). Pages of other organizations on the same instance need to be public and offer the Slack channel.
 
 The response is always `202 { ok: true, next }` (`confirm-email`, `enter-code` or `done`) whatever the
 address's state: an address that is already subscribed gets a "manage your subscription" email instead of

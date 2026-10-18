@@ -88,6 +88,8 @@ export interface Config {
     integrations: Integration;
     'integration-alerts': IntegrationAlert;
     'integration-events': IntegrationEvent;
+    'slack-installations': SlackInstallation;
+    'slack-user-links': SlackUserLink;
     'on-call-schedules': OnCallSchedule;
     'escalation-policies': EscalationPolicy;
     'monitor-location-states': MonitorLocationState;
@@ -145,6 +147,8 @@ export interface Config {
     integrations: IntegrationsSelect<false> | IntegrationsSelect<true>;
     'integration-alerts': IntegrationAlertsSelect<false> | IntegrationAlertsSelect<true>;
     'integration-events': IntegrationEventsSelect<false> | IntegrationEventsSelect<true>;
+    'slack-installations': SlackInstallationsSelect<false> | SlackInstallationsSelect<true>;
+    'slack-user-links': SlackUserLinksSelect<false> | SlackUserLinksSelect<true>;
     'on-call-schedules': OnCallSchedulesSelect<false> | OnCallSchedulesSelect<true>;
     'escalation-policies': EscalationPoliciesSelect<false> | EscalationPoliciesSelect<true>;
     'monitor-location-states': MonitorLocationStatesSelect<false> | MonitorLocationStatesSelect<true>;
@@ -1042,7 +1046,7 @@ export interface MonitorIncident {
   acknowledgedAt?: string | null;
   resolvedAt?: string | null;
   acknowledgedBy?: (number | null) | User;
-  acknowledgedVia?: ('dashboard' | 'api' | 'link' | 'phone') | null;
+  acknowledgedVia?: ('dashboard' | 'api' | 'link' | 'phone' | 'slack') | null;
   resolvedBy?: (number | null) | User;
   autoResolved?: boolean | null;
   remindersSent?: number | null;
@@ -1060,7 +1064,7 @@ export interface MonitorIncident {
         type: 'opened' | 'maintenance' | 'acknowledged' | 'resolved' | 'published' | 'escalated';
         at: string;
         by?: (number | null) | User;
-        via?: ('dashboard' | 'api' | 'link' | 'phone') | null;
+        via?: ('dashboard' | 'api' | 'link' | 'phone' | 'slack') | null;
         message?: string | null;
         id?: string | null;
       }[]
@@ -1395,6 +1399,38 @@ export interface IntegrationEvent {
     | number
     | boolean
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "slack-installations".
+ */
+export interface SlackInstallation {
+  id: number;
+  organization: number | Organization;
+  teamId: string;
+  teamName?: string | null;
+  enterpriseId?: string | null;
+  appId?: string | null;
+  botUserId?: string | null;
+  botToken: string;
+  scopes?: string[] | null;
+  installedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "slack-user-links".
+ */
+export interface SlackUserLink {
+  id: number;
+  organization: number | Organization;
+  installation: number | SlackInstallation;
+  teamId: string;
+  slackUserId: string;
+  user?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -2201,6 +2237,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'integration-events';
         value: number | IntegrationEvent;
+      } | null)
+    | ({
+        relationTo: 'slack-installations';
+        value: number | SlackInstallation;
+      } | null)
+    | ({
+        relationTo: 'slack-user-links';
+        value: number | SlackUserLink;
       } | null)
     | ({
         relationTo: 'on-call-schedules';
@@ -3054,6 +3098,36 @@ export interface IntegrationEventsSelect<T extends boolean = true> {
   droppedCount?: T;
   payload?: T;
   results?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "slack-installations_select".
+ */
+export interface SlackInstallationsSelect<T extends boolean = true> {
+  organization?: T;
+  teamId?: T;
+  teamName?: T;
+  enterpriseId?: T;
+  appId?: T;
+  botUserId?: T;
+  botToken?: T;
+  scopes?: T;
+  installedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "slack-user-links_select".
+ */
+export interface SlackUserLinksSelect<T extends boolean = true> {
+  organization?: T;
+  installation?: T;
+  teamId?: T;
+  slackUserId?: T;
+  user?: T;
   updatedAt?: T;
   createdAt?: T;
 }

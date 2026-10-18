@@ -11,6 +11,7 @@ import { normalizeChannelEvents } from '@/lib/notification-events'
 import type { Notification, User } from '@/payload-types'
 import {
   describeNotificationProviders,
+  getNotificationProvider,
   type NotificationProviderDescriptor,
 } from '@/server/notification-providers'
 import { LocalizedAPIError } from '@/server/errors'
@@ -79,7 +80,8 @@ export function getProviderDescriptors(
     descriptors = describeNotificationProviders(locale)
     descriptorCache.set(locale, descriptors)
   }
-  return descriptors
+  // Providers that need instance configuration (the Slack app, #129) are offered only when set up.
+  return descriptors.filter((d) => getNotificationProvider(d.name)?.available?.() !== false)
 }
 
 /** Secret config keys per provider (webhook URLs, tokens, passwords). */

@@ -33,6 +33,8 @@ export const AUDIT_RESOURCE_TYPES = [
   'organization',
   'webhook_endpoint',
   'integration',
+  'slack_installation',
+  'slack_user_link',
   'location',
   'otel_collector',
   'sla_target',

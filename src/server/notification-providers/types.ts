@@ -125,6 +125,11 @@ export interface NotificationProvider {
    */
   renderEmail?(ctx: NotificationSendContext): NotificationEmail
   /**
+   * Whether the provider can be used on this instance (e.g. the Slack app needs its environment
+   * variables). Unavailable providers are not offered in the channel picker. Default: available.
+   */
+  available?(): boolean
+  /**
    * Send one test sample whatever the channel's events (a phone call per event would be a lot);
    * the others send one per selected event.
    */

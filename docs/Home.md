@@ -31,6 +31,7 @@ features whose pull requests are merging alongside this documentation.
 | [Maintenance](Maintenance.md)                             | Maintenance windows and how they silence alerts.                                                                          |
 | [Organizations and members](Organizations-and-Members.md) | Roles and permissions, invitations, invite links, ownership transfer, account settings.                                   |
 | [Integrations](Integrations.md)                           | Status badges, the push endpoint, Prometheus metrics, organization API keys and outbound event webhooks.                  |
+| [Slack app](Slack-App.md)                                 | The optional Slack app: `/marmot` commands, channel subscriptions to status pages, incident updates and alert buttons.    |
 | [MCP server for AI agents](MCP.md)                        | Connect Claude, Cursor and other MCP clients with an API key; the tools and how they map onto the management API.         |
 | [Import and export](Import-and-Export.md)                 | Importing an Uptime Kuma backup or a Marmot export, and exporting an organization.                                        |
 | [CLI and monitors as code](CLI.md)                        | The `marmot` command line: status from the terminal, monitors in YAML with plan/apply, GitOps.                            |
