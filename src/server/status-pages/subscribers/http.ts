@@ -6,7 +6,8 @@ import { getPayload, type Payload } from 'payload'
 
 import config from '@payload-config'
 import type { StatusPage, StatusPageSubscriber } from '@/payload-types'
-import type { ErrorKey, ErrorValues } from '@/server/errors'
+import type { Locale } from '@/i18n/locales'
+import { translateError, type ErrorKey, type ErrorValues } from '@/server/errors'
 import { errorText } from '@/server/request-locale'
 import { isAudiencePage, scopePageToAudiences } from '@/server/status-pages/audiences'
 import { findPublishedStatusPage } from '@/server/status-pages/public'
@@ -15,15 +16,22 @@ import { findSubscriberByLinkToken } from './tokens'
 
 export const NO_STORE = { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex' }
 
+/**
+ * `{ error }` JSON for `errors.<key>`, in the language of `from`: a visitor's language
+ * (`visitorLocale`), or the request locale of the app when given the request.
+ */
 export const errorJson = (
-  request: Request,
+  from: Request | Locale,
   key: ErrorKey,
   status: number,
   extra: Record<string, string> = {},
   values?: ErrorValues,
 ) =>
   Response.json(
-    { error: errorText(request, key, values) },
+    {
+      error:
+        typeof from === 'string' ? translateError(from, key, values) : errorText(from, key, values),
+    },
     { status, headers: { ...NO_STORE, ...extra } },
   )
 
