@@ -2496,12 +2496,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "http_suite": {
-          "name": "http_suite",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "push_token": {
           "name": "push_token",
           "type": "varchar",
@@ -4936,6 +4930,12 @@
           "notNull": false,
           "default": "''"
         },
+        "external_id": {
+          "name": "external_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -5192,12 +5192,6 @@
         },
         "probes": {
           "name": "probes",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "steps": {
-          "name": "steps",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
@@ -20248,7 +20242,6 @@
         "keyword",
         "json-query",
         "prometheus",
-        "http-suite",
         "port",
         "ping",
         "dns",
@@ -20667,7 +20660,8 @@
       "values": [
         "certificate",
         "domain",
-        "ct"
+        "ct",
+        "issue"
       ]
     },
     "public.enum_heartbeats_location_status": {
@@ -21497,6 +21491,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "e3311850-4a60-48fb-a11c-83335770d617",
+  "id": "00805503-ab70-4d66-8961-3a436478671e",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

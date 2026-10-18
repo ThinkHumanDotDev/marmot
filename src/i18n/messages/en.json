@@ -4517,6 +4517,189 @@
             "label": "Webhook URL"
           }
         }
+      },
+      "github-issues": {
+        "label": "GitHub Issues",
+        "fields": {
+          "apiUrl": {
+            "label": "API URL",
+            "description": "GitHub Enterprise Server: https://github.example.com/api/v3."
+          },
+          "repository": {
+            "label": "Repository"
+          },
+          "authMethod": {
+            "label": "Authentication",
+            "options": {
+              "token": "Personal access token",
+              "app": "GitHub App installation"
+            }
+          },
+          "token": {
+            "label": "Access token",
+            "description": "Token only: a fine-grained token with Issues read and write on the repository, or a classic token with repo."
+          },
+          "appId": {
+            "label": "App ID",
+            "description": "GitHub App only."
+          },
+          "installationId": {
+            "label": "Installation ID",
+            "description": "GitHub App only: the number at the end of the installation’s settings URL."
+          },
+          "privateKey": {
+            "label": "App private key",
+            "description": "GitHub App only: the PEM file generated in the app settings."
+          },
+          "labels": {
+            "label": "Labels",
+            "description": "Comma-separated; added to new issues."
+          },
+          "assignees": {
+            "label": "Assignees",
+            "description": "Comma-separated GitHub user names."
+          },
+          "titleTemplate": {
+            "label": "Issue title",
+            "description": "Liquid template for the title of the issue opened on DOWN."
+          },
+          "bodyTemplate": {
+            "label": "Issue body and comments",
+            "description": "Liquid template for the issue body and for the comments on reminders and recovery. A link to the monitor is added when the text has none."
+          }
+        }
+      },
+      "gitlab-issues": {
+        "label": "GitLab Issues",
+        "fields": {
+          "baseUrl": {
+            "label": "GitLab URL",
+            "description": "Your instance’s address for self-managed GitLab."
+          },
+          "token": {
+            "label": "Access token",
+            "description": "A personal, group or project access token with the api scope (Reporter or above)."
+          },
+          "projectId": {
+            "label": "Project",
+            "description": "Numeric project ID or full path."
+          },
+          "labels": {
+            "label": "Labels",
+            "description": "Comma-separated; added to new issues."
+          },
+          "titleTemplate": {
+            "label": "Issue title",
+            "description": "Liquid template for the title of the issue opened on DOWN."
+          },
+          "bodyTemplate": {
+            "label": "Issue body and comments",
+            "description": "Liquid template for the issue body and for the comments on reminders and recovery. A link to the monitor is added when the text has none."
+          }
+        }
+      },
+      "gitea-issues": {
+        "label": "Gitea Issues",
+        "fields": {
+          "baseUrl": {
+            "label": "Gitea URL"
+          },
+          "token": {
+            "label": "Access token",
+            "description": "Settings → Applications: a token with write:issue and read:repository."
+          },
+          "repository": {
+            "label": "Repository"
+          },
+          "titleTemplate": {
+            "label": "Issue title",
+            "description": "Liquid template for the title of the issue opened on DOWN."
+          },
+          "bodyTemplate": {
+            "label": "Issue body and comments",
+            "description": "Liquid template for the issue body and for the comments on reminders and recovery. A link to the monitor is added when the text has none."
+          }
+        }
+      },
+      "jira": {
+        "label": "Jira",
+        "fields": {
+          "deployment": {
+            "label": "Deployment",
+            "options": {
+              "cloud": "Jira Cloud",
+              "datacenter": "Jira Data Center / Server"
+            }
+          },
+          "baseUrl": {
+            "label": "Jira URL"
+          },
+          "email": {
+            "label": "Account email",
+            "description": "Jira Cloud only: the Atlassian account the API token belongs to."
+          },
+          "apiToken": {
+            "label": "API token",
+            "description": "Jira Cloud: an API token; Data Center: a personal access token."
+          },
+          "projectKey": {
+            "label": "Project key"
+          },
+          "issueType": {
+            "label": "Issue type"
+          },
+          "labels": {
+            "label": "Labels",
+            "description": "Comma-separated; Jira labels cannot contain spaces."
+          },
+          "doneStatus": {
+            "label": "Status on recovery",
+            "description": "The issue is moved to this status (or through the transition of that name)."
+          },
+          "titleTemplate": {
+            "label": "Issue title",
+            "description": "Liquid template for the title of the issue opened on DOWN."
+          },
+          "bodyTemplate": {
+            "label": "Issue body and comments",
+            "description": "Liquid template for the issue body and for the comments on reminders and recovery. A link to the monitor is added when the text has none."
+          }
+        }
+      },
+      "linear": {
+        "label": "Linear",
+        "fields": {
+          "apiKey": {
+            "label": "API key",
+            "description": "Settings → Security & access → Personal API keys."
+          },
+          "team": {
+            "label": "Team",
+            "description": "Team key or team ID."
+          },
+          "priority": {
+            "label": "Priority",
+            "options": {
+              "0": "No priority",
+              "1": "Urgent",
+              "2": "High",
+              "3": "Medium",
+              "4": "Low"
+            }
+          },
+          "doneState": {
+            "label": "State on recovery",
+            "description": "Workflow state the issue moves to; empty picks the team’s first completed state."
+          },
+          "titleTemplate": {
+            "label": "Issue title",
+            "description": "Liquid template for the title of the issue opened on DOWN."
+          },
+          "bodyTemplate": {
+            "label": "Issue body and comments",
+            "description": "Liquid template for the issue body and for the comments on reminders and recovery. A link to the monitor is added when the text has none."
+          }
+        }
       }
     },
     "email": {
@@ -4993,6 +5176,10 @@
         "failed": "Could not post update",
         "resolveHint": "Resolving resets every affected component to operational."
       },
+      "postedAt": {
+        "label": "Posted at (optional)",
+        "hint": "Leave empty to post now. Times are in {zone}."
+      },
       "components": {
         "title": "Affected components",
         "hint": "Components you leave unchanged keep their current impact.",
@@ -5272,6 +5459,8 @@
       "draftNotice": "The badge shows “Unknown” until the page is published.",
       "address": "Address",
       "mainAddress": "Marmot address (/status/…)",
+      "language": "Language",
+      "languageBadgeHint": "The badge links to the page in this language; its text stays in English.",
       "style": "Style",
       "styles": {
         "pill": "Pill (default)",
@@ -5910,6 +6099,7 @@
       "timezone": "Time zone",
       "timezoneDefault": "Organization default ({zone})",
       "timezoneHint": "Dates and times above are read in this zone.",
+      "datesInZone": "Times are in {zone}.",
       "starts": "Starts",
       "ends": "Ends",
       "effectiveFrom": "Effective from",

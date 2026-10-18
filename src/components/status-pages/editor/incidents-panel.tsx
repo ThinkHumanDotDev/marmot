@@ -50,6 +50,7 @@ import {
   type TemplateValues,
 } from '@/lib/templates'
 import { cn } from '@/lib/utils'
+import { fromZonedInput, toZonedInput } from '@/lib/zoned-time'
 import type { Incident } from '@/payload-types'
 
 import { statusPagesApi, type IncidentPatch, type IncidentUpdateDraft, type OrgId } from '../api'
@@ -261,16 +262,60 @@ function ImpactSelect({
   )
 }
 
+/**
+ * Optional "posted at" time of an update (#271): a wall-clock time in the page's zone, so what
+ * admins type is what visitors read. Empty posts the update now.
+ */
+function PostedAtField({
+  id,
+  value,
+  timeZone,
+  onChange,
+}: {
+  id: string
+  value: string
+  timeZone: string
+  onChange: (value: string) => void
+}) {
+  const t = useTranslations('statusPages.incidents.postedAt')
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor={id}>{t('label')}</Label>
+      <Input
+        id={id}
+        type="datetime-local"
+        className="w-full sm:w-64"
+        value={value}
+        max={toZonedInput(new Date(), timeZone)}
+        aria-describedby={`${id}-hint`}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+        {t('hint', { zone: timeZone })}
+      </p>
+    </div>
+  )
+}
+
+/** The ISO instant of a "posted at" input in `timeZone`, or nothing (post now). */
+const postedAtOf = (value: string, timeZone: string): { postedAt?: string } => {
+  const date = fromZonedInput(value, timeZone)
+  return date ? { postedAt: date.toISOString() } : {}
+}
+
 /** Inline "post update" form under an incident's header. */
 function UpdateComposer({
   incident,
   options,
   templateContext,
+  timeZone,
   onPost,
 }: {
   incident: Incident
   options: IncidentComponentOption[]
   templateContext: TemplateContext
+  /** The page's zone: "posted at" is entered in it. */
+  timeZone: string
   onPost: (data: IncidentUpdateDraft) => Promise<boolean>
 }) {
   const t = useTranslations('statusPages.incidents')
@@ -285,6 +330,7 @@ function UpdateComposer({
   const [message, setMessage] = React.useState('')
   const [impacts, setImpacts] = React.useState<ImpactMap>(current)
   const [declared, setDeclared] = React.useState<ComponentImpact>(state.impact)
+  const [postedAt, setPostedAt] = React.useState('')
   const [pending, setPending] = React.useState(false)
   const idPrefix = `incident-${incident.id}-composer`
   const unfilled = findPlaceholders(message)
@@ -322,10 +368,12 @@ function UpdateComposer({
       message,
       components: resolving ? [] : components,
       ...(componentless && !resolving ? { impact: declared } : {}),
+      ...postedAtOf(postedAt, timeZone),
     })
     setPending(false)
     if (ok) {
       setMessage('')
+      setPostedAt('')
       setStatus(NEXT_STATUS[status])
     }
   }
@@ -370,6 +418,12 @@ function UpdateComposer({
         idPrefix={idPrefix}
         names={unfilled}
         onFill={(name, value) => setMessage((text) => fillPlaceholder(text, name, value))}
+      />
+      <PostedAtField
+        id={`${idPrefix}-posted-at`}
+        value={postedAt}
+        timeZone={timeZone}
+        onChange={setPostedAt}
       />
       {status !== 'resolved' && (
         <div className="grid gap-1.5">
@@ -678,6 +732,7 @@ function IncidentItem({
               incident={incident}
               options={options}
               templateContext={templateContext}
+              timeZone={timeZone}
               onPost={postUpdate}
             />
           )}
@@ -708,6 +763,8 @@ interface NewDraft {
   impacts: ImpactMap
   impact: ComponentImpact
   pinned: boolean
+  /** `datetime-local` in the page's zone; empty opens the incident now. */
+  postedAt: string
 }
 
 const emptyDraft: NewDraft = {
@@ -717,6 +774,7 @@ const emptyDraft: NewDraft = {
   impacts: {},
   impact: 'degraded_performance',
   pinned: true,
+  postedAt: '',
 }
 
 export function IncidentsPanel({
@@ -734,7 +792,7 @@ export function IncidentsPanel({
   /** Components of the page an incident can affect. */
   components: IncidentComponentOption[]
   canEdit: boolean
-  /** Organization time zone the timestamps render in. */
+  /** The page's time zone (else the organization's): timestamps render and are entered in it. */
   timeZone: string
   /** Templates offered on this page and the values their variables take. */
   templateContext: TemplateContext
@@ -798,6 +856,7 @@ export function IncidentsPanel({
           impact,
         })),
         ...(componentless ? { impact: draft.impact } : {}),
+        ...postedAtOf(draft.postedAt, timeZone),
       })
       upsert(doc)
       setCreating(false)
@@ -979,6 +1038,12 @@ export function IncidentsPanel({
                 </div>
               )}
             </div>
+            <PostedAtField
+              id="incident-posted-at"
+              value={draft.postedAt}
+              timeZone={timeZone}
+              onChange={(postedAt) => setDraft({ ...draft, postedAt })}
+            />
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="incident-pinned">{t('newDialog.pinToTop')}</Label>
               <Switch
