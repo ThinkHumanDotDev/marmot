@@ -99,7 +99,10 @@ edited while it runs, or deleted, after which affected monitors resume normal ch
 
 Times in the list are shown in the zone each window is evaluated in (with the zone name), and the cron
 preview in the form lists the next matches in the window's timezone (the organization's for _same as
-server_), so what you read is what the worker will do.
+server_), so what you read is what the worker will do. The date pickers are wall-clock times in that zone
+too, whatever the zone of your browser: a new window starts now in the organization's zone, the quick
+durations add up in the window's zone (across DST changes), and the form names the zone below the dates
+_(landing in the current release, #271)_.
 
 Route handlers follow the usual pattern (zod schema shared with the form in
 `src/lib/validation/maintenance.ts`):

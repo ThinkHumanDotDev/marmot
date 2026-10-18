@@ -45,6 +45,12 @@ import './dingding'
 import './feishu'
 import './bitrix24'
 import './whatsapp'
+// Issue trackers (#149)
+import './github-issues'
+import './gitlab-issues'
+import './gitea-issues'
+import './jira'
+import './linear'
 
 export * from './describe'
 export * from './http'

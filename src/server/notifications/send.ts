@@ -12,6 +12,7 @@ import { deliverToDemoSink } from '@/server/demo/sink'
 import { getOrganizationI18n, serverTranslator } from '@/server/i18n'
 import { getNotificationProvider } from '@/server/notification-providers'
 import { TemplateError, validateTemplate, TEMPLATE_MAX_LENGTH, TEMPLATE_MAX_OUTPUT } from './liquid'
+import { createPayloadIssueState } from './issue-state'
 import { buildDefaultMessage, buildTestMessage, type TemplateOrganization } from './message'
 import { assertServerSmtpSendAllowed, usesServerSmtp } from './server-smtp'
 
@@ -275,6 +276,15 @@ export async function sendNotification(
     return serverTranslator(locale)('notifications.demoSinkDelivered')
   }
 
+  const orgRef = notification.organization
+  const issues =
+    monitor && notification.id !== undefined && notification.id !== null
+      ? createPayloadIssueState(payload, {
+          channelId: notification.id,
+          monitorId: monitor.id,
+          organizationId: orgRef && typeof orgRef === 'object' ? orgRef.id : orgRef,
+        })
+      : undefined
   return provider.send({
     config,
     message: text,
@@ -290,6 +300,7 @@ export async function sendNotification(
         ? notification.organization.id
         : (notification.organization ?? null),
     openIncidentId,
+    issues,
   })
 }
 
