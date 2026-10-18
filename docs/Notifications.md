@@ -17,8 +17,9 @@ Setting up a channel is a form: pick a **provider**, fill in the fields the prov
 generated from the provider's schema, so required fields and secrets are marked), pick the events, press
 **Send test** (one sample per selected event), save.
 Tick **Default** to preselect the channel on every new monitor and **Apply to all existing monitors** to
-attach it to the monitors you already have. Marmot ships 48 providers ported from Uptime Kuma (table below) plus WhatsApp,
-grouped as Chat, Push, Email and Generic (webhooks, incident management, SMS).
+attach it to the monitors you already have. Marmot ships 48 providers ported from Uptime Kuma (table below) plus WhatsApp
+and five [issue trackers](#issue-trackers) (GitHub, GitLab, Gitea, Jira, Linear), grouped as Chat, Push, Email and
+Generic (webhooks, incident management, issue trackers, SMS).
 
 ## How it works
 
@@ -384,6 +385,50 @@ Nostr is not ported: it needs `nostr-tools` plus a WebSocket polyfill, which out
   message goes out as `Body`, which WhatsApp only delivers within 24 hours of the recipient's last message.
 - **Errors** from Meta or Twilio are stored on the channel's `lastError` with the vendor's message, e.g.
   `WhatsApp Cloud API (HTTP 400): (#132001) Template name does not exist in the translation`.
+
+### Issue trackers
+
+_(landing in the current release, #149)_ Five providers track outages as tickets: a monitor going DOWN
+opens an issue, reminders comment on it, and the recovery comments and closes it, so every outage is one
+issue in your backlog.
+
+| `type`          | Config keys (required in **bold**)                                                                                                                                                                                | On recovery                                               |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `github-issues` | apiUrl (default `https://api.github.com`; GitHub Enterprise Server: `https://<host>/api/v3`), **repository** (`owner/repo`), authMethod `token\|app`, token, appId, installationId, privateKey, labels, assignees | comment, close as completed                               |
+| `gitlab-issues` | baseUrl (default `https://gitlab.com`, or your self-managed instance), **token**, **projectId** (numeric id or `group/project`), labels                                                                           | comment (note), close                                     |
+| `gitea-issues`  | **baseUrl**, **token**, **repository** (`owner/repo`); works with Forgejo too                                                                                                                                     | comment, close                                            |
+| `jira`          | deployment `cloud\|datacenter`, **baseUrl**, email (Cloud), **apiToken**, **projectKey**, issueType (default `Bug`), labels, doneStatus (default `Done`)                                                          | comment, transition to `doneStatus`                       |
+| `linear`        | **apiKey**, **team** (key such as `ENG`, or the team id), priority `0`–`4`, doneState                                                                                                                             | comment, move to `doneState` or the first completed state |
+
+All five also take titleTemplate (default `alert(marmot): {{ name }}`) and bodyTemplate (default
+`{{ msg }}`), both _template_ fields. The body template is used for the issue and for every comment
+(`{{ event }}` tells `down`, `reminder` and `up` apart), and a link to the monitor in Marmot
+(`{{ monitor.dashboardUrl }}`) is appended unless the text already contains it.
+
+- **Credentials.** GitHub: a fine-grained personal access token with _Issues: read and write_ on the
+  repository (or a classic token with `repo`), or a GitHub App installed on the repository with the same
+  permission (App ID, installation ID and the PEM private key; Marmot signs a JWT and requests an
+  installation token per delivery). GitLab: a personal, group or project access token with the `api`
+  scope. Gitea: a token with `write:issue` and `read:repository`. Jira Cloud: the Atlassian account email
+  and an API token (REST API v3, Atlassian Document Format bodies); Jira Data Center / Server: a personal
+  access token (REST API v2, wiki markup). Linear: a personal API key.
+- **One issue per outage.** The DOWN alert stores the issue (number, key or id) in
+  `notification-sent-history` (type `issue`, one row per monitor, channel and repository or project). A
+  reminder, or another DOWN while it is open, comments on that issue instead of opening a new one; the
+  recovery closes it and deletes the row, and the next outage opens a new issue. Turn on the `reminder`
+  event and the monitor's `resendInterval` for periodic comments. A channel added during an outage opens
+  its issue at the first reminder.
+- **Other events.** `acknowledged`, `resolved`, `degraded` and `certificate` comment on the open issue and
+  do nothing when there is none; maintenance windows and declared incidents are ignored.
+- **Closed or deleted by hand.** A Jira issue already in `doneStatus` is left as is. When the stored issue
+  is gone (HTTP 404 or 410, Linear's `Entity not found`), a reminder opens a new one and the recovery just
+  forgets it. Pointing a channel at another repository or project starts afresh.
+- **Send test** opens an issue titled `alert(marmot): Test` and closes it right away for the `down` sample,
+  proving the token may create, comment and close; the other samples only read the repository, project or
+  team.
+- **Errors** (wrong token, unknown project, a Jira status without a transition) are stored on the channel's
+  `lastError`, e.g. `Jira has no transition from OPS-7 to "Done" (available: In Progress)`, and the delivery
+  is retried like any other.
 
 ### Email through the server SMTP settings
 

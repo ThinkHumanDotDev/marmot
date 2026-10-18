@@ -940,9 +940,10 @@ export interface NotificationSentHistory {
   id: number;
   organization?: (number | null) | Organization;
   monitor: number | Monitor;
-  type: 'certificate' | 'domain' | 'ct';
+  type: 'certificate' | 'domain' | 'ct' | 'issue';
   days: number;
   fingerprint?: string | null;
+  externalId?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2823,6 +2824,7 @@ export interface NotificationSentHistorySelect<T extends boolean = true> {
   type?: T;
   days?: T;
   fingerprint?: T;
+  externalId?: T;
   updatedAt?: T;
   createdAt?: T;
 }
