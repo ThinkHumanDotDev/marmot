@@ -16,7 +16,9 @@ import {
   type SlaReportData,
   type SlaZone,
 } from '@/lib/sla'
-import type { SlaReport, SlaTarget, User } from '@/payload-types'
+import type { StatusPageOption } from '@/components/sla/sla-api'
+import type { Notification, SlaReport, SlaTarget, StatusPage, User } from '@/payload-types'
+import { pageComponents } from '@/server/status-pages/events'
 import { parseDocId } from '@/server/notifications/api'
 import { relationId } from '@/server/maintenance/serialize'
 
@@ -128,4 +130,61 @@ export function reportResponse(
     })
   }
   return Response.json(data, { headers: { 'Cache-Control': cache } })
+}
+
+/**
+ * Status pages of the organization the user may read, with their groups and visible components,
+ * for component and group targets (#274).
+ */
+export async function statusPageOptions(ctx: SlaUserContext): Promise<StatusPageOption[]> {
+  const { docs } = await ctx.payload.find({
+    collection: 'status-pages',
+    where: { organization: { equals: ctx.orgId } },
+    sort: 'title',
+    depth: 0,
+    limit: 200,
+    pagination: false,
+    user: ctx.user,
+    overrideAccess: false,
+  })
+  return Promise.all(
+    (docs as StatusPage[]).map(async (page) => {
+      const names = new Map((await pageComponents(ctx.payload, page)).map((c) => [c.id, c.name]))
+      return {
+        id: String(page.id),
+        title: page.title,
+        groups: (page.groups ?? []).flatMap((group) =>
+          group.id
+            ? [
+                {
+                  id: group.id,
+                  name: group.name,
+                  components: (group.monitors ?? []).flatMap((row) =>
+                    row.id && names.has(row.id) ? [{ id: row.id, name: names.get(row.id)! }] : [],
+                  ),
+                },
+              ]
+            : [],
+        ),
+      }
+    }),
+  )
+}
+
+/** Notification channels of the organization the user may read, for error budget alerts. */
+export async function channelOptions(ctx: SlaUserContext): Promise<{ id: string; name: string }[]> {
+  const { docs } = await ctx.payload
+    .find({
+      collection: 'notifications',
+      where: { organization: { equals: ctx.orgId } },
+      sort: 'name',
+      depth: 0,
+      limit: 500,
+      pagination: false,
+      user: ctx.user,
+      overrideAccess: false,
+      select: { name: true },
+    })
+    .catch(() => ({ docs: [] as Pick<Notification, 'id' | 'name'>[] }))
+  return docs.map((doc) => ({ id: String(doc.id), name: doc.name }))
 }

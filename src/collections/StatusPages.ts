@@ -301,6 +301,14 @@ const removeViewers: CollectionBeforeDeleteHook = async ({ id, req }) => {
     req,
     overrideAccess: true,
   })
+  // SLA targets on the page's components and groups (#274) lose their subject with it.
+  await req.payload.delete({
+    collection: 'sla-targets',
+    where: { statusPage: { equals: id } },
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
 }
 
 export const StatusPages: CollectionConfig = {

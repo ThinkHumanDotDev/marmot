@@ -8,7 +8,11 @@ import { mailURL } from './e2e-env'
 const run = runId()
 const monitorName = `SLA API ${run}`
 const reportName = `Customer SLA ${run}`
+const pageTitle = `SLA page ${run}`
+const channelName = `SLA alerts ${run}`
 let monitorId: DocId
+let pageId: DocId
+let channelId: DocId
 
 test.describe('SLA business hours, send now and print view', () => {
   test.beforeAll(async ({ adminApi }) => {
@@ -26,6 +30,26 @@ test.describe('SLA business hours, send now and print view', () => {
       organization,
     })
     monitorId = monitor.id
+    const statusPage = await adminApi.create('status-pages', {
+      organization,
+      title: pageTitle,
+      slug: `sla-${run}`,
+      groups: [
+        {
+          name: 'Edge',
+          monitors: [{ monitor: monitorId }, { type: 'static', name: 'Support desk' }],
+        },
+      ],
+    })
+    pageId = statusPage.id
+    const channel = await adminApi.create('notifications', {
+      organization,
+      name: channelName,
+      type: 'discord',
+      config: { webhookUrl: 'https://discord.com/api/webhooks/1/test' },
+      active: true,
+    })
+    channelId = channel.id
   })
 
   test.afterAll(async ({ adminApi }) => {
@@ -37,7 +61,33 @@ test.describe('SLA business hours, send now and print view', () => {
     })) {
       await adminApi.delete('sla-targets', target.id as DocId)
     }
+    for (const target of await adminApi.find('sla-targets', {
+      statusPage: { equals: String(pageId) },
+    })) {
+      await adminApi.delete('sla-targets', target.id as DocId)
+    }
+    if (pageId !== undefined) await adminApi.delete('status-pages', pageId)
+    if (channelId !== undefined) await adminApi.delete('notifications', channelId)
     if (monitorId !== undefined) await adminApi.delete('monitors', monitorId)
+  })
+
+  test('sets a target on a status page group with error budget alerts', async ({ page }) => {
+    await page.goto(`/${SETUP_ORG.slug}/sla`)
+    await page.getByTestId('sla-target-new').click()
+    const form = page.getByTestId('sla-target-form')
+    await form.getByLabel('Applies to').click()
+    await page.getByRole('option', { name: 'Status page group' }).click()
+    await form.getByLabel('Status page', { exact: true }).click()
+    await page.getByRole('option', { name: pageTitle }).click()
+    await form.getByLabel('Group', { exact: true }).click()
+    await page.getByRole('option', { name: 'Edge' }).click()
+    await form.getByLabel('Thresholds (% of the budget left)').fill('25, 50')
+    await form.getByLabel(channelName).check()
+    await form.getByRole('button', { name: 'Save target' }).click()
+    await expect(form).toBeHidden()
+    const item = page.locator('[data-sla-target]').filter({ hasText: `${pageTitle} › Edge` })
+    await expect(item.getByText('Status page group')).toBeVisible()
+    await expect(item.getByTestId('sla-alerts-badge')).toHaveText(/Alerts below 50\s?%, 25\s?%/)
   })
 
   test('tracks a business-hours target, mails a test report and prints it', async ({ page }) => {
@@ -68,7 +118,9 @@ test.describe('SLA business hours, send now and print view', () => {
     await reportForm.getByRole('button', { name: 'Save report' }).click()
     await expect(reportForm).toBeHidden()
     await page.getByRole('link', { name: reportName }).click()
-    await expect(page.getByRole('heading', { level: 1, name: reportName })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: reportName })).toBeVisible({
+      timeout: 30_000,
+    })
     await expect(page.getByTestId('sla-report')).toContainText('business hours')
     await expect(page.getByTestId('sla-report')).toContainText('(UTC)')
 

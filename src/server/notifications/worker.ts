@@ -44,6 +44,11 @@ import {
 import { processWebhookDeliveryJob } from '@/server/webhooks/deliver'
 import { isWebhookJobName, type WebhookDeliveryJobData } from '@/server/webhooks/queue'
 import {
+  isSlaBudgetJobName,
+  processSlaBudgetAlertJob,
+  type SlaBudgetAlertData,
+} from '@/server/sla/alerts'
+import {
   isSlaJobName,
   processSlaReportSendJob,
   type SlaReportSendData,
@@ -271,8 +276,8 @@ export interface StartNotificationWorkerOptions extends QueueFactoryOptions {
  * Start the BullMQ worker consuming the notifications queue: monitor alerts (`notify`), maintenance
  * windows (`notify-maintenance`), incident acknowledgements and resolutions (`incident-notify`) ,
  * status page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`), outbound webhook
- * deliveries (`webhook-delivery`), scheduled SLA reports (`sla-report-send`) and phone-call
- * retries (`voice-call-retry`).
+ * deliveries (`webhook-delivery`), scheduled SLA reports (`sla-report-send`), SLA error budget
+ * alerts (`sla-budget-alert`) and phone-call retries (`voice-call-retry`).
  */
 export function startNotificationWorker(
   payload: Payload,
@@ -312,6 +317,11 @@ export function startNotificationWorker(
       }
       if (isWebhookJobName(job.name)) {
         await processWebhookDeliveryJob(payload, job as unknown as Job<WebhookDeliveryJobData>)
+        return
+      }
+      // SLA error budget alerts (#274).
+      if (isSlaBudgetJobName(job.name)) {
+        await processSlaBudgetAlertJob(payload, job as unknown as Job<SlaBudgetAlertData>)
         return
       }
       // Phone-call alerts calling again (#146).

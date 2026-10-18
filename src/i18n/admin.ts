@@ -680,7 +680,14 @@ export const adminTranslations = {
       slaTargets: {
         targetDescription: 'Percent of the window the monitor must be up, e.g. 99.9.',
         calculationDescription:
-          'duration: time not down / time with a known state. checks: successful checks / all checks.',
+          'duration: time not down / time with a known state. checks: successful checks / all checks. manual (components and groups): downtime from incident impacts.',
+        subjectDescription:
+          'monitor: one monitor. component / group: a component or a group of a status page.',
+        componentDescription:
+          'Row id of the component (groups[].monitors[].id) or group (groups[].id).',
+        thresholdsDescription:
+          'Notify when the remaining error budget drops below these percentages (once per period each).',
+        budgetAlertStateDescription: 'Thresholds already alerted on in the current period.',
         excludeMaintenanceDescription:
           'Leave maintenance windows out of the uptime and the error budget.',
         businessHoursDescription:
