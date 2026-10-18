@@ -189,6 +189,12 @@ const subscriberCreateBody = z.object({
 
 const subscriberPatchBody = z.object({
   components: z.array(z.string()).optional(),
+  audiences: z
+    .array(id)
+    .optional()
+    .describe(
+      'Audiences of an audience page (#278); a signed-in viewer’s sign-up only takes audiences listing the viewer',
+    ),
   headers: subscriberHeaders.optional(),
 })
 
@@ -1638,7 +1644,7 @@ export const OPERATIONS: OperationSpec[] = [
     method: 'PATCH',
     path: `${ORG}/status-pages/{id}/subscribers/{subscriberId}`,
     operationId: 'updateSubscriber',
-    summary: "Change a subscriber's components or webhook headers",
+    summary: "Change a subscriber's components, audiences or webhook headers",
     tag: 'Subscribers',
     permission: 'subscriber:manage',
     body: { schema: subscriberPatchBody },

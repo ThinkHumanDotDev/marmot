@@ -3,12 +3,15 @@ import { isSubscriberChannel } from '@/lib/status-page-subscribers'
 import { relationId } from '@/server/audit/collection-hooks'
 import { actorFromRequest, AUDIT_SKIP_CONTEXT } from '@/server/audit/context'
 import { actorFields, recordRequestAuditEvent } from '@/server/security/audit'
+import type { StatusPageSubscriber } from '@/payload-types'
+import { findPageAudiences } from '@/server/status-pages/audiences'
 import { errorResponse, jsonError } from '@/server/status-pages/http'
 import { errorMessageFor, errorText } from '@/server/request-locale'
 import {
   MAX_IMPORT_ROWS,
   csvSubscriberRows,
   ownerContext,
+  resolveCsvAudiences,
 } from '@/server/status-pages/subscribers/owner'
 
 export const dynamic = 'force-dynamic'
@@ -27,7 +30,8 @@ async function readCsv(request: Request): Promise<string | null> {
 
 /**
  * POST /api/orgs/:orgId/status-pages/:id/subscribers/import — CSV (`text/csv` body or multipart
- * `file`) with `channel`, `target` and optionally `components` (`;`-separated component ids).
+ * `file`) with `channel`, `target` and optionally `components` (`;`-separated component ids) and
+ * `audiences` (`;`-separated audience names or ids of the page, #278).
  * Imported subscribers are confirmed at once (`source: import`); existing and invalid rows are
  * skipped and reported. Needs `subscriber:manage`. At most 10 000 rows.
  */
@@ -48,9 +52,17 @@ export async function POST(request: Request, { params }: RouteContext) {
   let created = 0
   const skipped: { line: number; reason: string }[] = []
   try {
+    const pageAudiences = rows.some((row) => row.audiences?.length)
+      ? await findPageAudiences(payload, page.id)
+      : []
     for (const row of rows) {
       if (!isSubscriberChannel(row.channel)) {
         skipped.push({ line: row.line, reason: errorText(request, 'subscriberTargetInvalid') })
+        continue
+      }
+      const audiences = row.audiences ? resolveCsvAudiences(row.audiences, pageAudiences) : []
+      if (!audiences) {
+        skipped.push({ line: row.line, reason: errorText(request, 'subscriberAudiencesInvalid') })
         continue
       }
       try {
@@ -62,6 +74,7 @@ export async function POST(request: Request, { params }: RouteContext) {
             channel: row.channel,
             target: row.target,
             components: row.components,
+            audiences: audiences as unknown as StatusPageSubscriber['audiences'],
             source: 'import',
           },
           depth: 0,

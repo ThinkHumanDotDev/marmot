@@ -1,12 +1,33 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionAfterChangeHook, CollectionConfig } from 'payload'
 
 import { orgScoped } from '@/access/org-scoped'
 import { adminGroup, adminT } from '@/i18n/admin'
+import type { StatusPageViewer } from '@/payload-types'
+import { reconcileViewerSubscriptions } from '@/server/status-pages/subscribers/audience-membership'
+
+import { relId } from './shared'
 
 export const STATUS_PAGE_VIEWER_STATUSES = ['active', 'revoked'] as const
 export type StatusPageViewerStatus = (typeof STATUS_PAGE_VIEWER_STATUSES)[number]
 
 const never = () => false
+
+/** Revoking a viewer ends the subscriptions they made on an `audience` page (#278). */
+const endSubscriptionsOnRevoke: CollectionAfterChangeHook<StatusPageViewer> = async ({
+  doc,
+  previousDoc,
+  operation,
+  req,
+}) => {
+  if (operation !== 'update' || doc.status !== 'revoked' || previousDoc?.status === 'revoked') {
+    return doc
+  }
+  const pageId = relId(doc.page)
+  if (pageId !== null) {
+    await reconcileViewerSubscriptions(req.payload, pageId, { req, viewerIds: [doc.id] })
+  }
+  return doc
+}
 
 /**
  * Visitors of `email-domain` status pages who signed in through a magic link: one row per page and
@@ -29,6 +50,9 @@ export const StatusPageViewers: CollectionConfig = {
     create: never,
     update: orgScoped('status-page:update'),
     delete: orgScoped('status-page:update'),
+  },
+  hooks: {
+    afterChange: [endSubscriptionsOnRevoke],
   },
   indexes: [{ fields: ['page', 'email'], unique: true }],
   fields: [

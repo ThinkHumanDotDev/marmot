@@ -102,6 +102,8 @@ export const ownerSubscriber = (doc: StatusPageSubscriber) => ({
   target: doc.target,
   components: doc.components ?? [],
   audiences: (doc.audiences ?? []).map((a) => String(typeof a === 'object' ? a.id : a)),
+  /** Self sign-up of a signed-in viewer (#278): follows only audiences that list the viewer. */
+  viewerBound: doc.viewer != null,
   source: doc.source ?? 'self_signup',
   confirmedAt: doc.confirmedAt ?? null,
   createdAt: doc.createdAt,
@@ -155,9 +157,15 @@ const csvCell = (value: string): string =>
     ? `"${(/^[=+\-@]/.test(value) ? `'${value}` : value).replace(/"/g, '""')}"`
     : value
 
-/** `channel,target,components,source,confirmed_at`; components are `;`-separated ids. */
-export function subscribersToCsv(docs: StatusPageSubscriber[]): string {
-  const rows = [['channel', 'target', 'components', 'source', 'confirmed_at']]
+/**
+ * `channel,target,components,source,confirmed_at,audiences`; components are `;`-separated ids,
+ * audiences (#278) `;`-separated names (`audienceNames`: id → name; unknown ids are left out).
+ */
+export function subscribersToCsv(
+  docs: StatusPageSubscriber[],
+  audienceNames: ReadonlyMap<string, string> = new Map(),
+): string {
+  const rows = [['channel', 'target', 'components', 'source', 'confirmed_at', 'audiences']]
   for (const doc of docs) {
     rows.push([
       doc.channel,
@@ -165,6 +173,10 @@ export function subscribersToCsv(docs: StatusPageSubscriber[]): string {
       (doc.components ?? []).join(';'),
       doc.source ?? '',
       doc.confirmedAt ?? '',
+      (doc.audiences ?? [])
+        .map((a) => audienceNames.get(String(typeof a === 'object' ? a.id : a)))
+        .filter((name): name is string => Boolean(name))
+        .join(';'),
     ])
   }
   return `${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}\r\n`
@@ -211,9 +223,20 @@ export interface CsvSubscriberRow {
   channel: string
   target: string
   components: string[]
+  /** Audience names or ids (#278); `null` when the file has no `audiences` column. */
+  audiences: string[] | null
 }
 
-/** Rows of an import file; the header row names the columns (`channel`, `target`, `components`). */
+const list = (cell: string | undefined): string[] =>
+  (cell ?? '')
+    .split(/[;|]/)
+    .map((c) => c.trim())
+    .filter(Boolean)
+
+/**
+ * Rows of an import file; the header row names the columns (`channel`, `target`, `components`,
+ * `audiences`).
+ */
 export function csvSubscriberRows(text: string): CsvSubscriberRow[] | null {
   const rows = parseCsv(text)
   if (rows.length === 0) return null
@@ -221,19 +244,35 @@ export function csvSubscriberRows(text: string): CsvSubscriberRow[] | null {
   const channel = header.indexOf('channel')
   const target = header.indexOf('target')
   const components = header.indexOf('components')
+  const audiences = header.indexOf('audiences')
   if (channel < 0 || target < 0) return null
   return rows.slice(1).map((row, i) => ({
     line: i + 2,
     channel: (row[channel] ?? '').trim().toLowerCase(),
     target: (row[target] ?? '').trim().replace(/^'(?=[=+\-@])/, ''),
-    components:
-      components >= 0
-        ? (row[components] ?? '')
-            .split(/[;|]/)
-            .map((c) => c.trim())
-            .filter(Boolean)
-        : [],
+    components: components >= 0 ? list(row[components]) : [],
+    audiences:
+      audiences >= 0 ? list(row[audiences]).map((a) => a.replace(/^'(?=[=+\-@])/, '')) : null,
   }))
+}
+
+/**
+ * Resolves the audience names (case-insensitive) or ids of an import row against the page's
+ * audiences; `null` when one is unknown.
+ */
+export function resolveCsvAudiences(
+  tokens: readonly string[],
+  audiences: readonly { id: string | number; name: string }[],
+): string[] | null {
+  const byId = new Map(audiences.map((a) => [String(a.id), String(a.id)]))
+  const byName = new Map(audiences.map((a) => [a.name.trim().toLowerCase(), String(a.id)]))
+  const out = new Set<string>()
+  for (const token of tokens) {
+    const id = byName.get(token.toLowerCase()) ?? byId.get(token)
+    if (!id) return null
+    out.add(id)
+  }
+  return [...out]
 }
 
 export const MAX_IMPORT_ROWS = 10_000

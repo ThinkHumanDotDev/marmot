@@ -55,6 +55,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       target: body.target,
       components: body.components,
       audiences: access.audience?.audiences,
+      viewer: access.viewer?.id,
     },
     request,
     isLocale(body.locale, offeredLocales(page))

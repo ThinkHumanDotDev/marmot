@@ -1652,6 +1652,7 @@ export interface StatusPageSubscriber {
   channel: 'email' | 'sms' | 'webhook' | 'slack';
   target: string;
   audiences?: (number | StatusPageAudience)[] | null;
+  viewer?: (number | null) | StatusPageViewer;
   components?: string[] | null;
   source?: ('self_signup' | 'added_by_owner' | 'import') | null;
   confirmedAt?: string | null;
@@ -3444,6 +3445,7 @@ export interface StatusPageSubscribersSelect<T extends boolean = true> {
   channel?: T;
   target?: T;
   audiences?: T;
+  viewer?: T;
   components?: T;
   source?: T;
   confirmedAt?: T;

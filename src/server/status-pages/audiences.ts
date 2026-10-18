@@ -20,7 +20,7 @@
  * address is matched against the page's audiences on every request; nothing in the URL or the
  * query string can widen it.
  */
-import type { Payload } from 'payload'
+import type { Payload, PayloadRequest } from 'payload'
 
 import {
   audienceComponents,
@@ -39,6 +39,8 @@ export interface AudienceGrant {
   audiences: string[]
   /** Union of their component ids. */
   components: string[]
+  /** Their names, in the same order as `audiences` ("viewing as", #278). */
+  names: string[]
 }
 
 type Groups = StatusPage['groups']
@@ -90,7 +92,7 @@ export function scopePageToComponents<T extends Pick<StatusPage, 'access' | 'gro
  */
 export function scopePageForVisitor<T extends Pick<StatusPage, 'access' | 'groups'>>(
   page: T,
-  decision: { allowed: boolean; audience?: AudienceGrant | null },
+  decision: { allowed: boolean; audience?: Partial<AudienceGrant> | null },
 ): T {
   if (!isAudiencePage(page)) return page
   const components = decision.allowed ? (decision.audience?.components ?? []) : []
@@ -180,6 +182,7 @@ export function isMetricVisibleOn(
 export async function findPageAudiences(
   payload: Payload,
   pageId: string | number,
+  req?: PayloadRequest,
 ): Promise<StatusPageAudience[]> {
   const { docs } = await payload.find({
     collection: 'status-page-audiences',
@@ -189,6 +192,7 @@ export async function findPageAudiences(
     limit: MAX_AUDIENCES_PER_PAGE,
     pagination: false,
     overrideAccess: true,
+    req,
   })
   return docs
 }
@@ -209,6 +213,7 @@ export async function audienceGrantFor(
 export const grantOf = (audiences: readonly StatusPageAudience[]): AudienceGrant => ({
   audiences: audiences.map((a) => String(a.id)),
   components: [...audienceComponents(audiences)],
+  names: audiences.map((a) => a.name),
 })
 
 /**

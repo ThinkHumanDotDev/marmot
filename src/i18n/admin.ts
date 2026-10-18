@@ -658,6 +658,8 @@ export const adminTranslations = {
         componentsDescription: 'Component ids of the page; empty means every component.',
         audiencesDescription:
           'Audiences of an audience-mode page whose components this subscriber hears about.',
+        viewerDescription:
+          'The signed-in viewer who subscribed; the subscription ends when no audience lists them.',
         confirmedAtDescription: 'Unconfirmed self sign-ups receive nothing.',
         localeDescription: 'Language of the messages.',
         secretDescription: 'Signs every webhook delivery (X-Marmot-Signature).',

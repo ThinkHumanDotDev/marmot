@@ -1,12 +1,20 @@
 'use client'
 
-import { Download, Plus, Trash2, Upload, X } from 'lucide-react'
+import { Download, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -438,6 +446,116 @@ function AddSubscriberForm({
   )
 }
 
+/** Changes the audiences of one subscriber of an audience page (#278). */
+function AudiencesDialog({
+  orgId,
+  pageId,
+  row,
+  audiences,
+  onClose,
+  onSaved,
+}: {
+  orgId: OrgId
+  pageId: OrgId
+  row: SubscriberRow | null
+  audiences: { id: string; name: string }[]
+  onClose: () => void
+  onSaved: () => void
+}) {
+  return (
+    <Dialog open={row !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        {row && (
+          <AudiencesForm
+            key={String(row.id)}
+            orgId={orgId}
+            pageId={pageId}
+            row={row}
+            audiences={audiences}
+            onClose={onClose}
+            onSaved={onSaved}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function AudiencesForm({
+  orgId,
+  pageId,
+  row,
+  audiences,
+  onClose,
+  onSaved,
+}: {
+  orgId: OrgId
+  pageId: OrgId
+  row: SubscriberRow
+  audiences: { id: string; name: string }[]
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const t = useTranslations('statusPages.subscribers.list.audiencesDialog')
+  const [chosen, setChosen] = React.useState<string[]>(row.audiences)
+  const [busy, setBusy] = React.useState(false)
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault()
+    setBusy(true)
+    try {
+      await subscribersApi.update(orgId, pageId, row.id, { audiences: chosen })
+      toast.success(t('saved'))
+      onSaved()
+      onClose()
+    } catch (error) {
+      toast.error(error instanceof Error && error.message ? error.message : t('saveFailed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={save} className="flex flex-col gap-4">
+      <DialogHeader>
+        <DialogTitle>{t('title')}</DialogTitle>
+        <DialogDescription className="break-all">
+          {t('description', { target: row.target })}
+        </DialogDescription>
+      </DialogHeader>
+      {row.viewerBound && <p className="text-xs text-muted-foreground">{t('viewerHint')}</p>}
+      <fieldset className="flex flex-col gap-2">
+        <legend className="sr-only">{t('title')}</legend>
+        {audiences.map((audience) => (
+          <label key={audience.id} className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="accent-primary"
+              checked={chosen.includes(audience.id)}
+              onChange={(e) =>
+                setChosen((list) =>
+                  e.target.checked
+                    ? [...list, audience.id]
+                    : list.filter((id) => id !== audience.id),
+                )
+              }
+            />
+            {audience.name}
+          </label>
+        ))}
+      </fieldset>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onClose}>
+          {t('cancel')}
+        </Button>
+        <Button type="submit" disabled={busy}>
+          {busy ? t('saving') : t('save')}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+}
+
 /** Builder tab "Subscribers": settings, owner-added subscribers, the list, CSV import/export. */
 export function SubscribersPanel({
   orgId,
@@ -469,9 +587,14 @@ export function SubscribersPanel({
   const names = React.useMemo(() => new Map(components.map((c) => [c.id, c.name])), [components])
   const audiencePage = page.access === 'audience'
   const [audiences, setAudiences] = React.useState<{ id: string; name: string }[] | null>(null)
+  const audienceNames = React.useMemo(
+    () => new Map((audiences ?? []).map((a) => [a.id, a.name])),
+    [audiences],
+  )
+  const [editing, setEditing] = React.useState<SubscriberRow | null>(null)
 
   React.useEffect(() => {
-    if (!audiencePage || !canManage) return
+    if (!audiencePage || !(canManage || canRead)) return
     let cancelled = false
     statusPagesApi.audiences
       .list(orgId, page.id)
@@ -484,7 +607,7 @@ export function SubscribersPanel({
     return () => {
       cancelled = true
     }
-  }, [audiencePage, canManage, orgId, page.id])
+  }, [audiencePage, canManage, canRead, orgId, page.id])
 
   const load = React.useCallback(async () => {
     if (!canRead) return
@@ -610,6 +733,7 @@ export function SubscribersPanel({
                     <TableHead>{t('columns.target')}</TableHead>
                     <TableHead>{t('columns.channel')}</TableHead>
                     <TableHead>{t('columns.components')}</TableHead>
+                    {audiencePage && <TableHead>{t('columns.audiences')}</TableHead>}
                     <TableHead>{t('columns.status')}</TableHead>
                     <TableHead>{t('columns.added')}</TableHead>
                     {canManage && <TableHead className="w-10" />}
@@ -635,6 +759,36 @@ export function SubscribersPanel({
                           ? t('allComponents')
                           : t('componentCount', { count: row.components.length })}
                       </TableCell>
+                      {audiencePage && (
+                        <TableCell className="text-xs" data-subscriber-audiences>
+                          <span className="flex flex-wrap items-center gap-1">
+                            {row.audiences.filter((id) => audienceNames.has(id)).length === 0 ? (
+                              <span className="text-destructive">{t('noAudience')}</span>
+                            ) : (
+                              row.audiences
+                                .filter((id) => audienceNames.has(id))
+                                .map((id) => (
+                                  <Badge key={id} variant="outline">
+                                    {audienceNames.get(id)}
+                                  </Badge>
+                                ))
+                            )}
+                            {canManage && audiences && audiences.length > 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="size-7"
+                                aria-label={t('editAudiences', { target: row.target })}
+                                title={row.viewerBound ? t('viewerBound') : undefined}
+                                onClick={() => setEditing(row)}
+                              >
+                                <Pencil aria-hidden />
+                              </Button>
+                            )}
+                          </span>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <span className="flex flex-wrap gap-1">
                           {row.confirmedAt ? (
@@ -668,6 +822,16 @@ export function SubscribersPanel({
                 </TableBody>
               </Table>
             </div>
+          )}
+          {audiencePage && canManage && (
+            <AudiencesDialog
+              orgId={orgId}
+              pageId={page.id}
+              row={editing}
+              audiences={audiences ?? []}
+              onClose={() => setEditing(null)}
+              onSaved={() => void load()}
+            />
           )}
           {list && list.totalPages > 1 && (
             <div className="flex items-center justify-end gap-2 text-sm">
