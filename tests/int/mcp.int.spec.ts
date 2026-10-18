@@ -14,6 +14,7 @@ import { apiKeyPrincipal, authenticateRequest } from '@/server/auth/request-auth
 import { callRoute, type RouteHandler } from '@/server/mcp/dispatch'
 import { handleMcpRequest } from '@/server/mcp/handler'
 import { MCP_TOOLS } from '@/server/mcp/tools'
+import { setDeclaredJobSink } from '@/server/declared-incidents/notify'
 import { setIncidentJobSink } from '@/server/incidents/notify'
 import {
   onIncidentUpdatePosted,
@@ -108,6 +109,7 @@ describe('MCP server', () => {
     payload = await getPayload({ config })
     // Monitor incident notifications go to a queue; nothing to deliver in this suite.
     setIncidentJobSink(async () => undefined)
+    setDeclaredJobSink(async () => undefined)
     unsubscribe = onIncidentUpdatePosted((event) => {
       posted.push(event)
     })
@@ -173,12 +175,14 @@ describe('MCP server', () => {
   afterAll(async () => {
     unsubscribe()
     setIncidentJobSink(null)
+    setDeclaredJobSink(null)
     const orgIds = [orgA?.id, orgB?.id].filter(Boolean)
     if (orgIds.length) {
       const where = { organization: { in: orgIds } }
       await payload.delete({ collection: 'incidents', where })
       await payload.delete({ collection: 'status-pages', where })
       await payload.delete({ collection: 'maintenance', where })
+      await payload.delete({ collection: 'declared-incidents', where })
       await payload.delete({ collection: 'monitor-incidents', where })
       await payload.delete({ collection: 'heartbeats', where })
       await payload.delete({ collection: 'monitors', where })
@@ -515,6 +519,97 @@ describe('MCP server', () => {
       ['monitor_incident.acknowledged', 'mcp', 'mcp write · acknowledge_monitor_incident'],
       ['monitor_incident.resolved', 'mcp', 'mcp write · resolve_monitor_incident'],
     ])
+  })
+
+  it('lists, declares, updates and annotates declared incidents, audited as MCP', async () => {
+    const outage = await payload.create({
+      collection: 'monitor-incidents',
+      overrideAccess: true,
+      depth: 0,
+      data: {
+        organization: orgA.id,
+        monitor: monitor.id,
+        status: 'open',
+        startedAt: new Date(Date.now() - 600_000).toISOString(),
+        timeline: [{ type: 'opened', at: new Date().toISOString() }],
+      } as never,
+    })
+
+    const reader = await connect(readKey)
+    const readerTools = (await reader.listTools()).tools.map((t) => t.name)
+    expect(readerTools).toEqual(
+      expect.arrayContaining(['list_declared_incidents', 'get_declared_incident']),
+    )
+    expect(readerTools).not.toContain('declare_incident')
+    await reader.close()
+
+    const writer = await connect(writeKey)
+    const declared = await call(writer, 'declare_incident', {
+      title: 'API outage',
+      severity: 'critical',
+      monitorIncident: outage.id,
+    })
+    expect(declared.isError).toBe(false)
+    const incident = declared.data as { id: string; startedAt: string; status: string }
+    expect(incident.status).toBe('open')
+    expect(incident.startedAt).toBe(new Date(String(outage.startedAt)).toISOString())
+
+    const updated = await call(writer, 'update_declared_incident', {
+      declaredIncidentId: incident.id,
+      status: 'mitigated',
+      summary: 'Failed over to the replica',
+      actionItems: [{ title: 'Add a replication lag alert' }],
+    })
+    expect(updated.isError).toBe(false)
+    expect(updated.data).toMatchObject({
+      status: 'mitigated',
+      summary: 'Failed over to the replica',
+      postmortem: { actionItems: [{ title: 'Add a replication lag alert', done: false }] },
+    })
+    const invalid = await call(writer, 'update_declared_incident', {
+      declaredIncidentId: incident.id,
+      status: 'closed',
+    })
+    expect(invalid.isError).toBe(true)
+
+    const noted = await call(writer, 'add_declared_incident_note', {
+      declaredIncidentId: incident.id,
+      message: 'Replica healthy',
+    })
+    expect(noted.isError).toBe(false)
+
+    const list = await call(writer, 'list_declared_incidents', {
+      status: 'active',
+      severity: 'critical',
+    })
+    const listed = list.data as {
+      incidents: { id: string; timelineEntries: number; postmortem: { openActionItems: number } }[]
+      stats: { total: number; meanTimeToMitigate: number | null }
+    }
+    expect(listed.incidents.map((i) => i.id)).toEqual([incident.id])
+    expect(listed.incidents[0].postmortem.openActionItems).toBe(1)
+    expect(listed.stats.total).toBe(1)
+    expect(listed.stats.meanTimeToMitigate).toBeGreaterThanOrEqual(600)
+    const one = await call(writer, 'get_declared_incident', { declaredIncidentId: incident.id })
+    expect((one.data as { timeline: { type: string }[] }).timeline.at(-1)).toMatchObject({
+      type: 'note',
+    })
+    await writer.close()
+
+    const { docs } = await payload.find({
+      collection: 'audit-logs',
+      where: {
+        and: [
+          { organization: { equals: orgA.id } },
+          { entityType: { equals: 'declared_incident' } },
+          { entityId: { equals: String(incident.id) } },
+        ],
+      },
+      depth: 0,
+      overrideAccess: true,
+    })
+    expect((docs as AuditLog[]).every((row) => row.actorType === 'mcp')).toBe(true)
+    expect(docs.length).toBe(3)
   })
 
   it('publishes a discovery document', async () => {

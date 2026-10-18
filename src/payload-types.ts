@@ -1279,6 +1279,16 @@ export interface DeclaredIncident {
     content?: string | null;
     approvedBy?: (number | null) | User;
     approvedAt?: string | null;
+    actionItems?:
+      | {
+          title: string;
+          owner?: (number | null) | User;
+          dueDate?: string | null;
+          done?: boolean | null;
+          ticketUrl?: string | null;
+          id?: string | null;
+        }[]
+      | null;
   };
   postmortemSkipped?: boolean | null;
   lastActivityAt?: string | null;
@@ -1297,7 +1307,12 @@ export interface DeclaredIncident {
           | 'unlinked'
           | 'postmortem_drafted'
           | 'postmortem_approved'
-          | 'closed';
+          | 'closed'
+          | 'title_changed'
+          | 'summary_changed'
+          | 'started_changed'
+          | 'action_item_added'
+          | 'action_item_done';
         at: string;
         by?: (number | null) | User;
         from?: string | null;
@@ -2973,6 +2988,16 @@ export interface DeclaredIncidentsSelect<T extends boolean = true> {
         content?: T;
         approvedBy?: T;
         approvedAt?: T;
+        actionItems?:
+          | T
+          | {
+              title?: T;
+              owner?: T;
+              dueDate?: T;
+              done?: T;
+              ticketUrl?: T;
+              id?: T;
+            };
       };
   postmortemSkipped?: T;
   lastActivityAt?: T;

@@ -92,11 +92,55 @@ async function loadInOrg<C extends 'incidents' | 'monitor-incidents'>(
   return doc
 }
 
+type ActionItemRow = NonNullable<Postmortem['actionItems']>[number]
+
+/**
+ * The incoming action items as stored rows: rows keep their id only when it names a stored item (so
+ * a ticket link stays with its item), owners must be members, and new or newly done items are
+ * announced on the timeline.
+ */
+async function mergeActionItems(
+  req: PayloadRequest,
+  orgId: Id,
+  previous: ActionItemRow[],
+  incoming: ActionItemRow[],
+  event: (type: DeclaredTimelineType, extra?: { message?: string | null }) => void,
+): Promise<ActionItemRow[]> {
+  const before = new Map(previous.map((row) => [String(row.id), row]))
+  const owners = new Set<string>()
+  const rows = incoming.map((row) => {
+    const known = row.id ? before.get(String(row.id)) : undefined
+    // Rendered as links and read by issue trackers: only web URLs and calendar days.
+    if (row.ticketUrl && !/^https?:\/\/[^\s]+$/i.test(row.ticketUrl)) {
+      throw apiError('validationFailed', 400)
+    }
+    if (row.dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(row.dueDate)) {
+      throw apiError('validationFailed', 400)
+    }
+    const owner = relId(row.owner)
+    if (owner !== null && !sameId(owner, known?.owner)) owners.add(String(owner))
+    const next: ActionItemRow = {
+      title: row.title,
+      owner: owner as ActionItemRow['owner'],
+      dueDate: row.dueDate || null,
+      done: row.done === true,
+      ticketUrl: row.ticketUrl || null,
+    }
+    if (known) next.id = known.id
+    if (!known) event('action_item_added', { message: row.title })
+    else if (next.done && !known.done) event('action_item_done', { message: row.title })
+    return next
+  })
+  for (const owner of owners) await assertMember(req, orgId, owner)
+  return rows
+}
+
 const emptyPostmortem = (): Postmortem => ({
   status: 'none',
   content: '',
   approvedBy: null,
   approvedAt: null,
+  actionItems: [],
 })
 
 export const declaredIncidentBeforeChange: CollectionBeforeChangeHook<DeclaredIncident> = async ({
@@ -169,6 +213,21 @@ export const declaredIncidentBeforeChange: CollectionBeforeChangeHook<DeclaredIn
     if (severity !== prev.severity) {
       event('severity_changed', { from: prev.severity, to: severity })
     }
+    if (typeof data.title === 'string' && data.title !== prev.title) {
+      event('title_changed', { from: prev.title, to: data.title })
+    }
+    if (data.summary !== undefined && (data.summary || null) !== (prev.summary || null)) {
+      event('summary_changed')
+    }
+    if (
+      data.startedAt &&
+      new Date(data.startedAt).getTime() !== new Date(prev.startedAt).getTime()
+    ) {
+      event('started_changed', {
+        from: new Date(prev.startedAt).toISOString(),
+        to: new Date(data.startedAt).toISOString(),
+      })
+    }
   }
   if (data.startedAt && new Date(data.startedAt).getTime() > now.getTime() + 60_000) {
     throw apiError('declaredIncidentStartInFuture', 400)
@@ -215,6 +274,15 @@ export const declaredIncidentBeforeChange: CollectionBeforeChangeHook<DeclaredIn
     postmortem.approvedBy = actor as Postmortem['approvedBy']
     postmortem.approvedAt = at
     event('postmortem_approved')
+  }
+  if (Array.isArray(incoming?.actionItems)) {
+    postmortem.actionItems = await mergeActionItems(
+      req,
+      orgId,
+      prev?.postmortem?.actionItems ?? [],
+      incoming.actionItems,
+      event,
+    )
   }
   data.postmortem = postmortem
 

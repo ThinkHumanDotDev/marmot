@@ -5,7 +5,11 @@
  */
 import { z } from 'zod'
 
-import { DECLARED_INCIDENT_SEVERITIES, DECLARED_INCIDENT_STATUSES } from '@/lib/declared-incidents'
+import {
+  DECLARED_INCIDENT_SEVERITIES,
+  DECLARED_INCIDENT_STATUSES,
+  MAX_ACTION_ITEMS,
+} from '@/lib/declared-incidents'
 
 /** A relationship id from JSON: Postgres ids arrive as numbers or numeric strings, Mongo as strings. */
 const id = z.union([z.string().min(1).max(64), z.number().int().positive()])
@@ -24,6 +28,23 @@ export const declareIncidentSchema = z.object({
 })
 export type DeclareIncidentInput = z.infer<typeof declareIncidentSchema>
 
+/** A calendar day, `YYYY-MM-DD`. */
+const day = z.iso.date()
+
+/** One postmortem action item; rows that keep their `id` stay the same item (and its ticket link). */
+export const actionItemSchema = z.object({
+  id: z.string().min(1).max(64).optional(),
+  title: z.string().trim().min(1).max(500),
+  owner: id.nullish(),
+  dueDate: day.nullish(),
+  done: z.boolean().optional(),
+  ticketUrl: z
+    .url({ protocol: /^https?$/ })
+    .max(2000)
+    .nullish(),
+})
+export type ActionItemInput = z.infer<typeof actionItemSchema>
+
 export const updateDeclaredIncidentSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
@@ -35,6 +56,8 @@ export const updateDeclaredIncidentSchema = z
     statusPageIncident: id.nullable(),
     /** Markdown body of the postmortem; saving it makes the postmortem a draft. */
     postmortem: z.string().max(POSTMORTEM_MAX_LENGTH),
+    /** The postmortem's action items, replacing the stored list (rows keep their `id`). */
+    actionItems: z.array(actionItemSchema).max(MAX_ACTION_ITEMS),
     /** `true` approves the current postmortem. */
     approvePostmortem: z.literal(true),
     /** With `status: 'closed'`: close without an approved postmortem (admins only). */

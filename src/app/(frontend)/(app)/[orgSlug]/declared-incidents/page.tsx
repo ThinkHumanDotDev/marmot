@@ -5,8 +5,9 @@ import { getTranslations } from 'next-intl/server'
 import { DeclareDialog } from '@/components/declared-incidents/declare-dialog'
 import { DeclaredList } from '@/components/declared-incidents/declared-list'
 import { PageHeader } from '@/components/page-header'
+import { isDeclaredSeverity } from '@/lib/declared-incidents'
 import { memberChoices } from '@/server/declared-incidents/page-data'
-import { listDeclaredIncidents } from '@/server/declared-incidents/store'
+import { listDeclaredIncidents, parseCommanderFilter } from '@/server/declared-incidents/store'
 import { getOrgPageContext } from '@/server/monitors/page-data'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -18,16 +19,25 @@ export const dynamic = 'force-dynamic'
 
 interface DeclaredIncidentsPageProps {
   params: Promise<{ orgSlug: string }>
-  searchParams: Promise<{ status?: string }>
+  searchParams: Promise<{ status?: string; severity?: string; commander?: string; page?: string }>
 }
 
-/** Declared incidents (#101): active ones by default, every one with `?status=all`. */
+/**
+ * Declared incidents (#101): active ones by default, every one with `?status=all`; filtered by
+ * `severity` and `commander`, paginated with `page`, with the time-to-mitigate/resolve summary.
+ */
 export default async function DeclaredIncidentsPage({
   params,
   searchParams,
 }: DeclaredIncidentsPageProps) {
   const { orgSlug } = await params
-  const filter = (await searchParams).status === 'all' ? 'all' : 'active'
+  const query = await searchParams
+  const filters = {
+    status: query.status === 'all' ? 'all' : 'active',
+    severity: isDeclaredSeverity(query.severity) ? query.severity : null,
+    commander: query.commander || null,
+  } as const
+  const page = Math.max(1, Number.parseInt(query.page ?? '1', 10) || 1)
   const ctx = await getOrgPageContext(orgSlug, `/${orgSlug}/declared-incidents`)
   if (!ctx.allowed('declared-incident:read')) notFound()
   const t = await getTranslations('declaredIncidents')
@@ -35,11 +45,14 @@ export default async function DeclaredIncidentsPage({
 
   const [result, members] = await Promise.all([
     listDeclaredIncidents(ctx.payload, ctx.org.id, {
-      status: filter,
-      limit: 100,
+      status: filters.status,
+      severity: filters.severity,
+      commander: parseCommanderFilter(ctx.payload, filters.commander),
+      page,
+      limit: 25,
       user: ctx.requestUser,
     }),
-    canCreate ? memberChoices(ctx) : Promise.resolve([]),
+    memberChoices(ctx),
   ])
 
   return (
@@ -54,7 +67,16 @@ export default async function DeclaredIncidentsPage({
         }
       />
       <section className="p-4 sm:p-6 md:p-8">
-        <DeclaredList orgId={ctx.org.id} orgSlug={orgSlug} docs={result.docs} filter={filter} />
+        <DeclaredList
+          orgId={ctx.org.id}
+          orgSlug={orgSlug}
+          docs={result.docs}
+          stats={result.stats}
+          page={result.page}
+          totalPages={result.totalPages}
+          filters={filters}
+          members={members}
+        />
       </section>
     </>
   )

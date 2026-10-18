@@ -6443,7 +6443,13 @@
     },
     "filters": {
       "active": "Active",
-      "all": "All"
+      "all": "All",
+      "status": "Status",
+      "severity": "Severity",
+      "allSeverities": "All severities",
+      "commander": "Commander",
+      "anyCommander": "Anyone",
+      "unassigned": "Unassigned"
     },
     "list": {
       "declare": "Declare incident",
@@ -6454,7 +6460,10 @@
       "status": "Status",
       "commander": "Commander",
       "started": "Started",
-      "noCommander": "Unassigned"
+      "noCommander": "Unassigned",
+      "pagination": "Page {page} of {total}",
+      "previous": "Previous",
+      "next": "Next"
     },
     "declare": {
       "title": "Declare an incident",
@@ -6533,6 +6542,11 @@
       "postmortem_approved": "Approved the postmortem",
       "closed": "Closed the incident",
       "closedSkipped": "Closed the incident without a postmortem",
+      "title_changed": "Renamed the incident to “{to}”",
+      "summary_changed": "Edited the summary",
+      "started_changed": "Moved the start to {to}",
+      "action_item_added": "Added the action item “{title}”",
+      "action_item_done": "Completed the action item “{title}”",
       "system": "Marmot"
     },
     "postmortem": {
@@ -6559,7 +6573,60 @@
         "wentWell": "What went well",
         "wentWrong": "What went wrong",
         "actionItems": "Action items"
-      }
+      },
+      "preview": "Preview",
+      "write": "Edit"
+    },
+    "stats": {
+      "label": "Summary",
+      "total": "Incidents",
+      "active": "Active",
+      "canceledHint": "{canceled, plural, =0 {No false alarms} one {# canceled as a false alarm} other {# canceled as false alarms}}",
+      "mttm": "Mean time to mitigate",
+      "mttr": "Mean time to resolve",
+      "noData": "No data"
+    },
+    "edit": {
+      "open": "Edit details",
+      "title": "Edit the incident",
+      "description": "Change the title, summary and start time. The timeline records each change.",
+      "name": "Title",
+      "summary": "Summary",
+      "startedAt": "Started at",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "actionItems": {
+      "title": "Action items",
+      "empty": "No action items yet.",
+      "done": "Mark “{title}” done",
+      "owner": "Owner: {name}",
+      "noOwner": "Unassigned",
+      "due": "Due {date}",
+      "ticket": "Ticket",
+      "edit": "Edit “{title}”",
+      "remove": "Remove “{title}”",
+      "new": "New action item",
+      "editing": "Edit the action item",
+      "placeholder": "Add an alert on the replication lag",
+      "ownerLabel": "Owner",
+      "dueLabel": "Due date",
+      "ticketLabel": "Ticket URL",
+      "cancel": "Cancel",
+      "save": "Save item",
+      "add": "Add item",
+      "added": "Action item added",
+      "updated": "Action item updated",
+      "removed": "Action item removed",
+      "completed": "Action item completed",
+      "reopened": "Action item reopened"
+    },
+    "fromMonitor": {
+      "declare": "Declare incident",
+      "view": "View declared incident",
+      "title": "{monitor} is down",
+      "declared": "Incident declared",
+      "failed": "Could not declare the incident."
     }
   },
   "onCall": {
@@ -7437,13 +7504,19 @@
       "incidentsUpdate": "marmot incidents update ID --page SLUG|ID [--status STATUS] [--message TEXT] [--resolve] [--title TEXT] [--impact IMPACT] [--pinned]",
       "maintenanceList": "marmot maintenance list",
       "maintenanceCreate": "marmot maintenance create (--title TEXT --start DATETIME --end DATETIME [--description TEXT] [--timezone ZONE] | -f FILE) [--monitor KEY|ID]…",
+      "declaredList": "marmot declared-incidents list [--status active|all|STATUS] [--severity SEVERITY] [--commander ID|none] [--limit N]",
+      "declaredInfo": "marmot declared-incidents info ID",
+      "declaredDeclare": "marmot declared-incidents declare --title TEXT [--severity SEVERITY] [--summary TEXT] [--commander ID] [--start DATETIME] [--monitor-incident ID]",
+      "declaredUpdate": "marmot declared-incidents update ID [--status STATUS] [--severity SEVERITY] [--commander ID|none] [--title TEXT] [--summary TEXT] [--start DATETIME]",
+      "declaredNote": "marmot declared-incidents note ID --message TEXT",
       "import": "marmot import -f FILE [--dry-run]"
     },
     "args": {
       "monitor": "a monitor key or id",
       "statusPage": "a status page slug or id",
       "incident": "an incident id",
-      "target": "a URL or host name"
+      "target": "a URL or host name",
+      "declaredIncident": "a declared incident id"
     },
     "columns": {
       "id": "ID",
@@ -7468,7 +7541,10 @@
       "url": "URL",
       "org": "ORG",
       "apiKey": "API KEY",
-      "file": "FILE"
+      "file": "FILE",
+      "severity": "SEVERITY",
+      "commander": "COMMANDER",
+      "started": "STARTED"
     },
     "errors": {
       "notConfigured": "Not connected: missing {missing}. Set MARMOT_URL, MARMOT_API_KEY and MARMOT_ORG, pass --url, --api-key and --org, or run marmot login.",
@@ -7629,6 +7705,19 @@
       "invalidFile": "The monitors file is not valid:",
       "apiError": "The Marmot API answered {status}: {message}",
       "networkError": "Could not reach {url}: {message}"
+    },
+    "declared": {
+      "none": "No declared incidents.",
+      "more": "Showing {shown} of {total}; pass --limit (at most 100) or use the API for more.",
+      "declared": "Declared incident {id}: {title}",
+      "updated": "Updated declared incident {id}.",
+      "noted": "Added a note to declared incident {id}.",
+      "nothingToUpdate": "Nothing to update: pass --status, --severity, --commander, --title, --summary or --start.",
+      "unassigned": "unassigned",
+      "summary": "Summary",
+      "postmortem": "Postmortem",
+      "actionItems": "Action items",
+      "timeline": "Timeline"
     }
   },
   "pricing": {

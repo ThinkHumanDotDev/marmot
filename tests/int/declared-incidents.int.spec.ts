@@ -26,6 +26,7 @@ import type {
   User,
 } from '@/payload-types'
 import {
+  declaredIncidentFor,
   processDeclaredNotificationJob,
   runDeclaredReminders,
   setDeclaredJobSink,
@@ -355,7 +356,12 @@ describe('timeline', () => {
     })
     const stored = await raw(incident.id)
     expect(stored.summary).toBe('Search p95 at 4s')
-    expect(stored.timeline?.map((entry) => entry.type)).toEqual(['declared', 'note'])
+    // The earlier entries stay; the summary edit itself is recorded (#285).
+    expect(stored.timeline?.map((entry) => entry.type)).toEqual([
+      'declared',
+      'note',
+      'summary_changed',
+    ])
     expect(stored.declaredBy).toBe(member.user.id)
   })
 
@@ -591,5 +597,269 @@ describe('audit', () => {
     expect((docs as AuditLog[]).every((row) => String(row.actor) === String(member.user.id))).toBe(
       true,
     )
+  })
+})
+
+describe('follow-ups (#285)', () => {
+  it('edits the title, summary and start until the incident is closed, on the timeline', async () => {
+    const { body: incident } = await declare({ title: 'Checkout errrors', summary: 'Draft' })
+    const startedAt = new Date(Date.now() - 3 * 3600_000).toISOString()
+    const { response, body } = await patch(incident.id, {
+      title: 'Checkout errors',
+      summary: 'EU customers cannot pay',
+      startedAt,
+    })
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({ title: 'Checkout errors', summary: 'EU customers cannot pay' })
+    expect(body.startedAt).toBe(startedAt)
+    const types = body.timeline.map((entry) => entry.type)
+    expect(types).toEqual(
+      expect.arrayContaining(['title_changed', 'summary_changed', 'started_changed']),
+    )
+    expect(body.timeline.find((entry) => entry.type === 'title_changed')).toMatchObject({
+      from: 'Checkout errrors',
+      to: 'Checkout errors',
+    })
+    // An unchanged value records nothing.
+    const again = await patch(incident.id, { title: 'Checkout errors' })
+    expect(again.body.timeline).toHaveLength(body.timeline.length)
+
+    await patch(incident.id, { status: 'canceled' })
+    expect((await patch(incident.id, { title: 'Too late' })).response.status).toBe(409)
+  })
+
+  it('keeps structured postmortem action items with owners, ids and ticket links', async () => {
+    const { body: incident } = await declare({ title: 'Replication lag' })
+    const added = await patch(incident.id, {
+      actionItems: [
+        { title: 'Alert on lag', owner: admin.user.id, dueDate: '2026-11-01' },
+        { title: 'Runbook for failover' },
+      ],
+    })
+    expect(added.response.status).toBe(200)
+    const items = added.body.postmortem.actionItems
+    expect(items).toHaveLength(2)
+    expect(items[0]).toMatchObject({
+      title: 'Alert on lag',
+      owner: { id: String(admin.user.id), name: 'admin' },
+      dueDate: '2026-11-01',
+      done: false,
+      ticketUrl: null,
+    })
+    expect(added.body.timeline.filter((entry) => entry.type === 'action_item_added')).toHaveLength(
+      2,
+    )
+    // Saving action items leaves the postmortem text and status alone.
+    expect(added.body.postmortem.status).toBe('none')
+
+    const done = await patch(incident.id, {
+      actionItems: [
+        {
+          id: items[0].id,
+          title: items[0].title,
+          owner: items[0].owner?.id,
+          dueDate: items[0].dueDate,
+          ticketUrl: 'https://tracker.example/T-1',
+          done: true,
+        },
+        { id: items[1].id, title: items[1].title },
+      ],
+    })
+    expect(done.response.status).toBe(200)
+    const after = done.body.postmortem.actionItems
+    expect(after.map((item) => item.id)).toEqual(items.map((item) => item.id))
+    expect(after[0]).toMatchObject({ done: true, ticketUrl: 'https://tracker.example/T-1' })
+    expect(done.body.timeline.at(-1)).toMatchObject({
+      type: 'action_item_done',
+      message: 'Alert on lag',
+    })
+
+    // Removing an item drops it; owners must be members; tickets must be web links.
+    const removed = await patch(incident.id, {
+      actionItems: [{ id: after[1].id, title: after[1].title }],
+    })
+    expect(removed.body.postmortem.actionItems.map((item) => item.id)).toEqual([after[1].id])
+    const foreignOwner = await patch(incident.id, {
+      actionItems: [{ title: 'x', owner: outsider.user.id }],
+    })
+    expect(foreignOwner.response.status).toBe(400)
+    const script = await patch(incident.id, {
+      actionItems: [{ title: 'x', ticketUrl: 'javascript:alert(1)' }],
+    })
+    expect(script.response.status).toBe(400)
+    // The collection refuses them too, for writers that bypass the route's validation.
+    await expect(
+      payload.update({
+        collection: 'declared-incidents',
+        id: incident.id,
+        data: { postmortem: { actionItems: [{ title: 'x', ticketUrl: 'javascript:alert(1)' }] } },
+        user: asUser(member),
+        overrideAccess: false,
+      }),
+    ).rejects.toThrow()
+    expect((await raw(incident.id)).postmortem?.actionItems).toHaveLength(1)
+  })
+})
+
+describe('list filters and summary (#285)', () => {
+  let listOrg: Organization
+  let lead: Session
+  let helper: Session
+
+  type ListBody = {
+    docs: DeclaredIncidentSummary[]
+    totalDocs: number
+    totalPages: number
+    page: number
+    stats: {
+      total: number
+      active: number
+      canceled: number
+      meanTimeToMitigate: number | null
+      meanTimeToResolve: number | null
+    }
+  }
+
+  const listIn = async (query: string, session = lead) => {
+    const response = await listRoute(
+      request('GET', undefined, session, `http://localhost/x?${query}`),
+      { params: params(listOrg.id) },
+    )
+    return (await response.json()) as ListBody
+  }
+
+  const setStatus = (id: string, status: string) =>
+    payload.update({
+      collection: 'declared-incidents',
+      id,
+      data: { status } as never,
+      user: asUser(lead),
+      overrideAccess: false,
+    })
+
+  beforeAll(async () => {
+    listOrg = await payload.create({
+      collection: 'organizations',
+      data: { name: 'List Co', slug: `list-co-${run}` },
+    })
+    lead = await createMember('lead', [[listOrg, 'member']])
+    helper = await createMember('helper', [[listOrg, 'member']])
+    const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3600_000).toISOString()
+    const create = (data: Record<string, unknown>) =>
+      payload.create({
+        collection: 'declared-incidents',
+        data: { organization: listOrg.id, ...data } as never,
+        depth: 0,
+        user: asUser(lead),
+        overrideAccess: false,
+      }) as Promise<DeclaredIncident>
+    // Three critical ones led by `lead`, a major one by `helper` and an unassigned minor one.
+    for (let index = 0; index < 3; index++) {
+      await create({
+        title: `Critical ${index}`,
+        severity: 'critical',
+        commander: lead.user.id,
+        startedAt: hoursAgo(10 + index),
+      })
+    }
+    await create({
+      title: 'Major',
+      severity: 'major',
+      commander: helper.user.id,
+      startedAt: hoursAgo(5),
+    })
+    const minor = await create({ title: 'Minor', severity: 'minor', startedAt: hoursAgo(1) })
+    await setStatus(String(minor.id), 'canceled')
+  })
+
+  afterAll(async () => {
+    if (!listOrg) return
+    await payload.delete({
+      collection: 'declared-incidents',
+      where: { organization: { equals: listOrg.id } },
+      overrideAccess: true,
+    })
+    await payload.delete({ collection: 'organizations', where: { id: { equals: listOrg.id } } })
+  })
+
+  it('filters by severity and commander, unassigned included', async () => {
+    expect((await listIn('severity=critical')).totalDocs).toBe(3)
+    expect((await listIn(`commander=${helper.user.id}`)).docs.map((d) => d.title)).toEqual([
+      'Major',
+    ])
+    expect((await listIn('commander=none')).docs.map((d) => d.title)).toEqual(['Minor'])
+    expect((await listIn(`severity=major&commander=${lead.user.id}`)).totalDocs).toBe(0)
+    // Unknown values are ignored rather than failing.
+    expect((await listIn('severity=bogus&commander=not-an-id')).totalDocs).toBe(5)
+    expect((await listIn('status=active&severity=minor')).totalDocs).toBe(0)
+  })
+
+  it('paginates', async () => {
+    expect(await listIn('limit=2')).toMatchObject({ totalDocs: 5, totalPages: 3, page: 1 })
+    expect((await listIn('limit=2&page=3')).docs.map((d) => d.title)).toEqual(['Critical 2'])
+  })
+
+  it('summarizes counts and the mean time to mitigate and to resolve', async () => {
+    const { docs } = await listIn('severity=critical')
+    const [mitigated, resolvedDirectly] = docs
+    await setStatus(mitigated.id, 'mitigated')
+    await setStatus(mitigated.id, 'resolved')
+    await setStatus(resolvedDirectly.id, 'resolved')
+
+    const { stats } = await listIn('severity=critical')
+    expect(stats).toMatchObject({ total: 3, active: 1, canceled: 0 })
+    // Started 10 h and 11 h ago, mitigated or resolved just now: about 10.5 h on average.
+    expect(stats.meanTimeToMitigate).toBeGreaterThan(10.4 * 3600)
+    expect(stats.meanTimeToMitigate).toBeLessThan(10.6 * 3600)
+    expect(stats.meanTimeToResolve).toBe(stats.meanTimeToMitigate)
+
+    expect((await listIn('status=all')).stats).toMatchObject({ total: 5, active: 2, canceled: 1 })
+  })
+
+  it('finds the declared incident of a monitor incident for the page button', async () => {
+    const monitor = await payload.create({
+      collection: 'monitors',
+      depth: 0,
+      overrideAccess: true,
+      data: {
+        organization: listOrg.id,
+        name: 'Web',
+        type: 'http',
+        url: 'https://example.com',
+        active: false,
+        interval: 60,
+      } as never,
+    })
+    const outage = await payload.create({
+      collection: 'monitor-incidents',
+      depth: 0,
+      overrideAccess: true,
+      data: {
+        organization: listOrg.id,
+        monitor: monitor.id,
+        status: 'open',
+        startedAt: new Date().toISOString(),
+      } as never,
+    })
+    expect(await declaredIncidentFor(payload, listOrg.id, outage.id, asUser(lead))).toBeNull()
+    const declared = await payload.create({
+      collection: 'declared-incidents',
+      data: { organization: listOrg.id, title: 'Web is down', monitorIncident: outage.id } as never,
+      depth: 0,
+      user: asUser(lead),
+      overrideAccess: false,
+    })
+    expect(String(await declaredIncidentFor(payload, listOrg.id, outage.id, asUser(lead)))).toBe(
+      String(declared.id),
+    )
+    // Not visible from another organization.
+    expect(await declaredIncidentFor(payload, listOrg.id, outage.id, asUser(outsider))).toBeNull()
+    await payload.delete({
+      collection: 'declared-incidents',
+      id: declared.id,
+      overrideAccess: true,
+    })
+    await payload.delete({ collection: 'monitor-incidents', id: outage.id, overrideAccess: true })
+    await payload.delete({ collection: 'monitors', id: monitor.id, overrideAccess: true })
   })
 })
