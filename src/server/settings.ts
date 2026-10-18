@@ -16,6 +16,8 @@ export interface InstanceSettings {
   trustProxy: boolean
   steamApiKey: string | null
   globalpingApiToken: string | null
+  /** Google API key of PageSpeed monitors (#137); `PAGESPEED_API_KEY` applies when empty. */
+  pagespeedApiKey: string | null
 }
 
 /** Days-before-expiry at which TLS / domain expiry notifications fire (Uptime Kuma defaults). */
@@ -56,6 +58,7 @@ export function defaultInstanceSettings(): InstanceSettings {
     trustProxy: false,
     steamApiKey: null,
     globalpingApiToken: null,
+    pagespeedApiKey: null,
   }
 }
 
@@ -90,6 +93,7 @@ export function resolveInstanceSettings(
     trustProxy: typeof doc.trustProxy === 'boolean' ? doc.trustProxy : defaults.trustProxy,
     steamApiKey: doc.steamApiKey?.trim() || null,
     globalpingApiToken: doc.globalpingApiToken?.trim() || null,
+    pagespeedApiKey: doc.pagespeedApiKey?.trim() || null,
   }
 }
 

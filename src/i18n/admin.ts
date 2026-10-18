@@ -40,6 +40,7 @@ export const adminTranslations = {
         kafkaProducerType: 'Kafka Producer',
         tailscalePing: 'Tailscale Ping',
         realBrowser: 'HTTP(s) - Browser Engine (Chrome/Chromium)',
+        pagespeed: 'PageSpeed / Lighthouse',
         thirdPartyStatusPage: 'Third-party status page',
         steam: 'Steam Game Server',
         httpOptions: 'HTTP options',
@@ -202,6 +203,8 @@ export const adminTranslations = {
           'Request phases in ms: DNS, connect, TLS, time to first byte and transfer (HTTP and TCP monitors).',
         statusCodeDescription: 'HTTP status code of the response (HTTP monitors).',
         valueDescription: 'Metric value the check judged (Prometheus query monitors).',
+        pagespeedDescription:
+          'Category scores (0–100) and metrics of the run (PageSpeed / Lighthouse monitors).',
         responseDescription:
           'Response headers (cookies redacted, about 8 KB) and, for failed or degraded checks, the first 16 KB of the body.',
         locationDescription: 'Probe location that ran the check; empty for the local workers.',
@@ -463,7 +466,8 @@ export const adminTranslations = {
           'Accept non-compliant servers that omit Sec-WebSocket-Accept.',
         gameDescription: 'GameDig game id, e.g. minecraft.',
         gamedigGivenPortOnlyDescription: 'Do not probe the other ports a game commonly uses.',
-        remoteBrowserDescription: 'Playwright-compatible remote browser websocket URL.',
+        remoteBrowserDescription:
+          'Remote browser websocket URL: Playwright-compatible (Browser Engine) or Chrome DevTools Protocol (Lighthouse), e.g. browserless.',
         globalpingProtocolDescription:
           'Ping: ICMP or TCP; HTTP: HTTP, HTTPS or HTTP2; DNS: UDP or TCP; traceroute: ICMP, TCP or UDP. Empty uses the default.',
         globalpingLocationsDescription:
@@ -479,6 +483,12 @@ export const adminTranslations = {
           'Status when the query returns no data. Pending keeps the current status.',
         prometheusErrorStatusDescription:
           'Status when the query fails (HTTP error, query error, unreachable). Pending keeps the current status.',
+        pagespeedBackendDescription:
+          'psi: the Google PageSpeed Insights API; lighthouse: Lighthouse in the remote browser below.',
+        pagespeedFailStatusDescription:
+          'Status of a run with a score below its minimum: degraded or DOWN.',
+        pagespeedCategoriesDescription: 'Lighthouse categories to run. Empty runs all four.',
+        pagespeedThresholdDescription: 'Minimum score (0–100); empty means no threshold.',
         globalpingSuccessRuleDescription:
           'all: every probe must succeed; any: one is enough; atLeast: the minimum below.',
         statusPageProviderDescription:

@@ -123,6 +123,60 @@ test.describe('Monitors', () => {
     }
   })
 
+  test('creates a mobile PageSpeed monitor with a performance minimum (#137)', async ({
+    page,
+    adminApi,
+  }) => {
+    await page.goto(`/${SETUP_ORG.slug}/monitors/new?type=pagespeed`)
+    const fields = page.getByTestId('monitor-form').filter({ visible: true })
+    await expect(fields.getByTestId('monitor-type')).toContainText('PageSpeed / Lighthouse')
+    await expect(fields.getByTestId('pagespeed-card')).toBeVisible()
+    const name = `PageSpeed ${runId()}`
+    await fields.getByLabel('Friendly name').fill(name)
+    // The target server answers for PageSpeed Insights (`PAGESPEED_API_URL`): "slow" scores 54.
+    await fields.getByLabel('URL', { exact: true }).fill('https://slow.example.com/')
+    await fields.getByLabel('Performance minimum score').fill('70')
+
+    // The interval starts at, and may not go below, 15 minutes.
+    const interval = fields.getByLabel('Heartbeat interval')
+    await expect(interval).toHaveValue('900')
+    await expect(interval).toHaveAttribute('min', '900')
+    await interval.fill('300')
+    await fields.getByTestId('monitor-submit').click()
+    await expect(
+      page.getByText('PageSpeed monitors run at most every 15 minutes: at least 900 seconds'),
+    ).toBeVisible()
+    await interval.fill('900')
+    await fields.getByTestId('monitor-submit').click()
+
+    await expect(page).toHaveURL(new RegExp(`/${SETUP_ORG.slug}/monitors/(?!new)[^/?]+$`))
+    const id = new URL(page.url()).pathname.split('/').pop()!
+    try {
+      const [monitor] = await adminApi.find('monitors', { id: { equals: id } })
+      expect(monitor).toMatchObject({
+        type: 'pagespeed',
+        pagespeedBackend: 'psi',
+        pagespeedStrategy: 'mobile',
+        pagespeedMinPerformance: 70,
+        interval: 900,
+      })
+      // The first run lands below the minimum: degraded, scores charted, report linked.
+      await expect(async () => {
+        await page.reload()
+        await expect(page.getByTestId('pagespeed-latest')).toBeVisible({ timeout: 1_000 })
+      }).toPass({ timeout: 45_000 })
+      await expect(page.getByTestId('pagespeed-score-performance')).toContainText('54')
+      await expect(page.getByTestId('pagespeed-report-link')).toHaveAttribute(
+        'href',
+        /pagespeed\.web\.dev\/analysis\?url=https%3A%2F%2Fslow\.example\.com/,
+      )
+      await expect(page.getByTestId('pagespeed-scores-chart')).toBeVisible()
+      await expect(page.getByText('performance 54 < 70 (mobile)').first()).toBeVisible()
+    } finally {
+      await adminApi.delete('monitors', id)
+    }
+  })
+
   test('pauses and resumes from the detail page', async ({ page }) => {
     await page.goto(`/${SETUP_ORG.slug}/monitors/${monitorId}`)
     await expect(page.getByTestId('monitor-name')).toHaveText(monitorName)

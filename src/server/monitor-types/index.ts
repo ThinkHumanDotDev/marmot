@@ -30,6 +30,7 @@ import './pop3'
 import './radius'
 import './tailscale-ping'
 import './real-browser'
+import './pagespeed'
 // Databases
 import './mysql'
 import './postgres'

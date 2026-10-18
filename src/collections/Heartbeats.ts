@@ -125,6 +125,13 @@ export const Heartbeats: CollectionConfig = {
       admin: { readOnly: true, description: adminT('marmot:heartbeats:valueDescription') },
     },
     {
+      // Scores and metrics of a PageSpeed / Lighthouse run (#137, `PagespeedRun` in
+      // `src/lib/pagespeed.ts`), rolled up for the trend charts of the detail page.
+      name: 'pagespeed',
+      type: 'json',
+      admin: { readOnly: true, description: adminT('marmot:heartbeats:pagespeedDescription') },
+    },
+    {
       name: 'statusCode',
       type: 'number',
       admin: { readOnly: true, description: adminT('marmot:heartbeats:statusCodeDescription') },

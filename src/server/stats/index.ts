@@ -8,6 +8,7 @@
 import type { Payload } from 'payload'
 
 import { childLogger } from '@/lib/logger'
+import { pagespeedSeriesValues } from '@/lib/pagespeed'
 
 import { registerHeartbeatListener } from '@/server/engine/hooks'
 
@@ -29,6 +30,8 @@ export type HeartbeatContext = {
     timing?: unknown
     /** Metric value of a Prometheus query monitor (#140). */
     value?: number | null
+    /** Scores and metrics of a PageSpeed / Lighthouse run (#137), the stored `pagespeed` JSON. */
+    pagespeed?: unknown
     /** The engine hands over the stored document, whose time is an ISO string. */
     time: Date | string
     important?: boolean | null
@@ -74,6 +77,7 @@ export const createStatsListener =
         ping: locationFailed ? null : (ctx.heartbeat.ping ?? null),
         timing: locationFailed ? undefined : ctx.heartbeat.timing,
         value: ctx.heartbeat.value ?? null,
+        pagespeed: pagespeedSeriesValues(ctx.heartbeat.pagespeed),
         time: new Date(ctx.heartbeat.time),
       })
     } catch (error) {

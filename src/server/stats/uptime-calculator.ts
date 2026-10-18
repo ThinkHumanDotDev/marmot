@@ -101,6 +101,11 @@ export type BucketExtras = {
   timing?: BucketTiming
   /** Metric value of Prometheus query monitors (#140): running average, min and max. */
   value?: BucketValue
+  /**
+   * Scores and metrics of PageSpeed / Lighthouse monitors (#137), one running average, min and max
+   * per key (`performance`, `lcp`, …; `PagespeedSeriesKey`).
+   */
+  pagespeed?: Record<string, BucketValue>
   [key: string]: unknown
 }
 
@@ -127,6 +132,41 @@ export function applyValue(current: unknown, value: number): BucketValue {
     max: Math.max(current.max, value),
     count,
   }
+}
+
+/** Fold the values of one PageSpeed run into a bucket's `extras.pagespeed`. */
+export function applyPagespeed(
+  current: unknown,
+  values: Readonly<Record<string, number | undefined>>,
+): Record<string, BucketValue> {
+  const next: Record<string, BucketValue> = {}
+  const existing =
+    current && typeof current === 'object' ? (current as Record<string, unknown>) : {}
+  for (const [key, bucketValue] of Object.entries(existing)) {
+    if (isBucketValue(bucketValue)) next[key] = bucketValue
+  }
+  for (const [key, value] of Object.entries(values)) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      next[key] = applyValue(next[key], value)
+    }
+  }
+  return next
+}
+
+/** Merge the `extras.pagespeed` of several buckets (`null` when none carries one). */
+export function mergeBucketPagespeed(
+  extrasList: readonly unknown[],
+): Record<string, BucketValue> | null {
+  let merged: Record<string, BucketValue> | null = null
+  for (const extras of extrasList) {
+    const pagespeed = (extras as BucketExtras | null | undefined)?.pagespeed
+    if (!pagespeed || typeof pagespeed !== 'object') continue
+    for (const [key, value] of Object.entries(pagespeed)) {
+      const sum = mergeBucketValues([{ value: merged?.[key] }, { value }])
+      if (sum) merged = { ...(merged ?? {}), [key]: sum }
+    }
+  }
+  return merged
 }
 
 /** Merge the `extras.value` of several buckets (`null` when none carries one). */
@@ -228,6 +268,7 @@ export function applyBeat(
   ping: number | null | undefined,
   timing?: unknown,
   value?: number | null,
+  pagespeed?: Readonly<Record<string, number | undefined>> | null,
 ): BucketData {
   const next: BucketData = { ...bucket, extras: { ...bucket.extras } }
   const flat = flatStatus(status)
@@ -235,6 +276,8 @@ export function applyBeat(
   if (typeof value === 'number' && Number.isFinite(value)) {
     next.extras.value = applyValue(next.extras.value, value)
   }
+  // So do PageSpeed scores (#137): a run below its threshold is what the trend should show.
+  if (pagespeed) next.extras.pagespeed = applyPagespeed(next.extras.pagespeed, pagespeed)
 
   if (status === 'maintenance') {
     next.extras.maintenance = (next.extras.maintenance ?? 0) + 1
@@ -328,6 +371,8 @@ export type RecordHeartbeatInput = {
   timing?: unknown
   /** Metric value of the beat (Prometheus query monitors, #140). */
   value?: number | null
+  /** Scores and metrics of a PageSpeed run (#137), flat (`pagespeedSeriesValues`). */
+  pagespeed?: Readonly<Record<string, number | undefined>> | null
   /** Beat time; defaults to now. */
   time?: Date
 }
@@ -400,18 +445,33 @@ async function upsertBucket(
     ping: number | null
     timing?: unknown
     value?: number | null
+    pagespeed?: Readonly<Record<string, number | undefined>> | null
   },
   timestamp: number,
 ): Promise<Bucket> {
   const existing = await findBucket(payload, collection, input.monitorId, timestamp)
 
   if (existing) {
-    const next = applyBeat(existing, input.status, input.ping, input.timing, input.value)
+    const next = applyBeat(
+      existing,
+      input.status,
+      input.ping,
+      input.timing,
+      input.value,
+      input.pagespeed,
+    )
     await payload.update({ collection, id: existing.id, data: bucketToData(next), depth: 0 })
     return { ...next, timestamp }
   }
 
-  const fresh = applyBeat(emptyBucket(), input.status, input.ping, input.timing, input.value)
+  const fresh = applyBeat(
+    emptyBucket(),
+    input.status,
+    input.ping,
+    input.timing,
+    input.value,
+    input.pagespeed,
+  )
   try {
     // Relationship ids are numbers on Postgres/SQLite and strings on MongoDB; the generated
     // types follow the adapter the types were generated with, so cast the adapter-neutral ids.
@@ -431,7 +491,14 @@ async function upsertBucket(
       { collection, monitorId: input.monitorId, timestamp },
       'bucket insert raced; updating',
     )
-    const next = applyBeat(raced, input.status, input.ping, input.timing, input.value)
+    const next = applyBeat(
+      raced,
+      input.status,
+      input.ping,
+      input.timing,
+      input.value,
+      input.pagespeed,
+    )
     await payload.update({ collection, id: raced.id, data: bucketToData(next), depth: 0 })
     return { ...next, timestamp }
   }
@@ -453,6 +520,7 @@ export async function recordHeartbeat(
     ping: isUsablePing(input.ping) ? input.ping : null,
     timing: input.timing,
     value: input.value,
+    pagespeed: input.pagespeed,
   }
 
   const [minute, hour, day] = await Promise.all(

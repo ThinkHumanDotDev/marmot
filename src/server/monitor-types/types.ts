@@ -4,6 +4,7 @@
  */
 import type { Payload } from 'payload'
 
+import type { PagespeedRun } from '@/lib/pagespeed'
 import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
 import type { Monitor } from '@/payload-types'
@@ -58,6 +59,11 @@ export interface MonitorCheckContext {
    * The worker stores it on the heartbeat (`heartbeats.value`) and rolls it up for the chart.
    */
   value?: number | null
+  /**
+   * Scores and metrics of a PageSpeed / Lighthouse run (#137), whatever the verdict. The worker
+   * stores them on the heartbeat (`heartbeats.pagespeed`) and rolls them up for the trend charts.
+   */
+  pagespeed?: PagespeedRun | null
   /**
    * Freshness lifetime in seconds of the document the check read (third-party status pages, #125:
    * `Cache-Control: max-age` / `Expires`). The worker stores it in `monitors.status.cacheSeconds`

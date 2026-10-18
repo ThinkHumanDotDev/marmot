@@ -40,6 +40,9 @@ export const HOST_LOCAL_MONITOR_TYPES: Record<string, string> = {
   'real-browser': 'The Browser Engine monitor',
 }
 
+/** How the guard names the Lighthouse backend of PageSpeed monitors (#137). */
+export const LIGHTHOUSE_LABEL = 'The Lighthouse backend of PageSpeed monitors'
+
 export interface MonitorTargetProblem {
   path: string
   message: string
@@ -75,6 +78,15 @@ export async function monitorTargetProblem(
   if (hostLocalChecksRefused() && HOST_LOCAL_MONITOR_TYPES[type]) {
     return { path: 'type', message: blockedLocalError(HOST_LOCAL_MONITOR_TYPES[type]).message }
   }
+  // Lighthouse (#137) drives the remote browser like the Browser Engine monitor; the PageSpeed
+  // Insights backend only talks to Google, which loads the page from its own network.
+  if (
+    hostLocalChecksRefused() &&
+    type === 'pagespeed' &&
+    monitor.pagespeedBackend === 'lighthouse'
+  ) {
+    return { path: 'pagespeedBackend', message: blockedLocalError(LIGHTHOUSE_LABEL).message }
+  }
 
   // Through an SSH tunnel (#160) the bastion resolves and connects to the target, which is
   // internal by design; the bastion's own address is what the guard vets (when the tunnel is
@@ -95,6 +107,7 @@ export async function monitorTargetProblem(
     case 'keyword':
     case 'json-query':
     case 'prometheus':
+    case 'pagespeed':
     case 'websocket-upgrade':
     case 'real-browser':
     case 'status-page': {

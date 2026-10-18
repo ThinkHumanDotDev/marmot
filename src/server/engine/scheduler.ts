@@ -14,6 +14,7 @@ import {
 } from '@/server/billing/entitlements'
 import { emitMonitorDeleted, emitMonitorUpdated } from '@/server/realtime/emitter'
 import { populateMonitorTags, relationId } from '@/server/realtime/serialize'
+import { PAGESPEED_MIN_INTERVAL_SECONDS } from '@/lib/pagespeed'
 import { STATUS_PAGE_MIN_INTERVAL_SECONDS } from '@/lib/validation/status-page-monitor'
 import { nextIntervalSeconds, type MonitorSettings } from './beat'
 import { CHECK_JOB_NAME, monitorSchedulerId } from './names'
@@ -53,7 +54,8 @@ export function engineHooksEnabled(): boolean {
  * Milliseconds between checks for the monitor's current state: `retryInterval` while PENDING,
  * `interval` otherwise (Uptime Kuma switches `beatInterval` the same way), never below the plan's
  * `minIntervalSeconds`. Third-party status page monitors (#125) also wait at least
- * `STATUS_PAGE_MIN_INTERVAL_SECONDS` and the vendor document's cache lifetime.
+ * `STATUS_PAGE_MIN_INTERVAL_SECONDS` and the vendor document's cache lifetime, PageSpeed monitors
+ * (#137) `PAGESPEED_MIN_INTERVAL_SECONDS`.
  */
 export function effectiveIntervalMs(monitor: SchedulableMonitor): number {
   // Cron push monitors are due at wall-clock times, not every `interval`: check every minute.
@@ -70,6 +72,9 @@ export function effectiveIntervalMs(monitor: SchedulableMonitor): number {
     // Polling inside the vendor's cache window just re-reads the same document.
     seconds = Math.max(seconds, STATUS_PAGE_MIN_INTERVAL_SECONDS, monitor.status?.cacheSeconds ?? 0)
   }
+  // PageSpeed runs (#137) are slow and spend the API's daily quota: never more than every 15 min,
+  // also for monitors written without the form's validation (Payload admin, older imports).
+  if (monitor.type === 'pagespeed') seconds = Math.max(seconds, PAGESPEED_MIN_INTERVAL_SECONDS)
   return clampInterval(seconds, monitor.minIntervalSeconds) * 1000
 }
 

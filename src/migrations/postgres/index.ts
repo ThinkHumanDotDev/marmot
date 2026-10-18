@@ -69,6 +69,7 @@ import * as migration_20261012_220800_declared_incidents from './20261012_220800
 import * as migration_20261012_235905_on_call_escalation from './20261012_235905_on_call_escalation';
 import * as migration_20261013_013350_inbound_integrations from './20261013_013350_inbound_integrations';
 import * as migration_20261018_002154_issue_tracker_alerts from './20261018_002154_issue_tracker_alerts';
+import * as migration_20261018_101344_pagespeed_monitor from './20261018_101344_pagespeed_monitor';
 
 export const migrations = [
   {
@@ -424,6 +425,11 @@ export const migrations = [
   {
     up: migration_20261018_002154_issue_tracker_alerts.up,
     down: migration_20261018_002154_issue_tracker_alerts.down,
-    name: '20261018_002154_issue_tracker_alerts'
+    name: '20261018_002154_issue_tracker_alerts',
+  },
+  {
+    up: migration_20261018_101344_pagespeed_monitor.up,
+    down: migration_20261018_101344_pagespeed_monitor.down,
+    name: '20261018_101344_pagespeed_monitor'
   },
 ];

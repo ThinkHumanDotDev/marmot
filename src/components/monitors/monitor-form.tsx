@@ -50,6 +50,16 @@ import {
   PROMETHEUS_FALLBACK_STATUSES,
   PROMETHEUS_OPERATORS,
 } from '@/lib/prometheus'
+import {
+  PAGESPEED_BACKENDS,
+  PAGESPEED_CATEGORIES,
+  PAGESPEED_DEFAULT_TIMEOUT_SECONDS,
+  PAGESPEED_FAIL_STATUSES,
+  PAGESPEED_MIN_INTERVAL_SECONDS,
+  PAGESPEED_STRATEGIES,
+  PAGESPEED_THRESHOLD_FIELDS,
+  type PagespeedCategory,
+} from '@/lib/pagespeed'
 import { REMINDER_BACKOFFS } from '@/lib/reminder-backoff'
 import { supportsSshTunnel } from '@/lib/ssh-tunnels'
 import {
@@ -447,6 +457,60 @@ function SwitchField({
           </FormControl>
         </FormItem>
       )}
+    />
+  )
+}
+
+/** PageSpeed categories (#137): a switch per category and its optional minimum score. */
+function PagespeedCategoriesField({ control }: { control: FormControlType }) {
+  const t = useTranslations('monitors.form.pagespeed')
+  return (
+    <FormField
+      control={control}
+      name="pagespeedCategories"
+      render={({ field }) => {
+        const selected = Array.isArray(field.value) ? (field.value as PagespeedCategory[]) : []
+        const toggle = (category: PagespeedCategory, on: boolean) =>
+          field.onChange(
+            PAGESPEED_CATEGORIES.filter((c) => (c === category ? on : selected.includes(c))),
+          )
+        return (
+          <FormItem>
+            <FormLabel>{t('categories')}</FormLabel>
+            <FormDescription>{t('categoriesDescription')}</FormDescription>
+            <div className="grid gap-3 sm:grid-cols-2" data-testid="pagespeed-categories">
+              {PAGESPEED_CATEGORIES.map((category) => {
+                const on = selected.includes(category)
+                const id = `pagespeed-category-${category}`
+                return (
+                  <div key={category} className="flex flex-col gap-3 rounded-lg border p-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <label htmlFor={id} className="text-sm font-medium">
+                        {t(`category.${category}`)}
+                      </label>
+                      <Switch
+                        id={id}
+                        checked={on}
+                        onCheckedChange={(value) => toggle(category, value)}
+                      />
+                    </div>
+                    {on && (
+                      <NumberField
+                        control={control}
+                        name={PAGESPEED_THRESHOLD_FIELDS[category]}
+                        label={t('minimum', { category: t(`category.${category}`) })}
+                        min={0}
+                        max={100}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <FormMessage />
+          </FormItem>
+        )
+      }}
     />
   )
 }
@@ -1012,6 +1076,19 @@ function applyTypeDefaults(
       }
     }
   }
+  if (type === 'pagespeed') {
+    // Lighthouse runs are slow and PageSpeed Insights has a daily quota (#137).
+    for (const field of ['interval', 'retryInterval'] as const) {
+      const value = get(field)
+      if (typeof value === 'number' && value < PAGESPEED_MIN_INTERVAL_SECONDS) {
+        set(field, PAGESPEED_MIN_INTERVAL_SECONDS)
+      }
+    }
+    const timeout = get('timeout')
+    if (typeof timeout === 'number' && timeout > 0 && timeout < PAGESPEED_DEFAULT_TIMEOUT_SECONDS) {
+      set('timeout', PAGESPEED_DEFAULT_TIMEOUT_SECONDS)
+    }
+  }
   const codes = get('acceptedStatusCodes')
   const isDefaultCodes = (list: unknown, value: string) =>
     Array.isArray(list) && list.length === 1 && list[0] === value
@@ -1079,6 +1156,7 @@ export function MonitorForm({
     smtpSecurity,
     parent,
     prometheusDegradedOperator,
+    pagespeedBackend,
   ] = useWatch({
     control,
     name: [
@@ -1106,6 +1184,7 @@ export function MonitorForm({
       'smtpSecurity',
       'parent',
       'prometheusDegradedOperator',
+      'pagespeedBackend',
     ],
   })
   const orgTimeZone = useTimeZone() ?? 'UTC'
@@ -1156,8 +1235,13 @@ export function MonitorForm({
     name: ['url', 'statusPageProvider'],
   })
   const gpMeasurement = globalpingMeasurement ?? 'http'
-  const minInterval = Math.max(isGlobalping ? GLOBALPING_MIN_INTERVAL_SECONDS : 20, planMinInterval)
-  const planLimited = planMinInterval > (isGlobalping ? GLOBALPING_MIN_INTERVAL_SECONDS : 20)
+  const typeMinInterval = isGlobalping
+    ? GLOBALPING_MIN_INTERVAL_SECONDS
+    : type === 'pagespeed'
+      ? PAGESPEED_MIN_INTERVAL_SECONDS
+      : 20
+  const minInterval = Math.max(typeMinInterval, planMinInterval)
+  const planLimited = planMinInterval > typeMinInterval
   const withPlanNote = (hint: string | undefined) =>
     planLimited ? (
       <>
@@ -1374,7 +1458,11 @@ export function MonitorForm({
                 description={
                   isPrometheus
                     ? t('prometheus.urlDescription', { path: '/api/v1/query' })
-                    : undefined
+                    : type === 'pagespeed'
+                      ? t('pagespeed.urlDescription', {
+                          minutes: PAGESPEED_MIN_INTERVAL_SECONDS / 60,
+                        })
+                      : undefined
                 }
                 autoComplete="off"
               />
@@ -2770,6 +2858,68 @@ export function MonitorForm({
                 label={t('http.ignoreTls')}
                 description={t('http.ignoreTlsDescription')}
               />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* PageSpeed / Lighthouse (#137) --------------------------------------------------- */}
+        {type === 'pagespeed' && (
+          <Card data-testid="pagespeed-card">
+            <CardHeader>
+              <CardTitle>{t('pagespeed.title')}</CardTitle>
+              <CardDescription>{t('pagespeed.description')}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-5">
+              <div className="grid gap-5 sm:grid-cols-3">
+                <SelectField
+                  control={control}
+                  name="pagespeedBackend"
+                  label={t('pagespeed.backend')}
+                  options={PAGESPEED_BACKENDS.map((value) => ({
+                    value,
+                    label: t(`pagespeed.backends.${value}`),
+                  }))}
+                />
+                <SelectField
+                  control={control}
+                  name="pagespeedStrategy"
+                  label={t('pagespeed.strategy')}
+                  options={PAGESPEED_STRATEGIES.map((value) => ({
+                    value,
+                    label: t(`pagespeed.strategies.${value}`),
+                  }))}
+                />
+                <SelectField
+                  control={control}
+                  name="pagespeedFailStatus"
+                  label={t('pagespeed.failStatus')}
+                  options={PAGESPEED_FAIL_STATUSES.map((value) => ({
+                    value,
+                    label: t(`pagespeed.failStatuses.${value}`),
+                  }))}
+                />
+              </div>
+              <p className="-mt-2 text-sm text-muted-foreground">
+                {t('pagespeed.backendDescription')} {t('pagespeed.failStatusDescription')}
+              </p>
+              <PagespeedCategoriesField control={control} />
+              {pagespeedBackend === 'lighthouse' && (
+                <>
+                  <TextField
+                    control={control}
+                    name="remoteBrowser"
+                    label={t('pagespeed.remoteBrowser')}
+                    placeholder="ws://browserless:3000"
+                    description={t('pagespeed.remoteBrowserDescription')}
+                  />
+                  <SwitchField
+                    control={control}
+                    name="ignoreTls"
+                    label={t('connection.ignoreTls')}
+                    description={t('connection.ignoreTlsDescription')}
+                  />
+                </>
+              )}
             </CardContent>
           </Card>
         )}

@@ -166,6 +166,16 @@ transparency logs by the worker's `ct-alerts` job.
 | `CT_CHECK_INTERVAL_MINUTES` | `180`                                                                 | worker  | Minutes between two lookups of a monitor (60–360). After a failed lookup the monitor and the source back off exponentially, up to 24 h.                                                                                                                                                          |
 | `CT_REQUESTS_PER_MINUTE`    | `6`                                                                   | worker  | Requests per minute sent to the source (1–120). A `429` or `503` answer pauses every lookup for its `Retry-After` (at least the backoff).                                                                                                                                                        |
 
+### PageSpeed monitors
+
+[PageSpeed monitors](Monitor-Types.md#pagespeed--lighthouse) with the PageSpeed Insights backend call
+Google's API from the worker.
+
+| Variable            | Default                                                      | Read by     | Description                                                                                                                               |
+| ------------------- | ------------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `PAGESPEED_API_KEY` | —                                                            | web, worker | Google API key used when the `pagespeedApiKey` instance setting is empty. Without either, requests share the API's small anonymous quota. |
+| `PAGESPEED_API_URL` | `https://www.googleapis.com/pagespeedonline/v5/runPagespeed` | web, worker | Endpoint of the PageSpeed Insights v5 `runPagespeed` method (a mirror, or a mock in tests).                                               |
+
 ### Ping-by-email
 
 [Push monitors](Monitors.md#ping-by-email) can also be pinged by email. Off unless `INBOUND_EMAIL_DOMAIN` and at least one of the two transports below are set.
@@ -321,18 +331,18 @@ global it takes precedence over the variable. The Instance tab also shows whethe
 offers **Send test email** (`POST /api/instance/smtp-test { to? }`, superadmin-only; answers `400` while
 `SMTP_HOST` is unset).
 
-| Setting                             | Default                      | Description                                                                                                                                           |
-| ----------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `primaryBaseUrl`                    | `NEXT_PUBLIC_SERVER_URL`     | Public URL used in notifications and status page links.                                                                                               |
-| `allowSignup`                       | `!DISABLE_SIGNUP`            | Whether anyone may create an account (`POST /api/users`, `/signup`).                                                                                  |
-| `requireEmailVerification`          | `REQUIRE_EMAIL_VERIFICATION` | New self-service sign-ups confirm their address before creating organizations, invitations or notification channels. Existing accounts stay verified. |
-| `magicLinkEnabled`                  | `MAGIC_LINK_ENABLED`         | Passwordless sign-in with a single-use link sent by email (two-factor authentication still applies). Ignored while `OIDC_DISABLE_LOCAL_LOGIN` is on.  |
-| `entryPage`                         | `dashboard`                  | `dashboard` or `status-page`: what the root URL shows.                                                                                                |
-| `tlsExpiryNotifyDays`               | `7, 14, 21`                  | Days before a TLS certificate expires at which to notify.                                                                                             |
-| `domainExpiryNotifyDays`            | `7, 14, 21`                  | Days before a domain registration expires at which to notify.                                                                                         |
-| `keepDataPeriodDays`                | `KEEP_DATA_PERIOD_DAYS`      | Retention of daily aggregates and important heartbeats (`0` disables). Honoured by the hourly retention job.                                          |
-| `trustProxy`                        | `false`                      | Trust `X-Forwarded-*` headers from the reverse proxy for client IPs (rate limits, audit log, status page IP allow-lists).                             |
-| `steamApiKey`, `globalpingApiToken` | —                            | Third-party API keys for the corresponding monitor types (superadmin-only read).                                                                      |
+| Setting                                                | Default                                       | Description                                                                                                                                           |
+| ------------------------------------------------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `primaryBaseUrl`                                       | `NEXT_PUBLIC_SERVER_URL`                      | Public URL used in notifications and status page links.                                                                                               |
+| `allowSignup`                                          | `!DISABLE_SIGNUP`                             | Whether anyone may create an account (`POST /api/users`, `/signup`).                                                                                  |
+| `requireEmailVerification`                             | `REQUIRE_EMAIL_VERIFICATION`                  | New self-service sign-ups confirm their address before creating organizations, invitations or notification channels. Existing accounts stay verified. |
+| `magicLinkEnabled`                                     | `MAGIC_LINK_ENABLED`                          | Passwordless sign-in with a single-use link sent by email (two-factor authentication still applies). Ignored while `OIDC_DISABLE_LOCAL_LOGIN` is on.  |
+| `entryPage`                                            | `dashboard`                                   | `dashboard` or `status-page`: what the root URL shows.                                                                                                |
+| `tlsExpiryNotifyDays`                                  | `7, 14, 21`                                   | Days before a TLS certificate expires at which to notify.                                                                                             |
+| `domainExpiryNotifyDays`                               | `7, 14, 21`                                   | Days before a domain registration expires at which to notify.                                                                                         |
+| `keepDataPeriodDays`                                   | `KEEP_DATA_PERIOD_DAYS`                       | Retention of daily aggregates and important heartbeats (`0` disables). Honoured by the hourly retention job.                                          |
+| `trustProxy`                                           | `false`                                       | Trust `X-Forwarded-*` headers from the reverse proxy for client IPs (rate limits, audit log, status page IP allow-lists).                             |
+| `steamApiKey`, `globalpingApiToken`, `pagespeedApiKey` | — (`PAGESPEED_API_KEY` for `pagespeedApiKey`) | Third-party API keys for the corresponding monitor types (superadmin-only read).                                                                      |
 
 Server code reads the resolved values through `getInstanceSettings(payload)` (`src/server/settings.ts`),
 which caches them for 60 seconds per process; saving the global clears the cache of the web process

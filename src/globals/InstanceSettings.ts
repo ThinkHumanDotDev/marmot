@@ -167,6 +167,15 @@ export const InstanceSettings: GlobalConfig = {
           access: { read: superadminField },
           admin: { description: 'Globalping API token for remote ping/HTTP checks.' },
         },
+        {
+          name: 'pagespeedApiKey',
+          type: 'text',
+          access: { read: superadminField },
+          admin: {
+            description:
+              'Google API key for PageSpeed monitors (PageSpeed Insights API). Defaults to PAGESPEED_API_KEY.',
+          },
+        },
       ],
     },
   ],

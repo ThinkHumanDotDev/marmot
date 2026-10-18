@@ -462,6 +462,41 @@
       "chartDescription": "Average per hour over the last 24 hours.",
       "chartEmpty": "No per-location response times yet. The chart fills in as checks complete."
     },
+    "pagespeed": {
+      "scoresTitle": "Lighthouse scores",
+      "scoresDescription": "Average category score per interval (0–100). Dashed lines are the monitor's minimums.",
+      "metricsTitle": "Page metrics",
+      "metricsDescription": "Average lab timings per interval; INP is the field value of real Chrome users.",
+      "clsTitle": "Cumulative Layout Shift",
+      "clsDescription": "Average layout shift per interval (lower is better, 0.1 is good).",
+      "empty": "No PageSpeed run in this period yet.",
+      "latestTitle": "Latest PageSpeed run",
+      "latestDescription": "{strategy} · {backend} · {time}",
+      "fullReport": "Full report on PageSpeed Insights",
+      "strategy": {
+        "mobile": "Mobile",
+        "desktop": "Desktop"
+      },
+      "backend": {
+        "psi": "PageSpeed Insights",
+        "lighthouse": "Lighthouse"
+      },
+      "category": {
+        "performance": "Performance",
+        "accessibility": "Accessibility",
+        "best-practices": "Best practices",
+        "seo": "SEO"
+      },
+      "metric": {
+        "lcp": "LCP",
+        "fcp": "FCP",
+        "tbt": "TBT",
+        "si": "Speed Index",
+        "ttfb": "TTFB",
+        "inp": "INP (field)",
+        "cls": "CLS"
+      }
+    },
     "timing": {
       "title": "Request timing",
       "latestDescription": "Where the time of the latest check went.",
@@ -620,6 +655,10 @@
       "real-browser": {
         "label": "HTTP(s) - Browser Engine (Chrome/Chromium)",
         "description": "Loads the page in a real Chromium through a remote Playwright browser; UP on a 2xx/3xx navigation."
+      },
+      "pagespeed": {
+        "label": "PageSpeed / Lighthouse",
+        "description": "Lighthouse scores and Core Web Vitals through PageSpeed Insights or a remote browser; degraded or DOWN below a minimum."
       },
       "port": {
         "label": "TCP Port",
@@ -827,6 +866,8 @@
       "assertionRegex": "Enter a valid regular expression of at most {max} characters",
       "assertionTooLong": "At most {max} characters",
       "globalpingIntervalMin": "Globalping monitors run at most once a minute: at least {min} seconds",
+      "pagespeedIntervalMin": "PageSpeed monitors run at most every {minutes} minutes: at least {min} seconds",
+      "pagespeedCategoryRequired": "Pick at least one category",
       "globalpingMethod": "Globalping supports the methods {methods}",
       "globalpingRecordType": "Globalping does not support this record type",
       "globalpingProtocol": "This protocol is not available for the selected measurement",
@@ -1206,6 +1247,40 @@
           "pending": "Keep the current status"
         },
         "errorStatusDescription": "HTTP or query errors and an unreachable endpoint. A blocked address is always DOWN."
+      },
+      "pagespeed": {
+        "title": "PageSpeed / Lighthouse",
+        "description": "How the page is audited and the minimum score of each Lighthouse category.",
+        "urlDescription": "Public page to audit. Runs take up to a minute and happen at most every {minutes} minutes.",
+        "backend": "Run with",
+        "backends": {
+          "psi": "PageSpeed Insights API (Google)",
+          "lighthouse": "Lighthouse in a remote browser"
+        },
+        "backendDescription": "PageSpeed Insights audits public pages from Google's network, with the instance's API key when set. Lighthouse runs in your own remote Chromium.",
+        "strategy": "Device",
+        "strategies": {
+          "mobile": "Mobile",
+          "desktop": "Desktop"
+        },
+        "failStatus": "Below a minimum",
+        "failStatuses": {
+          "degraded": "Degraded",
+          "down": "Down"
+        },
+        "failStatusDescription": "Degraded alerts channels that subscribe to degraded events; Down alerts every channel.",
+        "categories": "Categories and minimum scores",
+        "categoriesDescription": "Turn off the categories you do not need. A minimum is optional (0–100); empty never fails.",
+        "category": {
+          "performance": "Performance",
+          "accessibility": "Accessibility",
+          "best-practices": "Best practices",
+          "seo": "SEO"
+        },
+        "minimum": "{category} minimum score",
+        "remoteBrowser": "Remote browser URL",
+        "remoteBrowserDescription": "Chrome DevTools Protocol websocket of a remote Chromium, e.g. browserless (ws://browserless:3000). Marmot does not launch Chromium itself.",
+        "intervalHint": "PageSpeed monitors run at most every {minutes} minutes."
       },
       "http": {
         "title": "HTTP options",
@@ -2216,6 +2291,8 @@
       "steamApiKeyHint": "For Steam Game Server monitors.",
       "globalpingApiToken": "Globalping API token",
       "globalpingApiTokenHint": "For remote ping and HTTP checks.",
+      "pagespeedApiKey": "PageSpeed Insights API key",
+      "pagespeedApiKeyHint": "Google API key for PageSpeed monitors; PAGESPEED_API_KEY applies when empty.",
       "secretSaved": "Saved",
       "secretNotSet": "Not set",
       "discard": "Discard",

@@ -176,7 +176,9 @@ Each row stores `up`, `down`, `ping` (average of UP beats), `pingMin`, `pingMax`
 `maintenance` (beats during maintenance, also counted as `up`), `degraded` (slow successful checks, also
 counted as `up`, their ping included), `pingCount` (weight of `ping`) and `timing` (per-phase running
 averages of the request timing, `{ dns: { avg, count }, … }`, from successful checks) and `value`
-(`{ avg, min, max, count }` of the metric values of Prometheus query monitors, #140, any status), plus
+(`{ avg, min, max, count }` of the metric values of Prometheus query monitors, #140, any status) and
+`pagespeed` (the same per category score and metric of PageSpeed monitors, `{ performance: { avg, … },
+lcp: { … }, … }`, #137, any status), plus
 `latencyHistogram`, a JSON number array counting the pings of UP and DEGRADED beats per log-spaced bucket
 (four per doubling, from `[0, 1)` ms to an overflow bucket at 2^17 ms;
 `src/server/stats/latency-histogram.ts`). `pending`

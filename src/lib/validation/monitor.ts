@@ -19,6 +19,14 @@ import {
 } from '@/lib/group-aggregation'
 import { DOCKER_CONTAINER_PATTERN } from '@/lib/monitor-resources'
 import {
+  PAGESPEED_BACKENDS,
+  PAGESPEED_CATEGORIES,
+  PAGESPEED_DEFAULT_TIMEOUT_SECONDS,
+  PAGESPEED_FAIL_STATUSES,
+  PAGESPEED_MIN_INTERVAL_SECONDS,
+  PAGESPEED_STRATEGIES,
+} from '@/lib/pagespeed'
+import {
   PROMETHEUS_AGGREGATES,
   PROMETHEUS_FALLBACK_STATUSES,
   PROMETHEUS_OPERATORS,
@@ -87,6 +95,7 @@ export const MONITOR_TYPE_NAMES = [
   'ping',
   'dns',
   'real-browser',
+  'pagespeed',
   'globalping',
   'status-page',
   // Passive
@@ -132,6 +141,7 @@ export const URL_MONITOR_TYPES: readonly MonitorTypeName[] = [
   'websocket-upgrade',
   'real-browser',
   'prometheus',
+  'pagespeed',
 ]
 /** Types whose target is `hostname` (and usually `port`). */
 export const HOST_MONITOR_TYPES: readonly MonitorTypeName[] = [
@@ -258,6 +268,12 @@ export const MONITOR_TYPE_GROUPS: Record<
         label: 'HTTP(s) - Browser Engine (Chrome/Chromium)',
         description:
           'Loads the page in a real Chromium through a remote Playwright browser; UP on a 2xx/3xx navigation.',
+      },
+      {
+        name: 'pagespeed',
+        label: 'PageSpeed / Lighthouse',
+        description:
+          'Lighthouse scores and Core Web Vitals through PageSpeed Insights or a remote browser; degraded or DOWN below a minimum.',
       },
       { name: 'port', label: 'TCP Port', description: 'UP when a TCP connection succeeds.' },
       { name: 'ping', label: 'Ping', description: 'UP when the host answers ICMP echo requests.' },
@@ -575,6 +591,15 @@ const finiteNumber = z
   .nullish()
   .transform((v) => (v === undefined ? null : v))
 
+/** Minimum score of a PageSpeed category (0–100); empty is `null` (no threshold). */
+const pagespeedScore = z
+  .number()
+  .int()
+  .min(0)
+  .max(100)
+  .nullish()
+  .transform((v) => (v === undefined ? null : v))
+
 /** List of non-empty strings (brokers, nodes); blanks are dropped. */
 const textList = (max = 500) =>
   z
@@ -857,6 +882,19 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
       // Real browser
       remoteBrowser: optionalText(2048),
 
+      // PageSpeed / Lighthouse (#137)
+      pagespeedBackend: z.enum(PAGESPEED_BACKENDS).default('psi'),
+      pagespeedStrategy: z.enum(PAGESPEED_STRATEGIES).default('mobile'),
+      pagespeedFailStatus: z.enum(PAGESPEED_FAIL_STATUSES).default('degraded'),
+      pagespeedCategories: z
+        .array(z.enum(PAGESPEED_CATEGORIES))
+        .default([...PAGESPEED_CATEGORIES])
+        .transform((list) => PAGESPEED_CATEGORIES.filter((category) => list.includes(category))),
+      pagespeedMinPerformance: pagespeedScore,
+      pagespeedMinAccessibility: pagespeedScore,
+      pagespeedMinBestPractices: pagespeedScore,
+      pagespeedMinSeo: pagespeedScore,
+
       // Globalping (#142); the target is `url` (HTTP) or `hostname`, the DNS options are shared
       globalpingMeasurement: z.enum(GLOBALPING_MEASUREMENTS).default('http'),
       globalpingLocations: optionalText(2000),
@@ -963,6 +1001,31 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         if (!values.remoteBrowser) issue('remoteBrowser', message('remoteBrowserRequired'))
         else if (!/^wss?:\/\/\S+$/i.test(values.remoteBrowser)) {
           issue('remoteBrowser', message('remoteBrowserUrl'))
+        }
+      }
+
+      if (type === 'pagespeed') {
+        if (!values.url) issue('url', message('urlRequired'))
+        else if (!/^https?:\/\/\S+$/i.test(values.url)) issue('url', message('httpUrl'))
+        for (const field of ['interval', 'retryInterval'] as const) {
+          if (values[field] < PAGESPEED_MIN_INTERVAL_SECONDS) {
+            issue(
+              field,
+              message('pagespeedIntervalMin', {
+                min: PAGESPEED_MIN_INTERVAL_SECONDS,
+                minutes: PAGESPEED_MIN_INTERVAL_SECONDS / 60,
+              }),
+            )
+          }
+        }
+        if (values.pagespeedCategories.length === 0) {
+          issue('pagespeedCategories', message('pagespeedCategoryRequired'))
+        }
+        if (values.pagespeedBackend === 'lighthouse') {
+          if (!values.remoteBrowser) issue('remoteBrowser', message('remoteBrowserRequired'))
+          else if (!/^wss?:\/\/\S+$/i.test(values.remoteBrowser)) {
+            issue('remoteBrowser', message('remoteBrowserUrl'))
+          }
         }
       }
 
@@ -1234,7 +1297,14 @@ export const DATABASE_CONNECTION_PLACEHOLDERS: Record<string, string> = {
 /** Starting value of `url` for the URL-based types. */
 export function defaultUrl(type: MonitorTypeName): string | null {
   if (type === 'websocket-upgrade') return 'wss://'
-  if (isHttpMonitorType(type) || type === 'real-browser' || type === 'prometheus') return 'https://'
+  if (
+    isHttpMonitorType(type) ||
+    type === 'real-browser' ||
+    type === 'prometheus' ||
+    type === 'pagespeed'
+  ) {
+    return 'https://'
+  }
   return null
 }
 
@@ -1264,14 +1334,15 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     url: defaultUrl(type),
     hostname: null,
     port: DEFAULT_PORTS[type] ?? null,
-    interval: 60,
-    retryInterval: 60,
+    // PageSpeed runs (#137) are slow and quota-bound: 15 minutes apart, two minutes to finish.
+    interval: type === 'pagespeed' ? PAGESPEED_MIN_INTERVAL_SECONDS : 60,
+    retryInterval: type === 'pagespeed' ? PAGESPEED_MIN_INTERVAL_SECONDS : 60,
     maxRetries: 0,
     resendInterval: 0,
     successThreshold: 1,
     reminderBackoff: 'none',
     maxReminders: 0,
-    timeout: 48,
+    timeout: type === 'pagespeed' ? PAGESPEED_DEFAULT_TIMEOUT_SECONDS : 48,
     degradedAfter: null,
     upsideDown: false,
     method: 'GET',
@@ -1384,6 +1455,14 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     game: null,
     gamedigGivenPortOnly: true,
     remoteBrowser: null,
+    pagespeedBackend: 'psi',
+    pagespeedStrategy: 'mobile',
+    pagespeedFailStatus: 'degraded',
+    pagespeedCategories: [...PAGESPEED_CATEGORIES],
+    pagespeedMinPerformance: null,
+    pagespeedMinAccessibility: null,
+    pagespeedMinBestPractices: null,
+    pagespeedMinSeo: null,
     globalpingMeasurement: 'http',
     globalpingLocations: null,
     globalpingProbes: GLOBALPING_DEFAULT_PROBES,

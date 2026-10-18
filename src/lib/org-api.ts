@@ -186,6 +186,7 @@ export interface InstanceSettingsInput {
   trustProxy?: boolean
   steamApiKey?: string | null
   globalpingApiToken?: string | null
+  pagespeedApiKey?: string | null
 }
 
 export const instanceApi = {
