@@ -67,13 +67,17 @@ export interface NotificationSendContext {
   organization?: TemplateOrganization | null
   /** The organization's time zone (IANA) for dates in templates; UTC when absent. */
   timeZone?: string
-  /** Id of the channel's organization, for providers that act on its behalf (the Slack app). */
-  organizationId?: string | number | null
+  /** The channel being sent to (absent for unsaved test channels). */
+  notificationId?: string | null
+  /** The channel's organization id. */
+  organizationId?: string | null
   /**
-   * The monitor's open, unacknowledged incident (#100) on DOWN messages, so chat providers can
-   * offer an "Acknowledge" button; null otherwise.
+   * The monitor incident a DOWN message or a page is about while nobody acknowledged it yet
+   * (phone calls let the callee acknowledge it, #146); null otherwise.
    */
-  openIncidentId?: string | number | null
+  incidentId?: string | null
+  /** A test message from the channel form. */
+  test?: boolean
   /**
    * The open tickets of issue-tracker providers (#149) for this channel and monitor. Present for
    * monitor notifications of a saved channel; absent for tests and organization-wide messages.
@@ -125,6 +129,11 @@ export interface NotificationProvider {
    * variables). Unavailable providers are not offered in the channel picker. Default: available.
    */
   available?(): boolean
+  /**
+   * Send one test sample whatever the channel's events (a phone call per event would be a lot);
+   * the others send one per selected event.
+   */
+  readonly testOnce?: boolean
   /**
    * Deliver the message. Resolve with a short success string, throw on failure.
    */

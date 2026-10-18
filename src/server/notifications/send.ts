@@ -48,8 +48,13 @@ export interface SendNotificationOptions {
    * decides the language unless `locale` is given.
    */
   channelOrganization?: ChannelOrganization
-  /** The monitor's open, unacknowledged incident on DOWN messages (the Slack app's buttons). */
-  openIncidentId?: string | number | null
+  /**
+   * The open (not yet acknowledged) monitor incident the message is about, for providers that let
+   * the recipient acknowledge it (phone calls, #146).
+   */
+  incidentId?: string | number | null
+  /** A test message from the channel form. */
+  test?: boolean
 }
 
 /** Language a channel's messages are written in: its organization's, or the default. */
@@ -239,7 +244,8 @@ export async function sendNotification(
     downtimeSeconds = null,
     locale: knownLocale,
     channelOrganization,
-    openIncidentId = null,
+    incidentId = null,
+    test = false,
   }: SendNotificationOptions,
 ): Promise<string> {
   const provider = getNotificationProvider(notification.type)
@@ -277,12 +283,13 @@ export async function sendNotification(
   }
 
   const orgRef = notification.organization
+  const orgId = orgRef && typeof orgRef === 'object' ? orgRef.id : orgRef
   const issues =
     monitor && notification.id !== undefined && notification.id !== null
       ? createPayloadIssueState(payload, {
           channelId: notification.id,
           monitorId: monitor.id,
-          organizationId: orgRef && typeof orgRef === 'object' ? orgRef.id : orgRef,
+          organizationId: orgId,
         })
       : undefined
   return provider.send({
@@ -295,11 +302,10 @@ export async function sendNotification(
     downtimeSeconds,
     organization: org.organization,
     timeZone: org.timeZone,
-    organizationId:
-      notification.organization && typeof notification.organization === 'object'
-        ? notification.organization.id
-        : (notification.organization ?? null),
-    openIncidentId,
+    notificationId: notification.id === undefined ? null : String(notification.id),
+    organizationId: orgId === null || orgId === undefined ? null : String(orgId),
+    incidentId: incidentId === null ? null : String(incidentId),
+    test,
     issues,
   })
 }
@@ -313,14 +319,16 @@ export interface TestNotificationResult {
 
 /**
  * Send the "Test" messages for a saved or unsaved channel: one sample per event the channel
- * accepts (`events`, or the defaults), in `CHANNEL_EVENTS` order. Stops at the first failure.
+ * accepts (`events`, or the defaults), in `CHANNEL_EVENTS` order, or only the first one for
+ * providers with `testOnce` (phone calls). Stops at the first failure.
  */
 export async function sendTestNotification(
   payload: Payload,
   notification: NotificationChannelLike,
 ): Promise<TestNotificationResult> {
   const locale = await getChannelLocale(payload, notification)
-  const events = normalizeChannelEvents(notification.events)
+  const all = normalizeChannelEvents(notification.events)
+  const events = getNotificationProvider(notification.type)?.testOnce ? all.slice(0, 1) : all
   let result = ''
   for (const event of events) {
     result = await sendNotification(payload, notification, {
@@ -329,6 +337,7 @@ export async function sendTestNotification(
       heartbeat: null,
       event,
       locale,
+      test: true,
     })
   }
   return { result, events }

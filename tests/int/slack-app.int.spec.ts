@@ -776,7 +776,7 @@ describe('Slack app', () => {
             time: new Date().toISOString(),
           } as never,
           event: 'down',
-          openIncidentId: incident.id,
+          incidentId: incident.id,
         },
       )
       const [message] = callsTo('chat.postMessage').slice(before)

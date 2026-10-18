@@ -36,6 +36,11 @@ import {
 } from '@/server/incidents/notify'
 import { findOpenIncident } from '@/server/incidents/store'
 import { serverTranslator } from '@/server/i18n'
+import {
+  isVoiceCallJobName,
+  processVoiceCallRetry,
+  type VoiceCallRetryJobData,
+} from '@/server/voice-calls/retry'
 import { processWebhookDeliveryJob } from '@/server/webhooks/deliver'
 import { isWebhookJobName, type WebhookDeliveryJobData } from '@/server/webhooks/queue'
 import {
@@ -88,19 +93,19 @@ async function recordOutcome(
 
 /**
  * A DOWN message (first alert or reminder) of a monitor whose incident nobody acknowledged yet ends
- * with a signed acknowledge link (`src/server/incidents/ack-link.ts`); otherwise nothing.
+ * with a signed acknowledge link (`src/server/incidents/ack-link.ts`) and names the incident, so
+ * phone calls can acknowledge it (#146); otherwise neither.
  */
-async function ackLinkLine(
+async function openIncidentAck(
   payload: Payload,
   monitor: Monitor,
   heartbeat: Heartbeat,
   locale: Locale,
 ): Promise<{ line: string; incidentId: string | number | null }> {
-  const none = { line: '', incidentId: null }
-  if (heartbeat.status !== 'down') return none
+  if (heartbeat.status !== 'down') return { line: '', incidentId: null }
   try {
     const incident = await findOpenIncident(payload, monitor.id)
-    if (!incident || incident.status !== 'open') return none
+    if (!incident || incident.status !== 'open') return { line: '', incidentId: null }
     const url = ackLinkUrl(incident.id)
     return {
       line: `\n${serverTranslator(locale)('notifications.messages.incident.ackLink', { url })}`,
@@ -108,7 +113,7 @@ async function ackLinkLine(
     }
   } catch (err) {
     log.warn({ err, monitorId: monitor.id }, 'failed to build the acknowledge link')
-    return none
+    return { line: '', incidentId: null }
   }
 }
 
@@ -154,7 +159,7 @@ export async function processNotificationJob(
   const { locale } = channelOrganization
   const downtimeSeconds =
     event === 'up' ? await findOrNull(() => recoveryDowntimeSeconds(payload, heartbeat)) : null
-  const ack = await ackLinkLine(payload, monitor, heartbeat, locale)
+  const ack = await openIncidentAck(payload, monitor, heartbeat, locale)
   const message =
     buildDefaultMessage(monitor, heartbeat, locale, { event, downtimeSeconds }) + ack.line
   try {
@@ -166,7 +171,7 @@ export async function processNotificationJob(
       downtimeSeconds,
       locale,
       channelOrganization,
-      openIncidentId: ack.incidentId,
+      incidentId: ack.incidentId,
     })
     await recordOutcome(payload, notification, { ok: true })
     log.info(
@@ -266,7 +271,8 @@ export interface StartNotificationWorkerOptions extends QueueFactoryOptions {
  * Start the BullMQ worker consuming the notifications queue: monitor alerts (`notify`), maintenance
  * windows (`notify-maintenance`), incident acknowledgements and resolutions (`incident-notify`) ,
  * status page subscriber jobs (`subscriber-fanout`, `subscriber-delivery`), outbound webhook
- * deliveries (`webhook-delivery`) and scheduled SLA reports (`sla-report-send`).
+ * deliveries (`webhook-delivery`), scheduled SLA reports (`sla-report-send`) and phone-call
+ * retries (`voice-call-retry`).
  */
 export function startNotificationWorker(
   payload: Payload,
@@ -306,6 +312,11 @@ export function startNotificationWorker(
       }
       if (isWebhookJobName(job.name)) {
         await processWebhookDeliveryJob(payload, job as unknown as Job<WebhookDeliveryJobData>)
+        return
+      }
+      // Phone-call alerts calling again (#146).
+      if (isVoiceCallJobName(job.name)) {
+        await processVoiceCallRetry(payload, job.data as unknown as VoiceCallRetryJobData)
         return
       }
       // Scheduled SLA reports (#156).

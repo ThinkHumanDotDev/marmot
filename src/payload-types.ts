@@ -1027,7 +1027,7 @@ export interface MonitorIncident {
   acknowledgedAt?: string | null;
   resolvedAt?: string | null;
   acknowledgedBy?: (number | null) | User;
-  acknowledgedVia?: ('dashboard' | 'api' | 'link' | 'slack') | null;
+  acknowledgedVia?: ('dashboard' | 'api' | 'link' | 'phone' | 'slack') | null;
   resolvedBy?: (number | null) | User;
   autoResolved?: boolean | null;
   remindersSent?: number | null;
@@ -1045,7 +1045,7 @@ export interface MonitorIncident {
         type: 'opened' | 'maintenance' | 'acknowledged' | 'resolved' | 'published' | 'escalated';
         at: string;
         by?: (number | null) | User;
-        via?: ('dashboard' | 'api' | 'link' | 'slack') | null;
+        via?: ('dashboard' | 'api' | 'link' | 'phone' | 'slack') | null;
         message?: string | null;
         id?: string | null;
       }[]

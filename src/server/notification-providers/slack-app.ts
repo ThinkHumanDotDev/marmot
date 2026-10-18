@@ -43,7 +43,7 @@ export const slackAppFieldMeta: Record<keyof SlackAppConfig, NotificationFieldMe
 export function buildSlackAppMessage(
   ctx: Pick<
     NotificationSendContext,
-    'message' | 'monitor' | 'heartbeat' | 'locale' | 'organization' | 'openIncidentId'
+    'message' | 'monitor' | 'heartbeat' | 'locale' | 'organization' | 'incidentId'
   >,
   channelNotify = false,
 ): { text: string; blocks: unknown[] } {
@@ -66,13 +66,13 @@ export function buildSlackAppMessage(
     },
   ]
   const actions: unknown[] = []
-  if (ctx.openIncidentId !== null && ctx.openIncidentId !== undefined) {
+  if (ctx.incidentId !== null && ctx.incidentId !== undefined) {
     actions.push({
       type: 'button',
       action_id: SLACK_ACTIONS.acknowledge,
       style: 'primary',
       text: { type: 'plain_text', text: p('acknowledge') },
-      value: String(ctx.openIncidentId),
+      value: String(ctx.incidentId),
     })
   }
   if (monitor.active !== false && supportsCheckNow(monitor.type) && !isRemoteMonitor(monitor)) {

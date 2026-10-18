@@ -77,11 +77,11 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   
   ALTER TABLE "monitor_incidents_timeline" ALTER COLUMN "via" SET DATA TYPE text;
   DROP TYPE "public"."enum_monitor_incidents_timeline_via";
-  CREATE TYPE "public"."enum_monitor_incidents_timeline_via" AS ENUM('dashboard', 'api', 'link');
+  CREATE TYPE "public"."enum_monitor_incidents_timeline_via" AS ENUM('dashboard', 'api', 'link', 'phone');
   ALTER TABLE "monitor_incidents_timeline" ALTER COLUMN "via" SET DATA TYPE "public"."enum_monitor_incidents_timeline_via" USING "via"::"public"."enum_monitor_incidents_timeline_via";
   ALTER TABLE "monitor_incidents" ALTER COLUMN "acknowledged_via" SET DATA TYPE text;
   DROP TYPE "public"."enum_monitor_incidents_acknowledged_via";
-  CREATE TYPE "public"."enum_monitor_incidents_acknowledged_via" AS ENUM('dashboard', 'api', 'link');
+  CREATE TYPE "public"."enum_monitor_incidents_acknowledged_via" AS ENUM('dashboard', 'api', 'link', 'phone');
   ALTER TABLE "monitor_incidents" ALTER COLUMN "acknowledged_via" SET DATA TYPE "public"."enum_monitor_incidents_acknowledged_via" USING "acknowledged_via"::"public"."enum_monitor_incidents_acknowledged_via";
   DROP INDEX "payload_locked_documents_rels_slack_installations_id_idx";
   DROP INDEX "payload_locked_documents_rels_slack_user_links_id_idx";
