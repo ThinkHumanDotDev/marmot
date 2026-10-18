@@ -13,6 +13,7 @@ export const DEGRADED_TYPES = [
   'http',
   'keyword',
   'json-query',
+  'http-suite',
   'port',
   'ping',
   'dns',

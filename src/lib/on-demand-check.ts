@@ -5,6 +5,7 @@
  */
 import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
+import type { SuiteStepResult } from '@/lib/validation/http-suite'
 
 export type OnDemandCheckStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded'
 
@@ -48,6 +49,8 @@ export interface OnDemandCheckResult {
   assertions: AssertionResult[] | null
   /** Request timing phases in ms (HTTP types, TCP port), `null` when the type measures none. */
   timing: RequestTiming | null
+  /** Per-step results of a multi-step API check (`http-suite`), `null` for other types. */
+  steps?: SuiteStepResult[] | null
   /**
    * Extra, type-specific fields the check reported. Rendered generically so new fields show up
    * without UI changes.

@@ -395,7 +395,8 @@
       "blocked": "The outbound address guard refused this target (private or denied address).",
       "maintenance": "The monitor is in a maintenance window, so the check did not run.",
       "recorded": "Stored as a heartbeat (trigger: manual).",
-      "notRecorded": "Nothing was stored."
+      "notRecorded": "Nothing was stored.",
+      "steps": "Steps"
     },
     "stats": {
       "response": "Response",
@@ -582,6 +583,7 @@
         "important": "Status change",
         "importantValue": "Yes, this check changed the monitor's status",
         "timing": "Request timing",
+        "steps": "Steps",
         "probes": "Probes",
         "probeOk": "Passed",
         "probeFailed": "Failed",
@@ -592,6 +594,13 @@
         "bodyTruncated": "Only the first 16 KB are stored.",
         "emptyBody": "The response body was empty.",
         "bodyNotStored": "Bodies are only stored for failed and degraded checks."
+      },
+      "steps": {
+        "passed": "Passed",
+        "failed": "Failed",
+        "skipped": "Skipped",
+        "cleanup": "Cleanup",
+        "stored": "Stored: {names}"
       }
     },
     "certificate": {
@@ -651,6 +660,10 @@
       "prometheus": {
         "label": "Prometheus Query",
         "description": "Runs a PromQL query; DOWN or degraded when the value meets a threshold."
+      },
+      "http-suite": {
+        "label": "HTTP(s) - Multi-step API",
+        "description": "Runs HTTP requests in order, passing values from one response to the next; DOWN when a step fails."
       },
       "real-browser": {
         "label": "HTTP(s) - Browser Engine (Chrome/Chromium)",
@@ -875,7 +888,19 @@
       "globalpingMinSuccessRequired": "Enter how many probes must succeed",
       "globalpingMinSuccessMax": "Cannot be more than the number of probes",
       "locationsTooMany": "Pick at most {max} locations",
-      "locationsTypeUnsupported": "Group, manual, push, Steam and Globalping monitors run on this server only"
+      "locationsTypeUnsupported": "Group, manual, push, Steam and Globalping monitors run on this server only",
+      "suiteProblem": "{path}: {message}",
+      "suiteStepsRequired": "Add at least one step",
+      "suiteStepKey": "Use letters, digits, dashes and underscores, starting with a letter or underscore",
+      "suiteStepKeyDuplicate": "Another step already uses this key",
+      "suiteName": "Use letters, digits and underscores, starting with a letter or underscore",
+      "suiteNameDuplicate": "This name is already used",
+      "suiteHeaderName": "Enter a valid header name",
+      "suiteUrl": "Enter an http(s) URL",
+      "suiteStatusCodes": "Use status codes or ranges such as 200-299 or 204",
+      "suiteStoreFrom": "Enter header:Name, status, body or a JSON expression such as $.data.token",
+      "suiteUnknownReference": "{name} is not defined here: use a variable, a secret or a value stored by an earlier step",
+      "suiteAuthRequired": "Required for this authentication method"
     },
     "form": {
       "assertions": {
@@ -1429,6 +1454,58 @@
           "critical": "Critical",
           "maintenance": "Maintenance"
         }
+      },
+      "suite": {
+        "title": "Steps",
+        "cardDescription": "HTTP requests run in order on every check. The monitor's timeout covers the whole suite.",
+        "description": "Use {vars}, {secrets} or {steps} in URLs, headers, bodies, credentials and assertions. A value stored by a step is available to the steps after it.",
+        "vars": "Variables",
+        "varsDescription": "Static values for every step, such as the base URL.",
+        "addVar": "Add variable",
+        "secrets": "Secrets",
+        "secretsDescription": "Passwords and API keys. They are redacted from messages, step results and the response log.",
+        "addSecret": "Add secret",
+        "steps": "Steps",
+        "addStep": "Add step",
+        "stepTitle": "Step {index}",
+        "cleanupBadge": "Cleanup",
+        "moveUp": "Move step {index} up",
+        "moveDown": "Move step {index} down",
+        "removeStep": "Remove step {index}",
+        "removeRow": "Remove row {index}",
+        "key": "Key",
+        "keyDescription": "Later steps read this step's values as {example}.",
+        "stepName": "Name",
+        "stepNamePlaceholder": "Log in",
+        "url": "URL",
+        "headers": "Headers",
+        "addHeader": "Add header",
+        "name": "Name",
+        "value": "Value",
+        "auth": "Authentication",
+        "authMethods": {
+          "none": "None",
+          "basic": "Basic",
+          "bearer": "Bearer token"
+        },
+        "bodyEncodings": {
+          "json": "JSON",
+          "form": "Form",
+          "xml": "XML"
+        },
+        "username": "Username",
+        "password": "Password",
+        "token": "Token",
+        "statusCodes": "Accepted status codes",
+        "statusCodesDescription": "Comma-separated codes or ranges, such as 200-299, 204. Status assertions replace them.",
+        "assertions": "Assertions",
+        "store": "Store values",
+        "storeDescription": "Values for later steps: a JSON expression such as $.data.token, header:Location, status or body. Mark tokens as secret to redact them.",
+        "storeFrom": "From",
+        "storeSecret": "Secret",
+        "addStore": "Add value",
+        "alwaysRun": "Always run (cleanup)",
+        "alwaysRunDescription": "Run this step even after an earlier step failed, for example to log out or delete test data."
       }
     },
     "channels": {

@@ -482,3 +482,90 @@ test.describe('Monitor table view', () => {
     expect(monitors.map((m) => m.active)).toEqual([false, false])
   })
 })
+
+/**
+ * Multi-step API checks (#138): a suite against the fixture server whose second step fails shows the
+ * failing step in its message and a waterfall of the three steps (the cleanup step ran) in the check
+ * detail; a suite is created through the form's step editor.
+ */
+test.describe('Multi-step API checks', () => {
+  let suiteId: DocId
+
+  test.beforeAll(async ({ adminApi }) => {
+    const organization = await adminApi.organizationId(SETUP_ORG.slug)
+    const monitor = await adminApi.createMonitor({
+      name: `Suite ${runId()}`,
+      type: 'http-suite',
+      httpSuite: {
+        vars: [{ name: 'base', value: targetUrl('') }],
+        secrets: [],
+        steps: [
+          {
+            key: 'health',
+            name: 'health',
+            url: '{{ vars.base }}/health',
+            store: [{ name: 'ok', from: '$.ok', secret: false }],
+          },
+          { key: 'down', name: 'dependency', url: '{{ vars.base }}/down' },
+          { key: 'cleanup', name: 'cleanup', url: '{{ vars.base }}/health', alwaysRun: true },
+        ],
+      },
+      active: true,
+      interval: 60,
+      retryInterval: 60,
+      maxRetries: 0,
+      resendInterval: 0,
+      timeout: 48,
+      organization,
+    })
+    suiteId = monitor.id
+    await adminApi.waitForHeartbeat(suiteId, 'down')
+  })
+
+  test.afterAll(async ({ adminApi }) => {
+    if (suiteId !== undefined) await adminApi.delete('monitors', suiteId)
+  })
+
+  test('shows the steps of a check as a waterfall', async ({ page }) => {
+    await page.goto(`/${SETUP_ORG.slug}/monitors/${suiteId}`)
+    await page.getByTestId('monitor-logs-tab').click()
+    const row = page.getByTestId('log-row').first()
+    await expect(row).toContainText('step 2 "dependency": status 503')
+    await row.click()
+    const steps = page.getByTestId('log-detail').getByTestId('suite-step-row')
+    await expect(steps).toHaveCount(3)
+    await expect(steps.nth(0)).toHaveAttribute('data-outcome', 'passed')
+    await expect(steps.nth(1)).toHaveAttribute('data-outcome', 'failed')
+    await expect(steps.nth(2)).toHaveAttribute('data-outcome', 'passed')
+    await expect(steps.nth(2)).toContainText('Cleanup')
+  })
+
+  test('creates a suite with the step editor', async ({ page, adminApi }) => {
+    await page.goto(`/${SETUP_ORG.slug}/monitors/new?type=http-suite`)
+    const fields = page.getByTestId('monitor-form').filter({ visible: true })
+    await expect(fields.getByTestId('http-suite-card')).toBeVisible()
+    const name = `Suite form ${runId()}`
+    await fields.getByLabel('Friendly name').fill(name)
+    const step = fields.getByTestId('suite-step').first()
+    await step.getByLabel('URL').fill(targetUrl('/health'))
+    await fields.getByTestId('suite-add-step').click()
+    const second = fields.getByTestId('suite-step').nth(1)
+    await second.getByLabel('URL').fill(targetUrl('/health'))
+    await second.getByLabel('Always run (cleanup)').click()
+    await fields.getByTestId('monitor-submit').click()
+
+    await expect(page).toHaveURL(new RegExp(`/${SETUP_ORG.slug}/monitors/(?!new)[^/?]+$`))
+    const id = new URL(page.url()).pathname.split('/').pop()!
+    try {
+      const [monitor] = await adminApi.find<{ httpSuite?: { steps: unknown[] } }>('monitors', {
+        id: { equals: id },
+      })
+      expect(monitor?.httpSuite?.steps).toEqual([
+        expect.objectContaining({ key: 'step1', url: targetUrl('/health'), alwaysRun: false }),
+        expect.objectContaining({ key: 'step2', url: targetUrl('/health'), alwaysRun: true }),
+      ])
+    } finally {
+      await adminApi.delete('monitors', id)
+    }
+  })
+})

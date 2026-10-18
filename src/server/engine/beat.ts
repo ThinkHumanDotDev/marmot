@@ -17,6 +17,7 @@ import { degradedThresholdMs } from '@/lib/monitor-degraded'
 import type { PagespeedRun } from '@/lib/pagespeed'
 import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
+import type { SuiteStepResult } from '@/lib/validation/http-suite'
 import type { CapturedResponse } from '@/server/monitor-types/response-capture'
 import type { HeartbeatStatus, ProbeResult } from '@/server/monitor-types/types'
 import type { TlsInfo } from './tls'
@@ -103,6 +104,8 @@ export interface CheckResult {
   value?: number | null
   /** Scores and metrics of a PageSpeed / Lighthouse run (#137), whatever the outcome. */
   pagespeed?: PagespeedRun | null
+  /** Per-step results of a multi-step API check (`http-suite`, #138), whatever the outcome. */
+  steps?: SuiteStepResult[] | null
   /** Cache lifetime of the document the check read (status page monitors, #125); unset otherwise. */
   cacheSeconds?: number | null
   /**

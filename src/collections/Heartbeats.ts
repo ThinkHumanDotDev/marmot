@@ -118,6 +118,12 @@ export const Heartbeats: CollectionConfig = {
       admin: { readOnly: true, description: adminT('marmot:heartbeats:probesDescription') },
     },
     {
+      // Multi-step API checks (#138): one row per step (`SuiteStepResult`), secrets redacted.
+      name: 'steps',
+      type: 'json',
+      admin: { readOnly: true, description: adminT('marmot:heartbeats:stepsDescription') },
+    },
+    {
       // Metric value the check judged (Prometheus query monitors, #140), charted instead of the
       // response time on the detail page.
       name: 'value',

@@ -7,6 +7,7 @@ import type { Payload } from 'payload'
 import type { PagespeedRun } from '@/lib/pagespeed'
 import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
+import type { SuiteStepResult } from '@/lib/validation/http-suite'
 import type { Monitor } from '@/payload-types'
 import type { TlsInfo } from '@/server/engine/tls'
 
@@ -54,6 +55,11 @@ export interface MonitorCheckContext {
    * only for failed or degraded beats.
    */
   response?: CapturedResponse | null
+  /**
+   * Per-step results of a multi-step API check (`http-suite`, #138), whatever the verdict, secrets
+   * redacted. The worker stores them on the heartbeat (`heartbeats.steps`).
+   */
+  steps?: SuiteStepResult[] | null
   /**
    * The metric value the check judged (Prometheus query monitors, #140), whatever the verdict.
    * The worker stores it on the heartbeat (`heartbeats.value`) and rolls it up for the chart.
