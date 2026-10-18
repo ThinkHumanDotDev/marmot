@@ -87,7 +87,18 @@ export function requestSecrets(
   return [...secrets].sort((a, b) => b.length - a.length)
 }
 
-function scrub(value: string, secrets: readonly string[]): string {
+/** Secrets worth scrubbing (trimmed, at least `MIN_SECRET_LENGTH` long), longest first. */
+export function secretList(values: Iterable<string | null | undefined>): string[] {
+  const secrets = new Set<string>()
+  for (const value of values) {
+    const trimmed = value?.trim()
+    if (trimmed && trimmed.length >= MIN_SECRET_LENGTH) secrets.add(trimmed)
+  }
+  return [...secrets].sort((a, b) => b.length - a.length)
+}
+
+/** `value` with every occurrence of `secrets` (longest first) replaced by `[redacted]`. */
+export function scrub(value: string, secrets: readonly string[]): string {
   let out = value
   for (const secret of secrets) {
     if (out.includes(secret)) out = out.split(secret).join(REDACTED)

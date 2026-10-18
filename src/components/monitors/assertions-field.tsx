@@ -3,6 +3,7 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
+  get,
   useFieldArray,
   useFormState,
   useWatch,
@@ -56,25 +57,30 @@ export function AssertionsField({
   setValue,
   monitorType,
   dnsRecordType,
+  name: listName = 'assertions',
 }: {
   control: FormControlType
   setValue: UseFormSetValue<MonitorFormInput>
   monitorType: string
   /** The DNS monitor's own record type, the default target of `dnsRecord` rows. */
   dnsRecordType?: string | null
+  /** Path of the rows: the monitor's `assertions`, or a step's in an HTTP suite. */
+  name?: 'assertions' | `httpSuite.steps.${number}.assertions`
 }) {
   const t = useTranslations('monitors.form.assertions')
-  const { fields, append, remove } = useFieldArray({ control, name: 'assertions' })
-  const rows = (useWatch({ control, name: 'assertions' }) ?? []) as MonitorAssertion[]
-  const { errors } = useFormState({ control, name: 'assertions' })
+  // Typed as the monitor's own list; a suite step's rows have the same shape.
+  const name = listName as 'assertions'
+  const { fields, append, remove } = useFieldArray({ control, name })
+  const rows = (useWatch({ control, name }) ?? []) as MonitorAssertion[]
+  const { errors } = useFormState({ control, name })
+  const listErrors = get(errors, name) as
+    { message?: string; root?: { message?: string } } | undefined
   const kinds = assertionKindsForType(monitorType)
 
   const counts = new Map<AssertionKind, number>()
   for (const row of rows) counts.set(row.kind, (counts.get(row.kind) ?? 0) + 1)
   const available = kinds.filter((kind) => (counts.get(kind) ?? 0) < MAX_ASSERTIONS_PER_KIND)
-  const listError =
-    (errors.assertions as { message?: string; root?: { message?: string } })?.root?.message ??
-    (errors.assertions as { message?: string } | undefined)?.message
+  const listError = listErrors?.root?.message ?? listErrors?.message
 
   const addRow = () => {
     const kind = available[0]
@@ -83,14 +89,14 @@ export function AssertionsField({
   }
 
   const changeKind = (index: number, kind: AssertionKind) => {
-    setValue(`assertions.${index}.kind`, kind, { shouldDirty: true })
+    setValue(`${name}.${index}.kind`, kind, { shouldDirty: true })
     const comparator = rows[index]?.comparator
     if (!comparator || !COMPARATORS_BY_KIND[kind].includes(comparator)) {
-      setValue(`assertions.${index}.comparator`, COMPARATORS_BY_KIND[kind][0], {
+      setValue(`${name}.${index}.comparator`, COMPARATORS_BY_KIND[kind][0], {
         shouldDirty: true,
       })
     }
-    setValue(`assertions.${index}.target`, null, { shouldDirty: true })
+    setValue(`${name}.${index}.target`, null, { shouldDirty: true })
   }
 
   return (
@@ -110,7 +116,7 @@ export function AssertionsField({
           >
             <FormField
               control={control}
-              name={`assertions.${index}.kind`}
+              name={`${name}.${index}.kind`}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-xs">{t('kind')}</FormLabel>
@@ -143,7 +149,7 @@ export function AssertionsField({
             {hasTarget ? (
               <FormField
                 control={control}
-                name={`assertions.${index}.target`}
+                name={`${name}.${index}.target`}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs">{t(`targets.${kind}`)}</FormLabel>
@@ -191,7 +197,7 @@ export function AssertionsField({
 
             <FormField
               control={control}
-              name={`assertions.${index}.comparator`}
+              name={`${name}.${index}.comparator`}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-xs">{t('comparator')}</FormLabel>
@@ -217,7 +223,7 @@ export function AssertionsField({
             {needsValue ? (
               <FormField
                 control={control}
-                name={`assertions.${index}.value`}
+                name={`${name}.${index}.value`}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs">{t('value')}</FormLabel>
