@@ -681,6 +681,17 @@ export const StatusPages: CollectionConfig = {
       ],
     },
     {
+      // Display order of the page's custom metrics (#280), set from the editor's Metrics tab.
+      // Which metrics the page shows is kept on the metrics (`statusPages`, `visible`); metrics
+      // missing here follow, in their own `order`.
+      name: 'metricOrder',
+      type: 'relationship',
+      relationTo: 'metrics',
+      hasMany: true,
+      maxDepth: 0,
+      admin: { description: adminT('marmot:statusPages:metricOrderDescription') },
+    },
+    {
       name: 'groups',
       type: 'array',
       admin: { description: adminT('marmot:statusPages:groupsDescription') },

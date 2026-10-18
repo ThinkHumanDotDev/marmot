@@ -145,6 +145,8 @@ export const adminTranslations = {
         aggregationDescription:
           'How the points of one chart interval are combined: average, sum, last value or maximum.',
         thresholdsDescription: 'Optional reference lines drawn on the chart.',
+        showThresholdStateDescription:
+          'Colour the headline value on status pages by the warning and critical thresholds.',
         sourceDescription:
           'push: points arrive through the API. monitor: the value a monitor records (Prometheus query monitors).',
         visibleDescription: 'Only visible metrics are shown on the status pages listed below.',
@@ -581,6 +583,8 @@ export const adminTranslations = {
       },
       statusPages: {
         slugDescription: 'Public URL: /status/<slug>. Lowercase letters, numbers, hyphens.',
+        metricOrderDescription:
+          'Display order of the custom metrics on this page; set it in the editor under Metrics.',
         defaultLocaleDescription:
           'Language of the page at its plain URL. Other offered languages live under /<language>/.',
         localesDescription:

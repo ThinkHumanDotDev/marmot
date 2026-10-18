@@ -443,6 +443,11 @@
         "warning": "Avertissement {value}",
         "critical": "Critique {value}"
       },
+      "states": {
+        "ok": "Normal",
+        "warning": "Avertissement",
+        "critical": "Critique"
+      },
       "summary": "{name} sur {period} : {value}.",
       "empty": "Aucune donnée sur cette période.",
       "loadFailed": "Impossible de charger cette période. Réessayez.",

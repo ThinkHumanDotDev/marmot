@@ -89,6 +89,8 @@ export interface ImportReport {
   maintenance: ImportSectionReport
   /** Status page subscribers (provider imports). */
   subscribers: ImportSectionReport
+  /** Custom metrics with their status page links (Marmot exports, #280). */
+  metrics: ImportSectionReport
   warnings: string[]
 }
 
@@ -115,4 +117,5 @@ export const totalCreates = (report: ImportReport): number =>
   report.templates.create +
   report.incidents.create +
   report.maintenance.create +
-  report.subscribers.create
+  report.subscribers.create +
+  report.metrics.create

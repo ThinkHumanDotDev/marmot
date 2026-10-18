@@ -57,6 +57,7 @@ import {
   metricCreateSchema,
   metricPointsSchema,
   metricUpdateSchema,
+  pageMetricsBody,
 } from '@/server/metrics/schemas'
 import { METRIC_VIEWS } from '@/lib/metrics'
 
@@ -2084,12 +2085,35 @@ export const OPERATIONS: OperationSpec[] = [
     operationId: 'pushMetricPoints',
     summary: 'Push values to a metric',
     description:
-      'Up to 1 000 points from the last 24 hours, rolled up into minutely, hourly and daily buckets. Rate limited per key and metric (`METRIC_PUSH_RATE_LIMIT`). `409` for monitor-backed metrics.',
+      'Up to 1 000 points, rolled up into minutely, hourly and daily buckets; points older than 24 hours are backfilled into the hourly (30 days) and daily (the data period) buckets only. Rate limited per key and metric (`METRIC_PUSH_RATE_LIMIT`). `409` for monitor-backed metrics.',
     tag: 'Metrics',
     permission: 'metric:push',
     body: { schema: metricPointsSchema },
     status: 202,
     response: { description: '`{ accepted }`', schema: anyObject },
+  },
+  {
+    method: 'GET',
+    path: `${ORG}/status-pages/{id}/metrics`,
+    operationId: 'getStatusPageMetrics',
+    summary: 'The metrics a status page shows',
+    description:
+      'Every metric of the organization and the ids of those on the page, in its display order: `{ metrics, selected }`.',
+    tag: 'Metrics',
+    permission: 'metric:read',
+    response: { description: '`{ metrics, selected }`', schema: anyObject },
+  },
+  {
+    method: 'PUT',
+    path: `${ORG}/status-pages/{id}/metrics`,
+    operationId: 'setStatusPageMetrics',
+    summary: 'Pick and order the metrics of a status page',
+    description:
+      'The listed metrics show on the page in this order and every other metric is removed from it. Needs `status-page:update` too. Whether a metric is published (`visible`) is not changed.',
+    tag: 'Metrics',
+    permission: 'metric:update',
+    body: { schema: pageMetricsBody },
+    response: { description: '`{ metrics, selected }`', schema: anyObject },
   },
 
   // Not organization-scoped

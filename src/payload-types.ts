@@ -1211,6 +1211,7 @@ export interface StatusPage {
         id?: string | null;
       }[]
     | null;
+  metricOrder?: (number | Metric)[] | null;
   groups?:
     | {
         name: string;
@@ -1231,6 +1232,34 @@ export interface StatusPage {
         id?: string | null;
       }[]
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "metrics".
+ */
+export interface Metric {
+  id: number;
+  organization: number | Organization;
+  name: string;
+  description?: string | null;
+  suffix?: string | null;
+  decimals: number;
+  aggregation: 'average' | 'sum' | 'last' | 'max';
+  defaultView: 'hour' | 'day' | 'week' | 'month';
+  thresholds?: {
+    warning?: number | null;
+    critical?: number | null;
+  };
+  showThresholdState?: boolean | null;
+  source: 'push' | 'monitor';
+  monitor?: (number | null) | Monitor;
+  visible?: boolean | null;
+  statusPages?: (number | StatusPage)[] | null;
+  order?: number | null;
+  lastValue?: number | null;
+  lastPushAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2015,33 +2044,6 @@ export interface WebhookDelivery {
   error?: string | null;
   deliveredAt?: string | null;
   redeliveryOf?: (number | null) | WebhookDelivery;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "metrics".
- */
-export interface Metric {
-  id: number;
-  organization: number | Organization;
-  name: string;
-  description?: string | null;
-  suffix?: string | null;
-  decimals: number;
-  aggregation: 'average' | 'sum' | 'last' | 'max';
-  defaultView: 'hour' | 'day' | 'week' | 'month';
-  thresholds?: {
-    warning?: number | null;
-    critical?: number | null;
-  };
-  source: 'push' | 'monitor';
-  monitor?: (number | null) | Monitor;
-  visible?: boolean | null;
-  statusPages?: (number | StatusPage)[] | null;
-  order?: number | null;
-  lastValue?: number | null;
-  lastPushAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -3273,6 +3275,7 @@ export interface StatusPagesSelect<T extends boolean = true> {
         hostname?: T;
         id?: T;
       };
+  metricOrder?: T;
   groups?:
     | T
     | {
@@ -3734,6 +3737,7 @@ export interface MetricsSelect<T extends boolean = true> {
         warning?: T;
         critical?: T;
       };
+  showThresholdState?: T;
   source?: T;
   monitor?: T;
   visible?: T;

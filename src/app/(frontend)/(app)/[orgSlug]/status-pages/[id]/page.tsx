@@ -6,6 +6,7 @@ import { StatusPageEditor } from '@/components/status-pages/editor/status-page-e
 import type { MonitorOption } from '@/components/status-pages/api'
 import { toTemplateRow } from '@/lib/templates'
 import { getOrganizationTimezone } from '@/server/maintenance/timezone'
+import { listPageMetrics, type MetricContext } from '@/server/metrics/manage'
 import { orgAllowsCustomDomains } from '@/server/billing/entitlements'
 import { getInstanceSettings } from '@/server/settings'
 
@@ -93,6 +94,11 @@ export default async function StatusPageEditorPage({
       })
     : { docs: [] }
 
+  // Custom metrics for the builder's Metrics tab (#280).
+  const pageMetrics = can('metric:read')
+    ? await listPageMetrics({ payload, user, orgId: org.id } as MetricContext, page)
+    : null
+
   const monitorOptions: MonitorOption[] = monitors.map((m) => ({
     id: m.id,
     name: m.name,
@@ -123,6 +129,8 @@ export default async function StatusPageEditorPage({
       trustProxy={settings.trustProxy}
       customDomains={await orgAllowsCustomDomains(payload, org.id)}
       canViewHistory={can('status-page:history')}
+      pageMetrics={pageMetrics}
+      canEditMetrics={can('metric:update')}
     />
   )
 }

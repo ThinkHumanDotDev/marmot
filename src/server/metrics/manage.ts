@@ -8,8 +8,10 @@ import type { Payload } from 'payload'
 import type { OrgId } from '@/access/permissions'
 import { relId } from '@/collections/shared'
 import { DEFAULT_METRIC_VIEW, type MetricRow } from '@/lib/metrics'
-import type { Metric, User } from '@/payload-types'
+import type { Metric, StatusPage, User } from '@/payload-types'
+import { apiError } from '@/server/errors'
 
+import { orderForPage } from './public'
 import type { MetricCreateInput, MetricUpdateInput } from './schemas'
 
 export interface MetricContext {
@@ -39,6 +41,7 @@ export function toMetricRow(doc: Metric): MetricRow {
       warning: doc.thresholds?.warning ?? null,
       critical: doc.thresholds?.critical ?? null,
     },
+    showThresholdState: doc.showThresholdState === true,
     source: doc.source ?? 'push',
     monitor: idString(doc.monitor),
     visible: doc.visible === true,
@@ -130,4 +133,70 @@ export async function deleteMetric(ctx: MetricContext, metric: Metric): Promise<
     user: ctx.user,
     overrideAccess: false,
   })
+}
+
+// ---- Status page builder (#280) --------------------------------------------------------------
+
+/** The metrics a page shows (`statusPages` holds it), in the page's display order. */
+export interface PageMetrics {
+  /** Every metric of the organization the user may read, in their own order. */
+  metrics: MetricRow[]
+  /** Ids of the metrics listing the page, in its display order. */
+  selected: string[]
+}
+
+type PageRef = Pick<StatusPage, 'id' | 'metricOrder'>
+
+function selectedOf(rows: MetricRow[], page: PageRef): string[] {
+  const listed = rows.filter((row) => row.statusPages.includes(String(page.id)))
+  return orderForPage(listed, page.metricOrder).map((row) => row.id)
+}
+
+export async function listPageMetrics(ctx: MetricContext, page: PageRef): Promise<PageMetrics> {
+  const metrics = await listMetrics(ctx)
+  return { metrics, selected: selectedOf(metrics, page) }
+}
+
+/**
+ * Pick and order the page's metrics: `ids` (metrics of the organization, in display order) list the
+ * page, every other metric stops listing it, and the page keeps the order in `metricOrder`. Writes
+ * as the user, so `metric:update` and `status-page:update` both apply. Whether a metric is
+ * published (`visible`) is left alone.
+ */
+export async function setPageMetrics(
+  ctx: MetricContext,
+  page: PageRef,
+  ids: readonly string[],
+): Promise<PageMetrics> {
+  const wanted = [...new Set(ids.map(String))]
+  const rows = await listMetrics(ctx)
+  const byId = new Map(rows.map((row) => [row.id, row]))
+  if (wanted.some((id) => !byId.has(id))) throw apiError('pageMetricsInvalid', 400)
+
+  const pageId = String(page.id)
+  for (const row of rows) {
+    const listed = row.statusPages.includes(pageId)
+    const want = wanted.includes(row.id)
+    if (listed === want) continue
+    const statusPages = want
+      ? [...row.statusPages, pageId]
+      : row.statusPages.filter((id) => id !== pageId)
+    await ctx.payload.update({
+      collection: 'metrics',
+      id: toDocId(ctx.payload, row.id),
+      data: { statusPages: relationIds(ctx.payload, statusPages) } as never,
+      depth: 0,
+      user: ctx.user,
+      overrideAccess: false,
+    })
+  }
+  const updated = await ctx.payload.update({
+    collection: 'status-pages',
+    id: page.id,
+    data: { metricOrder: relationIds(ctx.payload, wanted) } as never,
+    depth: 0,
+    user: ctx.user,
+    overrideAccess: false,
+  })
+  return listPageMetrics(ctx, updated)
 }

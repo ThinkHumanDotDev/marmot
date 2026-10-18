@@ -443,6 +443,11 @@
         "warning": "Advertencia {value}",
         "critical": "Crítico {value}"
       },
+      "states": {
+        "ok": "Normal",
+        "warning": "Advertencia",
+        "critical": "Crítico"
+      },
       "summary": "{name} en {period}: {value}.",
       "empty": "No hay datos en este periodo.",
       "loadFailed": "No se pudo cargar este periodo. Inténtalo de nuevo.",

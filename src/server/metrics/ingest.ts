@@ -1,14 +1,18 @@
 /**
  * Push ingestion of custom metrics (#155): a batch of points is folded into the minutely, hourly
  * and daily `metric-stats` buckets of the metric (same keys and retention as the monitor rollups);
- * raw points are never stored. Pushes of one metric are serialised within the process, and a
- * concurrent insert of the same bucket from another process is retried as an update, like
+ * raw points are never stored. Points older than the minutely rollup's 24 hours are backfilled
+ * into the rollups that still keep their time (#280): hourly up to 30 days, daily up to the data
+ * period. Pushes of one metric are serialised within the process and across processes by a Redis
+ * lock (`./lock.ts`), and a concurrent insert of the same bucket is retried as an update, like
  * `upsertBucket` in `src/server/stats/uptime-calculator.ts`.
  */
 import type { Payload, RequiredDataFromCollectionSlug } from 'payload'
 
 import {
   METRIC_GRANULARITIES,
+  METRIC_HOURLY_MAX_AGE_SECONDS,
+  METRIC_MAX_BACKFILL_DAYS,
   METRIC_MAX_POINT_AGE_SECONDS,
   METRIC_MAX_POINT_SKEW_SECONDS,
   type MetricGranularity,
@@ -18,6 +22,7 @@ import { relId } from '@/collections/shared'
 import { getKey } from '@/server/stats/uptime-calculator'
 
 import { mergeAggregates, pointAggregate, type MetricAggregate } from './aggregate'
+import { withMetricLock } from './lock'
 import type { MetricPointInput } from './schemas'
 
 export type PointProblem = 'metricPointTooOld' | 'metricPointInFuture'
@@ -30,26 +35,57 @@ export function pointTime(point: MetricPointInput, now: Date): number {
   return timestamp > 1e11 ? Math.round(timestamp) : Math.round(timestamp * 1000)
 }
 
-/** Why a point cannot be accepted, or null. */
-export function pointProblem(at: number, now: Date): PointProblem | null {
-  if (!Number.isFinite(at) || now.getTime() - at > METRIC_MAX_POINT_AGE_SECONDS * 1000) {
+/**
+ * Oldest age (seconds) a point may have: the daily rollup's retention (`keepDataPeriodDays`), or
+ * `METRIC_MAX_BACKFILL_DAYS` when long-term retention is off (below 1 day).
+ */
+export const maxPointAgeSeconds = (keepDataPeriodDays: number): number =>
+  Math.max(
+    METRIC_MAX_POINT_AGE_SECONDS,
+    (keepDataPeriodDays >= 1 ? keepDataPeriodDays : METRIC_MAX_BACKFILL_DAYS) * 86400,
+  )
+
+/** Why a point cannot be accepted, or null. `maxAgeSeconds` from `maxPointAgeSeconds`. */
+export function pointProblem(
+  at: number,
+  now: Date,
+  maxAgeSeconds: number = METRIC_MAX_POINT_AGE_SECONDS,
+): PointProblem | null {
+  if (!Number.isFinite(at) || now.getTime() - at > maxAgeSeconds * 1000) {
     return 'metricPointTooOld'
   }
   if (at - now.getTime() > METRIC_MAX_POINT_SKEW_SECONDS * 1000) return 'metricPointInFuture'
   return null
 }
 
+/**
+ * The rollups a point at `at` goes into: those whose retention still keeps its time (minutely 24
+ * hours, hourly 30 days, daily always; the caller bounds the age with `pointProblem`).
+ */
+export function granularitiesFor(at: number, now: Date): MetricGranularity[] {
+  const age = now.getTime() - at
+  return METRIC_GRANULARITIES.filter((granularity) => {
+    if (granularity === 'minute') return age <= METRIC_MAX_POINT_AGE_SECONDS * 1000
+    if (granularity === 'hour') return age <= METRIC_HOURLY_MAX_AGE_SECONDS * 1000
+    return true
+  })
+}
+
 type StatRow = MetricAggregate & { id: string | number; timestamp: number }
 
-/** Partial aggregates of a batch per granularity and bucket key. Pure; exported for tests. */
+/**
+ * Partial aggregates of a batch per granularity and bucket key; old points only reach the rollups
+ * that keep their time (`granularitiesFor`). Pure; exported for tests.
+ */
 export function bucketPoints(
   points: ReadonlyArray<{ value: number; at: number }>,
+  now: Date = new Date(),
 ): Record<MetricGranularity, Map<number, MetricAggregate>> {
   const out = Object.fromEntries(
     METRIC_GRANULARITIES.map((g) => [g, new Map<number, MetricAggregate>()]),
   ) as Record<MetricGranularity, Map<number, MetricAggregate>>
   for (const { value, at } of points) {
-    for (const granularity of METRIC_GRANULARITIES) {
+    for (const granularity of granularitiesFor(at, now)) {
       const key = getKey(new Date(at), granularity)
       const buckets = out[granularity]
       buckets.set(key, mergeAggregates(buckets.get(key) ?? null, pointAggregate(value, at)))
@@ -113,6 +149,7 @@ async function upsertGranularity(
   buckets: Map<number, MetricAggregate>,
 ): Promise<void> {
   const keys = [...buckets.keys()]
+  if (keys.length === 0) return
   const existing = await findRows(payload, metric.id, granularity, keys)
   const organization = relId(metric.organization)
   for (const [timestamp, partial] of buckets) {
@@ -155,27 +192,14 @@ async function upsertGranularity(
   }
 }
 
-const queues = new Map<string, Promise<unknown>>()
-
-/** Run `task` after the pushes of the same metric that are still running in this process. */
-function serialised<T>(key: string, task: () => Promise<T>): Promise<T> {
-  const previous = queues.get(key) ?? Promise.resolve()
-  const next = previous.then(task, task)
-  const settled = next.catch(() => undefined)
-  queues.set(key, settled)
-  void settled.then(() => {
-    if (queues.get(key) === settled) queues.delete(key)
-  })
-  return next
-}
-
 export interface PushResult {
   accepted: number
 }
 
 /**
  * Fold validated points (`at` in unix ms) into the metric's rollups and remember its latest value.
- * The caller checks `pointProblem` first.
+ * The caller checks `pointProblem` first. A batch of backfilled points only (all older than 24
+ * hours) leaves a known latest value alone.
  */
 export async function ingestPoints(
   payload: Payload,
@@ -184,18 +208,25 @@ export async function ingestPoints(
   now: Date = new Date(),
 ): Promise<PushResult> {
   if (points.length === 0) return { accepted: 0 }
-  await serialised(String(metric.id), async () => {
-    const buckets = bucketPoints(points)
+  await withMetricLock(String(metric.id), async () => {
+    const buckets = bucketPoints(points, now)
     for (const granularity of METRIC_GRANULARITIES) {
       await upsertGranularity(payload, metric, granularity, buckets[granularity])
     }
   })
   const newest = points.reduce((a, b) => (b.at >= a.at ? b : a))
+  const recent =
+    now.getTime() - newest.at <= METRIC_MAX_POINT_AGE_SECONDS * 1000 ||
+    metric.lastValue === null ||
+    metric.lastValue === undefined
   // Straight through the adapter: bookkeeping, not an audited change.
   await payload.db.updateOne({
     collection: 'metrics',
     id: metric.id,
-    data: { lastValue: newest.value, lastPushAt: now.toISOString() },
+    data: {
+      ...(recent ? { lastValue: newest.value } : {}),
+      lastPushAt: now.toISOString(),
+    },
   })
   return { accepted: points.length }
 }

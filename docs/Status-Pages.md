@@ -305,7 +305,11 @@ backlog (#155). Define them under **Settings → Metrics** (or `/api/orgs/:orgId
 permissions, members by default): a name, description, unit (`suffix`, e.g. `%` or `ms`), `decimals`,
 how the values of one interval are combined (`aggregation`: `average`, `sum`, `last` or `max`), the
 period it opens with (`defaultView`: `hour`, `day`, `week` or `month`), optional warning and critical
-`thresholds` drawn as reference lines, and an `order`.
+`thresholds` drawn as reference lines, and an `order`. With **Colour the value by its threshold**
+(`showThresholdState`) the page shows the latest value in green, amber or red with an icon and the label
+Normal, Warning or Critical; a value at or above a threshold reaches it, or at or below when the
+critical threshold is below the warning one (lower is worse, e.g. a success rate).
+_(landing in the current release, #280)_
 
 A metric gets its values in one of two ways (`source`):
 
@@ -317,22 +321,32 @@ A metric gets its values in one of two ways (`source`):
     -d '{"points":[{"value":0.42},{"value":0.40,"timestamp":"2026-10-12T09:59:00Z"}]}'
   ```
 
-  `{ "value": 0.42 }` works for a single point. A request carries up to 1 000 points from the last 24
-  hours (`timestamp` in unix seconds, milliseconds or ISO 8601; default now) and answers
-  `202 { "accepted": n }`; a bad point rejects the whole batch with `400`. Pushes are rate limited per
+  `{ "value": 0.42 }` works for a single point. A request carries up to 1 000 points (`timestamp` in
+  unix seconds, milliseconds or ISO 8601; default now) and answers `202 { "accepted": n }`; a bad point
+  rejects the whole batch with `400`. Points older than 24 hours are **backfilled** into the hourly
+  rollup (up to 30 days back) and the daily rollup (up to the data period, `KEEP_DATA_PERIOD_DAYS`), so
+  history can be loaded into the week and month charts; a batch of backfilled points only does not
+  change the metric's latest value. _(landing in the current release, #280)_ Pushes are rate limited per
   key and metric (`METRIC_PUSH_RATE_LIMIT`, 60 a minute) on top of the key's write budget
   (`API_KEY_WRITE_RATE_LIMIT`).
 
 - **monitor**: the value a [Prometheus query monitor](Monitors.md) records, read from its statistics.
 
 Points are never stored one by one: each push is folded into minutely, hourly and daily rollups
-(`metric-stats`) that follow the monitor statistics' retention (24 hours, 30 days, the data period). The
+(`metric-stats`) that follow the monitor statistics' retention (24 hours, 30 days, the data period).
+Pushes to one metric are serialised, across web replicas too (a Redis lock per metric), so concurrent
+pushes into the same bucket never lose a point. The
 `hour` view draws 1-minute intervals, `day` 5 minutes, `week` 1 hour and `month` 4 hours.
 
 A metric appears in the **Metrics** section of a page only when it is **published** (`visible`) and the
-page is one of its `statusPages`; hidden metrics never reach visitors. Visitors switch the period per
+page is one of its `statusPages`; hidden metrics never reach visitors. The page editor's **Metrics** tab
+picks the page's metrics and their order (`PUT /api/orgs/:orgId/status-pages/:id/metrics
+{ "metrics": [id, …] }`, `metric:update` and `status-page:update`); metrics the page has not ordered
+follow in their own `order`. _(landing in the current release, #280)_ Visitors switch the period per
 metric; the data comes from `GET /api/status-pages/:slug/metrics[?metric=<id>&view=hour|day|week|month]`,
-which carries the display settings and aggregates only (no source monitor, push time or organization),
+which carries the display settings and aggregates only (no source monitor, push time or organization)
+plus the threshold `state` of the latest value (`ok`, `warning`, `critical`, or `null` without
+thresholds or data) and whether the page colours it (`showThresholdState`),
 follows the page's access control and is cached for 30 seconds.
 
 ## Public endpoints

@@ -9,7 +9,9 @@ import {
 import { errorText } from '@/server/request-locale'
 import { tooManyRequests, type RateLimiter } from '@/server/security/rate-limit'
 
-import { ingestPoints, pointProblem, pointTime } from './ingest'
+import { getInstanceSettings } from '@/server/settings'
+
+import { ingestPoints, maxPointAgeSeconds, pointProblem, pointTime } from './ingest'
 import { loadOrgMetric } from './manage'
 import { metricPointsSchema, pointsOf } from './schemas'
 
@@ -17,8 +19,9 @@ import { metricPointsSchema, pointsOf } from './schemas'
  * The push handler with an injectable limiter (tests pass their own).
  *
  * POST /api/orgs/:orgId/metrics/:id/points `{ points: [{ value, timestamp? }] }` or
- * `{ value, timestamp? }` (`metric:push`; a `write` API key). Up to 1 000 points from the last 24
- * hours per request, folded into the minutely, hourly and daily rollups. Rate limited per key (or
+ * `{ value, timestamp? }` (`metric:push`; a `write` API key). Up to 1 000 points per request,
+ * folded into the minutely, hourly and daily rollups; points older than 24 hours are backfilled into
+ * the hourly (30 days) and daily (the data period) rollups only (#280). Rate limited per key (or
  * user) and metric (`METRIC_PUSH_RATE_LIMIT`), on top of the API key write budget. `202
  * { accepted }`.
  */
@@ -49,13 +52,20 @@ export async function handlePush(
   }
 
   const now = new Date()
+  const { keepDataPeriodDays } = await getInstanceSettings(ctx.payload)
+  const maxAge = maxPointAgeSeconds(keepDataPeriodDays)
   const points = pointsOf(parsed.data).map((point) => ({
     value: point.value,
     at: pointTime(point, now),
   }))
   for (const [index, point] of points.entries()) {
-    const problem = pointProblem(point.at, now)
-    if (problem) return jsonError(400, errorText(request, problem, { index }))
+    const problem = pointProblem(point.at, now, maxAge)
+    if (problem) {
+      return jsonError(
+        400,
+        errorText(request, problem, { index, days: Math.round(maxAge / 86400) }),
+      )
+    }
   }
 
   try {

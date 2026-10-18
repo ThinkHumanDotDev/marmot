@@ -231,6 +231,7 @@ function MetricForm({
     defaultView: metric?.defaultView ?? DEFAULT_METRIC_VIEW,
     warning: metric?.thresholds.warning?.toString() ?? '',
     critical: metric?.thresholds.critical?.toString() ?? '',
+    showThresholdState: metric?.showThresholdState ?? false,
     source: metric?.source ?? 'push',
     monitor: metric?.monitor ?? '',
     visible: metric?.visible ?? false,
@@ -260,6 +261,7 @@ function MetricForm({
         aggregation: form.aggregation,
         defaultView: form.defaultView,
         thresholds: { warning: numberOrNull(form.warning), critical: numberOrNull(form.critical) },
+        showThresholdState: form.showThresholdState,
         source: form.source,
         monitor: form.source === 'monitor' ? form.monitor : null,
         visible: form.visible,
@@ -384,6 +386,13 @@ function MetricForm({
           />
         </div>
       </div>
+      <SwitchRow
+        id="metric-threshold-state"
+        label={t('showThresholdState')}
+        description={t('showThresholdStateHint')}
+        checked={form.showThresholdState}
+        onChange={(v) => set('showThresholdState', v)}
+      />
       <div className="grid gap-2">
         <Label htmlFor="metric-source">{t('source')}</Label>
         <Select value={form.source} onValueChange={(v) => set('source', v as typeof form.source)}>
