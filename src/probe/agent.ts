@@ -377,6 +377,9 @@ export class ProbeAgent {
       ...(typeof result.value === 'number' && Number.isFinite(result.value)
         ? { value: result.value }
         : {}),
+      ...(result.steps?.length
+        ? { steps: result.steps as unknown as Record<string, unknown>[] }
+        : {}),
       ...(result.blocked ? { blocked: true } : {}),
       ...(result.checkerOffline ? { checkerOffline: true } : {}),
       ...(result.deferred ? { deferred: true } : {}),
