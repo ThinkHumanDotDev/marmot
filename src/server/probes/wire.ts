@@ -80,6 +80,8 @@ export const probeResultSchema = z.object({
     .nullish(),
   /** Metric value of a Prometheus query monitor (#140); older agents omit it. */
   value: z.number().finite().nullish(),
+  /** Per-step results of a multi-step API check (#138); older agents omit it. */
+  steps: z.array(z.record(z.string(), z.unknown())).max(50).nullish(),
   blocked: z.boolean().optional(),
   checkerOffline: z.boolean().optional(),
   /** The check could not judge the target (`CheckDeferredError`): held, never DOWN. */

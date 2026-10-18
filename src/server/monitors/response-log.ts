@@ -190,6 +190,7 @@ export function toResponseLogDetail(heartbeat: Heartbeat): ResponseLogDetail {
     timing: parseRequestTiming(heartbeat.timing),
     assertionResults: parseAssertionResults(heartbeat.assertions),
     probes: Array.isArray(heartbeat.probes) ? (heartbeat.probes as unknown[]) : [],
+    steps: Array.isArray(heartbeat.steps) ? (heartbeat.steps as unknown[]) : [],
     response: storedResponse(heartbeat.response),
   }
 }

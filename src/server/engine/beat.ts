@@ -16,6 +16,7 @@
 import { degradedThresholdMs } from '@/lib/monitor-degraded'
 import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
+import type { SuiteStepResult } from '@/lib/validation/http-suite'
 import type { CapturedResponse } from '@/server/monitor-types/response-capture'
 import type { HeartbeatStatus, ProbeResult } from '@/server/monitor-types/types'
 import type { TlsInfo } from './tls'
@@ -100,6 +101,8 @@ export interface CheckResult {
   response?: CapturedResponse | null
   /** Metric value judged by the check (Prometheus query monitors, #140), whatever the outcome. */
   value?: number | null
+  /** Per-step results of a multi-step API check (`http-suite`, #138), whatever the outcome. */
+  steps?: SuiteStepResult[] | null
   /** Cache lifetime of the document the check read (status page monitors, #125); unset otherwise. */
   cacheSeconds?: number | null
   /**

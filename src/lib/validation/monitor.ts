@@ -35,6 +35,7 @@ import { isValidCronPattern, MAX_PUSH_SECONDS, PUSH_SCHEDULE_TYPES } from '@/lib
 import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
 import { STATUS_PAGE_MAX_COMPONENTS, STATUS_PAGE_PROVIDERS } from './status-page-monitor'
+import { httpSuiteProblems, httpSuiteSchema, type HttpSuite } from './http-suite'
 import {
   GLOBALPING_DEFAULT_PACKETS,
   GLOBALPING_DEFAULT_PROBES,
@@ -83,6 +84,7 @@ export const MONITOR_TYPE_NAMES = [
   'keyword',
   'json-query',
   'prometheus',
+  'http-suite',
   'port',
   'ping',
   'dns',
@@ -252,6 +254,12 @@ export const MONITOR_TYPE_GROUPS: Record<
         name: 'prometheus',
         label: 'Prometheus Query',
         description: 'Runs a PromQL query; DOWN or degraded when the value meets a threshold.',
+      },
+      {
+        name: 'http-suite',
+        label: 'HTTP(s) - Multi-step API',
+        description:
+          'Runs HTTP requests in order, passing values from one response to the next; DOWN when a step fails.',
       },
       {
         name: 'real-browser',
@@ -906,6 +914,9 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
         .max(STATUS_PAGE_MAX_COMPONENTS)
         .nullish()
         .transform((value) => value ?? []),
+
+      // Multi-step API check (#138): `{ vars, secrets, steps }`, `null` for other types
+      httpSuite: httpSuiteSchema.nullish().transform((value) => value ?? null),
     })
     .superRefine((values, ctx) => {
       const issue = (path: string, message: string) =>
@@ -1158,6 +1169,16 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
 
       if (type === 'gamedig' && !values.game) issue('game', message('gameRequired'))
 
+      if (type === 'http-suite') {
+        for (const problem of httpSuiteProblems(values.httpSuite as HttpSuite | null)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['httpSuite', ...problem.path],
+            message: message(problem.key, problem.values),
+          })
+        }
+      }
+
       if (type === 'status-page') {
         if (!values.url) issue('url', message('urlRequired'))
         else if (!/^https?:\/\/\S+$/i.test(values.url)) issue('url', message('httpUrl'))
@@ -1394,6 +1415,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     globalpingIpVersion: null,
     statusPageProvider: 'auto',
     statusPageComponents: [],
+    httpSuite: null,
   }
 }
 

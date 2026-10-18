@@ -1162,7 +1162,7 @@ export const OPERATIONS: OperationSpec[] = [
     operationId: 'getMonitorLog',
     summary: 'One check of a monitor in full',
     description:
-      'Adds the response headers (cookies redacted, about 8 KB), the first 16 KB of the body of a failed or degraded check, assertion results, request timing phases and per-probe results. Request headers are never stored.',
+      'Adds the response headers (cookies redacted, about 8 KB), the first 16 KB of the body of a failed or degraded check, assertion results, request timing phases, per-probe results and the per-step results of multi-step API checks. Request headers are never stored.',
     tag: 'Monitors',
     permission: 'monitor:read',
     response: { description: 'The check', schema: anyObject },

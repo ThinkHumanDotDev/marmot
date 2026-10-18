@@ -2496,6 +2496,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "http_suite": {
+          "name": "http_suite",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "push_token": {
           "name": "push_token",
           "type": "varchar",
@@ -5192,6 +5198,12 @@
         },
         "probes": {
           "name": "probes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "steps": {
+          "name": "steps",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
@@ -10955,137 +10967,6 @@
             "id"
           ],
           "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.status_pages_rels": {
-      "name": "status_pages_rels",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "order": {
-          "name": "order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "path": {
-          "name": "path",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "metrics_id": {
-          "name": "metrics_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "status_pages_rels_order_idx": {
-          "name": "status_pages_rels_order_idx",
-          "columns": [
-            {
-              "expression": "order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_pages_rels_parent_idx": {
-          "name": "status_pages_rels_parent_idx",
-          "columns": [
-            {
-              "expression": "parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_pages_rels_path_idx": {
-          "name": "status_pages_rels_path_idx",
-          "columns": [
-            {
-              "expression": "path",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_pages_rels_metrics_id_idx": {
-          "name": "status_pages_rels_metrics_id_idx",
-          "columns": [
-            {
-              "expression": "metrics_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "status_pages_rels_parent_fk": {
-          "name": "status_pages_rels_parent_fk",
-          "tableFrom": "status_pages_rels",
-          "tableTo": "status_pages",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "status_pages_rels_metrics_fk": {
-          "name": "status_pages_rels_metrics_fk",
-          "tableFrom": "status_pages_rels",
-          "tableTo": "metrics",
-          "columnsFrom": [
-            "metrics_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -17315,13 +17196,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "show_threshold_state": {
-          "name": "show_threshold_state",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
         "source": {
           "name": "source",
           "type": "enum_metrics_source",
@@ -20380,6 +20254,7 @@
         "keyword",
         "json-query",
         "prometheus",
+        "http-suite",
         "port",
         "ping",
         "dns",
@@ -21631,6 +21506,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "43170d67-e3d1-4e19-a4e3-21255bce1f5a",
+  "id": "3bcd8150-2ac6-47c6-a787-4c846031c44c",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
