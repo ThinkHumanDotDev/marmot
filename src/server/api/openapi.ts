@@ -287,7 +287,7 @@ const providerImportBody = z.object({
   credentials: z
     .record(z.string(), z.string())
     .describe(
-      'Statuspage: `apiKey`, `pageId`; Better Stack: `apiToken`, optional `statusPageId`. Used for this request only, never stored',
+      'Statuspage: `apiKey`, `pageId`; Better Stack: `apiToken`, optional `statusPageId`; Instatus: `apiKey`, optional `pageId`; Checkly: `apiKey`, `accountId`. Used for this request only, never stored',
     ),
   resources: z.array(z.enum(IMPORT_RESOURCES)).min(1),
 })
@@ -513,7 +513,8 @@ export const OPERATIONS: OperationSpec[] = [
     method: 'POST',
     path: `${ORG}/import/providers/{provider}`,
     operationId: 'importFromProvider',
-    summary: 'Import from Atlassian Statuspage or Better Stack through their API',
+    summary:
+      'Import from Atlassian Statuspage, Better Stack, Instatus or Checkly through their API',
     tag: 'Import and export',
     permission: 'monitor:create',
     body: { schema: providerImportBody },

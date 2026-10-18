@@ -1,0 +1,225 @@
+[
+  {
+    "id": "0b2c7a2e-4f0d-4b7a-9a51-000000000001",
+    "checkType": "API",
+    "name": "Public API health",
+    "activated": true,
+    "muted": false,
+    "doubleCheck": true,
+    "shouldFail": false,
+    "locations": ["eu-west-1", "us-east-1"],
+    "tags": ["api", "production"],
+    "frequency": 5,
+    "frequencyOffset": 0,
+    "retryStrategy": {
+      "type": "FIXED",
+      "baseBackoffSeconds": 60,
+      "maxRetries": 2,
+      "maxDurationSeconds": 600,
+      "sameRegion": true
+    },
+    "degradedResponseTime": 5000,
+    "maxResponseTime": 20000,
+    "groupId": null,
+    "runtimeId": null,
+    "environmentVariables": [],
+    "localSetupScript": null,
+    "localTearDownScript": null,
+    "setupSnippetId": null,
+    "tearDownSnippetId": null,
+    "request": {
+      "method": "GET",
+      "url": "https://api.example.com/health",
+      "followRedirects": true,
+      "skipSSL": false,
+      "body": "",
+      "bodyType": "NONE",
+      "headers": [{ "key": "X-Probe", "value": "marmot", "locked": false }],
+      "queryParameters": [{ "key": "verbose", "value": "1", "locked": false }],
+      "assertions": [
+        {
+          "source": "STATUS_CODE",
+          "property": "",
+          "comparison": "EQUALS",
+          "target": "200",
+          "regex": null
+        },
+        {
+          "source": "JSON_BODY",
+          "property": "$.status",
+          "comparison": "EQUALS",
+          "target": "ok",
+          "regex": null
+        },
+        {
+          "source": "HEADERS",
+          "property": "content-type",
+          "comparison": "CONTAINS",
+          "target": "json",
+          "regex": null
+        },
+        {
+          "source": "RESPONSE_TIME",
+          "property": "",
+          "comparison": "LESS_THAN",
+          "target": "2000",
+          "regex": null
+        }
+      ],
+      "basicAuth": { "username": "probe", "password": "probe-password" },
+      "ipFamily": "IPv4"
+    },
+    "alertChannelSubscriptions": [],
+    "created_at": "2025-01-10T10:00:00.000Z",
+    "updated_at": "2026-09-01T10:00:00.000Z"
+  },
+  {
+    "id": "0b2c7a2e-4f0d-4b7a-9a51-000000000002",
+    "checkType": "API",
+    "name": "Create order",
+    "activated": false,
+    "muted": false,
+    "shouldFail": false,
+    "locations": ["eu-central-1"],
+    "tags": [],
+    "frequency": 0,
+    "frequencyOffset": 10,
+    "degradedResponseTime": 10000,
+    "maxResponseTime": 30000,
+    "localSetupScript": "request.headers['X-Token'] = await getToken()",
+    "localTearDownScript": null,
+    "setupSnippetId": null,
+    "tearDownSnippetId": null,
+    "request": {
+      "method": "POST",
+      "url": "https://shop.example.com/api/orders",
+      "followRedirects": false,
+      "skipSSL": true,
+      "body": "{\"sku\":\"test-001\",\"quantity\":1}",
+      "bodyType": "JSON",
+      "headers": [],
+      "queryParameters": [],
+      "assertions": [
+        {
+          "source": "STATUS_CODE",
+          "property": "",
+          "comparison": "EQUALS",
+          "target": "201",
+          "regex": null
+        },
+        {
+          "source": "TEXT_BODY",
+          "property": "",
+          "comparison": "CONTAINS",
+          "target": "\"id\":",
+          "regex": "order-(\\d+)"
+        }
+      ],
+      "basicAuth": { "username": "", "password": "" },
+      "ipFamily": "IPv4"
+    }
+  },
+  {
+    "id": "0b2c7a2e-4f0d-4b7a-9a51-000000000003",
+    "checkType": "API",
+    "name": "Staging API",
+    "activated": true,
+    "frequency": 10,
+    "maxResponseTime": 20000,
+    "request": {
+      "method": "GET",
+      "url": "{{STAGING_BASE_URL}}/health",
+      "followRedirects": true,
+      "skipSSL": false,
+      "headers": [],
+      "queryParameters": [],
+      "assertions": []
+    }
+  },
+  {
+    "id": "0b2c7a2e-4f0d-4b7a-9a51-000000000004",
+    "checkType": "BROWSER",
+    "name": "Checkout flow",
+    "activated": true,
+    "frequency": 10,
+    "script": "const { test } = require('@playwright/test')",
+    "request": null
+  },
+  {
+    "id": "0b2c7a2e-4f0d-4b7a-9a51-000000000005",
+    "checkType": "MULTI_STEP",
+    "name": "Signup journey",
+    "activated": true,
+    "frequency": 15,
+    "script": "const { test } = require('@playwright/test')"
+  },
+  {
+    "id": "0b2c7a2e-4f0d-4b7a-9a51-000000000006",
+    "checkType": "HEARTBEAT",
+    "name": "Nightly backup",
+    "activated": true,
+    "heartbeat": { "period": 1, "periodUnit": "days", "grace": 1, "graceUnit": "hours" }
+  },
+  {
+    "id": "0b2c7a2e-4f0d-4b7a-9a51-000000000007",
+    "checkType": "TCP",
+    "name": "Database port",
+    "activated": true,
+    "frequency": 1,
+    "degradedResponseTime": 2000,
+    "maxResponseTime": 5000,
+    "request": {
+      "hostname": "db.example.com",
+      "port": 5432,
+      "ipFamily": "IPv4",
+      "data": "",
+      "assertions": [
+        {
+          "source": "RESPONSE_TIME",
+          "property": "",
+          "comparison": "LESS_THAN",
+          "target": "1000",
+          "regex": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "0b2c7a2e-4f0d-4b7a-9a51-000000000008",
+    "checkType": "ICMP",
+    "name": "Edge router",
+    "activated": true,
+    "frequency": 10,
+    "request": { "hostname": "203.0.113.10", "ipFamily": "IPv4", "pingCount": 10, "assertions": [] }
+  },
+  {
+    "id": "0b2c7a2e-4f0d-4b7a-9a51-000000000009",
+    "checkType": "URL",
+    "name": "Marketing site",
+    "activated": true,
+    "frequency": 2,
+    "maxResponseTime": 10000,
+    "request": {
+      "url": "https://www.example.com",
+      "followRedirects": true,
+      "skipSSL": false,
+      "ipFamily": "IPv4",
+      "assertions": [
+        {
+          "source": "STATUS_CODE",
+          "property": "",
+          "comparison": "LESS_THAN",
+          "target": "400",
+          "regex": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "0b2c7a2e-4f0d-4b7a-9a51-000000000010",
+    "checkType": "PLAYWRIGHT",
+    "name": "E2E suite",
+    "activated": true,
+    "frequency": 60
+  }
+]

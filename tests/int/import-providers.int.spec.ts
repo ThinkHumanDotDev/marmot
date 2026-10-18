@@ -1,5 +1,6 @@
 /**
- * Provider imports (#120): Atlassian Statuspage and Better Stack, driven by hand-written fixtures
+ * Provider imports (#120, #283): Atlassian Statuspage, Better Stack, Instatus and Checkly, driven
+ * by hand-written fixtures
  * of their documented API responses (`tests/fixtures/providers`). `fetch` is stubbed: the tests
  * never reach the vendors.
  */
@@ -31,6 +32,9 @@ const email = (name: string) => `${name}+prov-${run}@marmot.test`
 const PASSWORD = 'password-123'
 const STATUSPAGE_KEY = `sp-secret-${run}-0123456789abcdef`
 const BETTERSTACK_TOKEN = `bs-secret-${run}-fedcba9876543210`
+const INSTATUS_KEY = `is-secret-${run}-0a1b2c3d4e5f6789`
+const CHECKLY_KEY = `cu_secret_${run}_9f8e7d6c5b4a3210`
+const CHECKLY_ACCOUNT = '5f1c6e1a-2b3c-4d5e-8f90-a1b2c3d4e5f6'
 
 type Session = { user: User; cookie: string }
 
@@ -59,6 +63,8 @@ async function createMember(name: string, orgs: [Organization, Role][]): Promise
 
 const SP = 'https://api.statuspage.io/v1'
 const BS = 'https://uptime.betterstack.com/api/v2'
+const IS = 'https://api.instatus.com'
+const CK = 'https://api.checklyhq.com/v1'
 
 const statuspageRoutes = (): Record<string, unknown> => {
   const page = `${SP}/pages/kctbh9vrtdwd`
@@ -84,14 +90,35 @@ const betterStackRoutes = (): Record<string, unknown> => {
   }
 }
 
+const instatusRoutes = (): Record<string, unknown> => {
+  const page = 'ckp0page000acme0000000001'
+  const list = '?page=1&per_page=100'
+  return {
+    [`${IS}/v2/pages${list}`]: fixture('instatus', 'pages'),
+    [`${IS}/v2/${page}/components${list}`]: fixture('instatus', 'components'),
+    [`${IS}/v1/${page}/incidents${list}`]: fixture('instatus', 'incidents'),
+    [`${IS}/v2/${page}/maintenances${list}`]: fixture('instatus', 'maintenances'),
+    [`${IS}/v2/${page}/subscribers${list}`]: fixture('instatus', 'subscribers'),
+  }
+}
+
+const checklyRoutes = (): Record<string, unknown> => ({
+  [`${CK}/checks?limit=100&page=1`]: fixture('checkly', 'checks'),
+})
+
 /** Stubs `fetch` with recorded responses; unknown URLs answer 404. Returns the recorded calls. */
 function stubApi(routes: Record<string, unknown>, status = 200) {
-  const calls: { url: string; authorization: string | null }[] = []
+  const calls: { url: string; authorization: string | null; account: string | null }[] = []
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input)
-      calls.push({ url, authorization: new Headers(init?.headers).get('authorization') })
+      const headers = new Headers(init?.headers)
+      calls.push({
+        url,
+        authorization: headers.get('authorization'),
+        account: headers.get('x-checkly-account'),
+      })
       if (status !== 200) return Response.json({ error: 'nope' }, { status })
       if (!(url in routes)) return Response.json({ error: 'not found' }, { status: 404 })
       return Response.json(routes[url])
@@ -165,6 +192,16 @@ const betterStackBody = (resources = ['monitors', 'components', 'incidents', 'ma
   resources,
 })
 
+const instatusBody = (
+  resources = ['components', 'incidents', 'maintenance', 'subscribers'],
+  pageId = 'acme-instatus',
+) => ({ credentials: { apiKey: INSTATUS_KEY, pageId }, resources })
+
+const checklyBody = (accountId = CHECKLY_ACCOUNT) => ({
+  credentials: { apiKey: CHECKLY_KEY, accountId },
+  resources: ['monitors'],
+})
+
 const count = (
   collection: 'monitors' | 'status-pages' | 'incidents' | 'maintenance' | 'status-page-subscribers',
   org: Organization,
@@ -189,6 +226,8 @@ const rowIds = (page: StatusPage): Map<string, string> =>
 let orgA: Organization
 let orgB: Organization
 let orgC: Organization
+let orgD: Organization
+let orgE: Organization
 let owner: Session
 let member: Session
 let viewer: Session
@@ -201,10 +240,14 @@ describe('provider imports', () => {
     orgA = await mk('Prov A', 'prov-a')
     orgB = await mk('Prov B', 'prov-b')
     orgC = await mk('Prov C', 'prov-c')
+    orgD = await mk('Prov D', 'prov-d')
+    orgE = await mk('Prov E', 'prov-e')
     owner = await createMember('owner', [
       [orgA, 'owner'],
       [orgB, 'owner'],
       [orgC, 'owner'],
+      [orgD, 'owner'],
+      [orgE, 'owner'],
     ])
     member = await createMember('member', [[orgC, 'member']])
     viewer = await createMember('viewer', [[orgA, 'viewer']])
@@ -648,6 +691,354 @@ describe('provider imports', () => {
       const res = await importFrom(orgB, 'betterstack', betterStackBody(['monitors']), owner, true)
       expect(res.status).toBe(502)
       expect(calls.every((call) => call.url.startsWith(BS))).toBe(true)
+    })
+  })
+
+  describe('Instatus', () => {
+    it('previews counts and every skipped item with a reason, without writing', async () => {
+      const calls = stubApi(instatusRoutes())
+      const res = await importFrom(orgD, 'instatus', instatusBody(), owner, true)
+      expect(res.status).toBe(200)
+      const report = (await res.json()) as ImportReport
+      expect(report.format).toBe('instatus')
+      expect(report.statusPages.create).toBe(1)
+      expect(report.incidents.create).toBe(3)
+      expect(report.maintenance.create).toBe(1)
+      expect(report.maintenance.skipped).toEqual([
+        { name: 'Network maintenance', reason: 'Finished maintenance windows are not imported' },
+        { name: 'Unscheduled window', reason: 'No start and end time' },
+      ])
+      expect(report.subscribers.create).toBe(4)
+      expect(report.subscribers.skipped.map((item) => item.reason).sort()).toEqual(
+        [
+          'Duplicate subscription',
+          'Not a valid sms address',
+          'Not confirmed by the subscriber',
+          'slack subscriptions are not supported',
+        ].sort(),
+      )
+      expect(JSON.stringify(report)).not.toContain('pending@customer.example')
+
+      // The key went to the Instatus API only, as a bearer token.
+      expect(calls.length).toBeGreaterThan(0)
+      for (const call of calls) {
+        expect(call.url.startsWith(IS)).toBe(true)
+        expect(call.url).not.toContain(INSTATUS_KEY)
+        expect(call.authorization).toBe(`Bearer ${INSTATUS_KEY}`)
+      }
+      // Only the chosen page was read.
+      expect(calls.some((call) => call.url.includes('ckp0page000other'))).toBe(false)
+      expect(await count('status-pages', orgD)).toBe(0)
+    })
+
+    it('only reads the chosen resources and reports an unknown page', async () => {
+      const calls = stubApi(instatusRoutes())
+      const res = await importFrom(orgD, 'instatus', instatusBody(['components']), owner, true)
+      const report = (await res.json()) as ImportReport
+      expect(report.statusPages.create).toBe(1)
+      expect(report.incidents.create).toBe(0)
+      for (const path of ['/incidents', '/maintenances', '/subscribers']) {
+        expect(calls.some((call) => call.url.includes(path))).toBe(false)
+      }
+
+      stubApi(instatusRoutes())
+      const missing = await importFrom(
+        orgD,
+        'instatus',
+        instatusBody(['components'], 'no-such-page'),
+        owner,
+        true,
+      )
+      expect(missing.status).toBe(400)
+      const body = (await missing.json()) as { errors: { message: string }[] }
+      expect(body.errors[0].message).toMatch(/Instatus did not find that page/)
+    })
+
+    it('imports page, components, incident history, maintenance and subscribers', async () => {
+      stubApi(instatusRoutes())
+      const { result: res, logs } = await captureLogs(() =>
+        importFrom(orgD, 'instatus', instatusBody(), owner),
+      )
+      expect(res.status).toBe(201)
+      const report = (await res.json()) as ImportReport
+      expect(logs).not.toContain(INSTATUS_KEY)
+
+      const page = await payload.findByID({
+        collection: 'status-pages',
+        id: report.statusPages.created![0],
+        depth: 0,
+        overrideAccess: true,
+      })
+      expect(page).toMatchObject({
+        title: 'Acme Hosting',
+        published: false,
+        homepageUrl: 'https://acme-hosting.example',
+        contactUrl: 'mailto:support@acme-hosting.example',
+        googleAnalyticsId: 'G-INSTA123',
+        customCSS: '.header { border-bottom: 1px solid #eee; }',
+      })
+      expect(page.slug.startsWith('acme-instatus')).toBe(true)
+      expect(page.groups?.map((g) => [g.name, g.monitors?.map((row) => row.name)])).toEqual([
+        ['Services', ['Website']],
+        ['Core platform', ['API', 'Dashboard']],
+      ])
+      expect(page.groups?.[1].monitors?.[0]).toMatchObject({
+        type: 'static',
+        description: 'REST and webhooks API',
+      })
+      const rows = rowIds(page)
+
+      const { docs } = await payload.find({
+        collection: 'incidents',
+        where: { statusPage: { equals: page.id } },
+        sort: 'createdAt',
+        depth: 0,
+        overrideAccess: true,
+      })
+      const incidents = docs as Incident[]
+      expect(incidents.map((i) => i.title)).toEqual([
+        'Login errors',
+        'API outage',
+        'Slow dashboard',
+      ])
+      const [login, outage, slow] = incidents
+
+      // Updates are sorted by time; each keeps the component statuses it set.
+      expect(new Date(outage.createdAt).toISOString()).toBe('2026-09-10T10:00:00.000Z')
+      expect(outage.status).toBe('resolved')
+      expect(outage.active).toBe(false)
+      expect(outage.updates?.map((u) => [u.status, u.message])).toEqual([
+        ['investigating', 'We are investigating failing API requests.'],
+        ['identified', 'A faulty deploy was identified and rolled back.'],
+        ['resolved', 'The API has recovered.'],
+      ])
+      expect(outage.updates?.[0].components).toEqual([
+        expect.objectContaining({ component: rows.get('API'), impact: 'major_outage' }),
+      ])
+      expect(outage.updates?.[1].components).toEqual([
+        expect.objectContaining({ component: rows.get('API'), impact: 'partial_outage' }),
+      ])
+
+      // Without per-update statuses the affected components belong to the first update; the
+      // component that no longer exists is dropped.
+      expect(slow.status).toBe('monitoring')
+      expect(slow.active).toBe(true)
+      expect(slow.updates?.[0].components).toEqual([
+        expect.objectContaining({
+          component: rows.get('Dashboard'),
+          impact: 'degraded_performance',
+        }),
+      ])
+
+      // A resolved incident whose updates stop early gets its resolution at `resolved`.
+      expect(login.status).toBe('resolved')
+      expect(login.updates?.map((u) => [u.status, u.postedAt])).toEqual([
+        ['investigating', '2026-08-20T14:00:00.000Z'],
+        ['resolved', '2026-08-20T14:40:00.000Z'],
+      ])
+      expect(login.affectedComponents).toEqual([
+        expect.objectContaining({ component: rows.get('Website'), impact: 'operational' }),
+      ])
+
+      const { docs: windows } = await payload.find({
+        collection: 'maintenance',
+        where: { organization: { equals: orgD.id } },
+        depth: 0,
+        overrideAccess: true,
+      })
+      expect(windows).toHaveLength(1)
+      expect(windows[0] as Maintenance).toMatchObject({
+        title: 'Database upgrade',
+        strategy: 'single',
+        timezone: 'UTC',
+        // `duration` is in minutes.
+        dateRange: { start: '2099-01-10T02:00', end: '2099-01-10T04:30' },
+      })
+      expect(windows[0].description).toMatch(/upgrade the primary database/)
+      expect((windows[0].statusPages ?? []).map(idOf)).toEqual([String(page.id)])
+
+      const { docs: subscribers } = await payload.find({
+        collection: 'status-page-subscribers',
+        where: { statusPage: { equals: page.id } },
+        depth: 0,
+        overrideAccess: true,
+      })
+      const byTarget = new Map(
+        (subscribers as StatusPageSubscriber[]).map((s) => [s.target, s] as const),
+      )
+      expect([...byTarget.keys()].sort()).toEqual(
+        [
+          '+14155550123',
+          'https://hooks.customer.example/instatus',
+          'ops.lead@customer.example',
+          'status@partner.example',
+        ].sort(),
+      )
+      for (const subscriber of subscribers as StatusPageSubscriber[]) {
+        expect(subscriber.source).toBe('import')
+        expect(subscriber.confirmedAt).toBeTruthy()
+      }
+      expect(byTarget.get('ops.lead@customer.example')?.components).toEqual([rows.get('API')])
+      expect(byTarget.get('status@partner.example')?.components ?? []).toEqual([])
+      expect(
+        [...(byTarget.get('https://hooks.customer.example/instatus')?.components ?? [])].sort(),
+      ).toEqual([rows.get('Dashboard'), rows.get('Website')].sort())
+      const { totalDocs: deliveries } = await payload.count({
+        collection: 'subscriber-notifications',
+        where: { statusPage: { equals: page.id } },
+        overrideAccess: true,
+      })
+      expect(deliveries).toBe(0)
+      expect(JSON.stringify({ page, incidents, windows, subscribers, report })).not.toContain(
+        INSTATUS_KEY,
+      )
+    })
+  })
+
+  describe('Checkly', () => {
+    it('imports API, URL, TCP and ICMP checks and skips the other types with a reason', async () => {
+      const calls = stubApi(checklyRoutes())
+      const { result: res, logs } = await captureLogs(() =>
+        importFrom(orgE, 'checkly', checklyBody(), owner),
+      )
+      expect(res.status).toBe(201)
+      const report = (await res.json()) as ImportReport
+      expect(report.format).toBe('checkly')
+      expect(logs).not.toContain(CHECKLY_KEY)
+      for (const call of calls) {
+        expect(call.url.startsWith(CK)).toBe(true)
+        expect(call.authorization).toBe(`Bearer ${CHECKLY_KEY}`)
+        expect(call.account).toBe(CHECKLY_ACCOUNT)
+      }
+
+      expect(report.monitors.create).toBe(5)
+      expect(report.monitors.skipped).toEqual([
+        {
+          name: 'Staging API',
+          reason: 'Its target uses Checkly environment variables, which Marmot cannot resolve',
+        },
+        { name: 'Checkout flow', reason: 'Monitor type "Browser" is not supported by Marmot yet' },
+        {
+          name: 'Signup journey',
+          reason: 'Monitor type "Multistep" is not supported by Marmot yet',
+        },
+        {
+          name: 'Nightly backup',
+          reason: 'Monitor type "Heartbeat" is not supported by Marmot yet',
+        },
+        {
+          name: 'E2E suite',
+          reason: 'Monitor type "Playwright Check Suite" is not supported by Marmot yet',
+        },
+      ])
+      expect(report.warnings).toEqual(
+        expect.arrayContaining([
+          '"Public API health": 1 assertion has no Marmot equivalent and was not imported',
+          '"Create order": interval raised from 10s to the minimum of 20s',
+          '"Create order": 1 assertion has no Marmot equivalent and was not imported',
+          '"Create order": setup and teardown scripts are not imported',
+          '"Database port": 1 assertion has no Marmot equivalent and was not imported',
+        ]),
+      )
+      expect(report.statusPages.create).toBe(0)
+
+      const monitors = (
+        await payload.find({
+          collection: 'monitors',
+          where: { id: { in: report.monitors.created } },
+          depth: 0,
+          limit: 0,
+          overrideAccess: true,
+        })
+      ).docs as Monitor[]
+      const byName = new Map(monitors.map((m) => [m.name, m] as const))
+      expect(byName.get('Public API health')).toMatchObject({
+        type: 'http',
+        url: 'https://api.example.com/health?verbose=1',
+        method: 'GET',
+        interval: 300,
+        maxRetries: 2,
+        retryInterval: 60,
+        timeout: 20,
+        degradedAfter: 5000,
+        active: true,
+        headers: '{"X-Probe":"marmot"}',
+        authMethod: 'basic',
+        basicAuthUser: 'probe',
+      })
+      expect(
+        (byName.get('Public API health')?.assertions ?? []).map((a) => [
+          a.kind,
+          a.target ?? null,
+          a.comparator,
+          a.value ?? null,
+        ]),
+      ).toEqual([
+        ['status', null, 'eq', '200'],
+        ['jsonBody', 'status', 'eq', 'ok'],
+        ['header', 'content-type', 'contains', 'json'],
+      ])
+      expect(byName.get('Create order')).toMatchObject({
+        type: 'http',
+        method: 'POST',
+        body: '{"sku":"test-001","quantity":1}',
+        httpBodyEncoding: 'json',
+        interval: 20,
+        timeout: 20,
+        active: false,
+        ignoreTls: true,
+        maxRedirects: 0,
+        authMethod: 'none',
+      })
+      expect(byName.get('Database port')).toMatchObject({
+        type: 'port',
+        hostname: 'db.example.com',
+        port: 5432,
+        interval: 60,
+        timeout: 5,
+      })
+      expect(byName.get('Edge router')).toMatchObject({
+        type: 'ping',
+        hostname: '203.0.113.10',
+        interval: 600,
+      })
+      expect(byName.get('Marketing site')).toMatchObject({ type: 'http', interval: 120 })
+      expect(
+        (byName.get('Marketing site')?.assertions ?? []).map((a) => [
+          a.kind,
+          a.comparator,
+          a.value,
+        ]),
+      ).toEqual([['status', 'lt', '400']])
+      expect(JSON.stringify({ monitors, report })).not.toContain(CHECKLY_KEY)
+    })
+
+    it('follows pagination and refuses an invalid account ID', async () => {
+      const first = Array.from({ length: 100 }, (_, index) => ({
+        id: `icmp-${index}`,
+        checkType: 'ICMP',
+        name: `Host ${index}`,
+        activated: true,
+        frequency: 10,
+        request: { hostname: `10.0.0.${index + 1}` },
+      }))
+      const calls = stubApi({
+        [`${CK}/checks?limit=100&page=1`]: first,
+        [`${CK}/checks?limit=100&page=2`]: fixture('checkly', 'checks'),
+      })
+      const res = await importFrom(orgB, 'checkly', checklyBody(), owner, true)
+      expect(res.status).toBe(200)
+      const report = (await res.json()) as ImportReport
+      expect(report.monitors.create).toBe(105)
+      expect(calls.map((call) => call.url)).toEqual([
+        `${CK}/checks?limit=100&page=1`,
+        `${CK}/checks?limit=100&page=2`,
+      ])
+
+      const none = stubApi(checklyRoutes())
+      const bad = await importFrom(orgB, 'checkly', checklyBody('not an id'), owner, true)
+      expect(bad.status).toBe(400)
+      expect(none).toHaveLength(0)
     })
   })
 })
