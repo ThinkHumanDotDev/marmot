@@ -7,7 +7,12 @@ import { SlaDashboard } from '@/components/sla/sla-dashboard'
 import { toReportRowView } from '@/components/sla/sla-api'
 import { getOrgPageContext } from '@/server/monitors/page-data'
 import { targetStatuses } from '@/server/sla/compute'
-import { listOrgReports, listOrgTargets } from '@/server/sla/manage'
+import {
+  channelOptions,
+  listOrgReports,
+  listOrgTargets,
+  statusPageOptions,
+} from '@/server/sla/manage'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('sla')
@@ -25,7 +30,7 @@ export default async function SlaPage({ params }: { params: Promise<{ orgSlug: s
   const user = { payload: ctx.payload, user: ctx.requestUser, orgId: ctx.org.id }
   const canManage = ctx.allowed('sla:manage')
 
-  const [targets, reports, monitors] = await Promise.all([
+  const [targets, reports, monitors, statusPages, channels] = await Promise.all([
     listOrgTargets(user).then((docs) => targetStatuses(ctx.payload, docs)),
     listOrgReports(user),
     canManage
@@ -41,6 +46,8 @@ export default async function SlaPage({ params }: { params: Promise<{ orgSlug: s
           select: { name: true },
         })
       : { docs: [] },
+    canManage ? statusPageOptions(user) : [],
+    canManage ? channelOptions(user) : [],
   ])
 
   return (
@@ -53,6 +60,8 @@ export default async function SlaPage({ params }: { params: Promise<{ orgSlug: s
           targets={targets}
           reports={reports.map((doc) => toReportRowView(doc as never))}
           monitors={monitors.docs.map((m) => ({ id: String(m.id), name: m.name }))}
+          statusPages={statusPages}
+          channels={channels}
           canManage={canManage}
         />
       </section>
