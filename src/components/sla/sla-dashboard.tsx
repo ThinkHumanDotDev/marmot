@@ -46,8 +46,11 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   isCalendarDate,
   isValidBusinessHours,
+  normalizeThresholds,
   SLA_CALCULATIONS,
+  SLA_MAX_ALERT_THRESHOLDS,
   SLA_SCHEDULES,
+  SLA_SUBJECTS,
   SLA_TARGET_MAX,
   SLA_TARGET_MIN,
   SLA_WEEKDAYS,
@@ -56,13 +59,14 @@ import {
   type SlaCalculation,
   type SlaHealth,
   type SlaSchedule,
+  type SlaSubject,
   type SlaWeekday,
   type SlaWindow,
 } from '@/lib/sla'
 import { cn } from '@/lib/utils'
 import type { TargetStatus } from '@/server/sla/compute'
 
-import { slaApi, type SlaReportRowView } from './sla-api'
+import { slaApi, type SlaReportRowView, type StatusPageOption } from './sla-api'
 
 export interface MonitorOption {
   id: string
@@ -75,6 +79,9 @@ interface SlaDashboardProps {
   targets: TargetStatus[]
   reports: SlaReportRowView[]
   monitors: MonitorOption[]
+  statusPages: StatusPageOption[]
+  /** Notification channels for error budget alerts. */
+  channels: MonitorOption[]
   /** `sla:manage`: create, edit and delete targets and reports. */
   canManage: boolean
 }
@@ -157,7 +164,15 @@ function BudgetMeter({ status }: { status: TargetStatus }) {
   )
 }
 
-function TargetsCard({ orgId, orgSlug, targets, monitors, canManage }: SlaDashboardProps) {
+function TargetsCard({
+  orgId,
+  orgSlug,
+  targets,
+  monitors,
+  statusPages,
+  channels,
+  canManage,
+}: SlaDashboardProps) {
   const t = useTranslations('sla.targets')
   const router = useRouter()
   const [editing, setEditing] = React.useState<TargetStatus | 'new' | null>(null)
@@ -202,6 +217,8 @@ function TargetsCard({ orgId, orgSlug, targets, monitors, canManage }: SlaDashbo
               orgId={orgId}
               target={editing === 'new' ? null : editing}
               monitors={monitors}
+              statusPages={statusPages}
+              channels={channels}
               onCancel={() => setEditing(null)}
               onSaved={() => {
                 setEditing(null)
@@ -215,7 +232,7 @@ function TargetsCard({ orgId, orgSlug, targets, monitors, canManage }: SlaDashbo
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
-        title={t('confirmDeleteTitle', { name: deleting?.monitorName ?? '' })}
+        title={t('confirmDeleteTitle', { name: deleting?.name ?? '' })}
         description={t('confirmDeleteDescription')}
         confirmLabel={t('confirmDelete')}
         destructive
@@ -262,12 +279,25 @@ function TargetItem({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate font-medium">{status.monitorName}</span>
+            <span className="truncate font-medium">{status.name}</span>
             <Badge variant="outline">{format.number(status.target / 100, 'targetPercent')}</Badge>
             <Badge variant="secondary">{t(`windows.${status.period}`)}</Badge>
+            {status.subject !== 'monitor' && (
+              <Badge variant="outline">{t(`subjects.${status.subject}`)}</Badge>
+            )}
             {status.excludeMaintenance && (
               <Badge variant="outline">{t('targets.maintenanceExcluded')}</Badge>
             )}
+            {status.budgetAlerts.thresholds.length > 0 &&
+              status.budgetAlerts.notifications.length > 0 && (
+                <Badge variant="outline" data-testid="sla-alerts-badge">
+                  {t('targets.alerts', {
+                    thresholds: status.budgetAlerts.thresholds
+                      .map((threshold) => format.number(threshold / 100, 'wholePercent'))
+                      .join(', '),
+                  })}
+                </Badge>
+              )}
             {status.businessHours && (
               <Badge variant="outline" title={businessHoursSummary(status.businessHours)}>
                 {t('targets.businessHours', {
@@ -292,7 +322,7 @@ function TargetItem({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={t('targets.editLabel', { name: status.monitorName })}
+                aria-label={t('targets.editLabel', { name: status.name })}
                 onClick={onEdit}
               >
                 <Pencil />
@@ -300,7 +330,7 @@ function TargetItem({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={t('targets.deleteLabel', { name: status.monitorName })}
+                aria-label={t('targets.deleteLabel', { name: status.name })}
                 onClick={onDelete}
               >
                 <Trash2 />
@@ -360,9 +390,16 @@ function TargetItem({
         {open && status.incidents.length > 0 && (
           <ul className="mt-2 space-y-1 text-sm" aria-label={t('targets.incidentsTitle')}>
             {status.incidents.map((incident) => (
-              <li key={incident.id} className="flex flex-wrap items-center gap-x-2">
+              <li
+                key={`${incident.source}:${incident.id}`}
+                className="flex flex-wrap items-center gap-x-2"
+              >
                 <Link
-                  href={`/${orgSlug}/incidents/${incident.id}`}
+                  href={
+                    incident.source === 'statusPage'
+                      ? `/${orgSlug}/status-pages/${incident.statusPageId}`
+                      : `/${orgSlug}/incidents/${incident.id}`
+                  }
                   className="font-medium underline-offset-4 hover:underline"
                 >
                   {incident.cause || t('targets.incidentUnknownCause')}
@@ -387,17 +424,37 @@ function TargetForm({
   orgId,
   target,
   monitors,
+  statusPages,
+  channels,
   onCancel,
   onSaved,
 }: {
   orgId: string
   target: TargetStatus | null
   monitors: MonitorOption[]
+  statusPages: StatusPageOption[]
+  channels: MonitorOption[]
   onCancel: () => void
   onSaved: () => void
 }) {
   const t = useTranslations('sla')
+  const [subject, setSubject] = React.useState<SlaSubject>(target?.subject ?? 'monitor')
   const [monitor, setMonitor] = React.useState(target?.monitorId ?? '')
+  const [statusPage, setStatusPage] = React.useState(target?.statusPageId ?? '')
+  const [component, setComponent] = React.useState(target?.component ?? '')
+  const [thresholds, setThresholds] = React.useState(
+    (target?.budgetAlerts.thresholds ?? []).join(', '),
+  )
+  const [alertChannels, setAlertChannels] = React.useState<Set<string>>(
+    () => new Set(target?.budgetAlerts.notifications ?? []),
+  )
+  const page = statusPages.find((option) => option.id === statusPage)
+  const pickable =
+    subject === 'group'
+      ? (page?.groups ?? []).map((group) => ({ id: group.id, name: group.name }))
+      : (page?.groups ?? []).flatMap((group) =>
+          group.components.map((c) => ({ id: c.id, name: `${group.name} › ${c.name}` })),
+        )
   const [value, setValue] = React.useState(target ? String(target.target) : '99.9')
   const [period, setPeriod] = React.useState<SlaWindow>(target?.period ?? 'month')
   const [calculation, setCalculation] = React.useState<SlaCalculation>(
@@ -427,7 +484,20 @@ function TargetForm({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     const number = Number(value)
-    if (!monitor) return setError(t('targets.form.monitorRequired'))
+    if (subject === 'monitor' && !monitor) return setError(t('targets.form.monitorRequired'))
+    if (subject !== 'monitor' && (!statusPage || !component)) {
+      return setError(t('targets.form.componentRequired'))
+    }
+    const alertThresholds = thresholds
+      .split(/[\s,;%]+/)
+      .filter(Boolean)
+      .map(Number)
+    if (
+      alertThresholds.length > SLA_MAX_ALERT_THRESHOLDS ||
+      alertThresholds.some((n) => !Number.isFinite(n) || n < 0 || n > 100)
+    ) {
+      return setError(t('targets.form.thresholdsInvalid', { max: SLA_MAX_ALERT_THRESHOLDS }))
+    }
     if (!Number.isFinite(number) || number < SLA_TARGET_MIN || number > SLA_TARGET_MAX) {
       return setError(t('targets.form.targetInvalid'))
     }
@@ -455,10 +525,17 @@ function TargetForm({
     setSaving(true)
     try {
       const input = {
-        monitor,
+        subject,
+        monitor: subject === 'monitor' ? monitor : null,
+        statusPage: subject === 'monitor' ? null : statusPage,
+        component: subject === 'monitor' ? null : component,
+        budgetAlerts: {
+          thresholds: normalizeThresholds(alertThresholds),
+          notifications: channels.map((c) => c.id).filter((id) => alertChannels.has(id)),
+        },
         target: number,
         period,
-        calculation,
+        calculation: subject === 'monitor' && calculation === 'manual' ? 'duration' : calculation,
         excludeMaintenance,
         businessHours,
       }
@@ -482,20 +559,84 @@ function TargetForm({
         <DialogDescription>{t('targets.form.description')}</DialogDescription>
       </DialogHeader>
       <div className="space-y-2">
-        <Label htmlFor="sla-monitor">{t('targets.form.monitor')}</Label>
-        <Select value={monitor} onValueChange={setMonitor}>
-          <SelectTrigger id="sla-monitor" className="w-full">
-            <SelectValue placeholder={t('targets.form.monitorPlaceholder')} />
+        <Label htmlFor="sla-subject">{t('targets.form.subject')}</Label>
+        <Select
+          value={subject}
+          onValueChange={(next) => {
+            setSubject(next as SlaSubject)
+            setComponent('')
+          }}
+        >
+          <SelectTrigger id="sla-subject" className="w-full">
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {monitors.map((option) => (
-              <SelectItem key={option.id} value={option.id}>
-                {option.name}
+            {SLA_SUBJECTS.map((option) => (
+              <SelectItem key={option} value={option}>
+                {t(`subjects.${option}`)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
+      {subject === 'monitor' ? (
+        <div className="space-y-2">
+          <Label htmlFor="sla-monitor">{t('targets.form.monitor')}</Label>
+          <Select value={monitor} onValueChange={setMonitor}>
+            <SelectTrigger id="sla-monitor" className="w-full">
+              <SelectValue placeholder={t('targets.form.monitorPlaceholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              {monitors.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="sla-status-page">{t('targets.form.statusPage')}</Label>
+            <Select
+              value={statusPage}
+              onValueChange={(next) => {
+                setStatusPage(next)
+                setComponent('')
+              }}
+            >
+              <SelectTrigger id="sla-status-page" className="w-full">
+                <SelectValue placeholder={t('targets.form.statusPagePlaceholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {statusPages.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sla-component">
+              {subject === 'group' ? t('targets.form.group') : t('targets.form.component')}
+            </Label>
+            <Select value={component} onValueChange={setComponent} disabled={!page}>
+              <SelectTrigger id="sla-component" className="w-full">
+                <SelectValue placeholder={t('targets.form.componentPlaceholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {pickable.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="sla-target">{t('targets.form.target')}</Label>
@@ -533,11 +674,13 @@ function TargetForm({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {SLA_CALCULATIONS.map((option) => (
-              <SelectItem key={option} value={option}>
-                {t(`calculations.${option}`)}
-              </SelectItem>
-            ))}
+            {SLA_CALCULATIONS.filter((option) => option !== 'manual' || subject !== 'monitor').map(
+              (option) => (
+                <SelectItem key={option} value={option}>
+                  {t(`calculations.${option}`)}
+                </SelectItem>
+              ),
+            )}
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">{t('targets.form.calculationHint')}</p>
@@ -619,6 +762,48 @@ function TargetForm({
           </>
         )}
       </div>
+      <fieldset className="space-y-3 rounded-lg border p-3">
+        <legend className="px-1 text-sm font-medium">{t('targets.form.alerts')}</legend>
+        <p className="text-xs text-muted-foreground">{t('targets.form.alertsHint')}</p>
+        <div className="space-y-2">
+          <Label htmlFor="sla-thresholds">{t('targets.form.thresholds')}</Label>
+          <Input
+            id="sla-thresholds"
+            value={thresholds}
+            placeholder="50, 25, 10"
+            onChange={(event) => setThresholds(event.target.value)}
+          />
+        </div>
+        {channels.length === 0 ? (
+          <p className="text-xs text-muted-foreground">{t('targets.form.noChannels')}</p>
+        ) : (
+          <ul
+            className="max-h-36 space-y-1 overflow-y-auto"
+            aria-label={t('targets.form.channels')}
+          >
+            {channels.map((channel) => (
+              <li key={channel.id}>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={alertChannels.has(channel.id)}
+                    onChange={(event) =>
+                      setAlertChannels((current) => {
+                        const next = new Set(current)
+                        if (event.target.checked) next.add(channel.id)
+                        else next.delete(channel.id)
+                        return next
+                      })
+                    }
+                  />
+                  {channel.name}
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+      </fieldset>
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}
@@ -866,7 +1051,7 @@ function ReportForm({
                     checked={selected.has(target.id)}
                     onChange={(event) => toggle(target.id, event.target.checked)}
                   />
-                  <span className="truncate">{target.monitorName}</span>
+                  <span className="truncate">{target.name}</span>
                   <span className="text-xs text-muted-foreground">
                     {format.number(target.target / 100, 'targetPercent')}
                   </span>

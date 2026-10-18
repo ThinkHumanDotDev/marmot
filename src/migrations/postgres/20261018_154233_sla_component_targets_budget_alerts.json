@@ -1951,182 +1951,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.monitors_browser_variables": {
-      "name": "monitors_browser_variables",
-      "schema": "",
-      "columns": {
-        "_order": {
-          "name": "_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "_parent_id": {
-          "name": "_parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "varchar",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "value": {
-          "name": "value",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "monitors_browser_variables_order_idx": {
-          "name": "monitors_browser_variables_order_idx",
-          "columns": [
-            {
-              "expression": "_order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitors_browser_variables_parent_id_idx": {
-          "name": "monitors_browser_variables_parent_id_idx",
-          "columns": [
-            {
-              "expression": "_parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "monitors_browser_variables_parent_id_fk": {
-          "name": "monitors_browser_variables_parent_id_fk",
-          "tableFrom": "monitors_browser_variables",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.monitors_browser_secrets": {
-      "name": "monitors_browser_secrets",
-      "schema": "",
-      "columns": {
-        "_order": {
-          "name": "_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "_parent_id": {
-          "name": "_parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "varchar",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "value": {
-          "name": "value",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "monitors_browser_secrets_order_idx": {
-          "name": "monitors_browser_secrets_order_idx",
-          "columns": [
-            {
-              "expression": "_order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitors_browser_secrets_parent_id_idx": {
-          "name": "monitors_browser_secrets_parent_id_idx",
-          "columns": [
-            {
-              "expression": "_parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "monitors_browser_secrets_parent_id_fk": {
-          "name": "monitors_browser_secrets_parent_id_fk",
-          "tableFrom": "monitors_browser_secrets",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "_parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.monitors": {
       "name": "monitors",
       "schema": "",
@@ -3137,20 +2961,6 @@
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
-        },
-        "browser_script": {
-          "name": "browser_script",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "browser_artifacts": {
-          "name": "browser_artifacts",
-          "type": "enum_monitors_browser_artifacts",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'failure'"
         },
         "status_last_status": {
           "name": "status_last_status",
@@ -5404,12 +5214,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "browser": {
-          "name": "browser",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "status_code": {
           "name": "status_code",
           "type": "numeric",
@@ -5619,258 +5423,6 @@
           "tableTo": "locations",
           "columnsFrom": [
             "location_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.check_artifacts": {
-      "name": "check_artifacts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "monitor_id": {
-          "name": "monitor_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "heartbeat_id": {
-          "name": "heartbeat_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "enum_check_artifacts_kind",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "url": {
-          "name": "url",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "thumbnail_u_r_l": {
-          "name": "thumbnail_u_r_l",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "filename": {
-          "name": "filename",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mime_type": {
-          "name": "mime_type",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "filesize": {
-          "name": "filesize",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "width": {
-          "name": "width",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "height": {
-          "name": "height",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "check_artifacts_organization_idx": {
-          "name": "check_artifacts_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "check_artifacts_monitor_idx": {
-          "name": "check_artifacts_monitor_idx",
-          "columns": [
-            {
-              "expression": "monitor_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "check_artifacts_heartbeat_idx": {
-          "name": "check_artifacts_heartbeat_idx",
-          "columns": [
-            {
-              "expression": "heartbeat_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "check_artifacts_updated_at_idx": {
-          "name": "check_artifacts_updated_at_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "check_artifacts_created_at_idx": {
-          "name": "check_artifacts_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "check_artifacts_filename_idx": {
-          "name": "check_artifacts_filename_idx",
-          "columns": [
-            {
-              "expression": "filename",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitor_createdAt_idx": {
-          "name": "monitor_createdAt_idx",
-          "columns": [
-            {
-              "expression": "monitor_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "check_artifacts_organization_id_organizations_id_fk": {
-          "name": "check_artifacts_organization_id_organizations_id_fk",
-          "tableFrom": "check_artifacts",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "check_artifacts_monitor_id_monitors_id_fk": {
-          "name": "check_artifacts_monitor_id_monitors_id_fk",
-          "tableFrom": "check_artifacts",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "monitor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "check_artifacts_heartbeat_id_heartbeats_id_fk": {
-          "name": "check_artifacts_heartbeat_id_heartbeats_id_fk",
-          "tableFrom": "check_artifacts",
-          "tableTo": "heartbeats",
-          "columnsFrom": [
-            "heartbeat_id"
           ],
           "columnsTo": [
             "id"
@@ -12253,11 +11805,31 @@
           "primaryKey": false,
           "notNull": true
         },
+        "subject": {
+          "name": "subject",
+          "type": "enum_sla_targets_subject",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'monitor'"
+        },
         "monitor_id": {
           "name": "monitor_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "status_page_id": {
+          "name": "status_page_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "component": {
+          "name": "component",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
         },
         "target": {
           "name": "target",
@@ -12309,6 +11881,12 @@
           "notNull": false,
           "default": "'17:00'"
         },
+        "budget_alert_state": {
+          "name": "budget_alert_state",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -12345,6 +11923,21 @@
           "columns": [
             {
               "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sla_targets_status_page_idx": {
+          "name": "sla_targets_status_page_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -12411,6 +12004,229 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "sla_targets_status_page_id_status_pages_id_fk": {
+          "name": "sla_targets_status_page_id_status_pages_id_fk",
+          "tableFrom": "sla_targets",
+          "tableTo": "status_pages",
+          "columnsFrom": [
+            "status_page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sla_targets_numbers": {
+      "name": "sla_targets_numbers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "number": {
+          "name": "number",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "sla_targets_numbers_order_parent_idx": {
+          "name": "sla_targets_numbers_order_parent_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sla_targets_numbers_parent_fk": {
+          "name": "sla_targets_numbers_parent_fk",
+          "tableFrom": "sla_targets_numbers",
+          "tableTo": "sla_targets",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sla_targets_rels": {
+      "name": "sla_targets_rels",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notifications_id": {
+          "name": "notifications_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "sla_targets_rels_order_idx": {
+          "name": "sla_targets_rels_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sla_targets_rels_parent_idx": {
+          "name": "sla_targets_rels_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sla_targets_rels_path_idx": {
+          "name": "sla_targets_rels_path_idx",
+          "columns": [
+            {
+              "expression": "path",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sla_targets_rels_notifications_id_idx": {
+          "name": "sla_targets_rels_notifications_id_idx",
+          "columns": [
+            {
+              "expression": "notifications_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sla_targets_rels_parent_fk": {
+          "name": "sla_targets_rels_parent_fk",
+          "tableFrom": "sla_targets_rels",
+          "tableTo": "sla_targets",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sla_targets_rels_notifications_fk": {
+          "name": "sla_targets_rels_notifications_fk",
+          "tableFrom": "sla_targets_rels",
+          "tableTo": "notifications",
+          "columnsFrom": [
+            "notifications_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -18580,12 +18396,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "check_artifacts_id": {
-          "name": "check_artifacts_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "monitor_incidents_id": {
           "name": "monitor_incidents_id",
           "type": "integer",
@@ -19067,21 +18877,6 @@
           "columns": [
             {
               "expression": "heartbeats_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "payload_locked_documents_rels_check_artifacts_id_idx": {
-          "name": "payload_locked_documents_rels_check_artifacts_id_idx",
-          "columns": [
-            {
-              "expression": "check_artifacts_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -19818,19 +19613,6 @@
           "tableTo": "heartbeats",
           "columnsFrom": [
             "heartbeats_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_check_artifacts_fk": {
-          "name": "payload_locked_documents_rels_check_artifacts_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "check_artifacts",
-          "columnsFrom": [
-            "check_artifacts_id"
           ],
           "columnsTo": [
             "id"
@@ -20949,7 +20731,6 @@
         "radius",
         "tailscale-ping",
         "real-browser",
-        "browser-script",
         "mysql",
         "postgres",
         "sqlserver",
@@ -21254,14 +21035,6 @@
         "privateKey"
       ]
     },
-    "public.enum_monitors_browser_artifacts": {
-      "name": "enum_monitors_browser_artifacts",
-      "schema": "public",
-      "values": [
-        "failure",
-        "always"
-      ]
-    },
     "public.enum_monitors_status_last_status": {
       "name": "enum_monitors_status_last_status",
       "schema": "public",
@@ -21382,14 +21155,6 @@
       "values": [
         "manual",
         "quorum"
-      ]
-    },
-    "public.enum_check_artifacts_kind": {
-      "name": "enum_check_artifacts_kind",
-      "schema": "public",
-      "values": [
-        "screenshot",
-        "trace"
       ]
     },
     "public.enum_monitor_incidents_timeline_type": {
@@ -21753,6 +21518,15 @@
         "sun"
       ]
     },
+    "public.enum_sla_targets_subject": {
+      "name": "enum_sla_targets_subject",
+      "schema": "public",
+      "values": [
+        "monitor",
+        "component",
+        "group"
+      ]
+    },
     "public.enum_sla_targets_period": {
       "name": "enum_sla_targets_period",
       "schema": "public",
@@ -21767,7 +21541,8 @@
       "schema": "public",
       "values": [
         "duration",
-        "checks"
+        "checks",
+        "manual"
       ]
     },
     "public.enum_sla_reports_schedule": {
@@ -22204,6 +21979,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "cf9c9289-3ec1-4586-9135-b5241c5333f5",
+  "id": "dbf8fcbc-a011-4ab8-8b41-61eeddacee18",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

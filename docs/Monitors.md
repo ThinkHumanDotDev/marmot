@@ -566,10 +566,11 @@ organization; `null` = the default). Collectors, metrics and backend examples:
 
 ## SLA targets and reports
 
-**SLA** in the sidebar (`g` `l`) tracks uptime commitments per monitor (#156). Everyone in the
+**SLA** in the sidebar (`g` `l`) tracks uptime commitments per monitor, status page component or
+status page group (#156, #274). Everyone in the
 organization sees it; admins (`sla:manage`) set targets, build reports and share them.
 
-**Targets.** A target is a monitor, a percentage (for example 99.9), a measurement window (calendar
+**Targets.** A target is a monitor (or a status page component or group, below), a percentage (for example 99.9), a measurement window (calendar
 month, calendar quarter or the rolling last 30 days, in the organization's time zone), an uptime
 calculation and whether maintenance windows are excluded:
 
@@ -585,6 +586,23 @@ attainment, the **error budget** (the downtime the target allows over the whole 
 divided by the allowed one: above 1 the budget runs out before the period ends) and the monitor
 incidents that consumed it. A target is _on track_, _at risk_ (below the target so far or burning
 faster than allowed) or _missed_ (budget spent).
+
+**Components and groups.** _(landing in the current release, #274)_ A target can also apply to a
+component or a group of one of the organization's status pages, with the calculation modes of the
+page's own uptime ([Status pages](Status-Pages.md)): a monitor component is measured like its
+monitor (_time up_ or _successful checks_, falling back to the page's preserved daily history once
+statistics retention has pruned a day); a static component, or any component under _incident
+impacts_, from the incidents posted on the page (a major outage counts as down, a partial outage as
+half down). A group counts as one component: the mean of its visible components, so 99.9 % of a
+group allows the same budget as one component. The incidents listed are the monitor's incidents for
+a monitor component and the page's incidents otherwise. Deleting the page deletes its targets.
+
+**Error budget alerts.** _(landing in the current release, #274)_ Give a target up to five
+thresholds (percent of the budget left, e.g. 50, 25, 10) and notification channels: every 15 minutes
+Marmot checks the current period, and when the budget left drops below a threshold the channels get
+one message (`[Checkout API] [📉 Error budget] Less than 25 % of the error budget left: …`), at most
+once per threshold and period. Several thresholds crossed at once send one message naming the
+lowest. The channels are chosen on the target, so their event filters do not apply.
 
 **Time zone and business hours.** _(landing in the current release, #274)_ Periods follow the
 organization's time zone and first day of the week (**Settings → Organization**): a calendar month in
