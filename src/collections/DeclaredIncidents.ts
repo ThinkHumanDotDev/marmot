@@ -6,6 +6,7 @@ import {
   DECLARED_INCIDENT_SEVERITIES,
   DECLARED_INCIDENT_STATUSES,
   DECLARED_TIMELINE_TYPES,
+  MAX_ACTION_ITEMS,
   POSTMORTEM_STATUSES,
 } from '@/lib/declared-incidents'
 import {
@@ -119,6 +120,25 @@ export const DeclaredIncidents: CollectionConfig = {
           fields: [
             { name: 'approvedBy', type: 'relationship', relationTo: 'users' },
             { name: 'approvedAt', type: 'date' },
+          ],
+        },
+        {
+          // Structured follow-ups (#285), kept apart from the Markdown so an issue tracker can
+          // create tickets from them and record the link.
+          name: 'actionItems',
+          type: 'array',
+          maxRows: MAX_ACTION_ITEMS,
+          fields: [
+            { name: 'title', type: 'text', required: true, maxLength: 500 },
+            {
+              type: 'row',
+              fields: [
+                { name: 'owner', type: 'relationship', relationTo: 'users' },
+                { name: 'dueDate', type: 'text', maxLength: 10 },
+                { name: 'done', type: 'checkbox', defaultValue: false },
+              ],
+            },
+            { name: 'ticketUrl', type: 'text', maxLength: 2000 },
           ],
         },
       ],

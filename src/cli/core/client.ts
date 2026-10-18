@@ -86,6 +86,50 @@ export interface IncidentDoc {
   [field: string]: unknown
 }
 
+/** `DeclaredIncidentSummary` of `/declared-incidents` (#101). */
+export interface DeclaredIncidentDoc {
+  id: string
+  title: string
+  severity: string
+  status: string
+  summary: string | null
+  commander: { id: string; name: string } | null
+  declaredBy: { id: string; name: string } | null
+  startedAt: string
+  mitigatedAt: string | null
+  resolvedAt: string | null
+  closedAt: string | null
+  canceledAt: string | null
+  postmortem: {
+    status: string
+    content: string
+    actionItems?: {
+      id: string
+      title: string
+      done: boolean
+      owner: { name: string } | null
+      dueDate: string | null
+      ticketUrl: string | null
+    }[]
+  }
+  timeline: { type: string; at: string; by: { name: string } | null; message: string | null }[]
+  [field: string]: unknown
+}
+
+export interface DeclaredIncidentList {
+  docs: DeclaredIncidentDoc[]
+  page: number
+  totalPages: number
+  totalDocs: number
+  stats?: {
+    total: number
+    active: number
+    canceled: number
+    meanTimeToMitigate: number | null
+    meanTimeToResolve: number | null
+  }
+}
+
 export interface MaintenanceSummaryDoc {
   id: Id
   title: string
@@ -281,6 +325,39 @@ export class MarmotClient {
   postIncidentUpdate(pageId: Id, incidentId: Id, body: Record<string, unknown>) {
     const path = `/status-pages/${encodeURIComponent(String(pageId))}/incidents/${encodeURIComponent(String(incidentId))}/updates`
     return this.request<Record<string, unknown>>('POST', path, { body })
+  }
+
+  // ---- Declared incidents -----------------------------------------------------------------------
+
+  listDeclaredIncidents(
+    query: {
+      status?: string
+      severity?: string
+      commander?: string
+      limit?: number
+      page?: number
+    } = {},
+  ) {
+    return this.request<DeclaredIncidentList>('GET', '/declared-incidents', { query })
+  }
+
+  getDeclaredIncident(id: Id) {
+    const path = `/declared-incidents/${encodeURIComponent(String(id))}`
+    return this.request<DeclaredIncidentDoc>('GET', path)
+  }
+
+  declareIncident(body: Record<string, unknown>) {
+    return this.request<DeclaredIncidentDoc>('POST', '/declared-incidents', { body })
+  }
+
+  updateDeclaredIncident(id: Id, body: Record<string, unknown>) {
+    const path = `/declared-incidents/${encodeURIComponent(String(id))}`
+    return this.request<DeclaredIncidentDoc>('PATCH', path, { body })
+  }
+
+  addDeclaredIncidentNote(id: Id, message: string) {
+    const path = `/declared-incidents/${encodeURIComponent(String(id))}/notes`
+    return this.request<DeclaredIncidentDoc>('POST', path, { body: { message } })
   }
 
   async listMaintenance() {

@@ -804,13 +804,19 @@ export const OPERATIONS: OperationSpec[] = [
     method: 'GET',
     path: `${ORG}/declared-incidents`,
     operationId: 'listDeclaredIncidents',
-    summary: 'Declared incidents, newest first',
+    summary: 'Declared incidents, newest first, with time-to-mitigate/resolve statistics',
     tag: 'Declared incidents',
     permission: 'declared-incident:read',
     query: [
       {
         name: 'status',
         description: 'active, all, open, mitigated, resolved, closed or canceled',
+        schema: { type: 'string' },
+      },
+      { name: 'severity', description: 'critical, major or minor', schema: { type: 'string' } },
+      {
+        name: 'commander',
+        description: 'Commander user id, or none for unassigned incidents',
         schema: { type: 'string' },
       },
       { name: 'page', description: 'Page number', schema: { type: 'integer' } },
@@ -839,9 +845,9 @@ export const OPERATIONS: OperationSpec[] = [
     method: 'PATCH',
     path: `${ORG}/declared-incidents/{id}`,
     operationId: 'updateDeclaredIncident',
-    summary: 'Change severity, commander, status, link or postmortem',
+    summary: 'Change details, severity, commander, status, link, postmortem or action items',
     description:
-      'Status changes follow open → mitigated → resolved → closed (or canceled); others answer 409. Closing needs an approved postmortem unless an admin sends skipPostmortem. Closed and canceled incidents are read-only.',
+      'Status changes follow open → mitigated → resolved → closed (or canceled); others answer 409. Closing needs an approved postmortem unless an admin sends skipPostmortem. actionItems replaces the postmortem action items (rows keep their id). Closed and canceled incidents are read-only.',
     tag: 'Declared incidents',
     permission: 'declared-incident:update',
     body: { schema: updateDeclaredIncidentSchema },
