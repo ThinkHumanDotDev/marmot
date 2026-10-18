@@ -23,6 +23,8 @@ import {
 import type { StatusPage, StatusPageSubscriber } from '@/payload-types'
 import type { ErrorKey } from '@/server/errors'
 import { userErrorText } from '@/server/request-locale'
+import { findPageAudiences } from '@/server/status-pages/audiences'
+import { memberAudienceIds } from '@/server/status-pages/subscribers/audience-membership'
 import { generateWebhookSecret } from '@/server/webhooks/signature'
 
 import { relId, secretReadAccess } from './shared'
@@ -120,6 +122,28 @@ const prepare: CollectionBeforeChangeHook<StatusPageSubscriber> = async ({
       })
       if (docs.length !== requested.length) {
         return invalid(req, 'subscriberAudiencesInvalid', 'audiences')
+      }
+      // A signed-in viewer's subscription (#278) follows only audiences that list the viewer.
+      const viewerId = relId(data.viewer ?? originalDoc?.viewer)
+      if (viewerId !== null) {
+        const viewer = await req.payload.findByID({
+          collection: 'status-page-viewers',
+          id: viewerId,
+          depth: 0,
+          req,
+          overrideAccess: true,
+          disableErrors: true,
+          select: { email: true },
+        })
+        if (viewer) {
+          const member = memberAudienceIds(
+            await findPageAudiences(req.payload, pageId, req),
+            viewer.email,
+          )
+          if (docs.some((doc) => !member.has(String(doc.id)))) {
+            return invalid(req, 'subscriberAudiencesNotMember', 'audiences')
+          }
+        }
       }
       data.audiences = docs.map((doc) => doc.id)
     } else {
@@ -267,6 +291,17 @@ export const StatusPageSubscribers: CollectionConfig = {
       relationTo: 'status-page-audiences',
       hasMany: true,
       admin: { description: adminT('marmot:subscribers:audiencesDescription') },
+    },
+    {
+      // Self sign-ups on `audience` pages (#278): the signed-in viewer who subscribed. Their
+      // subscription follows only audiences that list them and ends when none does any more (or
+      // the viewer is revoked); see `subscribers/audience-membership.ts`.
+      name: 'viewer',
+      type: 'relationship',
+      relationTo: 'status-page-viewers',
+      index: true,
+      access: { create: () => false, update: () => false },
+      admin: { readOnly: true, description: adminT('marmot:subscribers:viewerDescription') },
     },
     {
       // Component ids (group row ids of the page); empty = every component.

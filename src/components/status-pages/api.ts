@@ -221,6 +221,8 @@ export interface SubscriberRow {
   components: string[]
   /** Audiences (#151) the subscriber hears about on an audience page. */
   audiences: string[]
+  /** Self sign-up of a signed-in viewer (#278): follows only audiences that list the viewer. */
+  viewerBound: boolean
   source: SubscriberSource
   confirmedAt: string | null
   createdAt: string
@@ -300,6 +302,12 @@ export const subscribersApi = {
   },
   add: (orgId: OrgId, id: OrgId, data: SubscriberDraft) =>
     api.post<{ doc: SubscriberRow }>(subscribersBase(orgId, id), { ...data }),
+  update: (
+    orgId: OrgId,
+    id: OrgId,
+    subscriberId: OrgId,
+    data: { components?: string[]; audiences?: string[] },
+  ) => api.patch<{ doc: SubscriberRow }>(`${subscribersBase(orgId, id)}/${subscriberId}`, data),
   remove: (orgId: OrgId, id: OrgId, subscriberId: OrgId) =>
     api.delete<{ ok: true }>(`${subscribersBase(orgId, id)}/${subscriberId}`),
   exportUrl: (orgId: OrgId, id: OrgId) => `${subscribersBase(orgId, id)}/export`,

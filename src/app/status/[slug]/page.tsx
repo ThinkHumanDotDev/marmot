@@ -8,6 +8,7 @@ import config from '@payload-config'
 
 import { StatusPageEmbed } from '@/components/status-pages/public/status-page-embed'
 import { StatusPageView } from '@/components/status-pages/public/status-page-view'
+import { ViewingAs } from '@/components/status-pages/public/viewing-as'
 import { getStatusPageLocale } from '@/i18n/server'
 import { markdownToText } from '@/lib/markdown'
 import { EMBED_PARAM, parseEmbedSections } from '@/lib/status-page-embed'
@@ -69,9 +70,12 @@ export default async function PublicStatusPage({ params, searchParams }: PagePro
   // Only public pages have an embed mode (#109): a protected page is never rendered for a frame,
   // so no access cookie is ever used inside one.
   if (embed && restricted) notFound()
-  if (restricted && !(await loadPageAccess(slug))?.allowed) {
+  const access = restricted ? await loadPageAccess(slug) : null
+  if (restricted && !access?.allowed) {
     redirect(`${basePath}/login`)
   }
+  // Signed in with an email link (#278): who the visitor is, their audiences, and sign-out.
+  const viewer = access?.allowed ? access.viewer : undefined
 
   const data = await loadPublicData(slug)
   if (!data) notFound()
@@ -99,12 +103,22 @@ export default async function PublicStatusPage({ params, searchParams }: PagePro
             sections={embed}
           />
         ) : (
-          <StatusPageView
-            slug={publicConfig.slug}
-            initial={data}
-            basePath={basePath}
-            metrics={metrics}
-          />
+          <>
+            {viewer && (
+              <ViewingAs
+                slug={publicConfig.slug}
+                locale={locale}
+                email={viewer.email}
+                audiences={access?.allowed ? (access.audience?.names ?? null) : null}
+              />
+            )}
+            <StatusPageView
+              slug={publicConfig.slug}
+              initial={data}
+              basePath={basePath}
+              metrics={metrics}
+            />
+          </>
         )}
       </main>
     </>

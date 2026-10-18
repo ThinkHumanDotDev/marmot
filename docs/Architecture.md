@@ -533,7 +533,11 @@ the access check's grant (`decision.audience`) feeds `scopePageForVisitor`, whic
 visitor's rows, and the incident and maintenance loaders (`findActiveIncidents`, `findRecentIncidents`,
 `findFeedIncidents`, `getActiveMaintenanceForStatusPage`, `listMaintenanceEvents`, the history index)
 take that page and drop what names only invisible components. Subscriber fan-out applies the same rule
-per subscriber through its `audiences` (`recipientFilter`, `namesForSubscriber`).
+per subscriber through its `audiences` (`recipientFilter`, `namesForSubscriber`). Self sign-ups also
+record the session's `viewer` (#278); hooks on `status-page-audiences` (member changes, delete) and
+`status-page-viewers` (revoke) call `reconcileViewerSubscriptions`
+(`src/server/status-pages/subscribers/audience-membership.ts`), which narrows those subscriptions to the
+audiences that still list the viewer and deletes the ones left without any.
 
 ### Outbound webhooks
 

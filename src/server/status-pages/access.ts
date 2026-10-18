@@ -85,8 +85,22 @@ export type StatusPageAccessDecision =
       restricted: boolean
       /** `audience` pages: what the visitor may see (`scopePageForVisitor`). */
       audience?: AudienceGrant
+      /** `email-domain` and `audience` pages: the signed-in viewer row (#278). */
+      viewer?: SessionViewer
     }
   | { allowed: false; reason: AccessDenial; retryAfterSeconds?: number }
+
+/** The signed-in visitor of an `email-domain` or `audience` page. */
+export interface SessionViewer {
+  /** `status-page-viewers` id. */
+  id: string | number
+  email: string
+}
+
+const sessionViewerOf = (viewer: StatusPageViewer): SessionViewer => ({
+  id: viewer.id,
+  email: viewer.email,
+})
 
 export interface AccessContext {
   payload: Payload
@@ -354,7 +368,7 @@ const emailDomainStrategy: AccessStrategy = async (ctx) => {
     return { allowed: false, reason: 'login-required' }
   }
   await touchViewer(ctx.payload, viewer)
-  return { allowed: true, via: 'session', restricted: true }
+  return { allowed: true, via: 'session', restricted: true, viewer: sessionViewerOf(viewer) }
 }
 
 const audienceStrategy: AccessStrategy = async (ctx) => {
@@ -362,7 +376,13 @@ const audienceStrategy: AccessStrategy = async (ctx) => {
   const audience = viewer ? await audienceGrantFor(ctx.payload, ctx.page.id, viewer.email) : null
   if (!viewer || !audience) return { allowed: false, reason: 'login-required' }
   await touchViewer(ctx.payload, viewer)
-  return { allowed: true, via: 'session', restricted: true, audience }
+  return {
+    allowed: true,
+    via: 'session',
+    restricted: true,
+    audience,
+    viewer: sessionViewerOf(viewer),
+  }
 }
 
 const ipAllowlistStrategy: AccessStrategy = async ({ payload, page, request }) => {

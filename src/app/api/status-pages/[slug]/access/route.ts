@@ -35,6 +35,8 @@ type Body = {
   form: boolean
   /** Where to return after signing in: the history or a permalink below the page (#107). */
   next: string | null
+  /** Sign out instead (#278): field `signout`. */
+  signOut: boolean
 }
 
 const str = (value: unknown): string | null => (typeof value === 'string' ? value : null)
@@ -49,6 +51,7 @@ async function readBody(request: Request): Promise<Body> {
       token: str(json?.token),
       form: false,
       next: null,
+      signOut: json?.signout === true,
     }
   }
   const data = await request.formData().catch(() => null)
@@ -59,6 +62,7 @@ async function readBody(request: Request): Promise<Body> {
     form: true,
     // Only the history page and permalinks below this page (never another host or path).
     next: isEventsReturnPath(data?.get('next')) ? (data?.get('next') as string) : null,
+    signOut: data?.get('signout') != null,
   }
 }
 
@@ -98,6 +102,16 @@ async function grant({ request, page, body, pagePath }: Ctx, viewer?: string | n
     secure: isSecureRequest(request),
   })
   if (body.form) return redirect(pagePath, { 'Set-Cookie': cookie })
+  return Response.json({ ok: true }, { headers: { ...protectedHeaders(), 'Set-Cookie': cookie } })
+}
+
+/**
+ * Signs the visitor out (#278): the page's access cookie is cleared and forms go back to the login
+ * screen. Answers the same whether or not a session existed.
+ */
+function signOut({ request, page, body, base }: Ctx) {
+  const cookie = accessCookie(page.id, '', { secure: isSecureRequest(request), maxAge: 0 })
+  if (body.form) return redirect(`${base}/login`, { 'Set-Cookie': cookie })
   return Response.json({ ok: true }, { headers: { ...protectedHeaders(), 'Set-Cookie': cookie } })
 }
 
@@ -177,6 +191,8 @@ async function emailDomainLogin(ctx: Ctx) {
  *   not an address, 429 when rate limited per client and per address. Field `token` redeems a
  *   link: the access cookie, or 400 `link-invalid` (`?error=link-invalid`). See `magic-link.ts`.
  * - Other modes have nothing to sign in to: `{ ok: true }` / redirect to the page.
+ * - Any mode, field `signout` (JSON `"signout": true`): clears the access cookie, `{ ok: true }`
+ *   or a redirect to the login page (#278).
  *
  * JSON errors are in the page's language: `?locale=` when the page offers it (the login form and
  * the page's scripts send it), else the page's default language (#271).
@@ -213,6 +229,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     base,
     pagePath,
   }
+  if (body.signOut) return signOut(ctx)
 
   switch (page.access) {
     case 'password':

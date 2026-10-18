@@ -872,9 +872,11 @@ exponential backoff (about 10 s, 20 s, 40 s, 80 s); other `4xx` responses fail a
 
 The **Subscribers** tab lists subscribers (search, 50 per page, confirmed counts per channel), adds
 subscribers without confirmation (`source: added_by_owner`, for example a customer's webhook), removes
-them, and exports or imports CSV (`channel,target,components,source,confirmed_at`; imports need `channel`
-and `target`, `components` are `;`-separated component ids, and imported rows are confirmed with
-`source: import`). Webhook secrets and headers are never exported.
+them, and exports or imports CSV (`channel,target,components,source,confirmed_at,audiences`; imports need
+`channel` and `target`, `components` are `;`-separated component ids, `audiences` `;`-separated
+[audience](#audiences) names (or ids) of the page, and imported rows are confirmed with
+`source: import`). Webhook secrets and headers are never exported. A row naming an audience the page
+does not have is skipped and reported.
 
 | Permission          | Default | Allows                                                      |
 | ------------------- | ------- | ----------------------------------------------------------- |
@@ -885,7 +887,7 @@ and `target`, `components` are `;`-separated component ids, and imported rows ar
 | Method & path                                                   | Purpose                                                                        |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | `GET`/`POST …/:id/subscribers`                                  | List (`?page=&q=&channel=`) / add                                              |
-| `PATCH`/`DELETE …/:id/subscribers/:subscriberId`                | Change components or headers / remove                                          |
+| `PATCH`/`DELETE …/:id/subscribers/:subscriberId`                | Change components, audiences or headers / remove                               |
 | `GET …/:id/subscribers/export`, `POST …/:id/subscribers/import` | CSV export / import (`text/csv` or multipart `file`)                           |
 | `GET …/:id/notifications`                                       | Notifications, newest first                                                    |
 | `GET`/`POST …/:id/notifications/:notificationId`                | Preview, recipients, deliveries / `{ action: "send" \| "discard" \| "retry" }` |
@@ -1190,6 +1192,12 @@ audiences again (`audienceGrantFor`), so editing or deleting an audience applies
 visitor no audience lists any more is sent back to the sign-in form. A visitor in several audiences
 sees the union of their components.
 
+_(landing in the current release, #278)_ A signed-in visitor sees a **Signed in as … · Viewing as …**
+bar at the top of the page, naming their address and their audiences, with a **Sign out** button
+(email-domain pages show the address only). Signing out posts `signout` to
+`POST /api/status-pages/:slug/access` (JSON `{ "signout": true }`), which clears the page's access
+cookie and returns to the sign-in form.
+
 **What a visitor sees.**
 
 - Components: only those of their audiences; groups left empty are hidden.
@@ -1217,10 +1225,20 @@ to scope shows nothing rather than everything.
 request) and can only pick, and later manage, their audiences' components. An announcement reaches a
 subscriber only when its components overlap the subscriber's audiences (page-wide announcements reach
 every audience), and the message names only components the subscriber's audiences see. Subscribers you
-add on the Subscribers tab need an audience; without one an audience page sends them nothing. Removing
-someone from an audience does not remove their subscriptions; remove those on the Subscribers tab.
+add on the Subscribers tab need an audience; without one an audience page sends them nothing.
 
-SSO groups as members (with [SSO](Single-Sign-On.md)) are not supported yet.
+_(landing in the current release, #278)_ The Subscribers tab shows each subscriber's audiences (a
+subscriber without one is flagged: it receives nothing) and lets you change them; CSV export and import
+carry them in the `audiences` column. A visitor's own sign-up is tied to their viewer row
+(`status-page-viewers`), so **revoking membership ends it**: when an audience's addresses or domains
+change, or an audience is deleted, each such subscription keeps only the audiences that still list its
+viewer, and one left without any is deleted (with its delivery log), so nothing more is sent. Revoking
+the viewer ends their subscriptions too. Such a subscription can only follow audiences that list its
+viewer. Subscribers you added or imported are never removed this way; deleting a viewer row (which only
+forgets the visitor) unties their subscription instead of ending it.
+
+SSO groups as members (with [SSO](Single-Sign-On.md)) are not supported yet: it needs a visitor-facing
+SSO sign-in for status pages, which does not exist.
 
 ## Themes
 

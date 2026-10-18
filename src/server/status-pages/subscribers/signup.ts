@@ -93,6 +93,11 @@ export interface SubscribeInput {
    * body). The subscriber hears only about their components.
    */
   audiences?: readonly string[]
+  /**
+   * Audience pages (#278): the signed-in viewer row from the access check. The subscription is
+   * bound to it and ends when no audience lists the viewer any more (`audience-membership.ts`).
+   */
+  viewer?: string | number | null
 }
 
 export type SubscribeResult =
@@ -158,6 +163,15 @@ export async function subscribe(
   })
   let subscriber = (docs[0] as StatusPageSubscriber | undefined) ?? null
   const alreadyConfirmed = Boolean(subscriber?.confirmedAt)
+  const audienceFields: Partial<Pick<StatusPageSubscriber, 'audiences' | 'viewer'>> =
+    isAudiencePage(page)
+      ? {
+          audiences: audiences as unknown as StatusPageSubscriber['audiences'],
+          ...(input.viewer != null
+            ? { viewer: input.viewer as unknown as StatusPageSubscriber['viewer'] }
+            : {}),
+        }
+      : {}
 
   if (!subscriber) {
     try {
@@ -169,9 +183,7 @@ export async function subscribe(
           channel,
           target,
           components,
-          ...(isAudiencePage(page)
-            ? { audiences: audiences as unknown as StatusPageSubscriber['audiences'] }
-            : {}),
+          ...audienceFields,
           source: 'self_signup',
           locale,
           // Webhook and Slack URLs need no opt-in: their first message carries the links.
@@ -193,9 +205,7 @@ export async function subscribe(
       data: {
         components,
         locale,
-        ...(isAudiencePage(page)
-          ? { audiences: audiences as unknown as StatusPageSubscriber['audiences'] }
-          : {}),
+        ...audienceFields,
       },
       depth: 0,
       overrideAccess: true,

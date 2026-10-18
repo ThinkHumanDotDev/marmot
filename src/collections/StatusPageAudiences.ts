@@ -1,5 +1,7 @@
 import {
   ValidationError,
+  type CollectionAfterChangeHook,
+  type CollectionAfterDeleteHook,
   type CollectionBeforeChangeHook,
   type CollectionConfig,
   type PayloadRequest,
@@ -17,6 +19,7 @@ import {
 import type { StatusPage, StatusPageAudience } from '@/payload-types'
 import type { ErrorKey, ErrorValues } from '@/server/errors'
 import { userErrorText } from '@/server/request-locale'
+import { reconcileViewerSubscriptions } from '@/server/status-pages/subscribers/audience-membership'
 
 import { relId } from './shared'
 import { statusPageComponentIds } from './StatusPageSubscribers'
@@ -140,6 +143,36 @@ const prepare: CollectionBeforeChangeHook<StatusPageAudience> = async ({
 }
 
 /**
+ * Membership can shrink (#278): when an audience's members change or it is deleted, the
+ * subscriptions of signed-in viewers it no longer lists are narrowed or ended.
+ */
+const reconcileAfterChange: CollectionAfterChangeHook<StatusPageAudience> = async ({
+  doc,
+  previousDoc,
+  operation,
+  req,
+}) => {
+  if (operation !== 'update') return doc
+  const same = (a?: readonly unknown[] | null, b?: readonly unknown[] | null) =>
+    JSON.stringify(a ?? []) === JSON.stringify(b ?? [])
+  if (same(doc.emails, previousDoc?.emails) && same(doc.emailDomains, previousDoc?.emailDomains)) {
+    return doc
+  }
+  const pageId = relId(doc.statusPage)
+  if (pageId !== null) await reconcileViewerSubscriptions(req.payload, pageId, { req })
+  return doc
+}
+
+const reconcileAfterDelete: CollectionAfterDeleteHook<StatusPageAudience> = async ({
+  doc,
+  req,
+}) => {
+  const pageId = relId(doc?.statusPage)
+  if (pageId !== null) await reconcileViewerSubscriptions(req.payload, pageId, { req })
+  return doc
+}
+
+/**
  * Audiences of a status page (#151): who, among the visitors of an `audience` page, sees which of
  * its components. Viewers sign in with a magic link (`status-page-viewers`) and are admitted when
  * an audience lists their address or its domain; every request re-reads the audiences, so editing
@@ -162,6 +195,8 @@ export const StatusPageAudiences: CollectionConfig = {
   },
   hooks: {
     beforeChange: [prepare],
+    afterChange: [reconcileAfterChange],
+    afterDelete: [reconcileAfterDelete],
   },
   indexes: [{ fields: ['statusPage', 'name'], unique: true }],
   fields: [

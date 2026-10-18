@@ -5431,6 +5431,11 @@
       "audience": {
         "description": "This status page is only available to invited customers and teams. Enter your email address to receive a sign-in link."
       },
+      "session": {
+        "signedInAs": "Signed in as",
+        "viewingAs": "Viewing as",
+        "signOut": "Sign out"
+      },
       "ipAllowlist": {
         "description": "This status page is only available from approved networks. Connect to your organization’s network or VPN and reload the page."
       },
@@ -5782,9 +5787,23 @@
           "channel": "Channel",
           "components": "Components",
           "status": "Status",
-          "added": "Added"
+          "added": "Added",
+          "audiences": "Audiences"
         },
         "allComponents": "All",
+        "noAudience": "None (receives nothing)",
+        "viewerBound": "Signed-in viewer: ends when no audience lists them",
+        "editAudiences": "Edit the audiences of {target}",
+        "audiencesDialog": {
+          "title": "Audiences",
+          "description": "{target} only hears about incidents and maintenance of these audiences’ components. Without one, it receives nothing.",
+          "viewerHint": "This subscription was made by a signed-in viewer: it can only follow audiences that list their address.",
+          "cancel": "Cancel",
+          "save": "Save",
+          "saving": "Saving…",
+          "saved": "Audiences updated",
+          "saveFailed": "Could not update the audiences."
+        },
         "componentCount": "{count, plural, one {# component} other {# components}}",
         "confirmed": "Confirmed",
         "pending": "Unconfirmed",
@@ -5805,7 +5824,7 @@
         "import": "Import CSV",
         "importDone": "{created, plural, one {# subscriber imported} other {# subscribers imported}}, {skipped} skipped",
         "importFailed": "Could not import the file.",
-        "importHint": "Columns: channel, target and optionally components (component ids separated by ;). Imported subscribers are confirmed at once."
+        "importHint": "Columns: channel, target and optionally components (component ids separated by ;) and audiences (audience names separated by ;). Imported subscribers are confirmed at once."
       },
       "add": {
         "title": "Add a subscriber",
@@ -5931,7 +5950,7 @@
       "edit": "Edit",
       "delete": "Delete",
       "deleteTitle": "Delete the audience “{name}”?",
-      "deleteDescription": "Its members lose access unless another audience lists them. Subscribers bound to it stop receiving its announcements.",
+      "deleteDescription": "Its members lose access unless another audience lists them. Subscribers bound to it stop receiving its announcements, and the sign-ups of members no other audience lists end.",
       "deleted": "Audience deleted",
       "saved": "Audience saved",
       "saveFailed": "Could not save the audience",
@@ -7289,6 +7308,7 @@
     "statusPageAudienceNotFound": "Audience not found.",
     "statusPageAudienceNameTaken": "This page already has an audience with that name.",
     "subscriberAudiencesInvalid": "Choose audiences of this status page.",
+    "subscriberAudiencesNotMember": "This subscription belongs to a signed-in viewer and can only follow audiences that list their address.",
     "subscriberStatusPageRequired": "A subscriber needs a status page, and cannot move to another one.",
     "subscriberTargetInvalid": "Enter a valid email address, phone number in international format (+15551234567), webhook URL or Slack incoming-webhook URL.",
     "subscriberComponentsInvalid": "Choose components of this status page.",

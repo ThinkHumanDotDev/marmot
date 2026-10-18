@@ -12,8 +12,9 @@ export const dynamic = 'force-dynamic'
 type RouteContext = { params: Promise<{ orgId: string; id: string; subscriberId: string }> }
 
 /**
- * PATCH /api/orgs/:orgId/status-pages/:id/subscribers/:subscriberId — `{ components?, headers? }`.
- * Needs `subscriber:manage`.
+ * PATCH /api/orgs/:orgId/status-pages/:id/subscribers/:subscriberId — `{ components?, headers?,
+ * audiences? }` (`audiences`: ids of the page's audiences, #278; a signed-in viewer's subscription
+ * only takes audiences that list the viewer). Needs `subscriber:manage`.
  */
 export async function PATCH(request: Request, { params }: RouteContext) {
   const { orgId, id, subscriberId } = await params
@@ -26,6 +27,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     if (!subscriber) return jsonError(errorText(request, 'subscriberNotFound'), 404)
     const data: Partial<StatusPageSubscriber> = {}
     if (Array.isArray(body.components)) data.components = body.components.map(String)
+    if (Array.isArray(body.audiences)) {
+      data.audiences = body.audiences.map(String) as unknown as StatusPageSubscriber['audiences']
+    }
     if (Array.isArray(body.headers)) {
       data.headers = (body.headers as { name?: unknown; value?: unknown }[]).map((h) => ({
         name: String(h?.name ?? ''),
