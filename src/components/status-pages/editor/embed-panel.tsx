@@ -31,7 +31,7 @@ import {
 import type { StatusPage } from '@/payload-types'
 
 import { statusPagesApi, type OrgId } from '../api'
-import { CopyField, useOrigin } from './share-panel'
+import { CopyField, SnippetLocaleSelect, useOrigin, useSnippetLocale } from './share-panel'
 
 const originsToText = (page: StatusPage) =>
   (page.embedOrigins ?? []).map((row) => row.origin).join('\n')
@@ -179,9 +179,13 @@ export function EmbedPanel({
   const origin = useOrigin()
   const [embed, setEmbed] = React.useState<EmbedSnippetOptions>(DEFAULT_EMBED_SNIPPET_OPTIONS)
   const [widget, setWidget] = React.useState<WidgetSnippetOptions>(DEFAULT_WIDGET_SNIPPET_OPTIONS)
-  const pageUrl = statusPageBaseUrl(origin, page.slug)
-  const iframe = iframeSnippet(pageUrl, page.title, embed)
-  const snippets = widgetSnippets(pageUrl, widget)
+  // The iframe and the widget open the page in their own language (#271).
+  const embedLocale = useSnippetLocale(page)
+  const widgetLocale = useSnippetLocale(page)
+  const baseUrl = statusPageBaseUrl(origin, page.slug)
+  const iframe = iframeSnippet(`${baseUrl}${embedLocale.prefix}`, page.title, embed)
+  const widgetPageUrl = `${baseUrl}${widgetLocale.prefix}`
+  const snippets = widgetSnippets(widgetPageUrl, widget)
   const live = Boolean(page.published) && (page.access ?? 'public') === 'public'
 
   const toggleSection = (section: (typeof EMBED_SECTIONS)[number], on: boolean) =>
@@ -256,6 +260,12 @@ export function EmbedPanel({
                 onChange={(e) => setEmbed((c) => ({ ...c, height: Number(e.target.value) }))}
               />
             </div>
+            <SnippetLocaleSelect
+              id="embed-locale"
+              locale={embedLocale.locale}
+              offered={embedLocale.offered}
+              onChange={embedLocale.setLocale}
+            />
           </div>
           <CopyField id="embed-iframe" label={t('iframe')} value={iframe} rows={3} />
         </CardContent>
@@ -304,12 +314,18 @@ export function EmbedPanel({
                 </SelectContent>
               </Select>
             </div>
+            <SnippetLocaleSelect
+              id="widget-locale"
+              locale={widgetLocale.locale}
+              offered={widgetLocale.offered}
+              onChange={widgetLocale.setLocale}
+            />
           </div>
           <div className="grid gap-2">
             <span className="text-sm font-medium">{t('widget.preview')}</span>
             <div className="flex min-h-16 items-center rounded-lg border px-4 py-3">
               {live && origin ? (
-                <WidgetPreview src={`${pageUrl}/widget.js`} options={widget} />
+                <WidgetPreview src={`${widgetPageUrl}/widget.js`} options={widget} />
               ) : (
                 <span className="text-xs text-muted-foreground">{t('widget.unavailable')}</span>
               )}

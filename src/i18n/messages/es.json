@@ -501,6 +501,22 @@
       }
     }
   },
+  "errors": {
+    "invalidJsonBody": "Cuerpo JSON no válido",
+    "tooManyAttempts": "Demasiados intentos. Vuelve a intentarlo más tarde.",
+    "statusPageNotFound": "Página de estado no encontrada",
+    "crossSiteRefused": "Solicitud entre sitios rechazada",
+    "statusPageProtected": "Esta página de estado está restringida. Inicia sesión para verla.",
+    "statusPagePasswordIncorrect": "La contraseña no es correcta.",
+    "statusPageIpNotAllowed": "Esta página de estado no está disponible desde tu red.",
+    "statusPageLinkInvalid": "Este enlace de inicio de sesión no es válido, ha caducado o ya se ha utilizado.",
+    "invalidEmailAddress": "Introduce una dirección de correo electrónico válida.",
+    "subscriberTargetInvalid": "Introduce una dirección de correo electrónico válida, un número de teléfono en formato internacional (+15551234567), una URL de webhook o una URL de webhook entrante de Slack.",
+    "subscriberComponentsInvalid": "Elige componentes de esta página de estado.",
+    "subscriptionsUnavailable": "Esta página de estado no ofrece suscripciones.",
+    "subscriptionChannelUnavailable": "Esta página de estado no ofrece suscripciones por ese canal.",
+    "subscriptionCodeInvalid": "El código es incorrecto o ha caducado. Solicita uno nuevo."
+  },
   "subscriberMessages": {
     "sms": {
       "incidentOpened": "[{siteName}] Nuevo incidente: {title} ({status}). {message} {url}",
