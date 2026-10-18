@@ -13009,12 +13009,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "viewer_id": {
-          "name": "viewer_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "source": {
           "name": "source",
           "type": "enum_status_page_subscribers_source",
@@ -13136,21 +13130,6 @@
           "columns": [
             {
               "expression": "target",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "status_page_subscribers_viewer_idx": {
-          "name": "status_page_subscribers_viewer_idx",
-          "columns": [
-            {
-              "expression": "viewer_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -13290,19 +13269,6 @@
           "tableTo": "status_pages",
           "columnsFrom": [
             "status_page_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "status_page_subscribers_viewer_id_status_page_viewers_id_fk": {
-          "name": "status_page_subscribers_viewer_id_status_page_viewers_id_fk",
-          "tableFrom": "status_page_subscribers",
-          "tableTo": "status_page_viewers",
-          "columnsFrom": [
-            "viewer_id"
           ],
           "columnsTo": [
             "id"
@@ -20746,7 +20712,8 @@
       "values": [
         "dashboard",
         "api",
-        "link"
+        "link",
+        "phone"
       ]
     },
     "public.enum_monitor_incidents_status": {
@@ -20764,7 +20731,8 @@
       "values": [
         "dashboard",
         "api",
-        "link"
+        "link",
+        "phone"
       ]
     },
     "public.enum_monitor_incidents_escalation_status": {
@@ -21525,6 +21493,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "6cec6a13-e0cd-4887-854f-3191f2217000",
+  "id": "8c7e0a54-1935-4ec9-9fec-e5b9541e98d8",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

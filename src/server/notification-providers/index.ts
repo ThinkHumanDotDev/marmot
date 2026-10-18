@@ -44,6 +44,7 @@ import './dingding'
 import './feishu'
 import './bitrix24'
 import './whatsapp'
+import './voice-call'
 // Issue trackers (#149)
 import './github-issues'
 import './gitlab-issues'
