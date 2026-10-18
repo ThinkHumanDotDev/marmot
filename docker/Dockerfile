@@ -6,6 +6,8 @@
 #   docker run --rm -e MARMOT_ROLE=web ... marmot            # start a role (default: all)
 #   docker run --rm -e MARMOT_ROLE=probe -e MARMOT_URL=https://marmot.example.com \
 #     -e MARMOT_PROBE_TOKEN=mp_... marmot                    # a probe agent (outbound HTTPS only)
+#   docker run --rm -e MARMOT_ROLE=host-agent -e MARMOT_URL=https://marmot.example.com \
+#     -e MARMOT_HOST_TOKEN=... marmot                        # a host metrics agent (docs/Host-Monitoring.md)
 #   docker run --rm ... marmot migrate                        # run database migrations only
 #
 # Stages: base → deps (all deps, for the build) + prod-deps (runtime deps only) → builder → runner.

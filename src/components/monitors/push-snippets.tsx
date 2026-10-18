@@ -57,7 +57,7 @@ export function buildPushSnippets({ url, cron, cronTimeZone }: PushSnippetsProps
 
 type SnippetKey = keyof ReturnType<typeof buildPushSnippets>
 
-function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text }: { text: string }) {
   const t = useTranslations('monitors.push.panel')
   const [copied, setCopied] = React.useState(false)
   async function copy() {

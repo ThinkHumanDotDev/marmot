@@ -18,7 +18,7 @@ import type { CheckResult } from '@/server/engine/beat'
 import { DEFAULT_PROFILE, DEMO_LOCATIONS, demoProfileFor, type DemoProfile } from './dataset'
 
 /** Types that never leave the instance anyway: they keep running their real check. */
-const INTERNAL_TYPES = new Set<string>(['push', 'manual', 'group'])
+const INTERNAL_TYPES = new Set<string>(['push', 'host', 'manual', 'group'])
 
 /** Whether demo mode replaces this type's check with a simulated one. */
 export const isSimulatedType = (type: string | null | undefined): boolean =>

@@ -43,7 +43,7 @@ interface FileEntry {
 
 /**
  * The monitor keys a monitors file lists, for `run` without `monitors`. Paused entries
- * (`active: false`) and push monitors (fed from outside, nothing to check) are left out. The file is
+ * (`active: false`), push and host monitors (fed from outside, nothing to check) are left out. The file is
  * read without `${ENV}` interpolation: the check job does not need the monitors' credentials.
  */
 export function keysFromFile(text: string): string[] {
@@ -54,7 +54,7 @@ export function keysFromFile(text: string): string[] {
   const list = raw && typeof raw === 'object' && Array.isArray(raw.monitors) ? raw.monitors : []
   return (list as FileEntry[])
     .filter((entry) => entry && typeof entry.key === 'string' && entry.key)
-    .filter((entry) => entry.active !== false && entry.type !== 'push')
+    .filter((entry) => entry.active !== false && entry.type !== 'push' && entry.type !== 'host')
     .map((entry) => entry.key as string)
 }
 

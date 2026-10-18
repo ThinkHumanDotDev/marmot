@@ -88,6 +88,7 @@ import {
 } from '@/lib/validation/monitor'
 import { supportsAssertions } from '@/lib/validation/assertions'
 import { emptyHttpSuite } from '@/lib/validation/http-suite'
+import { DEFAULT_HOST_THRESHOLDS } from '@/lib/host-metrics'
 import {
   GLOBALPING_DNS_RECORD_TYPES,
   GLOBALPING_HTTP_METHODS,
@@ -110,6 +111,7 @@ import { isValidCronPattern, nextCronRuns } from '@/lib/push-schedule'
 import { SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
 import { AssertionsField } from './assertions-field'
+import { HostThresholdsField } from './host-thresholds-field'
 import { HttpSuiteField } from './http-suite-field'
 import { useElapsedSeconds } from './check-now'
 import { CheckResultView } from './check-result'
@@ -1007,6 +1009,13 @@ function applyTypeDefaults(
   if (type === 'status-page' && !get('url')) set('url', 'https://')
   // A multi-step API check starts with one empty step.
   if (type === 'http-suite' && !get('httpSuite')) set('httpSuite', emptyHttpSuite())
+  // A host monitor starts with the usual disk, CPU and memory thresholds.
+  if (type === 'host' && !(get('hostThresholds') as unknown[] | undefined)?.length) {
+    set(
+      'hostThresholds',
+      DEFAULT_HOST_THRESHOLDS.map((threshold) => ({ ...threshold })),
+    )
+  }
   if (type === 'globalping') {
     if (!get('url')) set('url', 'https://')
     for (const field of ['interval', 'retryInterval'] as const) {
@@ -1245,6 +1254,8 @@ export function MonitorForm({
     if (!supportsAssertions(formValues.type)) values = { ...values, assertions: [] }
     // Likewise the steps of a multi-step API check.
     if (formValues.type !== 'http-suite') values = { ...values, httpSuite: null }
+    // And a host monitor's thresholds.
+    if (formValues.type !== 'host') values = { ...values, hostThresholds: [] }
     if (mode === 'create' && !canPickChannels) {
       const { notifications: _omit, ...rest } = values
       values = rest
@@ -1622,6 +1633,11 @@ export function MonitorForm({
                 {t('general.push')}
               </p>
             )}
+            {type === 'host' && (
+              <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                {t('general.host')}
+              </p>
+            )}
 
             {((probeSupportsType(type) && resources.locations.length > 0) ||
               (watchedLocations?.length ?? 0) > 0) && (
@@ -1699,6 +1715,29 @@ export function MonitorForm({
             <TagsField control={control} tags={resources.tags} orgSlug={orgSlug} />
           </CardContent>
         </Card>
+
+        {/* Host agent thresholds (#136) ---------------------------------------------------- */}
+        {type === 'host' && (
+          <Card data-testid="host-thresholds-card">
+            <CardHeader>
+              <CardTitle>{t('host.title')}</CardTitle>
+              <CardDescription>{t('host.description')}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-5">
+              <HostThresholdsField control={control} />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <NumberField
+                  control={control}
+                  name="pushGrace"
+                  label={t('push.grace')}
+                  unit={t('timing.seconds')}
+                  min={0}
+                  description={t('host.graceDescription')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Push schedule ------------------------------------------------------------------- */}
         {type === 'push' && (
@@ -1922,7 +1961,7 @@ export function MonitorForm({
                     : t('timing.successThresholdDescription')
                 }
               />
-              {type !== 'push' && (
+              {type !== 'push' && type !== 'host' && (
                 <NumberField
                   control={control}
                   name="timeout"

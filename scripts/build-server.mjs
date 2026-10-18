@@ -51,3 +51,20 @@ await build({
   tsconfig: 'tsconfig.json',
 })
 await chmod('dist/cli/marmot.mjs', 0o755)
+
+// Host agent (#136, MARMOT_ROLE=host-agent): self-contained like the CLI, so the one file runs both
+// in the image and on any machine with Node.js (Linux, macOS, Windows) without node_modules.
+await build({
+  entryPoints: { 'host-agent': 'src/host-agent.ts' },
+  outdir: 'dist/server',
+  outExtension: { '.js': '.mjs' },
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node20',
+  banner: {
+    js: "import { createRequire as __marmotCreateRequire } from 'node:module'\nconst require = __marmotCreateRequire(import.meta.url)",
+  },
+  logLevel: 'info',
+  tsconfig: 'tsconfig.json',
+})
