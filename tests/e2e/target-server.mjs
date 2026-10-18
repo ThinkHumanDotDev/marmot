@@ -4,6 +4,7 @@
 //
 //   GET /health  → 200 {"ok":true}
 //   GET /down    → 503
+//   GET /welcome → 200 HTML page with the heading "Welcome, Ada" (Browser Script monitors)
 //   anything else → 200 "ok"
 import http from 'node:http'
 
@@ -19,6 +20,11 @@ const server = http.createServer((req, res) => {
   if (path === '/down') {
     res.writeHead(503, { 'content-type': 'text/plain' })
     res.end('unavailable')
+    return
+  }
+  if (path === '/welcome') {
+    res.writeHead(200, { 'content-type': 'text/html' })
+    res.end('<!doctype html><title>Welcome</title><h1>Welcome, Ada</h1>')
     return
   }
   res.writeHead(200, { 'content-type': 'text/plain' })

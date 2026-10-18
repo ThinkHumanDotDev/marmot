@@ -87,6 +87,18 @@ beat is DOWN, PENDING or DEGRADED. The log API (`src/server/monitors/response-lo
 (`time < t OR (time = t AND id NOT IN ids)`), which needs no id ordering and so behaves the same on every
 adapter. Heartbeats are readable with `monitor:read` in their organization only (`orgScoped`).
 
+**Browser scripts** (#139): the `browser-script` type (`src/server/monitor-types/browser-script.ts`)
+connects to the remote browser and hands the user's script to `runBrowserScript()`
+(`src/server/browser-script/run.ts`). The script runs in a worker thread
+(`sandbox-thread.mjs`, started per check by `sandbox.ts`) inside a fresh QuickJS WebAssembly engine; the
+API prelude (`prelude.ts`) turns `page`, locators, `expect` and `test.step` into JSON operations that the
+main thread allow-lists and runs on the Playwright page, so no host object enters the sandbox. The
+thread is terminated at the check's deadline. Steps, console errors, failed requests and Web Vitals go to
+`ctx.browser` → `heartbeats.browser`; the screenshot and trace (`ctx.artifacts`) are stored by
+`recordBeat` in the org-scoped `check-artifacts` upload collection and linked from the heartbeat, while
+unrecorded on-demand checks return the screenshot inline (`OnDemandCheckResult.browser`). The retention
+job deletes artifacts with the important beats (`KEEP_DATA_PERIOD_DAYS`), files included.
+
 After each beat the worker writes a `heartbeats` row, refreshes the monitor's `status` group (`lastStatus`,
 `lastCheckAt`, `lastPing`, `lastMsg`, `retries`, `downCount`, `recoveries`) and calls every listener registered with
 `registerHeartbeatListener()` (`src/server/engine/hooks.ts`); stats, realtime and notifications plug in there.

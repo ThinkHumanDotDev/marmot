@@ -13,9 +13,11 @@
  * Everything here is pure: the worker feeds the previous cached state plus the check result in and
  * persists what comes out. That keeps the transition rules unit-testable without Redis or a database.
  */
+import type { BrowserCheckDetails } from '@/lib/browser-script'
 import { degradedThresholdMs } from '@/lib/monitor-degraded'
 import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
+import type { CheckArtifactFile } from '@/server/browser-script/run'
 import type { CapturedResponse } from '@/server/monitor-types/response-capture'
 import type { HeartbeatStatus, ProbeResult } from '@/server/monitor-types/types'
 import type { TlsInfo } from './tls'
@@ -102,6 +104,10 @@ export interface CheckResult {
   value?: number | null
   /** Cache lifetime of the document the check read (status page monitors, #125); unset otherwise. */
   cacheSeconds?: number | null
+  /** What a scripted browser check saw (#139), whatever the outcome. */
+  browser?: BrowserCheckDetails | null
+  /** Screenshot and trace of a scripted browser check (#139); stored by `recordBeat`. */
+  artifacts?: CheckArtifactFile[] | null
   /**
    * Extra fields the type set on `ctx.heartbeat` besides status/msg/ping/duration (e.g.
    * `statusCode`). Not persisted; returned by on-demand checks.

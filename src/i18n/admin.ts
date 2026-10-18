@@ -40,6 +40,11 @@ export const adminTranslations = {
         kafkaProducerType: 'Kafka Producer',
         tailscalePing: 'Tailscale Ping',
         realBrowser: 'HTTP(s) - Browser Engine (Chrome/Chromium)',
+        browserScript: 'Browser Script (Playwright)',
+        browserArtifactsFailure: 'On failure',
+        browserArtifactsAlways: 'Always',
+        screenshot: 'Screenshot',
+        trace: 'Trace',
         thirdPartyStatusPage: 'Third-party status page',
         steam: 'Steam Game Server',
         httpOptions: 'HTTP options',
@@ -209,6 +214,13 @@ export const adminTranslations = {
           'Per-probe results of a multi-location check (Globalping monitors): location, outcome and latency.',
         locationStatusDescription:
           'Multi-location monitors: the status of the location that ran the check (status is the quorum).',
+        browserDescription:
+          'Browser Script monitors: per-step timing, console errors, failed requests, Web Vitals and the stored screenshot and trace.',
+      },
+      checkArtifacts: {
+        description:
+          'Screenshots and Playwright traces of Browser Script checks, kept for KEEP_DATA_PERIOD_DAYS.',
+        heartbeatDescription: 'The check (heartbeat) the file belongs to.',
       },
       monitorLocationStates: {
         description:
@@ -464,6 +476,14 @@ export const adminTranslations = {
         gameDescription: 'GameDig game id, e.g. minecraft.',
         gamedigGivenPortOnlyDescription: 'Do not probe the other ports a game commonly uses.',
         remoteBrowserDescription: 'Playwright-compatible remote browser websocket URL.',
+        browserScriptDescription:
+          'Browser Script monitors: the body of an async function using page, expect, test.step, vars and secrets (Playwright API).',
+        browserVariablesDescription:
+          'Browser Script monitors: values the script reads as vars.<name>.',
+        browserSecretsDescription:
+          'Browser Script monitors: values the script reads as secrets.<name>; scrubbed from messages, logs and request URLs.',
+        browserArtifactsDescription:
+          'Browser Script monitors: when to keep a screenshot and a Playwright trace of the check.',
         globalpingProtocolDescription:
           'Ping: ICMP or TCP; HTTP: HTTP, HTTPS or HTTP2; DNS: UDP or TCP; traceroute: ICMP, TCP or UDP. Empty uses the default.',
         globalpingLocationsDescription:

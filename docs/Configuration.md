@@ -222,7 +222,7 @@ connects only to the address it checked. A refused check is a DOWN heartbeat suc
   `fc00::/7`, `fe80::/10`, `fec0::/10`, `ff00::/8`, `64:ff9b:1::/48`, plus IPv6 forms that embed one of the
   IPv4 ranges (`::ffff:127.0.0.1`, `::127.0.0.1`, NAT64 `64:ff9b::/96`, 6to4 `2002::/16`).
 - **Precedence:** `MONITOR_DENY_CIDRS` › `MONITOR_ALLOW_CIDRS` › the ranges above.
-- **Refused types:** `tailscale-ping`, `real-browser` and Docker hosts of type `socket` cannot be saved or
+- **Refused types:** `tailscale-ping`, `real-browser`, `browser-script` and Docker hosts of type `socket` cannot be saved or
   run, and Apprise channels cannot send: they reach the network without passing the guard.
 - **Saving** a monitor, proxy or Docker host whose target is a denied literal (`127.0.0.1`, `2130706433`,
   `[::1]`, `localhost`) is refused right away; names are judged when the check runs.

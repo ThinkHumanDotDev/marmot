@@ -4,6 +4,7 @@
  */
 import type { Payload } from 'payload'
 
+import { parseBrowserDetails } from '@/lib/browser-script'
 import { childLogger } from '@/lib/logger'
 import {
   supportsAdhocTest,
@@ -12,6 +13,7 @@ import {
   type OnDemandCheckStatus,
 } from '@/lib/on-demand-check'
 import type { Heartbeat, Monitor } from '@/payload-types'
+import { withInlineScreenshot } from '@/server/browser-script/artifacts'
 import { computeNextBeat, type CheckResult } from './beat'
 import { guardAgainstOfflineChecker } from './connectivity'
 import { isUnderMaintenance } from './hooks'
@@ -32,6 +34,20 @@ const tlsSummary = (tlsInfo: CheckResult['tlsInfo']): OnDemandCheckResult['tls']
     issuer: cert?.issuerCN ?? null,
     subject: cert?.subjectCN ?? null,
   }
+}
+
+/**
+ * Browser Script details (#139): a recorded check links its stored artifacts (`heartbeats.browser`),
+ * an unrecorded one carries the screenshot inline.
+ */
+function browserResult(
+  result: CheckResult,
+  heartbeat: Heartbeat | null,
+): OnDemandCheckResult['browser'] {
+  if (!result.browser) return null
+  const stored = heartbeat ? parseBrowserDetails(heartbeat.browser) : null
+  const details = stored ?? withInlineScreenshot(result.browser, result.artifacts)
+  return JSON.parse(JSON.stringify(details)) as OnDemandCheckResult['browser']
 }
 
 /** Shape a check result for the API (JSON-safe: it travels through Redis). */
@@ -59,6 +75,7 @@ export function toOnDemandResult(
       : null,
     timing: result.timing ? { ...result.timing } : null,
     details: JSON.parse(JSON.stringify(details)) as Record<string, unknown>,
+    browser: browserResult(result, heartbeat),
     recorded: heartbeat !== null,
     heartbeat: heartbeat
       ? {

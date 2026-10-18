@@ -337,7 +337,9 @@
       },
       "locationCount": "Checked from {count} locations",
       "checkedFrom": "Checked from {location}",
-      "locationStatus": "Probe location {status, select, online {online} offline {offline} other {never connected}}"
+      "locationStatus": "Probe location {status, select, online {online} offline {offline} other {never connected}}",
+      "browserCheck": "Latest browser check",
+      "browserCheckDescription": "Steps, errors and artifacts of the most recent scripted check. Every check is in the Logs tab."
     },
     "new": {
       "pageTitle": "New monitor",
@@ -621,6 +623,10 @@
         "label": "HTTP(s) - Browser Engine (Chrome/Chromium)",
         "description": "Loads the page in a real Chromium through a remote Playwright browser; UP on a 2xx/3xx navigation."
       },
+      "browser-script": {
+        "label": "Browser Script (Playwright)",
+        "description": "Runs a Playwright script (log in, check out, search) in a remote browser; screenshot and trace on failure."
+      },
       "port": {
         "label": "TCP Port",
         "description": "UP when a TCP connection succeeds."
@@ -834,7 +840,10 @@
       "globalpingMinSuccessRequired": "Enter how many probes must succeed",
       "globalpingMinSuccessMax": "Cannot be more than the number of probes",
       "locationsTooMany": "Pick at most {max} locations",
-      "locationsTypeUnsupported": "Group, manual, push, Steam and Globalping monitors run on this server only"
+      "locationsTypeUnsupported": "Group, manual, push, Steam and Globalping monitors run on this server only",
+      "scriptRequired": "Script is required",
+      "variableName": "Use letters, digits, _ or $ and start with a letter, _ or $",
+      "variableDuplicate": "This name is already used"
     },
     "form": {
       "assertions": {
@@ -1180,6 +1189,33 @@
         "resolverDescription": "Leave empty to use each probe's own resolver.",
         "rateLimit": "Rate limits never mark the monitor down: it stays pending until the limit resets."
       },
+      "browserScript": {
+        "title": "Browser script",
+        "description": "A Playwright script run in the remote browser on every check. It passes when it finishes and fails at the first error or failed expectation.",
+        "startUrl": "Start URL",
+        "startUrlDescription": "Optional. Available as url in the script, and relative page.goto() paths resolve against it.",
+        "script": "Script",
+        "scriptDescription": "The body of an async function. Available: page, expect, test.step, vars, secrets, url and console (a subset of Playwright's API). The script runs in an isolated sandbox without file, environment or network access of its own.",
+        "scriptLabel": "Script editor",
+        "variables": "Variables",
+        "variablesDescription": "Read in the script as vars.name.",
+        "secrets": "Secrets",
+        "secretsDescription": "Read in the script as secrets.name. Their values are scrubbed from messages, logs and request URLs, but typed values appear in traces.",
+        "name": "Name",
+        "value": "Value",
+        "add": "Add",
+        "remove": "Remove {name}",
+        "artifacts": "Keep screenshot and trace",
+        "artifactsDescription": "Stored with the heartbeat for the important-event retention period.",
+        "artifactsOption": {
+          "failure": "When the check fails",
+          "always": "On every check"
+        },
+        "ignoreTls": "Ignore TLS errors",
+        "ignoreTlsDescription": "Accept invalid or self-signed certificates in the browser.",
+        "runNow": "Run now",
+        "running": "Running… {seconds}s"
+      },
       "prometheus": {
         "title": "Prometheus query",
         "description": "A PromQL instant query and the conditions its value is judged by.",
@@ -1434,6 +1470,34 @@
         "output": "Output",
         "truncated": "Truncated to the first 10 000 bytes."
       }
+    },
+    "browser": {
+      "title": "Browser script",
+      "steps": "Steps",
+      "noSteps": "The script used no test.step().",
+      "step": "Step",
+      "duration": "Duration",
+      "stepFailed": "Failed: {error}",
+      "consoleErrors": "Console errors",
+      "failedRequests": "Failed requests",
+      "requestStatus": "HTTP {status}",
+      "logs": "Script output",
+      "webVitals": "Web Vitals",
+      "vitals": {
+        "ttfb": "Time to first byte",
+        "fcp": "First contentful paint",
+        "lcp": "Largest contentful paint",
+        "cls": "Cumulative layout shift",
+        "domContentLoaded": "DOM content loaded",
+        "load": "Load"
+      },
+      "finalUrl": "Final URL",
+      "screenshot": "Screenshot",
+      "screenshotAlt": "Screenshot of the page when the script ended",
+      "trace": "Playwright trace",
+      "downloadTrace": "Download trace ({size})",
+      "traceHint": "Open it with npx playwright show-trace or at trace.playwright.dev.",
+      "inlineHint": "Run now stores nothing: the trace is kept only for recorded checks."
     }
   },
   "auth": {

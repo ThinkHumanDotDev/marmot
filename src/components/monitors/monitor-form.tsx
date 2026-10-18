@@ -67,6 +67,7 @@ import {
   isHttpMonitorType,
   isKeywordMonitorType,
   isPortMonitorType,
+  BROWSER_SCRIPT_EXAMPLE,
   isUrlMonitorType,
   isValidStatusCodeRange,
   JSON_PATH_OPERATORS,
@@ -110,6 +111,7 @@ import { SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
 import { AssertionsField } from './assertions-field'
 import { useElapsedSeconds } from './check-now'
+import { BrowserScriptCard } from './browser-script-card'
 import { CheckResultView } from './check-result'
 import { NotificationPicker } from './notification-picker'
 import { StatusPageComponentsField } from './status-page-components-field'
@@ -1003,6 +1005,11 @@ function applyTypeDefaults(
   if (type === 'manual' && !get('manualStatus')) set('manualStatus', 'up')
   if (type === 'snmp' && !get('snmpCommunity')) set('snmpCommunity', 'public')
   if (type === 'status-page' && !get('url')) set('url', 'https://')
+  if (type === 'browser-script') {
+    // The start URL is optional: a bare scheme left by a URL type would not validate.
+    if (schemeOnly) set('url', null)
+    if (!get('browserScript')) set('browserScript', BROWSER_SCRIPT_EXAMPLE)
+  }
   if (type === 'globalping') {
     if (!get('url')) set('url', 'https://')
     for (const field of ['interval', 'retryInterval'] as const) {
@@ -2532,6 +2539,18 @@ export function MonitorForm({
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Browser script (#139) ---------------------------------------------------------- */}
+        {type === 'browser-script' && (
+          <BrowserScriptCard
+            control={control}
+            running={testing}
+            runSeconds={testSeconds}
+            onRunNow={() => void form.handleSubmit(runTest, () => toast.error(t('fixFields')))()}
+            remoteBrowserLabel={t('connection.remoteBrowser')}
+            remoteBrowserDescription={t('connection.remoteBrowserDescription')}
+          />
         )}
 
         {/* Globalping ---------------------------------------------------------------------- */}

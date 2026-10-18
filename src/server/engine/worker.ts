@@ -28,6 +28,7 @@ import {
   isRemoteMonitor,
   LOCAL_LOCATION,
 } from '@/lib/probe-locations'
+import { storeCheckArtifacts } from '@/server/browser-script/artifacts'
 import { applyQuorum, type QuorumOutcome } from './quorum-store'
 import { checkTimeoutMs, runCheck } from './run-check'
 
@@ -190,7 +191,7 @@ export async function recordBeat(
   const tlsInfo = result.tlsInfo ?? null
   const certChanged = certificateChanged(monitor.certInfo, tlsInfo)
 
-  const heartbeat = (await payload.create({
+  let heartbeat = (await payload.create({
     collection: 'heartbeats',
     depth: 0,
     overrideAccess: true,
@@ -224,6 +225,10 @@ export async function recordBeat(
         : {}),
       // Per-probe results of multi-location checks (Globalping, #142).
       ...(result.probes?.length ? { probes: result.probes as unknown as Heartbeat['probes'] } : {}),
+      // What a scripted browser check saw (#139): steps, console errors, failed requests.
+      ...(result.browser && !held
+        ? { browser: result.browser as unknown as Heartbeat['browser'] }
+        : {}),
       // Response log (#97): status code and headers of every HTTP check, the body only when the
       // check failed or was degraded.
       // On a multi-location monitor the reporting location's own outcome decides: a failing location
@@ -231,6 +236,26 @@ export async function recordBeat(
       ...responseFields(result, quorum ? quorum.location.next.status : next.status),
     },
   })) as Heartbeat
+
+  // Screenshot and trace of a scripted browser check (#139), linked from `heartbeats.browser`.
+  if (result.browser && result.artifacts?.length && !held && organizationId !== null) {
+    const artifacts = await storeCheckArtifacts(payload, {
+      files: result.artifacts,
+      monitorId: monitor.id,
+      organizationId,
+      heartbeatId: heartbeat.id,
+    })
+    if (artifacts.length > 0) {
+      const browser = { ...result.browser, artifacts }
+      heartbeat = (await payload.update({
+        collection: 'heartbeats',
+        id: heartbeat.id,
+        depth: 0,
+        overrideAccess: true,
+        data: { browser: browser as unknown as Heartbeat['browser'] },
+      })) as Heartbeat
+    }
+  }
 
   const updated = (await payload.update({
     collection: 'monitors',

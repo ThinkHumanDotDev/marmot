@@ -83,6 +83,7 @@ export interface Config {
     locations: Location;
     'notification-sent-history': NotificationSentHistory;
     heartbeats: Heartbeat;
+    'check-artifacts': CheckArtifact;
     'monitor-incidents': MonitorIncident;
     'declared-incidents': DeclaredIncident;
     integrations: Integration;
@@ -140,6 +141,7 @@ export interface Config {
     locations: LocationsSelect<false> | LocationsSelect<true>;
     'notification-sent-history': NotificationSentHistorySelect<false> | NotificationSentHistorySelect<true>;
     heartbeats: HeartbeatsSelect<false> | HeartbeatsSelect<true>;
+    'check-artifacts': CheckArtifactsSelect<false> | CheckArtifactsSelect<true>;
     'monitor-incidents': MonitorIncidentsSelect<false> | MonitorIncidentsSelect<true>;
     'declared-incidents': DeclaredIncidentsSelect<false> | DeclaredIncidentsSelect<true>;
     integrations: IntegrationsSelect<false> | IntegrationsSelect<true>;
@@ -452,6 +454,7 @@ export interface Monitor {
     | 'radius'
     | 'tailscale-ping'
     | 'real-browser'
+    | 'browser-script'
     | 'mysql'
     | 'postgres'
     | 'sqlserver'
@@ -673,6 +676,22 @@ export interface Monitor {
   game?: string | null;
   gamedigGivenPortOnly?: boolean | null;
   remoteBrowser?: string | null;
+  browserScript?: string | null;
+  browserVariables?:
+    | {
+        name: string;
+        value?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  browserSecrets?:
+    | {
+        name: string;
+        value?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  browserArtifacts?: ('failure' | 'always') | null;
   status?: {
     lastStatus?: ('up' | 'down' | 'pending' | 'maintenance' | 'degraded') | null;
     lastCheckAt?: string | null;
@@ -989,6 +1008,15 @@ export interface Heartbeat {
     | boolean
     | null;
   value?: number | null;
+  browser?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   statusCode?: number | null;
   response?: {
     headers?:
@@ -1007,6 +1035,26 @@ export interface Heartbeat {
   retries?: number | null;
   downCount?: number | null;
   time: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "check-artifacts".
+ */
+export interface CheckArtifact {
+  id: number;
+  organization: number | Organization;
+  monitor: number | Monitor;
+  heartbeat?: (number | null) | Heartbeat;
+  kind: 'screenshot' | 'trace';
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2152,6 +2200,10 @@ export interface PayloadLockedDocument {
         value: number | Heartbeat;
       } | null)
     | ({
+        relationTo: 'check-artifacts';
+        value: number | CheckArtifact;
+      } | null)
+    | ({
         relationTo: 'monitor-incidents';
         value: number | MonitorIncident;
       } | null)
@@ -2671,6 +2723,22 @@ export interface MonitorsSelect<T extends boolean = true> {
   game?: T;
   gamedigGivenPortOnly?: T;
   remoteBrowser?: T;
+  browserScript?: T;
+  browserVariables?:
+    | T
+    | {
+        name?: T;
+        value?: T;
+        id?: T;
+      };
+  browserSecrets?:
+    | T
+    | {
+        name?: T;
+        value?: T;
+        id?: T;
+      };
+  browserArtifacts?: T;
   status?:
     | T
     | {
@@ -2843,6 +2911,7 @@ export interface HeartbeatsSelect<T extends boolean = true> {
       };
   probes?: T;
   value?: T;
+  browser?: T;
   statusCode?: T;
   response?:
     | T
@@ -2855,6 +2924,25 @@ export interface HeartbeatsSelect<T extends boolean = true> {
   retries?: T;
   downCount?: T;
   time?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "check-artifacts_select".
+ */
+export interface CheckArtifactsSelect<T extends boolean = true> {
+  organization?: T;
+  monitor?: T;
+  heartbeat?: T;
+  kind?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

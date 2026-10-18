@@ -4,9 +4,11 @@
  */
 import type { Payload } from 'payload'
 
+import type { BrowserCheckDetails } from '@/lib/browser-script'
 import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
 import type { Monitor } from '@/payload-types'
+import type { CheckArtifactFile } from '@/server/browser-script/run'
 import type { TlsInfo } from '@/server/engine/tls'
 
 import type { CapturedResponse } from './response-capture'
@@ -58,6 +60,16 @@ export interface MonitorCheckContext {
    * The worker stores it on the heartbeat (`heartbeats.value`) and rolls it up for the chart.
    */
   value?: number | null
+  /**
+   * What a scripted browser check saw (#139): steps, console errors, failed requests, Web Vitals.
+   * The worker stores it on the heartbeat (`heartbeats.browser`), whatever the verdict.
+   */
+  browser?: BrowserCheckDetails | null
+  /**
+   * Screenshot and trace of a scripted browser check (#139). The worker stores them in
+   * `check-artifacts` for recorded beats; unrecorded runs return the screenshot inline.
+   */
+  artifacts?: CheckArtifactFile[] | null
   /**
    * Freshness lifetime in seconds of the document the check read (third-party status pages, #125:
    * `Cache-Control: max-age` / `Expires`). The worker stores it in `monitors.status.cacheSeconds`

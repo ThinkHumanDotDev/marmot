@@ -20,6 +20,7 @@ keyword, JSON query, TCP port, ping, DNS, gRPC and Globalping monitors.
 | `json-query`        | HTTP(s) - Json Query                       | HTTP fields + `jsonPath`, `jsonPathOperator`, `expectedValue`                                                                                                                                                                                                                                                    | — (jsonata)                          |
 | `prometheus`        | Prometheus Query                           | `url` (API base URL), `prometheusQuery`, `prometheusDownOperator` + `prometheusDownThreshold`, optional degraded condition, `prometheusAggregate`, `prometheusNoDataStatus`, `prometheusErrorStatus`, `headers`, `proxy`, `ignoreTls`, `authMethod` none/basic/bearer; see [Prometheus query](#prometheus-query) | Prometheus HTTP API                  |
 | `real-browser`      | HTTP(s) - Browser Engine (Chrome/Chromium) | `url`, `remoteBrowser` (ws:// URL of a Playwright-compatible browser server), `ignoreTls`                                                                                                                                                                                                                        | `playwright-core` + a remote browser |
+| `browser-script`    | Browser Script (Playwright)                | `browserScript` (a Playwright script), `remoteBrowser`, optional `url` (start URL), `browserVariables`, `browserSecrets`, `browserArtifacts` failure \| always, `ignoreTls`; see [Browser scripts](#browser-scripts)                                                                                             | `playwright-core` + a remote browser |
 | `port`              | TCP Port                                   | `hostname`, `port`                                                                                                                                                                                                                                                                                               | —                                    |
 | `ping`              | Ping                                       | `hostname`                                                                                                                                                                                                                                                                                                       | system `ping` binary                 |
 | `dns`               | DNS                                        | `hostname`, `port` (53), `dnsResolveServer`, `dnsResolveType`, `assertions` (dnsRecord)                                                                                                                                                                                                                          | —                                    |
@@ -188,6 +189,78 @@ any other check.
   period instead of the response time, and reports the average value instead of a latency percentile.
   The response time of the query itself still feeds the uptime statistics.
 
+## Browser scripts
+
+`browser-script` monitors (#139) _(landing in the current release)_ run a user journey (sign up, log in,
+check out, search) in a real browser on every check, against the same remote browser the
+`real-browser` monitor uses (`remoteBrowser`, a Playwright-compatible `ws://` server such as
+[browserless](https://www.browserless.io/) or `npx playwright run-server`). The check is UP when the
+script finishes and DOWN at the first error or failed expectation, with that message.
+
+```js
+await test.step('log in', async () => {
+  await page.goto('/login') // relative to the monitor's start URL
+  await page.getByLabel('Email').fill(vars.email)
+  await page.getByLabel('Password').fill(secrets.password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+})
+await test.step('see the dashboard', async () => {
+  await expect(page).toHaveURL(/\/dashboard/)
+  await expect(page.getByText('Welcome')).toBeVisible()
+})
+```
+
+- **API**: the script is the body of an async function with a subset of Playwright's test API:
+  - `page`: `goto`, `reload`, `goBack`, `goForward`, `waitForURL`, `waitForLoadState`, `waitForTimeout`,
+    `waitForSelector`, `title`, `url`, `content`, `setViewportSize`, `evaluate`, `keyboard.*`, `mouse.*`,
+    and the selector shortcuts (`click`, `fill`, …).
+  - Locators: `locator`, `getByRole`, `getByText`, `getByLabel`, `getByPlaceholder`, `getByAltText`,
+    `getByTitle`, `getByTestId`, `frameLocator`, `filter`, `first`, `last`, `nth`, `and`, `or`. Actions
+    and queries: `click`, `fill`, `press`, `check`, `selectOption`, `hover`, `textContent`, `inputValue`,
+    `isVisible`, `count`, `all`, `evaluate`, ….
+  - `expect(locator)`: `toBeVisible`, `toBeHidden`, `toBeAttached`, `toBeEnabled`, `toBeDisabled`,
+    `toBeChecked`, `toBeEditable`, `toBeFocused`, `toHaveText`, `toContainText`, `toHaveValue`,
+    `toHaveAttribute`, `toHaveClass`, `toHaveCount`; `expect(page)`: `toHaveURL`, `toHaveTitle`; values:
+    `toBe`, `toEqual`, `toContain`, `toMatch`, `toBeTruthy`, comparisons, `toHaveLength`, …; all with
+    `.not`. Locator and page expectations retry until their `timeout` (default 5 s).
+  - `test.step(name, fn)` for per-step timing, `vars.<name>` and `secrets.<name>` from the monitor,
+    `url` (the start URL) and `console.log` (shown with the result).
+  - Anything else (`page.screenshot({ path })`, `setInputFiles`, `page.route`, `page.request`,
+    `page.context()`, `require`, `import`, `process`, `fetch`, timers) does not exist in the script.
+    `page.evaluate()` runs in the browser page, so pages can still use their own `fetch`.
+- **Sandbox**: the script never runs in the worker's JavaScript engine (no `eval`, `new Function` or
+  `node:vm`). Each check starts a worker thread with a fresh
+  [QuickJS](https://github.com/justjake/quickjs-emscripten) engine compiled to WebAssembly: its own heap
+  and globals, no Node objects and no module loader, so `globalThis.constructor.constructor`, `eval` and
+  `import()` only reach QuickJS itself. The only way out is a JSON bridge whose host side allow-lists the
+  operations above: the script cannot read files or environment variables, reach Payload or Redis, or open
+  connections except through the browser.
+- **Limits**: the script's heap is capped at 32 MB, it may not run for more than 1 s without awaiting the
+  browser (or 5 s of CPU in total), and the run stops at the monitor's `timeout` (a quarter of it, at most
+  5 s, is kept to capture the artifacts): the thread is terminated, whatever the script is doing.
+  `timeout` defaults to 48 s; raise it (and the interval) for long journeys.
+- **Network**: while `MONITOR_DENY_PRIVATE_ADDRESSES` is on, browser scripts are refused like the Browser
+  Engine monitor (the browser resolves names itself). With `MONITOR_DENY_CIDRS` only, every request and
+  WebSocket of the page (navigations, redirects, subresources, `fetch`) is vetted by the
+  [outbound address guard](Configuration.md#private-address-guard); refused ones are aborted and listed
+  as failed requests. Only `http(s)` pages can be opened; service workers and downloads are off.
+- **Artifacts**: on failure (or on every check with `browserArtifacts: always`) the check stores a JPEG
+  screenshot and a Playwright trace (`.zip`, open it with `npx playwright show-trace` or at
+  [trace.playwright.dev](https://trace.playwright.dev)) in the `check-artifacts` upload collection, next to
+  the `media` uploads (`UPLOADS_DIR/check-artifacts`, or the S3 bucket). Only members of the organization
+  can read them; they are linked from the heartbeat and deleted after `KEEP_DATA_PERIOD_DAYS` (the
+  important-event retention) or with the monitor. Every check also records console errors, failed
+  requests (network errors and HTTP ≥ 400), the steps with their timing, the script's output and the Web
+  Vitals of the last page (TTFB, FCP, LCP, CLS, DOMContentLoaded, load) in `heartbeats.browser`; the
+  monitor page shows the latest check and the Logs tab every check.
+- **Secrets**: `browserSecrets` values are replaced by `[redacted]` in messages, steps, logs and request
+  URLs, and the whole list is redacted in the audit log. Screenshots and traces show the page as the
+  browser saw it, including values typed into fields: use dedicated test accounts.
+- **Run now**: the editor's _Run now_ (like the form's _Test_) runs the unsaved script once on the worker
+  and shows the steps, errors and screenshot inline without storing anything; _Check now_ on a saved
+  monitor records a heartbeat with its screenshot and trace.
+- Browser scripts run on the server's workers only, not on [probe locations](Probe-Locations.md).
+
 ## Assertions
 
 HTTP-family monitors (`http`, `keyword`, `json-query`) and `dns` monitors take a list of **assertions**
@@ -252,8 +325,8 @@ shared by the form, the API and the collection are in `src/lib/validation/assert
   its `ws://` URL in `remoteBrowser`. Screenshots are not stored.
 - **Private-address guard** (`MONITOR_DENY_PRIVATE_ADDRESSES`, see
   [Configuration](Configuration.md#private-address-guard)): every type resolves its target and checks
-  all addresses before connecting. `tailscale-ping`, `real-browser` (Chromium would resolve and connect on
-  its own) and `docker` monitors on a `socket` Docker host are refused while the guard is on, both when
+  all addresses before connecting. `tailscale-ping`, `real-browser` and `browser-script` (Chromium would
+  resolve and connect on its own) and `docker` monitors on a `socket` Docker host are refused while the guard is on, both when
   saving and when the check runs. Database connection strings that point at a unix socket are refused too.
 - **`snmp`** supports v1 and v2c; SNMPv3 is not available yet.
 - **`websocket-upgrade`** supports none, basic, bearer and mTLS authentication; OAuth2 is not wired.

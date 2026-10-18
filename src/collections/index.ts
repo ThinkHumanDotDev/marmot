@@ -5,6 +5,7 @@ import { withDemoGuards } from '@/server/demo/guards'
 import { ApiKeys } from './ApiKeys'
 import { withAuditHooks } from './audit'
 import { AuthAccounts } from './AuthAccounts'
+import { CheckArtifacts } from './CheckArtifacts'
 import { DockerHosts } from './DockerHosts'
 import { AuditLogs } from './AuditLogs'
 import { DeclaredIncidents } from './DeclaredIncidents'
@@ -72,6 +73,7 @@ export const collections: CollectionConfig[] = [
   Locations,
   NotificationSentHistory,
   Heartbeats,
+  CheckArtifacts,
   MonitorIncidents,
   DeclaredIncidents,
   Integrations,

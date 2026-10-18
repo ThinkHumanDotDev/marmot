@@ -14,6 +14,8 @@
  *                        `KEEP_DATA_PERIOD_DAYS`; skipped when < 1, like Uptime Kuma)
  * - `heartbeats`         non-important beats older than 24 hours, important beats older than
  *                        `keepDataPeriodDays` (only when the engine's collection exists)
+ * - `check-artifacts`    Browser Script screenshots and traces (#139) older than `keepDataPeriodDays`
+ *                        (the important-heartbeat period), with their files
  * - with `BILLING_ENABLED`, daily rows and important beats of organizations whose plan keeps less
  *   (`retentionDays`) are pruned at `min(keepDataPeriodDays, retentionDays)` (#161)
  * - `status-page-subscribers` self sign-ups never confirmed within 72 hours
@@ -82,6 +84,7 @@ export type RetentionResult = {
   metricStats: number
   heartbeats: number
   importantHeartbeats: number
+  checkArtifacts: number
   auditLogs: number
   unconfirmedSubscribers: number
   subscriberDeliveries: number
@@ -164,6 +167,7 @@ export async function runRetention(
     metricStats: 0,
     heartbeats: 0,
     importantHeartbeats: 0,
+    checkArtifacts: 0,
     auditLogs: 0,
     unconfirmedSubscribers: 0,
     subscriberDeliveries: 0,
@@ -217,6 +221,17 @@ export async function runRetention(
     }
   }
 
+  // Screenshots and traces (#139) follow the important beats; `payload.delete` removes the files.
+  const deleteArtifacts = (where: Where) =>
+    hasCollection(payload, 'check-artifacts')
+      ? deleteInBatches(payload, 'check-artifacts', where, { batchSize, hooks: true })
+      : Promise.resolve(0)
+  if (longTermEnabled) {
+    result.checkArtifacts = await deleteArtifacts({
+      createdAt: { less_than: cutoffs.importantHeartbeats.toISOString() },
+    })
+  }
+
   // Hosted plans (#161): organizations whose plan keeps less history than the instance are pruned
   // to their plan's `retentionDays`. Raw beats, minutely and hourly rows follow the rules above.
   if (isBillingEnabled()) {
@@ -233,6 +248,12 @@ export async function runRetention(
           { organization: { in: organizations } },
           { granularity: { equals: 'day' } },
           { timestamp: { less_than: getDailyKey(cutoff) } },
+        ],
+      })
+      result.checkArtifacts += await deleteArtifacts({
+        and: [
+          { organization: { in: organizations } },
+          { createdAt: { less_than: cutoff.toISOString() } },
         ],
       })
       if (hasCollection(payload, HEARTBEATS_SLUG)) {
