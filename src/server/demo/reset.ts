@@ -112,6 +112,7 @@ const WIPE_FIRST = [
   'stat-hourly',
   'stat-daily',
   'stat-location-hourly',
+  'host-metrics',
   'notification-sent-history',
   'monitor-incidents',
   'audit-logs',

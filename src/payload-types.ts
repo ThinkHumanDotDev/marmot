@@ -117,6 +117,7 @@ export interface Config {
     'otel-collectors': OtelCollector;
     metrics: Metric;
     'metric-stats': MetricStat;
+    'host-metrics': HostMetric;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -174,6 +175,7 @@ export interface Config {
     'otel-collectors': OtelCollectorsSelect<false> | OtelCollectorsSelect<true>;
     metrics: MetricsSelect<false> | MetricsSelect<true>;
     'metric-stats': MetricStatsSelect<false> | MetricStatsSelect<true>;
+    'host-metrics': HostMetricsSelect<false> | HostMetricsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -433,6 +435,7 @@ export interface Monitor {
     | 'globalping'
     | 'status-page'
     | 'push'
+    | 'host'
     | 'group'
     | 'manual'
     | 'docker'
@@ -602,6 +605,15 @@ export interface Monitor {
     | boolean
     | null;
   httpSuite?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  hostThresholds?:
     | {
         [k: string]: unknown;
       }
@@ -2084,6 +2096,36 @@ export interface MetricStat {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "host-metrics".
+ */
+export interface HostMetric {
+  id: number;
+  monitor: number | Monitor;
+  organization: number | Organization;
+  granularity: 'minute' | 'hour' | 'day';
+  timestamp: number;
+  lastAt: number;
+  series:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  latest?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -2305,6 +2347,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'metric-stats';
         value: number | MetricStat;
+      } | null)
+    | ({
+        relationTo: 'host-metrics';
+        value: number | HostMetric;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -2618,6 +2664,7 @@ export interface MonitorsSelect<T extends boolean = true> {
   statusPageProvider?: T;
   statusPageComponents?: T;
   httpSuite?: T;
+  hostThresholds?: T;
   pushToken?: T;
   pushSchedule?: T;
   pushCron?: T;
@@ -3782,6 +3829,19 @@ export interface MetricStatsSelect<T extends boolean = true> {
   max?: T;
   last?: T;
   lastAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "host-metrics_select".
+ */
+export interface HostMetricsSelect<T extends boolean = true> {
+  monitor?: T;
+  organization?: T;
+  granularity?: T;
+  timestamp?: T;
+  lastAt?: T;
+  series?: T;
+  latest?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

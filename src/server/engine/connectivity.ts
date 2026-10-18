@@ -360,9 +360,10 @@ async function monitorTargets(
     case 'manual':
       return { local: true }
     case 'push':
+    case 'host':
     case 'tailscale-ping':
     case 'globalping':
-      // Pushes come in from outside, a tailnet needs its coordination server and Globalping checks
+      // Pushes and host samples come in from outside, a tailnet needs its coordination server and Globalping checks
       // run through api.globalping.io.
       return { local: false, hosts: [] }
     case 'http':

@@ -23,6 +23,7 @@ export const adminTranslations = {
       labels: {
         tcpPort: 'TCP Port',
         push: 'Push',
+        host: 'Host (agent)',
         pushSchedule: 'Push schedule',
         pushScheduleInterval: 'Interval',
         pushScheduleCron: 'Cron expression',
@@ -138,6 +139,10 @@ export const adminTranslations = {
         defaultDescription:
           'Monitors that export without a collector of their own use this one. One per organization.',
         activeDescription: 'Inactive collectors receive nothing.',
+      },
+      hostMetrics: {
+        description:
+          'Rollups of the samples host agents push to host monitors; minutely rows (with the newest sample) are kept 24 hours, hourly 30 days, daily for the data period.',
       },
       metrics: {
         description:
@@ -432,7 +437,7 @@ export const adminTranslations = {
           'Header name, JSONata expression (jsonBody) or record type (dnsRecord).',
         dnsResolveServerDescription: 'Comma-separated resolver IPs or hostnames.',
         pushTokenDescription:
-          'Generated automatically. Call /api/push/<token> to report a heartbeat.',
+          "Generated automatically. Push monitors: call /api/push/<token> to report a heartbeat. Host monitors: the agent's MARMOT_HOST_TOKEN.",
         databaseConnectionStringDescription:
           'Driver connection string, e.g. postgres://user:pass@host:5432/db, mysql://…, mongodb://…, redis://….',
         databaseQueryDescription:
@@ -488,6 +493,8 @@ export const adminTranslations = {
           'Format of the vendor page. auto tries Statuspage, Instatus, Better Stack, incident.io, then RSS/Atom.',
         statusPageComponentsDescription:
           'Components to follow, as [{ "id": "...", "name": "..." }]. Matched by id; empty follows the whole page.',
+        hostThresholdsDescription:
+          "Host monitors: thresholds on the agent's metrics, e.g. disk / > 90 % (DOWN) or CPU > 90 % for 300 s (degraded).",
         httpSuiteDescription:
           'Multi-step API check: { vars, secrets, steps }. Each step is an HTTP request; values it stores are used by later steps as {{ vars.name }} or {{ steps.key.name }}.',
       },

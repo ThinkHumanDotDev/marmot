@@ -10,6 +10,8 @@
  * - `stat-hourly`        older than 30 days
  * - `stat-location-hourly` older than 30 days (per-location series of multi-location monitors, #92)
  * - `metric-stats`       custom metric rollups (#155), per granularity like the three above
+ * - `host-metrics`       host agent rollups (#136), the same way (minutely rows carry the newest
+ *                        sample, so no raw sample is kept beyond 24 hours)
  * - `stat-daily`         older than the `keepDataPeriodDays` instance setting (default
  *                        `KEEP_DATA_PERIOD_DAYS`; skipped when < 1, like Uptime Kuma)
  * - `heartbeats`         non-important beats older than 24 hours, important beats older than
@@ -80,6 +82,7 @@ export type RetentionResult = {
   locationHourly: number
   daily: number
   metricStats: number
+  hostMetrics: number
   heartbeats: number
   importantHeartbeats: number
   auditLogs: number
@@ -162,6 +165,7 @@ export async function runRetention(
     locationHourly: 0,
     daily: 0,
     metricStats: 0,
+    hostMetrics: 0,
     heartbeats: 0,
     importantHeartbeats: 0,
     auditLogs: 0,
@@ -189,6 +193,9 @@ export async function runRetention(
   ]
   for (const { granularity, cutoff } of metricCutoffs) {
     result.metricStats += await deleteWhere('metric-stats', {
+      and: [{ granularity: { equals: granularity } }, { timestamp: { less_than: cutoff } }],
+    })
+    result.hostMetrics += await deleteWhere('host-metrics', {
       and: [{ granularity: { equals: granularity } }, { timestamp: { less_than: cutoff } }],
     })
   }
@@ -229,6 +236,13 @@ export async function runRetention(
         ],
       })
       result.metricStats += await deleteWhere('metric-stats', {
+        and: [
+          { organization: { in: organizations } },
+          { granularity: { equals: 'day' } },
+          { timestamp: { less_than: getDailyKey(cutoff) } },
+        ],
+      })
+      result.hostMetrics += await deleteWhere('host-metrics', {
         and: [
           { organization: { in: organizations } },
           { granularity: { equals: 'day' } },

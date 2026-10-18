@@ -1,0 +1,40 @@
+# Marmot host agent – reports this machine's CPU, memory, disks, network, temperatures and
+# (optionally) per-container Docker stats to a Host monitor (#136).
+# Outbound HTTPS to Marmot only: no database, no Redis, no published ports.
+#
+#   MARMOT_URL=https://marmot.example.com MARMOT_HOST_TOKEN=... \
+#     docker compose -f docker-compose.host-agent.yml up -d
+#
+# Create a monitor of type "Host (agent)" and copy its token from the monitor page.
+# Full guide: docs/Host-Monitoring.md
+name: marmot-host-agent
+
+services:
+  host-agent:
+    image: ghcr.io/thinkhumandotdev/marmot:${MARMOT_VERSION:-0.1.1}
+    restart: unless-stopped
+    # The host's network namespace and process table, so network counters and the hostname are the
+    # host's rather than the container's.
+    network_mode: host
+    pid: host
+    environment:
+      MARMOT_ROLE: host-agent
+      MARMOT_URL: ${MARMOT_URL:?set MARMOT_URL to your Marmot server}
+      MARMOT_HOST_TOKEN: ${MARMOT_HOST_TOKEN:?set MARMOT_HOST_TOKEN to the host monitor token}
+      # The host's / is mounted read-only at /host: /proc, /sys and the mount points are read there.
+      HOST_AGENT_ROOT: /host
+      # Mount points to report, comma-separated (paths on the host).
+      HOST_AGENT_DISKS: ${HOST_AGENT_DISKS:-/}
+      # Per-container CPU and memory through the Docker socket below.
+      HOST_AGENT_DOCKER: ${HOST_AGENT_DOCKER:-true}
+    # The image runs as an unprivileged user: give it the group that owns the Docker socket
+    # (`stat -c %g /var/run/docker.sock`, often 999 or 998).
+    group_add:
+      - ${DOCKER_GID:-999}
+    volumes:
+      - /:/host:ro,rslave
+      # Read access to the Docker API (the socket grants full daemon access; remove it and set
+      # HOST_AGENT_DOCKER=false to go without container stats).
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    security_opt:
+      - no-new-privileges:true

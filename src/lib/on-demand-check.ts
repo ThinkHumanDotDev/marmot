@@ -62,13 +62,13 @@ export interface OnDemandCheckResult {
 }
 
 /** Monitor types an on-demand check does not apply to: they are fed from outside, not polled. */
-export const ON_DEMAND_UNSUPPORTED_TYPES: readonly string[] = ['push']
+export const ON_DEMAND_UNSUPPORTED_TYPES: readonly string[] = ['push', 'host']
 
 /**
  * Types an ad-hoc test of an unsaved configuration does not apply to: they read other saved
  * documents (group children, the manual status) rather than reaching a target.
  */
-export const ADHOC_UNSUPPORTED_TYPES: readonly string[] = ['push', 'group', 'manual']
+export const ADHOC_UNSUPPORTED_TYPES: readonly string[] = ['push', 'host', 'group', 'manual']
 
 export const supportsCheckNow = (type: string | null | undefined): boolean =>
   !!type && !ON_DEMAND_UNSUPPORTED_TYPES.includes(type)

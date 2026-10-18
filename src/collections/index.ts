@@ -9,6 +9,7 @@ import { DockerHosts } from './DockerHosts'
 import { AuditLogs } from './AuditLogs'
 import { DeclaredIncidents } from './DeclaredIncidents'
 import { Heartbeats } from './Heartbeats'
+import { HostMetrics } from './HostMetrics'
 import { Incidents } from './Incidents'
 import { IntegrationAlerts } from './IntegrationAlerts'
 import { IntegrationEvents } from './IntegrationEvents'
@@ -106,6 +107,7 @@ export const collections: CollectionConfig[] = [
   OtelCollectors,
   Metrics,
   MetricStats,
+  HostMetrics,
 ]
   .map(withAuditHooks)
   // Demo mode guard rails (#159): no-ops unless DEMO_MODE is set.

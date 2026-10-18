@@ -64,6 +64,7 @@ import {
   GLOBALPING_SUCCESS_RULES,
 } from '@/lib/validation/globalping'
 import { STATUS_PAGE_PROVIDERS } from '@/lib/validation/status-page-monitor'
+import { hostThresholdsSchema } from '@/lib/host-metrics'
 import { httpSuiteProblems, httpSuiteSchema, type HttpSuite } from '@/lib/validation/http-suite'
 import { adminGroup, adminT } from '@/i18n/admin'
 import {
@@ -95,6 +96,7 @@ export const MONITOR_TYPES = [
   { label: 'Globalping', value: 'globalping' },
   { label: adminT('marmot:labels:thirdPartyStatusPage'), value: 'status-page' },
   { label: adminT('marmot:labels:push'), value: 'push' },
+  { label: adminT('marmot:labels:host'), value: 'host' },
   { label: adminT('marmot:labels:group'), value: 'group' },
   { label: adminT('marmot:labels:manual'), value: 'manual' },
   { label: adminT('marmot:labels:dockerContainer'), value: 'docker' },
@@ -504,8 +506,9 @@ export const Monitors: CollectionConfig = {
   hooks: {
     beforeChange: [
       ({ data }) => {
-        // Push monitors need a token the push endpoint can address them by.
-        if (data?.type === 'push' && !data.pushToken) {
+        // Push monitors need a token the push endpoint can address them by, host monitors (#136)
+        // one their agent authenticates with.
+        if ((data?.type === 'push' || data?.type === 'host') && !data.pushToken) {
           data.pushToken = randomBytes(16).toString('hex')
         }
         return data
@@ -564,6 +567,7 @@ export const Monitors: CollectionConfig = {
           'monitor-location-states',
           'stat-location-hourly',
           'sla-targets',
+          'host-metrics',
         ] as const) {
           await req.payload.delete({ collection, where: { monitor: { equals: id } }, ...common })
         }
@@ -1432,13 +1436,41 @@ export const Monitors: CollectionConfig = {
       },
     },
 
+    // ---- Host agent (#136) ----------------------------------------------------------------------
+    {
+      // `[{ metric, target, operator, value, duration, severity }]` (`src/lib/host-metrics.ts`),
+      // judged by `src/server/monitor-types/host.ts`. JSON so the list stays one column.
+      name: 'hostThresholds',
+      type: 'json',
+      admin: {
+        condition: (data) => data?.type === 'host',
+        description: adminT('marmot:monitors:hostThresholdsDescription'),
+      },
+      hooks: {
+        beforeValidate: [
+          ({ value }) => {
+            if (value === null || value === undefined) return value
+            const parsed = hostThresholdsSchema.safeParse(value)
+            return parsed.success ? parsed.data : value
+          },
+        ],
+      },
+      validate: (value: unknown, { data }: { data?: Partial<Monitor> }) => {
+        if (data?.type !== 'host' || value === null || value === undefined) return true
+        const parsed = hostThresholdsSchema.safeParse(value)
+        if (parsed.success) return true
+        const issue = parsed.error.issues[0]
+        return `${issue?.path.join('.') ?? ''}: ${issue?.message ?? 'invalid'}`
+      },
+    },
+
     // ---- Push -----------------------------------------------------------------------------------
     {
       name: 'pushToken',
       type: 'text',
       index: true,
       admin: {
-        condition: (data) => data?.type === 'push',
+        condition: (data) => data?.type === 'push' || data?.type === 'host',
         description: adminT('marmot:monitors:pushTokenDescription'),
       },
     },

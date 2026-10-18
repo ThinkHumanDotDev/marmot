@@ -36,6 +36,7 @@ import { isValidTimezone, SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
 import { STATUS_PAGE_MAX_COMPONENTS, STATUS_PAGE_PROVIDERS } from './status-page-monitor'
 import { httpSuiteProblems, httpSuiteSchema, type HttpSuite } from './http-suite'
+import { DEFAULT_HOST_THRESHOLDS, hostThresholdsSchema } from '@/lib/host-metrics'
 import {
   GLOBALPING_DEFAULT_PACKETS,
   GLOBALPING_DEFAULT_PROBES,
@@ -93,6 +94,7 @@ export const MONITOR_TYPE_NAMES = [
   'status-page',
   // Passive
   'push',
+  'host',
   'manual',
   'docker',
   // Special
@@ -296,6 +298,12 @@ export const MONITOR_TYPE_GROUPS: Record<
         name: 'push',
         label: 'Push',
         description: 'Your system calls a URL on a schedule; silence means DOWN.',
+      },
+      {
+        name: 'host',
+        label: 'Host (agent)',
+        description:
+          'A small agent reports CPU, memory, disks, network and temperatures; thresholds alert.',
       },
       { name: 'manual', label: 'Manual', description: 'Status set by hand, never checked.' },
     ],
@@ -917,6 +925,8 @@ export function createMonitorFormSchema(message: MonitorValidationMessage) {
 
       // Multi-step API check (#138): `{ vars, secrets, steps }`, `null` for other types
       httpSuite: httpSuiteSchema.nullish().transform((value) => value ?? null),
+      // Host monitors (#136): thresholds on the agent's metrics
+      hostThresholds: hostThresholdsSchema.nullish().transform((value) => value ?? []),
     })
     .superRefine((values, ctx) => {
       const issue = (path: string, message: string) =>
@@ -1416,6 +1426,7 @@ export function defaultMonitorValues(type: MonitorTypeName = 'http'): MonitorFor
     statusPageProvider: 'auto',
     statusPageComponents: [],
     httpSuite: null,
+    hostThresholds: type === 'host' ? DEFAULT_HOST_THRESHOLDS.map((t) => ({ ...t })) : [],
   }
 }
 
