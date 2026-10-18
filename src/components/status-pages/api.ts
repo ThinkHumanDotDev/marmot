@@ -99,7 +99,7 @@ export interface IncidentUpdateDraft {
   postedAt?: string
 }
 
-export type IncidentOpenDraft = Omit<IncidentUpdateDraft, 'postedAt'> & {
+export type IncidentOpenDraft = IncidentUpdateDraft & {
   title: string
   pinned?: boolean
 }

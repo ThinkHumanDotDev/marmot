@@ -501,6 +501,22 @@
       }
     }
   },
+  "errors": {
+    "invalidJsonBody": "Corps JSON invalide",
+    "tooManyAttempts": "Trop de tentatives. Réessayez plus tard.",
+    "statusPageNotFound": "Page de statut introuvable",
+    "crossSiteRefused": "Requête intersite refusée",
+    "statusPageProtected": "Cette page de statut est restreinte. Connectez-vous pour la consulter.",
+    "statusPagePasswordIncorrect": "Ce mot de passe est incorrect.",
+    "statusPageIpNotAllowed": "Cette page de statut n’est pas accessible depuis votre réseau.",
+    "statusPageLinkInvalid": "Ce lien de connexion est invalide, expiré ou déjà utilisé.",
+    "invalidEmailAddress": "Saisissez une adresse e-mail valide.",
+    "subscriberTargetInvalid": "Saisissez une adresse e-mail valide, un numéro de téléphone au format international (+15551234567), une URL de webhook ou une URL de webhook entrant Slack.",
+    "subscriberComponentsInvalid": "Choisissez des composants de cette page de statut.",
+    "subscriptionsUnavailable": "Cette page de statut ne propose pas d’abonnements.",
+    "subscriptionChannelUnavailable": "Cette page de statut ne propose pas d’abonnements sur ce canal.",
+    "subscriptionCodeInvalid": "Le code est erroné ou a expiré. Demandez-en un nouveau."
+  },
   "subscriberMessages": {
     "sms": {
       "incidentOpened": "[{siteName}] Nouvel incident : {title} ({status}). {message} {url}",

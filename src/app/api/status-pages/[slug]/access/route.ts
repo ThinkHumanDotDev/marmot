@@ -18,8 +18,10 @@ import {
   requestHostname,
   statusPageBasePath,
 } from '@/server/status-pages/urls'
-import { errorText, requestLocale } from '@/server/request-locale'
+import { translateError } from '@/server/errors'
+import { visitorLocale } from '@/server/status-pages/visitor-locale'
 
+import type { Locale } from '@/i18n/locales'
 import type { StatusPage } from '@/payload-types'
 
 export const dynamic = 'force-dynamic'
@@ -87,6 +89,8 @@ const retryHeaders = (seconds?: number): Record<string, string> =>
 interface Ctx {
   request: Request
   page: StatusPage
+  /** The page's language for this visitor: error messages use it (#271). */
+  locale: Locale
   body: Body
   base: string
   pagePath: string
@@ -112,7 +116,7 @@ function signOut({ request, page, body, base }: Ctx) {
 }
 
 async function passwordLogin(ctx: Ctx) {
-  const { request, page, body, base } = ctx
+  const { request, page, body, base, locale } = ctx
   const payload = await getPayload({ config })
   const attempt: PasswordAttempt = body.password
     ? await attemptStatusPagePassword(payload, page, body.password, request)
@@ -120,7 +124,7 @@ async function passwordLogin(ctx: Ctx) {
 
   if (!attempt.ok) {
     if (!body.form) {
-      return accessDeniedResponse({ allowed: false, ...attempt }, 'json', requestLocale(request))
+      return accessDeniedResponse({ allowed: false, ...attempt }, 'json', locale)
     }
     const error = attempt.reason === 'rate-limited' ? 'rate-limited' : 'invalid'
     const next = body.next ? `&next=${encodeURIComponent(body.next)}` : ''
@@ -130,7 +134,7 @@ async function passwordLogin(ctx: Ctx) {
 }
 
 async function emailDomainLogin(ctx: Ctx) {
-  const { request, page, body, base } = ctx
+  const { request, page, body, base, locale } = ctx
   const payload = await getPayload({ config })
 
   // Step 2: the visitor opened the link and confirmed.
@@ -139,7 +143,7 @@ async function emailDomainLogin(ctx: Ctx) {
     if (result.ok) return grant(ctx, result.viewer.id)
     if (body.form) return redirect(`${base}/login?error=link-invalid`)
     return Response.json(
-      { error: errorText(request, 'statusPageLinkInvalid'), code: 'link-invalid' },
+      { error: translateError(locale, 'statusPageLinkInvalid'), code: 'link-invalid' },
       { status: 400, headers: protectedHeaders() },
     )
   }
@@ -156,14 +160,14 @@ async function emailDomainLogin(ctx: Ctx) {
             retryAfterSeconds: result.retryAfterSeconds,
           },
           'json',
-          requestLocale(request),
+          locale,
         )
       }
       return redirect(`${base}/login?error=rate-limited`, retryHeaders(result.retryAfterSeconds))
     }
     if (body.form) return redirect(`${base}/login?error=invalid-email`)
     return Response.json(
-      { error: errorText(request, 'invalidEmailAddress'), code: 'invalid-email' },
+      { error: translateError(locale, 'invalidEmailAddress'), code: 'invalid-email' },
       { status: 400, headers: protectedHeaders() },
     )
   }
@@ -189,12 +193,15 @@ async function emailDomainLogin(ctx: Ctx) {
  * - Other modes have nothing to sign in to: `{ ok: true }` / redirect to the page.
  * - Any mode, field `signout` (JSON `"signout": true`): clears the access cookie, `{ ok: true }`
  *   or a redirect to the login page (#278).
+ *
+ * JSON errors are in the page's language: `?locale=` when the page offers it (the login form and
+ * the page's scripts send it), else the page's default language (#271).
  */
 export async function POST(request: Request, { params }: RouteContext) {
   const { slug } = await params
   if (crossSite(request)) {
     return Response.json(
-      { error: errorText(request, 'crossSiteRefused') },
+      { error: translateError(visitorLocale(request), 'crossSiteRefused') },
       { status: 403, headers: protectedHeaders() },
     )
   }
@@ -205,7 +212,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if (!page) {
     return Response.json(
-      { error: errorText(request, 'statusPageNotFound') },
+      { error: translateError(visitorLocale(request), 'statusPageNotFound') },
       { status: 404, headers: protectedHeaders() },
     )
   }
@@ -214,7 +221,14 @@ export async function POST(request: Request, { params }: RouteContext) {
   const localized = new Request(request.url, { headers: headersWithRequestedLocale(request) })
   const base = statusPageBasePath(page, localized.headers)
   const pagePath = body.next ? `${base}${body.next}` : base || '/'
-  const ctx: Ctx = { request: localized, page, body, base, pagePath }
+  const ctx: Ctx = {
+    request: localized,
+    page,
+    locale: visitorLocale(request, page),
+    body,
+    base,
+    pagePath,
+  }
   if (body.signOut) return signOut(ctx)
 
   switch (page.access) {

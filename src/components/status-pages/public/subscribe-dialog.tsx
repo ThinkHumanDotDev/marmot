@@ -69,7 +69,8 @@ export function SubscribeDialog({
   }
 
   async function post(path: string, body: unknown) {
-    const res = await fetch(`${base}${path}`, {
+    // `?locale=`: the endpoints answer errors in the language the visitor reads the page in.
+    const res = await fetch(`${base}${path}?locale=${encodeURIComponent(locale)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       credentials: 'same-origin',

@@ -501,6 +501,22 @@
       }
     }
   },
+  "errors": {
+    "invalidJsonBody": "Ungültiger JSON-Inhalt",
+    "tooManyAttempts": "Zu viele Versuche. Bitte versuchen Sie es später erneut.",
+    "statusPageNotFound": "Statusseite nicht gefunden",
+    "crossSiteRefused": "Websiteübergreifende Anfrage abgelehnt",
+    "statusPageProtected": "Diese Statusseite ist geschützt. Melden Sie sich an, um sie anzuzeigen.",
+    "statusPagePasswordIncorrect": "Das Passwort ist nicht korrekt.",
+    "statusPageIpNotAllowed": "Diese Statusseite ist aus Ihrem Netzwerk nicht erreichbar.",
+    "statusPageLinkInvalid": "Dieser Anmeldelink ist ungültig, abgelaufen oder wurde bereits verwendet.",
+    "invalidEmailAddress": "Geben Sie eine gültige E-Mail-Adresse ein.",
+    "subscriberTargetInvalid": "Geben Sie eine gültige E-Mail-Adresse, eine Telefonnummer im internationalen Format (+15551234567), eine Webhook-URL oder eine Slack-Incoming-Webhook-URL ein.",
+    "subscriberComponentsInvalid": "Wählen Sie Komponenten dieser Statusseite aus.",
+    "subscriptionsUnavailable": "Diese Statusseite bietet keine Abonnements an.",
+    "subscriptionChannelUnavailable": "Diese Statusseite bietet auf diesem Kanal keine Abonnements an.",
+    "subscriptionCodeInvalid": "Der Code ist falsch oder abgelaufen. Fordern Sie einen neuen an."
+  },
   "subscriberMessages": {
     "sms": {
       "incidentOpened": "[{siteName}] Neuer Vorfall: {title} ({status}). {message} {url}",

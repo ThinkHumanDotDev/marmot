@@ -1,7 +1,31 @@
+import type { Messages } from './index'
+
+/**
+ * `errors.*` messages a visitor of a public page can get from its API endpoints (#271): signing in
+ * (`/api/status-pages/:slug/access`) and subscribing (`/subscribe`, `/subscribe/verify`). These
+ * routes answer in the page's language (`visitorLocale`), so their messages are translated too.
+ */
+export const VISITOR_ERROR_KEYS = [
+  'invalidJsonBody',
+  'tooManyAttempts',
+  'statusPageNotFound',
+  'crossSiteRefused',
+  'statusPageProtected',
+  'statusPagePasswordIncorrect',
+  'statusPageIpNotAllowed',
+  'statusPageLinkInvalid',
+  'invalidEmailAddress',
+  'subscriberTargetInvalid',
+  'subscriberComponentsInvalid',
+  'subscriptionsUnavailable',
+  'subscriptionChannelUnavailable',
+  'subscriptionCodeInvalid',
+] as const satisfies readonly (keyof Messages['errors'])[]
+
 /**
  * The parts of the catalogue a visitor of a public status page can see (#114): the page, its
  * history and permalinks, the access and subscription pages, the feeds and machine-readable
- * outputs, and the emails, SMS and chat messages sent to subscribers.
+ * outputs, the emails, SMS and chat messages sent to subscribers, and the API errors visitors see.
  *
  * Languages outside `appLocales` ship a catalogue with exactly these keys
  * (`tests/int/i18n.int.spec.ts` checks it); everything else falls back to English, which only the
@@ -44,6 +68,7 @@ export const PUBLIC_MESSAGE_SCOPES = [
   'statusPages.access.ipAllowlist',
   'email.subscriptions',
   'email.statusPageMagicLink',
+  ...VISITOR_ERROR_KEYS.map((key) => `errors.${key}` as const),
   'subscriberMessages',
 ] as const
 

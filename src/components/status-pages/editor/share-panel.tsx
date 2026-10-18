@@ -25,6 +25,8 @@ import {
   statusPageBaseUrl,
   type BadgeEmbedOptions,
 } from '@/lib/status-page-badge'
+import { localeNames, type Locale } from '@/i18n/locales'
+import { localePrefix, offeredLocales, pageDefaultLocale } from '@/lib/status-page-locales'
 import type { StatusPage } from '@/payload-types'
 
 const MAIN_HOST = '__main__'
@@ -85,22 +87,75 @@ export function CopyField({
   )
 }
 
+/**
+ * The language a snippet opens the page in (#271): its URLs get the language prefix of the page's
+ * other paths (`/status/<slug>/fr/badge.svg`). Remembers nothing; `page` decides what is offered.
+ */
+export function useSnippetLocale(page: StatusPage) {
+  const offered = offeredLocales(page)
+  const [chosen, setChosen] = React.useState<Locale>(() => pageDefaultLocale(page))
+  // A language the page stopped offering falls back to the default.
+  const locale = offered.includes(chosen) ? chosen : offered[0]!
+  return { locale, setLocale: setChosen, offered, prefix: localePrefix(page, locale) }
+}
+
+/** Language picker of the share snippets; hidden while the page offers a single language. */
+export function SnippetLocaleSelect({
+  id,
+  locale,
+  offered,
+  onChange,
+  hint,
+}: {
+  id: string
+  locale: Locale
+  offered: readonly Locale[]
+  onChange: (locale: Locale) => void
+  hint?: string
+}) {
+  const t = useTranslations('statusPages.share')
+  if (offered.length < 2) return null
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id}>{t('language')}</Label>
+      <Select value={locale} onValueChange={(v) => onChange(v as Locale)}>
+        <SelectTrigger id={id} aria-describedby={hint ? `${id}-hint` : undefined}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {offered.map((value) => (
+            <SelectItem key={value} value={value}>
+              {localeNames[value]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {hint && (
+        <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+          {hint}
+        </p>
+      )}
+    </div>
+  )
+}
+
 /** "Share" tab: the overall status badge (issue #110) with Markdown and HTML embed snippets. */
 export function SharePanel({ page }: { page: StatusPage }) {
   const t = useTranslations('statusPages.share')
   const origin = useOrigin()
   const [options, setOptions] = React.useState<BadgeEmbedOptions>(DEFAULT_BADGE_EMBED_OPTIONS)
   const [host, setHost] = React.useState(MAIN_HOST)
+  const { locale, setLocale, offered, prefix } = useSnippetLocale(page)
   const domains = (page.domains ?? []).map((d) => d.hostname)
   const customHost = host !== MAIN_HOST && domains.includes(host) ? host : null
 
   const set = <K extends keyof BadgeEmbedOptions>(key: K, value: BadgeEmbedOptions[K]) =>
     setOptions((current) => ({ ...current, [key]: value }))
 
-  const pageUrl = statusPageBaseUrl(origin, page.slug, customHost)
+  const pageUrl = `${statusPageBaseUrl(origin, page.slug, customHost)}${prefix}`
   const badgeUrl = statusPageBadgeUrl(pageUrl, options)
   // The preview always loads from Marmot's own host: a custom domain may not resolve yet.
-  const previewUrl = statusPageBadgeUrl(statusPageBaseUrl(origin, page.slug), options)
+  const previewUrl = statusPageBadgeUrl(`${statusPageBaseUrl(origin, page.slug)}${prefix}`, options)
   const alt = t('altText', { title: page.title })
   const snippets = statusPageBadgeSnippets({ pageUrl, badgeUrl, alt })
   const isPill = options.style === 'pill'
@@ -137,6 +192,13 @@ export function SharePanel({ page }: { page: StatusPage }) {
               </Select>
             </div>
           )}
+          <SnippetLocaleSelect
+            id="badge-locale"
+            locale={locale}
+            offered={offered}
+            onChange={setLocale}
+            hint={t('languageBadgeHint')}
+          />
           <div className="grid gap-2">
             <Label htmlFor="badge-style">{t('style')}</Label>
             <Select
