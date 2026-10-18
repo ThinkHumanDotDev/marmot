@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/table'
 import { parseAssertionResults } from '@/lib/assertion-results'
 import { parseRequestTiming } from '@/lib/request-timing'
+import { parseSuiteStepResults } from '@/lib/validation/http-suite'
 import type {
   ResponseLogDetail,
   ResponseLogEntry,
@@ -44,6 +45,7 @@ import { responseLogApi } from '@/lib/response-log-api'
 import { AssertionResultsCard } from './assertion-results-card'
 import { BrowserCheckDetailsView } from './browser-check-details'
 import { statusKey, useMonitorFormat } from './format'
+import { SuiteStepsWaterfall } from './suite-steps-waterfall'
 import { TimingWaterfall } from './timing-waterfall'
 
 const ANY = '__any'
@@ -378,6 +380,7 @@ function ResponseLogSheet({
   const timing = detail ? parseRequestTiming(detail.timing) : null
   const assertions = detail ? parseAssertionResults(detail.assertionResults) : []
   const probes = detail ? parseProbes(detail.probes) : []
+  const steps = detail ? parseSuiteStepResults(detail.steps) : []
 
   return (
     <Sheet open={entry !== null} onOpenChange={(open) => !open && onClose()}>
@@ -421,6 +424,13 @@ function ResponseLogSheet({
                   </>
                 )}
               </dl>
+
+              {steps.length > 0 && (
+                <section className="flex flex-col gap-2" data-testid="log-steps">
+                  <h3 className="text-sm font-medium">{t('detail.steps')}</h3>
+                  <SuiteStepsWaterfall steps={steps} />
+                </section>
+              )}
 
               {timing && (
                 <section className="flex flex-col gap-2">

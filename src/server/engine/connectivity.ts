@@ -18,6 +18,7 @@
  * Every worker runs one monitor for `DEFAULT_LOCATION`; a probe agent (#91) runs one for its own
  * location's id, so a multi-location monitor (#92) is held per location.
  */
+import { suiteTargetUrls } from '@/lib/validation/http-suite'
 import dns from 'node:dns'
 import net from 'node:net'
 import type { Payload } from 'payload'
@@ -375,6 +376,8 @@ async function monitorTargets(
     case 'browser-script':
       // The script may go anywhere; the worker itself only reaches the remote browser.
       return hosts(monitor.remoteBrowser)
+    case 'http-suite':
+      return hosts(...suiteTargetUrls(monitor.httpSuite))
     case 'dns':
       return hosts(...(monitor.dnsResolveServer ?? '').split(','))
     case 'mysql':

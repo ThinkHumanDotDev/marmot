@@ -6,12 +6,14 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { parseBrowserDetails } from '@/lib/browser-script'
 import type { OnDemandCheckResult } from '@/lib/on-demand-check'
 import { parseRequestTiming } from '@/lib/request-timing'
+import { parseSuiteStepResults } from '@/lib/validation/http-suite'
 import { cn } from '@/lib/utils'
 
 import { AssertionResultsCard, parseAssertionResults } from './assertion-results-card'
 import { BrowserCheckDetailsView } from './browser-check-details'
 import { useMonitorFormat } from './format'
 import { MonitorStatusBadge } from './status-badge'
+import { SuiteStepsWaterfall } from './suite-steps-waterfall'
 import { TimingWaterfall } from './timing-waterfall'
 
 const show = (value: unknown): string =>
@@ -40,6 +42,7 @@ export function CheckResultView({
   const assertions = parseAssertionResults(result.assertions)
   const timing = parseRequestTiming(result.timing)
   const browser = parseBrowserDetails(result.browser)
+  const steps = parseSuiteStepResults(result.steps)
   const extra = Object.entries(result.details ?? {}).filter(
     ([, value]) => value !== null && value !== undefined && value !== '',
   )
@@ -95,6 +98,15 @@ export function CheckResultView({
             {t('timing')}
           </h3>
           <TimingWaterfall timing={timing} ping={result.ping} />
+        </section>
+      )}
+
+      {steps.length > 0 && (
+        <section className="flex flex-col gap-2" aria-labelledby="check-result-steps">
+          <h3 id="check-result-steps" className="text-sm font-medium">
+            {t('steps')}
+          </h3>
+          <SuiteStepsWaterfall steps={steps} />
         </section>
       )}
 

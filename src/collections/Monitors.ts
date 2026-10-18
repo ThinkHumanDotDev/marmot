@@ -70,6 +70,7 @@ import {
   GLOBALPING_SUCCESS_RULES,
 } from '@/lib/validation/globalping'
 import { STATUS_PAGE_PROVIDERS } from '@/lib/validation/status-page-monitor'
+import { httpSuiteProblems, httpSuiteSchema, type HttpSuite } from '@/lib/validation/http-suite'
 import { adminGroup, adminT } from '@/i18n/admin'
 import {
   DEFAULT_QUORUM,
@@ -93,6 +94,7 @@ export const MONITOR_TYPES = [
   { label: adminT('marmot:labels:httpKeyword'), value: 'keyword' },
   { label: adminT('marmot:labels:httpJsonQuery'), value: 'json-query' },
   { label: adminT('marmot:labels:prometheusQuery'), value: 'prometheus' },
+  { label: adminT('marmot:labels:httpSuite'), value: 'http-suite' },
   { label: adminT('marmot:labels:tcpPort'), value: 'port' },
   { label: 'Ping', value: 'ping' },
   { label: 'DNS', value: 'dns' },
@@ -1403,6 +1405,48 @@ export const Monitors: CollectionConfig = {
           admin: { description: adminT('marmot:monitors:statusPageComponentsDescription') },
         },
       ],
+    },
+
+    // ---- Multi-step API check (#138) ----------------------------------------------------------------
+    {
+      // `{ vars, secrets, steps }` (`src/lib/validation/http-suite.ts`), run by
+      // `src/server/monitor-types/http-suite.ts`. JSON so the nested lists stay one column on
+      // Postgres and one field on MongoDB.
+      name: 'httpSuite',
+      type: 'json',
+      admin: {
+        condition: (data) => data?.type === 'http-suite',
+        description: adminT('marmot:monitors:httpSuiteDescription'),
+      },
+      hooks: {
+        // Store the canonical row form (files and the API may write maps), so exports and
+        // monitors-as-code plans compare equal to what was saved.
+        beforeValidate: [
+          ({ value }) => {
+            if (value === null || value === undefined) return value
+            const parsed = httpSuiteSchema.safeParse(value)
+            return parsed.success ? parsed.data : value
+          },
+        ],
+      },
+      validate: (
+        value: unknown,
+        { data, req }: { data?: Partial<Monitor>; req: { user?: unknown } },
+      ) => {
+        if (data?.type !== 'http-suite') return true
+        const parsed = httpSuiteSchema.safeParse(value ?? {})
+        const t = getTranslator(userLocale(req.user))
+        if (!parsed.success) {
+          const issue = parsed.error.issues[0]
+          return `${issue?.path.join('.') ?? ''}: ${issue?.message ?? 'invalid'}`
+        }
+        const problem = httpSuiteProblems(parsed.data as HttpSuite)[0]
+        if (!problem) return true
+        return t('monitors.validation.suiteProblem', {
+          path: problem.path.join('.'),
+          message: t(`monitors.validation.${problem.key}`, problem.values),
+        })
+      },
     },
 
     // ---- Push -----------------------------------------------------------------------------------

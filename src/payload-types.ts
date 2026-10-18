@@ -428,6 +428,7 @@ export interface Monitor {
     | 'keyword'
     | 'json-query'
     | 'prometheus'
+    | 'http-suite'
     | 'port'
     | 'ping'
     | 'dns'
@@ -595,6 +596,15 @@ export interface Monitor {
   globalpingPackets?: number | null;
   statusPageProvider?: ('auto' | 'atlassian' | 'instatus' | 'betterstack' | 'incidentio' | 'feed') | null;
   statusPageComponents?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  httpSuite?:
     | {
         [k: string]: unknown;
       }
@@ -999,6 +1009,15 @@ export interface Heartbeat {
     transfer?: number | null;
   };
   probes?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  steps?:
     | {
         [k: string]: unknown;
       }
@@ -1649,6 +1668,18 @@ export interface SlaTarget {
   period: 'month' | 'quarter' | 'rolling30';
   calculation: 'duration' | 'checks';
   excludeMaintenance?: boolean | null;
+  businessHours?: {
+    enabled?: boolean | null;
+    days?: ('mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun')[] | null;
+    start?: string | null;
+    end?: string | null;
+    holidays?:
+      | {
+          date: string;
+          id?: string | null;
+        }[]
+      | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -2650,6 +2681,7 @@ export interface MonitorsSelect<T extends boolean = true> {
   globalpingPackets?: T;
   statusPageProvider?: T;
   statusPageComponents?: T;
+  httpSuite?: T;
   pushToken?: T;
   pushSchedule?: T;
   pushCron?: T;
@@ -2910,6 +2942,7 @@ export interface HeartbeatsSelect<T extends boolean = true> {
         transfer?: T;
       };
   probes?: T;
+  steps?: T;
   value?: T;
   browser?: T;
   statusCode?: T;
@@ -3443,6 +3476,20 @@ export interface SlaTargetsSelect<T extends boolean = true> {
   period?: T;
   calculation?: T;
   excludeMaintenance?: T;
+  businessHours?:
+    | T
+    | {
+        enabled?: T;
+        days?: T;
+        start?: T;
+        end?: T;
+        holidays?:
+          | T
+          | {
+              date?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
 }

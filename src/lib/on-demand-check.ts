@@ -6,6 +6,7 @@
 import type { BrowserCheckDetails } from '@/lib/browser-script'
 import type { RequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
+import type { SuiteStepResult } from '@/lib/validation/http-suite'
 
 export type OnDemandCheckStatus = 'up' | 'down' | 'pending' | 'maintenance' | 'degraded'
 
@@ -49,6 +50,8 @@ export interface OnDemandCheckResult {
   assertions: AssertionResult[] | null
   /** Request timing phases in ms (HTTP types, TCP port), `null` when the type measures none. */
   timing: RequestTiming | null
+  /** Per-step results of a multi-step API check (`http-suite`), `null` for other types. */
+  steps?: SuiteStepResult[] | null
   /**
    * Scripted browser checks (#139): steps, console errors, failed requests and the screenshot
    * (stored artifacts when recorded, inline otherwise); `null` for other types. Optional: older

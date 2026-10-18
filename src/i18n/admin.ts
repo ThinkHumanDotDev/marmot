@@ -35,6 +35,7 @@ export const adminTranslations = {
         httpKeyword: 'HTTP(s) - Keyword',
         httpJsonQuery: 'HTTP(s) - Json Query',
         prometheusQuery: 'Prometheus query',
+        httpSuite: 'HTTP(s) - Multi-step API',
         grpcKeyword: 'gRPC(s) - Keyword',
         websocketUpgrade: 'WebSocket Upgrade',
         kafkaProducerType: 'Kafka Producer',
@@ -212,6 +213,8 @@ export const adminTranslations = {
         locationDescription: 'Probe location that ran the check; empty for the local workers.',
         probesDescription:
           'Per-probe results of a multi-location check (Globalping monitors): location, outcome and latency.',
+        stepsDescription:
+          'Per-step results of a multi-step API check: outcome, status code, timing and assertions (secrets redacted).',
         locationStatusDescription:
           'Multi-location monitors: the status of the location that ran the check (status is the quorum).',
         browserDescription:
@@ -505,6 +508,8 @@ export const adminTranslations = {
           'Format of the vendor page. auto tries Statuspage, Instatus, Better Stack, incident.io, then RSS/Atom.',
         statusPageComponentsDescription:
           'Components to follow, as [{ "id": "...", "name": "..." }]. Matched by id; empty follows the whole page.',
+        httpSuiteDescription:
+          'Multi-step API check: { vars, secrets, steps }. Each step is an HTTP request; values it stores are used by later steps as {{ vars.name }} or {{ steps.key.name }}.',
       },
       notificationSentHistory: {
         description:
@@ -694,10 +699,15 @@ export const adminTranslations = {
           'duration: time not down / time with a known state. checks: successful checks / all checks.',
         excludeMaintenanceDescription:
           'Leave maintenance windows out of the uptime and the error budget.',
+        businessHoursDescription:
+          "Count only these hours, in the organization's time zone: downtime outside them is ignored and the error budget is computed on them.",
+        businessStartDescription: 'HH:MM, e.g. 09:00.',
+        businessEndDescription: 'HH:MM after the start, or 24:00.',
+        holidaysDescription: 'Dates (YYYY-MM-DD) that do not count.',
       },
       slaReports: {
         scheduleDescription:
-          'weekly: every Monday for the previous week. monthly: on the 1st for the previous month (UTC).',
+          "weekly: on the organization's first day of the week for the previous week. monthly: on the 1st for the previous month (both in the organization's time zone).",
         lastSentPeriodDescription: 'Last period emailed by the schedule.',
       },
       slaReportShares: {

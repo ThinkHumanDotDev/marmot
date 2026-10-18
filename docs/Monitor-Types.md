@@ -19,6 +19,7 @@ keyword, JSON query, TCP port, ping, DNS, gRPC and Globalping monitors.
 | `keyword`           | HTTP(s) - Keyword                          | HTTP fields + `keyword`, `invertKeyword`                                                                                                                                                                                                                                                                         | —                                    |
 | `json-query`        | HTTP(s) - Json Query                       | HTTP fields + `jsonPath`, `jsonPathOperator`, `expectedValue`                                                                                                                                                                                                                                                    | — (jsonata)                          |
 | `prometheus`        | Prometheus Query                           | `url` (API base URL), `prometheusQuery`, `prometheusDownOperator` + `prometheusDownThreshold`, optional degraded condition, `prometheusAggregate`, `prometheusNoDataStatus`, `prometheusErrorStatus`, `headers`, `proxy`, `ignoreTls`, `authMethod` none/basic/bearer; see [Prometheus query](#prometheus-query) | Prometheus HTTP API                  |
+| `http-suite`        | HTTP(s) - Multi-step API                   | `httpSuite` (`vars`, `secrets`, ordered `steps`), `maxRedirects`, `ignoreTls`, `proxy`; see [Multi-step API checks](#multi-step-api-checks)                                                                                                                                                                      | — (undici, jsonata)                  |
 | `real-browser`      | HTTP(s) - Browser Engine (Chrome/Chromium) | `url`, `remoteBrowser` (ws:// URL of a Playwright-compatible browser server), `ignoreTls`                                                                                                                                                                                                                        | `playwright-core` + a remote browser |
 | `browser-script`    | Browser Script (Playwright)                | `browserScript` (a Playwright script), `remoteBrowser`, optional `url` (start URL), `browserVariables`, `browserSecrets`, `browserArtifacts` failure \| always, `ignoreTls`; see [Browser scripts](#browser-scripts)                                                                                             | `playwright-core` + a remote browser |
 | `port`              | TCP Port                                   | `hostname`, `port`                                                                                                                                                                                                                                                                                               | —                                    |
@@ -260,6 +261,62 @@ await test.step('see the dashboard', async () => {
   and shows the steps, errors and screenshot inline without storing anything; _Check now_ on a saved
   monitor records a heartbeat with its screenshot and trace.
 - Browser scripts run on the server's workers only, not on [probe locations](Probe-Locations.md).
+
+## Multi-step API checks
+
+_(landing in the current release, #138)_ `http-suite` monitors run an ordered list of HTTP requests on
+every check and pass values from one response to the next: log in, then call an authenticated endpoint;
+create an item, read it back, delete it.
+
+```yaml
+httpSuite:
+  vars: { base: https://api.example.com }
+  secrets: { password: ${API_PASSWORD} }
+  steps:
+    - key: login
+      name: log in
+      method: POST
+      url: '{{ vars.base }}/login'
+      body: '{"user": "monitor", "password": "{{ secrets.password }}"}'
+      store: { token: { from: $.data.token, secret: true } }
+    - key: profile
+      name: get profile
+      url: '{{ vars.base }}/me'
+      headers: { Authorization: 'Bearer {{ steps.login.token }}' }
+      assertions: [{ kind: jsonBody, target: $.name, comparator: not_empty }]
+    - key: logout
+      method: POST
+      url: '{{ vars.base }}/logout'
+      headers: { Authorization: 'Bearer {{ vars.token }}' }
+      alwaysRun: true
+```
+
+- **Steps** take the HTTP monitor's options: `method`, `url`, `headers`, `body` + `bodyEncoding`
+  (`json`, `form`, `xml`), `authMethod` (`none`, `basic` with `basicAuthUser`/`basicAuthPass`, `bearer`
+  with `bearerToken`), `acceptedStatusCodes` (default `200-299`) and [assertions](#assertions) of the
+  kinds `status`, `header`, `textBody` and `jsonBody`. Each request goes through the same path as an
+  `http` monitor: outbound address guard, the monitor's `proxy`, `ignoreTls` and `maxRedirects`.
+- **Placeholders**: `{{ vars.name }}` (static `vars`, and every value a step stored), `{{ secrets.name }}`
+  and `{{ steps.<key>.<name> }}` work in the URL, header values, body, credentials and assertion targets
+  and values. Values are URL-encoded in URLs, JSON-escaped in JSON bodies and form-encoded in form bodies.
+  A step can only use values defined before it; anything else is refused on save.
+- **Storing values**: `store` rows (`name`, `from`, `secret`) read the response of a passing step:
+  `from` is `header:<name>`, `status`, `body`, or a JSONata expression over the JSON body (JSONPath-style
+  `$.data.token` works). A value that matches nothing fails the step.
+- **Cleanup**: after the first failed step the remaining steps are skipped, except those with
+  `alwaysRun: true`. A cleanup step that needs a value the failed step never stored is skipped too.
+- **Timing and result**: the monitor's `timeout` covers the whole suite; each step records its own start,
+  duration and request phases. The check is DOWN when any executed step failed, with a message naming it:
+  `step 2 "get profile": status 401` (or the first failed assertion). The response time is the whole
+  suite; the response log keeps the failing step's response (the last step's when all passed).
+- **Secrets**: suite `secrets`, values stored with `secret: true`, step credentials and every request
+  header value a step sent (except `Accept`, `Content-Type`, `User-Agent`) are replaced by `[redacted]` in
+  the heartbeat message, the stored step results and the response log (values shorter than four
+  characters are left alone: they would match ordinary text). `marmot monitors export
+--redact-secrets` writes them as `${MARMOT_…}` references.
+- **Waterfall**: the check detail in the monitor's log and the "Test" / "Check now" result show one row
+  per step (outcome, status code, a bar for when it ran and how long it took); a row opens to show its
+  message, timing phases and assertion results.
 
 ## Assertions
 

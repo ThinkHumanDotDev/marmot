@@ -74,6 +74,9 @@ export function toOnDemandResult(
       ? (JSON.parse(JSON.stringify(result.assertions)) as OnDemandCheckResult['assertions'])
       : null,
     timing: result.timing ? { ...result.timing } : null,
+    steps: result.steps?.length
+      ? (JSON.parse(JSON.stringify(result.steps)) as OnDemandCheckResult['steps'])
+      : null,
     details: JSON.parse(JSON.stringify(details)) as Record<string, unknown>,
     browser: browserResult(result, heartbeat),
     recorded: heartbeat !== null,

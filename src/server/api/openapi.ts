@@ -105,8 +105,17 @@ const id = z.union([z.string(), z.number().int()])
 const impact = z.enum(COMPONENT_IMPACTS)
 
 const slaShareBody = z.object({
-  from: z.string().describe('First UTC day, YYYY-MM-DD (inclusive)'),
-  to: z.string().describe('Last UTC day, YYYY-MM-DD (inclusive)'),
+  from: z.string().describe("First day in the organization's time zone, YYYY-MM-DD (inclusive)"),
+  to: z.string().describe("Last day in the organization's time zone, YYYY-MM-DD (inclusive)"),
+})
+
+const slaSendBody = z.object({
+  test: z.boolean().optional().describe('Send to the caller only'),
+  from: z
+    .string()
+    .optional()
+    .describe("First day, YYYY-MM-DD (default: the schedule's last complete period)"),
+  to: z.string().optional().describe('Last day, YYYY-MM-DD (inclusive)'),
 })
 
 const componentImpacts = z
@@ -1161,7 +1170,7 @@ export const OPERATIONS: OperationSpec[] = [
     operationId: 'getMonitorLog',
     summary: 'One check of a monitor in full',
     description:
-      'Adds the response headers (cookies redacted, about 8 KB), the first 16 KB of the body of a failed or degraded check, assertion results, request timing phases and per-probe results. Request headers are never stored.',
+      'Adds the response headers (cookies redacted, about 8 KB), the first 16 KB of the body of a failed or degraded check, assertion results, request timing phases, per-probe results and the per-step results of multi-step API checks. Request headers are never stored.',
     tag: 'Monitors',
     permission: 'monitor:read',
     response: { description: 'The check', schema: anyObject },
@@ -1773,14 +1782,34 @@ export const OPERATIONS: OperationSpec[] = [
     tag: 'SLA',
     permission: 'sla:read',
     query: [
-      { name: 'from', description: 'First UTC day (inclusive)', schema: { type: 'string' } },
-      { name: 'to', description: 'Last UTC day (inclusive)', schema: { type: 'string' } },
+      {
+        name: 'from',
+        description: "First day in the organization's time zone (inclusive)",
+        schema: { type: 'string' },
+      },
+      {
+        name: 'to',
+        description: "Last day in the organization's time zone (inclusive)",
+        schema: { type: 'string' },
+      },
       {
         name: 'format',
         description: '`json` (default), `csv` or `pdf`',
         schema: { type: 'string' },
       },
     ],
+  },
+  {
+    method: 'POST',
+    path: `${ORG}/sla/reports/{id}/send`,
+    operationId: 'sendSlaReport',
+    summary: 'Email the report now, to its recipients or (`test`) to the caller',
+    description:
+      "CSV and PDF attached. The schedule's bookkeeping is left alone, so the scheduled email still goes out.",
+    tag: 'SLA',
+    permission: 'sla:manage',
+    body: { schema: slaSendBody },
+    response: { description: '`{ sent, test, from, to }`', schema: anyObject },
   },
   {
     method: 'GET',

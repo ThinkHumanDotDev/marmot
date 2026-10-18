@@ -88,6 +88,7 @@ import {
   type MonitorTypeName,
 } from '@/lib/validation/monitor'
 import { supportsAssertions } from '@/lib/validation/assertions'
+import { emptyHttpSuite } from '@/lib/validation/http-suite'
 import {
   GLOBALPING_DNS_RECORD_TYPES,
   GLOBALPING_HTTP_METHODS,
@@ -110,6 +111,7 @@ import { isValidCronPattern, nextCronRuns } from '@/lib/push-schedule'
 import { SAME_AS_SERVER } from '@/lib/validation/maintenance'
 
 import { AssertionsField } from './assertions-field'
+import { HttpSuiteField } from './http-suite-field'
 import { useElapsedSeconds } from './check-now'
 import { BrowserScriptCard } from './browser-script-card'
 import { CheckResultView } from './check-result'
@@ -1010,6 +1012,8 @@ function applyTypeDefaults(
     if (schemeOnly) set('url', null)
     if (!get('browserScript')) set('browserScript', BROWSER_SCRIPT_EXAMPLE)
   }
+  // A multi-step API check starts with one empty step.
+  if (type === 'http-suite' && !get('httpSuite')) set('httpSuite', emptyHttpSuite())
   if (type === 'globalping') {
     if (!get('url')) set('url', 'https://')
     for (const field of ['interval', 'retryInterval'] as const) {
@@ -1056,7 +1060,11 @@ export function MonitorForm({
 
   const form = useForm<MonitorFormInput, unknown, MonitorFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: initialValues,
+    // A new multi-step API check (`?type=http-suite`) starts with one empty step.
+    defaultValues:
+      initialValues.type === 'http-suite' && !initialValues.httpSuite
+        ? { ...initialValues, httpSuite: emptyHttpSuite() as MonitorFormInput['httpSuite'] }
+        : initialValues,
     mode: 'onTouched',
   })
   const { control, setValue, getValues } = form
@@ -1242,6 +1250,8 @@ export function MonitorForm({
     let values: Partial<MonitorFormValues> = formValues
     // Rows left over from a type that has assertions are dropped with the type.
     if (!supportsAssertions(formValues.type)) values = { ...values, assertions: [] }
+    // Likewise the steps of a multi-step API check.
+    if (formValues.type !== 'http-suite') values = { ...values, httpSuite: null }
     if (mode === 'create' && !canPickChannels) {
       const { notifications: _omit, ...rest } = values
       values = rest
@@ -2725,6 +2735,34 @@ export function MonitorForm({
               <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
                 {t('globalping.rateLimit')}
               </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Multi-step API check (#138) ----------------------------------------------------------- */}
+        {type === 'http-suite' && (
+          <Card data-testid="http-suite-card">
+            <CardHeader>
+              <CardTitle>{t('suite.title')}</CardTitle>
+              <CardDescription>{t('suite.cardDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-5">
+              <HttpSuiteField control={control} setValue={setValue} />
+              <div className="grid gap-5 sm:grid-cols-3">
+                <NumberField
+                  control={control}
+                  name="maxRedirects"
+                  label={t('http.maxRedirects')}
+                  min={0}
+                />
+              </div>
+              {proxyField}
+              <SwitchField
+                control={control}
+                name="ignoreTls"
+                label={t('http.ignoreTls')}
+                description={t('http.ignoreTlsDescription')}
+              />
             </CardContent>
           </Card>
         )}

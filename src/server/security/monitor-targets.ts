@@ -9,6 +9,7 @@ import type { PayloadRequest } from 'payload'
 import type { DockerHost, Monitor } from '@/payload-types'
 
 import { supportsSshTunnel } from '@/lib/ssh-tunnels'
+import { suiteTargetUrls } from '@/lib/validation/http-suite'
 
 import { connectionStringDenial } from './connection-hosts'
 import {
@@ -32,6 +33,7 @@ export const MONITOR_TARGET_FIELDS = [
   'sshTunnel',
   'oauthTokenUrl',
   'authMethod',
+  'httpSuite',
 ] as const
 
 /** Monitor types that reach the network past the guard; refused while it denies private ranges. */
@@ -107,6 +109,12 @@ export async function monitorTargetProblem(
       }
       return null
     }
+    case 'http-suite':
+      for (const url of suiteTargetUrls(monitor.httpSuite)) {
+        const problem = literal('httpSuite', looseHost(url))
+        if (problem) return problem
+      }
+      return null
     case 'dns':
       for (const server of (monitor.dnsResolveServer ?? '').split(',')) {
         const problem = literal('dnsResolveServer', server.trim() || null)
