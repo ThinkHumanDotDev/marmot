@@ -3,7 +3,7 @@
  * (`orgScoped('sla:manage')` decides who may); share links through the org routes.
  */
 import { api } from '@/lib/api'
-import type { SlaCalculation, SlaSchedule, SlaWindow } from '@/lib/sla'
+import type { SlaBusinessHours, SlaCalculation, SlaSchedule, SlaWindow } from '@/lib/sla'
 
 type Id = string | number
 
@@ -39,6 +39,8 @@ export interface TargetInput {
   period: SlaWindow
   calculation: SlaCalculation
   excludeMaintenance: boolean
+  /** Null: the whole period counts. */
+  businessHours: SlaBusinessHours | null
 }
 
 export interface ReportInput {
@@ -52,7 +54,19 @@ type Doc = { id: Id } & Record<string, unknown>
 
 const query = { depth: 0 }
 
-const targetBody = (input: TargetInput) => ({ ...input, monitor: ref(input.monitor) })
+const targetBody = ({ businessHours, ...input }: TargetInput) => ({
+  ...input,
+  monitor: ref(input.monitor),
+  businessHours: businessHours
+    ? {
+        enabled: true,
+        days: businessHours.days,
+        start: businessHours.start,
+        end: businessHours.end,
+        holidays: businessHours.holidays.map((date) => ({ date })),
+      }
+    : { enabled: false },
+})
 
 const reportBody = (input: ReportInput) => ({
   name: input.name,
@@ -108,6 +122,11 @@ export const slaApi = {
     api.post<{ doc: ShareRowView; url: string; token: string }>(
       `/api/orgs/${orgId}/sla/reports/${reportId}/shares`,
       range,
+    ),
+  sendReport: (orgId: Id, reportId: Id, input: { test: boolean; from: string; to: string }) =>
+    api.post<{ sent: number; test: boolean; from: string; to: string }>(
+      `/api/orgs/${orgId}/sla/reports/${reportId}/send`,
+      input,
     ),
   revokeShare: (orgId: Id, reportId: Id, shareId: Id) =>
     api.delete<{ doc: ShareRowView }>(

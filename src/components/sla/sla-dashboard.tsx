@@ -44,14 +44,19 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import {
+  isCalendarDate,
+  isValidBusinessHours,
   SLA_CALCULATIONS,
   SLA_SCHEDULES,
   SLA_TARGET_MAX,
   SLA_TARGET_MIN,
+  SLA_WEEKDAYS,
   SLA_WINDOWS,
+  type SlaBusinessHours,
   type SlaCalculation,
   type SlaHealth,
   type SlaSchedule,
+  type SlaWeekday,
   type SlaWindow,
 } from '@/lib/sla'
 import { cn } from '@/lib/utils'
@@ -249,6 +254,8 @@ function TargetItem({
   const { attainment } = status
   const minutes = (seconds: number) => format.number(Math.abs(seconds) / 60, 'minutes')
   const day = (date: string) => format.dateTime(new Date(`${date}T00:00:00Z`), 'utcDate')
+  const businessHoursSummary = (hours: SlaBusinessHours) =>
+    hours.days.map((weekday) => t(`weekdays.${weekday}`)).join(', ')
 
   return (
     <li className="space-y-3 px-4 py-3" data-sla-target={status.id}>
@@ -260,6 +267,14 @@ function TargetItem({
             <Badge variant="secondary">{t(`windows.${status.period}`)}</Badge>
             {status.excludeMaintenance && (
               <Badge variant="outline">{t('targets.maintenanceExcluded')}</Badge>
+            )}
+            {status.businessHours && (
+              <Badge variant="outline" title={businessHoursSummary(status.businessHours)}>
+                {t('targets.businessHours', {
+                  start: status.businessHours.start,
+                  end: status.businessHours.end,
+                })}
+              </Badge>
             )}
           </div>
           <p className="text-xs text-muted-foreground">
@@ -391,8 +406,23 @@ function TargetForm({
   const [excludeMaintenance, setExcludeMaintenance] = React.useState(
     target?.excludeMaintenance ?? true,
   )
+  const [useBusinessHours, setUseBusinessHours] = React.useState(target?.businessHours != null)
+  const [days, setDays] = React.useState<Set<SlaWeekday>>(
+    () => new Set(target?.businessHours?.days ?? ['mon', 'tue', 'wed', 'thu', 'fri']),
+  )
+  const [start, setStart] = React.useState(target?.businessHours?.start ?? '09:00')
+  const [end, setEnd] = React.useState(target?.businessHours?.end ?? '17:00')
+  const [holidays, setHolidays] = React.useState((target?.businessHours?.holidays ?? []).join('\n'))
   const [error, setError] = React.useState<string | null>(null)
   const [saving, setSaving] = React.useState(false)
+
+  const toggleDay = (weekday: SlaWeekday, on: boolean) =>
+    setDays((current) => {
+      const next = new Set(current)
+      if (on) next.add(weekday)
+      else next.delete(weekday)
+      return next
+    })
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -401,10 +431,37 @@ function TargetForm({
     if (!Number.isFinite(number) || number < SLA_TARGET_MIN || number > SLA_TARGET_MAX) {
       return setError(t('targets.form.targetInvalid'))
     }
+    let businessHours: SlaBusinessHours | null = null
+    if (useBusinessHours) {
+      const dates = holidays
+        .split(/[\s,;]+/)
+        .map((date) => date.trim())
+        .filter(Boolean)
+      if (dates.some((date) => !isCalendarDate(date))) {
+        return setError(t('targets.form.holidaysInvalid'))
+      }
+      businessHours = {
+        // Keep the week's order.
+        days: SLA_WEEKDAYS.filter((weekday) => days.has(weekday)),
+        start,
+        end,
+        holidays: dates,
+      }
+      if (!isValidBusinessHours(businessHours)) {
+        return setError(t('targets.form.businessHoursInvalid'))
+      }
+    }
     setError(null)
     setSaving(true)
     try {
-      const input = { monitor, target: number, period, calculation, excludeMaintenance }
+      const input = {
+        monitor,
+        target: number,
+        period,
+        calculation,
+        excludeMaintenance,
+        businessHours,
+      }
       if (target) await slaApi.updateTarget(target.id, input)
       else await slaApi.createTarget(orgId, input)
       toast.success(t('targets.form.saved'))
@@ -497,6 +554,70 @@ function TargetForm({
           checked={excludeMaintenance}
           onCheckedChange={setExcludeMaintenance}
         />
+      </div>
+      <div className="space-y-3 rounded-lg border p-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-0.5">
+            <Label htmlFor="sla-business-hours">{t('targets.form.businessHours')}</Label>
+            <p className="text-xs text-muted-foreground">{t('targets.form.businessHoursHint')}</p>
+          </div>
+          <Switch
+            id="sla-business-hours"
+            checked={useBusinessHours}
+            onCheckedChange={setUseBusinessHours}
+          />
+        </div>
+        {useBusinessHours && (
+          <>
+            <fieldset className="space-y-1.5">
+              <legend className="text-sm font-medium">{t('targets.form.businessDays')}</legend>
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                {SLA_WEEKDAYS.map((weekday) => (
+                  <label key={weekday} className="flex items-center gap-1.5 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={days.has(weekday)}
+                      onChange={(event) => toggleDay(weekday, event.target.checked)}
+                    />
+                    {t(`weekdays.${weekday}`)}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="sla-business-start">{t('targets.form.businessStart')}</Label>
+                <Input
+                  id="sla-business-start"
+                  value={start}
+                  placeholder="09:00"
+                  onChange={(event) => setStart(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sla-business-end">{t('targets.form.businessEnd')}</Label>
+                <Input
+                  id="sla-business-end"
+                  value={end}
+                  placeholder="17:00"
+                  onChange={(event) => setEnd(event.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sla-holidays">{t('targets.form.holidays')}</Label>
+              <Textarea
+                id="sla-holidays"
+                rows={2}
+                value={holidays}
+                placeholder="2026-12-25"
+                onChange={(event) => setHolidays(event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{t('targets.form.holidaysHint')}</p>
+            </div>
+          </>
+        )}
       </div>
       {error && (
         <p role="alert" className="text-sm text-destructive">

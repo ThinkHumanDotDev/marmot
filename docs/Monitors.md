@@ -589,8 +589,8 @@ organization; `null` = the default). Collectors, metrics and backend examples:
 organization sees it; admins (`sla:manage`) set targets, build reports and share them.
 
 **Targets.** A target is a monitor, a percentage (for example 99.9), a measurement window (calendar
-month, calendar quarter or the rolling last 30 days, all in UTC), an uptime calculation and whether
-maintenance windows are excluded:
+month, calendar quarter or the rolling last 30 days, in the organization's time zone), an uptime
+calculation and whether maintenance windows are excluded:
 
 - _Time up_ (default): time not DOWN divided by the time whose state is known, replayed from the
   monitor's status changes;
@@ -605,12 +605,25 @@ divided by the allowed one: above 1 the budget runs out before the period ends) 
 incidents that consumed it. A target is _on track_, _at risk_ (below the target so far or burning
 faster than allowed) or _missed_ (budget spent).
 
+**Time zone and business hours.** _(landing in the current release, #274)_ Periods follow the
+organization's time zone and first day of the week (**Settings → Organization**): a calendar month in
+`Europe/Berlin` starts at midnight Berlin time, and weekly reports cover the organization's week. A
+target can also count only **business hours**: weekdays, a daily window (`09:00`–`17:00`, or up to
+`24:00`) in that time zone and a list of holidays. Downtime outside the window is ignored and the
+error budget is computed on the business hours only (99.9 % of 22 working days of 8 hours allows
+10.6 minutes). Durations are exact; check counts come in UTC buckets, so for a window that covers
+part of an hour (or, beyond the 30 days of hourly statistics, part of a day) the bucket contributes
+the same share of its checks.
+
 **Reports.** A report groups targets. Its page lists, for any range of up to 400 days (default: last
 month), each target's uptime, downtime, incident count, MTTR (mean time to recovery of the incidents
 resolved in the range), the budget left and whether the target was met, and downloads it as CSV or
-PDF. A report can be emailed **weekly** (Mondays, for the previous Monday–Sunday) or **monthly**
-(on the 1st, for the previous month) to a list of recipients, with the CSV and the PDF attached;
-emails go through the instance's SMTP settings ([Configuration](Configuration.md)).
+PDF. A report can be emailed **weekly** (on the organization's first day of the week, for the
+previous week) or **monthly** (on the 1st, for the previous month), within an hour after the period
+ends in the organization's time zone, to a list of recipients, with the CSV and the PDF attached;
+emails go through the instance's SMTP settings ([Configuration](Configuration.md)). _Send test to me_
+and _Send now_ on the report page email the range on screen at once (to yourself, or to the
+recipients) without affecting the schedule, and _Print_ prints the report without the navigation.
 
 **Share links.** Admins can create a public, read-only link to a report over a fixed range
 (`/sla/<token>`, a print-friendly page with CSV and PDF downloads). The token is shown once and only
@@ -618,6 +631,7 @@ its hash is stored; a link shows that report and nothing else, and revoking it i
 
 Figures come from the daily statistics, so a report reaches back as far as `KEEP_DATA_PERIOD_DAYS`.
 API: `GET /api/orgs/:orgId/sla/targets`, `GET /api/orgs/:orgId/sla/reports/:id?from=&to=&format=`,
+`POST /api/orgs/:orgId/sla/reports/:id/send` (`{ test?, from?, to? }`),
 `GET|POST /api/orgs/:orgId/sla/reports/:id/shares`, `DELETE …/shares/:shareId`; targets and reports
 themselves are the `sla-targets` and `sla-reports` collections of the REST API.
 

@@ -1635,6 +1635,18 @@ export interface SlaTarget {
   period: 'month' | 'quarter' | 'rolling30';
   calculation: 'duration' | 'checks';
   excludeMaintenance?: boolean | null;
+  businessHours?: {
+    enabled?: boolean | null;
+    days?: ('mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun')[] | null;
+    start?: string | null;
+    end?: string | null;
+    holidays?:
+      | {
+          date: string;
+          id?: string | null;
+        }[]
+      | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -3401,6 +3413,20 @@ export interface SlaTargetsSelect<T extends boolean = true> {
   period?: T;
   calculation?: T;
   excludeMaintenance?: T;
+  businessHours?:
+    | T
+    | {
+        enabled?: T;
+        days?: T;
+        start?: T;
+        end?: T;
+        holidays?:
+          | T
+          | {
+              date?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
 }
