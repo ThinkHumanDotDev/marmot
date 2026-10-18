@@ -5,6 +5,8 @@ import {
   emptySlaFigures,
   meanTimeToRecovery,
   businessHoursOf,
+  dueBudgetAlerts,
+  normalizeThresholds,
   businessIntervals,
   clipIntervals,
   countedIntervals,
@@ -309,5 +311,24 @@ describe('slaReportCsv', () => {
       'Website,99.5,,,0,,,216.0,216.0',
       '',
     ])
+  })
+})
+
+describe('error budget alerts (#274)', () => {
+  it('normalizes thresholds', () => {
+    expect(normalizeThresholds([10, '50', 50, -1, 101, 'x', 0])).toEqual([50, 10, 0])
+  })
+
+  it('alerts once per period and threshold, below the threshold only', () => {
+    const first = dueBudgetAlerts([50, 25], 0.4, '2026-10', null)
+    expect(first.due).toEqual([50])
+    expect(dueBudgetAlerts([50, 25], 0.4, '2026-10', first.state).due).toEqual([])
+    expect(dueBudgetAlerts([50, 25], 0.5, '2026-10', null).due).toEqual([])
+    const both = dueBudgetAlerts([50, 25], -0.1, '2026-10', first.state)
+    expect(both.due).toEqual([25])
+    expect(both.state).toEqual({ period: '2026-10', sent: [50, 25] })
+    // A new period forgets what was sent.
+    expect(dueBudgetAlerts([50, 25], 0.4, '2026-11', both.state).due).toEqual([50])
+    expect(dueBudgetAlerts([50], null, '2026-11', null).due).toEqual([])
   })
 })
