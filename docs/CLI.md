@@ -26,8 +26,8 @@ The CLI is one self-contained JavaScript file, `dist/cli/marmot.mjs`, built with
 ## Connect
 
 Create an API key under **Settings → API keys** (an admin or owner can). A `read` key is enough for
-`status`, `list`, `info`, `logs`, `import` and `plan`; `apply`, `check`, `pause`/`resume`, incidents and
-maintenance need a `write` key. The organization id is the number (or MongoDB id) in the management API
+`status`, `list`, `info`, `logs`, `import` and `plan`; `apply`, `check`, `pause`/`resume`, incidents,
+declaring and updating declared incidents and maintenance need a `write` key. The organization id is the number (or MongoDB id) in the management API
 URLs, shown on the API keys page.
 
 The CLI reads the connection from, in this order: the flags `--url`, `--api-key`, `--org`; the environment
@@ -56,27 +56,32 @@ marmot logout --profile staging
 
 ## Commands
 
-| Command                                                                                  | What it does                                                                            |
-| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `status [--fail-on-down]`                                                                | Counts by status and the monitors that are down, degraded or pending.                   |
-| `monitors list [--type T] [--active \| --paused]`                                        | All monitors with key, type, status and target.                                         |
-| `monitors info KEY\|ID`                                                                  | One monitor: target, interval, last check, message, ping.                               |
-| `monitors logs KEY\|ID [--limit N] [--important]`                                        | Latest heartbeats, newest first (`--important`: status changes only).                   |
-| `monitors check KEY\|ID [--no-wait] [--timing]`                                          | Run the monitor's check now and print the result (`--timing`: request phases, details). |
-| `monitors pause KEY\|ID`, `monitors resume KEY\|ID`                                      | Pause or resume a monitor.                                                              |
-| `monitors import [-o FILE] [--format yaml\|json] [--redact-secrets]`                     | Write the organization's monitors as a monitors file (alias `monitors export`).         |
-| `monitors plan -f FILE [--prune] [--exit-code]`                                          | Show what `apply` would change. Changes nothing.                                        |
-| `monitors apply -f FILE [--prune] [--dry-run] [-y]`                                      | Create, update (and with `--prune` delete) monitors to match the file.                  |
-| `monitors schema [-o FILE]`                                                              | JSON Schema of the file format, for editor autocomplete.                                |
-| `check URL\|HOST [--type T] [--keyword K] [--method M] [--timeout S] [--timing]`         | One-off check of an unsaved configuration; nothing is stored.                           |
-| `status-pages list`, `status-pages info SLUG\|ID`                                        | Status pages and their component groups.                                                |
-| `incidents list --page SLUG\|ID [--all]`                                                 | Open (with `--all`: every) incident of a page.                                          |
-| `incidents create --page P --title T [--status S] [--message M] [--impact I] [--pinned]` | Open an incident; the first update is `investigating` unless `--status` says otherwise. |
-| `incidents update ID --page P [--status S] [--message M] [--resolve] [--title T]`        | Post an update (`--resolve` posts `resolved`) or change the title, impact or pin.       |
-| `maintenance list`                                                                       | Maintenance with its current status.                                                    |
-| `maintenance create --title T --start DT --end DT [--monitor KEY\|ID]…`                  | Schedule a single window; `-f FILE` takes any maintenance body (YAML or JSON) instead.  |
-| `import -f FILE [--dry-run]`                                                             | Import a Marmot export or an Uptime Kuma backup through the server's importer.          |
-| `login`, `logout`, `config`                                                              | Manage the saved connection (see above).                                                |
+| Command                                                                                                                   | What it does                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `status [--fail-on-down]`                                                                                                 | Counts by status and the monitors that are down, degraded or pending.                             |
+| `monitors list [--type T] [--active \| --paused]`                                                                         | All monitors with key, type, status and target.                                                   |
+| `monitors info KEY\|ID`                                                                                                   | One monitor: target, interval, last check, message, ping.                                         |
+| `monitors logs KEY\|ID [--limit N] [--important]`                                                                         | Latest heartbeats, newest first (`--important`: status changes only).                             |
+| `monitors check KEY\|ID [--no-wait] [--timing]`                                                                           | Run the monitor's check now and print the result (`--timing`: request phases, details).           |
+| `monitors pause KEY\|ID`, `monitors resume KEY\|ID`                                                                       | Pause or resume a monitor.                                                                        |
+| `monitors import [-o FILE] [--format yaml\|json] [--redact-secrets]`                                                      | Write the organization's monitors as a monitors file (alias `monitors export`).                   |
+| `monitors plan -f FILE [--prune] [--exit-code]`                                                                           | Show what `apply` would change. Changes nothing.                                                  |
+| `monitors apply -f FILE [--prune] [--dry-run] [-y]`                                                                       | Create, update (and with `--prune` delete) monitors to match the file.                            |
+| `monitors schema [-o FILE]`                                                                                               | JSON Schema of the file format, for editor autocomplete.                                          |
+| `check URL\|HOST [--type T] [--keyword K] [--method M] [--timeout S] [--timing]`                                          | One-off check of an unsaved configuration; nothing is stored.                                     |
+| `status-pages list`, `status-pages info SLUG\|ID`                                                                         | Status pages and their component groups.                                                          |
+| `incidents list --page SLUG\|ID [--all]`                                                                                  | Open (with `--all`: every) incident of a page.                                                    |
+| `incidents create --page P --title T [--status S] [--message M] [--impact I] [--pinned]`                                  | Open an incident; the first update is `investigating` unless `--status` says otherwise.           |
+| `incidents update ID --page P [--status S] [--message M] [--resolve] [--title T]`                                         | Post an update (`--resolve` posts `resolved`) or change the title, impact or pin.                 |
+| `declared-incidents list [--status S] [--severity S] [--commander ID\|none] [--limit N]`                                  | Declared incidents, newest first (`--status`: `active` by default, `all` or a status).            |
+| `declared-incidents info ID`                                                                                              | One declared incident: details, postmortem status, action items and timeline.                     |
+| `declared-incidents declare --title T [--severity S] [--summary T] [--commander ID] [--start DT] [--monitor-incident ID]` | Declare an incident (`--monitor-incident` declares it from a monitor outage and takes its start). |
+| `declared-incidents update ID [--status S] [--severity S] [--commander ID\|none] [--title T] [--summary T] [--start DT]`  | Change a declared incident; status changes follow the workflow (409 otherwise).                   |
+| `declared-incidents note ID --message M`                                                                                  | Append a note to the timeline.                                                                    |
+| `maintenance list`                                                                                                        | Maintenance with its current status.                                                              |
+| `maintenance create --title T --start DT --end DT [--monitor KEY\|ID]…`                                                   | Schedule a single window; `-f FILE` takes any maintenance body (YAML or JSON) instead.            |
+| `import -f FILE [--dry-run]`                                                                                              | Import a Marmot export or an Uptime Kuma backup through the server's importer.                    |
+| `login`, `logout`, `config`                                                                                               | Manage the saved connection (see above).                                                          |
 
 Monitors are referenced by their monitors-as-code key or by their id (`12` or `#12`; a key wins when both
 match). Status pages by slug or id. `-f -` reads a file from standard input.

@@ -1951,89 +1951,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.monitors_pagespeed_categories": {
-      "name": "monitors_pagespeed_categories",
-      "schema": "",
-      "columns": {
-        "order": {
-          "name": "order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value": {
-          "name": "value",
-          "type": "enum_monitors_pagespeed_categories",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "monitors_pagespeed_categories_order_idx": {
-          "name": "monitors_pagespeed_categories_order_idx",
-          "columns": [
-            {
-              "expression": "order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitors_pagespeed_categories_parent_idx": {
-          "name": "monitors_pagespeed_categories_parent_idx",
-          "columns": [
-            {
-              "expression": "parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "monitors_pagespeed_categories_parent_fk": {
-          "name": "monitors_pagespeed_categories_parent_fk",
-          "tableFrom": "monitors_pagespeed_categories",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.monitors": {
       "name": "monitors",
       "schema": "",
@@ -3038,54 +2955,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": true
-        },
-        "pagespeed_backend": {
-          "name": "pagespeed_backend",
-          "type": "enum_monitors_pagespeed_backend",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'psi'"
-        },
-        "pagespeed_strategy": {
-          "name": "pagespeed_strategy",
-          "type": "enum_monitors_pagespeed_strategy",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'mobile'"
-        },
-        "pagespeed_fail_status": {
-          "name": "pagespeed_fail_status",
-          "type": "enum_monitors_pagespeed_fail_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'degraded'"
-        },
-        "pagespeed_min_performance": {
-          "name": "pagespeed_min_performance",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pagespeed_min_accessibility": {
-          "name": "pagespeed_min_accessibility",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pagespeed_min_best_practices": {
-          "name": "pagespeed_min_best_practices",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pagespeed_min_seo": {
-          "name": "pagespeed_min_seo",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
         },
         "remote_browser": {
           "name": "remote_browser",
@@ -5345,12 +5214,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "pagespeed": {
-          "name": "pagespeed",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "status_code": {
           "name": "status_code",
           "type": "numeric",
@@ -6147,6 +6010,141 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.declared_incidents_postmortem_action_items": {
+      "name": "declared_incidents_postmortem_action_items",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "due_date": {
+          "name": "due_date",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "done": {
+          "name": "done",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "ticket_url": {
+          "name": "ticket_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "declared_incidents_postmortem_action_items_order_idx": {
+          "name": "declared_incidents_postmortem_action_items_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "declared_incidents_postmortem_action_items_parent_id_idx": {
+          "name": "declared_incidents_postmortem_action_items_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "declared_incidents_postmortem_action_items_owner_idx": {
+          "name": "declared_incidents_postmortem_action_items_owner_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "declared_incidents_postmortem_action_items_owner_id_users_id_fk": {
+          "name": "declared_incidents_postmortem_action_items_owner_id_users_id_fk",
+          "tableFrom": "declared_incidents_postmortem_action_items",
+          "tableTo": "users",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "declared_incidents_postmortem_action_items_parent_id_fk": {
+          "name": "declared_incidents_postmortem_action_items_parent_id_fk",
+          "tableFrom": "declared_incidents_postmortem_action_items",
+          "tableTo": "declared_incidents",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -20571,12 +20569,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "pagespeed_api_key": {
-          "name": "pagespeed_api_key",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -20839,16 +20831,6 @@
         "not_matches"
       ]
     },
-    "public.enum_monitors_pagespeed_categories": {
-      "name": "enum_monitors_pagespeed_categories",
-      "schema": "public",
-      "values": [
-        "performance",
-        "accessibility",
-        "best-practices",
-        "seo"
-      ]
-    },
     "public.enum_monitors_type": {
       "name": "enum_monitors_type",
       "schema": "public",
@@ -20884,7 +20866,6 @@
         "radius",
         "tailscale-ping",
         "real-browser",
-        "pagespeed",
         "mysql",
         "postgres",
         "sqlserver",
@@ -21189,30 +21170,6 @@
         "privateKey"
       ]
     },
-    "public.enum_monitors_pagespeed_backend": {
-      "name": "enum_monitors_pagespeed_backend",
-      "schema": "public",
-      "values": [
-        "psi",
-        "lighthouse"
-      ]
-    },
-    "public.enum_monitors_pagespeed_strategy": {
-      "name": "enum_monitors_pagespeed_strategy",
-      "schema": "public",
-      "values": [
-        "mobile",
-        "desktop"
-      ]
-    },
-    "public.enum_monitors_pagespeed_fail_status": {
-      "name": "enum_monitors_pagespeed_fail_status",
-      "schema": "public",
-      "values": [
-        "degraded",
-        "down"
-      ]
-    },
     "public.enum_monitors_status_last_status": {
       "name": "enum_monitors_status_last_status",
       "schema": "public",
@@ -21398,7 +21355,12 @@
         "unlinked",
         "postmortem_drafted",
         "postmortem_approved",
-        "closed"
+        "closed",
+        "title_changed",
+        "summary_changed",
+        "started_changed",
+        "action_item_added",
+        "action_item_done"
       ]
     },
     "public.enum_declared_incidents_severity": {
@@ -22157,6 +22119,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "13eea9c0-1444-429c-aa83-38d87a2431b8",
+  "id": "3c0e3268-99f0-474d-80ba-15ff002ea2de",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

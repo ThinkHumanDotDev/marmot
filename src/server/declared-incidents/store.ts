@@ -7,7 +7,10 @@ import type { Payload, Where } from 'payload'
 
 import {
   ACTIVE_DECLARED_STATUSES,
+  summarizeDeclaredIncidents,
+  UNASSIGNED_COMMANDER,
   type DeclaredIncidentSeverity,
+  type DeclaredIncidentStats,
   type DeclaredIncidentStatus,
   type DeclaredIncidentSummary,
   type DeclaredPerson,
@@ -63,6 +66,7 @@ export async function serializeDeclaredIncidents(
     addUser(doc.commander)
     addUser(doc.declaredBy)
     addUser(doc.postmortem?.approvedBy)
+    for (const item of doc.postmortem?.actionItems ?? []) addUser(item.owner)
     for (const entry of doc.timeline ?? []) {
       addUser(entry.by)
       if (entry.type === 'commander_changed') {
@@ -148,6 +152,14 @@ export async function serializeDeclaredIncidents(
         content: doc.postmortem?.content ?? '',
         approvedBy: person(doc.postmortem?.approvedBy),
         approvedAt: iso(doc.postmortem?.approvedAt),
+        actionItems: (doc.postmortem?.actionItems ?? []).map((item, index) => ({
+          id: item.id ?? String(index),
+          title: item.title,
+          owner: person(item.owner),
+          dueDate: item.dueDate || null,
+          done: Boolean(item.done),
+          ticketUrl: item.ticketUrl || null,
+        })),
       },
       postmortemSkipped: Boolean(doc.postmortemSkipped),
       timeline: (doc.timeline ?? []).map((entry, index) => ({
@@ -198,6 +210,9 @@ export async function loadOrgDeclaredIncident(
 
 export interface DeclaredListOptions {
   status?: DeclaredStatusFilter
+  severity?: DeclaredIncidentSeverity | null
+  /** A user id, or `UNASSIGNED_COMMANDER` for incidents without a commander. */
+  commander?: Id | null
   page?: number
   limit?: number
   user: RequestUser
@@ -208,9 +223,44 @@ export interface DeclaredListResult {
   page: number
   totalPages: number
   totalDocs: number
+  /** Counts and response times over every incident matching the severity and commander filters. */
+  stats: DeclaredIncidentStats
 }
 
-/** Incidents of an organization as the user, newest first. */
+/** Upper bound of incidents folded into the summary (the newest ones). */
+export const DECLARED_STATS_SAMPLE_LIMIT = 5_000
+
+export function declaredWhere(
+  orgId: Id,
+  options: Pick<DeclaredListOptions, 'severity' | 'commander'>,
+  status?: DeclaredStatusFilter,
+): Where {
+  const and: Where[] = [{ organization: { equals: orgId } }]
+  if (options.severity) and.push({ severity: { equals: options.severity } })
+  if (options.commander !== undefined && options.commander !== null) {
+    and.push(
+      String(options.commander) === UNASSIGNED_COMMANDER
+        ? { or: [{ commander: { exists: false } }, { commander: { equals: null } }] }
+        : { commander: { equals: options.commander } },
+    )
+  }
+  if (status === 'active') and.push({ status: { in: [...ACTIVE_DECLARED_STATUSES] } })
+  else if (status && status !== 'all') and.push({ status: { equals: status } })
+  return { and }
+}
+
+/**
+ * The list's `commander` query value: `UNASSIGNED_COMMANDER`, a user id of the database's id type,
+ * or `null` (no filter) for anything else.
+ */
+export function parseCommanderFilter(payload: Payload, raw: string | null | undefined): Id | null {
+  if (!raw) return null
+  if (raw === UNASSIGNED_COMMANDER) return UNASSIGNED_COMMANDER
+  if (payload.db.defaultIDType === 'number') return /^\d+$/.test(raw) ? Number(raw) : null
+  return /^[a-f\d]{24}$/i.test(raw) ? raw : null
+}
+
+/** Incidents of an organization as the user, newest first, with the summary of the same filters. */
 export async function listDeclaredIncidents(
   payload: Payload,
   orgId: Id,
@@ -218,24 +268,66 @@ export async function listDeclaredIncidents(
 ): Promise<DeclaredListResult> {
   const limit = Math.min(Math.max(options.limit ?? 25, 1), 100)
   const page = Math.max(options.page ?? 1, 1)
-  const and: Where[] = [{ organization: { equals: orgId } }]
-  const status = options.status ?? 'all'
-  if (status === 'active') and.push({ status: { in: [...ACTIVE_DECLARED_STATUSES] } })
-  else if (status !== 'all') and.push({ status: { equals: status } })
-  const result = await payload.find({
-    collection: 'declared-incidents',
-    where: { and },
-    sort: '-startedAt',
-    limit,
-    page,
-    depth: 0,
-    user: options.user,
-    overrideAccess: false,
-  })
+  const access = { user: options.user, overrideAccess: false } as const
+  const [result, sample] = await Promise.all([
+    payload.find({
+      collection: 'declared-incidents',
+      where: declaredWhere(orgId, options, options.status ?? 'all'),
+      sort: '-startedAt',
+      limit,
+      page,
+      depth: 0,
+      ...access,
+    }),
+    payload.find({
+      collection: 'declared-incidents',
+      where: declaredWhere(orgId, options),
+      sort: '-startedAt',
+      limit: DECLARED_STATS_SAMPLE_LIMIT,
+      pagination: false,
+      depth: 0,
+      ...access,
+      select: { status: true, startedAt: true, mitigatedAt: true, resolvedAt: true },
+    }),
+  ])
   return {
     docs: await serializeDeclaredIncidents(payload, result.docs as DeclaredIncident[]),
     page: result.page ?? page,
     totalPages: result.totalPages,
     totalDocs: result.totalDocs,
+    stats: summarizeDeclaredIncidents(
+      (sample.docs as DeclaredIncident[]).map((doc) => ({
+        status: doc.status as DeclaredIncidentStatus,
+        startedAt: doc.startedAt,
+        mitigatedAt: doc.mitigatedAt ?? null,
+        resolvedAt: doc.resolvedAt ?? null,
+      })),
+    ),
   }
+}
+
+/** The newest declared incident linked to a monitor incident, as the user may read it. */
+export async function declaredIncidentFor(
+  payload: Payload,
+  orgId: Id,
+  monitorIncidentId: Id,
+  user: RequestUser,
+): Promise<Id | null> {
+  const { docs } = await payload.find({
+    collection: 'declared-incidents',
+    where: {
+      and: [
+        { organization: { equals: orgId } },
+        { monitorIncident: { equals: monitorIncidentId } },
+      ],
+    },
+    sort: '-startedAt',
+    limit: 1,
+    pagination: false,
+    depth: 0,
+    user,
+    overrideAccess: false,
+    select: { startedAt: true },
+  })
+  return docs[0]?.id ?? null
 }

@@ -8,6 +8,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import config from '@payload-config'
 import * as checkRoute from '@/app/api/orgs/[orgId]/monitors/[id]/check/route'
 import * as cloneRoute from '@/app/api/orgs/[orgId]/monitors/[id]/clone/route'
+import * as declaredNotesRoute from '@/app/api/orgs/[orgId]/declared-incidents/[id]/notes/route'
+import * as declaredRoute from '@/app/api/orgs/[orgId]/declared-incidents/[id]/route'
+import * as declaredListRoute from '@/app/api/orgs/[orgId]/declared-incidents/route'
 import * as importRoute from '@/app/api/orgs/[orgId]/import/route'
 import * as heartbeatsRoute from '@/app/api/orgs/[orgId]/monitors/[id]/heartbeats/route'
 import * as pauseRoute from '@/app/api/orgs/[orgId]/monitors/[id]/pause/route'
@@ -21,6 +24,7 @@ import type { CliIo } from '@/cli/context'
 import { defaultMonitorValues } from '@/lib/validation/monitor'
 import type { Monitor, Organization } from '@/payload-types'
 import { generateApiKey } from '@/server/api-keys'
+import { setDeclaredJobSink } from '@/server/declared-incidents/notify'
 
 type Handler = (
   request: Request,
@@ -58,6 +62,21 @@ const ROUTES: [RegExp, string[], RouteModule][] = [
     checkRoute as unknown as RouteModule,
   ],
   [/^\/api\/orgs\/([^/]+)\/import$/, ['orgId'], importRoute as unknown as RouteModule],
+  [
+    /^\/api\/orgs\/([^/]+)\/declared-incidents$/,
+    ['orgId'],
+    declaredListRoute as unknown as RouteModule,
+  ],
+  [
+    /^\/api\/orgs\/([^/]+)\/declared-incidents\/([^/]+)$/,
+    ['orgId', 'id'],
+    declaredRoute as unknown as RouteModule,
+  ],
+  [
+    /^\/api\/orgs\/([^/]+)\/declared-incidents\/([^/]+)\/notes$/,
+    ['orgId', 'id'],
+    declaredNotesRoute as unknown as RouteModule,
+  ],
   [
     /^\/api\/orgs\/([^/]+)\/monitors\/([^/]+)\/clone$/,
     ['orgId', 'id'],
@@ -205,10 +224,18 @@ describe('marmot CLI against the management API', () => {
       } as never,
     })
     files.set('marmot.yaml', MONITORS_YAML)
+    // Declared-incident notifications go to a queue; nothing to deliver in this suite.
+    setDeclaredJobSink(async () => undefined)
   })
 
   afterAll(async () => {
+    setDeclaredJobSink(null)
     if (!org) return
+    await payload.delete({
+      collection: 'declared-incidents',
+      where: { organization: { equals: org.id } },
+      overrideAccess: true,
+    })
     // One by one: deleting a group detaches its children, which a bulk delete may have removed.
     for (const monitor of await orgMonitors()) {
       await payload.delete({ collection: 'monitors', id: monitor.id, overrideAccess: true })
@@ -368,6 +395,67 @@ describe('marmot CLI against the management API', () => {
     const result = await cli(['monitors', 'check', 'api'], readKey)
     expect(result.code).toBe(1)
     expect(result.stderr).toContain('read scope')
+  })
+
+  it('declares, lists, updates, annotates and shows declared incidents', async () => {
+    const declared = await cli([
+      'declared-incidents',
+      'declare',
+      '--title',
+      'Checkout down',
+      '--severity',
+      'critical',
+      '--summary',
+      'Payments fail',
+      '--json',
+    ])
+    expect(declared.code).toBe(0)
+    const incident = JSON.parse(declared.stdout) as { id: string; severity: string }
+    expect(incident.severity).toBe('critical')
+
+    const bad = await cli(['declared-incidents', 'declare', '--title', 'x', '--severity', 'huge'])
+    expect(bad.code).toBe(2)
+    expect(bad.stderr).toContain('--severity')
+
+    const list = await cli(['declared-incidents', 'list', '--severity', 'critical', '--no-color'])
+    expect(list.code).toBe(0)
+    expect(list.stdout).toContain('Checkout down')
+    expect(list.stdout).toContain('critical')
+
+    const updated = await cli([
+      'declared-incidents',
+      'update',
+      incident.id,
+      '--status',
+      'mitigated',
+      '--title',
+      'Checkout degraded',
+    ])
+    expect(updated.code).toBe(0)
+    const invalid = await cli(['declared-incidents', 'update', incident.id, '--status', 'closed'])
+    expect(invalid.code).toBe(1)
+    expect((await cli(['declared-incidents', 'update', incident.id])).code).toBe(2)
+
+    const noted = await cli([
+      'declared-incidents',
+      'note',
+      incident.id,
+      '--message',
+      'Rolled back the deploy',
+    ])
+    expect(noted.code).toBe(0)
+
+    const info = await cli(['declared-incidents', 'info', incident.id, '--no-color'])
+    expect(info.code).toBe(0)
+    expect(info.stdout).toContain('Checkout degraded')
+    expect(info.stdout).toContain('mitigated')
+    expect(info.stdout).toContain('Rolled back the deploy')
+
+    // Read keys list but cannot declare.
+    const listed = await cli(['declared-incidents', 'list', '--status', 'all', '--json'], readKey)
+    expect(JSON.parse(listed.stdout).docs).toHaveLength(1)
+    const denied = await cli(['declared-incidents', 'declare', '--title', 'Nope'], readKey)
+    expect(denied.code).toBe(1)
   })
 
   it('rejects unknown commands and flags with exit code 2', async () => {

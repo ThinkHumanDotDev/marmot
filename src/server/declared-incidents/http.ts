@@ -46,6 +46,16 @@ export function updateData(payload: Payload, input: UpdateDeclaredIncidentInput)
   }
   const postmortem: Record<string, unknown> = {}
   if (input.postmortem !== undefined) postmortem.content = input.postmortem
+  if (input.actionItems !== undefined) {
+    postmortem.actionItems = input.actionItems.map((item) => ({
+      ...(item.id ? { id: item.id } : {}),
+      title: item.title,
+      owner: toId(payload, item.owner),
+      dueDate: item.dueDate ?? null,
+      done: item.done === true,
+      ticketUrl: item.ticketUrl ?? null,
+    }))
+  }
   if (input.approvePostmortem) postmortem.status = 'approved'
   if (Object.keys(postmortem).length > 0) data.postmortem = postmortem
   if (input.skipPostmortem) data.postmortemSkipped = true
