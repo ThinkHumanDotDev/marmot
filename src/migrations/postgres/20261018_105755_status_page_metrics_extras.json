@@ -20850,7 +20850,8 @@
       "values": [
         "dashboard",
         "api",
-        "link"
+        "link",
+        "phone"
       ]
     },
     "public.enum_monitor_incidents_status": {
@@ -20868,7 +20869,8 @@
       "values": [
         "dashboard",
         "api",
-        "link"
+        "link",
+        "phone"
       ]
     },
     "public.enum_monitor_incidents_escalation_status": {
@@ -21629,6 +21631,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "7c467d2a-b237-41ee-9bed-129c9fabc329",
+  "id": "43170d67-e3d1-4e19-a4e3-21255bce1f5a",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
