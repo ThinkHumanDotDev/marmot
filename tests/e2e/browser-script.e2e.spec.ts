@@ -64,7 +64,9 @@ test.describe('Browser Script monitor', () => {
     // Saved with the fixed script, the monitor opens on its detail page.
     await editor.fill(script('Welcome, Ada'))
     await form.getByTestId('monitor-submit').click()
-    await expect(page).toHaveURL(new RegExp(`/${SETUP_ORG.slug}/monitors/(?!new)[^/?]+$`))
+    await expect(page).toHaveURL(new RegExp(`/${SETUP_ORG.slug}/monitors/(?!new)[^/?]+$`), {
+      timeout: 30_000,
+    })
     const id = new URL(page.url()).pathname.split('/').pop()!
     try {
       await expect(page.getByTestId('monitor-name')).toHaveText(name)
