@@ -311,6 +311,12 @@ team runs, whether or not a monitor noticed: a title, a **severity** (critical, 
 **commander** (a member of the organization), who declared it, a summary, its start (backdated if needed, or
 taken from the [monitor incident](#incidents) it was declared from) and a **timeline**.
 
+- **Declare from an outage**: a monitor incident's page has a **Declare incident** button that declares a
+  major incident titled after the monitor in one click, linked to the outage (which sets its start), and
+  opens it. Once declared, the button becomes **View declared incident**.
+- **Edit details**: the title, summary and start time stay editable until the incident is closed or
+  canceled; each change is on the timeline.
+
 - **Status**: `open → mitigated → resolved → closed`, or `canceled` (false alarm) before it is resolved.
   Mitigated may be skipped and a resolved incident can be reopened; any other change is refused (409).
   Closed and canceled incidents are read-only.
@@ -320,7 +326,17 @@ taken from the [monitor incident](#incidents) it was declared from) and a **time
 - **Postmortem**: a Markdown document started from a template (Summary, Impact, Timeline, Root cause, What
   went well, What went wrong, Action items), saved as a draft and approved. Closing needs an approved
   postmortem; an admin can close without one (`declared-incident:skip-postmortem`), which the timeline
-  records. Editing an approved postmortem makes it a draft again.
+  records. Editing an approved postmortem makes it a draft again. It is shown rendered from Markdown
+  (headings, lists, links, code; HTML is escaped) once the incident is read-only, and the editor has a
+  preview.
+- **Action items**: the postmortem's follow-ups are structured entries — a title, an owner (a member), a due
+  date, a done flag and the ticket tracking them (an http(s) URL) — so they can be tracked and turned into
+  tickets. Adding and completing one is on the timeline; changing them does not affect the postmortem's
+  approval.
+- **List**: active incidents by default or every one, filtered by severity and commander (or unassigned),
+  25 per page, with the count, the active and canceled ones and the mean time to mitigate (start to
+  mitigated, or resolved when it was never mitigated) and to resolve over every incident matching the
+  severity and commander filters (canceled ones are not timed).
 - **Commander**: assigning someone emails them (not when they assign themselves). Without activity the
   commander is reminded after 1 h (critical), 4 h (major) or 24 h (minor), then after twice as long each time
   (at most a week apart); any change re-arms the reminder. Channels that selected the `incident` event hear
@@ -329,9 +345,12 @@ taken from the [monitor incident](#incidents) it was declared from) and a **time
   (`statusPageIncident`) instead of copying it, so what visitors read is still posted deliberately.
 
 Viewers read declared incidents; members declare and run them; admins delete them and may close them
-without a postmortem. Every change is in the audit log. API: `GET/POST /api/orgs/:orgId/declared-incidents`,
-`GET/PATCH/DELETE …/:id` (`title`, `severity`, `summary`, `commander`, `status`, `startedAt`,
-`statusPageIncident`, `postmortem`, `approvePostmortem`, `skipPostmortem`), `POST …/:id/notes { message }`.
+without a postmortem. Every change is in the audit log. API: `GET /api/orgs/:orgId/declared-incidents`
+(`status`, `severity`, `commander` — a user id or `none` —, `page`, `limit`; the answer's `stats` holds the
+summary), `POST /api/orgs/:orgId/declared-incidents`, `GET/PATCH/DELETE …/:id` (`title`, `severity`,
+`summary`, `commander`, `status`, `startedAt`, `statusPageIncident`, `postmortem`, `approvePostmortem`,
+`skipPostmortem`, `actionItems` — the whole list, rows keep their `id`), `POST …/:id/notes { message }`.
+The [MCP server](MCP.md) and the [CLI](CLI.md) (`marmot declared-incidents …`) cover them too.
 
 ## Check locations
 

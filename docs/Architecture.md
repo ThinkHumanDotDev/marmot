@@ -424,7 +424,8 @@ an unacknowledged incident. See [Monitors](Monitors.md#incidents) and [Notificat
 `declared-incidents` (#101) is the incident-response record members declare: `title`, `severity`, `status`
 (`open → mitigated → resolved → closed`, or `canceled`), `summary`, `commander`, `declaredBy`, `startedAt`,
 `mitigatedAt`/`resolvedAt`/`closedAt`/`canceledAt`, `monitorIncident` (the outage it was declared from),
-`statusPageIncident`, `postmortem { status: none|draft|approved, content, approvedBy, approvedAt }`,
+`statusPageIncident`, `postmortem { status: none|draft|approved, content, approvedBy, approvedAt,
+actionItems[] { title, owner, dueDate, done, ticketUrl } }`,
 `postmortemSkipped`, reminder bookkeeping (`lastActivityAt`, `nextReminderAt`, `remindersSent`,
 `lastReminderAt`) and an append-only `timeline[] { type, at, by, from, to, message }`.
 
@@ -449,7 +450,8 @@ Unlike monitor incidents, members write declared incidents through the collectio
 `overrideAccess: false` (`orgScoped('declared-incident:*')`); the rules live in the collection's
 `beforeChange` hook (`src/server/declared-incidents/hooks.ts`) so the route handlers, the REST API and the
 worker share them: the status transitions (`DECLARED_STATUS_TRANSITIONS` in `src/lib/declared-incidents.ts`),
-read-only closed/canceled incidents, commander membership, same-organization links, the postmortem gate on
+read-only closed/canceled incidents, commander and action-item owner membership, http(s)-only action-item
+ticket links, same-organization links, the postmortem gate on
 closing (skipping needs `declared-incident:skip-postmortem`), and the timeline, rebuilt as the stored rows plus
 one row per change (a note arrives in `req.context.declaredIncidentNote`), so it cannot be rewritten. Every
 write re-arms `nextReminderAt`. The `afterChange` hook (after the commit) publishes the realtime

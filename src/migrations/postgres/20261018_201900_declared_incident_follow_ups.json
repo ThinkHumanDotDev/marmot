@@ -2502,12 +2502,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "host_thresholds": {
-          "name": "host_thresholds",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "push_token": {
           "name": "push_token",
           "type": "varchar",
@@ -6016,6 +6010,141 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.declared_incidents_postmortem_action_items": {
+      "name": "declared_incidents_postmortem_action_items",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "due_date": {
+          "name": "due_date",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "done": {
+          "name": "done",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "ticket_url": {
+          "name": "ticket_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "declared_incidents_postmortem_action_items_order_idx": {
+          "name": "declared_incidents_postmortem_action_items_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "declared_incidents_postmortem_action_items_parent_id_idx": {
+          "name": "declared_incidents_postmortem_action_items_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "declared_incidents_postmortem_action_items_owner_idx": {
+          "name": "declared_incidents_postmortem_action_items_owner_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "declared_incidents_postmortem_action_items_owner_id_users_id_fk": {
+          "name": "declared_incidents_postmortem_action_items_owner_id_users_id_fk",
+          "tableFrom": "declared_incidents_postmortem_action_items",
+          "tableTo": "users",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "declared_incidents_postmortem_action_items_parent_id_fk": {
+          "name": "declared_incidents_postmortem_action_items_parent_id_fk",
+          "tableFrom": "declared_incidents_postmortem_action_items",
+          "tableTo": "declared_incidents",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -18146,183 +18275,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.host_metrics": {
-      "name": "host_metrics",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "monitor_id": {
-          "name": "monitor_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "granularity": {
-          "name": "granularity",
-          "type": "enum_host_metrics_granularity",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "timestamp": {
-          "name": "timestamp",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_at": {
-          "name": "last_at",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "series": {
-          "name": "series",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "latest": {
-          "name": "latest",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "host_metrics_monitor_idx": {
-          "name": "host_metrics_monitor_idx",
-          "columns": [
-            {
-              "expression": "monitor_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "host_metrics_organization_idx": {
-          "name": "host_metrics_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "host_metrics_granularity_idx": {
-          "name": "host_metrics_granularity_idx",
-          "columns": [
-            {
-              "expression": "granularity",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "host_metrics_timestamp_idx": {
-          "name": "host_metrics_timestamp_idx",
-          "columns": [
-            {
-              "expression": "timestamp",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitor_granularity_timestamp_idx": {
-          "name": "monitor_granularity_timestamp_idx",
-          "columns": [
-            {
-              "expression": "monitor_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "granularity",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "timestamp",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "host_metrics_monitor_id_monitors_id_fk": {
-          "name": "host_metrics_monitor_id_monitors_id_fk",
-          "tableFrom": "host_metrics",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "monitor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "host_metrics_organization_id_organizations_id_fk": {
-          "name": "host_metrics_organization_id_organizations_id_fk",
-          "tableFrom": "host_metrics",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.payload_kv": {
       "name": "payload_kv",
       "schema": "",
@@ -18779,12 +18731,6 @@
         },
         "metric_stats_id": {
           "name": "metric_stats_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "host_metrics_id": {
-          "name": "host_metrics_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -19585,21 +19531,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "payload_locked_documents_rels_host_metrics_id_idx": {
-          "name": "payload_locked_documents_rels_host_metrics_id_idx",
-          "columns": [
-            {
-              "expression": "host_metrics_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -20265,19 +20196,6 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_host_metrics_fk": {
-          "name": "payload_locked_documents_rels_host_metrics_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "host_metrics",
-          "columnsFrom": [
-            "host_metrics_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -20928,7 +20846,6 @@
         "globalping",
         "status-page",
         "push",
-        "host",
         "group",
         "manual",
         "docker",
@@ -21438,7 +21355,12 @@
         "unlinked",
         "postmortem_drafted",
         "postmortem_approved",
-        "closed"
+        "closed",
+        "title_changed",
+        "summary_changed",
+        "started_changed",
+        "action_item_added",
+        "action_item_done"
       ]
     },
     "public.enum_declared_incidents_severity": {
@@ -22178,15 +22100,6 @@
         "day"
       ]
     },
-    "public.enum_host_metrics_granularity": {
-      "name": "enum_host_metrics_granularity",
-      "schema": "public",
-      "values": [
-        "minute",
-        "hour",
-        "day"
-      ]
-    },
     "public.enum_instance_settings_entry_page": {
       "name": "enum_instance_settings_entry_page",
       "schema": "public",
@@ -22206,6 +22119,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "a02285de-35a7-4cbf-bf0d-af9a1a375455",
+  "id": "3c0e3268-99f0-474d-80ba-15ff002ea2de",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

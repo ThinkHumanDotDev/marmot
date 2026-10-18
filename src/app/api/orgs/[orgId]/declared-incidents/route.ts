@@ -1,11 +1,15 @@
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
-import { isDeclaredStatusFilter } from '@/lib/declared-incidents'
+import { isDeclaredSeverity, isDeclaredStatusFilter } from '@/lib/declared-incidents'
 import { declareIncidentSchema } from '@/lib/validation/declared-incident'
 import type { DeclaredIncident } from '@/payload-types'
 import { declareData } from '@/server/declared-incidents/http'
-import { listDeclaredIncidents, serializeDeclaredIncident } from '@/server/declared-incidents/store'
+import {
+  listDeclaredIncidents,
+  parseCommanderFilter,
+  serializeDeclaredIncident,
+} from '@/server/declared-incidents/store'
 import {
   authenticate,
   authorize,
@@ -21,7 +25,9 @@ type RouteContext = { params: Promise<{ orgId: string }> }
 
 /**
  * GET /api/orgs/:orgId/declared-incidents — declared incidents, newest first.
- * Query: `status` (`active` | `all` | a status, default `all`), `page`, `limit` (≤ 100).
+ * Query: `status` (`active` | `all` | a status, default `all`), `severity`, `commander` (a user id,
+ * or `none` for unassigned incidents), `page`, `limit` (≤ 100). `stats` holds the counts and the
+ * mean time to mitigate / resolve (seconds) of the severity and commander filters.
  */
 export async function GET(request: Request, { params }: RouteContext) {
   const payload = await getPayload({ config })
@@ -33,10 +39,13 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   const query = new URL(request.url).searchParams
   const status = query.get('status')
+  const severity = query.get('severity')
   try {
     return Response.json(
       await listDeclaredIncidents(payload, orgId, {
         status: isDeclaredStatusFilter(status) ? status : 'all',
+        severity: isDeclaredSeverity(severity) ? severity : null,
+        commander: parseCommanderFilter(payload, query.get('commander')),
         page: Number.parseInt(query.get('page') ?? '1', 10) || 1,
         limit: Number.parseInt(query.get('limit') ?? '25', 10) || 25,
         user: auth.user,

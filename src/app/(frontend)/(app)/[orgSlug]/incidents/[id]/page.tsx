@@ -3,9 +3,11 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 
+import { DeclareFromMonitorIncident } from '@/components/declared-incidents/declare-from-monitor'
 import { IncidentDetail } from '@/components/incidents/incident-detail'
 import { PageHeader } from '@/components/page-header'
 import type { MonitorIncidentSummary } from '@/lib/monitor-incidents'
+import { declaredIncidentFor } from '@/server/declared-incidents/store'
 import { loadOrgIncident, renderTime, serializeIncident } from '@/server/incidents/store'
 import { parseId } from '@/server/monitors/http'
 import { getOrgPageContext, type OrgPageContext } from '@/server/monitors/page-data'
@@ -48,7 +50,16 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
   const t = await getTranslations('incidents.detail')
   const tl = await getTranslations('incidents.list')
   const canPublish = ctx.allowed('status-page:update')
+  const canDeclare = ctx.allowed('declared-incident:create')
 
+  const declaredId = ctx.allowed('declared-incident:read')
+    ? await declaredIncidentFor(
+        ctx.payload,
+        ctx.org.id,
+        parseId(ctx.payload, incident.id),
+        ctx.requestUser,
+      )
+    : null
   const statusPages = canPublish
     ? await ctx.payload.find({
         collection: 'status-pages',
@@ -74,6 +85,17 @@ export default async function IncidentPage({ params }: IncidentPageProps) {
         }
         title={
           incident.status === 'resolved' ? t('titleResolved', { monitor }) : t('title', { monitor })
+        }
+        actions={
+          declaredId !== null || canDeclare ? (
+            <DeclareFromMonitorIncident
+              orgId={ctx.org.id}
+              orgSlug={orgSlug}
+              monitorIncidentId={incident.id}
+              monitorName={monitor}
+              declaredId={declaredId === null ? null : String(declaredId)}
+            />
+          ) : undefined
         }
       />
       <section className="p-4 sm:p-6 md:p-8">
