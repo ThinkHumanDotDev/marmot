@@ -9,7 +9,7 @@ export type ImportFormat = 'uptime-kuma' | 'marmot' | ImportProviderId
  * Hosted services Marmot imports from through their API (#120). The credentials a user pastes are
  * sent with one request and never stored (`src/server/import-export/providers`).
  */
-export const IMPORT_PROVIDERS = ['statuspage', 'betterstack'] as const
+export const IMPORT_PROVIDERS = ['statuspage', 'betterstack', 'instatus', 'checkly'] as const
 export type ImportProviderId = (typeof IMPORT_PROVIDERS)[number]
 
 export const isImportProvider = (value: unknown): value is ImportProviderId =>
@@ -51,6 +51,22 @@ export const IMPORT_PROVIDER_INFO: Record<ImportProviderId, ImportProviderInfo> 
       { name: 'statusPageId', secret: false, required: false },
     ],
     resources: ['monitors', 'components', 'incidents', 'maintenance'],
+  },
+  instatus: {
+    id: 'instatus',
+    credentials: [
+      { name: 'apiKey', secret: true, required: true },
+      { name: 'pageId', secret: false, required: false },
+    ],
+    resources: ['components', 'incidents', 'maintenance', 'subscribers'],
+  },
+  checkly: {
+    id: 'checkly',
+    credentials: [
+      { name: 'apiKey', secret: true, required: true },
+      { name: 'accountId', secret: false, required: true },
+    ],
+    resources: ['monitors'],
   },
 }
 

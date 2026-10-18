@@ -13,10 +13,15 @@ import { adminGroup, adminT } from '@/i18n/admin'
  * Certificate transparency alerts (#143, `src/server/jobs/ct-alerts.ts`) keep one `ct` row per
  * certificate already announced, keyed by `fingerprint` (`days` is 0). Expiry rows store an empty
  * fingerprint so the unique index works the same on Postgres and MongoDB.
+ *
+ * Issue-tracker channels (#149, `src/server/notifications/issue-state.ts`) keep one `issue` row per
+ * open outage, channel and target: `fingerprint` is `<channel id>:<repository or project>`,
+ * `externalId` the ticket (issue number, key or id) that reminders comment on and the recovery
+ * closes. The row is deleted when the issue is closed.
  */
 export const EXPIRY_NOTIFICATION_TYPES = ['certificate', 'domain'] as const
 export type ExpiryNotificationType = (typeof EXPIRY_NOTIFICATION_TYPES)[number]
-export const SENT_HISTORY_TYPES = [...EXPIRY_NOTIFICATION_TYPES, 'ct'] as const
+export const SENT_HISTORY_TYPES = [...EXPIRY_NOTIFICATION_TYPES, 'ct', 'issue'] as const
 export type SentHistoryType = (typeof SENT_HISTORY_TYPES)[number]
 
 export const NotificationSentHistory: CollectionConfig = {
@@ -66,6 +71,11 @@ export const NotificationSentHistory: CollectionConfig = {
       type: 'text',
       defaultValue: '',
       admin: { description: adminT('marmot:notificationSentHistory:fingerprintDescription') },
+    },
+    {
+      name: 'externalId',
+      type: 'text',
+      admin: { description: adminT('marmot:notificationSentHistory:externalIdDescription') },
     },
   ],
   timestamps: true,

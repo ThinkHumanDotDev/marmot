@@ -33,7 +33,7 @@ self-hosted install.
   `main`; gRPC, WebSocket, MQTT, Kafka, RabbitMQ, SMTP, SNMP, NTP, SFTP, RADIUS, Tailscale, SQL/NoSQL
   databases, Steam and GameDig landing in the current release. Intervals from 20 s, retries, upside-down
   mode, certificate and domain expiry alerts.
-- **Alerting** – 48 notification providers ported from Uptime Kuma plus WhatsApp and phone calls: Slack, Discord, Telegram, Teams,
+- **Alerting** – 48 notification providers ported from Uptime Kuma plus WhatsApp, phone calls and issue trackers (GitHub, GitLab, Gitea, Jira, Linear): Slack, Discord, Telegram, Teams,
   Matrix, ntfy, Gotify, Pushover, SMTP, SendGrid, PagerDuty, Opsgenie, Twilio, webhooks and more. Default
   channels, message templates, test button, retried delivery. Phone calls read the alert out and
   acknowledge the incident when you press 1.

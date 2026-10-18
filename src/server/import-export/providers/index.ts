@@ -1,6 +1,6 @@
 /**
- * Importers that pull from a hosted service's API (#120). Each provider reads a snapshot with the
- * caller's credentials (`fetch`) and maps it onto the shared `ImportPlan` (`plan`), which
+ * Importers that pull from a hosted service's API (#120, #283). Each provider reads a snapshot
+ * with the caller's credentials (`fetch`) and maps it onto the shared `ImportPlan` (`plan`), which
  * `applyImportPlan` then previews or writes like a file import.
  *
  * Adding a provider = one file here + an entry in `PROVIDERS` and in `IMPORT_PROVIDER_INFO`
@@ -15,7 +15,9 @@ import {
 import type { ImportText } from '../text'
 import type { ImportPlan } from '../types'
 import { betterStackProvider } from './betterstack'
+import { checklyProvider } from './checkly'
 import { ProviderError, type FetchLike } from './fetch'
+import { instatusProvider } from './instatus'
 import type { Credentials, ImportProvider } from './shared'
 import { statuspageProvider } from './statuspage'
 
@@ -25,6 +27,8 @@ export type { Credentials, ImportProvider } from './shared'
 export const PROVIDERS: Record<ImportProviderId, ImportProvider> = {
   statuspage: statuspageProvider as ImportProvider,
   betterstack: betterStackProvider as ImportProvider,
+  instatus: instatusProvider as ImportProvider,
+  checkly: checklyProvider as ImportProvider,
 }
 
 export interface ProviderImportInput {
