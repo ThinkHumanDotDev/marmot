@@ -102,7 +102,9 @@ export function AppShell({ user, organizations, currentOrg, sourceUrl, children 
   )
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col bg-sidebar text-sidebar-foreground md:flex-row md:p-3">
+    // Printed pages (the SLA report print view, #274) drop the navigation and let the main panel
+    // flow over as many sheets as it needs.
+    <div className="flex h-dvh min-h-0 flex-col bg-sidebar text-sidebar-foreground md:flex-row md:p-3 print:block! print:h-auto! print:bg-background! print:p-0!">
       <a
         href="#main-content"
         className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm font-medium text-foreground shadow-md focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:ring-2 focus:ring-ring"
@@ -110,7 +112,7 @@ export function AppShell({ user, organizations, currentOrg, sourceUrl, children 
         {t('skipToContent')}
       </a>
       {/* Mobile top bar */}
-      <header className="flex h-14 items-center justify-between border-b border-sidebar-border px-3 md:hidden">
+      <header className="flex h-14 items-center justify-between border-b border-sidebar-border px-3 md:hidden print:hidden!">
         <Button
           variant="ghost"
           size="icon"
@@ -147,7 +149,7 @@ export function AppShell({ user, organizations, currentOrg, sourceUrl, children 
       <aside
         data-collapsed={collapsed}
         className={cn(
-          'hidden shrink-0 flex-col pr-3 transition-[width] duration-200 ease-in-out md:flex',
+          'hidden shrink-0 flex-col pr-3 transition-[width] duration-200 ease-in-out md:flex print:hidden!',
           collapsed ? 'w-[4.25rem]' : 'w-64',
         )}
       >
@@ -190,11 +192,11 @@ export function AppShell({ user, organizations, currentOrg, sourceUrl, children 
       <main
         id="main-content"
         tabIndex={-1}
-        className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground outline-none md:rounded-xl md:border md:shadow-xs"
+        className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground outline-none md:rounded-xl md:border md:shadow-xs print:block! print:overflow-visible! print:border-0! print:shadow-none!"
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto print:block! print:overflow-visible!">
           <div className="flex-1">{children}</div>
-          <footer className="flex justify-end px-4 py-3 text-xs text-muted-foreground sm:px-6">
+          <footer className="flex justify-end px-4 py-3 text-xs text-muted-foreground sm:px-6 print:hidden">
             <SourceLink
               href={sourceUrl}
               className="underline-offset-4 hover:text-foreground hover:underline"

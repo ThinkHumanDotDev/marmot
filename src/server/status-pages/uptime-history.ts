@@ -245,7 +245,7 @@ export async function loadMonitorDays(
 
 // ---- Incidents and maintenance of a page ------------------------------------------------------------
 
-interface WindowIncident {
+export interface WindowIncident {
   id: string
   publicId: string
   title: string
@@ -254,11 +254,13 @@ interface WindowIncident {
   /** From the first update to the resolution (or now). */
   start: number
   end: number
+  /** Still unresolved. */
+  active: boolean
   updates: ReturnType<typeof incidentTimeline>['updates']
 }
 
 /** Incidents of the page that may overlap `[from, to)`: still active, or resolved after `from`. */
-async function windowIncidents(
+export async function windowIncidents(
   payload: Payload,
   pageId: string | number,
   from: number,
@@ -298,13 +300,14 @@ async function windowIncidents(
         named,
         start,
         end,
+        active: Boolean(state.active),
         updates,
       },
     ]
   })
 }
 
-interface WindowMaintenance {
+export interface WindowMaintenance {
   id: string
   publicId: string
   title: string
@@ -315,7 +318,7 @@ interface WindowMaintenance {
 }
 
 /** Maintenance windows announced on the page that ran within `[from, to)`. */
-async function windowMaintenance(
+export async function windowMaintenance(
   payload: Payload,
   pageId: string | number,
   from: number,
@@ -373,7 +376,7 @@ async function windowMaintenance(
 
 // ---- Snapshots --------------------------------------------------------------------------------------
 
-type SnapshotRow = {
+export type SnapshotRow = {
   component: string
   timestamp: number
   up?: number | null
@@ -385,7 +388,7 @@ type SnapshotRow = {
   state?: DayState | null
 }
 
-async function loadSnapshots(
+export async function loadSnapshots(
   payload: Payload,
   pageId: string | number,
   componentIds: readonly string[],

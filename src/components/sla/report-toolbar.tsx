@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import * as React from 'react'
 
+import { PrintButton } from '@/components/sla/print-button'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { currentPeriod, periodDates, previousSchedulePeriod } from '@/lib/sla'
+import { currentPeriod, periodDates, previousSchedulePeriod, type SlaZone } from '@/lib/sla'
 
 /**
  * Range picker and downloads of an SLA report page (#156). The range lives in the URL
@@ -20,6 +21,7 @@ export function ReportToolbar({
   from,
   to,
   now,
+  zone,
 }: {
   /** The report page, without query. */
   basePath: string
@@ -29,6 +31,8 @@ export function ReportToolbar({
   to: string
   /** Render time (epoch ms), so presets match the server's clock. */
   now: number
+  /** The organization's time zone and week start: presets are its calendar months (#274). */
+  zone: SlaZone
 }) {
   const t = useTranslations('sla.report')
   const router = useRouter()
@@ -39,10 +43,10 @@ export function ReportToolbar({
     router.push(`${basePath}?from=${next.from}&to=${next.to}`)
   }
   const at = new Date(now)
-  const lastMonth = previousSchedulePeriod('monthly', at)
-  const thisMonth = currentPeriod('month', at)
-  const quarter = currentPeriod('quarter', at)
-  const lastQuarter = currentPeriod('quarter', new Date(quarter.from - 1))
+  const lastMonth = previousSchedulePeriod('monthly', at, zone)
+  const thisMonth = currentPeriod('month', at, zone)
+  const quarter = currentPeriod('quarter', at, zone)
+  const lastQuarter = currentPeriod('quarter', new Date(quarter.from - 1), zone)
   const presets = [
     { key: 'lastMonth', period: lastMonth },
     { key: 'thisMonth', period: thisMonth },
@@ -82,7 +86,12 @@ export function ReportToolbar({
         </Button>
         {presets.map(({ key, period }) =>
           period ? (
-            <Button key={key} type="button" variant="ghost" onClick={() => go(periodDates(period))}>
+            <Button
+              key={key}
+              type="button"
+              variant="ghost"
+              onClick={() => go(periodDates(period, zone))}
+            >
               {t(`presets.${key}`)}
             </Button>
           ) : null,
@@ -99,6 +108,7 @@ export function ReportToolbar({
             <Download /> {t('downloadPdf')}
           </a>
         </Button>
+        <PrintButton label={t('print')} />
       </div>
     </div>
   )

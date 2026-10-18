@@ -4,8 +4,15 @@ import {
   currentPeriod,
   emptySlaFigures,
   meanTimeToRecovery,
+  businessHoursOf,
+  dueBudgetAlerts,
+  normalizeThresholds,
+  businessIntervals,
+  clipIntervals,
+  countedIntervals,
+  intervalsSeconds,
+  overlapMs,
   periodDates,
-  periodDays,
   periodFromDates,
   periodSeconds,
   previousSchedulePeriod,
@@ -40,7 +47,7 @@ describe('periods', () => {
 
     const rolling = currentPeriod('rolling30', now)
     expect(periodDates(rolling)).toEqual({ from: '2026-09-13', to: '2026-10-12' })
-    expect(periodDays(rolling)).toHaveLength(30)
+    expect(periodSeconds(rolling)).toBe(30 * DAY)
   })
 
   it('picks the previous complete month and week of a schedule', () => {
@@ -70,6 +77,96 @@ describe('periods', () => {
     expect(periodFromDates('2026-02-31', '2026-03-01')).toBeNull()
     expect(periodFromDates('2026-9-1', '2026-09-30')).toBeNull()
     expect(periodFromDates('2025-01-01', '2026-09-30')).toBeNull()
+  })
+})
+
+describe('periods in the organization time zone (#274)', () => {
+  const berlin = { timeZone: 'Europe/Berlin', weekStart: 'monday' as const }
+  const newYork = { timeZone: 'America/New_York', weekStart: 'sunday' as const }
+
+  it('cuts months at local midnight, across DST changes', () => {
+    // 2026-10-31 23:30 UTC is already November in Berlin (UTC+1 after the October change).
+    const month = currentPeriod('month', new Date('2026-10-31T23:30:00Z'), berlin)
+    expect(month.key).toBe('2026-11')
+    expect(new Date(month.from).toISOString()).toBe('2026-10-31T23:00:00.000Z')
+    expect(periodDates(month, berlin)).toEqual({ from: '2026-11-01', to: '2026-11-30' })
+    // October 2026 in Berlin has a 25-hour day.
+    const october = previousSchedulePeriod('monthly', new Date('2026-11-01T00:10:00Z'), berlin)!
+    expect(october.key).toBe('2026-10')
+    expect(new Date(october.from).toISOString()).toBe('2026-09-30T22:00:00.000Z')
+    expect(periodSeconds(october)).toBe(31 * DAY + 3600)
+    // Still October 31st in New York.
+    expect(currentPeriod('month', new Date('2026-11-01T02:00:00Z'), newYork).key).toBe('2026-10')
+  })
+
+  it('starts weeks on the organization first day of the week', () => {
+    const sunday = new Date('2026-10-18T12:00:00Z')
+    const week = previousSchedulePeriod('weekly', sunday, newYork)!
+    expect(periodDates(week, newYork)).toEqual({ from: '2026-10-11', to: '2026-10-17' })
+    expect(week.key).toBe('week:2026-10-11')
+    expect(previousSchedulePeriod('weekly', sunday, berlin)?.key).toBe('week:2026-10-05')
+  })
+
+  it('reads report ranges as local days', () => {
+    const range = periodFromDates('2026-09-01', '2026-09-30', berlin)!
+    expect(new Date(range.from).toISOString()).toBe('2026-08-31T22:00:00.000Z')
+    expect(new Date(range.to).toISOString()).toBe('2026-09-30T22:00:00.000Z')
+    expect(currentPeriod('quarter', new Date('2026-12-31T23:30:00Z'), berlin).key).toBe('2027-Q1')
+  })
+})
+
+describe('business hours (#274)', () => {
+  const hours = { days: ['mon', 'tue', 'wed', 'thu', 'fri'] as const, start: '09:00', end: '17:00' }
+  const calendar = { ...hours, days: [...hours.days], holidays: ['2026-10-14'] }
+
+  it('lists the business hours of a period, skipping weekends and holidays', () => {
+    // Monday 12 to Sunday 18 October 2026, UTC.
+    const week = periodFromDates('2026-10-12', '2026-10-18')!
+    const intervals = businessIntervals(week, calendar, 'UTC')
+    expect(intervals).toHaveLength(4)
+    expect(intervalsSeconds(intervals)).toBe(4 * 8 * 3600)
+    expect(new Date(intervals[0].from).toISOString()).toBe('2026-10-12T09:00:00.000Z')
+    expect(new Date(intervals[2].from).toISOString()).toBe('2026-10-15T09:00:00.000Z')
+  })
+
+  it('follows the wall clock of the time zone', () => {
+    const day = periodFromDates('2026-10-12', '2026-10-12', { timeZone: 'America/New_York' })!
+    const [interval] = businessIntervals(day, { ...calendar, end: '24:00' }, 'America/New_York')
+    expect(new Date(interval.from).toISOString()).toBe('2026-10-12T13:00:00.000Z')
+    expect(new Date(interval.to).toISOString()).toBe('2026-10-13T04:00:00.000Z')
+  })
+
+  it('counts the whole period without a calendar', () => {
+    const week = periodFromDates('2026-10-12', '2026-10-18')!
+    expect(countedIntervals(week, null, 'UTC')).toEqual([{ from: week.from, to: week.to }])
+  })
+
+  it('reads stored calendars, ignoring disabled and unusable ones', () => {
+    const stored = { enabled: true, days: ['mon'], start: '09:00', end: '17:00', holidays: [] }
+    expect(businessHoursOf({ businessHours: stored })).toEqual({
+      days: ['mon'],
+      start: '09:00',
+      end: '17:00',
+      holidays: [],
+    })
+    expect(businessHoursOf({ businessHours: { ...stored, enabled: false } })).toBeNull()
+    expect(businessHoursOf({ businessHours: { ...stored, end: '08:00' } })).toBeNull()
+    expect(businessHoursOf({ businessHours: { ...stored, days: [] } })).toBeNull()
+    expect(
+      businessHoursOf({ businessHours: { ...stored, holidays: [{ date: '2026-02-30' }] } }),
+    ).toBeNull()
+  })
+
+  it('clips and measures intervals', () => {
+    const list = [
+      { from: 0, to: 10 },
+      { from: 20, to: 30 },
+    ]
+    expect(clipIntervals(list, 5, 25)).toEqual([
+      { from: 5, to: 10 },
+      { from: 20, to: 25 },
+    ])
+    expect(overlapMs(list, 5, 25)).toBe(10)
   })
 })
 
@@ -173,6 +270,7 @@ describe('slaReportCsv', () => {
       name: 'Customers',
       from: '2026-09-01',
       to: '2026-09-30',
+      timeZone: 'UTC',
       generatedAt: '2026-10-01T00:40:00Z',
       rows: [
         {
@@ -181,6 +279,7 @@ describe('slaReportCsv', () => {
           target: 99.9,
           calculation: 'duration',
           excludeMaintenance: true,
+          businessHours: false,
           uptime: 0.999537,
           downtimeSeconds: 1200,
           incidents: 1,
@@ -195,6 +294,7 @@ describe('slaReportCsv', () => {
           target: 99.5,
           calculation: 'checks',
           excludeMaintenance: false,
+          businessHours: true,
           uptime: null,
           downtimeSeconds: null,
           incidents: 0,
@@ -211,5 +311,24 @@ describe('slaReportCsv', () => {
       'Website,99.5,,,0,,,216.0,216.0',
       '',
     ])
+  })
+})
+
+describe('error budget alerts (#274)', () => {
+  it('normalizes thresholds', () => {
+    expect(normalizeThresholds([10, '50', 50, -1, 101, 'x', 0])).toEqual([50, 10, 0])
+  })
+
+  it('alerts once per period and threshold, below the threshold only', () => {
+    const first = dueBudgetAlerts([50, 25], 0.4, '2026-10', null)
+    expect(first.due).toEqual([50])
+    expect(dueBudgetAlerts([50, 25], 0.4, '2026-10', first.state).due).toEqual([])
+    expect(dueBudgetAlerts([50, 25], 0.5, '2026-10', null).due).toEqual([])
+    const both = dueBudgetAlerts([50, 25], -0.1, '2026-10', first.state)
+    expect(both.due).toEqual([25])
+    expect(both.state).toEqual({ period: '2026-10', sent: [50, 25] })
+    // A new period forgets what was sent.
+    expect(dueBudgetAlerts([50, 25], 0.4, '2026-11', both.state).due).toEqual([50])
+    expect(dueBudgetAlerts([50], null, '2026-11', null).due).toEqual([])
   })
 })

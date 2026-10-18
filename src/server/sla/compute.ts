@@ -1,77 +1,257 @@
 /**
  * SLA figures of monitors (#156), read from the same sources as the status page uptime of #112:
- * `stat-daily` check counts and the important heartbeats replayed for the time spent DOWN or in
- * maintenance (`loadMonitorDays`), plus the monitor incidents of the period. The maths lives in
- * `src/lib/sla.ts`.
+ * check counts from the `stat-hourly` / `stat-daily` buckets and the important heartbeats replayed
+ * for the time spent DOWN or in maintenance, plus the monitor incidents of the period. The maths
+ * lives in `src/lib/sla.ts`.
+ *
+ * A target counts a list of intervals (#274): its period, cut in the organization's time zone, or
+ * only the business hours of its calendar. Durations are exact (the transitions are replayed over
+ * each interval). Check counts come in UTC buckets, so a bucket that is only partly counted
+ * contributes the same share of its checks: hourly buckets where they are still kept (30 days) and
+ * complete, daily buckets otherwise. With whole UTC days counted this is exactly the daily figure.
+ * Only the UTC days with a `stat-daily` row (the monitor was checked) count, as on status pages.
  *
  * Everything here reads with `overrideAccess: true`; callers load the target or report as the
  * user first (or hold a valid share token).
  */
-import type { Payload } from 'payload'
+import type { Payload, Where } from 'payload'
 
 import {
+  businessHoursOf,
+  clipIntervals,
+  countedIntervals,
   currentPeriod,
   emptySlaFigures,
+  intervalsSeconds,
   isSlaCalculation,
+  isSlaSubject,
   isSlaWindow,
+  normalizeThresholds,
   meanTimeToRecovery,
+  overlapMs,
   periodDates,
-  periodDays,
-  periodSeconds,
   slaAttainment,
   slaHealth,
   type SlaAttainment,
+  type SlaBusinessHours,
   type SlaCalculation,
   type SlaFigures,
   type SlaHealth,
   type SlaPeriod,
   type SlaReportData,
   type SlaReportRow,
+  type SlaSubject,
   type SlaTargetSpec,
   type SlaWindow,
+  type SlaZone,
+  type TimeInterval,
 } from '@/lib/sla'
-import type { BeatStatus } from '@/lib/uptime-history'
+import {
+  DAY_SECONDS,
+  replayStatuses,
+  utcDayStart,
+  type BeatStatus,
+  type StatusChange,
+} from '@/lib/uptime-history'
 import type { Monitor, MonitorIncident, SlaReport, SlaTarget } from '@/payload-types'
 import { relationId } from '@/server/maintenance/serialize'
-import { loadMonitorDays } from '@/server/status-pages/uptime-history'
+import { MAX_TRANSITIONS } from '@/server/status-pages/uptime-history'
+
+import { loadSubjectFigures, resolvePageSubjects, type PageSubject } from './subjects'
+import { loadSlaZones } from './zone'
 
 /** Most incidents listed per target and period. */
 export const MAX_PERIOD_INCIDENTS = 500
 
+const DAY_MS = DAY_SECONDS * 1000
+const HOUR_MS = 3_600_000
+
 type Id = string | number
 
-/** A target with its monitor's name and status, as the computations need it. */
+/** A target with what it measures, as the computations need it. */
 export interface ResolvedTarget extends SlaTargetSpec {
   id: string
-  monitorId: Id
-  monitorName: string
-  lastStatus: BeatStatus | null
+  organization: Id | null
+  subject: SlaSubject
+  /** The monitor's name, or `Page › Component` / `Page › Group`. */
+  name: string
+  /** Monitor targets. */
+  monitor: { id: Id; lastStatus: BeatStatus | null } | null
+  /** Component and group targets (#274). */
+  page: PageSubject | null
   period: SlaWindow
+  businessHours: SlaBusinessHours | null
+  budgetAlerts: { thresholds: number[]; notifications: string[] }
 }
 
-/** Figures of a monitor over the elapsed part of `period`. */
+type Bucket = { timestamp: number; up?: number | null; down?: number | null; extras?: unknown }
+
+const maintenanceOf = (extras: unknown): number => {
+  if (!extras || typeof extras !== 'object' || Array.isArray(extras)) return 0
+  const value = (extras as Record<string, unknown>).maintenance
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+
+const checksOf = (bucket: Bucket) => (bucket.up ?? 0) + (bucket.down ?? 0)
+
+/**
+ * Figures of a monitor over the elapsed part of `intervals` (sorted, disjoint; usually
+ * `countedIntervals` of a period).
+ */
 export async function loadSlaFigures(
   payload: Payload,
   monitor: { id: Id; lastStatus?: BeatStatus | null },
-  period: Pick<SlaPeriod, 'from' | 'to'>,
+  intervals: readonly TimeInterval[],
   now: Date,
 ): Promise<SlaFigures> {
-  const days = periodDays(period).filter((day) => day * 1000 < now.getTime())
-  const live = await loadMonitorDays(payload, monitor, days, now)
+  return (await loadMonitorFigures(payload, monitor, intervals, now)).figures
+}
+
+/** `loadSlaFigures`, plus the UTC days (unix seconds) that had statistics. */
+export async function loadMonitorFigures(
+  payload: Payload,
+  monitor: { id: Id; lastStatus?: BeatStatus | null },
+  intervals: readonly TimeInterval[],
+  now: Date,
+): Promise<{ figures: SlaFigures; days: Set<number> }> {
   const figures = emptySlaFigures()
-  for (const day of live.values()) {
-    figures.up += day.figures.up
-    figures.down += day.figures.down
-    figures.maintenanceChecks += day.maintenance
-    figures.downSeconds += day.figures.downSeconds
-    figures.knownSeconds += day.figures.knownSeconds
-    figures.maintenanceSeconds += day.maintenanceSeconds
-    figures.elapsedSeconds += day.figures.elapsedSeconds
+  const days = new Set<number>()
+  const counted = clipIntervals(intervals, Number.NEGATIVE_INFINITY, now.getTime())
+  if (counted.length === 0) return { figures, days }
+  const firstDay = utcDayStart(counted[0].from)
+  const lastDay = utcDayStart(counted[counted.length - 1].to - 1)
+  const end = Math.min((lastDay + DAY_SECONDS) * 1000, now.getTime())
+  const fromIso = new Date(firstDay * 1000).toISOString()
+  const toIso = new Date(end).toISOString()
+  const range: Where[] = [
+    { monitor: { equals: monitor.id } },
+    { timestamp: { greater_than_equal: firstDay } },
+    { timestamp: { less_than: lastDay + DAY_SECONDS } },
+  ]
+
+  const [daily, hourly, changes, prior] = await Promise.all([
+    payload.find({
+      collection: 'stat-daily',
+      where: { and: range },
+      sort: 'timestamp',
+      limit: 0,
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+      select: { timestamp: true, up: true, down: true, extras: true },
+    }),
+    payload.find({
+      collection: 'stat-hourly',
+      where: { and: range },
+      sort: 'timestamp',
+      limit: 0,
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+      select: { timestamp: true, up: true, down: true, extras: true },
+    }),
+    payload.find({
+      collection: 'heartbeats',
+      where: {
+        and: [
+          { monitor: { equals: monitor.id } },
+          { important: { equals: true } },
+          { time: { greater_than_equal: fromIso } },
+          { time: { less_than: toIso } },
+        ],
+      },
+      sort: 'time',
+      limit: MAX_TRANSITIONS,
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+      select: { status: true, time: true },
+    }),
+    payload.find({
+      collection: 'heartbeats',
+      where: {
+        and: [
+          { monitor: { equals: monitor.id } },
+          { important: { equals: true } },
+          { time: { less_than: fromIso } },
+        ],
+      },
+      sort: '-time',
+      limit: 1,
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+      select: { status: true, time: true },
+    }),
+  ])
+  if (daily.docs.length === 0) return { figures, days }
+
+  const transitions: StatusChange[] = changes.docs.map((beat) => ({
+    time: Date.parse(beat.time),
+    status: beat.status as BeatStatus,
+  }))
+  // Without any transition in the window the status never changed: it is the current one.
+  const initial: BeatStatus | null =
+    (prior.docs[0]?.status as BeatStatus | undefined) ??
+    (transitions.length === 0 ? (monitor.lastStatus ?? null) : null)
+
+  const hoursByDay = new Map<number, Bucket[]>()
+  for (const bucket of hourly.docs as Bucket[]) {
+    const day = utcDayStart(bucket.timestamp * 1000)
+    const list = hoursByDay.get(day) ?? []
+    list.push(bucket)
+    hoursByDay.set(day, list)
   }
-  return figures
+
+  const addChecks = (bucket: Bucket, weight: number) => {
+    if (weight <= 0) return
+    figures.up += (bucket.up ?? 0) * weight
+    figures.down += (bucket.down ?? 0) * weight
+    figures.maintenanceChecks += maintenanceOf(bucket.extras) * weight
+  }
+
+  for (const row of daily.docs as Bucket[]) {
+    days.add(row.timestamp)
+    const dayFrom = row.timestamp * 1000
+    const dayTo = Math.min(dayFrom + DAY_MS, now.getTime())
+    const parts = clipIntervals(counted, dayFrom, dayTo)
+    if (parts.length === 0) continue
+
+    for (const part of parts) {
+      const replay = replayStatuses(initial, transitions, part.from, part.to)
+      figures.downSeconds += replay.downSeconds
+      figures.knownSeconds += replay.knownSeconds
+      figures.maintenanceSeconds += replay.maintenanceSeconds
+    }
+    const countedMs = overlapMs(parts, dayFrom, dayTo)
+    figures.elapsedSeconds += countedMs / 1000
+
+    if (countedMs >= dayTo - dayFrom) {
+      addChecks(row, 1)
+      continue
+    }
+    // Part of the day counts: its share of the checks, hour by hour while the hourly buckets
+    // are kept and hold all of the day's checks, otherwise in proportion to the day.
+    const hours = hoursByDay.get(row.timestamp) ?? []
+    if (hours.length > 0 && hours.reduce((sum, h) => sum + checksOf(h), 0) >= checksOf(row)) {
+      for (const hour of hours) {
+        const hourFrom = hour.timestamp * 1000
+        const hourTo = Math.min(hourFrom + HOUR_MS, now.getTime())
+        if (hourTo <= hourFrom) continue
+        addChecks(hour, overlapMs(parts, hourFrom, hourTo) / (hourTo - hourFrom))
+      }
+    } else {
+      addChecks(row, countedMs / (dayTo - dayFrom))
+    }
+  }
+  return { figures, days }
 }
 
 export interface PeriodIncident {
+  /** A monitor incident, or a status page incident (component and group targets, #274). */
+  source: 'monitor' | 'statusPage'
+  /** The status page of a `statusPage` incident. */
+  statusPageId?: string
   id: string
   cause: string | null
   status: MonitorIncident['status']
@@ -107,6 +287,7 @@ export async function loadPeriodIncidents(
     select: { cause: true, status: true, startedAt: true, resolvedAt: true },
   })
   return (docs as MonitorIncident[]).map((doc) => ({
+    source: 'monitor' as const,
     id: String(doc.id),
     cause: doc.cause ?? null,
     status: doc.status,
@@ -116,7 +297,8 @@ export async function loadPeriodIncidents(
 }
 
 /**
- * Targets with their monitors (one query for all monitors). Targets whose monitor is gone are
+ * Targets with what they measure: monitors (one query for all of them), status page components
+ * and groups (`resolvePageSubjects`). Targets whose monitor, page, component or group is gone are
  * left out.
  */
 export async function resolveTargets(
@@ -124,53 +306,120 @@ export async function resolveTargets(
   targets: readonly SlaTarget[],
 ): Promise<ResolvedTarget[]> {
   const monitorIds = [
-    ...new Set(targets.map((t) => relationId(t.monitor)).filter((id) => id !== null)),
+    ...new Set(
+      targets
+        .filter((t) => (t.subject ?? 'monitor') === 'monitor')
+        .map((t) => relationId(t.monitor))
+        .filter((id) => id !== null),
+    ),
   ] as Id[]
-  if (monitorIds.length === 0) return []
-  const { docs } = await payload.find({
-    collection: 'monitors',
-    where: { id: { in: monitorIds } },
-    depth: 0,
-    limit: monitorIds.length,
-    pagination: false,
-    overrideAccess: true,
-    select: { name: true, status: true },
-  })
+  const [{ docs }, pages] = await Promise.all([
+    monitorIds.length === 0
+      ? { docs: [] }
+      : payload.find({
+          collection: 'monitors',
+          where: { id: { in: monitorIds } },
+          depth: 0,
+          limit: monitorIds.length,
+          pagination: false,
+          overrideAccess: true,
+          select: { name: true, status: true },
+        }),
+    resolvePageSubjects(payload, targets),
+  ])
   const monitors = new Map((docs as Monitor[]).map((m) => [String(m.id), m]))
-  return targets.flatMap((target) => {
-    const monitor = monitors.get(String(relationId(target.monitor)))
-    if (!monitor) return []
+  return targets.flatMap((target): ResolvedTarget[] => {
+    const subject: SlaSubject = isSlaSubject(target.subject) ? target.subject : 'monitor'
+    const monitor =
+      subject === 'monitor' ? monitors.get(String(relationId(target.monitor))) : undefined
+    const page = subject === 'monitor' ? undefined : pages.get(String(target.id))
+    if (!monitor && !page) return []
+    const calculation = isSlaCalculation(target.calculation) ? target.calculation : 'duration'
     return [
       {
         id: String(target.id),
-        monitorId: monitor.id,
-        monitorName: monitor.name,
-        lastStatus: (monitor.status?.lastStatus as BeatStatus | null | undefined) ?? null,
+        organization: relationId(target.organization),
+        subject,
+        name: monitor ? monitor.name : page!.name,
+        monitor: monitor
+          ? {
+              id: monitor.id,
+              lastStatus: (monitor.status?.lastStatus as BeatStatus | null | undefined) ?? null,
+            }
+          : null,
+        page: page ?? null,
         target: target.target,
         period: isSlaWindow(target.period) ? target.period : 'month',
-        calculation: isSlaCalculation(target.calculation)
-          ? target.calculation
-          : ('duration' as SlaCalculation),
+        // `manual` needs a status page; a monitor falls back to its time up.
+        calculation: monitor && calculation === 'manual' ? 'duration' : calculation,
         excludeMaintenance: target.excludeMaintenance !== false,
+        businessHours: businessHoursOf(target),
+        budgetAlerts: {
+          thresholds: normalizeThresholds(target.budgetAlerts?.thresholds),
+          notifications: (target.budgetAlerts?.notifications ?? [])
+            .map((n) => relationId(n))
+            .filter((n) => n !== null)
+            .map(String),
+        },
       },
     ]
   })
 }
 
+/** Attainment of a resolved target over a period (the counted part of it). */
+export async function evaluateTarget(
+  payload: Payload,
+  target: ResolvedTarget,
+  period: SlaPeriod,
+  zone: SlaZone,
+  now: Date,
+) {
+  const counted = countedIntervals(period, target.businessHours, zone.timeZone)
+  const { figures, incidents } = target.monitor
+    ? {
+        figures: await loadSlaFigures(payload, target.monitor, counted, now),
+        incidents: await loadPeriodIncidents(payload, target.monitor.id, period),
+      }
+    : await loadSubjectFigures(payload, target.page!, target.calculation, period, counted, now)
+  const countedSeconds = intervalsSeconds(counted)
+  const elapsedSeconds = intervalsSeconds(clipIntervals(counted, period.from, now.getTime()))
+  return {
+    figures,
+    incidents,
+    attainment: slaAttainment(target, figures, countedSeconds),
+    /** Share of the counted time elapsed, 0..1. */
+    elapsed: countedSeconds > 0 ? Math.min(1, elapsedSeconds / countedSeconds) : 0,
+  }
+}
+
+const zoneOf = (zones: Map<string, SlaZone>, organization: Id | null): SlaZone =>
+  zones.get(String(organization)) ?? { timeZone: 'UTC', weekStart: 'monday' }
+
 // ---- Dashboard --------------------------------------------------------------------------------------
 
 export interface TargetStatus {
   id: string
-  monitorId: string
-  monitorName: string
+  subject: SlaSubject
+  /** The monitor's name, or `Page › Component` / `Page › Group`. */
+  name: string
+  monitorId: string | null
+  statusPageId: string | null
+  /** Row id of the component or group. */
+  component: string | null
+  /** Error budget alerts (#274): thresholds (percent) and channel ids. */
+  budgetAlerts: { thresholds: number[]; notifications: string[] }
   target: number
   period: SlaWindow
   calculation: SlaCalculation
   excludeMaintenance: boolean
-  /** Inclusive `YYYY-MM-DD` dates of the current period. */
+  /** The business-hours calendar, null when the whole period counts (#274). */
+  businessHours: SlaBusinessHours | null
+  /** `SlaPeriod.key` of the current period. */
+  periodKey: string
+  /** Inclusive `YYYY-MM-DD` dates of the current period, in the organization's time zone. */
   from: string
   to: string
-  /** Share of the period elapsed, 0..1. */
+  /** Share of the period's counted time elapsed, 0..1. */
   elapsed: number
   attainment: SlaAttainment
   health: SlaHealth
@@ -185,30 +434,38 @@ export async function targetStatuses(
   now: Date = new Date(),
 ): Promise<TargetStatus[]> {
   const resolved = await resolveTargets(payload, targets)
+  const byId = new Map(targets.map((t) => [String(t.id), t]))
+  const zones = await loadSlaZones(
+    payload,
+    resolved.map((target) => target.organization),
+  )
   return Promise.all(
     resolved.map(async (target) => {
-      const period = currentPeriod(target.period, now)
-      const [figures, incidents] = await Promise.all([
-        loadSlaFigures(
-          payload,
-          { id: target.monitorId, lastStatus: target.lastStatus },
-          period,
-          now,
-        ),
-        loadPeriodIncidents(payload, target.monitorId, period),
-      ])
-      const attainment = slaAttainment(target, figures, periodSeconds(period))
-      const total = period.to - period.from
+      const zone = zoneOf(zones, target.organization)
+      const period = currentPeriod(target.period, now, zone)
+      const { attainment, incidents, elapsed } = await evaluateTarget(
+        payload,
+        target,
+        period,
+        zone,
+        now,
+      )
       return {
         id: target.id,
-        monitorId: String(target.monitorId),
-        monitorName: target.monitorName,
+        subject: target.subject,
+        name: target.name,
+        monitorId: target.monitor ? String(target.monitor.id) : null,
+        statusPageId: target.page ? String(target.page.page.id) : null,
+        component: target.page ? (byId.get(target.id)?.component ?? null) : null,
+        budgetAlerts: target.budgetAlerts,
         target: target.target,
         period: target.period,
         calculation: target.calculation,
         excludeMaintenance: target.excludeMaintenance,
-        ...periodDates(period),
-        elapsed: total > 0 ? Math.min(1, Math.max(0, (now.getTime() - period.from) / total)) : 0,
+        businessHours: target.businessHours,
+        periodKey: period.key,
+        ...periodDates(period, zone),
+        elapsed,
         attainment,
         health: slaHealth(attainment),
         incidents,
@@ -237,32 +494,38 @@ export async function reportTargets(payload: Payload, report: SlaReport): Promis
   return ids.flatMap((id) => byId.get(String(id)) ?? [])
 }
 
-/** One row per target of the report over `period`. */
+/**
+ * One row per target of the report over `period` (local days of the organization's time zone,
+ * see `periodFromDates`).
+ */
 export async function buildSlaReport(
   payload: Payload,
   report: SlaReport,
   period: SlaPeriod,
   now: Date = new Date(),
 ): Promise<SlaReportData> {
-  const resolved = await resolveTargets(payload, await reportTargets(payload, report))
+  const organization = relationId(report.organization)
+  const [resolved, zones] = await Promise.all([
+    reportTargets(payload, report).then((targets) => resolveTargets(payload, targets)),
+    loadSlaZones(payload, [organization]),
+  ])
+  const zone = zoneOf(zones, organization)
   const rows: SlaReportRow[] = await Promise.all(
     resolved.map(async (target) => {
-      const [figures, incidents] = await Promise.all([
-        loadSlaFigures(
-          payload,
-          { id: target.monitorId, lastStatus: target.lastStatus },
-          period,
-          now,
-        ),
-        loadPeriodIncidents(payload, target.monitorId, period),
-      ])
-      const attainment = slaAttainment(target, figures, periodSeconds(period))
+      const { figures, incidents, attainment } = await evaluateTarget(
+        payload,
+        target,
+        period,
+        zone,
+        now,
+      )
       return {
         targetId: target.id,
-        name: target.monitorName,
+        name: target.name,
         target: target.target,
         calculation: target.calculation,
         excludeMaintenance: target.excludeMaintenance,
+        businessHours: target.businessHours !== null,
         uptime: attainment.uptime,
         downtimeSeconds: figures.knownSeconds > 0 ? figures.downSeconds : null,
         incidents: incidents.length,
@@ -275,7 +538,8 @@ export async function buildSlaReport(
   )
   return {
     name: report.name,
-    ...periodDates(period),
+    ...periodDates(period, zone),
+    timeZone: zone.timeZone,
     generatedAt: now.toISOString(),
     rows,
   }

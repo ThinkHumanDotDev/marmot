@@ -242,23 +242,41 @@ are removed through the database adapter (`payload.db.deleteMany`); unconfirmed 
 
 ## SLA targets and reports
 
-`sla-targets` (monitor, `target` %, `period` = `month | quarter | rolling30`, `calculation` =
-`duration | checks`, `excludeMaintenance`), `sla-reports` (targets, `schedule` = `none | weekly |
+`sla-targets` (`subject` = `monitor | component | group`, the monitor or the status page and
+component/group row id, `target` %, `period` = `month | quarter | rolling30`, `calculation` =
+`duration | checks | manual`, `excludeMaintenance`, `businessHours`, `budgetAlerts` with the
+server-owned `budgetAlertState`), `sla-reports` (targets, `schedule` = `none | weekly |
 monthly`, recipients, delivery bookkeeping) and `sla-report-shares` (report, `fromDate`/`toDate`,
 `tokenHash`, `revokedAt`) are org-scoped (`sla:read` for viewers, `sla:manage` for admins) (#156).
 The maths is pure (`src/lib/sla.ts`: periods, `slaUptime`, `slaAttainment` with the error budget
 and burn rate, MTTR, the CSV); `src/server/sla/compute.ts` feeds it from the same sources as the
-status page uptime of #112 (`loadMonitorDays`: `stat-daily` counts and the replayed important
+status page uptime of #112 (`stat-daily` / `stat-hourly` counts and the replayed important
 heartbeats, which also yield the time spent in maintenance) plus the `monitor-incidents` of the
-period. Exports: CSV, a dependency-free PDF writer (`src/server/sla/pdf.ts`) and the
+period. Periods are cut in the organization's time zone and week start (`organizations.settings`,
+`src/server/sla/zone.ts`, #274) and a target's business-hours calendar narrows them further: both
+become a list of counted intervals (`countedIntervals`). Durations are replayed over each interval;
+check counts are taken from the hourly buckets (while kept and complete) or the daily ones, weighted
+by the share of each bucket that is counted, so whole UTC days give exactly the daily figures.
+Component and group targets (`src/server/sla/subjects.ts`, #274) reuse the status page sources of
+#112: a monitor component's figures plus the `status-page-uptime-history` snapshots of pruned days,
+or the page's incident impact spans (`componentImpactSpans`/`impactWithin`) for static components and
+the `manual` mode; a group is the mean of its visible components.
+
+Error budget alerts (`src/server/sla/alerts.ts`): the `sla-budget-check` job scheduler (every 15
+minutes on `marmot:maintenance`) evaluates the current period of every target with thresholds and
+channels, enqueues one `sla-budget-alert` job per channel for the lowest newly crossed threshold
+(job id per target, channel, period and threshold) and records `{ period, sent }` in
+`budgetAlertState`; the notification worker sends it through the channel's provider. Exports: CSV, a dependency-free PDF writer (`src/server/sla/pdf.ts`) and the
 server-rendered page.
 
 Scheduling uses the existing queues: the `sla-reports-due` job scheduler (hourly at :40 UTC on
 `marmot:maintenance`) enqueues one `sla-report-send` job per report whose previous complete week or
-month (`previousSchedulePeriod`) differs from its `lastSentPeriod` (job id
+month in the organization's time zone (`previousSchedulePeriod`) differs from its `lastSentPeriod` (job id
 `sla-report-<report>-<period>`); the notification worker renders the report and sends it to each
 recipient through the Payload email adapter with the CSV and PDF attached, then records the period.
-A new or changed schedule starts with the period that just ended marked as sent.
+A new or changed schedule starts with the period that just ended marked as sent. "Send now"
+(`POST …/sla/reports/:id/send`) calls the same `sendSlaReport` inline and leaves `lastSentPeriod`
+alone.
 
 Share links (`src/server/sla/shares.ts`) carry 32 random bytes; only the SHA-256 is stored, and the
 field can only be written by the share route (`req.context` flag) and never read through the API.

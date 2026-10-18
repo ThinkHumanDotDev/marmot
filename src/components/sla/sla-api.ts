@@ -3,9 +3,22 @@
  * (`orgScoped('sla:manage')` decides who may); share links through the org routes.
  */
 import { api } from '@/lib/api'
-import type { SlaCalculation, SlaSchedule, SlaWindow } from '@/lib/sla'
+import type {
+  SlaBusinessHours,
+  SlaCalculation,
+  SlaSchedule,
+  SlaSubject,
+  SlaWindow,
+} from '@/lib/sla'
 
 type Id = string | number
+
+/** A status page with its groups and their components, for component and group targets. */
+export interface StatusPageOption {
+  id: string
+  title: string
+  groups: { id: string; name: string; components: { id: string; name: string }[] }[]
+}
 
 /** A report as the SLA page lists it. */
 export interface SlaReportRowView {
@@ -34,11 +47,19 @@ export const ref = (id: Id): Id =>
   typeof id === 'string' && /^\d{1,15}$/.test(id) ? Number(id) : id
 
 export interface TargetInput {
-  monitor: string
+  subject: SlaSubject
+  /** Monitor targets. */
+  monitor: string | null
+  /** Component and group targets (#274): the page and the component or group row id. */
+  statusPage: string | null
+  component: string | null
+  budgetAlerts: { thresholds: number[]; notifications: string[] }
   target: number
   period: SlaWindow
   calculation: SlaCalculation
   excludeMaintenance: boolean
+  /** Null: the whole period counts. */
+  businessHours: SlaBusinessHours | null
 }
 
 export interface ReportInput {
@@ -52,7 +73,24 @@ type Doc = { id: Id } & Record<string, unknown>
 
 const query = { depth: 0 }
 
-const targetBody = (input: TargetInput) => ({ ...input, monitor: ref(input.monitor) })
+const targetBody = ({ businessHours, budgetAlerts, ...input }: TargetInput) => ({
+  ...input,
+  monitor: input.monitor ? ref(input.monitor) : null,
+  statusPage: input.statusPage ? ref(input.statusPage) : null,
+  budgetAlerts: {
+    thresholds: budgetAlerts.thresholds,
+    notifications: budgetAlerts.notifications.map(ref),
+  },
+  businessHours: businessHours
+    ? {
+        enabled: true,
+        days: businessHours.days,
+        start: businessHours.start,
+        end: businessHours.end,
+        holidays: businessHours.holidays.map((date) => ({ date })),
+      }
+    : { enabled: false },
+})
 
 const reportBody = (input: ReportInput) => ({
   name: input.name,
@@ -108,6 +146,11 @@ export const slaApi = {
     api.post<{ doc: ShareRowView; url: string; token: string }>(
       `/api/orgs/${orgId}/sla/reports/${reportId}/shares`,
       range,
+    ),
+  sendReport: (orgId: Id, reportId: Id, input: { test: boolean; from: string; to: string }) =>
+    api.post<{ sent: number; test: boolean; from: string; to: string }>(
+      `/api/orgs/${orgId}/sla/reports/${reportId}/send`,
+      input,
     ),
   revokeShare: (orgId: Id, reportId: Id, shareId: Id) =>
     api.delete<{ doc: ShareRowView }>(

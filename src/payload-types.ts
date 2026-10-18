@@ -1627,11 +1627,39 @@ export interface StatusPageUptimeHistory {
 export interface SlaTarget {
   id: number;
   organization: number | Organization;
-  monitor: number | Monitor;
+  subject?: ('monitor' | 'component' | 'group') | null;
+  monitor?: (number | null) | Monitor;
+  statusPage?: (number | null) | StatusPage;
+  component?: string | null;
   target: number;
   period: 'month' | 'quarter' | 'rolling30';
-  calculation: 'duration' | 'checks';
+  calculation: 'duration' | 'checks' | 'manual';
   excludeMaintenance?: boolean | null;
+  businessHours?: {
+    enabled?: boolean | null;
+    days?: ('mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun')[] | null;
+    start?: string | null;
+    end?: string | null;
+    holidays?:
+      | {
+          date: string;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  budgetAlerts?: {
+    thresholds?: number[] | null;
+    notifications?: (number | Notification)[] | null;
+  };
+  budgetAlertState?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -3418,11 +3446,35 @@ export interface StatusPageUptimeHistorySelect<T extends boolean = true> {
  */
 export interface SlaTargetsSelect<T extends boolean = true> {
   organization?: T;
+  subject?: T;
   monitor?: T;
+  statusPage?: T;
+  component?: T;
   target?: T;
   period?: T;
   calculation?: T;
   excludeMaintenance?: T;
+  businessHours?:
+    | T
+    | {
+        enabled?: T;
+        days?: T;
+        start?: T;
+        end?: T;
+        holidays?:
+          | T
+          | {
+              date?: T;
+              id?: T;
+            };
+      };
+  budgetAlerts?:
+    | T
+    | {
+        thresholds?: T;
+        notifications?: T;
+      };
+  budgetAlertState?: T;
   updatedAt?: T;
   createdAt?: T;
 }
