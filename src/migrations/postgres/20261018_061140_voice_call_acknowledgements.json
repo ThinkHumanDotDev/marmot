@@ -1951,89 +1951,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.monitors_pagespeed_categories": {
-      "name": "monitors_pagespeed_categories",
-      "schema": "",
-      "columns": {
-        "order": {
-          "name": "order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value": {
-          "name": "value",
-          "type": "enum_monitors_pagespeed_categories",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "monitors_pagespeed_categories_order_idx": {
-          "name": "monitors_pagespeed_categories_order_idx",
-          "columns": [
-            {
-              "expression": "order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitors_pagespeed_categories_parent_idx": {
-          "name": "monitors_pagespeed_categories_parent_idx",
-          "columns": [
-            {
-              "expression": "parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "monitors_pagespeed_categories_parent_fk": {
-          "name": "monitors_pagespeed_categories_parent_fk",
-          "tableFrom": "monitors_pagespeed_categories",
-          "tableTo": "monitors",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.monitors": {
       "name": "monitors",
       "schema": "",
@@ -3032,54 +2949,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": true
-        },
-        "pagespeed_backend": {
-          "name": "pagespeed_backend",
-          "type": "enum_monitors_pagespeed_backend",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'psi'"
-        },
-        "pagespeed_strategy": {
-          "name": "pagespeed_strategy",
-          "type": "enum_monitors_pagespeed_strategy",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'mobile'"
-        },
-        "pagespeed_fail_status": {
-          "name": "pagespeed_fail_status",
-          "type": "enum_monitors_pagespeed_fail_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'degraded'"
-        },
-        "pagespeed_min_performance": {
-          "name": "pagespeed_min_performance",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pagespeed_min_accessibility": {
-          "name": "pagespeed_min_accessibility",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pagespeed_min_best_practices": {
-          "name": "pagespeed_min_best_practices",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pagespeed_min_seo": {
-          "name": "pagespeed_min_seo",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
         },
         "remote_browser": {
           "name": "remote_browser",
@@ -5330,12 +5199,6 @@
         "value": {
           "name": "value",
           "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pagespeed": {
-          "name": "pagespeed",
-          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
@@ -20109,12 +19972,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "pagespeed_api_key": {
-          "name": "pagespeed_api_key",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp(3) with time zone",
@@ -20377,16 +20234,6 @@
         "not_matches"
       ]
     },
-    "public.enum_monitors_pagespeed_categories": {
-      "name": "enum_monitors_pagespeed_categories",
-      "schema": "public",
-      "values": [
-        "performance",
-        "accessibility",
-        "best-practices",
-        "seo"
-      ]
-    },
     "public.enum_monitors_type": {
       "name": "enum_monitors_type",
       "schema": "public",
@@ -20421,7 +20268,6 @@
         "radius",
         "tailscale-ping",
         "real-browser",
-        "pagespeed",
         "mysql",
         "postgres",
         "sqlserver",
@@ -20726,30 +20572,6 @@
         "privateKey"
       ]
     },
-    "public.enum_monitors_pagespeed_backend": {
-      "name": "enum_monitors_pagespeed_backend",
-      "schema": "public",
-      "values": [
-        "psi",
-        "lighthouse"
-      ]
-    },
-    "public.enum_monitors_pagespeed_strategy": {
-      "name": "enum_monitors_pagespeed_strategy",
-      "schema": "public",
-      "values": [
-        "mobile",
-        "desktop"
-      ]
-    },
-    "public.enum_monitors_pagespeed_fail_status": {
-      "name": "enum_monitors_pagespeed_fail_status",
-      "schema": "public",
-      "values": [
-        "degraded",
-        "down"
-      ]
-    },
     "public.enum_monitors_status_last_status": {
       "name": "enum_monitors_status_last_status",
       "schema": "public",
@@ -20890,7 +20712,8 @@
       "values": [
         "dashboard",
         "api",
-        "link"
+        "link",
+        "phone"
       ]
     },
     "public.enum_monitor_incidents_status": {
@@ -20908,7 +20731,8 @@
       "values": [
         "dashboard",
         "api",
-        "link"
+        "link",
+        "phone"
       ]
     },
     "public.enum_monitor_incidents_escalation_status": {
@@ -21669,6 +21493,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "c34d1cba-ed03-453f-a168-0947d75575ad",
+  "id": "8c7e0a54-1935-4ec9-9fec-e5b9541e98d8",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }
