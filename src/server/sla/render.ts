@@ -35,7 +35,7 @@ export function reportCells(report: SlaReportData, i18n: RenderI18n) {
     { label: t('sla.columns.met'), width: 1.6 },
   ]
   const row = (r: SlaReportRow) => [
-    r.name,
+    r.businessHours ? `${r.name} (${t('sla.report.businessHours')})` : r.name,
     format.number(r.target / 100, 'targetPercent'),
     r.uptime === null ? DASH : format.number(r.uptime, 'slaPercent'),
     minutes(r.downtimeSeconds),
@@ -47,6 +47,7 @@ export function reportCells(report: SlaReportData, i18n: RenderI18n) {
   const range = t('sla.report.range', {
     from: format.dateTime(new Date(`${report.from}T00:00:00Z`), 'utcDate'),
     to: format.dateTime(new Date(`${report.to}T00:00:00Z`), 'utcDate'),
+    timeZone: report.timeZone,
   })
   const generated = t('sla.report.generatedAt', {
     date: format.dateTime(new Date(report.generatedAt), 'zoned'),

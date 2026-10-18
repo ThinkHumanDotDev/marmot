@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import config from '@payload-config'
 import { GET as reportRoute } from '@/app/api/orgs/[orgId]/sla/reports/[id]/route'
+import { POST as sendRoute } from '@/app/api/orgs/[orgId]/sla/reports/[id]/send/route'
 import { DELETE as revokeRoute } from '@/app/api/orgs/[orgId]/sla/reports/[id]/shares/[shareId]/route'
 import {
   GET as sharesListRoute,
@@ -16,7 +17,7 @@ import {
 } from '@/app/api/orgs/[orgId]/sla/reports/[id]/shares/route'
 import { GET as targetsRoute } from '@/app/api/orgs/[orgId]/sla/targets/route'
 import { GET as publicRoute } from '@/app/api/sla/[token]/route'
-import { periodDates, previousSchedulePeriod, type SlaReportData } from '@/lib/sla'
+import { periodDates, periodFromDates, previousSchedulePeriod, type SlaReportData } from '@/lib/sla'
 import type { Monitor, Organization, SlaReport, SlaTarget, User } from '@/payload-types'
 import type { TargetStatus } from '@/server/sla/compute'
 import { buildSlaReport, targetStatuses } from '@/server/sla/compute'
@@ -199,6 +200,7 @@ describe('SLA targets and reports', () => {
       const where = { organization: { equals: target.id } }
       await payload.delete({ collection: 'heartbeats', where })
       await payload.delete({ collection: 'stat-daily', where })
+      await payload.delete({ collection: 'stat-hourly', where })
       await payload.delete({ collection: 'monitor-incidents', where })
       await payload.delete({ collection: 'monitors', where })
       await payload.delete({ collection: 'organizations', id: target.id })
@@ -455,7 +457,14 @@ describe('SLA targets and reports', () => {
       const res = await call(publicRoute, `/api/sla/${token}`, { token })
       expect(res.status).toBe(200)
       const data = (await res.json()) as SlaReportData
-      expect(Object.keys(data).sort()).toEqual(['from', 'generatedAt', 'name', 'rows', 'to'])
+      expect(Object.keys(data).sort()).toEqual([
+        'from',
+        'generatedAt',
+        'name',
+        'rows',
+        'timeZone',
+        'to',
+      ])
       expect(data.name).toBe('Customer SLA')
       expect([data.from, data.to]).toEqual([range.from, range.to])
       expect(data.rows.map((r) => r.name)).toEqual(['Checkout API', 'Checkout API'])
@@ -664,6 +673,220 @@ describe('SLA targets and reports', () => {
       } finally {
         sendEmail.mockRestore()
       }
+    })
+  })
+
+  describe('business hours (#274)', () => {
+    const everyDay = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
+    const create = (data: Record<string, unknown>) =>
+      payload.create({
+        collection: 'sla-targets',
+        data: {
+          organization: org.id,
+          monitor: monitor.id,
+          target: 99.9,
+          period: 'month',
+          excludeMaintenance: false,
+          ...data,
+        },
+        user: asUser(owner),
+        overrideAccess: false,
+      } as never) as Promise<SlaTarget>
+    const hours = (start: string, end: string) => ({
+      enabled: true,
+      days: [...everyDay],
+      start,
+      end,
+      holidays: [],
+    })
+
+    beforeAll(async () => {
+      // Hourly buckets of day 3: 60 checks an hour, 20 of them failed at 10:00.
+      for (let hour = 0; hour < 24; hour++) {
+        await payload.create({
+          collection: 'stat-hourly',
+          data: {
+            monitor: monitor.id,
+            organization: org.id,
+            timestamp: (month.from + 2 * DAY + hour * HOUR) / 1000,
+            up: hour === 10 ? 40 : 60,
+            down: hour === 10 ? 20 : 0,
+          },
+        })
+      }
+    })
+
+    it('counts downtime and budget only inside the calendar (duration)', async () => {
+      const inside = await create({
+        calculation: 'duration',
+        businessHours: hours('09:00', '17:00'),
+      })
+      const outside = await create({
+        calculation: 'duration',
+        businessHours: hours('12:00', '17:00'),
+      })
+      const [a, b] = await targetStatuses(payload, [inside, outside], new Date(month.to - 1))
+      const counted = days * 8 * 3600
+      expect(a.businessHours?.start).toBe('09:00')
+      expect(a.attainment.budgetSeconds).toBeCloseTo(0.001 * counted, 3)
+      expect(a.attainment.uptime).toBeCloseTo(1 - 1200 / counted, 9)
+      expect(a.attainment.remainingSeconds).toBeCloseTo(0.001 * counted - 1200, 3)
+      // The outage at 10:00 is outside 12:00–17:00.
+      expect(b.attainment.uptime).toBe(1)
+      expect(b.attainment.budgetSeconds).toBeCloseTo(0.001 * days * 5 * 3600, 3)
+    })
+
+    it('reads the checks of the counted hours from the hourly buckets', async () => {
+      const afternoon = await create({
+        calculation: 'checks',
+        businessHours: hours('12:00', '17:00'),
+      })
+      const tenToEleven = await create({
+        calculation: 'checks',
+        businessHours: hours('10:00', '11:00'),
+      })
+      const [a, b] = await targetStatuses(payload, [afternoon, tenToEleven], new Date(month.to - 1))
+      // Day 3's failures happened at 10:00: the afternoon saw none.
+      expect(a.attainment.uptime).toBe(1)
+      // Other days have no hourly buckets: an hour is 1/24 of their 1440 checks.
+      expect(b.attainment.uptime).toBeCloseTo((60 * days - 20) / (60 * days), 9)
+
+      const data = await buildSlaReport(
+        payload,
+        { ...report, targets: [afternoon.id] } as SlaReport,
+        month,
+        now,
+      )
+      expect(data.rows[0].businessHours).toBe(true)
+      for (const target of [afternoon, tenToEleven]) {
+        await payload.delete({ collection: 'sla-targets', id: target.id })
+      }
+    })
+
+    it('skips holidays and refuses unusable calendars', async () => {
+      const holidays = Array.from({ length: days }, (_, i) => at(i + 1).slice(0, 10))
+      const target = await create({
+        calculation: 'duration',
+        businessHours: { ...hours('09:00', '17:00'), holidays: [{ date: holidays[2] }] },
+      })
+      const [status] = await targetStatuses(payload, [target], new Date(month.to - 1))
+      // Day 3, the day of the outage, is a holiday.
+      expect(status.attainment.uptime).toBe(1)
+      expect(status.attainment.budgetSeconds).toBeCloseTo(0.001 * (days - 1) * 8 * 3600, 3)
+
+      for (const bad of [
+        hours('17:00', '09:00'),
+        { ...hours('09:00', '17:00'), days: [] },
+        { ...hours('09:00', '17:00'), holidays: [{ date: '2026-02-30' }] },
+        hours('9am', '17:00'),
+      ]) {
+        await expect(create({ calculation: 'duration', businessHours: bad })).rejects.toThrow()
+      }
+    })
+  })
+
+  describe('organization time zone (#274)', () => {
+    afterAll(async () => {
+      await payload.update({
+        collection: 'organizations',
+        id: org.id,
+        data: { settings: { timezone: 'UTC', weekStart: 'monday' } },
+      })
+    })
+
+    it('cuts report ranges and schedules at local midnight', async () => {
+      await payload.update({
+        collection: 'organizations',
+        id: org.id,
+        data: { settings: { timezone: 'Asia/Tokyo', weekStart: 'monday' } },
+      })
+      const tokyo = { timeZone: 'Asia/Tokyo', weekStart: 'monday' as const }
+      const local = periodFromDates(range.from, range.to, tokyo)!
+      expect(local.from).toBe(month.from - 9 * HOUR)
+
+      const data = await buildSlaReport(
+        payload,
+        { ...report, targets: [durationTarget.id] } as SlaReport,
+        local,
+        now,
+      )
+      expect([data.from, data.to, data.timeZone]).toEqual([range.from, range.to, 'Asia/Tokyo'])
+      // The nine hours before the first UTC day have no statistics, so they are not known.
+      expect(data.rows[0].uptime).toBeCloseTo(1 - 1200 / (monthSeconds - 9 * 3600), 9)
+      expect(data.rows[0].budgetSeconds).toBeCloseTo(0.001 * monthSeconds, 3)
+
+      // The month is complete in Tokyo at 00:40 local on the 1st, still the 31st in UTC.
+      await payload.update({
+        collection: 'sla-reports',
+        id: report.id,
+        data: { lastSentPeriod: 'earlier' },
+        overrideAccess: true,
+      })
+      const jobs: SlaJob[] = []
+      setSlaJobSink(async (batch) => void jobs.push(...batch))
+      await enqueueDueSlaReports(payload, new Date(month.to - 9 * HOUR + 40 * MIN))
+      const mine = jobs.filter((job) => job.data.reportId === String(report.id))
+      expect(mine.map((job) => [job.data.period, job.data.from])).toEqual([
+        [month.key, month.from - 9 * HOUR],
+      ])
+    })
+  })
+
+  describe('send now (#274)', () => {
+    const sendPath = () => `/api/orgs/${org.id}/sla/reports/${report.id}/send`
+    const params = () => ({ orgId: String(org.id), id: String(report.id) })
+    const post = (token: string, body: unknown) =>
+      call(sendRoute, sendPath(), params(), token, { method: 'POST', body: JSON.stringify(body) })
+
+    it('emails a test to the caller or the report to its recipients, leaving the schedule', async () => {
+      await payload.update({
+        collection: 'sla-reports',
+        id: report.id,
+        data: { lastSentPeriod: 'earlier' },
+        overrideAccess: true,
+      })
+      const sendEmail = vi.spyOn(payload, 'sendEmail').mockResolvedValue(undefined as never)
+      try {
+        expect((await post(tokens.viewer, { test: true })).status).toBe(403)
+        expect((await post(tokens.outsider, { test: true })).status).toBe(403)
+        expect((await post(tokens.owner, { from: '2026-02-31', to: range.to })).status).toBe(400)
+
+        const test = await post(tokens.owner, { test: true, ...range })
+        expect(test.status).toBe(200)
+        expect(await test.json()).toMatchObject({ sent: 1, test: true, ...range })
+        expect(sendEmail.mock.calls.map(([message]) => message.to)).toEqual([owner.email])
+
+        const all = await post(tokens.owner, {})
+        expect(all.status).toBe(200)
+        // Default range: the schedule's last complete period.
+        expect(await all.json()).toMatchObject({ sent: 2, test: false })
+        expect(sendEmail.mock.calls.slice(1).map(([message]) => message.to)).toEqual([
+          'a@example.com',
+          'b@example.com',
+        ])
+        const after = await payload.findByID({ collection: 'sla-reports', id: report.id })
+        expect(after.lastSentPeriod).toBe('earlier')
+        expect(after.lastSentAt).toBeTruthy()
+      } finally {
+        sendEmail.mockRestore()
+      }
+    })
+
+    it('needs recipients to send to', async () => {
+      const bare = (await payload.create({
+        collection: 'sla-reports',
+        data: { organization: org.id, name: 'No recipients', targets: [durationTarget.id] },
+        overrideAccess: true,
+      } as never)) as SlaReport
+      const res = await call(
+        sendRoute,
+        `/api/orgs/${org.id}/sla/reports/${bare.id}/send`,
+        { orgId: String(org.id), id: String(bare.id) },
+        tokens.owner,
+        { method: 'POST', body: '{}' },
+      )
+      expect(res.status).toBe(400)
+      await payload.delete({ collection: 'sla-reports', id: bare.id })
     })
   })
 
