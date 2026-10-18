@@ -5099,6 +5099,10 @@
         "failed": "Could not post update",
         "resolveHint": "Resolving resets every affected component to operational."
       },
+      "postedAt": {
+        "label": "Posted at (optional)",
+        "hint": "Leave empty to post now. Times are in {zone}."
+      },
       "components": {
         "title": "Affected components",
         "hint": "Components you leave unchanged keep their current impact.",
@@ -5378,6 +5382,8 @@
       "draftNotice": "The badge shows “Unknown” until the page is published.",
       "address": "Address",
       "mainAddress": "Marmot address (/status/…)",
+      "language": "Language",
+      "languageBadgeHint": "The badge links to the page in this language; its text stays in English.",
       "style": "Style",
       "styles": {
         "pill": "Pill (default)",
@@ -6016,6 +6022,7 @@
       "timezone": "Time zone",
       "timezoneDefault": "Organization default ({zone})",
       "timezoneHint": "Dates and times above are read in this zone.",
+      "datesInZone": "Times are in {zone}.",
       "starts": "Starts",
       "ends": "Ends",
       "effectiveFrom": "Effective from",
