@@ -2496,6 +2496,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "http_suite": {
+          "name": "http_suite",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "push_token": {
           "name": "push_token",
           "type": "varchar",
@@ -5192,6 +5198,12 @@
         },
         "probes": {
           "name": "probes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "steps": {
+          "name": "steps",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
@@ -20377,6 +20389,7 @@
         "keyword",
         "json-query",
         "prometheus",
+        "http-suite",
         "port",
         "ping",
         "dns",
@@ -21633,6 +21646,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "565fe6c2-6c4b-4ce5-982a-99f2a1ce7e1e",
+  "id": "7b24fdae-c0a4-4bd0-bf3f-385a4538e2d8",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

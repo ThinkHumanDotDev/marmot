@@ -70,7 +70,8 @@ import * as migration_20261012_235905_on_call_escalation from './20261012_235905
 import * as migration_20261013_013350_inbound_integrations from './20261013_013350_inbound_integrations';
 import * as migration_20261018_002154_issue_tracker_alerts from './20261018_002154_issue_tracker_alerts';
 import * as migration_20261018_061140_voice_call_acknowledgements from './20261018_061140_voice_call_acknowledgements';
-import * as migration_20261018_104413_declared_incident_follow_ups from './20261018_104413_declared_incident_follow_ups';
+import * as migration_20261018_105524_http_suite_monitor from './20261018_105524_http_suite_monitor';
+import * as migration_20261018_150607_declared_incident_follow_ups from './20261018_150607_declared_incident_follow_ups';
 
 export const migrations = [
   {
@@ -434,8 +435,13 @@ export const migrations = [
     name: '20261018_061140_voice_call_acknowledgements',
   },
   {
-    up: migration_20261018_104413_declared_incident_follow_ups.up,
-    down: migration_20261018_104413_declared_incident_follow_ups.down,
-    name: '20261018_104413_declared_incident_follow_ups'
+    up: migration_20261018_105524_http_suite_monitor.up,
+    down: migration_20261018_105524_http_suite_monitor.down,
+    name: '20261018_105524_http_suite_monitor',
+  },
+  {
+    up: migration_20261018_150607_declared_incident_follow_ups.up,
+    down: migration_20261018_150607_declared_incident_follow_ups.down,
+    name: '20261018_150607_declared_incident_follow_ups'
   },
 ];

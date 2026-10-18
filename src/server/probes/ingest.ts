@@ -12,6 +12,7 @@ import { isMultiLocation, monitorLocationIds, probeSupportsType } from '@/lib/pr
 import type { Location, Monitor } from '@/payload-types'
 import { parseRequestTiming } from '@/lib/request-timing'
 import type { AssertionResult } from '@/lib/validation/assertions'
+import { parseSuiteStepResults } from '@/lib/validation/http-suite'
 import { getOrgMinIntervalSeconds } from '@/server/billing/entitlements'
 import { nextIntervalSeconds, type CheckResult } from '@/server/engine/beat'
 import type { TlsInfo } from '@/server/engine/tls'
@@ -45,6 +46,7 @@ export function toCheckResult(result: ParsedResult): CheckResult {
     assertions: (result.assertions as AssertionResult[] | null | undefined) ?? null,
     timing: parseRequestTiming(result.timing),
     value: result.value ?? null,
+    steps: parseSuiteStepResults(result.steps),
     ...(result.blocked ? { blocked: true } : {}),
     ...(result.checkerOffline ? { checkerOffline: true } : {}),
     ...(result.deferred ? { deferred: true } : {}),

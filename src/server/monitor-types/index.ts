@@ -12,6 +12,7 @@ import './manual'
 import './docker'
 import './globalping'
 import './status-page'
+import './http-suite'
 // Protocols
 import './grpc-keyword'
 import './websocket-upgrade'
