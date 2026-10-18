@@ -51,7 +51,7 @@ export default async function NewMaintenancePage({ params }: NewMaintenancePageP
           mode="create"
           orgId={ctx.org.id}
           orgSlug={orgSlug}
-          initialValues={defaultMaintenanceValues()}
+          initialValues={defaultMaintenanceValues(new Date(), orgTimezone)}
           monitors={monitors}
           statusPages={statusPages}
           orgTimezone={orgTimezone}

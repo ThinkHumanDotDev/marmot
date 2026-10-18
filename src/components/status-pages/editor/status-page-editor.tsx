@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { isValidTimeZone } from '@/i18n/formats'
 import { track } from '@/lib/analytics'
 import { componentDisplayName } from '@/lib/status-page-components'
 import type { TemplateRow } from '@/lib/templates'
@@ -45,7 +46,10 @@ export interface EditorProps {
   monitors: MonitorOption[]
   canEdit: boolean
   canDelete: boolean
-  /** Organization time zone the incident timestamps render in. */
+  /**
+   * Organization time zone. Incident times render and are entered in the page's own zone when it
+   * has one (`timeZone` setting), so admins type what visitors see.
+   */
   timeZone: string
   /** Name of the organization (`{{ organization }}` in templates). */
   orgName: string
@@ -224,7 +228,7 @@ export function StatusPageEditor({
               initialIncidents={initialIncidents}
               components={incidentComponents}
               templateContext={templateContext}
-              timeZone={timeZone}
+              timeZone={isValidTimeZone(page.timeZone) ? page.timeZone : timeZone}
               canEdit={canEdit}
             />
           </TabsContent>

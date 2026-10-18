@@ -82,6 +82,10 @@ components (rows of the page's groups, by component id — see [Components](#com
   performance", `partial_outage` "partially degraded" and `major_outage` "major outage".
 - Posted updates are history. Their text can be corrected later — the update is then shown as _edited_ —
   but status, time and impacts stay as posted. Updates may be back-dated, not post-dated.
+- _(landing in the current release, #271)_ The editor's **Posted at** field back-dates a new incident or
+  update. It is entered in the page's time zone (its `timeZone` setting, else the organization's), the
+  zone the editor's timeline is shown in, so what admins type is what visitors of a page-zone page read.
+  Leave it empty to post now.
 - Only components of the incident's page can be affected, each once per update. Components removed
   from the page later stay in the history and are ignored publicly.
 - `affectedComponents` is the incident's current state, kept in sync with the timeline. Clients that
@@ -675,6 +679,14 @@ visitor` (default) they switch to the visitor's browser zone after hydration; wi
   the page zone. The footer says which zone is in use and, when the visitor's zone differs, lets them
   switch between the two (remembered in `localStorage`). Day and month grouping of the history follows
   the page zone.
+- **Visitor-facing API errors** _(landing in the current release, #271)_: the sign-in
+  (`POST /api/status-pages/:slug/access`) and subscription (`/subscribe`, `/subscribe/verify`) endpoints
+  answer `{ error }` in the page's language: the `?locale=` the login form and the subscribe dialog send
+  when the page offers it, else the page's default language (never the signed-in app's). Unknown pages
+  use `?locale=`, then the language cookie and `Accept-Language`. These messages are part of the public
+  catalogues (`VISITOR_ERROR_KEYS` in `src/i18n/messages/scopes.ts`).
+- **Week start**: the history views group by day and month, so there is no week start setting yet; it
+  arrives with a week-based history view.
 
 ## Builder
 
@@ -957,7 +969,10 @@ it is served as `/robots.txt` and points crawlers at the sitemap.
 `GET /status/:slug/badge.svg` is one SVG badge with the overall state of the page, for a README or a
 website footer (per-monitor badges are in [Integrations](Integrations.md#badges)). The **Share** tab of the
 editor builds the URL and copies Markdown or HTML snippets that link the badge to the page. On a custom
-domain the same badge is served at `https://status.example.com/badge.svg`.
+domain the same badge is served at `https://status.example.com/badge.svg`. Like every page path it takes
+the page's [language prefix](#languages-and-time-zones) (`/status/acme/fr/badge.svg`); the Share tab's
+**Language** picker builds such snippets, so the badge links to the page in that language. The badge text
+itself stays in English _(landing in the current release, #271)_.
 
 | State                   | Colour    | When                                                                                       |
 | ----------------------- | --------- | ------------------------------------------------------------------------------------------ |
@@ -1049,6 +1064,12 @@ auto-refresh interval (at least every 30 seconds, never when auto-refresh is off
 `light` (default), `dark` or `auto` (the visitor's system setting), `data-size` `sm`, `md` (default) or
 `lg`; the pill lives in a shadow root, so the host site's CSS does not affect it. The Share tab also has a
 React component that appends the script to its own element. The widget does not need **Allow embedding**.
+
+_(landing in the current release, #271)_ The widget and the iframe embed accept the page's language
+prefix like the other page paths: `/status/acme/fr/widget.js` links the pill to `/status/acme/fr` and
+reads `/status/acme/fr/api/v2/status.json`, so the status text is in French; `/status/acme/fr?embed=all`
+frames the French page. The Share tab offers a **Language** picker for both snippets when the page has
+more than one language.
 
 Only public pages have a widget: for a draft or a protected page `widget.js` answers `404` whatever
 credentials the request carries, and `status.json` sends no CORS header to visitors admitted by an IP

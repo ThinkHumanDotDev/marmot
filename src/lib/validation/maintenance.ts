@@ -13,6 +13,7 @@ import {
   REMINDER_OFFSETS,
   type ReminderOffset,
 } from '@/lib/maintenance-announcements'
+import { toZonedInput } from '@/lib/zoned-time'
 
 export const MAINTENANCE_STRATEGIES = [
   'manual',
@@ -241,15 +242,24 @@ export function toDateTimeLocal(date: Date): string {
   )}:${pad(date.getMinutes())}`
 }
 
-/** Defaults for the create form: a one-hour single window starting now (Uptime Kuma's defaults). */
-export function defaultMaintenanceValues(now: Date = new Date()): MaintenanceFormValues {
+/**
+ * Defaults for the create form: a one-hour single window starting now (Uptime Kuma's defaults).
+ * The window is written as wall-clock times in `timeZone` (the organization's zone, which a new
+ * maintenance follows), since that is where the server reads them; without a zone in the process's.
+ */
+export function defaultMaintenanceValues(
+  now: Date = new Date(),
+  timeZone?: string,
+): MaintenanceFormValues {
   const oneHourLater = new Date(now.getTime() + 60 * 60_000)
+  const wallClock = (date: Date) =>
+    timeZone ? toZonedInput(date, timeZone) : toDateTimeLocal(date)
   return {
     title: '',
     description: null,
     strategy: 'single',
     active: true,
-    dateRange: { start: toDateTimeLocal(now), end: toDateTimeLocal(oneHourLater) },
+    dateRange: { start: wallClock(now), end: wallClock(oneHourLater) },
     timeRange: { start: '02:00', end: '03:00' },
     intervalDay: 1,
     weekdays: [],
