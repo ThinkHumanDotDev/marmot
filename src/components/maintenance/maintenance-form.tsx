@@ -47,6 +47,7 @@ import {
 } from '@/lib/templates'
 import { cn } from '@/lib/utils'
 import { timeZoneOrDefault } from '@/i18n/formats'
+import { addMinutesInZone, fromZonedInput } from '@/lib/zoned-time'
 import { REMINDER_OFFSETS, type ReminderOffset } from '@/lib/maintenance-announcements'
 import {
   createMaintenanceFormSchema,
@@ -57,7 +58,6 @@ import {
   MAX_DURATION_MINUTES,
   MAX_INTERVAL_DAYS,
   SAME_AS_SERVER,
-  toDateTimeLocal,
   WEEKDAY_ORDER,
   type DayOfMonthValue,
   type MaintenanceFormInput,
@@ -391,12 +391,10 @@ export function MaintenanceForm({
       toast.error(t('setStartFirst'))
       return
     }
-    const from = new Date(start)
-    if (Number.isNaN(from.getTime())) return
-    setValue('dateRange.end', toDateTimeLocal(new Date(from.getTime() + minutes * 60_000)), {
-      shouldDirty: true,
-      shouldValidate: true,
-    })
+    // Wall-clock times in the maintenance's zone: add the duration there (DST changes included).
+    const end = addMinutesInZone(start, minutes, previewZone)
+    if (!end) return
+    setValue('dateRange.end', end, { shouldDirty: true, shouldValidate: true })
   }
 
   /**
@@ -408,23 +406,16 @@ export function MaintenanceForm({
     if (minutes) {
       const start = getValues('dateRange.start')
       if (getValues('strategy') === 'single' && start) {
-        const from = new Date(start)
-        if (!Number.isNaN(from.getTime())) {
-          setValue('dateRange.end', toDateTimeLocal(new Date(from.getTime() + minutes * 60_000)), {
-            shouldDirty: true,
-          })
-        }
+        const end = addMinutesInZone(start, minutes, previewZone)
+        if (end) setValue('dateRange.end', end, { shouldDirty: true })
       } else if (getValues('strategy') === 'cron') {
         setValue('duration', minutes, { shouldDirty: true })
       }
     }
-    // `datetime-local` values are wall-clock times: show them as typed (the browser's zone).
-    const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    // `datetime-local` values are wall-clock times in the maintenance's zone: show them as typed.
     const wallClock = (value: string | null | undefined) => {
-      const date = value ? new Date(value) : null
-      return date && !Number.isNaN(date.getTime())
-        ? format.dateTime(date, 'short', { timeZone: localZone })
-        : null
+      const date = fromZonedInput(value, previewZone)
+      return date ? format.dateTime(date, 'short', { timeZone: previewZone }) : null
     }
     const render = (text: string) =>
       renderTemplateText(text, 'maintenance', {
@@ -760,6 +751,12 @@ export function MaintenanceForm({
                   type="datetime-local"
                   description={strategy === 'single' ? undefined : t('effectiveUntilHint')}
                 />
+                <p
+                  className="text-xs text-muted-foreground sm:col-span-2"
+                  data-testid="maintenance-dates-zone"
+                >
+                  {t('datesInZone', { zone: previewZone })}
+                </p>
               </div>
             )}
 
