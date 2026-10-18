@@ -79,8 +79,8 @@ formats answers 400; a file over 10 MB answers 413.
 
 ## Importing from a hosted service
 
-**Import from a service** (same settings tab) moves an account from **Atlassian Statuspage** or
-**Better Stack** through the service's API. Pick the service, paste an API key, choose what to
+**Import from a service** (same settings tab) moves an account from **Atlassian Statuspage**,
+**Better Stack**, **Instatus** or **Checkly** through the service's API. Pick the service, paste an API key, choose what to
 import, then **Connect and preview**: Marmot reads the account and shows the same report as a file
 import (counts per part, every skipped item with its reason, notes). **Import** reads the account
 again and writes it in one transaction, in the order monitors → status page and components →
@@ -97,8 +97,8 @@ and revoke it afterwards.
 | -------------------- | ------------------------------------------- | :------: | :------------------------: | :----------------------------------: | :------------------: | :---------: |
 | Atlassian Statuspage | API key, page ID                            |    —     |             ✓              |                  ✓                   |          ✓           |      ✓      |
 | Better Stack         | Uptime API token, status page ID (optional) |    ✓     |             ✓              |                  ✓                   |          ✓           |      —      |
-
-Instatus and Checkly are planned (#283).
+| Instatus             | API key, page ID or subdomain (optional)    |    —     |             ✓              |                  ✓                   |          ✓           |      ✓      |
+| Checkly              | API key, account ID                         |    ✓     |             —              |                  —                   |          —           |      —      |
 
 Common rules:
 
@@ -111,8 +111,8 @@ Common rules:
 - Maintenance windows become one-off windows (`single`, times in UTC) linked to the imported page
   (and, for Better Stack, to the affected monitors). Finished windows are skipped with a reason.
 - Subscribers are created confirmed with `source: import`; nobody receives an opt-in message.
-  Invalid, duplicate and quarantined addresses and unsupported channels are skipped with a reason
-  (addresses appear masked in the report).
+  Invalid, duplicate, quarantined and unconfirmed addresses and unsupported channels are skipped with
+  a reason (addresses appear masked in the report).
 - Incidents and subscribers belong to the imported page: without **Status page and components** they
   are skipped.
 - Permissions: the route needs `monitor:create`; monitors, status pages, incidents
@@ -141,6 +141,34 @@ otherwise. Status reports become incidents (Better Stack updates carry no status
 become maintenance windows. Heartbeats, monitor groups, escalation policies and on-call settings are
 not imported.
 
+**Instatus** (API v1/v2, `https://api.instatus.com`): the status pages of the key (all, or the one
+whose page ID or subdomain you give) with name, subdomain, website URL, public email (as a `mailto:`
+contact link), custom domain, global CSS and Google Analytics ID; components (group components become
+component groups, ungrouped components a group named "Services"; all static, Instatus has no
+monitors); incidents with their updates (the message's Markdown, status and time; the component
+statuses an update set become its impacts, otherwise the incident's affected components belong to its
+first update; a resolved incident whose last update is not `RESOLVED` gets a resolution at its
+`resolved` time); maintenances that have not ended (end from `end`, or `start` plus `duration`
+minutes); and confirmed email, SMS (numbers with a country code) and webhook subscribers with their
+component choices (`all` means every component). Unconfirmed subscribers and Slack, Discord, Teams
+and other chat subscriptions are skipped with a reason. Status page colours, translations, metrics
+and team members are not imported.
+
+**Checkly** (API v1, `https://api.checklyhq.com/v1`, with the account ID as `X-Checkly-Account`):
+checks become monitors. **API checks** → HTTP with method, URL (query parameters appended), headers,
+body (JSON and form encodings), basic auth, redirects, TLS verification, retry strategy (→ retries),
+`shouldFail` (→ upside down) and the activated state; their assertions become monitor assertions
+(status code, header, text body and JSON body with a simple `$.path`; equals, not equals, contains,
+not contains, less/greater than, empty, not empty). Assertions without an equivalent (response time,
+regex extraction, other JSON paths and comparisons) are dropped with a note per check. **URL
+monitors** → HTTP (status code assertions), **TCP monitors** → port, **ICMP monitors** → ping. The
+frequency becomes the interval (10 s frequencies are raised to 20 s), `maxResponseTime` the timeout
+and `degradedResponseTime` the degraded threshold. Browser, multistep, Playwright check suite,
+heartbeat, DNS, gRPC, SSL, traceroute and agentic checks are skipped with a reason, as are checks
+whose URL or host uses Checkly environment variables (`{{VAR}}`); variables in headers or bodies are
+imported as written with a note. Setup and teardown scripts, locations, tags, groups and alert
+settings are not imported.
+
 The importers are built from the services' documented API formats and tested with hand-written
 fixtures of those responses (`tests/fixtures/providers`).
 
@@ -148,9 +176,10 @@ fixtures of those responses (`tests/fixtures/providers`).
 | ------ | -------------------------------------------------------- | ------------------------------ |
 | POST   | `/api/orgs/:orgId/import/providers/:provider[?dryRun=1]` | `monitor:create` (+ see above) |
 
-`:provider` is `statuspage` or `betterstack`; the body is
+`:provider` is `statuspage`, `betterstack`, `instatus` or `checkly`; the body is
 `{ "credentials": { "apiKey": "…", "pageId": "…" }, "resources": ["components", "incidents", "maintenance", "subscribers"] }`
-(Better Stack: `apiToken`, optional `statusPageId`; resources also `monitors`). The answer is the
+(Better Stack: `apiToken`, optional `statusPageId`, resources also `monitors`; Instatus: `apiKey`,
+optional `pageId`; Checkly: `apiKey`, `accountId`, resources `monitors` only). The answer is the
 import report with the extra sections `incidents`, `maintenance` and `subscribers`. A rejected key or
 unknown page answers 400, an unreachable or misbehaving API 502.
 

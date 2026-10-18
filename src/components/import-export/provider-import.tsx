@@ -215,7 +215,11 @@ export function ProviderImport({ orgId, orgSlug }: { orgId: string | number; org
           ) : stage.kind === 'done' ? (
             <>
               <Button asChild>
-                <Link href={`/${orgSlug}/status-pages`}>{t('import.goToStatusPages')}</Link>
+                {stage.report.statusPages.create === 0 && stage.report.monitors.create > 0 ? (
+                  <Link href={`/${orgSlug}/monitors`}>{t('import.goToMonitors')}</Link>
+                ) : (
+                  <Link href={`/${orgSlug}/status-pages`}>{t('import.goToStatusPages')}</Link>
+                )}
               </Button>
               <Button type="button" variant="outline" onClick={reset}>
                 {t('import.another')}
