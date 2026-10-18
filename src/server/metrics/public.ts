@@ -27,7 +27,7 @@ export type MetricsPage = Pick<StatusPage, 'id' | 'organization' | 'access' | 'g
  */
 export function orderForPage<T extends { id: string | number }>(
   docs: readonly T[],
-  metricOrder: StatusPage['metricOrder'],
+  metricOrder: readonly unknown[] | null | undefined,
 ): T[] {
   const rank = new Map<string, number>()
   for (const entry of metricOrder ?? []) {
