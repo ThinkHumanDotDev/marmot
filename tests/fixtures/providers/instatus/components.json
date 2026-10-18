@@ -1,0 +1,68 @@
+[
+  {
+    "id": "ckc0group0core0000000001",
+    "name": "Core platform",
+    "nameTranslationId": null,
+    "description": "",
+    "descriptionTranslationId": null,
+    "status": "DEGRADEDPERFORMANCE",
+    "internalStatus": "DEGRADEDPERFORMANCE",
+    "order": 2,
+    "showUptime": true,
+    "isParent": true,
+    "isCollapsed": false,
+    "group": null,
+    "groupId": null,
+    "translations": {}
+  },
+  {
+    "id": "ckc0dashboard00000000003",
+    "name": "Dashboard",
+    "nameTranslationId": null,
+    "description": "",
+    "descriptionTranslationId": null,
+    "status": "DEGRADEDPERFORMANCE",
+    "internalStatus": "DEGRADEDPERFORMANCE",
+    "order": 2,
+    "showUptime": true,
+    "isParent": false,
+    "isCollapsed": false,
+    "group": null,
+    "groupId": "ckc0group0core0000000001",
+    "translations": {}
+  },
+  {
+    "id": "ckc0api00000000000000002",
+    "name": "API",
+    "nameTranslationId": null,
+    "description": "REST and webhooks API",
+    "descriptionTranslationId": null,
+    "status": "OPERATIONAL",
+    "internalStatus": "OPERATIONAL",
+    "order": 1,
+    "showUptime": true,
+    "isParent": false,
+    "isCollapsed": false,
+    "group": {
+      "id": "ckc0group0core0000000001",
+      "name": "Core platform",
+      "isParent": true
+    },
+    "translations": {}
+  },
+  {
+    "id": "ckc0website00000000000004",
+    "name": "Website",
+    "nameTranslationId": null,
+    "description": "Marketing site",
+    "descriptionTranslationId": null,
+    "status": "OPERATIONAL",
+    "internalStatus": "OPERATIONAL",
+    "order": 1,
+    "showUptime": false,
+    "isParent": false,
+    "isCollapsed": false,
+    "group": null,
+    "translations": {}
+  }
+]

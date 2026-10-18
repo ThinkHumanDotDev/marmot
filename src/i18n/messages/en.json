@@ -6413,7 +6413,9 @@
       "uptime-kuma": "Uptime Kuma backup",
       "marmot": "Marmot export",
       "statuspage": "Atlassian Statuspage",
-      "betterstack": "Better Stack"
+      "betterstack": "Better Stack",
+      "instatus": "Instatus",
+      "checkly": "Checkly"
     },
     "import": {
       "title": "Import",
@@ -6530,24 +6532,32 @@
       "subscriberDuplicate": "Duplicate subscription",
       "subscriberQuarantined": "Quarantined by the source (deliveries bounced)",
       "subscriberChannelUnsupported": "{channel} subscriptions are not supported",
+      "subscriberUnconfirmed": "Not confirmed by the subscriber",
+      "providerVariables": "Its target uses Checkly environment variables, which Marmot cannot resolve",
+      "variablesKept": "\"{name}\": headers or body use Checkly environment variables; they were imported as written, replace them",
+      "assertionsDropped": "\"{name}\": {count, plural, one {# assertion has} other {# assertions have}} no Marmot equivalent and {count, plural, one {was} other {were}} not imported",
+      "scriptsDropped": "\"{name}\": setup and teardown scripts are not imported",
       "noIncidentPermission": "You may not post incidents in this organization",
       "noMaintenancePermission": "You may not create maintenance windows in this organization",
       "noSubscriberPermission": "You may not manage subscribers in this organization"
     },
     "providers": {
       "title": "Import from a service",
-      "description": "Move status pages, incident history, maintenance and monitors from Atlassian Statuspage or Better Stack. Marmot reads them through the service’s API with a key you paste here; the key is used for this import only and never stored.",
+      "description": "Move status pages, incident history, maintenance and monitors from Atlassian Statuspage, Better Stack, Instatus or Checkly. Marmot reads them through the service’s API with a key you paste here; the key is used for this import only and never stored.",
       "provider": "Service",
       "fields": {
         "apiKey": "API key",
         "pageId": "Page ID",
         "apiToken": "API token",
-        "statusPageId": "Status page ID"
+        "statusPageId": "Status page ID",
+        "accountId": "Account ID"
       },
       "optional": "(optional)",
       "hints": {
         "statuspage": "Create an API key under your Statuspage profile → API info; the page ID is listed on the same screen.",
-        "betterstack": "Use a read-only Uptime API token (Integrations → API). Leave the status page ID empty to import every status page."
+        "betterstack": "Use a read-only Uptime API token (Integrations → API). Leave the status page ID empty to import every status page.",
+        "instatus": "Create an API key under User settings → Developer settings. Enter a page ID or subdomain, or leave it empty to import every status page of the key.",
+        "checkly": "Create an API key under User settings → API keys; the account ID is listed under Account settings → General. API checks, URL, TCP and ICMP monitors are imported."
       },
       "resourcesLabel": "What to import",
       "resources": {
