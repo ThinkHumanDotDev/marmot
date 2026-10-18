@@ -27,7 +27,11 @@ export function SlaReportTable({ report }: { report: SlaReportData }) {
     <div className="space-y-3" data-testid="sla-report">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          {t('report.range', { from: day(report.from), to: day(report.to) })}
+          {t('report.range', {
+            from: day(report.from),
+            to: day(report.to),
+            timeZone: report.timeZone,
+          })}
         </p>
         <p className="text-sm font-medium" data-testid="sla-report-summary">
           {t('report.summary', { met, total: report.rows.length })}
@@ -55,7 +59,14 @@ export function SlaReportTable({ report }: { report: SlaReportData }) {
             <TableBody className="tabular-nums">
               {report.rows.map((row) => (
                 <TableRow key={row.targetId} data-sla-row={row.targetId}>
-                  <TableCell className="font-medium">{row.name}</TableCell>
+                  <TableCell className="font-medium">
+                    {row.name}
+                    {row.businessHours && (
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {t('report.businessHours')}
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     {format.number(row.target / 100, 'targetPercent')}
                   </TableCell>

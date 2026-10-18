@@ -7543,469 +7543,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.slack_installations": {
-      "name": "slack_installations",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "team_id": {
-          "name": "team_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "team_name": {
-          "name": "team_name",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "enterprise_id": {
-          "name": "enterprise_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "app_id": {
-          "name": "app_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "bot_user_id": {
-          "name": "bot_user_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "bot_token": {
-          "name": "bot_token",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "installed_by_id": {
-          "name": "installed_by_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "slack_installations_organization_idx": {
-          "name": "slack_installations_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "slack_installations_team_id_idx": {
-          "name": "slack_installations_team_id_idx",
-          "columns": [
-            {
-              "expression": "team_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "slack_installations_installed_by_idx": {
-          "name": "slack_installations_installed_by_idx",
-          "columns": [
-            {
-              "expression": "installed_by_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "slack_installations_updated_at_idx": {
-          "name": "slack_installations_updated_at_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "slack_installations_created_at_idx": {
-          "name": "slack_installations_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "slack_installations_organization_id_organizations_id_fk": {
-          "name": "slack_installations_organization_id_organizations_id_fk",
-          "tableFrom": "slack_installations",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "slack_installations_installed_by_id_users_id_fk": {
-          "name": "slack_installations_installed_by_id_users_id_fk",
-          "tableFrom": "slack_installations",
-          "tableTo": "users",
-          "columnsFrom": [
-            "installed_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.slack_installations_texts": {
-      "name": "slack_installations_texts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "order": {
-          "name": "order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "path": {
-          "name": "path",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "text": {
-          "name": "text",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "slack_installations_texts_order_parent": {
-          "name": "slack_installations_texts_order_parent",
-          "columns": [
-            {
-              "expression": "order",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "slack_installations_texts_parent_fk": {
-          "name": "slack_installations_texts_parent_fk",
-          "tableFrom": "slack_installations_texts",
-          "tableTo": "slack_installations",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.slack_user_links": {
-      "name": "slack_user_links",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "installation_id": {
-          "name": "installation_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "team_id": {
-          "name": "team_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "slack_user_id": {
-          "name": "slack_user_id",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp(3) with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "slack_user_links_organization_idx": {
-          "name": "slack_user_links_organization_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "slack_user_links_installation_idx": {
-          "name": "slack_user_links_installation_idx",
-          "columns": [
-            {
-              "expression": "installation_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "slack_user_links_user_idx": {
-          "name": "slack_user_links_user_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "slack_user_links_updated_at_idx": {
-          "name": "slack_user_links_updated_at_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "slack_user_links_created_at_idx": {
-          "name": "slack_user_links_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "teamId_slackUserId_idx": {
-          "name": "teamId_slackUserId_idx",
-          "columns": [
-            {
-              "expression": "team_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "slack_user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "slack_user_links_organization_id_organizations_id_fk": {
-          "name": "slack_user_links_organization_id_organizations_id_fk",
-          "tableFrom": "slack_user_links",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "slack_user_links_installation_id_slack_installations_id_fk": {
-          "name": "slack_user_links_installation_id_slack_installations_id_fk",
-          "tableFrom": "slack_user_links",
-          "tableTo": "slack_installations",
-          "columnsFrom": [
-            "installation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "slack_user_links_user_id_users_id_fk": {
-          "name": "slack_user_links_user_id_users_id_fk",
-          "tableFrom": "slack_user_links",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.on_call_schedules_layers_restrictions_days": {
       "name": "on_call_schedules_layers_restrictions_days",
       "schema": "",
@@ -12087,6 +11624,171 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.sla_targets_business_hours_days": {
+      "name": "sla_targets_business_hours_days",
+      "schema": "",
+      "columns": {
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "enum_sla_targets_business_hours_days",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "sla_targets_business_hours_days_order_idx": {
+          "name": "sla_targets_business_hours_days_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sla_targets_business_hours_days_parent_idx": {
+          "name": "sla_targets_business_hours_days_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sla_targets_business_hours_days_parent_fk": {
+          "name": "sla_targets_business_hours_days_parent_fk",
+          "tableFrom": "sla_targets_business_hours_days",
+          "tableTo": "sla_targets",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sla_targets_business_hours_holidays": {
+      "name": "sla_targets_business_hours_holidays",
+      "schema": "",
+      "columns": {
+        "_order": {
+          "name": "_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "sla_targets_business_hours_holidays_order_idx": {
+          "name": "sla_targets_business_hours_holidays_order_idx",
+          "columns": [
+            {
+              "expression": "_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sla_targets_business_hours_holidays_parent_id_idx": {
+          "name": "sla_targets_business_hours_holidays_parent_id_idx",
+          "columns": [
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sla_targets_business_hours_holidays_parent_id_fk": {
+          "name": "sla_targets_business_hours_holidays_parent_id_fk",
+          "tableFrom": "sla_targets_business_hours_holidays",
+          "tableTo": "sla_targets",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.sla_targets": {
       "name": "sla_targets",
       "schema": "",
@@ -12137,6 +11839,27 @@
           "primaryKey": false,
           "notNull": false,
           "default": true
+        },
+        "business_hours_enabled": {
+          "name": "business_hours_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "business_hours_start": {
+          "name": "business_hours_start",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'09:00'"
+        },
+        "business_hours_end": {
+          "name": "business_hours_end",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'17:00'"
         },
         "updated_at": {
           "name": "updated_at",
@@ -18439,18 +18162,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "slack_installations_id": {
-          "name": "slack_installations_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "slack_user_links_id": {
-          "name": "slack_user_links_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "on_call_schedules_id": {
           "name": "on_call_schedules_id",
           "type": "integer",
@@ -18977,36 +18688,6 @@
           "columns": [
             {
               "expression": "integration_events_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "payload_locked_documents_rels_slack_installations_id_idx": {
-          "name": "payload_locked_documents_rels_slack_installations_id_idx",
-          "columns": [
-            {
-              "expression": "slack_installations_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "payload_locked_documents_rels_slack_user_links_id_idx": {
-          "name": "payload_locked_documents_rels_slack_user_links_id_idx",
-          "columns": [
-            {
-              "expression": "slack_user_links_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -19733,32 +19414,6 @@
           "tableTo": "integration_events",
           "columnsFrom": [
             "integration_events_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_slack_installations_fk": {
-          "name": "payload_locked_documents_rels_slack_installations_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "slack_installations",
-          "columnsFrom": [
-            "slack_installations_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "payload_locked_documents_rels_slack_user_links_fk": {
-          "name": "payload_locked_documents_rels_slack_user_links_fk",
-          "tableFrom": "payload_locked_documents_rels",
-          "tableTo": "slack_user_links",
-          "columnsFrom": [
-            "slack_user_links_id"
           ],
           "columnsTo": [
             "id"
@@ -21257,8 +20912,7 @@
         "dashboard",
         "api",
         "link",
-        "phone",
-        "slack"
+        "phone"
       ]
     },
     "public.enum_monitor_incidents_status": {
@@ -21277,8 +20931,7 @@
         "dashboard",
         "api",
         "link",
-        "phone",
-        "slack"
+        "phone"
       ]
     },
     "public.enum_monitor_incidents_escalation_status": {
@@ -21586,6 +21239,19 @@
         "degraded",
         "partial",
         "down"
+      ]
+    },
+    "public.enum_sla_targets_business_hours_days": {
+      "name": "enum_sla_targets_business_hours_days",
+      "schema": "public",
+      "values": [
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri",
+        "sat",
+        "sun"
       ]
     },
     "public.enum_sla_targets_period": {
@@ -22039,6 +21705,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "f10a9e74-59a2-4356-9849-98fcb50c8985",
+  "id": "8e929686-6f1c-4776-80b6-3bb0ef559a11",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

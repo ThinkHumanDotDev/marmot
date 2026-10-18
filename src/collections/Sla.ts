@@ -11,17 +11,21 @@ import {
 import { orgScoped } from '@/access/org-scoped'
 import { adminGroup, adminT } from '@/i18n/admin'
 import {
+  businessHoursOf,
   isSlaSchedule,
   previousSchedulePeriod,
   SLA_CALCULATIONS,
+  SLA_MAX_HOLIDAYS,
   SLA_MAX_RECIPIENTS,
   SLA_SCHEDULES,
   SLA_TARGET_MAX,
   SLA_TARGET_MIN,
+  SLA_WEEKDAYS,
   SLA_WINDOWS,
 } from '@/lib/sla'
 import type { ErrorKey } from '@/server/errors'
 import { userErrorText } from '@/server/request-locale'
+import { loadSlaZone } from '@/server/sla/zone'
 import type { SlaReport, SlaReportShare, SlaTarget } from '@/payload-types'
 
 import { relId } from './shared'
@@ -87,6 +91,25 @@ const checkTargetMonitor: CollectionBeforeChangeHook<SlaTarget> = async ({
   return data
 }
 
+/** An enabled business-hours calendar must be usable (#274); holidays are sorted and deduped. */
+const checkBusinessHours: CollectionBeforeChangeHook<SlaTarget> = ({ data, originalDoc, req }) => {
+  const merged = { ...originalDoc?.businessHours, ...data.businessHours }
+  if (Array.isArray(data.businessHours?.holidays)) {
+    const dates = [
+      ...new Set(data.businessHours.holidays.map((row) => String(row?.date ?? '').trim())),
+    ]
+    data.businessHours.holidays = dates
+      .filter(Boolean)
+      .sort()
+      .map((date) => ({ date }))
+    merged.holidays = data.businessHours.holidays
+  }
+  if (merged.enabled && !businessHoursOf({ businessHours: merged })) {
+    invalid(req, 'sla-targets', 'slaBusinessHoursInvalid', 'businessHours')
+  }
+  return data
+}
+
 /** Reports keep a list of targets; a deleted target leaves them (Mongo keeps no foreign keys). */
 const detachTargetFromReports: CollectionBeforeDeleteHook = async ({ id, req }) => {
   const { docs } = await req.payload.find({
@@ -129,7 +152,7 @@ export const SlaTargets: CollectionConfig = {
     delete: orgScoped('sla:manage'),
   },
   hooks: {
-    beforeChange: [checkTargetMonitor],
+    beforeChange: [checkTargetMonitor, checkBusinessHours],
     beforeDelete: [detachTargetFromReports],
   },
   fields: [
@@ -175,6 +198,46 @@ export const SlaTargets: CollectionConfig = {
       type: 'checkbox',
       defaultValue: true,
       admin: { description: adminT('marmot:slaTargets:excludeMaintenanceDescription') },
+    },
+    {
+      // Business-hours calendar (#274): only these hours of the organization's time zone count.
+      name: 'businessHours',
+      type: 'group',
+      admin: { description: adminT('marmot:slaTargets:businessHoursDescription') },
+      fields: [
+        { name: 'enabled', type: 'checkbox', defaultValue: false },
+        {
+          name: 'days',
+          type: 'select',
+          hasMany: true,
+          defaultValue: ['mon', 'tue', 'wed', 'thu', 'fri'],
+          options: SLA_WEEKDAYS.map((value) => ({ label: value, value })),
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'start',
+              type: 'text',
+              defaultValue: '09:00',
+              admin: { description: adminT('marmot:slaTargets:businessStartDescription') },
+            },
+            {
+              name: 'end',
+              type: 'text',
+              defaultValue: '17:00',
+              admin: { description: adminT('marmot:slaTargets:businessEndDescription') },
+            },
+          ],
+        },
+        {
+          name: 'holidays',
+          type: 'array',
+          maxRows: SLA_MAX_HOLIDAYS,
+          admin: { description: adminT('marmot:slaTargets:holidaysDescription') },
+          fields: [{ name: 'date', type: 'text', required: true }],
+        },
+      ],
     },
   ],
   timestamps: true,
@@ -233,7 +296,11 @@ const normalizeReport: CollectionBeforeChangeHook<SlaReport> = async ({
   // sent, so creating a monthly report mid-month does not email last month's report at once.
   if (data.schedule !== undefined && data.schedule !== originalDoc?.schedule) {
     data.lastSentPeriod = isSlaSchedule(data.schedule)
-      ? (previousSchedulePeriod(data.schedule, new Date())?.key ?? null)
+      ? (previousSchedulePeriod(
+          data.schedule,
+          new Date(),
+          await loadSlaZone(req.payload, organization, req),
+        )?.key ?? null)
       : null
   }
   return data
