@@ -108,6 +108,8 @@ export const SECRET_FIELDS: ReadonlySet<string> = new Set([
   'sshPassphrase',
   'mailPassword',
   'rabbitmqPassword',
+  // Multi-step API checks (#138): suite secrets and step credentials live inside the suite.
+  'httpSuite',
 ])
 
 /** Every compared field, in form order. */

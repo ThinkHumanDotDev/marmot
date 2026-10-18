@@ -116,6 +116,8 @@ export interface ResponseLogDetail extends ResponseLogEntry {
   assertionResults: unknown[]
   /** Per-probe results of a multi-location check (`heartbeats.probes`). */
   probes: unknown[]
+  /** Per-step results of a multi-step API check (`heartbeats.steps`, #138), secrets redacted. */
+  steps: unknown[]
   response: StoredResponse | null
 }
 

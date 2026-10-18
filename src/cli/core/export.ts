@@ -6,6 +6,7 @@
  */
 import { stringify as stringifyYaml } from 'yaml'
 
+import type { HttpSuite } from '@/lib/validation/http-suite'
 import { defaultMonitorValues, type MonitorTypeName } from '@/lib/validation/monitor'
 
 import {
@@ -37,6 +38,43 @@ export const secretVariableName = (key: string, field: string): string =>
     .toUpperCase()
     .replace(/[^A-Z0-9_]/g, '_')
 
+/** Request headers that never carry a credential. */
+const PUBLIC_HEADERS = new Set(['accept', 'content-type', 'user-agent', 'accept-language'])
+
+/**
+ * A multi-step API check (#138) with its credentials replaced by `${MARMOT_…}` references: the
+ * suite secrets, each step's basic auth password and bearer token, and step header values. Values
+ * that are only placeholders (`Bearer {{ steps.login.token }}`) hold no secret and are kept.
+ */
+function redactSuite(suite: HttpSuite, key: string, variables: string[]): HttpSuite {
+  const reference = (field: string, value: string | null): string | null => {
+    if (!value || value.includes('{{') || value.includes('${')) return value
+    const variable = secretVariableName(key, field)
+    variables.push(variable)
+    return `\${${variable}}`
+  }
+  return {
+    ...suite,
+    secrets: suite.secrets.map((row) => ({
+      ...row,
+      value: reference(`httpSuiteSecret_${row.name}`, row.value) ?? '',
+    })),
+    steps: suite.steps.map((step) => ({
+      ...step,
+      headers: step.headers.map((header) =>
+        PUBLIC_HEADERS.has(header.name.toLowerCase())
+          ? header
+          : {
+              ...header,
+              value: reference(`${step.key}_header_${header.name}`, header.value) ?? '',
+            },
+      ),
+      basicAuthPass: reference(`${step.key}_basicAuthPass`, step.basicAuthPass),
+      bearerToken: reference(`${step.key}_bearerToken`, step.bearerToken),
+    })),
+  }
+}
+
 export function exportMonitors(state: RemoteState, options: ExportOptions = {}): ExportResult {
   const taken = new Set(state.monitors.flatMap((m) => (m.key ? [m.key] : [])))
   const generated = new Map<string, string>()
@@ -55,6 +93,10 @@ export function exportMonitors(state: RemoteState, options: ExportOptions = {}):
       if (field === 'name' || field === 'type' || field === 'key') continue
       const value = values[field]
       if (canonicalJson(value) === canonicalJson(defaults[field])) continue
+      if (options.redactSecrets && field === 'httpSuite' && value) {
+        entry.httpSuite = redactSuite(value as HttpSuite, key, secretVariables)
+        continue
+      }
       if (options.redactSecrets && SECRET_FIELDS.has(field) && typeof value === 'string') {
         const variable = secretVariableName(key, field)
         secretVariables.push(variable)
