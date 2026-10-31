@@ -1,4 +1,4 @@
-import type { Theme } from '@c15t/nextjs'
+import type { Theme } from '@c15t/react'
 
 /**
  * Maps c15t's design tokens onto Marmot's theme variables (`src/app/(frontend)/styles.css`) so the

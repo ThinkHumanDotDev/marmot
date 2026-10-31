@@ -3,13 +3,14 @@
 import {
   ConsentBanner,
   ConsentDialog,
-  ConsentManagerProvider,
-  type ConsentManagerOptions,
-} from '@c15t/nextjs'
+  ConsentProvider,
+  type ConsentProviderOptions,
+  ConsentTheme,
+  local,
+  type PolicyRule,
+} from '@c15t/react'
 import { useLocale, useTranslations } from 'next-intl'
 import * as React from 'react'
-
-import '@c15t/nextjs/styles.css'
 
 import { TELEMETRY_DOCS_URL } from '@/lib/analytics-config'
 
@@ -17,18 +18,31 @@ import { ConsentBridge } from './consent-bridge'
 import { consentTheme } from './consent-theme'
 
 /**
- * c15t in offline mode: consent lives in the visitor's browser (cookie + localStorage), no
- * consent backend is contacted. Only the `measurement` category is offered because analytics is
- * the only optional processing Marmot does. Jurisdiction defaults to opt-in everywhere, so the
- * banner shows once per browser until a choice is made. The texts come from the `consent`
- * messages of the active locale.
+ * Opt-in everywhere: Marmot sees no visitor location, so one rule matches every visitor, offers
+ * accept, reject and customize, and keeps `measurement` denied until it is accepted.
  */
-function useConsentOptions(): ConsentManagerOptions {
+const OPT_IN_EVERYWHERE: PolicyRule = {
+  id: 'marmot-opt-in-everywhere',
+  match: { isDefault: true, fallback: true },
+  model: 'opt-in',
+  prompt: 'choice',
+  categories: ['measurement'],
+  scopeMode: 'strict',
+  actions: ['accept', 'reject', 'customize'],
+}
+
+/**
+ * c15t in local mode: consent lives in the visitor's browser (cookie + localStorage), no
+ * consent backend is contacted. Only the `measurement` category is offered because analytics is
+ * the only optional processing Marmot does. The banner shows once per browser until a choice is
+ * made. The texts come from the `consent` messages of the active locale.
+ */
+function useConsentOptions(): ConsentProviderOptions {
   const t = useTranslations('consent')
   const locale = useLocale()
   return React.useMemo(
     () => ({
-      mode: 'offline',
+      mode: local({ policyRules: [OPT_IN_EVERYWHERE], acknowledgeNoRecords: true }),
       consentCategories: ['necessary', 'measurement'],
       theme: consentTheme,
       legalLinks: {
@@ -79,10 +93,11 @@ function useConsentOptions(): ConsentManagerOptions {
 export function ConsentManager() {
   const options = useConsentOptions()
   return (
-    <ConsentManagerProvider options={options}>
+    <ConsentProvider options={options}>
+      <ConsentTheme theme={consentTheme} />
       <ConsentBanner />
       <ConsentDialog hideBranding />
       <ConsentBridge />
-    </ConsentManagerProvider>
+    </ConsentProvider>
   )
 }

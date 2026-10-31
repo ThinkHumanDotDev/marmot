@@ -17,7 +17,7 @@ changing them. The same key switches on the server-side events of the worker and
 ## Consent
 
 When analytics are enabled the frontend mounts a cookie banner (built with
-[c15t](https://c15t.com) in **offline mode**: the visitor's choice is stored in their own browser, no
+[c15t](https://c15t.com) in **local mode**: the visitor's choice is stored in their own browser, no
 consent backend is contacted). Marmot offers a single optional category, `measurement`. Until it is
 granted PostHog is opted out: no events, no persistence, no cookies. Declining opts out and wipes the
 SDK's local state. Browsers that send `Do Not Track` are treated as declined. The choice can be revisited
