@@ -15,8 +15,6 @@
       "!charts/*/templates"
     ]
   },
-  // Prettier's singleQuote applied to CSS too; the shared config only sets it for JS and YAML.
-  "css": { "formatter": { "quoteStyle": "single" } },
   // Sorting imports would rewrite the import block of ~730 files; follow-up cleanup.
   "assist": { "actions": { "source": { "organizeImports": "off" } } },
   "linter": {
