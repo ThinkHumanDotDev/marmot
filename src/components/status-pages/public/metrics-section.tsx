@@ -1,5 +1,6 @@
 'use client'
 
+import { CircleAlert, CircleCheck, TriangleAlert } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import * as React from 'react'
 import {
@@ -14,7 +15,14 @@ import {
 } from 'recharts'
 
 import { Button } from '@/components/ui/button'
-import { METRIC_VIEWS, withMetricSuffix, type MetricView, type PublicMetric } from '@/lib/metrics'
+import {
+  METRIC_VIEWS,
+  withMetricSuffix,
+  type MetricThresholdState,
+  type MetricView,
+  type PublicMetric,
+} from '@/lib/metrics'
+import { cn } from '@/lib/utils'
 
 /**
  * The single series of a metric chart: the darker step of the theme's chart ramp (validated for
@@ -23,6 +31,16 @@ import { METRIC_VIEWS, withMetricSuffix, type MetricView, type PublicMetric } fr
  */
 const SERIES_COLOR = 'var(--chart-4)'
 const THRESHOLD_COLOR = { warning: 'var(--status-degraded)', critical: 'var(--status-down)' }
+
+/**
+ * Headline value colouring by threshold state (#280): the reserved status text colours, always with
+ * an icon and a text label so the state does not depend on colour alone.
+ */
+const STATE_STYLE: Record<MetricThresholdState, { className: string; Icon: typeof CircleCheck }> = {
+  ok: { className: 'text-status-up-text', Icon: CircleCheck },
+  warning: { className: 'text-status-degraded-text', Icon: TriangleAlert },
+  critical: { className: 'text-status-down-text', Icon: CircleAlert },
+}
 
 const axisTick = { fill: 'var(--muted-foreground)', fontSize: 11 }
 
@@ -105,6 +123,8 @@ export function MetricCard({ slug, initial }: { slug: string; initial: PublicMet
     return value === null ? [] : [{ level, value }]
   })
   const headingId = `metric-${metric.id}`
+  const state = metric.showThresholdState ? metric.state : null
+  const stateStyle = state ? STATE_STYLE[state] : null
 
   return (
     <section
@@ -121,13 +141,38 @@ export function MetricCard({ slug, initial }: { slug: string; initial: PublicMet
             <p className="text-sm text-muted-foreground">{metric.description}</p>
           )}
         </div>
-        <div className="flex flex-col items-end" data-testid="metric-current">
-          <span className="text-2xl font-semibold tracking-tight tabular-nums">
+        <div
+          className="flex flex-col items-end"
+          data-testid="metric-current"
+          data-state={state ?? undefined}
+        >
+          <span
+            className={cn(
+              'text-2xl font-semibold tracking-tight tabular-nums',
+              stateStyle?.className,
+            )}
+          >
             {show(metric.current)}
           </span>
-          <span className="text-xs text-muted-foreground">
-            {t(`aggregations.${metric.aggregation}`)}
-          </span>
+          {state && stateStyle ? (
+            <span
+              className={cn(
+                'inline-flex items-center gap-1 text-xs font-medium',
+                stateStyle.className,
+              )}
+              data-testid="metric-state"
+            >
+              <stateStyle.Icon className="size-3.5" aria-hidden />
+              {t(`states.${state}`)}
+              <span className="font-normal text-muted-foreground">
+                · {t(`aggregations.${metric.aggregation}`)}
+              </span>
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              {t(`aggregations.${metric.aggregation}`)}
+            </span>
+          )}
         </div>
       </div>
 

@@ -2,14 +2,15 @@
  * Writes an import plan into one organization — or, on a dry run, only computes the report.
  *
  * Order: notifications → monitors (groups before their children) → status pages → incidents →
- * templates, so
+ * metrics → templates, so
  * every relationship can be resolved to a freshly created id. Everything runs in one database
  * transaction (same pattern as `runSetup`); on adapters without transactions the writes are
  * sequential and a failure leaves the documents created so far.
  *
  * Permissions: the caller must hold `monitor:create` (checked by the route). Notifications and
  * status pages are only imported when the caller also holds `notification:create` /
- * `status-page:create` / `template:create`; otherwise those parts are skipped with a warning.
+ * `status-page:create` / `template:create` / `metric:create`; otherwise those parts are skipped with
+ * a warning.
  */
 import { createLocalReq, type Payload, type PayloadRequest } from 'payload'
 
@@ -21,6 +22,7 @@ import { maskTarget } from '@/lib/status-page-subscribers'
 import type {
   Incident,
   Maintenance as MaintenanceDoc,
+  Metric,
   Monitor,
   Notification,
   StatusPage,
@@ -109,6 +111,7 @@ export async function applyImportPlan(
     incidents: { create: 0, skipped: [...plan.skipped.incidents] },
     maintenance: { create: 0, skipped: [...plan.skipped.maintenance] },
     subscribers: { create: 0, skipped: [...plan.skipped.subscribers] },
+    metrics: { create: 0, skipped: [...plan.skipped.metrics] },
     warnings: [...plan.warnings],
   }
   const created = {
@@ -119,6 +122,7 @@ export async function applyImportPlan(
     incidents: [] as OrgId[],
     maintenance: [] as OrgId[],
     subscribers: [] as OrgId[],
+    metrics: [] as OrgId[],
   }
 
   const skipAll = (items: { name: string }[], target: SkippedItem[], reason: string) => {
@@ -205,6 +209,13 @@ export async function applyImportPlan(
       t('noMaintenancePermission'),
     )
     plan = { ...plan, maintenance: [] }
+  }
+
+  const canMetrics = can(user, orgId, 'metric:create')
+  if (!canMetrics && plan.metrics.length > 0) {
+    report.warnings.push(t('metricsSkipped'))
+    skipAll(plan.metrics, report.metrics.skipped, t('noMetricPermission'))
+    plan = { ...plan, metrics: [] }
   }
 
   const canTemplates = can(user, orgId, 'template:create')
@@ -298,6 +309,32 @@ export async function applyImportPlan(
       templates: plan.templates.filter((planned) => {
         if (!existing.has(planned.name)) return true
         report.templates.skipped.push({ name: planned.name, reason: t('templateExists') })
+        return false
+      }),
+    }
+  }
+
+  if (plan.metrics.length > 0) {
+    const { docs } = await payload.find({
+      collection: 'metrics',
+      where: {
+        and: [
+          { organization: { equals: orgId } },
+          { name: { in: plan.metrics.map((metric) => metric.name) } },
+        ],
+      },
+      depth: 0,
+      limit: 0,
+      pagination: false,
+      overrideAccess: true,
+      select: { name: true },
+    })
+    const existing = new Set((docs as Pick<Metric, 'name'>[]).map((doc) => doc.name))
+    plan = {
+      ...plan,
+      metrics: plan.metrics.filter((planned) => {
+        if (!existing.has(planned.name)) return true
+        report.metrics.skipped.push({ name: planned.name, reason: t('metricExists') })
         return false
       }),
     }
@@ -418,6 +455,24 @@ export async function applyImportPlan(
     }
     return [{ ...planned, statusPageKeys, monitorKeys }]
   })
+  // Metrics keep the pages that are imported; a monitor-backed one needs its monitor.
+  const metrics = plan.metrics.flatMap((planned) => {
+    if (planned.monitorKey !== null && !importedMonitorKeys.has(planned.monitorKey)) {
+      report.metrics.skipped.push({ name: planned.name, reason: t('metricMonitorNotImported') })
+      return []
+    }
+    const statusPageKeys = planned.statusPageKeys.filter((key) => importedPageKeys.has(key))
+    if (statusPageKeys.length < planned.statusPageKeys.length) {
+      report.warnings.push(
+        t('metricPagesDropped', {
+          name: planned.name,
+          count: planned.statusPageKeys.length - statusPageKeys.length,
+        }),
+      )
+    }
+    return [{ ...planned, statusPageKeys }]
+  })
+  report.metrics.create = metrics.length
   report.notifications.create = plan.notifications.length
   report.monitors.create = orderedMonitors.length
   report.statusPages.create = statusPages.length
@@ -664,6 +719,59 @@ export async function applyImportPlan(
       }
     }
 
+    const metricIds = new Map<string, OrgId>()
+    for (const planned of metrics) {
+      const doc = await payload.create({
+        collection: 'metrics',
+        data: {
+          organization: orgId,
+          name: planned.name,
+          description: planned.description,
+          suffix: planned.suffix,
+          decimals: planned.decimals,
+          aggregation: planned.aggregation,
+          defaultView: planned.defaultView,
+          thresholds: planned.thresholds,
+          showThresholdState: planned.showThresholdState,
+          source: planned.source,
+          monitor:
+            planned.monitorKey === null ? null : (monitorIds.get(planned.monitorKey) ?? null),
+          visible: planned.visible,
+          order: planned.order,
+          statusPages: planned.statusPageKeys.flatMap((key) => {
+            const page = createdPages.get(key)
+            return page ? [page.id] : []
+          }),
+        } as Omit<Metric, 'id' | 'createdAt' | 'updatedAt'>,
+        depth: 0,
+        req,
+        user,
+        overrideAccess: false,
+      })
+      metricIds.set(planned.key, doc.id)
+      created.metrics.push(doc.id)
+    }
+    // The pages' metric order, once the metrics exist (needs `status-page:update`).
+    if (metricIds.size > 0 && can(user, orgId, 'status-page:update')) {
+      for (const planned of statusPages) {
+        const page = createdPages.get(planned.key)
+        const order = (planned.metricOrder ?? []).flatMap((key) => {
+          const id = metricIds.get(key)
+          return id !== undefined ? [id] : []
+        })
+        if (!page || order.length === 0) continue
+        await payload.update({
+          collection: 'status-pages',
+          id: page.id,
+          data: { metricOrder: order } as Partial<StatusPage>,
+          depth: 0,
+          req,
+          user,
+          overrideAccess: false,
+        })
+      }
+    }
+
     for (const planned of templates) {
       const page = planned.statusPageKey ? createdPages.get(planned.statusPageKey) : undefined
       const doc = await payload.create({
@@ -707,6 +815,7 @@ export async function applyImportPlan(
         incidents: created.incidents.length,
         maintenance: created.maintenance.length,
         subscribers: created.subscribers.length,
+        metrics: created.metrics.length,
       },
     })
 
@@ -724,6 +833,7 @@ export async function applyImportPlan(
   report.incidents.created = created.incidents
   report.maintenance.created = created.maintenance
   report.subscribers.created = created.subscribers
+  report.metrics.created = created.metrics
   return report
 }
 

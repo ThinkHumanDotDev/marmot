@@ -2991,7 +2991,7 @@
       "lastValue": "Last value {value} at {time}",
       "neverPushed": "No values pushed yet.",
       "monitorBacked": "Values come from the monitor's checks.",
-      "pushHint": "Push values with an API key that has write access: POST a JSON body with points, each a value and an optional timestamp (up to 1,000 points from the last 24 hours), to the address shown under a metric.",
+      "pushHint": "Push values with an API key that has write access: POST a JSON body with points, each a value and an optional timestamp (up to 1,000 points), to the address shown under a metric. Points older than 24 hours fill in the weekly and monthly charts only.",
       "editLabel": "Edit {name}",
       "deleteLabel": "Delete {name}",
       "confirmDeleteTitle": "Delete {name}?",
@@ -3013,6 +3013,8 @@
         "defaultView": "Default period",
         "warning": "Warning threshold",
         "critical": "Critical threshold",
+        "showThresholdState": "Colour the value by its threshold",
+        "showThresholdStateHint": "Status pages show the latest value in green, amber or red with a label once it reaches a threshold. When the critical threshold is below the warning one, lower values are worse.",
         "source": "Source",
         "sourceHint": "Pushed metrics receive values through the API. Monitor metrics chart the value a Prometheus query monitor records.",
         "monitor": "Monitor",
@@ -5062,7 +5064,8 @@
         "subscribers": "Subscribers",
         "notifications": "Notifications",
         "history": "History",
-        "audiences": "Audiences"
+        "audiences": "Audiences",
+        "metrics": "Metrics"
       }
     },
     "settings": {
@@ -5266,6 +5269,32 @@
         "cancel": "Cancel",
         "save": "Save"
       }
+    },
+    "metricsPanel": {
+      "title": "Metrics",
+      "description": "Pick the custom metrics this page charts and the order they appear in. A metric is shown only while it is published; define metrics and publish them under Settings → Metrics.",
+      "onPage": "On this page",
+      "available": "Other metrics",
+      "emptyOnPage": "No metrics on this page yet. Add one from the list below.",
+      "emptyAvailable": "Every metric of the organization is on this page.",
+      "noMetrics": "This organization has no metrics yet.",
+      "manage": "Manage metrics",
+      "hidden": "Not published",
+      "hiddenHint": "Publish it under Settings → Metrics to show it on the page.",
+      "sources": {
+        "push": "Pushed",
+        "monitor": "From a monitor"
+      },
+      "add": "Add {name}",
+      "remove": "Remove {name}",
+      "moveUp": "Move {name} up",
+      "moveDown": "Move {name} down",
+      "save": "Save metrics",
+      "saving": "Saving…",
+      "saved": "Metrics saved.",
+      "saveFailed": "The metrics could not be saved.",
+      "forbidden": "You need permission to view metrics in this organization.",
+      "readOnly": "You need permission to edit metrics and this page to change them."
     },
     "domains": {
       "title": "Custom domains",
@@ -6024,6 +6053,11 @@
       "thresholds": {
         "warning": "Warning {value}",
         "critical": "Critical {value}"
+      },
+      "states": {
+        "ok": "Normal",
+        "warning": "Warning",
+        "critical": "Critical"
       },
       "summary": "{name} over {period}: {value}.",
       "empty": "No data in this period.",
@@ -6850,7 +6884,8 @@
         "tags": "Tags",
         "incidents": "Incidents",
         "maintenance": "Maintenance windows",
-        "subscribers": "Subscribers"
+        "subscribers": "Subscribers",
+        "metrics": "Metrics"
       }
     },
     "messages": {
@@ -6858,7 +6893,7 @@
       "notKumaBackup": "Not an Uptime Kuma backup: expected a JSON object with \"monitorList\" and \"notificationList\".",
       "notMarmotExport": "Not a Marmot export (format \"{format}\" version {version}): {issues}",
       "kumaVersion": "Uptime Kuma backup version {version}",
-      "unnamed": "{kind, select, monitor {monitor} notification {notification} statusPage {status page} template {template} incident {incident} other {tag}} #{id}",
+      "unnamed": "{kind, select, monitor {monitor} notification {notification} statusPage {status page} template {template} incident {incident} metric {metric} other {tag}} #{id}",
       "notificationConfigNotJson": "Notification config is not valid JSON",
       "notificationNoType": "Notification has no provider type",
       "notificationProviderUnsupported": "Notification provider \"{type}\" is not supported by Marmot",
@@ -6875,6 +6910,12 @@
       "templateExists": "A template with this name already exists",
       "templatesSkipped": "Templates were skipped: you may not create templates in this organization.",
       "noTemplatePermission": "You may not create templates in this organization",
+      "invalidMetric": "Invalid metric: {issues}",
+      "metricExists": "A metric with this name already exists",
+      "metricsSkipped": "Metrics were skipped: you may not create metrics in this organization.",
+      "noMetricPermission": "You may not create metrics in this organization",
+      "metricMonitorNotImported": "Its monitor was not imported",
+      "metricPagesDropped": "\"{name}\": {count} status {count, plural, one {page} other {pages}} dropped because the page was not imported",
       "templateComponentsDropped": "\"{name}\": {count} default {count, plural, one {component} other {components}} dropped because the status page was not imported",
       "monitorTypeUnsupported": "Monitor type \"{type}\" is not supported by Marmot yet",
       "dockerNeedsHost": "Monitor type \"Docker Container\" needs a Docker host in Marmot; add one and recreate the monitor",
@@ -7426,10 +7467,11 @@
     "metricNotFound": "Metric not found.",
     "metricNotPushable": "This metric takes its values from a monitor; values cannot be pushed to it.",
     "metricViewInvalid": "The period must be one of {views}.",
-    "metricPointTooOld": "Point {index} is older than 24 hours or has an invalid timestamp.",
+    "metricPointTooOld": "Point {index} is older than the {days, plural, one {# day} other {# days}} of statistics kept, or has an invalid timestamp.",
     "metricPointInFuture": "Point {index} is more than 5 minutes in the future.",
     "metricMonitorRequired": "Choose a monitor of this organization for a monitor-backed metric.",
     "metricStatusPagesInvalid": "Choose status pages of this organization.",
+    "pageMetricsInvalid": "Choose metrics of this organization.",
     "declaredIncidentNotFound": "Incident not found.",
     "declaredIncidentReadOnly": "This incident is closed and can no longer be changed.",
     "declaredIncidentInvalidTransition": "An incident cannot go from {from} to {to}.",

@@ -180,6 +180,7 @@ describe('MCP server', () => {
     if (orgIds.length) {
       const where = { organization: { in: orgIds } }
       await payload.delete({ collection: 'incidents', where })
+      await payload.delete({ collection: 'metrics', where })
       await payload.delete({ collection: 'status-pages', where })
       await payload.delete({ collection: 'maintenance', where })
       await payload.delete({ collection: 'declared-incidents', where })
@@ -435,6 +436,51 @@ describe('MCP server', () => {
       strategy: 'single',
     })
     expect(invalid.isError).toBe(true)
+    await client.close()
+  })
+
+  it('lists custom metrics and pushes values to them (#280)', async () => {
+    const metric = await payload.create({
+      collection: 'metrics',
+      overrideAccess: true,
+      data: { organization: orgA.id, name: 'Queue backlog', suffix: 'jobs' } as never,
+    })
+    await payload.create({
+      collection: 'metrics',
+      overrideAccess: true,
+      data: { organization: orgB.id, name: 'Foreign backlog' } as never,
+    })
+
+    const reader = await connect(readKey)
+    const readable = (await reader.listTools()).tools.map((t) => t.name)
+    expect(readable).toEqual(expect.arrayContaining(['list_metrics', 'get_metric_series']))
+    expect(readable).not.toContain('push_metric_points')
+    await reader.close()
+
+    const client = await connect(writeKey)
+    // One timestamp, so both land in the same interval; the later point is the latest value.
+    const at = new Date(Date.now() - 1000).toISOString()
+    const pushed = await call(client, 'push_metric_points', {
+      metricId: metric.id,
+      points: [
+        { value: 12, timestamp: at },
+        { value: 14, timestamp: at },
+      ],
+    })
+    expect(pushed.isError).toBe(false)
+    expect(pushed.data).toEqual({ accepted: 2 })
+
+    const invalid = await call(client, 'push_metric_points', { metricId: metric.id, points: [] })
+    expect(invalid.isError).toBe(true)
+
+    const list = await call(client, 'list_metrics')
+    const metrics = (list.data as { metrics: { id: string; name: string; lastValue: number }[] })
+      .metrics
+    expect(metrics.map((m) => m.name)).toEqual(['Queue backlog'])
+    expect(metrics[0]).toMatchObject({ unit: 'jobs', lastValue: 14 })
+
+    const series = await call(client, 'get_metric_series', { metricId: metric.id, view: 'hour' })
+    expect(series.data).toMatchObject({ view: 'hour', current: 13 })
     await client.close()
   })
 

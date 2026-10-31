@@ -32,6 +32,7 @@ import { EmbedPanel } from './embed-panel'
 import { GroupsEditor } from './groups-editor'
 import { HistoryPanel } from './history-panel'
 import { IncidentsPanel, type IncidentComponentOption } from './incidents-panel'
+import { MetricsPanel, type PageMetricsData } from './metrics-panel'
 import { NotificationsPanel } from './notifications-panel'
 import { SettingsForm } from './settings-form'
 import { SharePanel } from './share-panel'
@@ -67,6 +68,10 @@ export interface EditorProps {
   customDomains?: boolean
   /** `status-page:history`: the monthly uptime history and its CSV export (#112). */
   canViewHistory?: boolean
+  /** The organization's metrics and the page's picks (#280); null without `metric:read`. */
+  pageMetrics?: PageMetricsData | null
+  /** `metric:update` and `status-page:update`: pick and order the page's metrics. */
+  canEditMetrics?: boolean
 }
 
 /** The page's components (group rows, by row id) in display order: what an incident can affect. */
@@ -101,6 +106,8 @@ export function StatusPageEditor({
   trustProxy,
   customDomains = true,
   canViewHistory = false,
+  pageMetrics = null,
+  canEditMetrics = false,
 }: EditorProps) {
   const t = useTranslations('statusPages.editorPage')
   const ta = useTranslations('statusPages.access.editor')
@@ -188,6 +195,7 @@ export function StatusPageEditor({
             <TabsTrigger value="settings">{t('tabs.settings')}</TabsTrigger>
             <TabsTrigger value="theme">{t('tabs.theme')}</TabsTrigger>
             <TabsTrigger value="groups">{t('tabs.groups')}</TabsTrigger>
+            <TabsTrigger value="metrics">{t('tabs.metrics')}</TabsTrigger>
             <TabsTrigger value="incidents">{t('tabs.incidents')}</TabsTrigger>
             <TabsTrigger value="subscribers">{t('tabs.subscribers')}</TabsTrigger>
             {canReadSubscribers && (
@@ -219,6 +227,15 @@ export function StatusPageEditor({
               monitors={monitors}
               onSaved={setPage}
               canEdit={canEdit}
+            />
+          </TabsContent>
+          <TabsContent value="metrics" className="pt-6">
+            <MetricsPanel
+              orgId={orgId}
+              orgSlug={orgSlug}
+              pageId={page.id}
+              initial={pageMetrics}
+              canEdit={canEdit && canEditMetrics}
             />
           </TabsContent>
           <TabsContent value="incidents" className="pt-6">

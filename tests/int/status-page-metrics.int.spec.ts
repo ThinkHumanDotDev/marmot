@@ -195,8 +195,12 @@ describe('custom status page metrics', () => {
       ]) {
         expect((await push(metric.id, body)).status).toBe(400)
       }
+      // Older than the data period (backfill reaches back as far as the daily rollup keeps, #280).
       const old = await push(metric.id, {
-        points: [{ value: 1 }, { value: 2, timestamp: Math.floor(Date.now() / 1000) - 2 * 86400 }],
+        points: [
+          { value: 1 },
+          { value: 2, timestamp: Math.floor(Date.now() / 1000) - 11 * 366 * 86400 },
+        ],
       })
       expect(old.status).toBe(400)
       expect(((await old.json()) as { error: string }).error).toContain('Point 1')

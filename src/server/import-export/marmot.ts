@@ -7,10 +7,14 @@
  *     statusPages:   [{ id, ...fields, domains: [hostname], groups: [{ name, monitors: [{ monitor: id, sendUrl, customUrl }] }],
  *                      incidents: [{ title, content, style, pinned, active, resolvedAt, createdAt }] }],
  *     templates:     [{ name, kind, title, body, status, impact, duration, statusPage: id | null,
- *                      components: [{ component: <group row id>, impact }] }] }
+ *                      components: [{ component: <group row id>, impact }] }],
+ *     metrics:       [{ id, name, description, suffix, decimals, aggregation, defaultView, thresholds,
+ *                      showThresholdState, source, monitor: id | null, visible, order,
+ *                      statusPages: [id] }] }
  *
  * Group rows carry their `id` so templates can reference them; `templates` is optional on import
- * (files written before #153 have none).
+ * (files written before #153 have none), and so are `metrics` and a page's `metricOrder` (#280).
+ * Metrics travel as definitions and page links; their recorded values stay behind.
  *
  * Ids are the plain document ids of the exporting instance and are only used to link documents
  * inside the file; the importer remaps them. THE FILE CONTAINS SECRETS: notification configs are
@@ -23,6 +27,16 @@ import { z } from 'zod'
 import type { OrgId } from '@/access/permissions'
 import { BANNER_TEXT_MAX_LENGTH } from '@/collections/status-page-theme'
 import { MARMOT_EXPORT_FORMAT, MARMOT_EXPORT_VERSION } from '@/lib/import-export'
+import {
+  DEFAULT_METRIC_VIEW,
+  METRIC_AGGREGATIONS,
+  METRIC_DESCRIPTION_MAX_LENGTH,
+  METRIC_MAX_DECIMALS,
+  METRIC_NAME_MAX_LENGTH,
+  METRIC_SOURCES,
+  METRIC_SUFFIX_MAX_LENGTH,
+  METRIC_VIEWS,
+} from '@/lib/metrics'
 import { COMPONENT_IMPACTS, INCIDENT_STATUSES, incidentTimeline } from '@/lib/incident-timeline'
 import {
   MAX_SMS_MAX_SEGMENTS,
@@ -45,6 +59,7 @@ import { monitorFormSchema } from '@/lib/validation/monitor-schema'
 import { normalizeChannelEvents, type ChannelEvent } from '@/lib/notification-events'
 import type {
   Incident,
+  Metric,
   Monitor,
   Notification,
   Organization,
@@ -67,6 +82,7 @@ import {
   isRecord,
   type ImportPlan,
   type PlannedIncident,
+  type PlannedMetric,
   type PlannedStatusPage,
   type PlannedTemplate,
 } from './types'
@@ -140,6 +156,8 @@ export interface ExportedStatusPage {
     monitors: ExportedComponent[]
   }[]
   incidents: ExportedIncident[]
+  /** Metric ids in the page's display order (#280). */
+  metricOrder?: OrgId[]
 }
 
 export interface ExportedComponent {
@@ -168,6 +186,25 @@ export interface ExportedTemplate {
   components: { component: string; impact: NonNullable<Template['components']>[number]['impact'] }[]
 }
 
+export interface ExportedMetric {
+  id: OrgId
+  name: string
+  description: string | null
+  suffix: string | null
+  decimals: number
+  aggregation: Metric['aggregation']
+  defaultView: Metric['defaultView']
+  thresholds: { warning: number | null; critical: number | null }
+  showThresholdState: boolean
+  source: Metric['source']
+  /** Exported monitor id (`source: monitor`). */
+  monitor: OrgId | null
+  visible: boolean
+  order: number
+  /** Exported status page ids. */
+  statusPages: OrgId[]
+}
+
 export interface MarmotExport {
   format: typeof MARMOT_EXPORT_FORMAT
   version: typeof MARMOT_EXPORT_VERSION
@@ -177,6 +214,7 @@ export interface MarmotExport {
   monitors: ExportedMonitor[]
   statusPages: ExportedStatusPage[]
   templates: ExportedTemplate[]
+  metrics: ExportedMetric[]
 }
 
 const MONITOR_FIELDS = Object.keys(defaultMonitorValues()) as (keyof MonitorFormValues)[]
@@ -205,6 +243,28 @@ const toExportedTemplate = (doc: Template): ExportedTemplate => ({
     component: row.component,
     impact: row.impact,
   })),
+})
+
+const toExportedMetric = (doc: Metric): ExportedMetric => ({
+  id: doc.id,
+  name: doc.name,
+  description: doc.description ?? null,
+  suffix: doc.suffix ?? null,
+  decimals: doc.decimals ?? 0,
+  aggregation: doc.aggregation ?? 'average',
+  defaultView: doc.defaultView ?? DEFAULT_METRIC_VIEW,
+  thresholds: {
+    warning: doc.thresholds?.warning ?? null,
+    critical: doc.thresholds?.critical ?? null,
+  },
+  showThresholdState: doc.showThresholdState === true,
+  source: doc.source ?? 'push',
+  monitor: doc.source === 'monitor' ? relationId(doc.monitor) : null,
+  visible: doc.visible === true,
+  order: doc.order ?? 0,
+  statusPages: (doc.statusPages ?? [])
+    .map((page) => relationId(page))
+    .filter((id): id is OrgId => id !== null),
 })
 
 const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedStatusPage => ({
@@ -275,6 +335,9 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
     resolvedAt: incident.resolvedAt ?? null,
     createdAt: incident.createdAt,
   })),
+  metricOrder: (doc.metricOrder ?? [])
+    .map((metric) => relationId(metric))
+    .filter((id): id is OrgId => id !== null),
 })
 
 /**
@@ -294,7 +357,7 @@ export async function buildMarmotExport(
     overrideAccess: false,
   })) as Organization
 
-  const [monitors, notifications, statusPages, incidents, templates] = await Promise.all([
+  const [monitors, notifications, statusPages, incidents, templates, metrics] = await Promise.all([
     payload.find({
       collection: 'monitors',
       where: { organization: { equals: orgId } },
@@ -323,6 +386,12 @@ export async function buildMarmotExport(
       collection: 'templates',
       where: { organization: { equals: orgId } },
       sort: 'name',
+      ...common,
+    }),
+    payload.find({
+      collection: 'metrics',
+      where: { organization: { equals: orgId } },
+      sort: ['order', 'name'],
       ...common,
     }),
   ])
@@ -355,6 +424,7 @@ export async function buildMarmotExport(
       toExportedStatusPage(doc, incidentsByPage.get(String(doc.id)) ?? []),
     ),
     templates: (templates.docs as Template[]).map(toExportedTemplate),
+    metrics: (metrics.docs as Metric[]).map(toExportedMetric),
   }
 }
 
@@ -372,6 +442,7 @@ const envelopeSchema = z.object({
   monitors: z.array(z.unknown()).default([]),
   statusPages: z.array(z.unknown()).default([]),
   templates: z.array(z.unknown()).default([]),
+  metrics: z.array(z.unknown()).default([]),
 })
 
 const notificationSchema = z.object({
@@ -476,6 +547,7 @@ const statusPageSchema = z.object({
       }),
     )
     .default([]),
+  metricOrder: z.array(idSchema).nullish(),
 })
 
 const templateSchema = z.object({
@@ -490,6 +562,25 @@ const templateSchema = z.object({
   components: z
     .array(z.object({ component: z.string().min(1), impact: z.enum(COMPONENT_IMPACTS) }))
     .default([]),
+})
+
+const metricThreshold = z.number().finite().nullish()
+
+const metricSchema = z.object({
+  id: idSchema,
+  name: z.string().trim().min(1).max(METRIC_NAME_MAX_LENGTH),
+  description: z.string().trim().max(METRIC_DESCRIPTION_MAX_LENGTH).nullish(),
+  suffix: z.string().trim().max(METRIC_SUFFIX_MAX_LENGTH).nullish(),
+  decimals: z.number().int().min(0).max(METRIC_MAX_DECIMALS).nullish(),
+  aggregation: z.enum(METRIC_AGGREGATIONS).nullish(),
+  defaultView: z.enum(METRIC_VIEWS).nullish(),
+  thresholds: z.object({ warning: metricThreshold, critical: metricThreshold }).nullish(),
+  showThresholdState: z.boolean().nullish(),
+  source: z.enum(METRIC_SOURCES).nullish(),
+  monitor: idSchema.nullish(),
+  visible: z.boolean().nullish(),
+  order: z.number().int().nullish(),
+  statusPages: idList,
 })
 
 const issueList = (issues: { path: PropertyKey[]; message: string }[]): string =>
@@ -731,6 +822,7 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
         active: incident.active ?? true,
         resolvedAt: incident.resolvedAt ?? null,
       })),
+      ...(page.metricOrder ? { metricOrder: page.metricOrder.map(String) } : {}),
     }
     if (droppedRows > 0) {
       plan.warnings.push(t('rowsDropped', { title: page.title, count: droppedRows }))
@@ -790,6 +882,61 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
       components: components.map((row) => ({ componentKey: row.component, impact: row.impact })),
     }
     plan.templates.push(planned)
+  })
+
+  // Metrics (#280): a monitor-backed one needs its monitor in the plan; links to pages that are
+  // not imported are dropped with a warning.
+  const pageKeys = new Set(plan.statusPages.map((page) => page.key))
+  file.metrics.forEach((entry, index) => {
+    const fallback = t('unnamed', { kind: 'metric', id: index + 1 })
+    const name = isRecord(entry) ? (asText(entry.name) ?? fallback) : fallback
+    const parsed = metricSchema.safeParse(entry)
+    if (!parsed.success) {
+      plan.skipped.metrics.push({
+        name,
+        reason: t('invalidMetric', { issues: issueList(parsed.error.issues) }),
+      })
+      return
+    }
+    const metric = parsed.data
+    const source = metric.source ?? 'push'
+    const monitorKey =
+      source === 'monitor' && metric.monitor !== null && metric.monitor !== undefined
+        ? String(metric.monitor)
+        : null
+    if (source === 'monitor' && (monitorKey === null || !monitorKeys.has(monitorKey))) {
+      plan.skipped.metrics.push({ name: metric.name, reason: t('metricMonitorNotImported') })
+      return
+    }
+    const statusPageKeys = metric.statusPages.map(String).filter((key) => pageKeys.has(key))
+    if (statusPageKeys.length < metric.statusPages.length) {
+      plan.warnings.push(
+        t('metricPagesDropped', {
+          name: metric.name,
+          count: metric.statusPages.length - statusPageKeys.length,
+        }),
+      )
+    }
+    const planned: PlannedMetric = {
+      key: String(metric.id),
+      name: metric.name,
+      description: metric.description || null,
+      suffix: metric.suffix || null,
+      decimals: metric.decimals ?? 0,
+      aggregation: metric.aggregation ?? 'average',
+      defaultView: metric.defaultView ?? DEFAULT_METRIC_VIEW,
+      thresholds: {
+        warning: metric.thresholds?.warning ?? null,
+        critical: metric.thresholds?.critical ?? null,
+      },
+      showThresholdState: metric.showThresholdState ?? false,
+      source,
+      monitorKey,
+      visible: metric.visible ?? false,
+      order: metric.order ?? 0,
+      statusPageKeys,
+    }
+    plan.metrics.push(planned)
   })
 
   return plan

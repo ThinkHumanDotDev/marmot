@@ -162,6 +162,12 @@ export const Metrics: CollectionConfig = {
       ],
     },
     {
+      name: 'showThresholdState',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { description: adminT('marmot:metrics:showThresholdStateDescription') },
+    },
+    {
       name: 'source',
       type: 'select',
       required: true,

@@ -40,17 +40,51 @@ export const METRIC_DESCRIPTION_MAX_LENGTH = 500
 export const METRIC_MAX_DECIMALS = 6
 /** Points accepted by one push request. */
 export const METRIC_MAX_POINTS_PER_PUSH = 1000
-/** How far back a pushed point may be (the minutely rollup keeps 24 hours). */
+/**
+ * How far back a point still reaches the minutely rollup (which keeps 24 hours). Older points are
+ * backfilled into the hourly and daily rollups only (#280).
+ */
 export const METRIC_MAX_POINT_AGE_SECONDS = 24 * 3600
+/** How far back a point still reaches the hourly rollup (which keeps 30 days). */
+export const METRIC_HOURLY_MAX_AGE_SECONDS = 30 * 24 * 3600
+/**
+ * Upper bound of a backfilled point's age when long-term retention is off (`keepDataPeriodDays`
+ * below 1 keeps daily rows forever); otherwise the data period is the bound.
+ */
+export const METRIC_MAX_BACKFILL_DAYS = 10 * 366
 /** Clock skew tolerated for points stamped in the future. */
 export const METRIC_MAX_POINT_SKEW_SECONDS = 5 * 60
 /** Largest magnitude of a pushed value. */
 export const METRIC_MAX_ABS_VALUE = 1e15
 
-/** Display thresholds: values at or above `warning`/`critical` are drawn as reference lines. */
+/**
+ * Display thresholds, drawn as reference lines. A value at or above `warning`/`critical` is in that
+ * state; when both are set and `critical` is below `warning`, lower values are worse (a success
+ * rate) and a value at or below a threshold is in its state (#280).
+ */
 export interface MetricThresholds {
   warning: number | null
   critical: number | null
+}
+
+/** What a value means against the thresholds (#280). */
+export const METRIC_THRESHOLD_STATES = ['ok', 'warning', 'critical'] as const
+export type MetricThresholdState = (typeof METRIC_THRESHOLD_STATES)[number]
+
+/** The state of `value` against `thresholds`, or null without a value or without thresholds. */
+export function metricThresholdState(
+  value: number | null | undefined,
+  thresholds: MetricThresholds,
+): MetricThresholdState | null {
+  const { warning, critical } = thresholds
+  if (value === null || value === undefined || !Number.isFinite(value)) return null
+  if (warning === null && critical === null) return null
+  const lowerIsWorse = warning !== null && critical !== null && critical < warning
+  const reaches = (limit: number | null) =>
+    limit !== null && (lowerIsWorse ? value <= limit : value >= limit)
+  if (reaches(critical)) return 'critical'
+  if (reaches(warning)) return 'warning'
+  return 'ok'
 }
 
 /** A metric as the settings UI and the management API show it. */
@@ -63,6 +97,8 @@ export interface MetricRow {
   aggregation: MetricAggregation
   defaultView: MetricView
   thresholds: MetricThresholds
+  /** Colour the headline value on status pages by its threshold state (#280). */
+  showThresholdState: boolean
   source: MetricSource
   monitor: string | null
   visible: boolean
@@ -93,6 +129,10 @@ export interface PublicMetric {
   defaultView: MetricView
   view: MetricView
   thresholds: MetricThresholds
+  /** Whether the page colours the headline value by `state` (#280). */
+  showThresholdState: boolean
+  /** State of `current` against the thresholds; null without thresholds or without data. */
+  state: MetricThresholdState | null
   /** Interval width of `series` in seconds. */
   step: number
   /** Latest value of the period (the last interval with data), null without data. */

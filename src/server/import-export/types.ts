@@ -14,6 +14,7 @@ import type { ComponentImpact, IncidentStatus } from '@/lib/incident-timeline'
 import type { ChannelEvent } from '@/lib/notification-events'
 import type { MonitorFormValues } from '@/lib/validation/monitor'
 import type { TemplateKind } from '@/lib/templates'
+import type { MetricAggregation, MetricSource, MetricView } from '@/lib/metrics'
 import type { Incident, StatusPage, Template } from '@/payload-types'
 
 export interface PlannedNotification {
@@ -140,6 +141,28 @@ export interface PlannedStatusPage {
   incidents: PlannedIncident[]
   /** Provider imports only; imported as confirmed (`source: import`) without an opt-in. */
   subscribers?: PlannedSubscriber[]
+  /** Display order of the page's metrics by their keys in the file (#280); optional. */
+  metricOrder?: string[]
+}
+
+/** A custom metric (#280, Marmot exports): definition and page links, never its values. */
+export interface PlannedMetric {
+  key: string
+  name: string
+  description: string | null
+  suffix: string | null
+  decimals: number
+  aggregation: MetricAggregation
+  defaultView: MetricView
+  thresholds: { warning: number | null; critical: number | null }
+  showThresholdState: boolean
+  source: MetricSource
+  /** Key of a planned monitor (`source: monitor`), else null. */
+  monitorKey: string | null
+  visible: boolean
+  order: number
+  /** Keys of planned status pages that show the metric. */
+  statusPageKeys: string[]
 }
 
 export interface PlannedTemplate {
@@ -166,6 +189,7 @@ export interface ImportPlan {
   statusPages: PlannedStatusPage[]
   templates: PlannedTemplate[]
   maintenance: PlannedMaintenance[]
+  metrics: PlannedMetric[]
   skipped: {
     monitors: SkippedItem[]
     notifications: SkippedItem[]
@@ -175,6 +199,7 @@ export interface ImportPlan {
     incidents: SkippedItem[]
     maintenance: SkippedItem[]
     subscribers: SkippedItem[]
+    metrics: SkippedItem[]
   }
   warnings: string[]
 }
@@ -186,6 +211,7 @@ export const emptyPlan = (format: ImportFormat): ImportPlan => ({
   statusPages: [],
   templates: [],
   maintenance: [],
+  metrics: [],
   skipped: {
     monitors: [],
     notifications: [],
@@ -195,6 +221,7 @@ export const emptyPlan = (format: ImportFormat): ImportPlan => ({
     incidents: [],
     maintenance: [],
     subscribers: [],
+    metrics: [],
   },
   warnings: [],
 })

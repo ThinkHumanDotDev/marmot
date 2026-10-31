@@ -27,6 +27,10 @@ export const metricCreateSchema = z.object({
   aggregation: z.enum(METRIC_AGGREGATIONS).optional(),
   defaultView: z.enum(METRIC_VIEWS).optional(),
   thresholds: z.object({ warning: threshold, critical: threshold }).optional(),
+  showThresholdState: z
+    .boolean()
+    .optional()
+    .describe('Colour the headline value on status pages by its threshold state'),
   source: z.enum(METRIC_SOURCES).optional().describe('push (default) or monitor'),
   monitor: id
     .nullable()
@@ -39,6 +43,14 @@ export const metricCreateSchema = z.object({
 
 export const metricUpdateSchema = metricCreateSchema.partial()
 
+/** `PUT /api/orgs/:orgId/status-pages/:id/metrics`: the page's metrics in display order (#280). */
+export const pageMetricsBody = z.object({
+  metrics: z
+    .array(id)
+    .max(50)
+    .describe('Metric ids in display order; every other metric is removed from the page'),
+})
+
 export type MetricCreateInput = z.infer<typeof metricCreateSchema>
 export type MetricUpdateInput = z.infer<typeof metricUpdateSchema>
 
@@ -50,10 +62,12 @@ const point = z.object({
     .describe('Unix seconds (or milliseconds) or an ISO 8601 date; defaults to now'),
 })
 
-export const metricPointsSchema = z.union([
-  z.object({ points: z.array(point).min(1).max(METRIC_MAX_POINTS_PER_PUSH) }),
-  point,
-])
+/** A batch of points (also the input of the `push_metric_points` MCP tool). */
+export const metricPointsBatchSchema = z.object({
+  points: z.array(point).min(1).max(METRIC_MAX_POINTS_PER_PUSH),
+})
+
+export const metricPointsSchema = z.union([metricPointsBatchSchema, point])
 
 export type MetricPointInput = z.infer<typeof point>
 
