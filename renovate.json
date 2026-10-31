@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Ported from Dependabot: labels follow the repo's type:/area: scheme and every update is a chore(deps) commit.",
+  "extends": ["local>ThinkHumanDotDev/renovate-config", ":semanticCommits"],
+  "labels": ["type:chore", "area:deps"],
+  "prConcurrentLimit": 5,
+  "packageRules": [
+    {
+      "matchPackageNames": ["*"],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "deps"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["action"],
+      "groupName": "actions",
+      "addLabels": ["area:ci"]
+    },
+    {
+      "description": "Docker images are checked monthly.",
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "schedule": ["before 7am on the first day of the month"],
+      "addLabels": ["area:docker"]
+    },
+    {
+      "description": "Stay on the Node LTS line we test against.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["node"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    }
+  ]
+}
