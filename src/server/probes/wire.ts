@@ -96,7 +96,12 @@ export type ProbeResultsBody = z.input<typeof probeResultsBodySchema>
 
 /** Why a result was not recorded. The agent drops it either way (and refreshes its config). */
 export type ProbeRejectReason =
-  'unknown-monitor' | 'not-assigned' | 'inactive' | 'unsupported-type' | 'stale' | 'duplicate'
+  | 'unknown-monitor'
+  | 'not-assigned'
+  | 'inactive'
+  | 'unsupported-type'
+  | 'stale'
+  | 'duplicate'
 
 export interface ProbeResultOutcome {
   monitorId: string

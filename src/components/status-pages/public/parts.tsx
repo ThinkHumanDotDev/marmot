@@ -27,7 +27,7 @@ export function StatusPageLogo({
   const { logo, logoDark } = config
   if (!logo && !logoDark) return null
   const img = (src: string, extra?: string, mode?: 'light' | 'dark') => (
-    // eslint-disable-next-line @next/next/no-img-element -- user upload, arbitrary size
+    // biome-ignore lint/performance/noImgElement: user upload, arbitrary size
     <img
       src={src}
       alt={alt}

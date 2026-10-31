@@ -500,18 +500,22 @@ function publicUptime(
   const showValues = rowShowsValues(page, row)
   const showPercentage = showValues && page.showUptimePercentage !== false
   const mode = componentMode(pageUptimeMode(page), type)
-  const days = uptime.days.map((day): PublicUptimeDay => ({
-    date: dayLabel(day.day),
-    state: day.state,
-    ...(showPercentage ? { uptime: day.hasData ? uptimeOf(mode, day.figures) : null } : {}),
-    ...(showValues ? { downtimeSeconds: day.hasData ? downtimeOf(mode, day.figures) : null } : {}),
-    incidents: day.incidents.map((incident) => ({
-      id: incident.publicId,
-      title: incident.title,
-      impact: incident.impact,
-    })),
-    maintenance: day.maintenance.map((m) => ({ id: m.publicId, title: m.title })),
-  }))
+  const days = uptime.days.map(
+    (day): PublicUptimeDay => ({
+      date: dayLabel(day.day),
+      state: day.state,
+      ...(showPercentage ? { uptime: day.hasData ? uptimeOf(mode, day.figures) : null } : {}),
+      ...(showValues
+        ? { downtimeSeconds: day.hasData ? downtimeOf(mode, day.figures) : null }
+        : {}),
+      incidents: day.incidents.map((incident) => ({
+        id: incident.publicId,
+        title: incident.title,
+        impact: incident.impact,
+      })),
+      maintenance: day.maintenance.map((m) => ({ id: m.publicId, title: m.title })),
+    }),
+  )
   return showPercentage ? { days, uptime: uptimeOf(mode, uptime.totals) } : { days }
 }
 

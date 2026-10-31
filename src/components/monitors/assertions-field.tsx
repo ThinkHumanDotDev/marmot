@@ -74,7 +74,8 @@ export function AssertionsField({
   const rows = (useWatch({ control, name }) ?? []) as MonitorAssertion[]
   const { errors } = useFormState({ control, name })
   const listErrors = get(errors, name) as
-    { message?: string; root?: { message?: string } } | undefined
+    | { message?: string; root?: { message?: string } }
+    | undefined
   const kinds = assertionKindsForType(monitorType)
 
   const counts = new Map<AssertionKind, number>()

@@ -84,7 +84,7 @@ pnpm -s build:action
 
 echo "==> CHANGELOG.md (${GIT_CLIFF} --tag ${TAG})"
 $GIT_CLIFF --config cliff.toml --tag "$TAG" --output CHANGELOG.md
-pnpm exec prettier --log-level warn --write CHANGELOG.md package.json "$COMPOSE_FILE" "$CHART_FILE"
+pnpm exec biome format --write package.json "$COMPOSE_FILE" "$CHART_FILE"
 
 git --no-pager diff --stat -- package.json "$COMPOSE_FILE" "$CHART_FILE" CHANGELOG.md deploy/railway action/dist
 

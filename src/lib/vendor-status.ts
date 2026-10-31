@@ -445,9 +445,7 @@ export function feedLinkFromHtml(html: string, baseUrl: string): string | null {
     if (!href) continue
     try {
       return new URL(decodeEntities(href[1]), baseUrl).toString()
-    } catch {
-      continue
-    }
+    } catch {}
   }
   return null
 }

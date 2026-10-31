@@ -194,26 +194,26 @@ const WS_AUTH_METHODS = AUTH_METHODS.filter((m) => m !== 'oauth2-cc' && m !== 'n
 const hasConnectionSection = (type: MonitorTypeName | undefined): boolean =>
   Boolean(
     type &&
-    (isDatabaseMonitorType(type) ||
-      [
-        'mqtt',
-        'kafka-producer',
-        'grpc-keyword',
-        'radius',
-        'snmp',
-        'smtp',
-        'sftp',
-        'ssh',
-        'udp',
-        'tls',
-        'imap',
-        'pop3',
-        'rabbitmq',
-        'websocket-upgrade',
-        'gamedig',
-        'steam',
-        'real-browser',
-      ].includes(type)),
+      (isDatabaseMonitorType(type) ||
+        [
+          'mqtt',
+          'kafka-producer',
+          'grpc-keyword',
+          'radius',
+          'snmp',
+          'smtp',
+          'sftp',
+          'ssh',
+          'udp',
+          'tls',
+          'imap',
+          'pop3',
+          'rabbitmq',
+          'websocket-upgrade',
+          'gamedig',
+          'steam',
+          'real-browser',
+        ].includes(type)),
   )
 
 // ---- Small field helpers ----------------------------------------------------------------------

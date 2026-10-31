@@ -63,7 +63,8 @@ export interface ApiKeyPrincipalInfo {
 export type ApiKeyPrincipal = RequestUser & { apiKey: ApiKeyPrincipalInfo }
 
 export type RequestAuth =
-  { user: RequestUser | null; response?: undefined } | { user?: undefined; response: Response }
+  | { user: RequestUser | null; response?: undefined }
+  | { user?: undefined; response: Response }
 
 /** Sections below `/api/orgs/:orgId/` that API keys may never call, whatever their scope. */
 export const API_KEY_FORBIDDEN_SECTIONS: readonly string[] = [

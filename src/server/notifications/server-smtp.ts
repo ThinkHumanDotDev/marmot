@@ -94,7 +94,8 @@ function normalizedConfig(config: unknown): string {
  * for rendering it in the user's language.
  */
 export type ServerSmtpChangeRefusal = { key: ErrorKey; values?: ErrorValues; message: string } & (
-  { status: 403 } | { status: 400; path: string }
+  | { status: 403 }
+  | { status: 400; path: string }
 )
 
 export interface ServerSmtpChangeInput {

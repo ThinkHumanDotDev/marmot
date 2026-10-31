@@ -58,7 +58,8 @@ organization. `/admin` is the Payload admin panel (superadmins only).
 | Command                     | What it does                                                                                            |
 | --------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `pnpm check`                | `lint` + `typecheck` + `test:int`. Run before every push.                                               |
-| `pnpm lint` / `pnpm format` | ESLint / Prettier check (`pnpm format:fix` writes).                                                     |
+| `pnpm lint`                 | Biome (format, lint) + `lint:i18n`; `pnpm lint:fix` applies Biome's safe fixes.                         |
+| `pnpm lint:i18n`            | ESLint, only for `marmot/no-literal-jsx-text` (below).                                                  |
 | `pnpm typecheck`            | `tsc --noEmit` over app, server and tests.                                                              |
 | `pnpm generate:types`       | Regenerate `src/payload-types.ts` after changing a collection or global. Never edit that file by hand.  |
 | `pnpm generate:importmap`   | Regenerate the admin import map after adding admin components.                                          |
@@ -177,7 +178,8 @@ key fails `pnpm typecheck`, and `tests/int/i18n.int.spec.ts` checks that every c
 
 ### Literal text lint rule
 
-`pnpm lint` runs `marmot/no-literal-jsx-text` (`eslint-rules/no-literal-jsx-text.mjs`) on
+`pnpm lint` runs `marmot/no-literal-jsx-text` (`eslint-rules/no-literal-jsx-text.mjs`, through
+`pnpm lint:i18n`: the one rule ESLint still runs; Biome does the rest) on
 `src/app/**/*.tsx` and `src/components/**/*.tsx` (not `components/ui`, not the Payload admin). It reports
 JSX text with letters, string literals rendered as children (`{busy ? 'Saving…' : t('save')}`) and
 literal `placeholder`, `title`, `alt`, `aria-label`, `label` and `description` props. It lets through

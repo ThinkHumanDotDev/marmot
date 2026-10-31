@@ -57,7 +57,10 @@ const isStatusFilter = (value: string): value is StatusFilter =>
   (STATUS_FILTERS as readonly string[]).includes(value)
 
 type ParamSource =
-  URLSearchParams | Record<string, string | string[] | undefined> | null | undefined
+  | URLSearchParams
+  | Record<string, string | string[] | undefined>
+  | null
+  | undefined
 
 function readParam(source: ParamSource, key: string): string[] {
   if (!source) return []

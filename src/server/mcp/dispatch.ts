@@ -37,7 +37,8 @@ export interface RouteCall {
 }
 
 export type RouteResult =
-  { ok: true; status: number; data: unknown } | { ok: false; status: number; message: string }
+  | { ok: true; status: number; data: unknown }
+  | { ok: false; status: number; message: string }
 
 export const orgIdOf = (principal: ApiKeyPrincipal): OrgId => principal.apiKey.organization
 

@@ -175,12 +175,13 @@ beforeAll(async () => {
         res.writeHead(req.headers.authorization ? 200 : 401)
         res.end(req.headers.authorization ?? 'nope')
         return
-      case '/echo':
+      case '/echo': {
         res.writeHead(200, { 'content-type': 'text/plain' })
         let body = ''
         req.on('data', (c) => (body += c))
         req.on('end', () => res.end(`${req.method} ${req.headers['content-type']} ${body}`))
         return
+      }
       case '/delayed':
         setTimeout(() => {
           res.writeHead(200, { 'content-type': 'text/plain' })

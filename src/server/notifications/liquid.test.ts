@@ -57,7 +57,7 @@ function legacyRender(template: string, context: TemplateContext): string {
     let current: unknown = context
     for (const segment of path.split('.')) {
       if (current === null || typeof current !== 'object') return ''
-      if (!Object.prototype.hasOwnProperty.call(current, segment)) return ''
+      if (!Object.hasOwn(current, segment)) return ''
       current = (current as Record<string, unknown>)[segment]
     }
     if (current === null || current === undefined) return ''

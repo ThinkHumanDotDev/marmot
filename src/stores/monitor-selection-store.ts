@@ -11,7 +11,12 @@ import { create } from 'zustand'
  * need a target, so the list opens its menu to pick the maintenance window or status page group.
  */
 export type PaletteBulkAction =
-  'pause' | 'resume' | 'check' | 'delete' | 'addToMaintenance' | 'addToStatusPageGroup'
+  | 'pause'
+  | 'resume'
+  | 'check'
+  | 'delete'
+  | 'addToMaintenance'
+  | 'addToStatusPageGroup'
 
 /** What the list lets the user do with a selection (organization overrides applied). */
 export interface ListBulkPermissions {

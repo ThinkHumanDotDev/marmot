@@ -23,7 +23,7 @@ export const SSO_ERROR_MESSAGES = {
 export type SsoErrorCode = keyof typeof SSO_ERROR_MESSAGES
 
 export const isSsoErrorCode = (value: unknown): value is SsoErrorCode =>
-  typeof value === 'string' && Object.prototype.hasOwnProperty.call(SSO_ERROR_MESSAGES, value)
+  typeof value === 'string' && Object.hasOwn(SSO_ERROR_MESSAGES, value)
 
 /** Message for a `?error=` query value, or `undefined` for unknown/missing codes. */
 export const ssoErrorMessage = (code: unknown): string | undefined =>

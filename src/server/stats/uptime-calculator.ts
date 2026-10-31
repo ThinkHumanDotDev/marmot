@@ -111,9 +111,9 @@ const isBucketValue = (value: unknown): value is BucketValue => {
   const v = value as Partial<BucketValue> | null
   return Boolean(
     v &&
-    typeof v === 'object' &&
-    [v.avg, v.min, v.max, v.count].every((n) => typeof n === 'number' && Number.isFinite(n)) &&
-    (v.count ?? 0) > 0,
+      typeof v === 'object' &&
+      [v.avg, v.min, v.max, v.count].every((n) => typeof n === 'number' && Number.isFinite(n)) &&
+      (v.count ?? 0) > 0,
   )
 }
 
