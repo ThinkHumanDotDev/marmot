@@ -662,6 +662,10 @@
         "label": "Push",
         "description": "Your system calls a URL on a schedule; silence means DOWN."
       },
+      "host": {
+        "label": "Host (agent)",
+        "description": "A small agent reports CPU, memory, disks, network and temperatures; thresholds alert."
+      },
       "manual": {
         "label": "Manual",
         "description": "Status set by hand, never checked."
@@ -971,6 +975,7 @@
         "sshTunnelDescription": "Reach an internal target through an SSH bastion. Host names are resolved by the bastion.",
         "dockerContainer": "Container name / id",
         "push": "A push URL is generated when the monitor is saved. Call it on the schedule below; a late ping or a reported failure marks the monitor DOWN.",
+        "host": "A token for the host agent is generated when the monitor is saved; the monitor page shows how to start the agent. A missing sample or a breached threshold changes the status.",
         "group": "Monitor group",
         "groupEmpty": "Create a Group monitor to nest monitors under it.",
         "groupDescription": "Groups aggregate the status of their children.",
@@ -1351,6 +1356,40 @@
           "unmatchedFail": "Record a failure"
         }
       },
+      "host": {
+        "title": "Thresholds",
+        "description": "Each row compares a metric from the agent with a value. A breach marks the monitor DOWN or degraded with a message such as “disk / at 93 %”. With a duration, every sample of that period must breach.",
+        "empty": "No thresholds: the monitor only goes DOWN when the agent stops reporting.",
+        "metric": "Metric",
+        "target": "Target",
+        "targetAll": "All (e.g. {example})",
+        "operator": "Comparison",
+        "value": "Value",
+        "valueWithUnit": "Value ({unit})",
+        "duration": "For (seconds)",
+        "severity": "Breach marks",
+        "remove": "Remove threshold",
+        "add": "Add threshold",
+        "graceDescription": "Extra seconds after the interval before a missing sample marks the monitor DOWN. Empty: 10 % of the interval.",
+        "metrics": {
+          "cpu": "CPU",
+          "load1": "Load (1 min)",
+          "load5": "Load (5 min)",
+          "load15": "Load (15 min)",
+          "memory": "Memory used",
+          "swap": "Swap used",
+          "disk": "Disk used",
+          "temperature": "Temperature",
+          "network-rx": "Network in",
+          "network-tx": "Network out",
+          "container-cpu": "Container CPU",
+          "container-memory": "Container memory"
+        },
+        "severities": {
+          "down": "DOWN",
+          "degraded": "Degraded"
+        }
+      },
       "statusPage": {
         "url": "Status page URL",
         "urlDescription": "The vendor's public status page. Checked at most every {seconds} seconds, or less often when the vendor's cache headers ask for it.",
@@ -1510,6 +1549,28 @@
         "exitCode": "Exit code {code}",
         "output": "Output",
         "truncated": "Truncated to the first 10 000 bytes."
+      }
+    },
+    "host": {
+      "panel": {
+        "title": "Host agent",
+        "description": "A small agent on the machine pushes its metrics here every interval. It needs no inbound port: start it with this monitor's token.",
+        "lastSample": "Last sample",
+        "never": "Never",
+        "host": "Host",
+        "agentVersion": "Agent version",
+        "downAfter": "DOWN after",
+        "downAfterValue": "{interval} without a sample, plus {grace} grace",
+        "tabs": {
+          "docker": "Docker",
+          "compose": "Compose",
+          "node": "Node.js"
+        },
+        "hints": {
+          "docker": "Mounts the host's root read-only so the agent reports the host, not its container. Add -v /var/run/docker.sock:/var/run/docker.sock:ro and -e HOST_AGENT_DOCKER=true for per-container stats.",
+          "compose": "The Compose file also reports per-container Docker stats; set DOCKER_GID to the group that owns the Docker socket.",
+          "node": "Runs on Linux, macOS and Windows. Run it as a service (systemd, launchd, NSSM) to keep it running."
+        }
       }
     }
   },

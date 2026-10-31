@@ -17,6 +17,7 @@
 - [Monitors](Monitors.md)
 - [Monitor types](Monitor-Types.md)
 - [Probe locations](Probe-Locations.md)
+- [Host monitoring](Host-Monitoring.md)
 - [Notifications](Notifications.md)
 - [Status pages](Status-Pages.md)
 - [Maintenance](Maintenance.md)

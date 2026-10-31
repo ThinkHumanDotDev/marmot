@@ -74,6 +74,7 @@ import * as migration_20261018_105524_http_suite_monitor from './20261018_105524
 import * as migration_20261018_150614_sla_business_hours from './20261018_150614_sla_business_hours';
 import * as migration_20261018_154233_sla_component_targets_budget_alerts from './20261018_154233_sla_component_targets_budget_alerts';
 import * as migration_20261018_201900_declared_incident_follow_ups from './20261018_201900_declared_incident_follow_ups';
+import * as migration_20261018_205816_host_monitors from './20261018_205816_host_monitors';
 
 export const migrations = [
   {
@@ -454,6 +455,11 @@ export const migrations = [
   {
     up: migration_20261018_201900_declared_incident_follow_ups.up,
     down: migration_20261018_201900_declared_incident_follow_ups.down,
-    name: '20261018_201900_declared_incident_follow_ups'
+    name: '20261018_201900_declared_incident_follow_ups',
+  },
+  {
+    up: migration_20261018_205816_host_monitors.up,
+    down: migration_20261018_205816_host_monitors.down,
+    name: '20261018_205816_host_monitors'
   },
 ];

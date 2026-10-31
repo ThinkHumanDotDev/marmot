@@ -23,6 +23,7 @@ import { MonitorChannelsCard } from '@/components/monitors/monitor-channels-card
 import { isPeriodWithinRetention } from '@/lib/entitlements'
 import { getOrgRetentionDays } from '@/server/billing/entitlements'
 import { MonitorStatsPanel } from '@/components/monitors/monitor-stats-panel'
+import { HostAgentPanel, type HostAgentSeen } from '@/components/monitors/host-agent-panel'
 import { PushEventsTable, PushPanel } from '@/components/monitors/push-panel'
 import { ResponseLogView } from '@/components/monitors/response-log-view'
 import { MonitorStatusBadge } from '@/components/monitors/status-badge'
@@ -52,6 +53,7 @@ import { toRealtimeTags } from '@/server/realtime/serialize'
 import { listAuditEvents } from '@/server/audit/query'
 import { heartbeatLocationWhere, loadMonitorLocationView } from '@/server/monitors/location-view'
 import { getMonitorChannels, getOrgMonitor, getOrgPageContext } from '@/server/monitors/page-data'
+import { newestHostRow } from '@/server/host-metrics/ingest'
 import { monitorPushEmailAddress } from '@/server/push/inbound-config'
 import { getRangeStats } from '@/server/stats/range-stats'
 import { getUptime } from '@/server/stats/uptime-calculator'
@@ -131,6 +133,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
     pushEvents,
     incidents,
     locationView,
+    hostRow,
   ] = await Promise.all([
     // The detail chart's default period; also the 24h figures of the uptime cards.
     getRangeStats(payload, monitor.id, '1d'),
@@ -169,6 +172,7 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
       ? recentMonitorIncidents(payload, monitor.id, { user: ctx.requestUser })
       : Promise.resolve(null),
     multi ? loadMonitorLocationView(payload, monitor, now) : Promise.resolve(null),
+    monitor.type === 'host' ? newestHostRow(payload, monitor.id) : Promise.resolve(null),
   ])
   // Activity tab: this monitor's audit events, for holders of `audit-log:read`.
   const activity = ctx.allowed('audit-log:read')
@@ -207,6 +211,18 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
     monitor.type === 'push' && monitor.pushToken
       ? `${env.NEXT_PUBLIC_SERVER_URL.replace(/\/$/, '')}/api/push/${monitor.pushToken}`
       : null
+
+  // Host monitors (#136): the newest sample the agent sent.
+  const hostLatest = (hostRow?.latest ?? null) as Record<string, unknown> | null
+  const text = (value: unknown) => (typeof value === 'string' && value ? value : null)
+  const hostSeen: HostAgentSeen | null = hostRow
+    ? {
+        at: hostRow.lastAt,
+        hostname: text(hostLatest?.hostname),
+        os: text(hostLatest?.os),
+        agentVersion: text(hostLatest?.agentVersion),
+      }
+    : null
 
   const eventsTable = (
     <ImportantEventsTable
@@ -357,6 +373,15 @@ export default async function MonitorDetailPage({ params, searchParams }: Monito
             pushEmail={monitorPushEmailAddress(monitor)}
             timeZone={timeZone}
             now={now}
+          />
+        )}
+
+        {monitor.type === 'host' && (
+          <HostAgentPanel
+            monitor={monitor}
+            serverUrl={env.NEXT_PUBLIC_SERVER_URL.replace(/\/$/, '')}
+            seen={hostSeen}
+            timeZone={timeZone}
           />
         )}
 
