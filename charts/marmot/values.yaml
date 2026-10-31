@@ -86,7 +86,6 @@ config:
   # WORKER_SCHEMA_WAIT_MS: '120000'
   # BILLING_ENABLED: 'false'
   # LANDING_PAGE_ENABLED: 'false'
-
 # Secret environment variables. Either name an existing Secret (every key becomes an environment variable
 # of the web, worker, realtime and migration pods), or let the chart create one from the values below.
 secrets:
@@ -343,7 +342,6 @@ ingress:
     #   nginx.ingress.kubernetes.io/proxy-read-timeout: '3600'
     #   nginx.ingress.kubernetes.io/proxy-send-timeout: '3600'
     #   nginx.ingress.kubernetes.io/affinity: cookie
-
 # Remote probe agents (MARMOT_ROLE=probe, docs/Probe-Locations.md): one Deployment per location. An agent
 # only needs MARMOT_URL and its location token, so these pods get none of the server secrets.
 probes:

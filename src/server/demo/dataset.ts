@@ -347,7 +347,8 @@ export const DEMO_MONITORS: readonly DemoMonitor[] = [
 
 /** A row of a status page group: a monitor (by key) or a static component. */
 export type DemoStatusRow =
-  { monitor: string; name?: string } | { static: string; description?: string }
+  | { monitor: string; name?: string }
+  | { static: string; description?: string }
 
 export interface DemoStatusPage {
   key: string

@@ -182,7 +182,7 @@ export default async function StatusPageLogin({ params, searchParams }: PageProp
     >
       <div className="flex flex-col items-center gap-3 text-center">
         {logo ? (
-          // eslint-disable-next-line @next/next/no-img-element -- user upload, arbitrary size
+          // biome-ignore lint/performance/noImgElement: user upload, arbitrary size
           <img
             src={logo}
             alt=""

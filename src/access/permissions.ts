@@ -256,7 +256,7 @@ export function hasOrgRole(user: MaybeUser, orgId: OrgId, minRole: Role): boolea
 }
 
 export const isPermission = (value: unknown): value is Permission =>
-  typeof value === 'string' && Object.prototype.hasOwnProperty.call(PERMISSIONS, value)
+  typeof value === 'string' && Object.hasOwn(PERMISSIONS, value)
 
 /**
  * Validates a raw `permissionOverrides` value (JSON from the database or a request body). Unknown

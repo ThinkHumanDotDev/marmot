@@ -532,8 +532,9 @@ export const Monitors: CollectionConfig = {
       async ({ doc, req }) => {
         if (req.context?.skipEngineSync) return doc
         try {
-          const { syncMonitorAfterCommit, engineHooksEnabled } =
-            await import('@/server/engine/scheduler')
+          const { syncMonitorAfterCommit, engineHooksEnabled } = await import(
+            '@/server/engine/scheduler'
+          )
           if (!engineHooksEnabled()) return doc
           // Deferred until the transaction commits: the worker must be able to read the monitor
           // when the scheduler fires its first job (see `syncMonitorAfterCommit`).
@@ -579,8 +580,9 @@ export const Monitors: CollectionConfig = {
     afterDelete: [
       async ({ doc, req }) => {
         try {
-          const { removeMonitorAfterCommit, engineHooksEnabled } =
-            await import('@/server/engine/scheduler')
+          const { removeMonitorAfterCommit, engineHooksEnabled } = await import(
+            '@/server/engine/scheduler'
+          )
           if (!engineHooksEnabled()) return doc
           await removeMonitorAfterCommit(req, doc)
         } catch (err) {

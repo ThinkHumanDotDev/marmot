@@ -25,7 +25,9 @@ export const MANUAL_CHECK_JOB_NAME = 'manual-check' as const
 export const ADHOC_CHECK_JOB_NAME = 'adhoc-check' as const
 
 export type CheckJobName =
-  typeof CHECK_JOB_NAME | typeof MANUAL_CHECK_JOB_NAME | typeof ADHOC_CHECK_JOB_NAME
+  | typeof CHECK_JOB_NAME
+  | typeof MANUAL_CHECK_JOB_NAME
+  | typeof ADHOC_CHECK_JOB_NAME
 
 /** Job scheduler id for a monitor. */
 export const monitorSchedulerId = (monitorId: string | number) => `monitor:${monitorId}`

@@ -38,7 +38,11 @@ export type TemplateMode = 'text' | 'html'
 
 /** Why a template cannot be used. `detail` is LiquidJS's (English) explanation. */
 export type TemplateErrorCode =
-  'syntax' | 'render' | 'tooLong' | 'outputTooLong' | 'unknownVariable'
+  | 'syntax'
+  | 'render'
+  | 'tooLong'
+  | 'outputTooLong'
+  | 'unknownVariable'
 
 export class TemplateError extends Error {
   readonly code: TemplateErrorCode

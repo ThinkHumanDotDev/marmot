@@ -8,7 +8,7 @@ export interface PdfTable {
   title: string
   /** Lines under the title (range, generation time, …). */
   lines: string[]
-  columns: { label: string; /** Relative width. */ width: number; align?: 'left' | 'right' }[]
+  columns: { label: string /** Relative width. */; width: number; align?: 'left' | 'right' }[]
   rows: string[][]
   /** Shown when there are no rows. */
   empty?: string

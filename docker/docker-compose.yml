@@ -56,7 +56,6 @@ services:
     # (e.g. 2525) in .env and publish the listener, e.g. as the domain's MX on port 25:
     # ports:
     #   - '25:2525'
-
   # socket.io server (/socket.io via Caddy); /healthz on :3001.
   realtime:
     <<: *marmot

@@ -214,7 +214,7 @@ function AssetField({
         )}
       >
         {url ? (
-          // eslint-disable-next-line @next/next/no-img-element -- arbitrary upload size
+          // biome-ignore lint/performance/noImgElement: arbitrary upload size
           <img src={url} alt="" className="size-full object-contain" width={56} height={56} />
         ) : (
           <ImageIcon className="size-5" aria-hidden />

@@ -746,8 +746,9 @@ async function scheduleImportedMonitors(
 ): Promise<void> {
   if (monitors.length === 0) return
   try {
-    const { syncMonitor, engineHooksEnabled, withPlanCadence } =
-      await import('@/server/engine/scheduler')
+    const { syncMonitor, engineHooksEnabled, withPlanCadence } = await import(
+      '@/server/engine/scheduler'
+    )
     if (!engineHooksEnabled()) return
     const { emitMonitorUpdated } = await import('@/server/realtime/emitter')
     for (const monitor of monitors) {

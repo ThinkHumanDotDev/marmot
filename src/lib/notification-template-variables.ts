@@ -85,7 +85,7 @@ export function unknownTemplateVariable(
     if (typeof segment !== 'string') return null
     path.push(segment)
     if (node === true) return BUILTIN_PROPERTIES.has(segment) ? null : path.join('.')
-    if (Object.prototype.hasOwnProperty.call(node, segment)) {
+    if (Object.hasOwn(node, segment)) {
       node = node[segment]
       continue
     }

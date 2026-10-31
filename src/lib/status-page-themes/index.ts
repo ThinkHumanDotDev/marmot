@@ -45,7 +45,8 @@ export interface ThemeOverrideError {
 }
 
 export type ParsedThemeOverrides =
-  { ok: true; value: ThemeOverrides | null } | { ok: false; errors: ThemeOverrideError[] }
+  | { ok: true; value: ThemeOverrides | null }
+  | { ok: false; errors: ThemeOverrideError[] }
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' &&

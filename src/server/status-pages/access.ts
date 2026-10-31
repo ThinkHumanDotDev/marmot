@@ -398,9 +398,7 @@ export async function checkStatusPageAccess(
   options: AccessOptions = {},
 ): Promise<StatusPageAccessDecision> {
   const mode = (page.access ?? 'public') as StatusPageAccessMode
-  const strategy = Object.prototype.hasOwnProperty.call(ACCESS_STRATEGIES, mode)
-    ? ACCESS_STRATEGIES[mode]
-    : null
+  const strategy = Object.hasOwn(ACCESS_STRATEGIES, mode) ? ACCESS_STRATEGIES[mode] : null
   if (!strategy) return { allowed: false, reason: 'login-required' }
   return strategy({ payload, page, request, options: { acceptPasswordParam: true, ...options } })
 }

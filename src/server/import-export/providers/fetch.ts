@@ -8,7 +8,12 @@
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 
 export type ProviderErrorCode =
-  'credentials' | 'auth' | 'notFound' | 'unreachable' | 'invalidResponse' | 'tooMany'
+  | 'credentials'
+  | 'auth'
+  | 'notFound'
+  | 'unreachable'
+  | 'invalidResponse'
+  | 'tooMany'
 
 /** A provider API call failed; the code maps to a report message (and an HTTP status). */
 export class ProviderError extends Error {

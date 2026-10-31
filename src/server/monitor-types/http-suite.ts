@@ -203,21 +203,23 @@ export async function runHttpSuite(ctx: MonitorCheckContext): Promise<void> {
   /** Store the scrubbed results on the context (again after every step: a timeout keeps them). */
   const publish = () => {
     const secrets = secretList(scope.secretValues)
-    ctx.steps = runs.map((run): SuiteStepResult => ({
-      key: run.step.key,
-      name: scrub(stepLabel(run.step), secrets),
-      method: run.step.method,
-      url: scrub(run.url, secrets),
-      outcome: run.outcome,
-      alwaysRun: run.step.alwaysRun,
-      statusCode: run.statusCode,
-      start: run.start,
-      duration: run.duration,
-      timing: run.timing,
-      msg: scrub(run.msg, secrets),
-      assertions: run.assertions.map((result) => scrubResult(result, secrets)),
-      stored: run.stored,
-    }))
+    ctx.steps = runs.map(
+      (run): SuiteStepResult => ({
+        key: run.step.key,
+        name: scrub(stepLabel(run.step), secrets),
+        method: run.step.method,
+        url: scrub(run.url, secrets),
+        outcome: run.outcome,
+        alwaysRun: run.step.alwaysRun,
+        statusCode: run.statusCode,
+        start: run.start,
+        duration: run.duration,
+        timing: run.timing,
+        msg: scrub(run.msg, secrets),
+        assertions: run.assertions.map((result) => scrubResult(result, secrets)),
+        stored: run.stored,
+      }),
+    )
     ctx.response = shown ? captureResponse(shown.response, secrets) : null
     ctx.heartbeat.statusCode = shown ? shown.response.statusCode : null
     return secrets

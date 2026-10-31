@@ -20,7 +20,16 @@ import {
 import { registerMonitorType } from './registry'
 
 export type DnsRecordType =
-  'A' | 'AAAA' | 'CAA' | 'CNAME' | 'MX' | 'NS' | 'PTR' | 'SOA' | 'SRV' | 'TXT'
+  | 'A'
+  | 'AAAA'
+  | 'CAA'
+  | 'CNAME'
+  | 'MX'
+  | 'NS'
+  | 'PTR'
+  | 'SOA'
+  | 'SRV'
+  | 'TXT'
 
 /**
  * Parse a comma-separated list of resolver servers and resolve hostnames to IPs

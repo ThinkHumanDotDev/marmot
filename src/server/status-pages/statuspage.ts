@@ -121,10 +121,8 @@ export interface SpIncident {
   components: SpComponent[]
 }
 
-export interface SpScheduledMaintenance extends Omit<
-  SpIncident,
-  'status' | 'impact' | 'incident_updates'
-> {
+export interface SpScheduledMaintenance
+  extends Omit<SpIncident, 'status' | 'impact' | 'incident_updates'> {
   status: SpMaintenanceStatus
   impact: 'maintenance'
   incident_updates: SpIncidentUpdate[]

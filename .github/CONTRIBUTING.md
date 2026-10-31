@@ -22,7 +22,7 @@ See [`.github/SUPPORT.md`](SUPPORT.md) for where to get help.
 2. Branch from `main` using a plain name: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`, `docs/<slug>`,
    `ci/<slug>`. No personal or tool prefixes.
 3. Keep PRs focused (ideally under ~1,500 changed lines). One issue per PR; reference it with `Closes #NN`.
-4. Run `pnpm format:fix && pnpm check` before pushing. CI runs format, lint, typecheck, integration tests
+4. Run `pnpm lint:fix && pnpm check` before pushing. CI runs format, lint, typecheck, integration tests
    and Playwright E2E on **both Postgres and MongoDB**, plus a Docker build and compose smoke test. A red
    check is yours to fix; never skip or disable a test to get green.
 5. Fill in the pull request template (summary, how it was tested, checklist). Screenshots for UI changes.
@@ -43,7 +43,9 @@ See [`.github/SUPPORT.md`](SUPPORT.md) for where to get help.
 
 ## Code conventions
 
-- TypeScript strict, ESM only. Prettier formats, ESLint lints (`pnpm format:fix`, `pnpm lint`).
+- TypeScript strict, ESM only. Biome formats and lints (`biome.jsonc` extends the org's
+  `@thinkhuman/biome-config`); ESLint runs only the `marmot/no-literal-jsx-text` rule. `pnpm lint` runs
+  both, `pnpm lint:fix` applies Biome's safe fixes.
 - Payload collections live in `src/collections/*` and are registered in `src/collections/index.ts`.
   Collections must work on Postgres **and** MongoDB: no `point` fields, no raw SQL, no adapter-specific
   operators; ids are `string | number`, compare them with `String(id)`.
