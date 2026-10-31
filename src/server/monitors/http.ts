@@ -30,7 +30,8 @@ export function jsonError(status: number, message: string, details?: unknown): R
 }
 
 export type AuthResult =
-  { user: RequestUser; response?: undefined } | { user?: undefined; response: Response }
+  | { user: RequestUser; response?: undefined }
+  | { user?: undefined; response: Response }
 
 /**
  * Resolves the request principal — a signed-in user or an organization API key

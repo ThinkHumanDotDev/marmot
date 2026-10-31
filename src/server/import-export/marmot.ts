@@ -245,17 +245,19 @@ const toExportedStatusPage = (doc: StatusPage, incidents: Incident[]): ExportedS
     name: group.name,
     defaultOpen: group.defaultOpen ?? true,
     monitors: (group.monitors ?? [])
-      .map((row): ExportedComponent => ({
-        id: row.id ?? null,
-        type: row.type === 'static' ? 'static' : 'monitor',
-        monitor: row.type === 'static' ? null : relationId(row.monitor),
-        name: row.name ?? null,
-        description: row.description ?? null,
-        showValues: row.showValues ?? true,
-        showChart: row.type !== 'static' && row.showChart === true,
-        sendUrl: row.sendUrl ?? false,
-        customUrl: row.customUrl ?? null,
-      }))
+      .map(
+        (row): ExportedComponent => ({
+          id: row.id ?? null,
+          type: row.type === 'static' ? 'static' : 'monitor',
+          monitor: row.type === 'static' ? null : relationId(row.monitor),
+          name: row.name ?? null,
+          description: row.description ?? null,
+          showValues: row.showValues ?? true,
+          showChart: row.type !== 'static' && row.showChart === true,
+          sendUrl: row.sendUrl ?? false,
+          customUrl: row.customUrl ?? null,
+        }),
+      )
       .filter((row) => row.type === 'static' || row.monitor !== null),
   })),
   // The update timeline is not exported yet: an incident travels as its latest message and its
@@ -723,14 +725,16 @@ export function parseMarmotExport(json: unknown, t: ImportText = importText()): 
             customUrl: asText(row.customUrl),
           })),
       })),
-      incidents: page.incidents.map((incident): PlannedIncident => ({
-        title: incident.title,
-        content: incident.content ?? null,
-        style: incident.style ?? 'info',
-        pinned: incident.pinned ?? true,
-        active: incident.active ?? true,
-        resolvedAt: incident.resolvedAt ?? null,
-      })),
+      incidents: page.incidents.map(
+        (incident): PlannedIncident => ({
+          title: incident.title,
+          content: incident.content ?? null,
+          style: incident.style ?? 'info',
+          pinned: incident.pinned ?? true,
+          active: incident.active ?? true,
+          resolvedAt: incident.resolvedAt ?? null,
+        }),
+      ),
     }
     if (droppedRows > 0) {
       plan.warnings.push(t('rowsDropped', { title: page.title, count: droppedRows }))

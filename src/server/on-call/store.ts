@@ -37,21 +37,25 @@ const personName = (user: Pick<User, 'name' | 'email'>): string =>
 export function toScheduleDefinition(doc: OnCallSchedule): ScheduleDefinition {
   return {
     timezone: doc.timezone,
-    layers: (doc.layers ?? []).map((layer): RotationLayer => ({
-      name: layer.name ?? null,
-      timezone: layer.timezone ?? null,
-      rotation: layer.rotation as RotationType,
-      customLength: layer.customLength ?? null,
-      customUnit: (layer.customUnit ?? 'days') as RotationUnit,
-      handoffTime: layer.handoffTime,
-      startDate: layer.startDate,
-      members: (layer.members ?? []).map(relId).filter((id): id is Id => id !== null),
-      restrictions: (layer.restrictions ?? []).map((window): LayerRestriction => ({
-        days: (window.days ?? []) as Weekday[],
-        start: window.start,
-        end: window.end,
-      })),
-    })),
+    layers: (doc.layers ?? []).map(
+      (layer): RotationLayer => ({
+        name: layer.name ?? null,
+        timezone: layer.timezone ?? null,
+        rotation: layer.rotation as RotationType,
+        customLength: layer.customLength ?? null,
+        customUnit: (layer.customUnit ?? 'days') as RotationUnit,
+        handoffTime: layer.handoffTime,
+        startDate: layer.startDate,
+        members: (layer.members ?? []).map(relId).filter((id): id is Id => id !== null),
+        restrictions: (layer.restrictions ?? []).map(
+          (window): LayerRestriction => ({
+            days: (window.days ?? []) as Weekday[],
+            start: window.start,
+            end: window.end,
+          }),
+        ),
+      }),
+    ),
     overrides: (doc.overrides ?? []).flatMap((override) => {
       const user = relId(override.user)
       return user === null ? [] : [{ user, start: override.start, end: override.end }]

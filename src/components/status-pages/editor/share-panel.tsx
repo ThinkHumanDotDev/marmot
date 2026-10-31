@@ -290,7 +290,7 @@ export function SharePanel({ page }: { page: StatusPage }) {
             }
           >
             {origin && (
-              // eslint-disable-next-line @next/next/no-img-element -- live SVG from our own endpoint
+              // biome-ignore lint/performance/noImgElement: live SVG from our own endpoint
               <img src={previewUrl} alt={alt} data-testid="status-page-badge-preview" />
             )}
           </div>

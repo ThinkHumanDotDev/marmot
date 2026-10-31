@@ -1,6 +1,6 @@
-import nextVitals from 'eslint-config-next/core-web-vitals'
-import nextTs from 'eslint-config-next/typescript'
-import prettier from 'eslint-config-prettier'
+// ESLint runs one rule only, Marmot's own `marmot/no-literal-jsx-text` (`pnpm lint:i18n`). Biome does
+// all other formatting and linting (biome.jsonc).
+import tsParser from '@typescript-eslint/parser'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 import noLiteralJsxText from './eslint-rules/no-literal-jsx-text.mjs'
@@ -12,39 +12,17 @@ export default defineConfig([
     'action/dist/**',
     'node_modules/**',
     'src/payload-types.ts',
-    'src/payload-generated-schema.ts',
     'src/app/(payload)/admin/importMap.js',
     'src/migrations/**',
     'playwright-report/**',
     'test-results/**',
     'data/**',
   ]),
-  ...nextVitals,
-  ...nextTs,
-  prettier,
-  {
-    rules: {
-      '@typescript-eslint/ban-ts-comment': 'warn',
-      '@typescript-eslint/no-empty-object-type': 'warn',
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        {
-          vars: 'all',
-          args: 'after-used',
-          ignoreRestSiblings: false,
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          destructuredArrayIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^(_|ignore)',
-        },
-      ],
-    },
-  },
   {
     // User-facing text goes through next-intl (docs/Development.md → Localisation).
     files: ['src/app/**/*.tsx', 'src/components/**/*.tsx'],
     ignores: ['src/app/(payload)/**', 'src/components/ui/**', '**/*.test.tsx'],
+    languageOptions: { parser: tsParser },
     plugins: { marmot: { rules: { 'no-literal-jsx-text': noLiteralJsxText } } },
     rules: {
       // Product name, key caps and the font specimen are the same in every language.

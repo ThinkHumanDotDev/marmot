@@ -34,7 +34,12 @@ const SECRET_KEY_PATTERN =
 export const isSecretKey = (key: string): boolean => SECRET_KEY_PATTERN.test(key)
 
 export type JsonValue =
-  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue }
 
 export type FlatValues = Record<string, JsonValue>
 

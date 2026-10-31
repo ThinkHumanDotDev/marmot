@@ -43,8 +43,9 @@ vi.mock('@/i18n/messages', async (importOriginal) => {
 })
 
 const { getOrganizationI18n } = await import('@/server/i18n')
-const { buildDefaultMessage, buildTestMessage, statusLabel } =
-  await import('@/server/notifications/message')
+const { buildDefaultMessage, buildTestMessage, statusLabel } = await import(
+  '@/server/notifications/message'
+)
 const { apiError } = await import('@/server/errors')
 
 /** The pretend locale; typed as a real one because the `Locale` union only knows `en`. */

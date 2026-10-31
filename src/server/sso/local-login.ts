@@ -48,7 +48,9 @@ export type PasswordDecision =
   | {
       allowed: true
       breakGlass:
-        null | { scope: 'instance' } | { scope: 'organization'; organization: string | number }
+        | null
+        | { scope: 'instance' }
+        | { scope: 'organization'; organization: string | number }
     }
   | { allowed: false; error: 'localLoginDisabled' | 'ssoEnforced' }
 

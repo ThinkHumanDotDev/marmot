@@ -215,7 +215,8 @@ export async function markEmailVerified(
 }
 
 export type VerifyTokenResult =
-  { ok: true; userId: string; email: string; alreadyVerified: boolean } | { ok: false }
+  | { ok: true; userId: string; email: string; alreadyVerified: boolean }
+  | { ok: false }
 
 /**
  * Redeems a verification link (`POST /api/auth/verify-email`). Fails for unknown, expired or used

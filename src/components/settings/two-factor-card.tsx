@@ -217,7 +217,7 @@ export function TwoFactorCard({ status, hasPassword }: TwoFactorCardProps) {
           {setup ? (
             <div className="flex flex-col gap-4">
               <div className="flex justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element -- data URL generated server-side */}
+                {/* biome-ignore lint/performance/noImgElement: data URL generated server-side */}
                 <img
                   src={setup.qrDataUrl}
                   alt={t('setup.qrAlt')}

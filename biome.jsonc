@@ -1,0 +1,62 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
+  "extends": ["@thinkhuman/biome-config/biome"],
+  "files": {
+    "includes": [
+      "**",
+      // Generated: Payload (`pnpm generate:types`, `generate:importmap`, `migrate:create`, and the
+      // `src/app/(payload)` route files it scaffolds) and the committed GitHub Action bundle
+      // (`pnpm build:action`, compared with its sources in CI).
+      "!src/payload-types.ts",
+      "!src/app/(payload)",
+      "!src/migrations",
+      "!action/dist",
+      // Helm templates are Go templates, not YAML.
+      "!charts/*/templates"
+    ]
+  },
+  // Prettier's singleQuote applied to CSS too; the shared config only sets it for JS and YAML.
+  "css": { "formatter": { "quoteStyle": "single" } },
+  // Sorting imports would rewrite the import block of ~730 files; follow-up cleanup.
+  "assist": { "actions": { "source": { "organizeImports": "off" } } },
+  "linter": {
+    // What eslint-config-next (core-web-vitals) used to cover.
+    "domains": { "react": "recommended", "next": "recommended" },
+    "rules": {
+      // Rules that flag existing code. Errors are downgraded to warnings so CI stays green without
+      // rewriting code under open pull requests; each one is follow-up cleanup.
+      "a11y": {
+        "noLabelWithoutControl": "warn",
+        "noNoninteractiveElementToInteractiveRole": "warn",
+        "noSvgWithoutTitle": "warn",
+        "useAriaPropsSupportedByRole": "warn",
+        "useFocusableInteractive": "warn",
+        "useSemanticElements": "warn"
+      },
+      "correctness": {
+        "noComponentHookFactories": "warn",
+        "noEmptyPattern": "warn",
+        "noUnsafeOptionalChaining": "warn",
+        // Fires on the engine's own `describe` helpers in src/server/engine/quorum.ts.
+        "usePlaywrightValidDescribeCallback": "warn"
+      },
+      "security": { "noDangerouslySetInnerHtml": "warn" },
+      "style": {
+        // `!` is used deliberately in ~300 places; ESLint never checked it.
+        "noNonNullAssertion": "off",
+        // Its fix rewrites the imports of ~40 files; TypeScript already elides type-only imports.
+        "useImportType": "off"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "warn",
+        "noAssignInExpressions": "warn",
+        "noControlCharactersInRegex": "warn",
+        "noDuplicateTestHooks": "warn",
+        "noImplicitAnyLet": "warn",
+        "noMisleadingCharacterClass": "warn",
+        "noShadowRestrictedNames": "warn",
+        "useIterableCallbackReturn": "warn"
+      }
+    }
+  }
+}

@@ -11,7 +11,7 @@ Closes #
 ## Checklist
 
 - [ ] The PR title follows Conventional Commits (`type(scope): subject`); it becomes the squash commit
-- [ ] `pnpm format:fix && pnpm check` passes locally (format, lint, typecheck, integration tests)
+- [ ] `pnpm lint:fix && pnpm check` passes locally (format, lint, typecheck, integration tests)
 - [ ] Works on both Postgres and MongoDB (no adapter-specific features, ids typed `string | number`)
 - [ ] Collection changes: `pnpm generate:types` run, Postgres migration created on a fresh database
 - [ ] Docs / `.env.example` / `docs/Configuration.md` updated when configuration changed

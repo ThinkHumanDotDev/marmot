@@ -24,7 +24,13 @@ const log = childLogger('status-pages:subscribers:deliver')
 export const WEBHOOK_TIMEOUT_MS = 5_000
 
 export type DeliveryErrorReason =
-  'network' | 'http' | 'rate-limited' | 'refused' | 'no-sms-channel' | 'unsubscribed' | 'smtp'
+  | 'network'
+  | 'http'
+  | 'rate-limited'
+  | 'refused'
+  | 'no-sms-channel'
+  | 'unsubscribed'
+  | 'smtp'
 
 export class DeliveryError extends Error {
   readonly retryable: boolean

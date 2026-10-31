@@ -77,7 +77,10 @@ export interface EventFilters {
 }
 
 type ParamSource =
-  URLSearchParams | Record<string, string | string[] | undefined> | null | undefined
+  | URLSearchParams
+  | Record<string, string | string[] | undefined>
+  | null
+  | undefined
 
 const param = (source: ParamSource, name: string): string | null => {
   if (!source) return null

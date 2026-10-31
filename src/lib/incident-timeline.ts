@@ -211,14 +211,16 @@ export function incidentTimeline(incident: IncidentLike): {
     return { updates: [update], state: deriveIncidentState([update], declared) }
   }
   const updates = sortUpdates(
-    stored.map((row): TimelineUpdate => ({
-      id: row.id ?? null,
-      status: row.status,
-      message: row.message ?? '',
-      postedAt: row.postedAt,
-      editedAt: row.editedAt ?? null,
-      components: toImpactRows(row.components),
-    })),
+    stored.map(
+      (row): TimelineUpdate => ({
+        id: row.id ?? null,
+        status: row.status,
+        message: row.message ?? '',
+        postedAt: row.postedAt,
+        editedAt: row.editedAt ?? null,
+        components: toImpactRows(row.components),
+      }),
+    ),
   )
   return { updates, state: deriveIncidentState(updates, incident.impact ?? 'operational') }
 }

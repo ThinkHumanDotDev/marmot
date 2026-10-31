@@ -131,10 +131,10 @@ export const isWebhookUrl = (value: string): boolean => {
   const url = parseUrl(value)
   return Boolean(
     url &&
-    (url.protocol === 'https:' || url.protocol === 'http:') &&
-    url.hostname &&
-    !url.username &&
-    !url.password,
+      (url.protocol === 'https:' || url.protocol === 'http:') &&
+      url.hostname &&
+      !url.username &&
+      !url.password,
   )
 }
 
@@ -143,9 +143,9 @@ export const isSlackWebhookUrl = (value: string): boolean => {
   const url = parseUrl(value)
   return Boolean(
     url &&
-    url.protocol === 'https:' &&
-    (url.hostname === 'hooks.slack.com' || url.hostname === 'hooks.slack-gov.com') &&
-    /^\/(services|workflows|triggers)\/.+/.test(url.pathname),
+      url.protocol === 'https:' &&
+      (url.hostname === 'hooks.slack.com' || url.hostname === 'hooks.slack-gov.com') &&
+      /^\/(services|workflows|triggers)\/.+/.test(url.pathname),
   )
 }
 
@@ -154,9 +154,9 @@ export const isDiscordWebhookUrl = (value: string): boolean => {
   const url = parseUrl(value)
   return Boolean(
     url &&
-    url.protocol === 'https:' &&
-    /^((canary|ptb)\.)?discord(app)?\.com$/.test(url.hostname) &&
-    url.pathname.startsWith('/api/webhooks/'),
+      url.protocol === 'https:' &&
+      /^((canary|ptb)\.)?discord(app)?\.com$/.test(url.hostname) &&
+      url.pathname.startsWith('/api/webhooks/'),
   )
 }
 

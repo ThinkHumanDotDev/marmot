@@ -110,7 +110,7 @@ export function retentionCutoffs(
 }
 
 const hasCollection = (payload: Payload, slug: string): slug is CollectionSlug =>
-  Object.prototype.hasOwnProperty.call(payload.collections, slug)
+  Object.hasOwn(payload.collections, slug)
 
 /**
  * Organizations whose plan keeps less long-term history than the instance (`keepDataPeriodDays`),

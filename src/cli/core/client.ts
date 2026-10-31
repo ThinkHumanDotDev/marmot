@@ -203,7 +203,7 @@ export class MarmotClient {
     }
 
     const text = await response.text()
-    let json: unknown = undefined
+    let json: unknown
     if (text) {
       try {
         json = JSON.parse(text)

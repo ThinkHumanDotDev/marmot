@@ -207,7 +207,8 @@ async function uploadImage<T>(path: string, file: File): Promise<T> {
   form.append('file', file)
   const res = await fetch(path, { method: 'POST', body: form, credentials: 'include' })
   const body = (await res.json().catch(() => null)) as
-    (T & { errors?: { message?: string }[] }) | null
+    | (T & { errors?: { message?: string }[] })
+    | null
   if (!res.ok || !body) throw new Error(body?.errors?.[0]?.message ?? '')
   return body
 }

@@ -87,13 +87,11 @@ export const roleMappingSchema = z
  * a single string, or a comma-separated string.
  */
 export function extractGroups(raw: Record<string, unknown>, claim: string): string[] | null {
-  let value: unknown = Object.prototype.hasOwnProperty.call(raw, claim) ? raw[claim] : undefined
+  let value: unknown = Object.hasOwn(raw, claim) ? raw[claim] : undefined
   if (value === undefined && claim.includes('.')) {
     value = claim.split('.').reduce<unknown>((node, key) => {
       if (!node || typeof node !== 'object' || Array.isArray(node)) return undefined
-      return Object.prototype.hasOwnProperty.call(node, key)
-        ? (node as Record<string, unknown>)[key]
-        : undefined
+      return Object.hasOwn(node, key) ? (node as Record<string, unknown>)[key] : undefined
     }, raw)
   }
   if (value === undefined || value === null) return null
