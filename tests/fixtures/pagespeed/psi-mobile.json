@@ -1,0 +1,128 @@
+{
+  "captchaResult": "CAPTCHA_NOT_NEEDED",
+  "kind": "pagespeedonline#result",
+  "id": "https://www.example.com/",
+  "loadingExperience": {
+    "id": "https://www.example.com/",
+    "metrics": {
+      "CUMULATIVE_LAYOUT_SHIFT_SCORE": {
+        "percentile": 2,
+        "distributions": [
+          { "min": 0, "max": 10, "proportion": 0.94 },
+          { "min": 10, "max": 25, "proportion": 0.04 },
+          { "min": 25, "proportion": 0.02 }
+        ],
+        "category": "FAST"
+      },
+      "INTERACTION_TO_NEXT_PAINT": {
+        "percentile": 143,
+        "distributions": [
+          { "min": 0, "max": 200, "proportion": 0.87 },
+          { "min": 200, "max": 500, "proportion": 0.1 },
+          { "min": 500, "proportion": 0.03 }
+        ],
+        "category": "FAST"
+      },
+      "LARGEST_CONTENTFUL_PAINT_MS": {
+        "percentile": 1912,
+        "distributions": [
+          { "min": 0, "max": 2500, "proportion": 0.84 },
+          { "min": 2500, "max": 4000, "proportion": 0.11 },
+          { "min": 4000, "proportion": 0.05 }
+        ],
+        "category": "FAST"
+      }
+    },
+    "overall_category": "FAST",
+    "initial_url": "https://www.example.com/"
+  },
+  "lighthouseResult": {
+    "requestedUrl": "https://www.example.com/",
+    "finalUrl": "https://www.example.com/",
+    "mainDocumentUrl": "https://www.example.com/",
+    "finalDisplayedUrl": "https://www.example.com/",
+    "lighthouseVersion": "12.8.2",
+    "fetchTime": "2026-10-18T09:12:44.512Z",
+    "runWarnings": [],
+    "configSettings": {
+      "emulatedFormFactor": "mobile",
+      "formFactor": "mobile",
+      "locale": "en-US",
+      "onlyCategories": ["performance", "accessibility", "best-practices", "seo"],
+      "channel": "lr"
+    },
+    "audits": {
+      "first-contentful-paint": {
+        "id": "first-contentful-paint",
+        "title": "First Contentful Paint",
+        "score": 0.92,
+        "scoreDisplayMode": "numeric",
+        "numericValue": 1503.4,
+        "numericUnit": "millisecond",
+        "displayValue": "1.5 s"
+      },
+      "largest-contentful-paint": {
+        "id": "largest-contentful-paint",
+        "title": "Largest Contentful Paint",
+        "score": 0.81,
+        "scoreDisplayMode": "numeric",
+        "numericValue": 2612.8,
+        "numericUnit": "millisecond",
+        "displayValue": "2.6 s"
+      },
+      "total-blocking-time": {
+        "id": "total-blocking-time",
+        "title": "Total Blocking Time",
+        "score": 0.96,
+        "scoreDisplayMode": "numeric",
+        "numericValue": 121.5,
+        "numericUnit": "millisecond",
+        "displayValue": "120 ms"
+      },
+      "cumulative-layout-shift": {
+        "id": "cumulative-layout-shift",
+        "title": "Cumulative Layout Shift",
+        "score": 1,
+        "scoreDisplayMode": "numeric",
+        "numericValue": 0.0213,
+        "numericUnit": "unitless",
+        "displayValue": "0.021"
+      },
+      "speed-index": {
+        "id": "speed-index",
+        "title": "Speed Index",
+        "score": 0.98,
+        "scoreDisplayMode": "numeric",
+        "numericValue": 2104.2,
+        "numericUnit": "millisecond",
+        "displayValue": "2.1 s"
+      },
+      "server-response-time": {
+        "id": "server-response-time",
+        "title": "Initial server response time was short",
+        "score": 1,
+        "scoreDisplayMode": "metricSavings",
+        "numericValue": 87.4,
+        "numericUnit": "millisecond",
+        "displayValue": "Root document took 90 ms"
+      },
+      "interactive": {
+        "id": "interactive",
+        "title": "Time to Interactive",
+        "score": 0.93,
+        "scoreDisplayMode": "numeric",
+        "numericValue": 3302.1,
+        "numericUnit": "millisecond",
+        "displayValue": "3.3 s"
+      }
+    },
+    "categories": {
+      "performance": { "id": "performance", "title": "Performance", "score": 0.91 },
+      "accessibility": { "id": "accessibility", "title": "Accessibility", "score": 0.97 },
+      "best-practices": { "id": "best-practices", "title": "Best Practices", "score": 1 },
+      "seo": { "id": "seo", "title": "SEO", "score": 0.92 }
+    },
+    "timing": { "total": 14382.7 }
+  },
+  "analysisUTCTimestamp": "2026-10-18T09:12:44.512Z"
+}

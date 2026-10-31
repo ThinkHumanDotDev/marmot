@@ -1,0 +1,13 @@
+{
+  "error": {
+    "code": 400,
+    "message": "Lighthouse returned error: DNS_FAILURE. DNS servers could not resolve the provided domain. (DNS_FAILURE)",
+    "errors": [
+      {
+        "message": "Lighthouse returned error: DNS_FAILURE. DNS servers could not resolve the provided domain. (DNS_FAILURE)",
+        "domain": "lighthouse",
+        "reason": "lighthouseUserError"
+      }
+    ]
+  }
+}

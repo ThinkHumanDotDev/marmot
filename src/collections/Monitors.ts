@@ -22,6 +22,13 @@ import { outboundGuardActive } from '@/server/security/outbound-guard'
 
 import { supportsDegradedThreshold } from '@/lib/monitor-degraded'
 import {
+  PAGESPEED_BACKENDS,
+  PAGESPEED_CATEGORIES,
+  PAGESPEED_FAIL_STATUSES,
+  PAGESPEED_STRATEGIES,
+  PAGESPEED_THRESHOLD_FIELDS,
+} from '@/lib/pagespeed'
+import {
   DEFAULT_GROUP_AGGREGATION,
   DEFAULT_GROUP_WEIGHT,
   GROUP_AGGREGATION_MODES,
@@ -116,6 +123,7 @@ export const MONITOR_TYPES = [
   { label: 'Radius', value: 'radius' },
   { label: adminT('marmot:labels:tailscalePing'), value: 'tailscale-ping' },
   { label: adminT('marmot:labels:realBrowser'), value: 'real-browser' },
+  { label: adminT('marmot:labels:pagespeed'), value: 'pagespeed' },
   // Databases
   { label: 'MySQL/MariaDB', value: 'mysql' },
   { label: 'PostgreSQL', value: 'postgres' },
@@ -135,7 +143,13 @@ const PROMETHEUS_STATUS_OPTIONS = [
   { label: adminT('marmot:labels:pending'), value: 'pending' },
 ] satisfies { label: unknown; value: PrometheusFallbackStatus }[]
 /** Types whose target is `url` (HTTP types plus the WebSocket and browser checks). */
-export const URL_TYPES = [...HTTP_TYPES, 'websocket-upgrade', 'real-browser', 'prometheus']
+export const URL_TYPES = [
+  ...HTTP_TYPES,
+  'websocket-upgrade',
+  'real-browser',
+  'prometheus',
+  'pagespeed',
+]
 /** Types whose target is `hostname` (+ `port`). */
 export const HOST_TYPES = [
   'port',
@@ -2040,12 +2054,66 @@ export const Monitors: CollectionConfig = {
       ],
     },
 
+    // ---- PageSpeed / Lighthouse (#137) ----------------------------------------------------------
+    {
+      type: 'collapsible',
+      label: adminT('marmot:labels:pagespeed'),
+      admin: { condition: (data) => data?.type === 'pagespeed', initCollapsed: false },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'pagespeedBackend',
+              type: 'select',
+              defaultValue: 'psi',
+              options: [...PAGESPEED_BACKENDS],
+              admin: { description: adminT('marmot:monitors:pagespeedBackendDescription') },
+            },
+            {
+              name: 'pagespeedStrategy',
+              type: 'select',
+              defaultValue: 'mobile',
+              options: [...PAGESPEED_STRATEGIES],
+            },
+            {
+              name: 'pagespeedFailStatus',
+              type: 'select',
+              defaultValue: 'degraded',
+              options: [...PAGESPEED_FAIL_STATUSES],
+              admin: { description: adminT('marmot:monitors:pagespeedFailStatusDescription') },
+            },
+          ],
+        },
+        {
+          name: 'pagespeedCategories',
+          type: 'select',
+          hasMany: true,
+          defaultValue: [...PAGESPEED_CATEGORIES],
+          options: [...PAGESPEED_CATEGORIES],
+          admin: { description: adminT('marmot:monitors:pagespeedCategoriesDescription') },
+        },
+        {
+          type: 'row',
+          fields: Object.values(PAGESPEED_THRESHOLD_FIELDS).map((name) => ({
+            name,
+            type: 'number' as const,
+            min: 0,
+            max: 100,
+            admin: { description: adminT('marmot:monitors:pagespeedThresholdDescription') },
+          })),
+        },
+      ],
+    },
+
     // ---- Real browser ---------------------------------------------------------------------------
     {
       name: 'remoteBrowser',
       type: 'text',
       admin: {
-        condition: (data) => data?.type === 'real-browser',
+        condition: (data) =>
+          data?.type === 'real-browser' ||
+          (data?.type === 'pagespeed' && data?.pagespeedBackend === 'lighthouse'),
         placeholder: 'ws://browserless:3000',
         description: adminT('marmot:monitors:remoteBrowserDescription'),
       },

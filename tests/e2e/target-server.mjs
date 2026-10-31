@@ -4,7 +4,11 @@
 //
 //   GET /health  → 200 {"ok":true}
 //   GET /down    → 503
+//   GET /pagespeedonline/v5/runPagespeed → the recorded PageSpeed Insights answer
+//       (`tests/fixtures/pagespeed/psi-mobile.json`, performance 54 when the audited URL contains
+//       "slow"); the app's `PAGESPEED_API_URL` points here
 //   anything else → 200 "ok"
+import { readFileSync } from 'node:fs'
 import http from 'node:http'
 
 const port = Number(process.argv[2] || process.env.E2E_TARGET_PORT || 3002)
@@ -14,6 +18,16 @@ const server = http.createServer((req, res) => {
   if (path === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' })
     res.end(JSON.stringify({ ok: true }))
+    return
+  }
+  if (path === '/pagespeedonline/v5/runPagespeed') {
+    const audited = new URL(req.url || '/', 'http://localhost').searchParams.get('url') || ''
+    const body = JSON.parse(
+      readFileSync(new URL('../fixtures/pagespeed/psi-mobile.json', import.meta.url), 'utf8'),
+    )
+    if (audited.includes('slow')) body.lighthouseResult.categories.performance.score = 0.54
+    res.writeHead(200, { 'content-type': 'application/json' })
+    res.end(JSON.stringify(body))
     return
   }
   if (path === '/down') {

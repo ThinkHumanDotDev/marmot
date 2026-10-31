@@ -453,6 +453,7 @@ export interface Monitor {
     | 'radius'
     | 'tailscale-ping'
     | 'real-browser'
+    | 'pagespeed'
     | 'mysql'
     | 'postgres'
     | 'sqlserver'
@@ -682,6 +683,14 @@ export interface Monitor {
   wsIgnoreSecWebsocketAcceptHeader?: boolean | null;
   game?: string | null;
   gamedigGivenPortOnly?: boolean | null;
+  pagespeedBackend?: ('psi' | 'lighthouse') | null;
+  pagespeedStrategy?: ('mobile' | 'desktop') | null;
+  pagespeedFailStatus?: ('degraded' | 'down') | null;
+  pagespeedCategories?: ('performance' | 'accessibility' | 'best-practices' | 'seo')[] | null;
+  pagespeedMinPerformance?: number | null;
+  pagespeedMinAccessibility?: number | null;
+  pagespeedMinBestPractices?: number | null;
+  pagespeedMinSeo?: number | null;
   remoteBrowser?: string | null;
   status?: {
     lastStatus?: ('up' | 'down' | 'pending' | 'maintenance' | 'degraded') | null;
@@ -1008,6 +1017,15 @@ export interface Heartbeat {
     | boolean
     | null;
   value?: number | null;
+  pagespeed?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   statusCode?: number | null;
   response?: {
     headers?:
@@ -2733,6 +2751,14 @@ export interface MonitorsSelect<T extends boolean = true> {
   wsIgnoreSecWebsocketAcceptHeader?: T;
   game?: T;
   gamedigGivenPortOnly?: T;
+  pagespeedBackend?: T;
+  pagespeedStrategy?: T;
+  pagespeedFailStatus?: T;
+  pagespeedCategories?: T;
+  pagespeedMinPerformance?: T;
+  pagespeedMinAccessibility?: T;
+  pagespeedMinBestPractices?: T;
+  pagespeedMinSeo?: T;
   remoteBrowser?: T;
   status?:
     | T
@@ -2907,6 +2933,7 @@ export interface HeartbeatsSelect<T extends boolean = true> {
   probes?: T;
   steps?: T;
   value?: T;
+  pagespeed?: T;
   statusCode?: T;
   response?:
     | T
@@ -3950,6 +3977,10 @@ export interface InstanceSetting {
    * Globalping API token for remote ping/HTTP checks.
    */
   globalpingApiToken?: string | null;
+  /**
+   * Google API key for PageSpeed monitors (PageSpeed Insights API). Defaults to PAGESPEED_API_KEY.
+   */
+  pagespeedApiKey?: string | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -3969,6 +4000,7 @@ export interface InstanceSettingsSelect<T extends boolean = true> {
   trustProxy?: T;
   steamApiKey?: T;
   globalpingApiToken?: T;
+  pagespeedApiKey?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
