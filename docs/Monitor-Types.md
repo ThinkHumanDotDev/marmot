@@ -312,6 +312,9 @@ shared by the form, the API and the collection are in `src/lib/validation/assert
   all addresses before connecting. `tailscale-ping`, `real-browser` (Chromium would resolve and connect on
   its own) and `docker` monitors on a `socket` Docker host are refused while the guard is on, both when
   saving and when the check runs. Database connection strings that point at a unix socket are refused too.
+- **`mongodb`** needs MongoDB 4.4 or newer; older servers are DOWN with a wire-version error. For
+  `authMechanism=MONGODB-AWS`, install `@aws-sdk/credential-providers` next to the worker: the driver
+  reads AWS credentials from it, not from the connection string.
 - **`snmp`** supports v1 and v2c; SNMPv3 is not available yet.
 - **`websocket-upgrade`** supports none, basic, bearer and mTLS authentication; OAuth2 is not wired.
 - **Conditions** (Uptime Kuma's condition builder for mysql/sqlserver/mqtt) are not implemented; the
