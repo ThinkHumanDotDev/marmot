@@ -28,6 +28,13 @@
       "matchPackageNames": ["node"],
       "matchUpdateTypes": ["major"],
       "enabled": false
+    },
+    {
+      "description": "Node's types follow the runtime, so they stay on the same major.",
+      "matchDatasources": ["npm"],
+      "matchPackageNames": ["@types/node"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     }
   ]
 }
