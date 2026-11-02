@@ -297,7 +297,7 @@ jobs:
           ref: ${{ env.CHECKOUT_REF }}
       - uses: azure/setup-helm@v5
         with:
-          version: v3.19.0
+          version: v3.22.1
       - name: Package and push
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
