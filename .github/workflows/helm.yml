@@ -38,7 +38,7 @@ jobs:
           fetch-depth: 0
       - uses: azure/setup-helm@v5
         with:
-          version: v3.19.0
+          version: v3.22.1
       - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
@@ -87,7 +87,7 @@ jobs:
           cache-from: type=gha,scope=ci
       - uses: azure/setup-helm@v5
         with:
-          version: v3.19.0
+          version: v3.22.1
       - uses: helm/kind-action@v1
         with:
           cluster_name: marmot
