@@ -56,6 +56,7 @@ export const PROBE_UNSUPPORTED_TYPES: readonly string[] = [
   'group',
   'manual',
   'push',
+  'host',
   'steam',
   'globalping',
   'status-page',

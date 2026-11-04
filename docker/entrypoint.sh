@@ -2,7 +2,8 @@
 # Marmot container entrypoint.
 #
 #   entrypoint.sh [start]      start the role selected by MARMOT_ROLE (web | worker | realtime | all |
-#                              probe, the remote probe agent: needs MARMOT_URL + MARMOT_PROBE_TOKEN only)
+#                              probe, the remote probe agent: needs MARMOT_URL + MARMOT_PROBE_TOKEN only;
+#                              host-agent, the host metrics agent: MARMOT_URL + MARMOT_HOST_TOKEN only)
 #   entrypoint.sh migrate      run database migrations and exit
 #   entrypoint.sh healthcheck  exit 0 when the role is healthy (used by HEALTHCHECK / compose)
 #   entrypoint.sh <command>    run an arbitrary command inside the image
@@ -28,6 +29,7 @@ NEXT=node_modules/.bin/next
 WORKER=dist/server/worker.mjs
 REALTIME=dist/server/realtime.mjs
 PROBE=dist/server/probe.mjs
+HOST_AGENT=dist/server/host-agent.mjs
 MIGRATE=dist/server/migrate.mjs
 
 log() { echo "[marmot] $*"; }
@@ -57,6 +59,7 @@ healthcheck() {
     realtime) http_ok "http://127.0.0.1:${REALTIME_PORT}/healthz" ;;
     worker) exit 0 ;; # the process exiting is the failure signal for a queue consumer
     probe) exit 0 ;;  # same for the probe agent: it only makes outbound requests
+    host-agent) exit 0 ;; # and for the host agent
     all)
       http_ok "http://127.0.0.1:${PORT}/api/health" &&
         http_ok "http://127.0.0.1:${REALTIME_PORT}/healthz"
@@ -69,6 +72,7 @@ start_web() { exec "$NEXT" start -H "$BIND_HOST" -p "$PORT"; }
 start_worker() { exec node "$WORKER"; }
 start_realtime() { exec node "$REALTIME"; }
 start_probe() { exec node "$PROBE"; }
+start_host_agent() { exec node "$HOST_AGENT"; }
 
 # Single-container mode: supervise the three processes and exit when any of them dies so the
 # orchestrator restarts the container instead of leaving it half-alive.
@@ -112,12 +116,13 @@ case "${1:-start}" in
       worker) start_worker ;;
       realtime) start_realtime ;;
       probe) start_probe ;;
+      host-agent) start_host_agent ;;
       all)
         run_migrations
         start_all
         ;;
       *)
-        echo "Unknown MARMOT_ROLE: $ROLE (expected web, worker, realtime, all or probe)" >&2
+        echo "Unknown MARMOT_ROLE: $ROLE (expected web, worker, realtime, all, probe or host-agent)" >&2
         exit 1
         ;;
     esac

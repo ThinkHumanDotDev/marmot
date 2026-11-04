@@ -2,12 +2,13 @@
 
 Marmot is a single TypeScript codebase that runs as three processes from one Docker image.
 
-| Role       | Entrypoint        | Responsibilities                                                                                                           |
-| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `web`      | `next start`      | Marmot UI, Payload admin, REST/GraphQL, public status pages, badges, push, metrics                                         |
-| `worker`   | `src/worker.ts`   | BullMQ job schedulers (one per monitor), check execution, heartbeat state machine, stats rollups, retention, notifications |
-| `realtime` | `src/realtime.ts` | socket.io server; authenticates Payload sessions; joins users to `org:<id>` rooms                                          |
-| `probe`    | `src/probe.ts`    | Remote probe agent (optional, runs elsewhere): pulls its location's monitors over HTTPS and pushes the results back        |
+| Role         | Entrypoint          | Responsibilities                                                                                                           |
+| ------------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `web`        | `next start`        | Marmot UI, Payload admin, REST/GraphQL, public status pages, badges, push, metrics                                         |
+| `worker`     | `src/worker.ts`     | BullMQ job schedulers (one per monitor), check execution, heartbeat state machine, stats rollups, retention, notifications |
+| `realtime`   | `src/realtime.ts`   | socket.io server; authenticates Payload sessions; joins users to `org:<id>` rooms                                          |
+| `probe`      | `src/probe.ts`      | Remote probe agent (optional, runs elsewhere): pulls its location's monitors over HTTPS and pushes the results back        |
+| `host-agent` | `src/host-agent.ts` | Host metrics agent (optional, runs on monitored machines): posts CPU, memory, disk, network and container figures (#136)   |
 
 The `marmot` command-line tool (`src/cli/`, bundled into `dist/cli/marmot.mjs`) is a client of the
 management API only; see [CLI and monitors as code](CLI.md).
@@ -153,6 +154,23 @@ pool, which `includeLocal` adds to probe locations); `src/lib/probe-locations.ts
   `status`) derives `online`/`offline` from `lastSeenAt` and `PROBE_OFFLINE_AFTER` and emails the
   organization's owners and admins on each change to offline and each recovery
   (`src/server/probes/health.ts`).
+
+## Host agents
+
+Host monitors (#136, [Host monitoring](Host-Monitoring.md)) are passive like push monitors:
+
+- **Agent** (`src/host-agent.ts` → `HostAgent` in `src/host-agent/agent.ts`, `MARMOT_ROLE=host-agent`): the
+  collectors in `src/host-agent/collect.ts` (Node's `os` module, `/proc`, `/sys`, `fs.statfs`, `netstat`,
+  `sysctl`) and `src/host-agent/docker.ts` (Engine API over the socket) build one sample per interval, which
+  is posted with `node:http(s)`. Bundled self-contained (dependencies included) to
+  `dist/server/host-agent.mjs` by `scripts/build-server.mjs`, so the file also runs outside the image.
+- **Ingest** (`POST /api/agent/v1/metrics`, `src/server/host-metrics/http.ts`): the monitor's `pushToken` as
+  a bearer token, `HOST_AGENT_RATE_LIMIT` per monitor, the sample validated by `hostSampleSchema`
+  (`src/lib/host-metrics.ts`) and folded into the `host-metrics` rollups (`ingest.ts`; serialised per monitor,
+  unique index on `(monitor, granularity, timestamp)`). No heartbeat is written here.
+- **Check** (`src/server/monitor-types/host.ts`): the worker's periodic check reads the newest minutely rows,
+  goes DOWN when the newest is older than `interval + grace`, and otherwise judges `hostThresholds`
+  (`evaluateHostThresholds`), so retries, notifications, incidents and stats work as for every type.
 
 ## Time-series storage
 

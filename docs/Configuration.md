@@ -244,6 +244,22 @@ the `MONITOR_*` address guard and the `CONNECTIVITY_CHECK_*` variables ([its own
 | `MARMOT_URL`          | —       | probe       | Agent only, required: the Marmot server, e.g. `https://marmot.example.com`. The agent only makes outbound HTTPS requests to it.                                                   |
 | `MARMOT_PROBE_TOKEN`  | —       | probe       | Agent only, required: the location's token (`mp_…`), shown once when the location is created or its token is rotated.                                                             |
 
+## Host monitoring
+
+[Host monitors](Host-Monitoring.md) _(landing in the current release, #136)_ are fed by a host agent
+(`MARMOT_ROLE=host-agent`) that needs only `MARMOT_URL`, its monitor's token and, optionally, the
+`HOST_AGENT_*` settings. Like a probe agent it reads no database, Redis or `PAYLOAD_SECRET`.
+
+| Variable                   | Default                | Read by    | Description                                                                                                                                        |
+| -------------------------- | ---------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HOST_AGENT_RATE_LIMIT`    | `30`                   | web        | Samples per minute per host monitor accepted by `POST /api/agent/v1/metrics`; `0` turns the limit off.                                             |
+| `MARMOT_HOST_TOKEN`        | —                      | host-agent | Agent only, required: the host monitor's token, shown on the monitor page. `MARMOT_URL` (above) names the server.                                  |
+| `HOST_AGENT_INTERVAL`      | `60`                   | host-agent | Seconds between samples until the server answers with the monitor's interval (10–3600).                                                            |
+| `HOST_AGENT_DISKS`         | `/`                    | host-agent | Mount points to report, comma-separated. Empty: `/`, or every drive letter on Windows.                                                             |
+| `HOST_AGENT_DOCKER`        | `false`                | host-agent | Report each running container's CPU and memory through the Docker Engine API.                                                                      |
+| `HOST_AGENT_DOCKER_SOCKET` | `/var/run/docker.sock` | host-agent | Docker daemon socket; `//./pipe/docker_engine` on Windows.                                                                                         |
+| `HOST_AGENT_ROOT`          | —                      | host-agent | Where the host's `/` is mounted when the agent runs in a container (e.g. `/host`): `/proc`, `/sys`, `/etc` and the mount points are read under it. |
+
 ## Hosted instance
 
 Switches for running Marmot as a hosted service. Self-hosted installs leave them off.

@@ -26,6 +26,7 @@ features whose pull requests are merging alongside this documentation.
 | [Monitors](Monitors.md)                                   | Monitor concepts: types, intervals and retries, groups, push monitors, pausing and cloning.                               |
 | [Monitor types](Monitor-Types.md)                         | Field-by-field reference for every monitor type.                                                                          |
 | [Probe locations](Probe-Locations.md)                     | Checks from your own networks: self-hosted probe agents, outbound HTTPS only.                                             |
+| [Host monitoring](Host-Monitoring.md)                     | CPU, memory, disk, network, temperature and Docker metrics from a small agent, with thresholds.                           |
 | [Notifications](Notifications.md)                         | Notification channels, the delivery pipeline, message templates and the provider reference.                               |
 | [Status pages](Status-Pages.md)                           | Public status pages, incidents, custom domains and the public JSON/RSS endpoints.                                         |
 | [Maintenance](Maintenance.md)                             | Maintenance windows and how they silence alerts.                                                                          |

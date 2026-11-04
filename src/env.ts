@@ -34,7 +34,8 @@ const optionalUrl = z.preprocess(
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   // `probe` runs a remote probe agent (#91) instead of a Marmot server: see MARMOT_URL below.
-  MARMOT_ROLE: z.enum(['web', 'worker', 'realtime', 'all', 'probe']).default('all'),
+  // `host-agent` runs the host metrics agent (#136): see MARMOT_HOST_TOKEN below.
+  MARMOT_ROLE: z.enum(['web', 'worker', 'realtime', 'all', 'probe', 'host-agent']).default('all'),
 
   // Required by every role but `probe` (checked by `requireServerVariables` below).
   PAYLOAD_SECRET: z.string().default(''),
@@ -166,6 +167,19 @@ const schema = z.object({
   // location's token. Checks run WORKER_CONCURRENCY at a time.
   MARMOT_URL: z.string().url().optional(),
   MARMOT_PROBE_TOKEN: z.string().trim().optional(),
+  // Host monitors (#136), server side: samples per minute per host monitor token.
+  HOST_AGENT_RATE_LIMIT: z.coerce.number().int().min(0).default(30),
+  // Host agent (MARMOT_ROLE=host-agent): the host monitor's token (MARMOT_URL is the server), the
+  // push interval until the server answers with the monitor's, the mount points to report
+  // (comma-separated; default `/`, every drive on Windows), per-container Docker stats through the
+  // daemon socket, and the prefix of the host's /proc, /sys and mount points when the agent runs in a
+  // container with the host's root mounted (e.g. `/host`).
+  MARMOT_HOST_TOKEN: z.string().trim().optional(),
+  HOST_AGENT_INTERVAL: z.coerce.number().int().min(10).max(3600).default(60),
+  HOST_AGENT_DISKS: z.string().trim().default(''),
+  HOST_AGENT_DOCKER: booleanish.default(false),
+  HOST_AGENT_DOCKER_SOCKET: z.string().trim().default(''),
+  HOST_AGENT_ROOT: z.string().trim().default(''),
   // Skip the Redis side effects of the `monitors` hooks (tests without Redis).
   MARMOT_DISABLE_ENGINE_HOOKS: booleanish.default(false),
 
@@ -259,6 +273,13 @@ const requireRoleVariables = (value: z.infer<typeof schema>, ctx: z.RefinementCt
     if (!value.MARMOT_PROBE_TOKEN) missing('MARMOT_PROBE_TOKEN', 'required for MARMOT_ROLE=probe')
     return
   }
+  if (value.MARMOT_ROLE === 'host-agent') {
+    if (!value.MARMOT_URL) missing('MARMOT_URL', 'required for MARMOT_ROLE=host-agent')
+    if (!value.MARMOT_HOST_TOKEN) {
+      missing('MARMOT_HOST_TOKEN', 'required for MARMOT_ROLE=host-agent')
+    }
+    return
+  }
   if (value.PAYLOAD_SECRET.length < 16) {
     missing('PAYLOAD_SECRET', 'PAYLOAD_SECRET must be at least 16 characters')
   }
@@ -299,5 +320,5 @@ export function resetEnvCache(): void {
 }
 
 export const isProduction = () => env.NODE_ENV === 'production'
-export const runsRole = (role: Exclude<Env['MARMOT_ROLE'], 'all' | 'probe'>) =>
+export const runsRole = (role: Exclude<Env['MARMOT_ROLE'], 'all' | 'probe' | 'host-agent'>) =>
   env.MARMOT_ROLE === 'all' || env.MARMOT_ROLE === role
