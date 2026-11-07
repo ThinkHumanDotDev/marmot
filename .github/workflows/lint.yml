@@ -14,4 +14,4 @@ permissions:
 
 jobs:
   biome:
-    uses: ThinkHumanDotDev/.github/.github/workflows/biome.yml@b70121e37fd4e23046d4a5d66b3fc921b12d1156
+    uses: ThinkHumanDotDev/.github/.github/workflows/biome.yml@da57dde7746aa05fde0fbdd8ef50c023f8a7b97c
